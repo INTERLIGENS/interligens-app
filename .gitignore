@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# --- LOCAL BACKUPS / RESTORE (INTERLIGENS) ---
+.backup_*/
+.restore_*/
+*.BACKUP*
+*.BROKEN_BACKUP
+check_demo_restore.sh
+
+# --- Local demo media ---
+public/tiger/
+
