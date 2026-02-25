@@ -1,234 +1,407 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import TigerRevealCard from "@/components/TigerRevealCard";
 
-// --- TYPES & INTERFACES ---
-interface StandardizedScan {
-  score: number;
-  tier: string;
-  verdict: string;
-  recommendation: string;
-  evidence: { label: string; value: string; level: "low" | "medium" | "high" }[];
-  details: any;
+// --- TYPES ET NORMALISATION ---
+type RiskLevel = "low" | "medium" | "high";
+type Tier = "GREEN" | "ORANGE" | "RED";
+
+interface TopProof {
+  label: string;
+  value: string;
+  level: RiskLevel;
+  riskDescription: string;
 }
 
-// --- HELPERS ---
-const getChain = (address: string) => {
-  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address.trim())) return "SOL";
-  if (/^0x[a-fA-F0-9]{40}$/.test(address.trim())) return "ETH";
+interface NormalizedScan {
+  score: number;
+  tier: Tier;
+  confidence: "Low" | "Medium" | "High";
+  verdict: string;
+  recommendations: string[];
+  proofs: TopProof[];
+  rawSummary: any;
+  chain: "SOL" | "ETH";
+}
+
+// --- CHAIN DETECT ---
+const detectChain = (address: string): "SOL" | "ETH" | null => {
+  const a = address.trim();
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a)) return "SOL";
+  if (/^0x[a-fA-F0-9]{40}$/.test(a)) return "ETH";
   return null;
 };
 
-const normalizeData = (data: any, chain: string): StandardizedScan => {
+// --- NORMALIZE (robuste: marche même si APIs n'ont pas exactement les mêmes champs) ---
+const normalizeScanData = (data: any, chain: "SOL" | "ETH"): NormalizedScan => {
   const isSol = chain === "SOL";
-  const score = isSol ? (data.risk?.score ?? 0) : (data.score ?? 0);
-  const tier = isSol ? (data.risk?.tier || "UNKNOWN") : (data.tier || "UNKNOWN");
-  
-  const isHighRisk = score > 60;
-  
+
+  const score =
+    (isSol ? (data?.risk?.score ?? data?.score ?? 0) : (data?.score ?? 0)) || 0;
+
+  const tierRaw =
+    (isSol ? (data?.risk?.tier ?? data?.tier) : data?.tier) || "GREEN";
+
+  const tier = String(tierRaw).toUpperCase() as Tier;
+
+  // --- Top 3 proofs (fallback safe) ---
+  const proofs: TopProof[] = [];
+
+  if (isSol) {
+    const unknown = data?.programsSummary?.unknownCount ?? data?.unknownProgramsCount ?? 0;
+    const txCount = data?.summary?.txCount ?? data?.transactions?.length ?? 0;
+
+    proofs.push({
+      label: "Programs",
+      value: `${unknown} Unknown`,
+      level: unknown > 0 ? "high" : "low",
+      riskDescription: unknown > 0 ? "Unverified program exposure" : "No unknown programs detected",
+    });
+
+    proofs.push({
+      label: "History",
+      value: `${txCount} TXs`,
+      level: txCount < 5 ? "medium" : "low",
+      riskDescription: txCount < 5 ? "Low history (burner behavior)" : "Normal activity history",
+    });
+
+    proofs.push({
+      label: "Network",
+      value: "Solana Mainnet",
+      level: "low",
+      riskDescription: "Official chain",
+    });
+
+  } else {
+    const unlimited = data?.approvalsSummary?.unlimited ?? 0;
+    const total = data?.approvalsSummary?.total ?? 0;
+
+    proofs.push({
+      label: "Approvals",
+      value: `${unlimited} Unlimited`,
+      level: unlimited > 0 ? "high" : "low",
+      riskDescription: unlimited > 0 ? "Drain vector exposure" : "No unlimited approvals detected",
+    });
+
+    proofs.push({
+      label: "Exposure",
+      value: `${total} Contracts`,
+      level: total > 8 ? "medium" : "low",
+      riskDescription: total > 8 ? "Wider attack surface" : "Normal exposure",
+    });
+
+    proofs.push({
+      label: "Activity",
+      value: "Recent TXs Found",
+      level: "low",
+      riskDescription: "Active wallet profile",
+    });
+  }
+
+  const verdict = score > 70 ? "Avoid" : score > 30 ? "Caution" : "Proceed";
+  const recommendations =
+    score > 70
+      ? ["Do NOT interact", "Revoke approvals", "Move funds to new wallet"]
+      : score > 30
+      ? ["Use burner wallet", "Test small amount first", "Avoid unknown approvals"]
+      : ["Verify URLs", "Small test TX first", "Monitor regularly"];
+
   return {
     score,
     tier,
-    verdict: isHighRisk ? "Critical Exposure" : "Secure Wallet",
-    recommendation: isHighRisk ? "Revoke permissions immediately." : "No immediate threat detected.",
-    evidence: isSol ? [
-      { label: "Risk Tier", value: tier, level: isHighRisk ? "high" : "low" },
-      { label: "Programs", value: `${data.programsSummary?.unknownCount ?? data.unknownProgramsCount ?? 0} unknown`, level: "medium" },
-    ] : [
-      { label: "Threat Level", value: tier, level: isHighRisk ? "high" : "low" },
-      { label: "Approvals", value: `${data.approvalsSummary?.unlimited ?? 0}/${data.approvalsSummary?.total ?? 0}`, level: "medium" },
-    ],
-    details: data,
+    confidence: chain === "ETH" ? (data?.deep ? "High" : "Medium") : "Medium",
+    verdict,
+    recommendations,
+    proofs: proofs.slice(0, 3),
+    rawSummary: isSol ? (data?.programsSummary ?? data) : (data?.approvalsSummary ?? data),
+    chain,
   };
 };
 
-// --- SUB-COMPONENTS ---
-const TigerBadge = ({ children, level }: { children: React.ReactNode; level: string }) => {
-  const styles = {
-    high: "bg-[#F85B05]/20 text-[#F85B05] border-[#F85B05]/40",
-    medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-    low: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  }[level as "high" | "medium" | "low"] || "bg-zinc-800 text-zinc-400 border-zinc-700";
-
-  return (
-    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${styles}`}>
-      {children}
-    </span>
-  );
-};
-
-export default function FinalDemoPage() {
+export default function TigerScanPage() {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<StandardizedScan | null>(null);
-  const [showRaw, setShowRaw] = useState(false);
-  const chain = useMemo(() => getChain(address), [address]);
+  const [loadStep, setLoadStep] = useState(0);
+  const [result, setResult] = useState<NormalizedScan | null>(null);
+  const [isDeep, setIsDeep] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleScan = async () => {
-    if (!chain) return;
+  const chain = useMemo(() => detectChain(address), [address]);
+
+  const runScan = async () => {
+    if (!chain || loading) return;
+
     setLoading(true);
+    setError(null);
     setResult(null);
+
+    // Loader 3 steps (UX)
+    for (let i = 0; i < 3; i++) {
+      setLoadStep(i);
+      await new Promise((r) => setTimeout(r, 650));
+    }
+
     try {
-      const endpoint = chain === "SOL" 
-        ? `/api/wallet/scan?address=${encodeURIComponent(address.trim())}&deep=true`
-        : `/api/scan/eth?address=${encodeURIComponent(address.trim())}&deep=true`;
-      const res = await fetch(endpoint);
+      const endpoint =
+        chain === "SOL"
+          ? `/api/wallet/scan?address=${encodeURIComponent(address.trim())}&deep=${isDeep}`
+          : `/api/scan/eth?address=${encodeURIComponent(address.trim())}&deep=${isDeep}`;
+
+      const res = await fetch(endpoint, { cache: "no-store" });
       const data = await res.json();
-      setResult(normalizeData(data, chain));
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+
+      if (!res.ok) {
+        throw new Error(data?.detail || data?.error || `Error ${res.status}`);
+      }
+
+      setResult(normalizeScanData({ ...data, deep: isDeep }, chain));
+    } catch (err: any) {
+      const msg = String(err?.message || "Scan failed.");
+      setError(msg.includes("rate") ? "ETH rate limit: retry in a few seconds." : msg);
+    } finally {
+      setLoading(false);
+      setLoadStep(0);
+    }
   };
 
+  const getTierColor = (t: Tier) =>
+    t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
+
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased overflow-x-hidden">
-      {/* Background Effect */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,#151515_0%,#050505_100%)] pointer-events-none" />
-      
-      {/* Header */}
-      <header className="relative z-10 flex justify-between items-center p-6 md:px-12 max-w-7xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#F85B05] rounded shadow-[0_0_20px_rgba(248,91,5,0.3)] flex items-center justify-center font-black text-black">I</div>
-          <span className="font-bold tracking-tighter text-lg uppercase italic">Interligens <span className="text-[#F85B05]">.</span></span>
+    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12">
+      {/* HEADER */}
+      <nav className="max-w-7xl mx-auto flex justify-between items-center mb-20">
+        <div className="flex items-center gap-3 group cursor-default">
+          <div className="w-10 h-10 bg-[#F85B05] flex items-center justify-center font-black text-black text-xl italic shadow-[0_0_20px_rgba(248,91,5,0.4)] transition-transform group-hover:scale-110">
+            I
+          </div>
+          <span className="font-black text-2xl tracking-tighter italic uppercase">
+            Interligens<span className="text-[#F85B05]">.</span>
+          </span>
         </div>
-        <div className="flex gap-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+        <div className="hidden md:flex gap-8 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">
           <span>Security Protocol</span>
-          <span className="text-zinc-700">|</span>
+          <span className="text-zinc-800">|</span>
           <span>V2.6-Beta</span>
         </div>
-      </header>
+      </nav>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-12 pb-24">
-        {/* Hero */}
+      <main className="max-w-5xl mx-auto">
+        {/* HERO */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 italic">
-            CHECK YOUR <span className="text-[#F85B05] not-italic">EXPOSURE.</span>
+          <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase">
+            Check your <span className="text-[#F85B05] not-italic">Exposure.</span>
           </h1>
-          <p className="text-zinc-500 max-w-md mx-auto text-sm">
-            Advanced forensic analysis for Solana & Ethereum. <br/>
-            Real-time threat detection for the 2026 meta.
+          <p className="text-zinc-500 max-w-2xl mx-auto text-sm md:text-base font-medium">
+            Advanced forensic analysis for Solana & Ethereum wallets. No signatures required. Pure intelligence.
           </p>
         </div>
 
-        {/* Search Bar - Fixed Overlap */}
-        <div className="max-w-2xl mx-auto mb-20 relative">
-          <div className="bg-[#0A0A0A] border border-zinc-800/50 p-2 rounded-2xl flex flex-col md:flex-row gap-2 shadow-2xl backdrop-blur-xl">
-            <div className="flex-1 relative group">
+        {/* SEARCH BAR */}
+        <div className="relative max-w-2xl mx-auto mb-24">
+          <div className="absolute -inset-1 bg-gradient-to-r from-[#F85B05] to-orange-900 rounded-2xl blur-lg opacity-20 animate-pulse"></div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              runScan();
+            }}
+            className="relative bg-[#0A0A0A] border border-zinc-800 rounded-xl p-2 flex flex-col md:flex-row gap-2 shadow-2xl"
+          >
+            <div className="flex-1 flex items-center px-4 gap-3 overflow-hidden">
               <input
                 type="text"
-                placeholder="Paste wallet address..." 
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-transparent px-4 py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800"
-                onKeyDown={(e) => { if (e.key === "Enter") handleScan(); }}
+                placeholder="Paste wallet or token address..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") runScan();
+                }}
+                className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
               />
               {chain && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2 pointer-events-none">
-                   <span className="bg-[#F85B05] text-black text-[9px] font-black px-2 py-1 rounded shadow-lg animate-pulse">
-                     {chain} DETECTED
-                   </span>
-                </div>
+                <span className="shrink-0 bg-[#F85B05]/10 border border-[#F85B05]/40 text-[#F85B05] text-[9px] font-black px-2 py-1 rounded-sm uppercase tracking-widest animate-in fade-in zoom-in">
+                  {chain} Active
+                </span>
               )}
             </div>
-            <button 
-              onClick={handleScan}
-              disabled={!chain || loading}
-              className="bg-[#F85B05] hover:bg-[#ff6b1a] disabled:opacity-30 text-black font-black uppercase text-xs px-8 py-4 rounded-xl transition-all active:scale-95"
-            >
-              {loading ? "Analyzing..." : "Analyze"}
-            </button>
-          </div>
+
+            <div className="flex items-center gap-3 px-3">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={isDeep}
+                  onChange={(e) => setIsDeep(e.target.checked)}
+                  className="hidden"
+                />
+                <div
+                  className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                    isDeep ? "bg-[#F85B05] border-[#F85B05]" : "border-zinc-700"
+                  }`}
+                >
+                  {isDeep && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                </div>
+                <span className="text-[10px] font-bold text-zinc-500 group-hover:text-zinc-300 uppercase tracking-widest">
+                  Deep
+                </span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={!chain || loading}
+                className="bg-white text-black font-black uppercase text-xs px-8 py-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all disabled:opacity-20 active:scale-95"
+              >
+                {loading ? "Scanning..." : "Analyze"}
+              </button>
+            </div>
+          </form>
+
+          {error && (
+            <div className="mt-4 flex justify-between items-center p-3 bg-red-900/20 border border-red-900/40 rounded-lg">
+              <span className="text-xs font-bold text-red-400">{error}</span>
+              <button
+                onClick={runScan}
+                className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4"
+              >
+                Retry
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Results */}
-        {result && (
-          <div className="grid md:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            {/* Verdict Card */}
-            <div className="md:col-span-5 bg-[#0A0A0A] border border-zinc-800 rounded-3xl p-8 flex flex-col items-center text-center relative overflow-hidden group">
+        {/* LOADING */}
+        {loading && (
+          <div className="max-w-md mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-black uppercase text-[#F85B05] tracking-[0.4em]">
+                Intelligence Pipeline
+              </span>
+              <span className="text-3xl font-black italic text-white">
+                0{(loadStep + 1) * 3}
+              </span>
+            </div>
+            <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#F85B05] transition-all duration-700 ease-out"
+                style={{ width: `${(loadStep + 1) * 33}%` }}
+              />
+            </div>
+            <p className="text-center font-mono text-[11px] text-zinc-500 animate-pulse uppercase tracking-widest">
+              {["Initializing forensic engine...", "Analyzing on-chain patterns...", "Calculating TigerScore..."][loadStep]}
+            </p>
+          </div>
+        )}
+
+        {/* RESULTS */}
+        {result && !loading && (
+          <div className="grid lg:grid-cols-12 gap-8 animate-in zoom-in-95 duration-700 ease-out">
+            {/* LEFT: VERDICT */}
+            <div className="lg:col-span-5 bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-8 flex flex-col items-center text-center relative overflow-hidden group">
               <div className="absolute top-6 right-6">
-                <TigerBadge level={result.score > 60 ? "high" : "low"}>{result.tier}</TigerBadge>
+                <span
+                  className="px-3 py-1 rounded-sm border text-[10px] font-black uppercase tracking-widest"
+                  style={{ borderColor: getTierColor(result.tier), color: getTierColor(result.tier) }}
+                >
+                  {result.tier}
+                </span>
               </div>
 
-              {/* Score Ring Dynamic */}
-              <div className="relative w-56 h-56 mb-8 mt-4">
-                <svg className="w-full h-full -rotate-90 drop-shadow-[0_0_15px_rgba(0,0,0,1)]">
-                  <circle cx="112" cy="112" r="95" stroke="#111" strokeWidth="12" fill="transparent" />
-                  <circle 
-                    cx="112" cy="112" r="95" 
-                    stroke={result.score > 60 ? "#F85B05" : "#10b981"} 
-                    strokeWidth="12" 
-                    fill="transparent" 
-                    strokeDasharray={596}
-                    strokeDashoffset={596 - (596 * result.score) / 100}
+              <div className="relative w-56 h-56 mb-10 mt-4 group-hover:scale-105 transition-transform duration-500">
+                <svg className="w-full h-full -rotate-90">
+                  <circle cx="112" cy="112" r="100" stroke="#111" strokeWidth="12" fill="transparent" />
+                  <circle
+                    cx="112"
+                    cy="112"
+                    r="100"
+                    stroke={getTierColor(result.tier)}
+                    strokeWidth="14"
+                    fill="transparent"
+                    strokeDasharray={628}
+                    strokeDashoffset={628 - (628 * result.score) / 100}
                     strokeLinecap="round"
-                    className="transition-all duration-[1.5s] ease-out"
+                    className="transition-all duration-1000 ease-out"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-6xl font-black italic">{result.score}</span>
-                  <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Risk Score</span>
+                  <span className="text-7xl font-black italic leading-none">{result.score}</span>
+                  <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em] mt-2">
+                    TigerScore
+                  </span>
                 </div>
               </div>
 
-              <h2 className="text-3xl font-black uppercase tracking-tight mb-2">{result.verdict}</h2>
-              <p className="text-zinc-500 text-sm mb-8">{result.recommendation}</p>
-              
-              <button className="w-full py-4 rounded-xl bg-zinc-900 border border-zinc-800 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">
+              <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">
+                {result.verdict}
+              </h2>
+              <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
+                {result.verdict === "Proceed"
+                  ? "Wallet health looks clean. Still verify URLs."
+                  : result.verdict === "Caution"
+                  ? "Suspicious signals detected. Proceed with caution."
+                  : "High-risk patterns detected. Avoid interaction."}
+              </p>
+
+              <div className="w-full space-y-3 mb-4">
+                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">
+                  What to do now
+                </p>
+                {result.recommendations.map((rec, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 text-left hover:border-zinc-600 transition-all"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#F85B05]" />
+                    <span className="text-xs font-bold uppercase tracking-tight">{rec}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button className="w-full mt-4 py-4 rounded-xl border border-dashed border-zinc-800 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-white hover:border-zinc-500 transition-all">
                 Generate Full Report (PDF)
               </button>
             </div>
 
-            {/* Evidence List */}
-            <div className="md:col-span-7 flex flex-col gap-4">
-              <div className="bg-[#0A0A0A] border border-zinc-800 rounded-3xl p-8 flex-1">
-                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">On-Chain Evidence</h3>
-                  <button onClick={() => setShowRaw(!showRaw)} className="text-[10px] font-bold text-[#F85B05] hover:opacity-70 transition-opacity">
-                    {showRaw ? "[ CLOSE RAW ]" : "[ EXPLAIN WHY ]"}
-                  </button>
-                </div>
+            {/* RIGHT: TIGER FLIP CARD + TECH */}
+            <div className="lg:col-span-7 flex flex-col gap-6">
+              <TigerRevealCard tier={result.tier} proofs={result.proofs} />
 
-                <div className="space-y-4">
-                  {result.evidence.map((ev, i) => (
-                    <div key={i} className="flex justify-between items-center p-5 bg-[#0D0D0D] border border-zinc-800/50 rounded-2xl hover:border-[#F85B05]/30 transition-colors group">
-                      <div>
-                        <p className="text-[9px] font-black text-zinc-600 uppercase mb-1 tracking-wider">{ev.label}</p>
-                        <p className="text-sm font-bold font-mono group-hover:text-white transition-colors">{ev.value}</p>
-                      </div>
-                      <TigerBadge level={ev.level}>{ev.level}</TigerBadge>
-                    </div>
-                  ))}
-                </div>
+              <div className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
+                <button
+                  onClick={() => setShowEvidence(!showEvidence)}
+                  className="w-full flex justify-between items-center group"
+                >
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-white transition-colors underline decoration-[#F85B05] underline-offset-8">
+                    Technical Evidence
+                  </span>
+                  <span className="text-xl text-zinc-700 group-hover:text-[#F85B05]">
+                    {showEvidence ? "−" : "+"}
+                  </span>
+                </button>
 
-                {showRaw && (
-                  <div className="mt-8 p-4 bg-black border border-zinc-900 rounded-xl animate-in slide-in-from-top-4">
-                    <pre className="text-[10px] font-mono text-zinc-600 overflow-x-auto">
-                      {JSON.stringify(result.details, null, 2)}
-                    </pre>
+                {showEvidence && (
+                  <div className="mt-6 p-6 bg-black rounded-xl border border-zinc-900 font-mono text-[10px] text-zinc-600 overflow-x-auto animate-in slide-in-from-top-2">
+                    <pre>{JSON.stringify(result.rawSummary, null, 2)}</pre>
                   </div>
                 )}
               </div>
-              
-              <div className="p-6 border border-dashed border-zinc-800 rounded-2xl">
-                <p className="text-[10px] text-zinc-600 uppercase font-bold leading-relaxed tracking-wide">
-                  Intelligence Notice: Analysis is based on current block state. Malicious signatures or private pool movements can occur post-scan.
+
+              <div className="p-6 bg-[#F85B05]/5 border border-dashed border-[#F85B05]/20 rounded-2xl">
+                <p className="text-[10px] text-zinc-600 uppercase font-black leading-relaxed tracking-widest">
+                  BA Audit Trace: Model v2.6.x — proofs are mapped to measurable facts (no defamation).
                 </p>
               </div>
             </div>
           </div>
         )}
+
+        <div className="text-center pt-10">
+          <p className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.6em]">
+            Interligens Intelligence © 2026
+          </p>
+        </div>
       </main>
-
-      <footer className="fixed bottom-6 left-0 right-0 text-center z-0 opacity-30">
-        <span className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-600">
-          Interligens © 2026 — Distributed Intelligence
-        </span>
-      </footer>
-
-      <style jsx global>{`
-        body { background-color: #050505; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-      `}</style>
     </div>
   );
 }
