@@ -1,7 +1,10 @@
 "use client";
+import MarketWeather from "@/components/MarketWeather";
 
 import React, { useState, useMemo } from "react";
 import TigerRevealCard from "@/components/TigerRevealCard";
+import WhatToDoNow from "@/components/WhatToDoNow";
+import TechnicalEvidence from "@/components/TechnicalEvidence";
 
 // --- TYPES ET NORMALISATION ---
 type RiskLevel = "low" | "medium" | "high";
@@ -365,10 +368,29 @@ export default function TigerScanPage() {
 
             {/* RIGHT: TIGER FLIP CARD + TECH */}
             <div className="lg:col-span-7 flex flex-col gap-6">
-              <TigerRevealCard tier={result.tier} proofs={result.proofs} />
+                            {result ? (<>
+                {/* What to do now (after scan) */}
+                <WhatToDoNow lang="en" tier={result?.tier} show={!!result} />
+</>
+
+
+
+              ) : null}
+
+                            <MarketWeather
+                              lang="en"
+                              show={true}
+                              data={{
+                                manipulation: { level: "red", value: 92 },
+                                alerts: { level: "orange", value: 45 },
+                                trust: { level: "green", value: 10 },
+                              }}
+                            />
+                            <TigerRevealCard tier={result.tier} proofs={result.proofs} />
 
               <div className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
-                <button
+                                {/* Market Weather (appears after scan) */}
+<button
                   onClick={() => setShowEvidence(!showEvidence)}
                   className="w-full flex justify-between items-center group"
                 >
@@ -380,10 +402,19 @@ export default function TigerScanPage() {
                   </span>
                 </button>
 
-                {showEvidence && (
-                  <div className="mt-6 p-6 bg-black rounded-xl border border-zinc-900 font-mono text-[10px] text-zinc-600 overflow-x-auto animate-in slide-in-from-top-2">
-                    <pre>{JSON.stringify(result.rawSummary, null, 2)}</pre>
-                  </div>
+                {showEvidence && (<>
+              <TechnicalEvidence lang="en" chain={((result?.chain === "ethereum" ? "ethereum" : "solana"))} show={!!result} />
+
+                  <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
+                    <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-300">
+                      Advanced (raw data)
+                    </summary>
+                    <div className="px-4 pb-4">
+                      <pre className="overflow-auto rounded-lg border border-zinc-900 bg-black p-4 font-mono text-[10px] text-zinc-500">{JSON.stringify(result.rawSummary, null, 2)}</pre>
+                    </div>
+                  </details>
+</>
+
                 )}
               </div>
 
