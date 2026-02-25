@@ -5,6 +5,7 @@ import React, { useState, useMemo } from "react";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
+import LocaleSwitch from "@/components/LocaleSwitch";
 
 // --- TYPES ET NORMALISATION ---
 type RiskLevel = "low" | "medium" | "high";
@@ -192,6 +193,8 @@ export default function TigerScanPage() {
       </nav>
 
       <main className="max-w-5xl mx-auto">
+        <div className="flex justify-end mb-3"><LocaleSwitch /></div>
+
         {/* HERO */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase">
