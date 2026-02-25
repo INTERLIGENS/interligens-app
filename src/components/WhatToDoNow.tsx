@@ -7,38 +7,38 @@ type Lang = "en" | "fr";
 const CONTENT: Record<Tier, Record<Lang, string[]>> = {
   green: {
     en: [
-      "Proceed with caution. Always double-check the final transaction details before signing.",
-      "Monitor real-time alerts. Stay updated on any sudden liquidity or ownership changes.",
-      "Share the report. Help the community by spreading verified safe project data."
+      "Verify URL/contract before signing.",
+      "Start with a small test amount, then scale up.",
+      "Add to watchlist: monitor liquidity + control changes."
     ],
     fr: [
-      "Procédez prudemment. Vérifiez toujours les détails finaux avant de signer la transaction.",
-      "Surveillez les alertes. Restez informé des changements soudains de liquidité ou d'ownership.",
-      "Partagez le rapport. Aidez la communauté en diffusant des données de projets vérifiés."
+      "Valide l’URL / contrat avant de signer.",
+      "Teste une petite somme, puis augmente progressivement.",
+      "Mets en watchlist : surveille liquidité + changements de contrôle."
     ]
   },
   orange: {
     en: [
-      "Use a burner wallet. Never connect your main bags to unverified contracts.",
-      "Revoke active approvals. Clean up permissions to prevent delayed draining attacks.",
-      "Limit your exposure. Only invest what you can afford to lose here."
+      "Use a burner wallet. Never your main wallet.",
+      "Revoke approvals before interacting.",
+      "Keep exposure minimal. No big amount."
     ],
     fr: [
-      "Utilisez un burner wallet. Ne connectez jamais vos fonds principaux aux contrats suspects.",
-      "Révoquez les approvals. Nettoyez les permissions pour éviter tout siphonnage différé.",
-      "Limitez votre exposition. N'investissez que ce que vous êtes prêt à perdre ici."
+      "Burner wallet obligatoire. Jamais ton wallet principal.",
+      "Révoque les approvals avant toute interaction.",
+      "Exposition minimale : aucun gros montant."
     ]
   },
   red: {
     en: [
-      "Do not interact. This contract shows critical vulnerabilities or malicious patterns.",
-      "Revoke all permissions. Use a revoke tool immediately to secure your assets.",
-      "Report the scam. Signal this threat to protect other users from loss."
+      "STOP: do not interact (swap / sign / approve).",
+      "Revoke everything + move funds to a clean wallet if needed.",
+      "Report it and share the report to protect others."
     ],
     fr: [
-      "N'interagissez pas. Ce contrat présente des vulnérabilités critiques ou des schémas malveillants.",
-      "Révoquez les permissions. Utilisez immédiatement un outil de révocation pour sécuriser vos actifs.",
-      "Signalez l'arnaque. Alertez la communauté pour protéger les autres utilisateurs du vol."
+      "STOP : aucune interaction (swap / signature / approval).",
+      "Révoque tout + migre vers un wallet propre si besoin.",
+      "Signale et partage le rapport (protéger les autres)."
     ]
   }
 };
@@ -69,10 +69,11 @@ export default function WhatToDoNow({
   return (
     <section className="wtdn">
       <div className="wtdnTitle">{title}</div>
+
       <ul className="wtdnList">
         {lines.slice(0, 3).map((x, i) => (
           <li key={i} className="wtdnItem">
-            <span className="wtdnDot">{i + 1}</span>
+            <span className="wtdnDot" />
             <span className="wtdnText">{x}</span>
           </li>
         ))}
@@ -87,9 +88,11 @@ export default function WhatToDoNow({
           background:rgba(255,255,255,.05);
         }
         .wtdnTitle{
-          font-size:14px;
-          font-weight:850;
-          letter-spacing:.2px;
+          font-size:12px;
+          font-weight:900;
+          letter-spacing:.18em;
+          text-transform:uppercase;
+          opacity:.95;
           margin-bottom:10px;
         }
         .wtdnList{
@@ -108,16 +111,12 @@ export default function WhatToDoNow({
           opacity:.92;
         }
         .wtdnDot{
-          width:22px;
-          height:22px;
+          width:8px;
+          height:8px;
           border-radius:999px;
-          display:inline-flex;
-          align-items:center;
-          justify-content:center;
-          font-size:12px;
-          font-weight:800;
-          border:1px solid rgba(255,255,255,.14);
-          background:rgba(255,255,255,.06);
+          margin-top:5px;
+          border:1px solid rgba(255,255,255,.18);
+          background:rgba(248,91,5,.85);
           flex:0 0 auto;
         }
         .wtdnText{

@@ -6,9 +6,6 @@ import TigerRevealCard from "@/components/TigerRevealCard";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import LocaleSwitch from "@/components/LocaleSwitch";
-import ExitSecurity from "@/components/ExitSecurity";
-import WhaleRisk from "@/components/WhaleRisk";
-import KOLPressure from "@/components/KOLPressure";
 
 // --- TYPES ET NORMALISATION ---
 type RiskLevel = "low" | "medium" | "high";
@@ -131,7 +128,6 @@ export default function TigerScanPage() {
   const [loading, setLoading] = useState(false);
   const [loadStep, setLoadStep] = useState(0);
   const [result, setResult] = useState<NormalizedScan | null>(null);
-  const [weather, setWeather] = useState<any | null>(null);
   const [isDeep, setIsDeep] = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,28 +161,6 @@ export default function TigerScanPage() {
       }
 
       setResult(normalizeScanData({ ...data, deep: isDeep }, chain));
-
-      try {
-        const heatRes = await fetch("/api/social/heat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            address: address.trim(),
-            chain,
-            deep: isDeep,
-            // Pass raw summary for on-chain proxies (server can ignore fields it doesn't use)
-            rawSummary: (data && (data.rawSummary || data.summary || data)) || null,
-          }),
-        });
-        if (heatRes.ok) {
-          const heat = await heatRes.json();
-          setWeather(heat);
-        } else {
-          setWeather(null);
-        }
-      } catch (e) {
-        setWeather(null);
-      }
     } catch (err: any) {
       const msg = String(err?.message || "Scan failed.");
       setError(msg.includes("rate") ? "ETH rate limit: retry in a few seconds." : msg);
@@ -399,16 +373,6 @@ export default function TigerScanPage() {
             <div className="lg:col-span-7 flex flex-col gap-6">
                             {result ? (<>
                 {/* What to do now (after scan) */}
-                {/* Exit + Whale (compact row) */}
-                <div className="exit-whale-grid grid grid-cols-3 gap-3 max-w-full">
-                  <div className="min-w-0"><ExitSecurity lang="en" tier={result?.tier} weather={weather} show={!!result} />
-                    <div className="min-w-0"><KOLPressure lang="en" tier={result?.tier} weather={weather} show={!!result} /></div>
-</div>
-                  <div className="min-w-0"><WhaleRisk lang="en" tier={result?.tier} weather={weather} show={!!result} /></div>
-                </div>
-                <style jsx>{`@media (max-width: 860px) { .exit-whale-grid { grid-template-columns: 1fr; } }`}</style>
-
-
                 <WhatToDoNow lang="en" tier={result?.tier} show={!!result} />
 </>
 
@@ -419,9 +383,12 @@ export default function TigerScanPage() {
                             <MarketWeather
                               lang="en"
                               show={true}
-                              data={(weather && weather.manipulation && weather.alerts && weather.trust) ? weather : { manipulation: { level: "red", value: 92 }, alerts: { level: "orange", value: 45 }, trust: { level: "green", value: 10 } }}
+                              data={{
+                                manipulation: { level: "red", value: 92 },
+                                alerts: { level: "orange", value: 45 },
+                                trust: { level: "green", value: 10 },
+                              }}
                             />
-
                             <TigerRevealCard tier={result.tier} proofs={result.proofs} />
 
               <div className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">

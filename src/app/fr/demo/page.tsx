@@ -106,13 +106,13 @@ const normalizeScanData = (data: any, chain: "SOL" | "ETH"): NormalizedScan => {
     });
   }
 
-  const verdict = score > 70 ? "Avoid" : score > 30 ? "Caution" : "Proceed";
+  const verdict = score > 70 ? "STOP" : score > 30 ? "PRUDENCE" : "OK";
   const recommendations =
     score > 70
       ? ["Do NOT interact", "Revoke approvals", "Move funds to new wallet"]
       : score > 30
       ? ["Use burner wallet", "Test small amount first", "Avoid unknown approvals"]
-      : ["Verify URLs", "Small test TX first", "Monitor regularly"];
+      : ["Vérifie les URLs", "Teste une petite somme", "Surveille régulièrement"];
 
   return {
     score,
@@ -377,7 +377,7 @@ export default function TigerScanPage() {
 
               <div className="w-full space-y-3 mb-4">
                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">
-                  What to do now
+                  À faire maintenant
                 </p>
                 {result.recommendations.map((rec, i) => (
                   <div
@@ -401,15 +401,15 @@ export default function TigerScanPage() {
                 {/* What to do now (after scan) */}
                 {/* Exit + Whale (compact row) */}
                 <div className="exit-whale-grid grid grid-cols-3 gap-3 max-w-full">
-                  <div className="min-w-0"><ExitSecurity lang="en" tier={result?.tier} weather={weather} show={!!result} />
-                    <div className="min-w-0"><KOLPressure lang="en" tier={result?.tier} weather={weather} show={!!result} /></div>
+                  <div className="min-w-0"><ExitSecurity lang="fr" tier={result?.tier} weather={weather} show={!!result} />
+                    <div className="min-w-0"><KOLPressure lang="fr" tier={result?.tier} weather={weather} show={!!result} /></div>
 </div>
-                  <div className="min-w-0"><WhaleRisk lang="en" tier={result?.tier} weather={weather} show={!!result} /></div>
+                  <div className="min-w-0"><WhaleRisk lang="fr" tier={result?.tier} weather={weather} show={!!result} /></div>
                 </div>
                 <style jsx>{`@media (max-width: 860px) { .exit-whale-grid { grid-template-columns: 1fr; } }`}</style>
 
 
-                <WhatToDoNow lang="en" tier={result?.tier} show={!!result} />
+                <WhatToDoNow lang="fr" tier={result?.tier} show={!!result} />
 </>
 
 
@@ -417,7 +417,7 @@ export default function TigerScanPage() {
               ) : null}
 
                             <MarketWeather
-                              lang="en"
+                              lang="fr"
                               show={true}
                               data={(weather && weather.manipulation && weather.alerts && weather.trust) ? weather : { manipulation: { level: "red", value: 92 }, alerts: { level: "orange", value: 45 }, trust: { level: "green", value: 10 } }}
                             />
@@ -439,7 +439,7 @@ export default function TigerScanPage() {
                 </button>
 
                 {showEvidence && (<>
-              <TechnicalEvidence lang="en" chain={((result?.chain === "ethereum" ? "ethereum" : "solana"))} show={!!result} />
+              <TechnicalEvidence lang="fr" chain={((result?.chain === "ethereum" ? "ethereum" : "solana"))} show={!!result} />
 
                   <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
                     <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-300">
