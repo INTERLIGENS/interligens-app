@@ -353,7 +353,7 @@ export default function TigerScanPageFR() {
                   const res = await fetch("/api/report/pdf", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...result, lang: "fr" }),
+                    body: JSON.stringify({ ...result, address: address.trim(), lang: "fr" }),
                   });
                   if (!res.ok) return;
                   const blob = await res.blob();
@@ -364,7 +364,7 @@ export default function TigerScanPageFR() {
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
-                className="w-full mt-4 py-4 rounded-xl border border-dashed border-zinc-800 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-white hover:border-zinc-500 transition-all"
+                className="w-full mt-4 py-4 rounded-xl border border-dashed border-[#F85B05]/40 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white hover:border-[#F85B05] transition-all"
               >
                 Générer le rapport complet (PDF)
               </button>

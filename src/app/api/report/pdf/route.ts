@@ -39,7 +39,7 @@ function lbl(o:O,x:number,y:number,s:string,c=SEC){
 function pill(o:O,x:number,y:number,label:string,bg:string,sz=7):number{
   const PH=17,charW=sz*0.60,textW=label.length*charW,pw=Math.max(32,textW+18);
   fill(o,x,y,pw,PH,bg);
-  o.push(`${BLK} rg BT /F2 ${sz} Tf ${(x+(pw-textW)/2).toFixed(1)} ${(y+(PH-sz)*0.38).toFixed(1)} Td (${esc(label)}) Tj ET`);
+  o.push(`${BLK} rg BT /F2 ${sz} Tf ${(x+(pw-textW)/2).toFixed(1)} ${(y+(PH-sz*1.1)/2).toFixed(1)} Td (${esc(label)}) Tj ET`);
   return pw;
 }
 function bar(o:O,x:number,y:number,bw:number,bh:number,pct:number,c:string){
@@ -117,18 +117,17 @@ function buildPDF(data:{chain:string;address:string;score:number;tier:string;
   box(o,RX,HB,RW,HH);
   fill(o,RX,HB+HH-4,RW,4,tCol);
   const rcx=RX+66,rcy=HB+HH/2,rR=42;
-  fill(o,rcx-rR+7,rcy-rR+7,(rR-7)*2,(rR-7)*2,HD);
   ring(o,rcx,rcy,rR,sc,tCol);
   const ss=String(sc);
-  tx(o,ss.length>=3?rcx-16:ss.length===2?rcx-11:rcx-7,rcy+7,ss,"B",20,tCol);
-  tx(o,rcx-9,rcy-7,"/100","R",7,SEC);
-  lbl(o,rcx-22,HB+HH-15,"TIGERSCORE",MUT);
+  tx(o,ss.length>=3?rcx-16:ss.length===2?rcx-11:rcx-7,rcy+10,ss,"B",22,tCol);
+  tx(o,rcx-10,rcy-5,"/100","R",7.5,SEC);
+  lbl(o,rcx-24,rcy-22,"TIGERSCORE",MUT);
   // verdict column
   const VX=RX+136;
   lbl(o,VX,HB+HH-15,fr?"EVALUATION":"ASSESSMENT");
   pill(o,VX,HB+HH-36,tierLbl,tCol,8);
   // verdict one-liner only — no duplicate score
-  tx(o,VX,HB+HH-54,verd.slice(0,24),"R",7.5,SEC);
+  // verdict suppressed — tier pill already conveys it
   bar(o,VX,HB+38,RW-(VX-RX)-14,4,sc,tCol);
   tx(o,VX,HB+26,fr?"Confiance : Moyen":"Confidence: Medium","R",6.5,SEC);
   tx(o,VX,HB+4,"BA Trace v2.6","R",6,MUT);
@@ -152,8 +151,8 @@ function buildPDF(data:{chain:string;address:string;score:number;tier:string;
     fill(o,px,py+PCH-4,PCW,4,col);
     lbl(o,px+10,py+PCH-15,String(p.label??"").slice(0,16));
     tx(o,px+10,py+PCH-31,String(p.value??"").slice(0,20),"B",11,W);
-    tx(o,px+10,py+26,String(p.riskDescription??"").slice(0,32),"R",6.5,SEC);
-    pill(o,px+10,py+7,pt,col,6.5);
+    tx(o,px+10,py+34,String(p.riskDescription??"").slice(0,32),"R",6.5,SEC);
+    pill(o,px+10,py+12,pt,col,6.5);
   });
   cy-=PCH+10; hl(o,cy);
 
@@ -169,8 +168,8 @@ function buildPDF(data:{chain:string;address:string;score:number;tier:string;
   rShow.slice(0,3).forEach((r:string)=>{
     box(o,20,cy-22,PW-40,26);
     fill(o,20,cy-22,4,26,tCol);
-    fill(o,34,cy-14,8,8,tCol);
-    tx(o,50,cy-9,String(r).slice(0,78),"R",8.5,W);
+    fill(o,34,cy-13,5,5,tCol);
+    tx(o,47,cy-13,String(r).slice(0,78),"R",8.5,W);
     cy-=32;
   });
   hl(o,cy);

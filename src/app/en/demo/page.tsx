@@ -383,7 +383,7 @@ export default function TigerScanPage() {
                   const res = await fetch("/api/report/pdf", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...result, lang: "en" }),
+                    body: JSON.stringify({ ...result, address: address.trim(), lang: "en" }),
                   });
                   if (!res.ok) return;
                   const blob = await res.blob();
@@ -394,10 +394,25 @@ export default function TigerScanPage() {
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
-                className="w-full mt-4 py-4 rounded-xl border border-dashed border-zinc-800 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-white hover:border-zinc-500 transition-all"
+                className="w-full mt-4 py-4 rounded-xl border border-dashed border-[#F85B05]/40 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white hover:border-[#F85B05] transition-all"
               >
                 Generate Full Report (PDF)
               </button>
+                <button
+                  onClick={async () => {
+                    if (!result) return;
+                    const res = await fetch(`/api/report/casefile?mint=${encodeURIComponent(address.trim())}`);
+                    if (!res.ok) return;
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url; a.download = `casefile-${address.slice(0,8)}.pdf`; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="w-full mt-2 py-4 rounded-xl border border-dashed border-[#EF4444]/40 text-[10px] font-black uppercase tracking-[0.2em] text-[#EF4444] hover:text-white hover:border-[#EF4444] transition-all"
+                >
+                  Generate Case File (PDF) — Detective Referenced
+                </button>
             </div>
 
             {/* RIGHT: SIGNALS + CARDS */}
