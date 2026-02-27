@@ -54,6 +54,14 @@ export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
             </div>
           </div>
 
+          <button
+            onClick={toggleReveal}
+            className="mb-6 w-full h-12 bg-[#F85B05] rounded-xl flex items-center justify-center gap-3 shadow-[0_0_24px_rgba(248,91,5,0.4)] hover:bg-[#ff6a1a] hover:shadow-[0_0_36px_rgba(248,91,5,0.65)] transition-all duration-200"
+          >
+            <span className="text-[11px] font-black uppercase tracking-[0.25em] leading-none text-black">Ask Tiger Analyst</span>
+            <div className="w-2 h-2 rounded-full bg-black/40 shrink-0" />
+          </button>
+
           <div className="space-y-4 flex-1">
             {proofs?.length ? (
               proofs.slice(0, 3).map((proof, i) => (
@@ -92,13 +100,6 @@ export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
             )}
           </div>
 
-          <button
-            onClick={toggleReveal}
-            className="mt-8 w-full py-5 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center gap-3 group hover:bg-white hover:text-black transition-all"
-          >
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Ask Tiger Analyst</span>
-            <div className="w-2 h-2 rounded-full bg-[#F85B05] animate-pulse" />
-          </button>
         </div>
 
         {/* BACK */}

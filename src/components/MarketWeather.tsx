@@ -104,10 +104,10 @@ export default function MarketWeather({
         .mwSub{font-size:12px;opacity:.75;margin-top:2px}
         .mwGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
         @media (max-width:860px){.mwGrid{grid-template-columns:1fr}.mwHead{align-items:flex-start}}
-        .mwCard{padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18)}
-        .mwTop{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-        .mwLabel{font-size:13px;font-weight:750}
-        .mwPill{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);white-space:nowrap}
+        .mwCard{padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);display:flex;flex-direction:column}
+        .mwTop{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+        .mwLabel{font-size:12px;font-weight:750;min-height:40px;line-height:1.3;display:flex;align-items:flex-start}
+        .mwPill{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);white-space:nowrap;align-self:flex-start}
         .mwBar{height:6px;border-radius:999px;background:rgba(255,255,255,.10);overflow:hidden}
         .mwBar span{display:block;height:100%;transition:width 900ms ease}
         .mwCard.green .mwBar span{background:rgba(0,255,120,.55)}

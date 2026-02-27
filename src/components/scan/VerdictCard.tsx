@@ -7,10 +7,12 @@ interface VerdictProps {
   tier: string;
   proofs: string[];
   isDeep: boolean;
+  lang?: "en" | "fr";
 }
 
-export default function VerdictCard({ score, tier, proofs, isDeep }: VerdictProps) {
-  const confidence = isDeep ? "High" : "Medium";
+export default function VerdictCard({ score, tier, proofs, isDeep, lang = "en" }: VerdictProps) {
+  const isFR = lang === "fr";
+  const confidence = isDeep ? (isFR ? "Élevée" : "High") : (isFR ? "Moyenne" : "Medium");
 
   const colors =
     {
@@ -19,11 +21,11 @@ export default function VerdictCard({ score, tier, proofs, isDeep }: VerdictProp
       RED: "text-red-500 bg-red-500/10 border-red-500/30",
     }[tier] || "text-slate-400 bg-slate-800 border-slate-700";
 
-  let actionText = "Proceed, but verify dApp URLs.";
-  if (tier === "ORANGE") actionText = "Use burner wallet, avoid unlimited approvals, test with small amounts.";
-  if (tier === "RED") actionText = "Do not interact. Do not approve. Revoke existing approvals immediately.";
+  let actionText = isFR ? "Vérifie les URLs / contrats avant toute action." : "Proceed, but verify dApp URLs.";
+  if (tier === "ORANGE") actionText = isFR ? "Wallet jetable obligatoire. Évite les approvals illimités. Petits montants." : "Use burner wallet, avoid unlimited approvals, test with small amounts.";
+  if (tier === "RED") actionText = isFR ? "N'interagis pas. Ne signe rien. Révoque tout immédiatement." : "Do not interact. Do not approve. Revoke existing approvals immediately.";
 
-  const displayProofs = proofs?.length ? proofs.slice(0, 3) : ["Awaiting detailed evidence"];
+  const displayProofs = proofs?.length ? proofs.slice(0, 3) : [isFR ? "En attente de preuves détaillées" : "Awaiting detailed evidence"];
 
   return (
     <div className="w-full bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
@@ -55,7 +57,7 @@ export default function VerdictCard({ score, tier, proofs, isDeep }: VerdictProp
                   {tier} RISK
                 </span>
                 <span className="text-slate-500 text-sm">
-                  Confidence: <span className="text-slate-300 font-medium">{confidence}</span>
+                  {isFR ? "Confiance" : "Confidence"}: <span className="text-slate-300 font-medium">{confidence}</span>
                 </span>
               </div>
             </div>
@@ -63,7 +65,7 @@ export default function VerdictCard({ score, tier, proofs, isDeep }: VerdictProp
 
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2">Top Proofs</h3>
+              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2">{isFR ? "Preuves principales" : "Top Proofs"}</h3>
               <ul className="space-y-2">
                 {displayProofs.map((proof, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
@@ -75,7 +77,7 @@ export default function VerdictCard({ score, tier, proofs, isDeep }: VerdictProp
             </div>
 
             <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">What to do now</h3>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{isFR ? "À faire maintenant" : "What to do now"}</h3>
               <p className="text-sm font-medium text-slate-200">{actionText}</p>
             </div>
           </div>
