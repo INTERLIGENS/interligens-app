@@ -1,0 +1,155 @@
+{
+  "case_meta": {
+    "case_id": "CASE-2024-BOTIFY-001",
+    "token_name": "BOTIFY",
+    "ticker": "$BOTIFY",
+    "mint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+    "chain": "solana",
+    "status": "Referenced",
+    "severity": "RED",
+    "opened_at": "2024-11-01T00:00:00Z",
+    "updated_at": "2025-01-15T12:00:00Z",
+    "investigator": "INTERLIGENS-CASEDB-v1",
+    "summary": "BOTIFY token on Solana exhibits multiple high-severity rug-pull indicators: anonymous team, no locked liquidity, coordinated shill campaigns, and abrupt social media abandonment post-launch. Eight independent claims corroborated by screenshot evidence."
+  },
+  "sources": [
+    {
+      "source_id": "SRC-001",
+      "type": "screenshot",
+      "filename": "IMG_2239.jpg",
+      "caption": "Twitter/X shill campaign — coordinated bot replies boosting $BOTIFY",
+      "captured_at": "2024-11-03T14:22:00Z"
+    },
+    {
+      "source_id": "SRC-002",
+      "type": "screenshot",
+      "filename": "IMG_2240.jpg",
+      "caption": "Telegram pump group — pre-launch insider buy signals for BOTIFY",
+      "captured_at": "2024-11-03T14:55:00Z"
+    },
+    {
+      "source_id": "SRC-003",
+      "type": "screenshot",
+      "filename": "IMG_2241.jpg",
+      "caption": "DexScreener liquidity chart — LP withdrawn < 30 min after launch peak",
+      "captured_at": "2024-11-04T09:10:00Z"
+    },
+    {
+      "source_id": "SRC-004",
+      "type": "screenshot",
+      "filename": "IMG_2242.jpg",
+      "caption": "Solscan wallet cluster — 7 wallets pre-funded from same source 2h before launch",
+      "captured_at": "2024-11-04T10:30:00Z"
+    },
+    {
+      "source_id": "SRC-005",
+      "type": "screenshot",
+      "filename": "IMG_2243.jpg",
+      "caption": "Rugcheck.xyz report — Mint Authority NOT revoked, Freeze Authority active",
+      "captured_at": "2024-11-04T11:00:00Z"
+    },
+    {
+      "source_id": "SRC-006",
+      "type": "screenshot",
+      "filename": "IMG_2244.jpg",
+      "caption": "Website WHOIS — domain registered same day as token launch, no team doxxing",
+      "captured_at": "2024-11-05T08:20:00Z"
+    },
+    {
+      "source_id": "SRC-007",
+      "type": "screenshot",
+      "filename": "IMG_2245.jpg",
+      "caption": "Holder distribution — top 3 wallets hold 62% of supply (insider accumulation)",
+      "captured_at": "2024-11-05T09:45:00Z"
+    },
+    {
+      "source_id": "SRC-008",
+      "type": "screenshot",
+      "filename": "IMG_2246.jpg",
+      "caption": "Social media abandonment — all official channels silent after day 5 post-launch",
+      "captured_at": "2024-11-08T16:00:00Z"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C1",
+      "title": "Coordinated Shill Campaign",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "Multiple bot accounts posted identical promotional content within minutes of each other, displaying classic coordinated pump behaviour.",
+      "evidence_refs": ["SRC-001"],
+      "thread_url": "https://twitter.com/search?q=%24BOTIFY&src=typed_query",
+      "category": "social_manipulation"
+    },
+    {
+      "claim_id": "C2",
+      "title": "Insider Pre-Launch Pump Signal",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "Telegram group messages show buy signals distributed to insiders 45 minutes before public token listing, enabling front-running.",
+      "evidence_refs": ["SRC-002"],
+      "thread_url": "https://t.me/+BOTIFY_insiders",
+      "category": "insider_trading"
+    },
+    {
+      "claim_id": "C3",
+      "title": "Liquidity Withdrawal < 30 min Post-Peak",
+      "severity": "CRITICAL",
+      "status": "CONFIRMED",
+      "description": "On-chain data confirms the deployer wallet removed 100% of liquidity from the primary Raydium pool within 28 minutes of the price peak, causing a 97% collapse.",
+      "evidence_refs": ["SRC-003"],
+      "thread_url": "https://dexscreener.com/solana/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+      "category": "rug_pull"
+    },
+    {
+      "claim_id": "C4",
+      "title": "Pre-funded Wallet Cluster (Sybil)",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "Seven wallets received identical SOL amounts from a single source wallet 2 hours before launch. All seven sold at peak within a 90-second window.",
+      "evidence_refs": ["SRC-004"],
+      "thread_url": "https://solscan.io/token/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+      "category": "sybil_attack"
+    },
+    {
+      "claim_id": "C5",
+      "title": "Mint & Freeze Authority Not Revoked",
+      "severity": "CRITICAL",
+      "status": "CONFIRMED",
+      "description": "Rugcheck.xyz confirms mint authority and freeze authority both remain active on the token contract, allowing the deployer to mint unlimited supply or freeze any holder wallet.",
+      "evidence_refs": ["SRC-005"],
+      "thread_url": "https://rugcheck.xyz/tokens/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+      "category": "contract_risk"
+    },
+    {
+      "claim_id": "C6",
+      "title": "Anonymous Team / Same-Day Domain",
+      "severity": "MEDIUM",
+      "status": "CONFIRMED",
+      "description": "Project website domain was registered on the same day as token launch. No team identities, CVs, or verifiable social accounts exist. WHOIS data is privacy-protected.",
+      "evidence_refs": ["SRC-006"],
+      "thread_url": null,
+      "category": "identity_risk"
+    },
+    {
+      "claim_id": "C7",
+      "title": "Whale Concentration — Top 3 Wallets Hold 62%",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "At peak, the top 3 holder wallets controlled 62% of circulating supply, indicating extreme insider accumulation and the ability to crash price at will.",
+      "evidence_refs": ["SRC-007"],
+      "thread_url": "https://solscan.io/token/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb#holders",
+      "category": "tokenomics_risk"
+    },
+    {
+      "claim_id": "C8",
+      "title": "Social Media Abandonment Post-Launch",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "All official BOTIFY social channels (Twitter, Telegram, Discord) went completely silent on day 5 after launch. No developer responses to community distress signals.",
+      "evidence_refs": ["SRC-008"],
+      "thread_url": null,
+      "category": "project_abandonment"
+    }
+  ]
+}
