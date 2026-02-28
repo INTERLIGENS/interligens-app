@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     try {
       const host = req.headers.get("host");
       const proto = req.headers.get("x-forwarded-proto") ?? "http";
-      const scanUrl = `${proto}://${host}/api/scan/solana?mint=${encodeURIComponent(mint_clean)}`;
+      const scanUrl = `${proto}://${host}/api/scan/solana?mint=${encodeURIComponent(mint)}`;
       const scanRes = await fetch(scanUrl, { cache: "no-store" });
       if (scanRes.ok) {
         const scanData = await scanRes.json();
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true, margin: { top: "32px", right: "32px", bottom: "32px", left: "32px" } });
     await browser.close();
     const filename = `casefile-${mint.slice(0, 8)}-${Date.now()}.pdf`;
-    return new NextResponse(pdfBuffer, { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${filename}"`,
+    return new NextResponse(Buffer.from(pdfBuffer), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store, no-cache, must-revalidate",
       "Pragma": "no-cache" } });
   } catch (err) {

@@ -157,8 +157,10 @@ export default function TigerScanPageFR() {
 
   const chain = useMemo(() => detectChain(address), [address]);
 
-  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const mockMode = searchParams?.get("mock") as "green"|"orange"|"red"|null;
+  const [mockMode] = React.useState<"green"|"orange"|"red"|null>(() => {
+    if (typeof window === "undefined") return null;
+    return (new URLSearchParams(window.location.search).get("mock") as "green"|"orange"|"red"|null);
+  });
 
   const DEMO_CHIPS = [
     { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
@@ -191,7 +193,7 @@ export default function TigerScanPageFR() {
       setLoading(false);
       return;
     }
-    if (!chain || loading) return;
+    if (!chain) return;
     setLoading(true);
     setError(null);
     setResult(null);

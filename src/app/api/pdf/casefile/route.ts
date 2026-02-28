@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   if (!mint) return NextResponse.json({ error: "Missing ?mint=" }, { status: 400 });
 
   const mint_clean = mint.trim();
+  const lang = searchParams.get("lang") ?? "en";
   const caseFile = loadCaseByMint(mint_clean);
   const marketSnapshot = await getMarketSnapshot("solana", mint_clean);
   const scoring = computeScore(caseFile?.claims ?? []);
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true, margin: { top: "32px", right: "32px", bottom: "32px", left: "32px" } });
     await browser.close();
     const filename = `casefile-${mint_clean.slice(0, 8)}-${Date.now()}.pdf`;
-    return new NextResponse(pdfBuffer, { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${filename}"` } });
+    return new NextResponse(Buffer.from(pdfBuffer), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${filename}"` } });
   } catch (err) {
     console.error("[pdf/casefile] Puppeteer error:", err);
     return NextResponse.json({ error: "PDF generation failed", detail: String(err) }, { status: 500 });
