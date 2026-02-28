@@ -5,6 +5,8 @@ import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
+import ScanSkeleton from "@/components/ScanSkeleton";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 
@@ -364,20 +366,7 @@ export default function TigerScanPage() {
         </div>
 
         {/* LOADING */}
-        {loading && (
-          <div className="max-w-md mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-            <div className="flex justify-between items-end">
-              <span className="text-[10px] font-black uppercase text-[#F85B05] tracking-[0.4em]">Intelligence Pipeline</span>
-              <span className="text-3xl font-black italic text-white">0{(loadStep + 1) * 3}</span>
-            </div>
-            <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
-              <div className="h-full bg-[#F85B05] transition-all duration-700 ease-out" style={{ width: `${(loadStep + 1) * 33}%` }} />
-            </div>
-            <p className="text-center font-mono text-[11px] text-zinc-500 animate-pulse uppercase tracking-widest">
-              {["Initializing forensic engine...", "Analyzing on-chain patterns...", "Calculating TigerScore..."][loadStep]}
-            </p>
-          </div>
-        )}
+        {loading && <ScanSkeleton />}
 
         {/* RESULTS */}
         <div id="result-anchor" />
