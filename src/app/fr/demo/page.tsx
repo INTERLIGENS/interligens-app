@@ -231,7 +231,7 @@ export default function TigerScanPageFR() {
         {/* HERO */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase">
-            Vérifie ton <span className="text-[#F85B05] not-italic">Exposition.</span>
+            Check your <span className="text-[#F85B05] not-italic">Exposure.</span>
           </h1>
           <p className="text-zinc-500 max-w-2xl mx-auto text-sm md:text-base font-medium">
             Analyse forensique pour wallets Solana, Ethereum & TRON. Aucune signature requise. Intelligence pure.
