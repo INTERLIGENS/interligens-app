@@ -74,8 +74,11 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     const claimsCount = claims.length;
     if (offchainSource === "case_db" && claimsCount > 0) {
       proofs.push({ label: "CaseDB", value: `${claimsCount} Signaux`, level: "high", riskDescription: "Détective Référencé — dossier existant" });
-      proofs.push({ label: "Statut", value: data?.off_chain?.status ?? "Référencé", level: "high", riskDescription: "Résultat investigation hors-chaîne" });
+      const statusFr = (data?.off_chain?.status ?? "Référencé").replace("Referenced", "Référencé").replace("Corroborated", "Corroboré").replace("Unknown", "Inconnu");
+      proofs.push({ label: "Statut", value: statusFr, level: "high", riskDescription: "Résultat investigation hors-chaîne" });
       proofs.push({ label: "Dossier", value: data?.off_chain?.case_id ?? "—", level: "high", riskDescription: "Identifiant du dossier" });
+      const scanDate = data?.scanned_at ? new Date(data.scanned_at).toLocaleString("fr-FR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
+      proofs.push({ label: "Scanné le", value: scanDate, level: "low", riskDescription: "Horodatage du scan" });
     } else {
       proofs.push({ label: "Réseau", value: "Solana Mainnet", level: "low", riskDescription: "Chaîne officielle" });
       proofs.push({ label: "Score", value: `${score}/100`, level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });

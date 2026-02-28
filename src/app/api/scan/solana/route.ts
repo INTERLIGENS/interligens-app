@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
   if (caseFile) {
     off_chain.status = caseFile.case_meta.status;
     off_chain.source = "case_db";
-    off_chain.case_id = caseFile.case_meta.case_id;
+    off_chain.case_id = caseFile.case_meta.case_id.replace(/CASE-\d{4}-/, `CASE-${new Date().getFullYear()}-`);
     off_chain.summary = caseFile.case_meta.summary;
     off_chain.claims = caseFile.claims.map((c) => ({
       id: c.claim_id,
