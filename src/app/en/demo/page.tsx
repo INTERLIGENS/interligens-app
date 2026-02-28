@@ -59,7 +59,7 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
     case "HYPER": return `/api/scan/hyper?address=${encodeURIComponent(address.trim().replace(/^hyper:/i,""))}&deep=${d}`;
     case "TRON": return `/api/scan/tron?address=${a}&deep=${d}`;
     case "ETH":  return `/api/scan/eth?address=${a}&deep=${d}`;
-    case "SOL":  return `/api/wallet/scan?address=${a}&deep=${d}`;
+    case "SOL":  return `/api/scan/solana?mint=${a}`;
   }
 }
 
@@ -73,11 +73,18 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   const proofs: TopProof[] = [];
 
   if (chain === "SOL") {
-    const unknown = data?.programsSummary?.unknownCount ?? data?.unknownProgramsCount ?? 0;
-    const txCount = data?.summary?.txCount ?? data?.transactions?.length ?? 0;
-    proofs.push({ label: "Programs", value: `${unknown} Unknown`, level: unknown > 0 ? "high" : "low", riskDescription: unknown > 0 ? "Unverified program exposure" : "No unknown programs detected" });
-    proofs.push({ label: "History",  value: `${txCount} TXs`,    level: txCount < 5 ? "medium" : "low", riskDescription: txCount < 5 ? "Low history (burner behavior)" : "Normal activity history" });
-    proofs.push({ label: "Network",  value: "Solana Mainnet",     level: "low", riskDescription: "Official chain" });
+    const claims = data?.off_chain?.claims ?? [];
+    const offchainSource = data?.off_chain?.source ?? "none";
+    const claimsCount = claims.length;
+    if (offchainSource === "case_db" && claimsCount > 0) {
+      proofs.push({ label: "CaseDB", value: `${claimsCount} Claims`, level: "high", riskDescription: "Detective Referenced — case on file" });
+      proofs.push({ label: "Status", value: data?.off_chain?.status ?? "Referenced", level: "high", riskDescription: "Off-chain investigation result" });
+      proofs.push({ label: "Case", value: data?.off_chain?.case_id ?? "—", level: "high", riskDescription: "Case identifier" });
+    } else {
+      proofs.push({ label: "Network", value: "Solana Mainnet", level: "low", riskDescription: "Official chain" });
+      proofs.push({ label: "Score", value: `${score}/100`, level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: "Source", value: offchainSource, level: "low", riskDescription: "Data source" });
+    }
   } else if (chain === "ETH") {
     const unlimited = data?.approvalsSummary?.unlimited ?? 0;
     const total     = data?.approvalsSummary?.total ?? 0;

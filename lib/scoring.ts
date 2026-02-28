@@ -38,7 +38,7 @@ export function computeScore(
     };
   }
 
-  const confirmed = claims.filter((c) => c.status === "CONFIRMED" || c.status === "REFERENCED" || c.status === "REFERENCED");
+  const confirmed = claims.filter((c) => c.status === "CONFIRMED");
   const claimPenalty = confirmed.reduce((acc, c) => {
     return acc + (SEVERITY_WEIGHT[c.severity] ?? 5);
   }, 0);
@@ -57,7 +57,7 @@ export function computeScore(
   const score = Math.min(100, raw);
   const tier = scoreTier(score);
 
-  flags.push(`referenced_claims=${confirmed.length}`);
+  flags.push(`confirmed_claims=${confirmed.length}`);
   if (confirmed.some((c) => c.severity === "CRITICAL")) flags.push("CRITICAL_CLAIM_PRESENT");
 
   console.log(
