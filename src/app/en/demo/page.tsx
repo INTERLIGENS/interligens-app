@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import WhatToDoNow from "@/components/WhatToDoNow";
@@ -169,6 +169,16 @@ export default function TigerScanPage() {
 
   const chain = useMemo(() => detectChain(address), [address]);
 
+  // Mock mode
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const mockMode = searchParams?.get("mock") as "green"|"orange"|"red"|null;
+
+  const DEMO_CHIPS = [
+    { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
+    { label: "⚠️ Warning", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
+    { label: "🚨 Scam", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
+  ];
+
   React.useEffect(() => {
     setResolvedEvm(null);
     if (chain !== "HYPER_TOKEN_ID") return;
@@ -180,7 +190,22 @@ export default function TigerScanPage() {
 
   const isHyperTokenId = chain === "HYPER_TOKEN_ID";
 
-  const runScan = async () => {
+  const runScan = async (overrideAddr?: string, overrideMock?: string) => {
+    const scanAddr = (overrideAddr ?? address).trim();
+    const useMock = overrideMock ?? mockMode;
+    if (useMock) {
+      setLoading(true); setError(null); setResult(null);
+      await new Promise(r => setTimeout(r, 800));
+      try {
+        const res = await fetch(`/api/mock/scan?mode=${useMock}`, { cache: "no-store" });
+        const data = await res.json();
+        setResult(normalizeScanData(data, "SOL"));
+        setWeather(null);
+        setTimeout(() => document.getElementById("result-anchor")?.scrollIntoView({ behavior: "smooth" }), 200);
+      } catch(e) { setError("Mock failed"); }
+      setLoading(false);
+      return;
+    }
     if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
     setError(null);
@@ -250,6 +275,22 @@ export default function TigerScanPage() {
           <p className="text-zinc-500 max-w-2xl mx-auto text-sm md:text-base font-medium">
             Advanced forensic analysis for Solana, Ethereum & TRON wallets. No signatures required. Pure intelligence.
           </p>
+        </div>
+
+        {/* DEMO CHIPS */}
+        <div className="flex justify-center gap-3 mb-6 flex-wrap">
+          {DEMO_CHIPS.map((chip) => (
+            <button
+              key={chip.mock}
+              onClick={() => {
+                setAddress(chip.addr);
+                runScan(chip.addr, chip.mock);
+              }}
+              className="px-4 py-2 rounded-full border border-zinc-700 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:border-[#F85B05] hover:text-white transition-all"
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
 
         {/* SEARCH BAR */}
@@ -339,6 +380,7 @@ export default function TigerScanPage() {
         )}
 
         {/* RESULTS */}
+        <div id="result-anchor" />
         {result && !loading && (
           <div className="grid lg:grid-cols-12 gap-8 animate-in zoom-in-95 duration-700 ease-out">
 
