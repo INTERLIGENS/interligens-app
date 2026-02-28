@@ -10,7 +10,8 @@
     "opened_at": "2024-11-01T00:00:00Z",
     "updated_at": "2025-01-15T12:00:00Z",
     "investigator": "INTERLIGENS-CASEDB-v1",
-    "summary": "BOTIFY token on Solana exhibits multiple high-severity rug-pull indicators: anonymous team, no locked liquidity, coordinated shill campaigns, and abrupt social media abandonment post-launch. Eight independent claims corroborated by screenshot evidence."
+    "summary": "BOTIFY token on Solana exhibits multiple high-severity rug-pull indicators: anonymous team, no locked liquidity, coordinated shill campaigns, and abrupt social media abandonment post-launch. Eight independent claims corroborated by screenshot evidence.",
+    "summary_fr": "Le token BOTIFY sur Solana présente de multiples indicateurs de rug-pull à haute sévérité : équipe anonyme, liquidité non verrouillée, campagnes de promotion coordonnées et abandon des réseaux sociaux peu après le lancement. Huit signaux indépendants référencés par des preuves screenshots."
   },
   "sources": [
     {
@@ -77,9 +78,13 @@
       "severity": "HIGH",
       "status": "REFERENCED",
       "description": "Multiple bot accounts posted identical promotional content within minutes of each other, displaying classic coordinated pump behaviour.",
-      "evidence_refs": ["SRC-001"],
+      "evidence_refs": [
+        "SRC-001"
+      ],
       "thread_url": "https://twitter.com/search?q=%24BOTIFY&src=typed_query",
-      "category": "social_manipulation"
+      "category": "social_manipulation",
+      "title_fr": "Campagne de promotion coordonnée",
+      "description_fr": "Allégation référencée (détective). Plusieurs comptes bot ont posté un contenu promotionnel identique à quelques minutes d'intervalle, affichant un comportement classique de pump coordonné. Corroboration on-chain : en attente."
     },
     {
       "claim_id": "C2",
@@ -87,9 +92,13 @@
       "severity": "HIGH",
       "status": "REFERENCED",
       "description": "Telegram group messages show buy signals distributed to insiders 45 minutes before public token listing, enabling front-running.",
-      "evidence_refs": ["SRC-002"],
+      "evidence_refs": [
+        "SRC-002"
+      ],
       "thread_url": "https://t.me/+BOTIFY_insiders",
-      "category": "insider_trading"
+      "category": "insider_trading",
+      "title_fr": "Signal de pump interne avant lancement",
+      "description_fr": "Allégation référencée (détective). Des messages Telegram montrent des signaux d'achat distribués à des initiés 45 minutes avant la cotation publique du token, permettant le front-running. Corroboration on-chain : en attente."
     },
     {
       "claim_id": "C3",
@@ -97,9 +106,13 @@
       "severity": "CRITICAL",
       "status": "REFERENCED",
       "description": "On-chain data confirms the deployer wallet removed 100% of liquidity from the primary Raydium pool within 28 minutes of the price peak, causing a 97% collapse.",
-      "evidence_refs": ["SRC-003"],
+      "evidence_refs": [
+        "SRC-003"
+      ],
       "thread_url": "https://dexscreener.com/solana/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-      "category": "rug_pull"
+      "category": "rug_pull",
+      "title_fr": "Retrait de liquidité < 30 min après le pic",
+      "description_fr": "Allégation référencée (détective). Les données on-chain indiquent que le wallet déployeur aurait retiré 100% de la liquidité du pool Raydium principal dans les 28 minutes suivant le pic de prix, causant un effondrement de 97%. Corroboration on-chain : en attente."
     },
     {
       "claim_id": "C4",
@@ -107,9 +120,13 @@
       "severity": "HIGH",
       "status": "REFERENCED",
       "description": "Seven wallets received identical SOL amounts from a single source wallet 2 hours before launch. All seven sold at peak within a 90-second window.",
-      "evidence_refs": ["SRC-004"],
+      "evidence_refs": [
+        "SRC-004"
+      ],
       "thread_url": "https://solscan.io/token/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-      "category": "sybil_attack"
+      "category": "sybil_attack",
+      "title_fr": "Cluster de wallets pré-financés (Sybil)",
+      "description_fr": "Allégation référencée (détective). Sept wallets ont reçu des montants SOL identiques depuis un wallet source unique 2 heures avant le lancement. Les sept ont vendu au pic dans une fenêtre de 90 secondes. Corroboration on-chain : en attente."
     },
     {
       "claim_id": "C5",
@@ -117,9 +134,13 @@
       "severity": "CRITICAL",
       "status": "REFERENCED",
       "description": "Rugcheck.xyz confirms mint authority and freeze authority both remain active on the token contract, allowing the deployer to mint unlimited supply or freeze any holder wallet.",
-      "evidence_refs": ["SRC-005"],
+      "evidence_refs": [
+        "SRC-005"
+      ],
       "thread_url": "https://rugcheck.xyz/tokens/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-      "category": "contract_risk"
+      "category": "contract_risk",
+      "title_fr": "Mint & Freeze Authority non révoquées",
+      "description_fr": "Allégation référencée (détective). Rugcheck.xyz indique que les autorités de mint et de freeze resteraient actives sur le contrat du token, permettant potentiellement au déployeur de créer une offre illimitée ou de bloquer tout wallet détenteur. Corroboration on-chain : en attente."
     },
     {
       "claim_id": "C6",
@@ -127,9 +148,13 @@
       "severity": "MEDIUM",
       "status": "REFERENCED",
       "description": "Project website domain was registered on the same day as token launch. No team identities, CVs, or verifiable social accounts exist. WHOIS data is privacy-protected.",
-      "evidence_refs": ["SRC-006"],
+      "evidence_refs": [
+        "SRC-006"
+      ],
       "thread_url": null,
-      "category": "identity_risk"
+      "category": "identity_risk",
+      "title_fr": "Équipe anonyme / domaine créé le jour du lancement",
+      "description_fr": "Allégation référencée (détective). Le domaine du site du projet aurait été enregistré le jour même du lancement du token. Aucune identité d'équipe, CV ou compte social vérifiable n'existe. Les données WHOIS sont protégées par la confidentialité. Corroboration on-chain : en attente."
     },
     {
       "claim_id": "C7",
@@ -137,9 +162,13 @@
       "severity": "HIGH",
       "status": "REFERENCED",
       "description": "At peak, the top 3 holder wallets controlled 62% of circulating supply, indicating extreme insider accumulation and the ability to crash price at will.",
-      "evidence_refs": ["SRC-007"],
+      "evidence_refs": [
+        "SRC-007"
+      ],
       "thread_url": "https://solscan.io/token/BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb#holders",
-      "category": "tokenomics_risk"
+      "category": "tokenomics_risk",
+      "title_fr": "Concentration baleine — Top 3 wallets détiennent 62%",
+      "description_fr": "Allégation référencée (détective). Au pic, les 3 principaux wallets détenteurs contrôlaient 62% de l'offre en circulation, indiquant une accumulation interne extrême et la capacité de faire chuter le prix à volonté. Corroboration on-chain : en attente."
     },
     {
       "claim_id": "C8",
@@ -147,9 +176,13 @@
       "severity": "HIGH",
       "status": "REFERENCED",
       "description": "All official BOTIFY social channels (Twitter, Telegram, Discord) went completely silent on day 5 after launch. No developer responses to community distress signals.",
-      "evidence_refs": ["SRC-008"],
+      "evidence_refs": [
+        "SRC-008"
+      ],
       "thread_url": null,
-      "category": "project_abandonment"
+      "category": "project_abandonment",
+      "title_fr": "Abandon des réseaux sociaux après le lancement",
+      "description_fr": "Allégation référencée (détective). Tous les canaux sociaux officiels BOTIFY (Twitter, Telegram, Discord) se seraient tus complètement au 5ème jour après le lancement. Aucune réponse des développeurs aux signaux de détresse de la communauté. Corroboration on-chain : en attente."
     }
   ]
 }

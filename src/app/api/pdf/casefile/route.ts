@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     risk: { score: scoring.score, tier: scoring.tier, breakdown: scoring.breakdown, flags: scoring.flags },
   };
 
-  const html = renderCaseFilePDF(scanResult);
+  const html = renderCaseFilePDF(scanResult, lang);
 
   try {
     const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });

@@ -13,6 +13,7 @@ function getBaseUrl(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mint = (searchParams.get("mint") || "").trim();
+  const lang = searchParams.get("lang") ?? "en";
   if (!mint) return NextResponse.json({ error: "Missing ?mint=" }, { status: 400 });
 
   const baseUrl = getBaseUrl(req);
@@ -25,7 +26,48 @@ export async function GET(req: NextRequest) {
   const casefile = await r.json();
   console.log("[REPORT_OFFCHAIN]", { source: casefile?.off_chain?.source, claims: casefile?.off_chain?.claims?.length ?? 0 });
 
-  const html = renderCaseFilePDF(casefile);
+  // Enrich with FR translations
+  if (lang === "fr") {
+    try {
+      const botifyRaw = require("../../../../../data/cases/botify.json");
+      if (botifyRaw.case_meta?.summary_fr) {
+        casefile.off_chain.summary = botifyRaw.case_meta.summary_fr;
+      }
+      (casefile as any)._raw_claims = botifyRaw.claims ?? [];
+      casefile.off_chain.claims = casefile.off_chain.claims.map((c: any) => {
+        const raw = botifyRaw.claims?.find((r: any) => r.claim_id === c.id);
+        return {
+          ...c,
+          title: raw?.title_fr ?? c.title,
+          status: c.status === "REFERENCED" ? "RÉFÉRENCÉ" : c.status,
+        };
+      });
+      casefile.off_chain.status = casefile.off_chain.status === "Referenced" ? "Référencé" : casefile.off_chain.status;
+      // Fix descriptions: remove unproven on-chain assertions
+      casefile.off_chain.claims = casefile.off_chain.claims.map((c: any) => {
+        const raw = botifyRaw.claims?.find((r: any) => r.claim_id === c.id);
+        return { ...c, description: raw?.description_fr ?? c.description };
+      });
+    } catch(e) { console.error("[i18n] FR enrichment failed", e); }
+  }
+
+  // Fix 4: inject market data from scan if missing
+  if (!casefile.on_chain?.markets?.source) {
+    try {
+      const host = req.headers.get("host");
+      const proto = req.headers.get("x-forwarded-proto") ?? "http";
+      const scanUrl = `${proto}://${host}/api/scan/solana?mint=${encodeURIComponent(mint_clean)}`;
+      const scanRes = await fetch(scanUrl, { cache: "no-store" });
+      if (scanRes.ok) {
+        const scanData = await scanRes.json();
+        if (scanData?.on_chain?.markets?.source) {
+          casefile.on_chain = scanData.on_chain;
+        }
+      }
+    } catch(e) { console.error("[market] injection failed", e); }
+  }
+
+  const html = renderCaseFilePDF(casefile, lang);
 
   try {
     const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
