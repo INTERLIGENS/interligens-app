@@ -249,3 +249,31 @@ open "http://localhost:3100/en/demo?mock=red"
 open "http://localhost:3100/fr/demo?mock=red"
 # → scan → bouton "Ouvrir le dossier" => nouvel onglet PDF
 ```
+
+
+---
+
+## P4 Quick Demo Bar + Deep Links
+
+### Checklist
+- [ ] Chip GREEN => résultat GREEN instantané + storyline EN/FR
+- [ ] Chip ORANGE => résultat ORANGE instantané + storyline
+- [ ] Chip RED => résultat RED instantané + storyline
+- [ ] Chip actif: highlighted (couleur correspondante)
+- [ ] URL mise à jour: `/en/demo?mock=red` après clic chip RED
+- [ ] Refresh sur `/en/demo?mock=red` => scan auto-déclenché (refresh-safe)
+- [ ] "Copy link" => clipboard OK + feedback "Copied!" / "Copié !"
+- [ ] Fallback clipboard: input readonly avec URL
+- [ ] FR: textes FR stricts (Sûr/Attention/Arnaque/Copier le lien)
+- [ ] EN: textes EN stricts (Safe/Warning/Scam/Copy link)
+- [ ] Storyline visible sous la barre (1 phrase, langue correcte)
+- [ ] Flow manuel inchangé: saisie adresse + scan toujours fonctionnel
+
+### Deep links partageables
+```bash
+open "http://localhost:3100/en/demo?mock=green"
+open "http://localhost:3100/en/demo?mock=orange"
+open "http://localhost:3100/en/demo?mock=red"
+open "http://localhost:3100/fr/demo?mock=red"
+# => chaque URL déclenche automatiquement le scénario
+```

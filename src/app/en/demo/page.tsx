@@ -5,6 +5,8 @@ import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
 import CaseFileCTA from "@/components/CaseFileCTA";
+import QuickDemoBar from "@/components/demo/QuickDemoBar";
+import { DEMO_PRESETS, type DemoScenario } from "@/lib/demo/presets";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
@@ -197,15 +199,41 @@ export default function TigerScanPage() {
 
   const chain = useMemo(() => detectChain(address), [address]);
 
-  // Mock mode
-  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const mockMode = searchParams?.get("mock") as "green"|"orange"|"red"|null;
+  // Mock mode + scenario state
+  const [selectedScenario, setSelectedScenario] = React.useState<DemoScenario | null>(() => {
+    if (typeof window === "undefined") return null;
+    return (new URLSearchParams(window.location.search).get("mock") as DemoScenario | null);
+  });
+  const mockMode = selectedScenario;
 
   const DEMO_CHIPS = [
     { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
     { label: "⚠️ Warning", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
     { label: "🚨 Scam", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
   ];
+
+  // Auto-trigger on mount if ?mock= param present
+  React.useEffect(() => {
+    if (selectedScenario) {
+      const preset = DEMO_PRESETS.SOL[selectedScenario];
+      setAddress(preset.addr);
+      runScan(preset.addr, selectedScenario);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const storyline = selectedScenario ? DEMO_PRESETS.SOL[selectedScenario].storyline.en : null;
+
+  const handleSelectScenario = (scenario: DemoScenario) => {
+    const preset = DEMO_PRESETS.SOL[scenario];
+    setSelectedScenario(scenario);
+    setAddress(preset.addr);
+    // Update URL without reload
+    const url = new URL(window.location.href);
+    url.searchParams.set("mock", scenario);
+    window.history.replaceState({}, "", url.toString());
+    runScan(preset.addr, scenario);
+  };
 
   React.useEffect(() => {
     setResolvedEvm(null);
@@ -305,21 +333,14 @@ export default function TigerScanPage() {
           </p>
         </div>
 
-        {/* DEMO CHIPS */}
-        <div className="flex justify-center gap-3 mb-6 flex-wrap">
-          {DEMO_CHIPS.map((chip) => (
-            <button
-              key={chip.mock}
-              onClick={() => {
-                setAddress(chip.addr);
-                runScan(chip.addr, chip.mock);
-              }}
-              className="px-4 py-2 rounded-full border border-zinc-700 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:border-[#F85B05] hover:text-white transition-all"
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
+        {/* QUICK DEMO BAR */}
+        <QuickDemoBar
+          locale="en"
+          selectedScenario={selectedScenario}
+          storyline={storyline}
+          onSelectScenario={handleSelectScenario}
+          shareUrl={typeof window !== "undefined" ? window.location.href : ""}
+        />
 
         {/* SEARCH BAR */}
         <div className="relative max-w-2xl mx-auto mb-24">
