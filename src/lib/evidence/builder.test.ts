@@ -128,30 +128,58 @@ describe("Evidence Builder", () => {
     expect(p?.severity).toBe("low");
   });
 
-  it("rpc_fallback_used => FALLBACK badge + med severity", () => {
+  it("rpc_fallback_used => FALLBACK badge + guaranteed slot in cap", () => {
     const items = buildOnChainEvidence({
       chain: "ETH",
       data_source: "rpc_fallback",
       source_detail: "https://rpc.ankr.com/eth",
       rpc_fallback_used: true,
+      spenders: [
+        "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+        "0x1111111254eeb25477b68fb85ed929f73a960582",
+        "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      ],
     });
-    const p = items.find(i => i.id === "provider");
-    expect(p?.badge).toBe("FALLBACK");
-    expect(p?.severity).toBe("med");
+    expect(items.length).toBeLessThanOrEqual(3);
+    const rpcItem = items.find(i => i.id === "provider");
+    expect(rpcItem?.badge).toBe("FALLBACK");
+    expect(rpcItem?.severity).toBe("med");
   });
 
-  it("priority: known_bad > spender > rpc source (cap 3)", () => {
+  it("rpc_down => RPC Unavailable item with FALLBACK badge", () => {
+    const items = buildOnChainEvidence({
+      chain: "ETH",
+      rpc_down: true,
+      rpc_error: "All endpoints failed",
+    });
+    const down = items.find(i => i.id === "rpc_down");
+    expect(down).toBeTruthy();
+    expect(down?.badge).toBe("FALLBACK");
+    expect(down?.severity).toBe("med");
+  });
+
+  it("rpc_down guaranteed slot even with known_bad + official", () => {
+    const items = buildOnChainEvidence({
+      chain: "ETH",
+      rpc_down: true,
+      spenders: ["0xba5ddd1f9d7f570dc94a51479a000e3bce967196"],
+      counterparties: ["0x7a250d5630b4cf539739df2c5dacb4c659f2488d"],
+    });
+    expect(items.length).toBeLessThanOrEqual(3);
+    expect(items.some(i => i.id === "rpc_down")).toBe(true);
+  });
+
+  it("priority: known_bad > official > rpc source (cap 3)", () => {
     const items = buildOnChainEvidence({
       chain: "ETH",
       data_source: "rpc_primary",
       source_detail: "https://eth.llamarpc.com",
       spenders: [
-        "0xba5ddd1f9d7f570dc94a51479a000e3bce967196", // Angel Drainer — known bad
-        "0x7a250d5630b4cf539739df2c5dacb4c659f2488d", // Uniswap — official
+        "0xba5ddd1f9d7f570dc94a51479a000e3bce967196",
+        "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
       ],
     });
     expect(items.length).toBeLessThanOrEqual(3);
-    const ids = items.map(i => i.id);
-    expect(ids.includes("known_bad_0")).toBe(true);
+    expect(items.some(i => i.id === "known_bad_0")).toBe(true);
   });
 });

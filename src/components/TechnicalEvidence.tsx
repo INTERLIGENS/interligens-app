@@ -28,6 +28,8 @@ interface Props {
   source_detail?: string;
   rpc_fallback_used?: boolean;
   cache_hit?: boolean;
+  rpc_down?: boolean;
+  rpc_error?: string;
   counterparties?: string[];
   spenders?: string[];
   freezeAuthority?: boolean;
@@ -37,14 +39,14 @@ interface Props {
 
 export default function TechnicalEvidence({
   lang, chain, show,
-  provider_used, data_source, source_detail, rpc_fallback_used, cache_hit, spenders, counterparties, freezeAuthority, mintAuthority, unlimitedCount,
+  provider_used, data_source, source_detail, rpc_fallback_used, cache_hit, rpc_down, rpc_error, spenders, counterparties, freezeAuthority, mintAuthority, unlimitedCount,
 }: Props) {
   if (!show) return null;
 
   const chainKey = chain === "ethereum" ? "ETH" : "SOL";
   const items: EvidenceItem[] = buildOnChainEvidence({
     chain: chainKey,
-    provider_used, data_source, source_detail, rpc_fallback_used, cache_hit, counterparties,
+    provider_used, data_source, source_detail, rpc_fallback_used, cache_hit, rpc_down, rpc_error, counterparties,
     spenders,
     freezeAuthority,
     mintAuthority,

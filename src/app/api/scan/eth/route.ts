@@ -115,6 +115,8 @@ export async function GET(req: Request) {
     let rpcFallbackUsed = false;
     let rpcCacheHit = false;
     let balRpcFallback: string | null = null;
+    let rpcDown = false;
+    let rpcError: string | null = null;
     try {
       const codeResult = await rpcCall("ETH", "eth_getCode", [address, "latest"]);
       isContract = codeResult.result !== "0x" && codeResult.result !== "0x0";
@@ -122,8 +124,9 @@ export async function GET(req: Request) {
       rpcSourceDetail = codeResult.provider_used;
       rpcFallbackUsed = codeResult.didFallback;
       rpcCacheHit = codeResult.cached;
-    } catch {
-      // best-effort — RPC unavailable
+    } catch (e: any) {
+      rpcDown = true;
+      rpcError = String(e?.message || "RPC unavailable").slice(0, 120);
     }
 
     // 1c) eth_getBalance via RPC (fallback if balRaw=0 and Etherscan unreliable)
@@ -336,6 +339,8 @@ export async function GET(req: Request) {
       is_contract: isContract,
       rpc_fallback_used: rpcFallbackUsed,
       cache_hit: rpcCacheHit,
+      rpc_down: rpcDown,
+      rpc_error: rpcError,
     };
 
     ethCacheSet(cacheKey, resp);
