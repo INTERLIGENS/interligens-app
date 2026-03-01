@@ -1,4 +1,5 @@
 import { resolveEntity } from "../entities/registry";
+import { isKnownBad } from "../entities/knownBad";
 
 export type EvidenceItem = {
   id: string;
@@ -26,6 +27,7 @@ export function buildOnChainEvidence(params: {
   data_source?: "etherscan" | "rpc_primary" | "rpc_fallback" | "unknown";
   source_detail?: string;
   spenders?: string[];
+  counterparties?: string[];
   freezeAuthority?: boolean;
   mintAuthority?: boolean;
   unlimitedCount?: number;
@@ -51,10 +53,34 @@ export function buildOnChainEvidence(params: {
     });
   }
 
+  // Known-bad check: spenders + counterparties (CRITICAL — preempts cap)
+  const allAddrs = [...(params.spenders ?? []), ...(params.counterparties ?? [])];
+  const knownBadItems: EvidenceItem[] = [];
+  const seenBad = new Set<string>();
+  for (const addr of allAddrs) {
+    if (seenBad.has(addr.toLowerCase())) continue;
+    const bad = isKnownBad(params.chain, addr);
+    if (bad) {
+      seenBad.add(addr.toLowerCase());
+      knownBadItems.push({
+        id: `known_bad_${knownBadItems.length}`,
+        label: "Known bad address",
+        value: `${bad.label} — ${addr.slice(0, 8)}...${addr.slice(-4)}`,
+        severity: "critical",
+        why_en: `This address is flagged as ${bad.category} (confidence: ${bad.confidence}).`,
+        why_fr: `Cette adresse est signalée comme ${bad.category} (confiance: ${bad.confidence}).`,
+        badge: "CRITICAL",
+        explorer_url: explorerUrl(params.chain, addr),
+      });
+    }
+  }
+  items.push(...knownBadItems.slice(0, 2));
+
   // Spenders — iterate top 5, resolve each
   if (params.spenders?.length) {
     for (let i = 0; i < Math.min(params.spenders.length, 5); i++) {
       const addr = params.spenders[i];
+      if (seenBad.has(addr.toLowerCase())) continue; // already shown as known_bad
       const entity = resolveEntity(params.chain, addr);
       const isOfficial = entity.isOfficial;
       const shortAddr = `${addr.slice(0, 8)}...${addr.slice(-4)}`;
@@ -73,6 +99,34 @@ export function buildOnChainEvidence(params: {
         url: entity.url,
         explorer_url: explorerUrl(params.chain, addr),
       });
+    }
+  }
+
+  // Counterparties — max 2 evidence items
+  if (params.counterparties?.length) {
+    let cpCount = 0;
+    for (let i = 0; i < Math.min(params.counterparties.length, 5); i++) {
+      if (cpCount >= 2) break;
+      const addr = params.counterparties[i];
+      if (seenBad.has(addr.toLowerCase())) continue;
+      const entity = resolveEntity(params.chain, addr);
+      const shortAddr = `${addr.slice(0, 8)}...${addr.slice(-4)}`;
+      items.push({
+        id: `counterparty_${i}`,
+        label: "Counterparty identified",
+        value: entity.isOfficial ? `${entity.name} (official)` : `Unknown — ${shortAddr}`,
+        severity: entity.isOfficial ? "low" : "high",
+        why_en: entity.isOfficial
+          ? `${entity.name} is a verified official protocol.`
+          : "Unverified counterparty — assess risk before interacting.",
+        why_fr: entity.isOfficial
+          ? `${entity.name} est un protocole officiel vérifié.`
+          : "Contrepartie non vérifiée — évaluez le risque avant d'interagir.",
+        badge: entity.isOfficial ? "OFFICIAL" : "UNKNOWN",
+        url: entity.url,
+        explorer_url: explorerUrl(params.chain, addr),
+      });
+      cpCount++;
     }
   }
 

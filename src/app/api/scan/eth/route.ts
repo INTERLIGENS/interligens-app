@@ -266,6 +266,7 @@ export async function GET(req: Request) {
     const tier = score >= 70 ? "RED" : score >= 40 ? "ORANGE" : "GREEN";
 
     const spenders = Array.from(new Set(approvals.map((a) => a.spender))).slice(0, 5);
+    const counterparties_top = counterparties.slice(0, 5).map(cp => cp.address);
 
     const resp = {
       chain: "eth",
@@ -279,6 +280,7 @@ export async function GET(req: Request) {
       approvals: deep ? approvals.slice(0, 30) : [],
       approvalsSummary,
       spenders,
+      counterparties_top,
       proofs: proofs.slice(0, 3),
       score,
       tier,

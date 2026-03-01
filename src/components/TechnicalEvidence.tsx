@@ -25,6 +25,7 @@ interface Props {
   provider_used?: string; // @deprecated
   data_source?: string;
   source_detail?: string;
+  counterparties?: string[];
   spenders?: string[];
   freezeAuthority?: boolean;
   mintAuthority?: boolean;
@@ -33,14 +34,14 @@ interface Props {
 
 export default function TechnicalEvidence({
   lang, chain, show,
-  provider_used, data_source, source_detail, spenders, freezeAuthority, mintAuthority, unlimitedCount,
+  provider_used, data_source, source_detail, spenders, counterparties, freezeAuthority, mintAuthority, unlimitedCount,
 }: Props) {
   if (!show) return null;
 
   const chainKey = chain === "ethereum" ? "ETH" : "SOL";
   const items: EvidenceItem[] = buildOnChainEvidence({
     chain: chainKey,
-    provider_used, data_source, source_detail,
+    provider_used, data_source, source_detail, counterparties,
     spenders,
     freezeAuthority,
     mintAuthority,
