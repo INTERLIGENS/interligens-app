@@ -145,3 +145,51 @@ except Exception as e:
 - [ ] Mock red FR `/fr/demo?mock=red`: zéro anglais visible
 - [ ] Pas de crash si RPC SOL down (safe degrade)
 - [ ] pnpm test: 34/34 verts
+
+
+---
+
+## TigerScore P1
+
+### Curl ETH — champs TigerScore
+```bash
+curl -s "$BASE/api/scan/eth?address=0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045&deep=false" \
+  | python3 -c "
+import json,sys
+try:
+  d=json.load(sys.stdin)
+  print('tiger_score:', d.get('tiger_score'))
+  print('tiger_tier:', d.get('tiger_tier'))
+  print('tiger_drivers:', len(d.get('tiger_drivers', [])), 'drivers')
+  print('tiger_evidence:', len(d.get('tiger_evidence', [])), 'items')
+  print('meta:', d.get('tiger_meta'))
+except Exception as e:
+  print('PARSE ERROR:', e)
+"
+```
+
+### Curl SOL — champs TigerScore
+```bash
+curl -s "$BASE/api/scan/solana?mint=BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" \
+  | python3 -c "
+import json,sys
+try:
+  d=json.load(sys.stdin)
+  print('tiger_score:', d.get('tiger_score'))
+  print('tiger_tier:', d.get('tiger_tier'))
+  print('tiger_drivers:', len(d.get('tiger_drivers', [])), 'drivers')
+  print('tiger_evidence:', len(d.get('tiger_evidence', [])), 'items')
+  print('meta:', d.get('tiger_meta'))
+except Exception as e:
+  print('PARSE ERROR:', e)
+"
+```
+
+### Checklist TigerScore P1
+- [ ] ETH: `tiger_score` présent + 0-100
+- [ ] ETH: `tiger_tier` = GREEN/ORANGE/RED
+- [ ] ETH: `tiger_drivers` array (peut être vide si GREEN)
+- [ ] ETH: `tiger_evidence` array max 3 items
+- [ ] SOL: idem
+- [ ] `tiger_meta.version` = "p1"
+- [ ] pnpm test: 40/40 verts

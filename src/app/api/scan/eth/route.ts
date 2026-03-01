@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { rpcCall } from "@/lib/rpc";
+import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 
 type Severity = "low" | "medium" | "high";
 
@@ -317,6 +318,28 @@ export async function GET(req: Request) {
     const spenders = Array.from(new Set(approvals.map((a) => a.spender))).slice(0, 5);
     const counterparties_top = counterparties.slice(0, 5).map(cp => cp.address);
 
+    const tigerScan = computeTigerScoreFromScan({
+      chain: "ETH",
+      is_contract: isContract,
+      rpc_fallback_used: rpcFallbackUsed,
+      rpc_down: rpcDown,
+      rpc_error: rpcError,
+      data_source: rpcDataSource ?? "etherscan",
+      source_detail: rpcSourceDetail,
+      deep,
+      signals: {
+        unlimitedApprovals: unlimitedCount,
+        approvalsTotal: approvals.length,
+        txCount: normTxs.length,
+        freezeAuthority: false,
+        mintAuthorityActive: false,
+        spenders,
+        counterparties: counterparties_top,
+        confirmedCriticalClaims: 0,
+        knownBadAddresses: 0,
+      },
+    });
+
     const resp = {
       chain: "eth",
       address,
@@ -333,6 +356,11 @@ export async function GET(req: Request) {
       proofs: proofs.slice(0, 3),
       score,
       tier,
+      tiger_score: tigerScan.score,
+      tiger_tier: tigerScan.tier,
+      tiger_drivers: tigerScan.drivers,
+      tiger_evidence: tigerScan.evidence,
+      tiger_meta: tigerScan.meta,
       data_source: rpcDataSource ?? ("etherscan" as const),
       source_detail: rpcSourceDetail ?? "api.etherscan.io",
       provider_used: rpcSourceDetail ?? "api.etherscan.io", // @deprecated

@@ -1,0 +1,21 @@
+{
+  "chain": "ETH",
+  "is_contract": true,
+  "rpc_fallback_used": false,
+  "rpc_down": false,
+  "rpc_error": null,
+  "data_source": "rpc_primary",
+  "source_detail": "https://eth.llamarpc.com",
+  "signals": {
+    "unlimitedApprovals": 2,
+    "approvalsTotal": 15,
+    "txCount": 1,
+    "freezeAuthority": true,
+    "mintAuthorityActive": true,
+    "spenders": [
+      "0xba5ddd1f9d7f570dc94a51479a000e3bce967196"
+    ],
+    "confirmedCriticalClaims": 1,
+    "knownBadAddresses": 1
+  }
+}

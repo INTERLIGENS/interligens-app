@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rpcCall } from "@/lib/rpc";
+import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
@@ -156,6 +157,22 @@ export async function GET(request: NextRequest) {
   const rawClaims = caseFile?.claims ?? [];
   const scoring = computeScore(rawClaims);
 
+  const tigerScan = computeTigerScoreFromScan({
+    chain: "SOL",
+    is_contract: isProgram,
+    rpc_fallback_used: rpcFallbackUsed,
+    rpc_down: rpcDown,
+    rpc_error: rpcError,
+    data_source: rpcDataSource,
+    source_detail: rpcSourceDetail,
+    signals: {
+      confirmedCriticalClaims: rawClaims.filter(
+        (cl) => cl.severity === "CRITICAL" && (cl.status === "CONFIRMED" || cl.status === "REFERENCED")
+      ).length,
+      knownBadAddresses: 0,
+    },
+  });
+
   const result: ScanResult = {
     mint: mint_clean,
     chain: "solana",
@@ -168,6 +185,11 @@ export async function GET(request: NextRequest) {
       breakdown: scoring.breakdown,
       flags: scoring.flags,
     },
+    tiger_score: tigerScan.score,
+    tiger_tier: tigerScan.tier,
+    tiger_drivers: tigerScan.drivers,
+    tiger_evidence: tigerScan.evidence,
+    tiger_meta: tigerScan.meta,
     rpc_fallback_used: rpcFallbackUsed,
     rpc_down: rpcDown,
     rpc_error: rpcError,
