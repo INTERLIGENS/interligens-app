@@ -16,37 +16,37 @@ export default function AnimatedScoreRing({ score, tier, color, duration = 900 }
   const clampedScore = Math.max(0, Math.min(100, score));
   const [animatedScore, setAnimatedScore] = useState(0);
   const rafRef = useRef<number | null>(null);
-  const startRef = useRef<number | null>(null);
-  const hasAnimated = useRef(false);
   const prefersReduced = typeof window !== "undefined"
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false;
 
   useEffect(() => {
-    // RAF safety: avoid double animation in StrictMode
-    if (hasAnimated.current) return;
-    hasAnimated.current = true;
+    // Cancel any previous RAF
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
 
     if (prefersReduced) {
       setAnimatedScore(clampedScore);
       return;
     }
 
-    startRef.current = null;
+    const startTime = performance.now();
     const animate = (ts: number) => {
-      if (startRef.current === null) startRef.current = ts;
-      const elapsed = ts - startRef.current;
+      const elapsed = ts - startTime;
       const t = Math.min(elapsed / duration, 1);
       setAnimatedScore(easeOutCubic(t) * clampedScore);
       if (t < 1) {
         rafRef.current = requestAnimationFrame(animate);
+      } else {
+        rafRef.current = null;
       }
     };
     rafRef.current = requestAnimationFrame(animate);
 
-    // Cleanup on unmount
     return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, [clampedScore, duration, prefersReduced]);
 
