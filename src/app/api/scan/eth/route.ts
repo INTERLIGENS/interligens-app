@@ -282,7 +282,9 @@ export async function GET(req: Request) {
       proofs: proofs.slice(0, 3),
       score,
       tier,
-      provider_used: "api.etherscan.io",
+      data_source: "etherscan" as const,
+      source_detail: "api.etherscan.io",
+      provider_used: "api.etherscan.io", // @deprecated use data_source+source_detail
     };
 
     ethCacheSet(cacheKey, resp);

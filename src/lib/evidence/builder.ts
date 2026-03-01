@@ -13,7 +13,9 @@ export type EvidenceItem = {
 
 export function buildOnChainEvidence(params: {
   chain: string;
-  provider_used?: string;
+  provider_used?: string; // @deprecated
+  data_source?: "etherscan" | "rpc_primary" | "rpc_fallback" | "unknown";
+  source_detail?: string;
   spenders?: string[];
   freezeAuthority?: boolean;
   mintAuthority?: boolean;
@@ -21,12 +23,21 @@ export function buildOnChainEvidence(params: {
 }): EvidenceItem[] {
   const items: EvidenceItem[] = [];
 
-  if (params.provider_used) {
-    const providerName = params.provider_used.replace("https://", "").split("/")[0];
+  const ds = params.data_source ?? (params.provider_used ? "etherscan" : undefined);
+  const sd = params.source_detail ?? params.provider_used;
+  if (ds && sd) {
+    const dsLabel: Record<string, string> = {
+      etherscan: "Etherscan",
+      rpc_primary: "RPC Primary",
+      rpc_fallback: "RPC Fallback",
+      unknown: "Unknown",
+    };
     items.push({
-      id: "provider", label: "Data Provider", value: providerName, severity: "low",
-      why_en: "On-chain data fetched from this RPC provider.",
-      why_fr: "Données on-chain récupérées depuis ce fournisseur RPC.",
+      id: "provider", label: "Data Source",
+      value: `${dsLabel[ds] ?? ds} — ${sd.replace("https://","").split("/")[0]}`,
+      severity: "low",
+      why_en: "On-chain data source used for this scan.",
+      why_fr: "Source de données on-chain utilisée pour ce scan.",
     });
   }
 

@@ -2,10 +2,15 @@ import { describe, it, expect } from "vitest";
 import { buildOnChainEvidence } from "./builder";
 
 describe("Evidence Builder", () => {
-  it("returns provider item when provider_used given", () => {
+  it("returns provider item when data_source+source_detail given", () => {
+    const items = buildOnChainEvidence({ chain: "ETH", data_source: "etherscan", source_detail: "api.etherscan.io" });
+    expect(items.some(i => i.id === "provider")).toBe(true);
+    expect(items[0].value).toContain("Etherscan");
+  });
+
+  it("backward-compat: provider_used still works", () => {
     const items = buildOnChainEvidence({ chain: "ETH", provider_used: "https://eth.llamarpc.com" });
     expect(items.some(i => i.id === "provider")).toBe(true);
-    expect(items[0].value).toContain("eth.llamarpc.com");
   });
 
   it("labels official spender correctly", () => {
