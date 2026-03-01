@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rpcCall } from "@/lib/rpc";
 
 type Severity = "low" | "medium" | "high";
 
@@ -100,12 +101,25 @@ export async function GET(req: Request) {
     const base = "https://api.etherscan.io/v2/api";
     const chainid = 1;
 
-    // 1) balance
+    // 1) balance (Etherscan primary)
     const balUrl = `${base}?chainid=${chainid}&module=account&action=balance&address=${address}&tag=latest&apikey=${apiKey}`;
     const balResp = await etherscanV2<{ status: string; message: string; result: string }>(balUrl);
     const balRaw = String((balResp as any).result || "0");
 
     await sleep(350);
+
+    // 1b) eth_getCode via RPC (detect contract vs EOA)
+    let isContract = false;
+    let rpcDataSource: "rpc_primary" | "rpc_fallback" | null = null;
+    let rpcSourceDetail: string | null = null;
+    try {
+      const codeResult = await rpcCall("ETH", "eth_getCode", [address, "latest"]);
+      isContract = codeResult.result !== "0x" && codeResult.result !== "0x0";
+      rpcDataSource = codeResult.cached ? "rpc_primary" : "rpc_primary";
+      rpcSourceDetail = codeResult.provider_used;
+    } catch {
+      // best-effort — RPC unavailable
+    }
 
     // 2) txlist
     const txUrl = `${base}?chainid=${chainid}&module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=${
@@ -219,6 +233,14 @@ export async function GET(req: Request) {
     const unlimitedCount = approvals.filter((a) => a.isUnlimited).length;
 
     const risk_signals: EthRiskSignal[] = [];
+    if (isContract) {
+      risk_signals.push({
+        code: "IS_CONTRACT",
+        severity: "medium",
+        title: "Contract address",
+        detail: "This address is a smart contract, not an EOA — verify source code.",
+      });
+    }
     if (normTxs.length < 5) {
       risk_signals.push({
         code: "LOW_HISTORY",
@@ -284,9 +306,10 @@ export async function GET(req: Request) {
       proofs: proofs.slice(0, 3),
       score,
       tier,
-      data_source: "etherscan" as const,
-      source_detail: "api.etherscan.io",
-      provider_used: "api.etherscan.io", // @deprecated use data_source+source_detail
+      data_source: rpcDataSource ?? ("etherscan" as const),
+      source_detail: rpcSourceDetail ?? "api.etherscan.io",
+      provider_used: rpcSourceDetail ?? "api.etherscan.io", // @deprecated
+      is_contract: isContract,
     };
 
     ethCacheSet(cacheKey, resp);
