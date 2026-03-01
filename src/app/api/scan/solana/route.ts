@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rpcCall } from "@/lib/rpc";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
@@ -53,6 +54,12 @@ export type ScanResult = {
     };
     flags: string[];
   };
+  rpc_fallback_used?: boolean;
+  rpc_down?: boolean;
+  rpc_error?: string | null;
+  data_source?: string;
+  source_detail?: string;
+  is_contract?: boolean;
 };
 
 export async function GET(request: NextRequest) {
@@ -65,6 +72,29 @@ export async function GET(request: NextRequest) {
 
   const mint_clean = mint.trim();
   console.log(`[scan/solana] Scanning mint=${mint_clean}`);
+
+  // RPC: getAccountInfo to detect contract/program + populate rpc flags
+  let rpcFallbackUsed = false;
+  let rpcDown = false;
+  let rpcError: string | null = null;
+  let rpcSourceDetail: string | null = null;
+  let rpcDataSource: "rpc_primary" | "rpc_fallback" | "unknown" = "unknown";
+  let isProgram = false;
+  try {
+    const accountResult = await rpcCall("SOL", "getAccountInfo", [
+      mint_clean,
+      { encoding: "base64" },
+    ]);
+    rpcFallbackUsed = accountResult.didFallback;
+    rpcSourceDetail = accountResult.provider_used;
+    rpcDataSource = accountResult.didFallback ? "rpc_fallback" : "rpc_primary";
+    // executable=true means it's a program
+    isProgram = accountResult.result?.value?.executable === true;
+  } catch (e: any) {
+    rpcDown = true;
+    rpcError = String(e?.message || "SOL RPC unavailable").slice(0, 120);
+    rpcDataSource = "unknown";
+  }
 
   const caseFile = loadCaseByMint(mint_clean);
 
@@ -138,6 +168,12 @@ export async function GET(request: NextRequest) {
       breakdown: scoring.breakdown,
       flags: scoring.flags,
     },
+    rpc_fallback_used: rpcFallbackUsed,
+    rpc_down: rpcDown,
+    rpc_error: rpcError,
+    data_source: rpcDataSource,
+    source_detail: rpcSourceDetail ?? (rpcDown ? "unavailable" : undefined),
+    is_contract: isProgram,
   };
 
   console.log(

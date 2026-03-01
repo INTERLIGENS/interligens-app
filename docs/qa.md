@@ -97,3 +97,51 @@ open "$BASE/fr/demo?mock=red"
 - [ ] rpc_down=true → "RPC Unavailable" item visible dans drawer
 - [ ] PDF: télécharge + filename casefile-BYZ9CcZG-*.pdf
 - [ ] pnpm test: 31/31 verts
+
+---
+
+## SOL Scan
+
+### Curls SOL safe
+```bash
+# Fast scan
+curl -s "$BASE/api/scan/solana?mint=BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" \
+  | python3 -c "
+import json,sys
+try:
+  d=json.load(sys.stdin)
+  print('tier:', d.get('risk',{}).get('tier'))
+  print('data_source:', d.get('data_source'))
+  print('source_detail:', d.get('source_detail'))
+  print('rpc_fallback_used:', d.get('rpc_fallback_used'))
+  print('rpc_down:', d.get('rpc_down'))
+  print('rpc_error:', d.get('rpc_error'))
+  print('is_contract:', d.get('is_contract'))
+  print('claims:', len(d.get('off_chain',{}).get('claims',[])))
+except Exception as e:
+  print('PARSE ERROR:', e)
+"
+
+# Mock red SOL
+curl -s "$BASE/api/mock/scan?mode=red" \
+  | python3 -c "
+import json,sys
+try:
+  d=json.load(sys.stdin)
+  print('tier:', d['risk']['tier'])
+  print('claims:', len(d['off_chain']['claims']))
+  print('rpc_down:', d.get('rpc_down'))
+except Exception as e:
+  print('PARSE ERROR:', e)
+"
+```
+
+### Checklist UI SOL
+- [ ] Scan SOL: `data_source` = `rpc_primary` ou `rpc_fallback` ou `unknown`
+- [ ] Scan SOL: `rpc_fallback_used` + `rpc_down` + `rpc_error` présents dans JSON
+- [ ] Evidence Drawer SOL: badge FALLBACK visible si `rpc_fallback_used=true`
+- [ ] Evidence Drawer SOL: "RPC Unavailable" si `rpc_down=true`
+- [ ] Evidence Drawer SOL: CRITICAL > OFFICIAL > RPC_SOURCE (cap 3 respecté)
+- [ ] Mock red FR `/fr/demo?mock=red`: zéro anglais visible
+- [ ] Pas de crash si RPC SOL down (safe degrade)
+- [ ] pnpm test: 34/34 verts

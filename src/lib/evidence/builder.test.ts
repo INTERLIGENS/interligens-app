@@ -182,4 +182,58 @@ describe("Evidence Builder", () => {
     expect(items.length).toBeLessThanOrEqual(3);
     expect(items.some(i => i.id === "known_bad_0")).toBe(true);
   });
+
+  // ── SOL MIRROR TESTS ──────────────────────────────────────────────
+  it("SOL rpc_down=true => drawer contient rpc_down item + badge FALLBACK dans top 3", () => {
+    const items = buildOnChainEvidence({
+      chain: "SOL",
+      rpc_down: true,
+      rpc_error: "SOL RPC unavailable",
+    });
+    expect(items.length).toBeLessThanOrEqual(3);
+    const down = items.find(i => i.id === "rpc_down");
+    expect(down).toBeTruthy();
+    expect(down?.badge).toBe("FALLBACK");
+    expect(down?.severity).toBe("med");
+  });
+
+  it("SOL rpc_fallback_used=true => FALLBACK garanti cap-3 même si autres preuves présentes", () => {
+    const items = buildOnChainEvidence({
+      chain: "SOL",
+      data_source: "rpc_fallback",
+      source_detail: "https://rpc.ankr.com/solana",
+      rpc_fallback_used: true,
+      spenders: [
+        "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8", // Raydium — official
+        "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", // Jupiter — official
+        "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",  // Orca — official
+      ],
+    });
+    expect(items.length).toBeLessThanOrEqual(3);
+    const rpcItem = items.find(i => i.id === "provider");
+    expect(rpcItem).toBeTruthy();
+    expect(rpcItem?.badge).toBe("FALLBACK");
+  });
+
+  it("SOL bucket priority strict => CRITICAL > OFFICIAL > RPC_SOURCE quand fallback/down", () => {
+    const items = buildOnChainEvidence({
+      chain: "SOL",
+      data_source: "rpc_fallback",
+      source_detail: "https://rpc.ankr.com/solana",
+      rpc_fallback_used: true,
+      spenders: [
+        "7ZhB5PZrNFCvSSKA9VJotGGKiRgSncQAFgTnBNzmCgcz", // known bad SOL
+        "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", // Jupiter — official
+      ],
+    });
+    expect(items.length).toBeLessThanOrEqual(3);
+    // known_bad must appear
+    expect(items.some(i => i.id === "known_bad_0")).toBe(true);
+    // rpc source must appear (fallback guaranteed)
+    expect(items.some(i => i.id === "provider")).toBe(true);
+    // known_bad before provider
+    const badIdx = items.findIndex(i => i.id === "known_bad_0");
+    const rpcIdx = items.findIndex(i => i.id === "provider");
+    expect(badIdx).toBeLessThan(rpcIdx);
+  });
 });
