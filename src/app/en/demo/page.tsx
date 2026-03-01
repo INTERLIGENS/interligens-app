@@ -13,6 +13,7 @@ import ScanSkeleton from "@/components/ScanSkeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
+import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -342,6 +343,7 @@ export default function TigerScanPage() {
           shareUrl={typeof window !== "undefined" ? window.location.href : ""}
         />
 
+
         {/* SEARCH BAR */}
         <div className="relative max-w-2xl mx-auto mb-24">
           <div className="absolute -inset-1 bg-gradient-to-r from-[#F85B05] to-orange-900 rounded-2xl blur-lg opacity-20 animate-pulse" />
@@ -538,6 +540,15 @@ export default function TigerScanPage() {
           </div>
             )}
           </div>
+        </div>
+
+        {/* OSINT Watchlist — Public X Signals */}
+        <div className="mt-12 mb-4 space-y-2">
+          <p className="text-[11px] font-black uppercase tracking-[0.35em] text-zinc-300">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F85B05] mr-2 align-middle" />
+            OSINT Layer — Public X Signals
+          </p>
+          <OsintSectionClient />
         </div>
 
         <div className="text-center pt-10">
