@@ -16,6 +16,7 @@ const BADGE_COLOR: Record<string, string> = {
   OFFICIAL: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30",
   UNKNOWN:  "bg-zinc-800 text-zinc-400 border border-zinc-700",
   CRITICAL: "bg-red-500/10 text-red-400 border border-red-500/30",
+  FALLBACK: "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30",
 };
 
 interface Props {
@@ -25,6 +26,8 @@ interface Props {
   provider_used?: string; // @deprecated
   data_source?: string;
   source_detail?: string;
+  rpc_fallback_used?: boolean;
+  cache_hit?: boolean;
   counterparties?: string[];
   spenders?: string[];
   freezeAuthority?: boolean;
@@ -34,14 +37,14 @@ interface Props {
 
 export default function TechnicalEvidence({
   lang, chain, show,
-  provider_used, data_source, source_detail, spenders, counterparties, freezeAuthority, mintAuthority, unlimitedCount,
+  provider_used, data_source, source_detail, rpc_fallback_used, cache_hit, spenders, counterparties, freezeAuthority, mintAuthority, unlimitedCount,
 }: Props) {
   if (!show) return null;
 
   const chainKey = chain === "ethereum" ? "ETH" : "SOL";
   const items: EvidenceItem[] = buildOnChainEvidence({
     chain: chainKey,
-    provider_used, data_source, source_detail, counterparties,
+    provider_used, data_source, source_detail, rpc_fallback_used, cache_hit, counterparties,
     spenders,
     freezeAuthority,
     mintAuthority,

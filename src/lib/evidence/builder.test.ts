@@ -114,4 +114,44 @@ describe("Evidence Builder", () => {
     const badIdx = items.findIndex(i => i.id === "known_bad_0");
     expect(badIdx).toBeGreaterThanOrEqual(0);
   });
+
+  it("rpc_primary => provider item present, no FALLBACK badge", () => {
+    const items = buildOnChainEvidence({
+      chain: "ETH",
+      data_source: "rpc_primary",
+      source_detail: "https://eth.llamarpc.com",
+      rpc_fallback_used: false,
+    });
+    const p = items.find(i => i.id === "provider");
+    expect(p).toBeTruthy();
+    expect(p?.badge).toBeUndefined();
+    expect(p?.severity).toBe("low");
+  });
+
+  it("rpc_fallback_used => FALLBACK badge + med severity", () => {
+    const items = buildOnChainEvidence({
+      chain: "ETH",
+      data_source: "rpc_fallback",
+      source_detail: "https://rpc.ankr.com/eth",
+      rpc_fallback_used: true,
+    });
+    const p = items.find(i => i.id === "provider");
+    expect(p?.badge).toBe("FALLBACK");
+    expect(p?.severity).toBe("med");
+  });
+
+  it("priority: known_bad > spender > rpc source (cap 3)", () => {
+    const items = buildOnChainEvidence({
+      chain: "ETH",
+      data_source: "rpc_primary",
+      source_detail: "https://eth.llamarpc.com",
+      spenders: [
+        "0xba5ddd1f9d7f570dc94a51479a000e3bce967196", // Angel Drainer — known bad
+        "0x7a250d5630b4cf539739df2c5dacb4c659f2488d", // Uniswap — official
+      ],
+    });
+    expect(items.length).toBeLessThanOrEqual(3);
+    const ids = items.map(i => i.id);
+    expect(ids.includes("known_bad_0")).toBe(true);
+  });
 });

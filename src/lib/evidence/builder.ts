@@ -26,6 +26,8 @@ export function buildOnChainEvidence(params: {
   provider_used?: string; // @deprecated
   data_source?: "etherscan" | "rpc_primary" | "rpc_fallback" | "unknown";
   source_detail?: string;
+  rpc_fallback_used?: boolean;
+  cache_hit?: boolean;
   spenders?: string[];
   counterparties?: string[];
   freezeAuthority?: boolean;
@@ -44,12 +46,18 @@ export function buildOnChainEvidence(params: {
       rpc_fallback: "RPC Fallback",
       unknown: "Unknown",
     };
+    const isFallback = params.rpc_fallback_used || ds === "rpc_fallback";
     items.push({
       id: "provider", label: "Data Source",
       value: `${dsLabel[ds] ?? ds} — ${sd.replace("https://","").split("/")[0]}`,
-      severity: "low",
-      why_en: "On-chain data source used for this scan.",
-      why_fr: "Source de données on-chain utilisée pour ce scan.",
+      severity: isFallback ? "med" : "low",
+      why_en: isFallback
+        ? "Primary RPC unavailable — fallback endpoint used."
+        : "On-chain data source used for this scan.",
+      why_fr: isFallback
+        ? "RPC primaire indisponible — endpoint de secours utilisé."
+        : "Source de données on-chain utilisée pour ce scan.",
+      badge: isFallback ? "FALLBACK" : undefined,
     });
   }
 

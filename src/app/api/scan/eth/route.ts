@@ -108,18 +108,42 @@ export async function GET(req: Request) {
 
     await sleep(350);
 
-    // 1b) eth_getCode via RPC (detect contract vs EOA)
+    // 1b) eth_getCode via RPC (detect contract vs EOA) + balance fallback
     let isContract = false;
     let rpcDataSource: "rpc_primary" | "rpc_fallback" | null = null;
     let rpcSourceDetail: string | null = null;
+    let rpcFallbackUsed = false;
+    let rpcCacheHit = false;
+    let balRpcFallback: string | null = null;
     try {
       const codeResult = await rpcCall("ETH", "eth_getCode", [address, "latest"]);
       isContract = codeResult.result !== "0x" && codeResult.result !== "0x0";
-      rpcDataSource = codeResult.cached ? "rpc_primary" : "rpc_primary";
+      rpcDataSource = codeResult.didFallback ? "rpc_fallback" : "rpc_primary";
       rpcSourceDetail = codeResult.provider_used;
+      rpcFallbackUsed = codeResult.didFallback;
+      rpcCacheHit = codeResult.cached;
     } catch {
       // best-effort — RPC unavailable
     }
+
+    // 1c) eth_getBalance via RPC (fallback if balRaw=0 and Etherscan unreliable)
+    if (balRaw === "0") {
+      try {
+        const balRpc = await rpcCall("ETH", "eth_getBalance", [address, "latest"]);
+        if (balRpc.result && balRpc.result !== "0x0") {
+          balRpcFallback = BigInt(balRpc.result).toString();
+          if (!rpcDataSource) {
+            rpcDataSource = balRpc.didFallback ? "rpc_fallback" : "rpc_primary";
+            rpcSourceDetail = balRpc.provider_used;
+            rpcFallbackUsed = balRpc.didFallback;
+          }
+        }
+      } catch {
+        // best-effort
+      }
+    }
+
+    const finalBalRaw = balRpcFallback ?? balRaw;
 
     // 2) txlist
     const txUrl = `${base}?chainid=${chainid}&module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=${
@@ -293,7 +317,7 @@ export async function GET(req: Request) {
     const resp = {
       chain: "eth",
       address,
-      native_balance: { symbol: "ETH", raw: balRaw, formatted: toEth(balRaw) },
+      native_balance: { symbol: "ETH", raw: finalBalRaw, formatted: toEth(finalBalRaw) },
       tokens,
       nfts: [],
       txs: normTxs.slice(0, 50),
@@ -310,6 +334,8 @@ export async function GET(req: Request) {
       source_detail: rpcSourceDetail ?? "api.etherscan.io",
       provider_used: rpcSourceDetail ?? "api.etherscan.io", // @deprecated
       is_contract: isContract,
+      rpc_fallback_used: rpcFallbackUsed,
+      cache_hit: rpcCacheHit,
     };
 
     ethCacheSet(cacheKey, resp);
