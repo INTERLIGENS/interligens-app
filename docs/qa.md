@@ -227,3 +227,25 @@ pnpm test   # 41/41 verts attendus
 open "http://localhost:3100/en/demo?mock=red"
 open "http://localhost:3100/fr/demo?mock=red"
 ```
+
+
+---
+
+## P3 CaseFile CTA
+
+### Checklist
+- [ ] EN: scan => "Open CaseFile (PDF)" ouvre nouvel onglet (noopener,noreferrer)
+- [ ] EN: scan => "Download" télécharge le PDF
+- [ ] FR: scan => "Ouvrir le dossier (PDF)" + "Télécharger" (textes FR)
+- [ ] Boutons disabled si pas d'adresse
+- [ ] Loading state "Generating…" / "Génération…" pendant fetch
+- [ ] Erreur HTTP 4xx/5xx => message inline, pas de crash
+- [ ] encodeURIComponent appliqué sur le paramètre mint
+
+### Commandes
+```bash
+open "http://localhost:3100/en/demo?mock=red"
+# → scan → bouton "Open CaseFile" => nouvel onglet PDF
+open "http://localhost:3100/fr/demo?mock=red"
+# → scan → bouton "Ouvrir le dossier" => nouvel onglet PDF
+```

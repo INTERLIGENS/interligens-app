@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
+import CaseFileCTA from "@/components/CaseFileCTA";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
@@ -452,21 +453,7 @@ export default function TigerScanPage() {
               >
                 Generate Full Report (PDF)
               </button>
-                <button
-                  onClick={async () => {
-                    if (!result) return;
-                    const res = await fetch(`/api/report/casefile?mint=${encodeURIComponent(address.trim())}&lang=en&t=${Date.now()}`, { cache: "no-store" });
-                    if (!res.ok) return;
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url; a.download = `casefile-${address.slice(0,8)}.pdf`; a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="w-full mt-2 py-4 rounded-xl border border-dashed border-[#EF4444]/40 text-[10px] font-black uppercase tracking-[0.2em] text-[#EF4444] hover:text-white hover:border-[#EF4444] transition-all"
-                >
-                  Generate Case File (PDF) — Detective Referenced
-                </button>
+                <CaseFileCTA id={address.trim() || null} lang="en" />
             </div>
 
             {/* RIGHT: SIGNALS + CARDS */}
