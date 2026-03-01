@@ -193,3 +193,37 @@ except Exception as e:
 - [ ] SOL: idem
 - [ ] `tiger_meta.version` = "p1"
 - [ ] pnpm test: 40/40 verts
+
+
+---
+
+## P2.1 Animations
+
+### Checklist manuelle
+- [ ] Ring anime 0 → score en ~900ms (easeOutCubic) sur EN + FR
+- [ ] Label numérique suit Math.round(animatedScore) pendant l'animation
+- [ ] Proofs apparaissent en stagger: item 1 → 0ms, item 2 → 120ms, item 3 → 240ms
+- [ ] Crossfade skeleton → contenu: skeleton fade-out 250ms, contenu fade-in 300ms
+- [ ] Zéro layout shift (CLS=0): hauteurs stables entre skeleton et résultat
+- [ ] Zéro flash blanc entre skeleton et contenu
+- [ ] `prefers-reduced-motion`: ring affiche score direct, stagger sans translate, crossfade 100ms max
+- [ ] RAF cleanup: pas de memory leak au unmount (DevTools > Memory)
+- [ ] StrictMode safe: hasAnimated.current guard anti double RAF
+- [ ] Score clampé 0–100 même si API renvoie valeur hors range
+
+### Test rapide iPhone/PWA
+```
+1. Ouvrir http://<IP>:3100/en/demo sur Safari iPhone
+2. Scanner une adresse ETH
+3. Vérifier: ring anime smooth, pas de jank
+4. Settings > Accessibility > Motion > Reduce Motion = ON
+5. Re-scanner: ring apparaît direct, pas d'animation
+6. Installer en PWA (partager > Sur l'écran d'accueil) et retester
+```
+
+### Commandes
+```bash
+pnpm test   # 41/41 verts attendus
+open "http://localhost:3100/en/demo?mock=red"
+open "http://localhost:3100/fr/demo?mock=red"
+```

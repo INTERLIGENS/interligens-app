@@ -2,9 +2,56 @@
 
 import React, { useState, useRef, useEffect } from "react";
 
+function useReducedMotion() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 interface TigerRevealProps {
   tier: "GREEN" | "ORANGE" | "RED";
   proofs: { label: string; value: string; level: string; riskDescription: string }[];
+}
+
+function StaggeredProof({ proof, index }: {
+  proof: { label: string; value: string; level: string; riskDescription: string };
+  index: number;
+}) {
+  const reduced = useReducedMotion();
+  const [visible, setVisible] = React.useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), reduced ? 0 : index * 120);
+    return () => clearTimeout(t);
+  }, [index, reduced]);
+
+  return (
+    <div
+      className="p-5 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl flex justify-between items-center group hover:border-[#F85B05]/30"
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : (reduced ? "none" : "translateY(6px)"),
+        transition: reduced ? "opacity 100ms" : `opacity 260ms ease-out ${index * 120}ms, transform 260ms ease-out ${index * 120}ms`,
+      }}
+    >
+      <div className="flex flex-col">
+        <span className="text-[9px] font-black text-[#F85B05] uppercase tracking-widest mb-1">
+          {proof.label}
+        </span>
+        <span className="text-base font-bold uppercase tracking-tight text-white">
+          {proof.value}
+        </span>
+        <span className="text-[10px] text-zinc-600 font-bold italic mt-1 tracking-tight">
+          {proof.riskDescription}
+        </span>
+      </div>
+      <div className={`px-2 py-1 rounded-sm text-[9px] font-black border uppercase ${
+        proof.level === "high" ? "border-[#F85B05] text-[#F85B05]"
+        : proof.level === "medium" ? "border-yellow-500 text-yellow-500"
+        : "border-emerald-500 text-emerald-500"
+      }`}>
+        {proof.level}
+      </div>
+    </div>
+  );
 }
 
 export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
@@ -65,33 +112,7 @@ export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
           <div className="space-y-4 flex-1">
             {proofs?.length ? (
               proofs.slice(0, 3).map((proof, i) => (
-                <div
-                  key={i}
-                  className="p-5 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl flex justify-between items-center group hover:border-[#F85B05]/30 transition-all"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-[#F85B05] uppercase tracking-widest mb-1">
-                      {proof.label}
-                    </span>
-                    <span className="text-base font-bold uppercase tracking-tight text-white">
-                      {proof.value}
-                    </span>
-                    <span className="text-[10px] text-zinc-600 font-bold italic mt-1 tracking-tight">
-                      {proof.riskDescription}
-                    </span>
-                  </div>
-                  <div
-                    className={`px-2 py-1 rounded-sm text-[9px] font-black border uppercase ${
-                      proof.level === "high"
-                        ? "border-[#F85B05] text-[#F85B05]"
-                        : proof.level === "medium"
-                        ? "border-yellow-500 text-yellow-500"
-                        : "border-emerald-500 text-emerald-500"
-                    }`}
-                  >
-                    {proof.level}
-                  </div>
-                </div>
+                <StaggeredProof key={i} proof={proof} index={i} />
               ))
             ) : (
               <div className="flex-1 flex items-center justify-center text-zinc-700 font-bold uppercase text-[10px] tracking-widest border border-dashed border-zinc-800 rounded-2xl">
@@ -99,7 +120,6 @@ export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
               </div>
             )}
           </div>
-
         </div>
 
         {/* BACK */}

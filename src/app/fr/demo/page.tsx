@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
+import AnimatedScoreRing from "@/components/AnimatedScoreRing";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import LocaleSwitch from "@/components/LocaleSwitch";
@@ -361,12 +362,16 @@ export default function TigerScanPageFR() {
           )}
         </div>
 
-        {/* LOADING */}
-        {loading && <ScanSkeleton />}
+        {/* Crossfade skeleton → contenu */}
+        <div className="relative">
+          <div style={{ opacity: loading ? 1 : 0, transition: "opacity 250ms ease-out", pointerEvents: loading ? "auto" : "none" }}>
+            {loading && <ScanSkeleton />}
+          </div>
 
-        <div id="result-anchor" />
-        {result && !loading && (
-          <div className="grid lg:grid-cols-12 gap-8 animate-in zoom-in-95 duration-700 ease-out">
+          <div id="result-anchor" />
+          <div style={{ opacity: result && !loading ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: result && !loading ? "auto" : "none" }}>
+            {result && (
+              <div className="grid lg:grid-cols-12 gap-8">
 
             {/* LEFT: VERDICT */}
             <div className="lg:col-span-5 bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-8 flex flex-col items-center text-center relative overflow-hidden group">
@@ -379,19 +384,7 @@ export default function TigerScanPageFR() {
                 </span>
               </div>
 
-              <div className="relative w-56 h-56 mb-10 mt-4 group-hover:scale-105 transition-transform duration-500">
-                <svg className="w-full h-full -rotate-90">
-                  <circle cx="112" cy="112" r="100" stroke="#111" strokeWidth="12" fill="transparent" />
-                  <circle cx="112" cy="112" r="100" stroke={getTierColor(result.tier)} strokeWidth="14" fill="transparent"
-                    strokeDasharray={628} strokeDashoffset={628 - (628 * result.score) / 100}
-                    strokeLinecap="round" className="transition-all duration-1000 ease-out"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-7xl font-black italic leading-none">{result.score}</span>
-                  <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em] mt-2">TigerScore</span>
-                </div>
-              </div>
+              <AnimatedScoreRing score={result.score} tier={result.tier} color={getTierColor(result.tier)} duration={900} />
 
               <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{result.verdict}</h2>
               <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
@@ -509,6 +502,10 @@ export default function TigerScanPageFR() {
           </div>
         )}
 
+
+            )}
+          </div>
+        </div>
 
         <div className="text-center pt-10">
           <p className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.6em]">Interligens Intelligence © 2026</p>
