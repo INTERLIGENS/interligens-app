@@ -32,6 +32,11 @@ interface NormalizedScan {
   proofs: TopProof[];
   rawSummary: any;
   chain: Chain;
+  spenders?: string[];
+  provider_used?: string;
+  unlimitedCount?: number;
+  freezeAuthority?: boolean;
+  mintAuthority?: boolean;
 }
 
 type ScanChain = Exclude<Chain, "HYPER_TOKEN_ID">;
@@ -153,6 +158,11 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     proofs: proofs.slice(0, 3),
     rawSummary: data?.rawSummary ?? data?.programsSummary ?? data?.approvalsSummary ?? data,
     chain,
+    spenders: data?.spenders ?? [],
+    provider_used: data?.provider_used ?? undefined,
+    unlimitedCount: data?.approvalsSummary?.unlimited ?? 0,
+    freezeAuthority: data?.freezeAuthority ?? false,
+    mintAuthority: data?.mintAuthority ?? false,
   };
 }
 
@@ -489,7 +499,7 @@ export default function TigerScanPage() {
 
                 {showEvidence && (
                   <>
-                    <TechnicalEvidence lang="en" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} />
+                    <TechnicalEvidence lang="en" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} spenders={result.spenders} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
                     <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
                       <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-300">
                         Advanced (raw data)
