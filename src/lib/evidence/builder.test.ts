@@ -13,24 +13,43 @@ describe("Evidence Builder", () => {
     expect(items.some(i => i.id === "provider")).toBe(true);
   });
 
-  it("labels official spender correctly", () => {
+  it("Uniswap spender => OFFICIAL + correct label + explorer link", () => {
     const items = buildOnChainEvidence({
       chain: "ETH",
       spenders: ["0x7a250d5630b4cf539739df2c5dacb4c659f2488d"],
     });
-    const cp = items.find(i => i.id === "counterparty");
-    expect(cp?.badge).toBe("OFFICIAL");
-    expect(cp?.severity).toBe("low");
+    const sp = items.find(i => i.id === "spender_0");
+    expect(sp?.badge).toBe("OFFICIAL");
+    expect(sp?.severity).toBe("low");
+    expect(sp?.value).toContain("Uniswap");
+    expect(sp?.explorer_url).toContain("etherscan.io");
+    expect(sp?.explorer_url).toContain("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
   });
 
-  it("labels unknown spender as UNKNOWN high severity", () => {
+  it("unknown spender => UNKNOWN + high severity + explorer link", () => {
     const items = buildOnChainEvidence({
       chain: "ETH",
       spenders: ["0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"],
     });
-    const cp = items.find(i => i.id === "counterparty");
-    expect(cp?.badge).toBe("UNKNOWN");
-    expect(cp?.severity).toBe("high");
+    const sp = items.find(i => i.id === "spender_0");
+    expect(sp?.badge).toBe("UNKNOWN");
+    expect(sp?.severity).toBe("high");
+    expect(sp?.explorer_url).toContain("etherscan.io");
+  });
+
+  it("BSC spender => bscscan explorer link", () => {
+    const items = buildOnChainEvidence({
+      chain: "BSC",
+      spenders: ["0x10ed43c718714eb63d5aa57b78b54704e256024e"],
+    });
+    const sp = items.find(i => i.id === "spender_0");
+    expect(sp?.badge).toBe("OFFICIAL");
+    expect(sp?.explorer_url).toContain("bscscan.com");
+  });
+
+  it("no spenders => no spender items", () => {
+    const items = buildOnChainEvidence({ chain: "ETH" });
+    expect(items.some(i => i.id.startsWith("spender_"))).toBe(false);
   });
 
   it("adds freeze_auth item when freezeAuthority=true", () => {
