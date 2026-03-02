@@ -7,6 +7,7 @@ import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
+import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -132,10 +133,8 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   }
 
   const verdict = score > 70 ? "Avoid" : score > 30 ? "Caution" : "Proceed";
-  const recommendations =
-    score > 70 ? ["Do NOT interact",    "Revoke approvals",           "Move funds to new wallet"]
-  : score > 30 ? ["Use burner wallet",  "Test small amount first",    "Avoid unknown approvals"]
-               : ["Verify URLs",         "Small test TX first",        "Monitor regularly"];
+  const _ac = getActionCopy({ scan_type: "token", tier: score > 70 ? "RED" : score > 30 ? "ORANGE" : "GREEN", chain: (chain as any) ?? "SOL" });
+  const recommendations = _ac.en;
 
   return {
     score, tier,
@@ -213,7 +212,7 @@ export default function TigerScanPage() {
   const getTierColor = (t: Tier) => t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12">
+    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
 
       {/* HEADER */}
       <nav className="max-w-7xl mx-auto flex justify-between items-center mb-20">
@@ -380,11 +379,7 @@ export default function TigerScanPage() {
               <button
                 onClick={async () => {
                   if (!result) return;
-                  const res = await fetch("/api/report/pdf", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...result, address: address.trim(), lang: "en" }),
-                  });
+                  const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en`);
                   if (!res.ok) return;
                   const blob = await res.blob();
                   const url  = URL.createObjectURL(blob);
@@ -475,6 +470,14 @@ export default function TigerScanPage() {
             </div>
           </div>
         )}
+
+        {/* ── OSINT Watchlist — Public X Signals ── */}
+        <div className="space-y-3 mt-8">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+            OSINT Layer — Public X Signals
+          </p>
+          <OsintSectionClient />
+        </div>
 
         <div className="text-center pt-10">
           <p className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.6em]">Interligens Intelligence © 2026</p>

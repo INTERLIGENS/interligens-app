@@ -143,10 +143,8 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   }
 
   const verdict = score > 70 ? "Éviter" : score > 30 ? "Prudence" : "OK";
-  const recommendations =
-    score > 70 ? ["NE PAS INTERAGIR",    "Révoquer les approvals",           "Migrer vers un wallet propre"]
-  : score > 30 ? ["Use wallet jetable",  "Tester un petit montant",    "Éviter les approvals inconnus"]
-               : ["Vérifier les liens",         "Faire une petite TX test",        "Surveiller régulièrement"];
+  const _acFr = getActionCopy({ scan_type: "token", tier: score > 70 ? "RED" : score > 30 ? "ORANGE" : "GREEN", chain: (chain as any) ?? "SOL" });
+  const recommendations = _acFr.fr;
 
   return {
     score, tier,
@@ -172,6 +170,16 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
+
+function ScanSkeleton() {
+  return (
+    <div className="max-w-md mx-auto space-y-8 animate-pulse">
+      <div className="h-2 bg-zinc-800 rounded-full w-full" />
+      <div className="h-2 bg-zinc-800 rounded-full w-3/4" />
+      <div className="h-2 bg-zinc-800 rounded-full w-1/2" />
+    </div>
+  );
+}
 export default function TigerScanPageFR() {
   const [address, setAddress]           = useState("");
   const [loading, setLoading]           = useState(false);
@@ -282,7 +290,7 @@ export default function TigerScanPageFR() {
   const getTierColor = (t: Tier) => t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12">
+    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
 
       {/* HEADER */}
       <nav className="max-w-7xl mx-auto flex justify-between items-center mb-20">
@@ -307,7 +315,7 @@ export default function TigerScanPageFR() {
         {/* HERO */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase">
-            Check your <span className="text-[#F85B05] not-italic">Exposure.</span>
+            Vérifiez votre <span className="text-[#F85B05] not-italic">Exposition.</span>
           </h1>
           <p className="text-zinc-500 max-w-2xl mx-auto text-sm md:text-base font-medium">
             Analyse forensique pour wallets Solana, Ethereum & TRON. Aucune signature requise. Intelligence pure.
@@ -375,7 +383,7 @@ export default function TigerScanPageFR() {
           {error && (
             <div className="mt-4 flex justify-between items-center p-3 bg-red-900/20 border border-red-900/40 rounded-lg">
               <span className="text-xs font-bold text-red-400">{error}</span>
-              <button onClick={runScan} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Retry</button>
+              <button onClick={runScan} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Réessayer</button>
             </div>
           )}
         </div>
@@ -406,13 +414,13 @@ export default function TigerScanPageFR() {
 
               <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{result.verdict}</h2>
               <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
-                {result.verdict === "Proceed" ? "Wallet health looks clean. Still verify URLs."
-                : result.verdict === "Caution" ? "Suspicious signals detected. Proceed with caution."
-                : "High-risk patterns detected. Avoid interaction."}
+                {result.verdict === "OK" ? "Wallet sain. Vérifiez quand même les URLs."
+                : result.verdict === "Prudence" ? "Signaux suspects détectés. Procédez avec prudence."
+                : "Patterns à haut risque. Évitez toute interaction."}
               </p>
 
               <div className="w-full space-y-3 mb-4">
-                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">What to do now ↓</p>
+                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">À faire maintenant ↓</p>
                 {result.recommendations.map((rec, i) => (
                   <div key={i} className="flex items-center gap-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 text-left hover:border-zinc-600 transition-all">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#F85B05] shrink-0" />
@@ -424,11 +432,7 @@ export default function TigerScanPageFR() {
               <button
                 onClick={async () => {
                   if (!result) return;
-                  const res = await fetch("/api/report/pdf", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...result, address: address.trim(), lang: "en" }),
-                  });
+                  const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=fr`);
                   if (!res.ok) return;
                   const blob = await res.blob();
                   const url  = URL.createObjectURL(blob);
@@ -440,7 +444,7 @@ export default function TigerScanPageFR() {
                 }}
                 className="w-full mt-4 py-4 rounded-xl border border-dashed border-[#F85B05]/40 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white hover:border-[#F85B05] transition-all"
               >
-                Generate Full Report (PDF)
+                Générer le rapport complet (PDF)
               </button>
                 <CaseFileCTA id={address.trim() || null} lang="fr" />
             </div>
@@ -474,7 +478,7 @@ export default function TigerScanPageFR() {
               <div className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
                 <button onClick={() => setShowEvidence(!showEvidence)} className="w-full flex justify-between items-center group">
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-white transition-colors underline decoration-[#F85B05] underline-offset-8">
-                    Technical Evidence
+                    Preuves techniques
                   </span>
                   <span className="text-xl text-zinc-700 group-hover:text-[#F85B05]">{showEvidence ? "−" : "+"}</span>
                 </button>
@@ -484,7 +488,7 @@ export default function TigerScanPageFR() {
                     <TechnicalEvidence lang="fr" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
                     <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
                       <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-300">
-                        Advanced (raw data)
+                        Avancé (données brutes)
                       </summary>
                       <div className="px-4 pb-4">
                         <pre className="overflow-auto rounded-lg border border-zinc-900 bg-black p-4 font-mono text-[10px] text-zinc-500">
@@ -498,16 +502,13 @@ export default function TigerScanPageFR() {
 
               <div className="p-6 bg-[#F85B05]/5 border border-dashed border-[#F85B05]/20 rounded-2xl">
                 <p className="text-[10px] text-zinc-600 uppercase font-black leading-relaxed tracking-widest">
-                  BA Audit Trace: Model v2.6.x — proofs are mapped to measurable facts (no defamation).
+                  BA Audit Trace : Modèle v2.6.x — preuves basées sur des faits mesurables (sans diffamation).
                 </p>
               </div>
 
             </div>
           </div>
         )}
-
-
-            )}
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getActionCopy } from "@/lib/copy/actions";
 import type { ScanResult } from "@/app/api/scan/solana/route";
 
 function loadCss(): string {
@@ -91,14 +92,13 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
     proofs.push({ label: isFr ? "Score" : "Score", value: `${score}/100`, level: score > 70 ? "critical" : score > 40 ? "med" : "low", desc: isFr ? "TigerScore" : "TigerScore" });
   }
 
-  const recs = isFr
-    ? ["NE PAS INTERAGIR", "Révoquer les approbations", "Migrer vers un wallet propre"]
-    : ["DO NOT INTERACT", "Revoke all approvals", "Move funds to new wallet"];
+  const _copy = getActionCopy({ scan_type: "token", tier: (risk.tier.toUpperCase() === "RED" ? "RED" : risk.tier.toUpperCase() === "AMBER" || risk.tier.toUpperCase() === "ORANGE" ? "ORANGE" : "GREEN") as any, chain: "SOL" });
+  const recs = isFr ? _copy.fr : _copy.en;
 
   const weatherItems = [
-    { label: isFr ? "MANIPULATION" : "MANIPULATION", pct: 92, col: "#ef4444", desc: isFr ? "Campagne de shill" : "Shill campaign" },
-    { label: isFr ? "ALERTES COMM." : "COMMUNITY ALERTS", pct: 45, col: "#f59e0b", desc: isFr ? "Signalements en hausse" : "Reports rising" },
-    { label: isFr ? "CONFIANCE" : "TRUST BREAKDOWN", pct: 10, col: "#10b981", desc: isFr ? "Transparence OK" : "Transparency OK" },
+    { label: isFr ? "MANIPULATION" : "MANIPULATION", pct: 92, col: "#ef4444", desc: isFr ? "Campagne de shill coordonnée" : "Coordinated shill campaign" },
+    { label: isFr ? "ALERTES COMM." : "COMMUNITY ALERTS", pct: 45, col: "#f59e0b", desc: isFr ? "Signalements en hausse" : "Reports rising — caution" },
+    { label: isFr ? "RUPTURE CONFIANCE" : "TRUST SIGNAL", pct: 10, col: "#10b981", desc: isFr ? "Niveau de confiance faible" : "Low trust level detected" },
   ];
 
   const proofsHtml = proofs.map(p => `
@@ -235,7 +235,7 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
       <div class="investi-grid">
         <div class="investi-col">
           <div class="overline">${isFr ? "STATUT" : "STATUS"}</div>
-          <div class="investi-val">${isFr ? "En attente" : "Pending"}</div>
+          <div class="investi-val">${off_chain.status && off_chain.status !== 'Unknown' ? off_chain.status : (isFr ? 'En attente' : 'Pending')}</div>
         </div>
         <div class="investi-col">
           <div class="overline">${isFr ? "ANALYSTE" : "ANALYST"}</div>

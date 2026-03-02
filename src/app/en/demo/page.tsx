@@ -157,10 +157,8 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   }
 
   const verdict = score > 70 ? "Avoid" : score > 30 ? "Caution" : "Proceed";
-  const recommendations =
-    score > 70 ? ["Do NOT interact",    "Revoke approvals",           "Move funds to new wallet"]
-  : score > 30 ? ["Use burner wallet",  "Test small amount first",    "Avoid unknown approvals"]
-               : ["Verify URLs",         "Small test TX first",        "Monitor regularly"];
+  const _ac = getActionCopy({ scan_type: "token", tier: score > 70 ? "RED" : score > 30 ? "ORANGE" : "GREEN", chain: (chain as any) ?? "SOL" });
+  const recommendations = _ac.en;
 
   return {
     score, tier,
