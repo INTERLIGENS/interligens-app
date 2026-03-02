@@ -85,8 +85,10 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
 // ─── NORMALIZER ───────────────────────────────────────────────────────────────
 
 function normalizeScanData(data: any, chain: Chain): NormalizedScan {
-  const score = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
-  const tierRaw = String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase();
+  const baseScore = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
+  const tigerScore = Number(data?.tiger_score ?? 0) || 0;
+  const score = Math.max(baseScore, tigerScore);
+  const tierRaw = score >= 70 ? "RED" : score >= 40 ? "ORANGE" : (String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase());
   const tier = (["GREEN", "ORANGE", "RED"].includes(tierRaw) ? tierRaw : "GREEN") as Tier;
 
   const proofs: TopProof[] = [];
