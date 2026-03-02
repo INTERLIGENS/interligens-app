@@ -1,7 +1,7 @@
 "use client";
 import { getActionCopy } from "@/lib/copy/actions";
 import { buildDemoUrl } from "@/lib/demo/url";
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, Suspense } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
@@ -165,7 +165,7 @@ const DEMO_PRESETS = [
   { id: "tron",    label: "TRON",    tag: "TRX",   address: "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m6" },
 ] as const;
 
-export default function TigerScanPage() {
+function TigerScanPageInner() {
   const searchParams  = useSearchParams();
   const pathname      = usePathname();
   const hasAutoRun    = useRef(false);
@@ -593,5 +593,13 @@ export default function TigerScanPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function TigerScanPage() {
+  return (
+    <Suspense fallback={null}>
+      <TigerScanPageInner />
+    </Suspense>
   );
 }
