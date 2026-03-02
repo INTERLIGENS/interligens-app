@@ -1,4 +1,5 @@
 "use client";
+import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useEffect, useMemo } from "react";
 import MarketWeather from "@/components/MarketWeather";
