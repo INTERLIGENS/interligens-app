@@ -102,8 +102,11 @@ describe("renderHtmlV2 — market snapshot", () => {
     const html = renderHtmlV2(scan, "en");
     expect(html).toContain("$0.00042");
     expect(html).toContain("50.2K");
-    expect(html).toContain("DEXSCREENER");
+    expect(html).toContain("SOURCE");
+    expect(html).toContain("DexScreener");
+    expect(html).toContain("POOL AGE");
     expect(html).toContain("140d");
+    expect(html).toContain("DexScreener ↗");
     expect(html).not.toContain("unavailable");
   });
 });

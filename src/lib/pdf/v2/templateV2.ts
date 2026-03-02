@@ -248,18 +248,16 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
           <div style="font-size:12px;font-weight:800;color:#e4e4e7;margin-top:3px">${v}</div>
         </div>`).join("")}
     </div>
-    <div style="display:flex;align-items:center;gap:12px;margin-top:6px;padding:6px 10px;background:#111113;border-radius:8px;border:1px solid #27272a;">
-      <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex:1;">
-        <div style="display:flex;align-items:baseline;gap:5px;">
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#52525b;line-height:1.4">SOURCE</span>
-          <span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#e4e4e7;line-height:1.4">${(m.source ?? "—").toUpperCase()}</span>
-        </div>
-        <div style="display:flex;align-items:baseline;gap:5px;">
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#52525b;line-height:1.4">${isFr ? "ÂGE POOL" : "POOL AGE"}</span>
-          <span style="font-size:10px;font-weight:800;color:#e4e4e7;line-height:1.4">${(m as any).pair_age_days != null ? (m as any).pair_age_days + (isFr ? "j" : "d") : "—"}</span>
-        </div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;padding:7px 12px;background:#111113;border-radius:10px;border:1px solid #1e1e20;">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#52525b;line-height:1;">SOURCE</span>
+        <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;border:1px solid rgba(248,91,5,0.45);font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#F85B05;line-height:1;">${m.source === "dexscreener" ? "DexScreener" : m.source === "geckoterminal" ? "GeckoTerminal" : "—"}</span>
       </div>
-      ${m.url ? `<a href="${m.url}" style="font-size:9px;color:#F85B05;text-decoration:none;white-space:nowrap;">↗ ${m.source === "dexscreener" ? "DexScreener" : "GeckoTerminal"}</a>` : ""}
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#52525b;line-height:1;">${isFr ? "ÂGE POOL" : "POOL AGE"}</span>
+        <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);font-size:10px;font-weight:800;letter-spacing:0.14em;color:#a1a1aa;line-height:1;">${(m as any).pair_age_days != null ? (m as any).pair_age_days + (isFr ? "j" : "d") : "—"}</span>
+      </div>
+      ${m.url ? `<a href="${m.url}" style="margin-left:auto;font-size:11px;font-weight:800;color:#F85B05;text-decoration:underline;text-underline-offset:3px;white-space:nowrap;line-height:1;">${m.source === "dexscreener" ? "DexScreener" : "GeckoTerminal"} ↗</a>` : ""}
     </div>`}
   </div>
 
