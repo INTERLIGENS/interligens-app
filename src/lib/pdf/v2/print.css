@@ -70,7 +70,7 @@ html, body {
 }
 .ring-score { font-size: 26px; font-weight: 900; font-style: italic; line-height: 1; }
 .ring-sub { font-size: 9px; color: #71717a; margin-top: 1px; }
-.ring-label { font-size: 7px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #52525b; margin-top: 2px; }
+.ring-label { font-size: 7px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #52525b; margin-top: 2px; word-spacing: normal; }
 .verdict-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .tier-pill {
   display: inline-flex; align-items: center; justify-content: center;
@@ -93,7 +93,7 @@ html, body {
   display: flex; flex-direction: column; gap: 4px;
 }
 .proof-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #71717a; }
-.proof-value { font-size: 12px; font-weight: 800; color: #e4e4e7; }
+.proof-value { font-size: 12px; font-weight: 800; color: #e4e4e7; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
 .proof-desc { font-size: 9px; color: #71717a; line-height: 1.3; }
 .badge {
   display: inline-flex; align-items: center; justify-content: center;

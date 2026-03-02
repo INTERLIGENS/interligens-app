@@ -235,7 +235,7 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
       <div class="investi-grid">
         <div class="investi-col">
           <div class="overline">${isFr ? "STATUT" : "STATUS"}</div>
-          <div class="investi-val">${off_chain.status && off_chain.status !== 'Unknown' ? off_chain.status : (isFr ? 'En attente' : 'Pending')}</div>
+          <div class="investi-val">${off_chain.status && off_chain.status !== 'Unknown' ? (isFr && off_chain.status === 'Referenced' ? 'Référencé' : off_chain.status) : (isFr ? 'En attente' : 'Pending')}</div>
         </div>
         <div class="investi-col">
           <div class="overline">${isFr ? "ANALYSTE" : "ANALYST"}</div>
