@@ -62,15 +62,22 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
     case "HYPER": return `/api/scan/hyper?address=${encodeURIComponent(address.trim().replace(/^hyper:/i,""))}&deep=${d}`;
     case "TRON": return `/api/scan/tron?address=${a}&deep=${d}`;
     case "ETH":  return `/api/scan/eth?address=${a}&deep=${d}`;
-    case "SOL":  return `/api/wallet/scan?address=${a}&deep=${d}`;
+    case "SOL":
+      // Token mint (pump.fun ou autres) → endpoint token avec booster market
+      if (address.trim().toLowerCase().endsWith("pump"))
+        return `/api/scan/solana?mint=${a}&deep=${d}`;
+      return `/api/wallet/scan?address=${a}&deep=${d}`;
   }
 }
 
 // ─── NORMALIZER ───────────────────────────────────────────────────────────────
 
 function normalizeScanData(data: any, chain: Chain): NormalizedScan {
-  const score = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
-  const tierRaw = String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase();
+  // Préférer tiger_score (boosteur market) si présent et plus élevé
+  const baseScore = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
+  const tigerScore = Number(data?.tiger_score ?? 0) || 0;
+  const score = Math.max(baseScore, tigerScore);
+  const tierRaw = score >= 70 ? "RED" : score >= 40 ? "ORANGE" : (String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase());
   const tier = (["GREEN", "ORANGE", "RED"].includes(tierRaw) ? tierRaw : "GREEN") as Tier;
 
   const proofs: TopProof[] = [];
@@ -232,7 +239,21 @@ export default function TigerScanPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || data?.error || `Error ${res.status}`);
 
-      setResult(normalizeScanData({ ...data, deep: isDeep }, chain));
+      let enrichedData = { ...data, deep: isDeep };
+      // Pour SOL: enrichir avec tiger_score depuis /api/scan/solana
+      const detectedChainForEnrich = detectChain(address.trim());
+      if (detectedChainForEnrich === "SOL") {
+        try {
+          const tokenRes = await fetch(`/api/scan/solana?mint=${encodeURIComponent(address.trim())}`);
+          if (tokenRes.ok) {
+            const tokenData = await tokenRes.json();
+            if (tokenData.tiger_score != null) {
+              enrichedData = { ...enrichedData, tiger_score: tokenData.tiger_score, tiger_tier: tokenData.tiger_tier, tiger_drivers: tokenData.tiger_drivers };
+            }
+          }
+        } catch { /* enrichissement optionnel */ }
+      }
+      setResult(normalizeScanData(enrichedData, chain));
 
       try {
         const heatRes = await fetch("/api/social/heat", {

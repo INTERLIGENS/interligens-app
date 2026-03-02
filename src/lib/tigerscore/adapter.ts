@@ -9,6 +9,15 @@ export type ScanNormalized = {
   rpc_error?: string | null;
   data_source?: string;
   source_detail?: string | null;
+  // ── Market context for SOL token boosters ──
+  scan_type?: "token" | "wallet";
+  no_casefile?: boolean;
+  mint_address?: string;
+  market_url?: string | null;
+  pair_age_days?: number | null;
+  liquidity_usd?: number | null;
+  fdv_usd?: number | null;
+  volume_24h_usd?: number | null;
   signals?: {
     unlimitedApprovals?: number;
     approvalsTotal?: number;
@@ -45,6 +54,15 @@ export function computeTigerScoreFromScan(input: ScanNormalized): TigerScanResul
     mintAuthorityActive: s.mintAuthorityActive,
     mutableMetadata: s.mutableMetadata,
     confirmedCriticalClaims: (s.confirmedCriticalClaims ?? 0) + (s.knownBadAddresses ?? 0),
+    // Market boosters
+    scan_type: input.scan_type,
+    no_casefile: input.no_casefile,
+    mint_address: input.mint_address,
+    market_url: input.market_url,
+    pair_age_days: input.pair_age_days,
+    liquidity_usd: input.liquidity_usd,
+    fdv_usd: input.fdv_usd,
+    volume_24h_usd: input.volume_24h_usd,
   };
 
   const tigerResult = computeTigerScore(tigerInput);

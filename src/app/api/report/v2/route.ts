@@ -21,6 +21,28 @@ export async function GET(request: NextRequest) {
   if (debug) console.log(`[route/v2] market snapshot: data_unavailable=${marketSnapshot.data_unavailable} source=${marketSnapshot.source} price=${marketSnapshot.price} liquidity=${marketSnapshot.liquidity_usd} reason=${marketSnapshot.reason ?? "none"}`);
   const scoring = computeScore(caseFile?.claims ?? []);
 
+  // ── Tiger score booster pour token sans casefile ──
+  const { computeTigerScoreFromScan } = await import("@/lib/tigerscore/adapter");
+  const tigerBoost = computeTigerScoreFromScan({
+    chain: "SOL",
+    scan_type: "token",
+    no_casefile: !caseFile,
+    mint_address: mint_clean,
+    market_url: marketSnapshot.url,
+    pair_age_days: marketSnapshot.pair_age_days,
+    liquidity_usd: marketSnapshot.liquidity_usd,
+    fdv_usd: marketSnapshot.fdv_usd,
+    volume_24h_usd: marketSnapshot.volume_24h_usd,
+    signals: {
+      confirmedCriticalClaims: (caseFile?.claims ?? []).filter(
+        (cl) => cl.severity === "CRITICAL" && (cl.status === "CONFIRMED" || cl.status === "REFERENCED")
+      ).length,
+    },
+  });
+  // Utiliser le score le plus élevé entre scoring (claims) et tigerBoost (market)
+  const finalScore = Math.max(scoring.score, tigerBoost.score);
+  const finalTier  = finalScore >= 70 ? "RED" : finalScore >= 40 ? "AMBER" : "GREEN";
+
   const scanResult: ScanResult = {
     mint: mint_clean,
     chain: "solana",
@@ -67,11 +89,12 @@ export async function GET(request: NextRequest) {
       },
     },
     risk: {
-      score: scoring.score,
-      tier: scoring.tier,
+      score: finalScore,
+      tier: finalTier,
       breakdown: scoring.breakdown,
-      flags: scoring.flags,
+      flags: [...scoring.flags, ...(tigerBoost.drivers.map(d => d.id))],
     },
+    tiger_drivers: tigerBoost.drivers,
   };
 
   // ── Render HTML ──

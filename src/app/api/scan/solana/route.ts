@@ -165,6 +165,14 @@ export async function GET(request: NextRequest) {
     rpc_error: rpcError,
     data_source: rpcDataSource,
     source_detail: rpcSourceDetail,
+    scan_type: "token",
+    no_casefile: !caseFile,
+    mint_address: mint_clean,
+    market_url: marketSnapshot.url,
+    pair_age_days: marketSnapshot.pair_age_days,
+    liquidity_usd: marketSnapshot.liquidity_usd,
+    fdv_usd: marketSnapshot.fdv_usd,
+    volume_24h_usd: marketSnapshot.volume_24h_usd,
     signals: {
       confirmedCriticalClaims: rawClaims.filter(
         (cl) => cl.severity === "CRITICAL" && (cl.status === "CONFIRMED" || cl.status === "REFERENCED")

@@ -93,13 +93,31 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
 
   const dateStr = new Date(scanned_at).toLocaleString(isFr ? "fr-FR" : "en-GB", { timeZone: "Europe/Paris" });
 
-  // Proofs: use claims as proofs (top 3)
-  const proofs = off_chain.claims.slice(0, 3).map(c => ({
+  // Proofs: use claims, fallback to tiger_drivers, fallback to defaults
+  const tigerDrivers: any[] = (scan as any).tiger_drivers ?? [];
+  const proofs = off_chain.claims.slice(0, 3).map((c: any) => ({
     label: c.id,
     value: c.title.slice(0, 28),
     level: c.severity.toLowerCase(),
     desc: c.category,
   }));
+  if (proofs.length === 0 && tigerDrivers.length > 0) {
+    const driverMicrocopy: Record<string, { en: string; fr: string }> = {
+      pump_fun:           { en: "Pump-like launch pattern", fr: "Pattern pump.fun détecté" },
+      fresh_pool:         { en: "Very recent pool",         fr: "Pool très récent" },
+      fdv_liquidity_ratio:{ en: "FDV/liquidity imbalance",  fr: "Déséquilibre FDV/liquidité" },
+      volume_vs_liquidity:{ en: "Volume/liquidity spike",   fr: "Pic volume/liquidité" },
+    };
+    tigerDrivers.slice(0, 3).forEach((d: any) => {
+      const copy = driverMicrocopy[d.id];
+      proofs.push({
+        label: d.id.replace(/_/g, " ").toUpperCase(),
+        value: copy ? (isFr ? copy.fr : copy.en) : d.label,
+        level: d.severity === "critical" ? "critical" : d.severity === "high" ? "high" : d.severity === "med" ? "medium" : "low",
+        desc: d.why?.slice(0, 60) ?? "",
+      });
+    });
+  }
   if (proofs.length === 0) {
     proofs.push({ label: isFr ? "Réseau" : "Network", value: "Solana Mainnet", level: "low", desc: isFr ? "Chaîne officielle" : "Official chain" });
     proofs.push({ label: isFr ? "Statut" : "Status", value: off_chain.status, level: score > 60 ? "high" : "low", desc: isFr ? "Source: CaseDB" : "Source: CaseDB" });

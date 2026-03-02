@@ -22,7 +22,23 @@ export type TigerInput = {
   alertsLevel?: "low" | "med" | "high";
   trustLevel?: "low" | "med" | "high";
   confirmedCriticalClaims?: number;
+  // ── Market boosters (SOL token, no casefile) ──
+  scan_type?: "token" | "wallet";
+  no_casefile?: boolean;
+  mint_address?: string;
+  market_url?: string | null;
+  pair_age_days?: number | null;
+  liquidity_usd?: number | null;
+  fdv_usd?: number | null;
+  volume_24h_usd?: number | null;
 };
+
+// ── Pump-like detection ──────────────────────────────────────────────────────
+export function isPumpLikeToken(mintAddress?: string, marketUrl?: string | null): boolean {
+  if (mintAddress && mintAddress.toLowerCase().endsWith("pump")) return true;
+  if (marketUrl && marketUrl.toLowerCase().includes("pump")) return true;
+  return false;
+}
 
 export type TigerResult = {
   score: number;
@@ -69,6 +85,44 @@ export function computeTigerScore(input: TigerInput): TigerResult {
 
   if ((input.confirmedCriticalClaims ?? 0) >= 1)
     add({ id: "confirmed_critical_claims", label: "Confirmed critical claims on file", severity: "critical", delta: 70, why: "Detective-referenced critical evidence found" });
+
+  // ── Market boosters (SOL token sans casefile uniquement) ──────────────────
+  if (input.chain === "SOL" && input.scan_type === "token" && input.no_casefile) {
+    let booster = 0;
+
+    if (isPumpLikeToken(input.mint_address, input.market_url)) {
+      const delta = 30;
+      booster += delta;
+      drivers.push({ id: "pump_fun", label: "Pump-like launch pattern", severity: "high", delta, why: "Address or market URL matches pump.fun launch pattern" });
+    }
+
+    if (input.pair_age_days != null && input.pair_age_days <= 3) {
+      const delta = 20;
+      booster += delta;
+      drivers.push({ id: "fresh_pool", label: "Very recent pool", severity: "high", delta, why: `Pool created ${input.pair_age_days}d ago — very fresh, high rug risk` });
+    }
+
+    if (input.fdv_usd && input.liquidity_usd && input.liquidity_usd > 0) {
+      const ratio = input.fdv_usd / input.liquidity_usd;
+      if (ratio >= 40) {
+        const delta = 20;
+        booster += delta;
+        drivers.push({ id: "fdv_liquidity_ratio", label: "FDV/liquidity imbalance", severity: "high", delta, why: `FDV/liquidity ratio=${ratio.toFixed(0)} — inflated valuation vs thin liquidity` });
+      }
+    }
+
+    if (input.volume_24h_usd && input.liquidity_usd && input.liquidity_usd > 0) {
+      if (input.volume_24h_usd > 5 * input.liquidity_usd) {
+        const delta = 15;
+        booster += delta;
+        drivers.push({ id: "volume_vs_liquidity", label: "Volume/liquidity spike", severity: "med", delta, why: `24h volume is ${(input.volume_24h_usd / input.liquidity_usd).toFixed(1)}x liquidity — manipulation signal` });
+      }
+    }
+
+    // Cap booster à +50
+    const cappedBooster = Math.min(50, booster);
+    score += cappedBooster;
+  }
 
   const clampedScore = Math.min(100, Math.max(0, score));
   const tier: TigerTier = clampedScore >= 70 ? "RED" : clampedScore >= 35 ? "ORANGE" : "GREEN";

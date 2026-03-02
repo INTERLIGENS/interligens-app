@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeTigerScoreFromScan, type ScanNormalized } from "./adapter";
+import { computeTigerScore } from "./engine";
 import green from "./__fixtures__/green.json";
 import orange from "./__fixtures__/orange.json";
 import red from "./__fixtures__/red.json";
@@ -89,5 +90,58 @@ describe("computeTigerScoreFromScan", () => {
     const r = computeTigerScoreFromScan(extreme);
     expect(r.score).toBeGreaterThanOrEqual(0);
     expect(r.score).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("computeTigerScore — market boosters SOL token", () => {
+  it("1) addr endswith pump + no_casefile => score >=25 + driver pump_fun", () => {
+    const r = computeTigerScore({
+      chain: "SOL",
+      scan_type: "token",
+      no_casefile: true,
+      mint_address: "a3W4qutoEJA4232T2gwZUfgYJTetr96pU4SJMwppump",
+    });
+    expect(r.score).toBeGreaterThanOrEqual(30);
+    expect(r.drivers.some(d => d.id === "pump_fun")).toBe(true);
+  });
+
+  it("2) pair_age_days=1 => driver fresh_pool present", () => {
+    const r = computeTigerScore({
+      chain: "SOL",
+      scan_type: "token",
+      no_casefile: true,
+      mint_address: "SomeMint",
+      pair_age_days: 1,
+    });
+    expect(r.drivers.some(d => d.id === "fresh_pool")).toBe(true);
+  });
+
+  it("3) fdv/liquidity ratio=100 => driver fdv_liquidity_ratio present", () => {
+    const r = computeTigerScore({
+      chain: "SOL",
+      scan_type: "token",
+      no_casefile: true,
+      mint_address: "SomeMint",
+      fdv_usd: 10_000_000,
+      liquidity_usd: 100_000,
+    });
+    expect(r.drivers.some(d => d.id === "fdv_liquidity_ratio")).toBe(true);
+  });
+
+  it("4) tous les boosters combinés => cap à +50", () => {
+    const r = computeTigerScore({
+      chain: "SOL",
+      scan_type: "token",
+      no_casefile: true,
+      mint_address: "a3W4qutoEJA4232T2gwZUfgYJTetr96pU4SJMwppump",
+      pair_age_days: 1,
+      fdv_usd: 50_000_000,
+      liquidity_usd: 100_000,
+      volume_24h_usd: 2_000_000,
+    });
+    // Boosters raw = 30+20+20+15 = 85 mais cap à 50
+    // Score = 0 base + 50 cap
+    expect(r.score).toBeLessThanOrEqual(50);
+    expect(r.drivers.length).toBeGreaterThanOrEqual(3);
   });
 });
