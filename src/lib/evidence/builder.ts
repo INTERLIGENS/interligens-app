@@ -199,6 +199,6 @@ export function buildOnChainEvidence(params: {
     // Guarantee rpc item appears — take top (CAP-1) from critical+official+other, then add rpc
     const withoutRpc = [...criticalItems, ...officialItems, ...otherItems];
     const topN = withoutRpc.slice(0, CAP - 1);
-    return [...topN, ...rpcItems.slice(0, 1)];
+    return [...topN, ...rpcItems.slice(0, 1)].slice(0, CAP);
   }
 }
