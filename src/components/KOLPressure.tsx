@@ -68,7 +68,7 @@ export default function KOLPressure({
 
   return (
     <section className="mini">
-      <div className="miniTitle">KOL pressure</div>
+      <div className="miniTitle">{lang === 'fr' ? 'PRESSION KOL' : 'KOL PRESSURE'}</div>
 
       <div className={`miniRow ${t}`}>
         <div className="left">

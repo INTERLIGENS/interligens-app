@@ -26,6 +26,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#F85B05',
+  viewportFit: 'cover',
 }
 
 export default function LocaleLayout({

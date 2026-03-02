@@ -7,8 +7,11 @@ export type MarketSnapshot = {
   liquidity_usd: number | null;
   volume_24h_usd: number | null;
   fdv_usd: number | null;
+  pair_age_days: number | null;
   fetched_at: string;
   cache_hit: boolean;
+  data_unavailable: boolean;
+  reason?: string;
 };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -66,6 +69,8 @@ async function fetchGeckoTerminal(mint: string): Promise<MarketSnapshot | null> 
 
     console.log(`[marketProviders] provider_used=geckoterminal pool=${pool_address} liquidity=${liquidity_usd}`);
 
+    const pool_created = attrs.pool_created_at ? new Date(attrs.pool_created_at).getTime() : null;
+    const pair_age_days = pool_created ? Math.floor((Date.now() - pool_created) / 86400000) : null;
     return {
       source: "geckoterminal",
       primary_pool: pool_address,
@@ -75,8 +80,10 @@ async function fetchGeckoTerminal(mint: string): Promise<MarketSnapshot | null> 
       liquidity_usd,
       volume_24h_usd,
       fdv_usd,
+      pair_age_days,
       fetched_at: new Date().toISOString(),
       cache_hit: false,
+      data_unavailable: false,
     };
   } catch (err) {
     console.error(`[marketProviders] GeckoTerminal error:`, err);
@@ -106,6 +113,8 @@ async function fetchDexScreener(mint: string): Promise<MarketSnapshot | null> {
 
     console.log(`[marketProviders] provider_used=dexscreener pool=${top.pairAddress}`);
 
+    const pairCreatedAt = top.pairCreatedAt ? Number(top.pairCreatedAt) : null;
+    const pair_age_days = pairCreatedAt ? Math.floor((Date.now() - pairCreatedAt) / 86400000) : null;
     return {
       source: "dexscreener",
       primary_pool: top.pairAddress ?? null,
@@ -115,8 +124,10 @@ async function fetchDexScreener(mint: string): Promise<MarketSnapshot | null> {
       liquidity_usd: top.liquidity?.usd ?? null,
       volume_24h_usd: top.volume?.h24 ?? null,
       fdv_usd: top.fdv ?? null,
+      pair_age_days,
       fetched_at: new Date().toISOString(),
       cache_hit: false,
+      data_unavailable: false,
     };
   } catch (err) {
     console.error(`[marketProviders] DexScreener error:`, err);
@@ -124,7 +135,7 @@ async function fetchDexScreener(mint: string): Promise<MarketSnapshot | null> {
   }
 }
 
-function nullSnapshot(): MarketSnapshot {
+function nullSnapshot(reason = "All providers failed"): MarketSnapshot {
   return {
     source: null,
     primary_pool: null,
@@ -134,8 +145,11 @@ function nullSnapshot(): MarketSnapshot {
     liquidity_usd: null,
     volume_24h_usd: null,
     fdv_usd: null,
+    pair_age_days: null,
     fetched_at: new Date().toISOString(),
     cache_hit: false,
+    data_unavailable: true,
+    reason,
   };
 }
 
@@ -151,14 +165,20 @@ export async function getMarketSnapshot(
 
   console.log(`[marketProviders] cache_hit=false fetching for ${chain}:${mint}`);
 
-  let snapshot = await fetchGeckoTerminal(mint);
-  if (!snapshot) {
-    console.log(`[marketProviders] GeckoTerminal failed — trying DexScreener`);
-    snapshot = await fetchDexScreener(mint);
+  let snapshot = await fetchDexScreener(mint);
+  if (!snapshot || (!snapshot.price && !snapshot.liquidity_usd)) {
+    console.log(`[marketProviders] DexScreener insufficient — trying GeckoTerminal`);
+    const gecko = await fetchGeckoTerminal(mint);
+    // Pick best available (more non-null fields)
+    if (gecko) {
+      const dexScore = snapshot ? [snapshot.price, snapshot.liquidity_usd, snapshot.volume_24h_usd, snapshot.fdv_usd].filter(Boolean).length : 0;
+      const geckoScore = [gecko.price, gecko.liquidity_usd, gecko.volume_24h_usd, gecko.fdv_usd].filter(Boolean).length;
+      if (geckoScore >= dexScore) snapshot = gecko;
+    }
   }
-  if (!snapshot) {
+  if (!snapshot || snapshot.data_unavailable) {
     console.error(`[marketProviders] ALL providers failed — returning null snapshot`);
-    snapshot = nullSnapshot();
+    snapshot = nullSnapshot("DexScreener and GeckoTerminal both unavailable");
   }
 
   setCache(chain, mint, snapshot);

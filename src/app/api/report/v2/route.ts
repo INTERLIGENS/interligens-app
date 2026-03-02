@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
   };
 
   // ── Render HTML ──
+  // Attach detective_trade from caseFile
+  (scanResult as any).detective_trade = caseFile?.detective_trade ?? null;
   const html = renderHtmlV2(scanResult, lang);
 
   // ── Puppeteer → PDF ──

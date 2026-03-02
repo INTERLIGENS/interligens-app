@@ -148,3 +148,7 @@ html, body {
   font-size: 9px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: #F85B05; margin-bottom: 8px;
 }
+
+/* ── trade-card ── */
+.trade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.trade-tx { font-family: "Courier New", monospace; font-size: 9px; color: #F85B05; word-break: break-all; }

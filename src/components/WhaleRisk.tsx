@@ -72,7 +72,7 @@ export default function WhaleRisk({
 
   return (
     <section className="mini">
-      <div className="miniTitle">Whale alert</div>
+      <div className="miniTitle">{lang === 'fr' ? 'ALERTE BALEINES' : 'WHALE ALERT'}</div>
 
       <div className={`miniRow ${t}`}>
         <div className="left">

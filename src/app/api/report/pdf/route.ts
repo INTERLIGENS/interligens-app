@@ -149,22 +149,30 @@ function buildPDF(data:{chain:string;address:string;score:number;tier:string;
   donut(o,rcx,rcy,rR,sc,tCol);
   // Score text centered in donut
   const ss=String(sc);
-  const scoreW=ss.length*11.5;
-  tx(o,rcx-scoreW/2,rcy+10,ss,"B",22,tCol);
-  tx(o,rcx-10,rcy-6,"/100","R",7.5,SEC);
-  lbl(o,rcx-24,rcy-20,"TIGERSCORE",MUT);
+  // Horizontal: Helvetica-Bold digit width ~13px at sz22, ~4.5px at sz7
+  const scoreW=ss.length*13;
+  const subW=4*4.5; // "/100" 4 chars
+  const lblW=10*4.2; // "TIGERSCORE" 10 chars
+  // Fixed offsets — calibrated visually, not computed
+  const sxOff=ss.length===3?-18:ss.length===2?-13:-7;
+  tx(o,rcx+sxOff,rcy+6,ss,"B",22,tCol);
+  tx(o,rcx+sxOff,rcy-10,"/100","R",7,SEC);
+  lbl(o,rcx+sxOff,rcy-21,"TIGERSCORE",MUT);
 
   // Verdict column — no duplicate text
   const VX=RX+138;
   lbl(o,VX,HB+HH-16,fr?"EVALUATION":"ASSESSMENT");
   hl(o,HB+HH-22,VX,RX+RW-14,STR);
-  pill(o,VX,HB+HH-42,tierLbl,tCol,9,tier==="RED"||tier==="GREEN"?W:BLK);
+  {
+    const _sz=9,_cw=_sz*0.58,_tw=tierLbl.length*_cw,_pw=Math.max(40,_tw+22);
+    const _colW=155,_px=VX+Math.max(0,(_colW-_pw)/2);
+    pill(o,_px,HB+HH-42,tierLbl,tCol,_sz,tier==="RED"||tier==="GREEN"?W:BLK);
+  }
   // Score bar only
-  lbl(o,VX,HB+44,fr?"SCORE":"SCORE");
-  bar(o,VX,HB+32,RW-(VX-RX)-18,5,sc,tCol);
-  tx(o,VX,HB+20,`${sc}/100`,"B",10,tCol);
-  tx(o,VX,HB+8,fr?"Confiance : Moyen":"Confidence: Medium","R",6,SEC);
-  tx(o,VX,HB-2,"BA Trace v2.6","R",5.5,MUT);
+  lbl(o,VX,HB+48,fr?"SCORE":"SCORE");
+  bar(o,VX,HB+36,RW-(VX-RX)-18,5,sc,tCol);
+  tx(o,VX,HB+22,`${sc}/100`,"B",11,tCol);
+  tx(o,VX,HB+6,fr?"Analyse : On-chain":"Analysis: On-chain","R",6,MUT);
 
   hl(o,HB-12);
 

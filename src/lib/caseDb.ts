@@ -24,6 +24,15 @@ export type CaseSource = {
   captured_at: string;
 };
 
+
+export type DetectiveTrade = {
+  buy_tx: string;
+  sell_tx: string;
+  wallet: string;
+  pnl_usd?: number | null;
+  notes_en?: string;
+  notes_fr?: string;
+};
 export type CaseMeta = {
   case_id: string;
   token_name: string;
@@ -42,6 +51,7 @@ export type CaseFile = {
   case_meta: CaseMeta;
   sources: CaseSource[];
   claims: CaseClaim[];
+  detective_trade?: DetectiveTrade | null;
 };
 
 export function loadCaseByMint(mint: string): CaseFile | null {

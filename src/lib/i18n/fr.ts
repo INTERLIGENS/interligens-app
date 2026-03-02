@@ -1,7 +1,7 @@
 import type { I18n } from "./en";
 export const fr: I18n = {
   title: "Rapport CaseFile",
-  subtitle: "Confidentiel — Usage interne uniquement",
+  subtitle: "Démo investisseur — Preuves référencées — Usage interne uniquement",
   generatedBy: "Généré par INTERLIGENS (TigerScore Engine v2)",
   detectiveRef: "Preuves détective référencées : @dethective",
   riskScore: "SCORE DE RISQUE",

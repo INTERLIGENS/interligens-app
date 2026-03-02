@@ -65,7 +65,7 @@ export default function ExitSecurity({
 
   return (
     <section className="mini">
-      <div className="miniTitle">Exit security</div>
+      <div className="miniTitle">{lang === 'fr' ? 'SÉCURITÉ SORTIE' : 'EXIT SECURITY'}</div>
 
       <div className={`miniRow ${t}`}>
         <div className="left">

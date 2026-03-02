@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getActionCopy } from "@/lib/copy/actions";
-import type { ScanResult } from "@/app/api/scan/solana/route";
+import { getActionCopy } from "../../copy/actions";
+import type { ScanResult } from "../../app/api/scan/solana/route";
 
 function loadCss(): string {
   try {
@@ -210,13 +210,17 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
     <div class="weather-grid">${weatherHtml}</div>
   </div>
 
-  <!-- MARKET SNAPSHOT (compact) -->
-  ${m.source ? `
+  <!-- MARKET SNAPSHOT -->
   <div>
     <div class="section-title">${isFr ? "SNAPSHOT MARCHÉ" : "MARKET SNAPSHOT"}</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    ${(m.data_unavailable || !m.source) ? `
+    <div class="card" style="padding:10px 14px;border-left:3px solid #f59e0b;">
+      <div style="font-size:11px;font-weight:700;color:#f59e0b;">${isFr ? "Données marché indisponibles (démo)" : "Market data unavailable (demo)"}</div>
+      ${m.reason ? `<div style="font-size:9px;color:#71717a;margin-top:3px">${m.reason}</div>` : ""}
+    </div>` : `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr) 1fr;gap:8px">
       ${[
-        [isFr ? "PRIX" : "PRICE", m.price !== null ? `$${m.price.toFixed(8)}` : "—"],
+        [isFr ? "PRIX" : "PRICE", m.price !== null ? "$" + m.price.toFixed(m.price < 0.01 ? 8 : 4) : "—"],
         [isFr ? "LIQUIDITÉ" : "LIQUIDITY", fmtCurrency(m.liquidity_usd)],
         [isFr ? "VOLUME 24H" : "VOLUME 24H", fmtCurrency(m.volume_24h_usd)],
         ["FDV", fmtCurrency(m.fdv_usd)],
@@ -226,7 +230,39 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
           <div style="font-size:12px;font-weight:800;color:#e4e4e7;margin-top:3px">${v}</div>
         </div>`).join("")}
     </div>
-  </div>` : ""}
+    <div style="display:flex;align-items:center;gap:12px;margin-top:6px;padding:6px 10px;background:#111113;border-radius:8px;border:1px solid #27272a;">
+      <span class="overline" style="color:#52525b">${isFr ? "SOURCE" : "SOURCE"}</span>
+      <span style="font-size:10px;font-weight:700;color:#e4e4e7;text-transform:uppercase">${m.source ?? "—"}</span>
+      ${(m as any).pair_age_days !== null && (m as any).pair_age_days !== undefined ? `<span class="overline" style="color:#52525b;margin-left:8px">${isFr ? "ÂGE POOL" : "POOL AGE"}</span><span style="font-size:10px;font-weight:700;color:#e4e4e7">${(m as any).pair_age_days}j</span>` : ""}
+      ${m.url ? `<a href="${m.url}" style="font-size:9px;color:#F85B05;margin-left:auto;text-decoration:none;">↗ ${m.source === "dexscreener" ? "DexScreener" : "GeckoTerminal"}</a>` : ""}
+    </div>`}
+  </div>
+
+  ${(scan as any).detective_trade ? (() => {
+    const tr = (scan as any).detective_trade;
+    const solscanBase = "https://solscan.io/tx/";
+    const notes = isFr ? (tr.notes_fr ?? tr.notes_en ?? "") : (tr.notes_en ?? "");
+    const fmtPnl = (n: number) => n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const pnl = tr.pnl_usd != null ? (tr.pnl_usd > 0 ? `+$${fmtPnl(tr.pnl_usd)}` : `-$${fmtPnl(Math.abs(tr.pnl_usd))}`) : null;
+    return `
+    <div>
+      <div class="section-title">${isFr ? "TRADE DÉTECTIVE" : "DETECTIVE TRADE"}</div>
+      <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 14px;">
+        <div>
+          <div class="overline" style="margin-bottom:4px">${isFr ? "TX ACHAT" : "BUY TX"}</div>
+          <a href="${solscanBase}${tr.buy_tx}" style="font-family:'Courier New',monospace;font-size:9px;color:#F85B05;word-break:break-all;text-decoration:none;">${tr.buy_tx} ↗</a>
+        </div>
+        <div>
+          <div class="overline" style="margin-bottom:4px">${isFr ? "TX VENTE" : "SELL TX"}</div>
+          <a href="${solscanBase}${tr.sell_tx}" style="font-family:'Courier New',monospace;font-size:9px;color:#F85B05;word-break:break-all;text-decoration:none;">${tr.sell_tx} ↗</a>
+        </div>
+        <div style="grid-column:1/-1;border-top:1px solid #27272a;padding-top:8px;display:flex;align-items:flex-start;gap:16px;">
+          <div style="flex:1;font-size:10px;color:#a1a1aa;line-height:1.4;">${notes}</div>
+          ${pnl ? `<div style="font-size:13px;font-weight:900;color:${tr.pnl_usd > 0 ? '#10b981' : '#ef4444'};white-space:nowrap;">${pnl}</div>` : ""}
+        </div>
+      </div>
+    </div>`;
+  })() : ""}
 
   <!-- INVESTIGATION -->
   <div>
