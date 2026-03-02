@@ -13,7 +13,6 @@ import ScanSkeleton from "@/components/ScanSkeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
-import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -414,6 +413,20 @@ export default function TigerScanPage() {
           )}
         </div>
 
+        {/* Off-chain Watchlist link */}
+        <div className="flex justify-center mt-3 mb-6">
+          <a
+            href="/en/watchlist"
+            className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-600 hover:text-zinc-400 transition-colors group"
+          >
+            <span className="uppercase tracking-[0.2em]">Off-chain Watchlist</span>
+            <span className="text-zinc-800 mx-1">·</span>
+            <span className="text-zinc-700">Public signals • Demo mode</span>
+            <span className="ml-1 group-hover:translate-x-0.5 transition-transform">→</span>
+          </a>
+        </div>
+
+
         {/* Crossfade skeleton → content */}
         <div className="relative">
           <div style={{ opacity: loading ? 1 : 0, transition: "opacity 250ms ease-out", pointerEvents: loading ? "auto" : "none" }}>
@@ -540,15 +553,6 @@ export default function TigerScanPage() {
           </div>
             )}
           </div>
-        </div>
-
-        {/* OSINT Watchlist — Public X Signals */}
-        <div className="mt-12 mb-4 space-y-2">
-          <p className="text-[11px] font-black uppercase tracking-[0.35em] text-zinc-300">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F85B05] mr-2 align-middle" />
-            OSINT Layer — Public X Signals
-          </p>
-          <OsintSectionClient />
         </div>
 
         <div className="text-center pt-10">

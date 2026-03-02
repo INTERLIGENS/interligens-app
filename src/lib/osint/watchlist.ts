@@ -3,8 +3,11 @@ export type WatchCategory = "CA_promoter" | "narrative_actor" | "cta_pusher" | "
 
 export interface WatchlistEntry {
   handle: string;
+  displayName: string;
   category: WatchCategory;
   hero: boolean;
+  isWatched: boolean;
+  sortRank: number;
   whyTracked: string;
 }
 
@@ -14,20 +17,20 @@ export interface ProofEntry {
 }
 
 export const DEMO_WATCHLIST: WatchlistEntry[] = [
-  { handle: "Kermitwifhat", category: "CA_promoter", hero: true, whyTracked: "Frequent CA drops via public posts" },
-  { handle: "HSIGMemeCoin", category: "CA_promoter", hero: true, whyTracked: "Meme coin promotion with pump.fun links" },
-  { handle: "avoidtherug", category: "narrative_actor", hero: true, whyTracked: "Narrative activity observed around new token launches" },
-  { handle: "Corphishcoin", category: "CA_promoter", hero: true, whyTracked: "Repeated CA mentions observed in public posts/replies" },
-  { handle: "Claude_Memory", category: "cta_pusher", hero: true, whyTracked: "CTA-like wording observed in public posts (airdrop / claim)" },
-  { handle: "DeeNowback", category: "cta_pusher", hero: true, whyTracked: "\"Send SOL\" / \"drop your address\" CTAs detected" },
-  { handle: "MustStopMurad", category: "narrative_actor", hero: true, whyTracked: "High-volume narrative activity observed around token events" },
-  { handle: "DonWedge", category: "domain_risk", hero: true, whyTracked: "External links observed in public posts (review domain risk)" },
-  { handle: "SilverSoul_Ag", category: "CA_promoter", hero: false, whyTracked: "CA detected in public posts" },
-  { handle: "IronShield_Zion", category: "CA_promoter", hero: false, whyTracked: "CA detected in public posts" },
-  { handle: "JamesWynnReal", category: "narrative_actor", hero: false, whyTracked: "Potential narrative spikes observed (public posts)" },
-  { handle: "GordonGekko", category: "cta_pusher", hero: false, whyTracked: "CTA-like wording observed in public posts" },
-  { handle: "aaronschwen", category: "domain_risk", hero: false, whyTracked: "External link patterns observed" },
-  { handle: "SOLASTRONAUT01", category: "CA_promoter", hero: false, whyTracked: "Solana CA drops in public posts" },
+  { handle: "JamesWynnReal", displayName: "James Wynn", category: "narrative_actor", hero: false, isWatched: true, sortRank: 100, whyTracked: "Potential narrative spikes observed (public posts)" },
+  { handle: "GordonGekko", displayName: "Gordon Gekko", category: "cta_pusher", hero: false, isWatched: true, sortRank: 90, whyTracked: "CTA-like wording observed in public posts" },
+  { handle: "HSIGMemeCoin", displayName: "HSIG Meme Coin", category: "CA_promoter", hero: true, isWatched: true, sortRank: 80, whyTracked: "Meme coin promotion with pump.fun links" },
+  { handle: "DeeNowback", displayName: "Dee Nowback", category: "cta_pusher", hero: true, isWatched: true, sortRank: 75, whyTracked: "CTA-like wording observed in public posts" },
+  { handle: "Claude_Memory", displayName: "Claude Memory", category: "cta_pusher", hero: true, isWatched: true, sortRank: 70, whyTracked: "CTA-like wording observed in public posts (airdrop / claim)" },
+  { handle: "MustStopMurad", displayName: "Must Stop Murad", category: "narrative_actor", hero: true, isWatched: true, sortRank: 65, whyTracked: "High-volume narrative activity observed around token events" },
+  { handle: "DonWedge", displayName: "Don Wedge", category: "domain_risk", hero: true, isWatched: true, sortRank: 60, whyTracked: "External links observed in public posts (review domain risk)" },
+  { handle: "Corphishcoin", displayName: "Corphish Coin", category: "CA_promoter", hero: true, isWatched: true, sortRank: 55, whyTracked: "Repeated CA mentions observed in public posts/replies" },
+  { handle: "SilverSoul_Ag", displayName: "Silver Soul", category: "CA_promoter", hero: false, isWatched: true, sortRank: 50, whyTracked: "CA detected in public posts" },
+  { handle: "IronShield_Zion", displayName: "Iron Shield Zion", category: "CA_promoter", hero: false, isWatched: true, sortRank: 45, whyTracked: "CA detected in public posts" },
+  { handle: "aaronschwen", displayName: "Aaron Schwen", category: "domain_risk", hero: false, isWatched: true, sortRank: 40, whyTracked: "External link patterns observed" },
+  { handle: "SOLASTRONAUT01", displayName: "Sol Astronaut", category: "CA_promoter", hero: false, isWatched: true, sortRank: 35, whyTracked: "Solana CA drops in public posts" },
+  { handle: "Kermitwifhat", displayName: "Kermit Wif Hat", category: "CA_promoter", hero: true, isWatched: false, sortRank: 10, whyTracked: "Frequent CA drops via public posts" },
+  { handle: "avoidtherug", displayName: "Avoid The Rug", category: "narrative_actor", hero: true, isWatched: false, sortRank: 10, whyTracked: "Narrative activity observed around new token launches" },
 ];
 
 export const DEMO_PROOFS: Record<string, ProofEntry[]> = {
