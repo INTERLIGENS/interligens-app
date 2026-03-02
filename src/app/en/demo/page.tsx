@@ -218,7 +218,7 @@ export default function TigerScanPage() {
     if (selectedScenario) {
       const preset = DEMO_PRESETS.SOL[selectedScenario];
       setAddress(preset.addr);
-      runScan(preset.addr, selectedScenario);
+      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -259,7 +259,7 @@ export default function TigerScanPage() {
         setResult(normalizeScanData(data, "SOL"));
         setWeather(null);
         setTimeout(() => document.getElementById("result-anchor")?.scrollIntoView({ behavior: "smooth" }), 200);
-      } catch(e) { setError("Mock failed"); }
+      } catch(e: any) { setError(`Scan mock failed: ${e?.message ?? String(e)}`); }
       setLoading(false);
       return;
     }

@@ -210,7 +210,7 @@ export default function TigerScanPageFR() {
     if (selectedScenario) {
       const preset = DEMO_PRESETS.SOL[selectedScenario];
       setAddress(preset.addr);
-      runScan(preset.addr, selectedScenario);
+      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
