@@ -13,10 +13,12 @@ export async function GET(request: NextRequest) {
 
   const mint_clean = mint.trim();
   const lang = searchParams.get("lang") ?? "en";
+  const debug = searchParams.get("debug") === "1";
 
   // ── Build scan result (same logic as /api/pdf/casefile) ──
   const caseFile = loadCaseByMint(mint_clean);
-  const marketSnapshot = await getMarketSnapshot("solana", mint_clean);
+  const marketSnapshot = await getMarketSnapshot("solana", mint_clean, debug);
+  if (debug) console.log(`[route/v2] market snapshot: data_unavailable=${marketSnapshot.data_unavailable} source=${marketSnapshot.source} price=${marketSnapshot.price} liquidity=${marketSnapshot.liquidity_usd} reason=${marketSnapshot.reason ?? "none"}`);
   const scoring = computeScore(caseFile?.claims ?? []);
 
   const scanResult: ScanResult = {

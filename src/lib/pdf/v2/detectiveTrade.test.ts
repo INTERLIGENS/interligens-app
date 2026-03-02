@@ -58,7 +58,31 @@ describe("renderHtmlV2 — detective trade", () => {
 });
 
 describe("renderHtmlV2 — market snapshot", () => {
-  it("avec market data: affiche price et liquidity, pas unavailable", () => {
+  it("Test A — unavailable: microcopy forensic + pas de Market data unavailable", () => {
+    const scan = baseScan() as any;
+    scan.on_chain.markets = {
+      source: null,
+      price: null,
+      liquidity_usd: null,
+      volume_24h_usd: null,
+      fdv_usd: null,
+      pair_age_days: null,
+      url: null,
+      data_unavailable: true,
+      reason: "DexScreener and GeckoTerminal both unavailable",
+      primary_pool: null,
+      dex: null,
+      fetched_at: "2026-03-02T20:18:14.920Z",
+      cache_hit: false,
+    };
+    const html = renderHtmlV2(scan, "en");
+    expect(html).toContain("No active liquidity found");
+    expect(html).toContain("DexScreener + GeckoTerminal returned no active pools");
+    expect(html).toContain("Sources checked");
+    expect(html).not.toContain("Market data unavailable");
+  });
+
+  it("Test B — data présente: price/liquidity/source/age formatés correctement", () => {
     const scan = baseScan() as any;
     scan.on_chain.markets = {
       source: "dexscreener",
@@ -66,7 +90,7 @@ describe("renderHtmlV2 — market snapshot", () => {
       liquidity_usd: 50200,
       volume_24h_usd: 12500,
       fdv_usd: 980000,
-      pair_age_days: 14,
+      pair_age_days: 140,
       url: "https://dexscreener.com/solana/TEST",
       data_unavailable: false,
       reason: null,
@@ -78,6 +102,8 @@ describe("renderHtmlV2 — market snapshot", () => {
     const html = renderHtmlV2(scan, "en");
     expect(html).toContain("$0.00042");
     expect(html).toContain("50.2K");
+    expect(html).toContain("DEXSCREENER");
+    expect(html).toContain("140d");
     expect(html).not.toContain("unavailable");
   });
 });

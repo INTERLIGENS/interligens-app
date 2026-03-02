@@ -228,9 +228,13 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
   <div>
     <div class="section-title">${isFr ? "SNAPSHOT MARCHÉ" : "MARKET SNAPSHOT"}</div>
     ${(m.data_unavailable || !m.source) ? `
-    <div class="card" style="padding:10px 14px;border-left:3px solid #f59e0b;">
-      <div style="font-size:11px;font-weight:700;color:#f59e0b;">${isFr ? "Données marché indisponibles (démo)" : "Market data unavailable (demo)"}</div>
-      ${m.reason ? `<div style="font-size:9px;color:#71717a;margin-top:3px">${m.reason}</div>` : ""}
+    <div class="card" style="padding:12px 14px;border-left:3px solid #52525b;">
+      <div style="font-size:11px;font-weight:700;color:#a1a1aa;">${isFr ? "Aucune liquidité active" : "No active liquidity found"}</div>
+      <div style="font-size:9px;color:#71717a;margin-top:4px;">${isFr ? "DexScreener + GeckoTerminal : aucun pool actif détecté pour ce token." : "DexScreener + GeckoTerminal returned no active pools for this token."}</div>
+      <div style="font-size:9px;color:#52525b;margin-top:6px;display:flex;align-items:center;gap:12px;">
+        <span>${isFr ? "Sources vérifiées : DexScreener + GeckoTerminal" : "Sources checked: DexScreener + GeckoTerminal"}</span>
+        ${m.fetched_at ? `<span style="margin-left:auto">${isFr ? "À date du " + new Date(m.fetched_at).toLocaleString("fr-FR",{timeZone:"UTC",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) + " UTC" : "As of " + new Date(m.fetched_at).toISOString().slice(0,16).replace("T"," ") + " UTC"}</span>` : ""}
+      </div>
     </div>` : `
     <div style="display:grid;grid-template-columns:repeat(3,1fr) 1fr;gap:8px">
       ${[
@@ -245,10 +249,17 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
         </div>`).join("")}
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:6px;padding:6px 10px;background:#111113;border-radius:8px;border:1px solid #27272a;">
-      <span class="overline" style="color:#52525b">${isFr ? "SOURCE" : "SOURCE"}</span>
-      <span style="font-size:10px;font-weight:700;color:#e4e4e7;text-transform:uppercase">${m.source ?? "—"}</span>
-      ${(m as any).pair_age_days !== null && (m as any).pair_age_days !== undefined ? `<span class="overline" style="color:#52525b;margin-left:8px">${isFr ? "ÂGE POOL" : "POOL AGE"}</span><span style="font-size:10px;font-weight:700;color:#e4e4e7">${(m as any).pair_age_days}j</span>` : ""}
-      ${m.url ? `<a href="${m.url}" style="font-size:9px;color:#F85B05;margin-left:auto;text-decoration:none;">↗ ${m.source === "dexscreener" ? "DexScreener" : "GeckoTerminal"}</a>` : ""}
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex:1;">
+        <div style="display:flex;align-items:baseline;gap:5px;">
+          <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#52525b;line-height:1.4">SOURCE</span>
+          <span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#e4e4e7;line-height:1.4">${(m.source ?? "—").toUpperCase()}</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:5px;">
+          <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#52525b;line-height:1.4">${isFr ? "ÂGE POOL" : "POOL AGE"}</span>
+          <span style="font-size:10px;font-weight:800;color:#e4e4e7;line-height:1.4">${(m as any).pair_age_days != null ? (m as any).pair_age_days + (isFr ? "j" : "d") : "—"}</span>
+        </div>
+      </div>
+      ${m.url ? `<a href="${m.url}" style="font-size:9px;color:#F85B05;text-decoration:none;white-space:nowrap;">↗ ${m.source === "dexscreener" ? "DexScreener" : "GeckoTerminal"}</a>` : ""}
     </div>`}
   </div>
 

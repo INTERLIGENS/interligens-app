@@ -41,7 +41,7 @@ function setCache(chain: string, mint: string, snapshot: MarketSnapshot) {
 
 const GECKO_BASE = "https://api.geckoterminal.com/api/v2";
 
-async function fetchGeckoTerminal(mint: string): Promise<MarketSnapshot | null> {
+async function fetchGeckoTerminal(mint: string, debug = false): Promise<MarketSnapshot | null> {
   try {
     const url = `${GECKO_BASE}/networks/solana/tokens/${mint}/pools?page=1`;
     const res = await fetch(url, {
@@ -49,11 +49,12 @@ async function fetchGeckoTerminal(mint: string): Promise<MarketSnapshot | null> 
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
-      console.warn(`[marketProviders] GeckoTerminal HTTP ${res.status}`);
+      if (debug) console.warn(`[marketProviders] GeckoTerminal HTTP ${res.status}`);
       return null;
     }
     const json = await res.json();
     const pools = json?.data;
+    if (debug) console.log(`[marketProviders] GeckoTerminal pools found: ${pools?.length ?? 0}`);
     if (!pools || pools.length === 0) return null;
 
     const pool = pools[0];
@@ -91,17 +92,19 @@ async function fetchGeckoTerminal(mint: string): Promise<MarketSnapshot | null> 
   }
 }
 
-async function fetchDexScreener(mint: string): Promise<MarketSnapshot | null> {
+async function fetchDexScreener(mint: string, debug = false): Promise<MarketSnapshot | null> {
   try {
     const url = `https://api.dexscreener.com/tokens/v1/solana/${mint}`;
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
     });
+    if (debug) console.log(`[marketProviders] DexScreener HTTP ${res.status}`);
     if (!res.ok) return null;
 
     const json = await res.json();
     const pairs: any[] = Array.isArray(json) ? json : json?.pairs ?? [];
+    if (debug) console.log(`[marketProviders] DexScreener pairs found: ${pairs?.length ?? 0}`);
     if (!pairs || pairs.length === 0) return null;
 
     const sorted = pairs
@@ -155,7 +158,8 @@ function nullSnapshot(reason = "All providers failed"): MarketSnapshot {
 
 export async function getMarketSnapshot(
   chain: "solana",
-  mint: string
+  mint: string,
+  debug = false
 ): Promise<MarketSnapshot> {
   const cached = getCached(chain, mint);
   if (cached) {
@@ -165,10 +169,10 @@ export async function getMarketSnapshot(
 
   console.log(`[marketProviders] cache_hit=false fetching for ${chain}:${mint}`);
 
-  let snapshot = await fetchDexScreener(mint);
+  let snapshot = await fetchDexScreener(mint, debug);
   if (!snapshot || (!snapshot.price && !snapshot.liquidity_usd)) {
-    console.log(`[marketProviders] DexScreener insufficient — trying GeckoTerminal`);
-    const gecko = await fetchGeckoTerminal(mint);
+    if (debug) console.log(`[marketProviders] DexScreener insufficient — trying GeckoTerminal`);
+    const gecko = await fetchGeckoTerminal(mint, debug);
     // Pick best available (more non-null fields)
     if (gecko) {
       const dexScore = snapshot ? [snapshot.price, snapshot.liquidity_usd, snapshot.volume_24h_usd, snapshot.fdv_usd].filter(Boolean).length : 0;
