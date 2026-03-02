@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BG="0.043 0.059 0.078",CARD="0.075 0.090 0.112",HD="0.048 0.062 0.080";
-const STR="0.118 0.136 0.160",OR="0.973 0.357 0.020",W="1.000 1.000 1.000";
-const SEC="0.580 0.600 0.640",MUT="0.260 0.280 0.310",BLK="0 0 0";
-const GRN="0.133 0.773 0.369",AMB="0.961 0.620 0.043",DNG="0.937 0.267 0.267";
+const BG="0.020 0.020 0.020",CARD="0.058 0.070 0.086",HD="0.035 0.045 0.058";
+const STR="0.110 0.130 0.155",OR="0.973 0.357 0.020",W="1.000 1.000 1.000";
+const SEC="0.540 0.560 0.600",MUT="0.220 0.240 0.270",BLK="0 0 0";
+const GRN="0.063 0.733 0.329",AMB="0.921 0.580 0.020",DNG="0.897 0.220 0.220";
 
 function esc(s:string):string{
   return String(s??"")
@@ -11,18 +11,19 @@ function esc(s:string):string{
     .replace(/\u00e9/g,"e").replace(/\u00e8/g,"e").replace(/\u00ea/g,"e")
     .replace(/\u00e0/g,"a").replace(/\u00e2/g,"a").replace(/\u00f4/g,"o")
     .replace(/\u00f9/g,"u").replace(/\u00fb/g,"u").replace(/\u00ee/g,"i")
-    .replace(/\u00e7/g,"c").replace(/\u00c9/g,"E").replace(/\u00c0/g,"A")
+    .replace(/\u00e7/g,"c").replace(/\u00e2/g,"a").replace(/\u00c9/g,"E")
     .replace(/[\x80-\xff]/g,"?");
 }
 function tc(t:string){const u=(t??"").toUpperCase();return u==="GREEN"?GRN:u==="RED"?DNG:AMB;}
-function lc(l:string){const v=(l??"").toLowerCase();return v==="high"?DNG:v==="medium"?AMB:GRN;}
+function lc(l:string){const v=(l??"").toLowerCase();return v==="high"||v==="critical"?DNG:v==="medium"||v==="med"?AMB:GRN;}
 type O=string[];
 const PW=595;
+
 function fill(o:O,x:number,y:number,w:number,h:number,c:string){
   o.push(`${c} rg ${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)} re f`);
 }
 function box(o:O,x:number,y:number,w:number,h:number){
-  o.push(`${CARD} rg ${STR} RG 0.4 w ${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)} re B`);
+  o.push(`${CARD} rg ${STR} RG 0.5 w ${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)} re B`);
 }
 function hl(o:O,y:number,x1=20,x2=575,c=STR){
   o.push(`0.4 w ${c} RG ${x1.toFixed(1)} ${y.toFixed(1)} m ${x2.toFixed(1)} ${y.toFixed(1)} l S`);
@@ -34,12 +35,12 @@ function mono(o:O,x:number,y:number,s:string,sz:number,c=W){
   o.push(`${c} rg BT /F3 ${sz} Tf ${x.toFixed(1)} ${y.toFixed(1)} Td (${esc(s)}) Tj ET`);
 }
 function lbl(o:O,x:number,y:number,s:string,c=SEC){
-  o.push(`${c} rg BT /F2 7 Tf 0.8 Tc ${x.toFixed(1)} ${y.toFixed(1)} Td (${esc(s.toUpperCase())}) Tj 0 Tc ET`);
+  o.push(`${c} rg BT /F2 7 Tf 0.9 Tc ${x.toFixed(1)} ${y.toFixed(1)} Td (${esc(s.toUpperCase())}) Tj 0 Tc ET`);
 }
-function pill(o:O,x:number,y:number,label:string,bg:string,sz=7):number{
-  const PH=17,charW=sz*0.60,textW=label.length*charW,pw=Math.max(32,textW+18);
+function pill(o:O,x:number,y:number,label:string,bg:string,sz=7,txtC=BLK):number{
+  const PH=18,charW=sz*0.58,textW=label.length*charW,pw=Math.max(40,textW+22);
   fill(o,x,y,pw,PH,bg);
-  o.push(`${BLK} rg BT /F2 ${sz} Tf ${(x+(pw-textW)/2).toFixed(1)} ${(y+(PH-sz*1.1)/2).toFixed(1)} Td (${esc(label)}) Tj ET`);
+  o.push(`${txtC} rg BT /F2 ${sz} Tf ${(x+(pw-textW)/2).toFixed(1)} ${(y+(PH-sz)/2+1.5).toFixed(1)} Td (${esc(label)}) Tj ET`);
   return pw;
 }
 function bar(o:O,x:number,y:number,bw:number,bh:number,pct:number,c:string){
@@ -47,24 +48,50 @@ function bar(o:O,x:number,y:number,bw:number,bh:number,pct:number,c:string){
   const fw=Math.max(0,Math.min(bw,bw*pct/100));
   if(fw>0) fill(o,x,y,fw,bh,c);
 }
-function ring(o:O,cx:number,cy:number,R:number,score:number,c:string){
+
+// Proper donut ring: arc outline + filled arc + inner white circle
+function donut(o:O,cx:number,cy:number,R:number,score:number,col:string){
   const r2=(d:number)=>(d-90)*Math.PI/180;
-  o.push(`q 2.5 w ${STR} RG`);
-  for(let i=0;i<=72;i++){const a=r2(i*5);o.push(`${(cx+R*Math.cos(a)).toFixed(2)} ${(cy+R*Math.sin(a)).toFixed(2)} ${i===0?"m":"l"}`);}
+  const steps=120;
+  // Background track (full circle)
+  o.push(`q 10 w ${STR} RG`);
+  for(let i=0;i<=steps;i++){
+    const a=r2((i/steps)*360);
+    o.push(`${(cx+R*Math.cos(a)).toFixed(2)} ${(cy+R*Math.sin(a)).toFixed(2)} ${i===0?"m":"l"}`);
+  }
   o.push("S Q");
-  const sw=Math.max(5,(score/100)*360),st=Math.max(12,Math.ceil(sw/3));
-  o.push(`q 5 w ${c} RG`);
-  for(let i=0;i<=st;i++){const a=r2((i/st)*sw);o.push(`${(cx+R*Math.cos(a)).toFixed(2)} ${(cy+R*Math.sin(a)).toFixed(2)} ${i===0?"m":"l"}`);}
+  if(score<=0) return;
+  // Colored arc — no end dot
+  const sw=Math.min(359.9,(score/100)*360);
+  const st=Math.max(24,Math.ceil(sw/2));
+  o.push(`q 10 w ${col} RG`);
+  for(let i=0;i<=st;i++){
+    const a=r2((i/st)*sw);
+    o.push(`${(cx+R*Math.cos(a)).toFixed(2)} ${(cy+R*Math.sin(a)).toFixed(2)} ${i===0?"m":"l"}`);
+  }
   o.push("S Q");
+  // Round cap at start (top)
+  const sa=r2(0),sx=cx+R*Math.cos(sa),sy=cy+R*Math.sin(sa);
+  o.push(`q ${col} rg`);
+  for(let i=0;i<=12;i++){const a=i*Math.PI/6;o.push(`${(sx+5*Math.cos(a)).toFixed(2)} ${(sy+5*Math.sin(a)).toFixed(2)} ${i===0?"m":"l"}`);}
+  o.push("f Q");
+  // Round cap at end
   const ea=r2(sw),ex=cx+R*Math.cos(ea),ey=cy+R*Math.sin(ea);
-  o.push(`q ${c} rg`);
-  for(let i=0;i<=12;i++){const a=i*Math.PI/6;o.push(`${(ex+4.5*Math.cos(a)).toFixed(2)} ${(ey+4.5*Math.sin(a)).toFixed(2)} ${i===0?"m":"l"}`);}
+  o.push(`q ${col} rg`);
+  for(let i=0;i<=12;i++){const a=i*Math.PI/6;o.push(`${(ex+5*Math.cos(a)).toFixed(2)} ${(ey+5*Math.sin(a)).toFixed(2)} ${i===0?"m":"l"}`);}
   o.push("f Q");
 }
+
 function ellip(addr:string,max=26):string{
-  if(addr.length<=max) return addr;
+  if(!addr||addr.length<=max) return addr;
   const h=Math.floor((max-3)/2);
   return addr.slice(0,h)+"..."+addr.slice(-h);
+}
+// Split address into chunks of n chars
+function chunks(s:string,n:number):string[]{
+  const r=[];
+  for(let i=0;i<s.length;i+=n) r.push(s.slice(i,i+n));
+  return r;
 }
 
 function buildPDF(data:{chain:string;address:string;score:number;tier:string;
@@ -80,126 +107,163 @@ function buildPDF(data:{chain:string;address:string;score:number;tier:string;
   const rid=Date.now().toString(36).slice(-6).toUpperCase();
   const tierLbl=fr?(tier==="GREEN"?"SAIN":tier==="RED"?"DANGER":"PRUDENCE")
                   :(tier==="GREEN"?"CLEAN":tier==="RED"?"HIGH RISK":"CAUTION");
-  const verd=String(data.verdict??tierLbl).slice(0,32);
   const o:O=[];
 
   // BG
   fill(o,0,0,PW,842,BG);
 
-  // HEADER
-  fill(o,0,800,PW,42,HD); hl(o,800,0,PW,STR); fill(o,0,800,4,42,OR);
-  tx(o,20,822,"INTERLIGENS","B",14,OR);
-  tx(o,20,809,fr?"Rapport d'analyse forensique - On-chain":"Forensic Wallet Report - On-chain Intelligence","R",7,SEC);
-  tx(o,PW-195,825,data.date,"R",6.5,SEC);
-  tx(o,PW-195,814,"ID "+rid,"R",6,MUT);
+  // ── HEADER ──────────────────────────────────────────────────
+  fill(o,0,800,PW,42,HD);
+  hl(o,800,0,PW,STR);
+  fill(o,0,800,4,42,OR);
+  tx(o,20,822,"INTERLIGENS","B",15,OR);
+  tx(o,20,808,fr?"Rapport d'analyse forensique — On-chain":"Forensic Wallet Report — On-chain Intelligence","R",7,SEC);
+  tx(o,PW-200,824,data.date,"R",6.5,SEC);
+  tx(o,PW-200,812,"ID "+rid,"R",6,MUT);
 
-  // HERO: LEFT=address, RIGHT=ring
-  const HB=682,HH=112;
-  const LW=256;
+  // ── HERO BAND ───────────────────────────────────────────────
+  const HB=685,HH=108;
+  const LW=252;
+
+  // Left card: address
   box(o,20,HB,LW,HH);
   fill(o,20,HB+HH-4,LW,4,OR);
-  lbl(o,32,HB+HH-15,fr?"ADRESSE ANALYSEE":"SCANNED ADDRESS",OR);
-  hl(o,HB+HH-20,32,20+LW-12,STR);
-  // 1 line ellipsis
-  mono(o,32,HB+HH-35,ellip(addr,28),8.5,W);
-  // full address in strict 34-char chunks — no mid-word break
-  const fa1=addr.slice(0,34);
-  const fa2=addr.length>34?addr.slice(34,68):"";
-  mono(o,32,HB+HH-47,fa1,6,MUT);
-  if(fa2) mono(o,32,HB+HH-57,fa2,6,MUT);
-  hl(o,HB+37,32,20+LW-12,STR);
-  lbl(o,32,HB+27,fr?"RESEAU":"NETWORK");
-  tx(o,32,HB+14,ch,"B",11,W);
-  tx(o,32,HB+4,fr?"Aucune signature - zero stockage":"No signature - zero storage","R",6,MUT);
+  lbl(o,32,HB+HH-16,fr?"ADRESSE ANALYSEE":"SCANNED ADDRESS",OR);
+  hl(o,HB+HH-22,32,20+LW-10,STR);
+  // Short ellipsis line
+  mono(o,32,HB+HH-36,ellip(addr,30),8.5,W);
+  hl(o,HB+HH-42,32,20+LW-10,MUT);
+  // Full address in 34-char lines
+  const addrChunks=chunks(addr,34);
+  addrChunks.slice(0,3).forEach((c,i)=>mono(o,32,HB+HH-54-(i*10),c,5.5,MUT));
+  hl(o,HB+36,32,20+LW-10,STR);
+  lbl(o,32,HB+26,fr?"RESEAU":"NETWORK");
+  tx(o,32,HB+13,ch,"B",12,W);
+  tx(o,32,HB+3,fr?"Aucune signature requise":"No signature required","R",6,MUT);
 
-  // RIGHT: ring + verdict
-  const RX=286,RW=289;
+  // Right card: TigerScore donut
+  const RX=282,RW=293;
   box(o,RX,HB,RW,HH);
   fill(o,RX,HB+HH-4,RW,4,tCol);
-  const rcx=RX+66,rcy=HB+HH/2,rR=42;
-  ring(o,rcx,rcy,rR,sc,tCol);
+  const rcx=RX+64,rcy=HB+HH/2-2,rR=40;
+  donut(o,rcx,rcy,rR,sc,tCol);
+  // Score text centered in donut
   const ss=String(sc);
-  tx(o,ss.length>=3?rcx-16:ss.length===2?rcx-11:rcx-7,rcy+10,ss,"B",22,tCol);
-  tx(o,rcx-10,rcy-5,"/100","R",7.5,SEC);
-  lbl(o,rcx-24,rcy-22,"TIGERSCORE",MUT);
-  // verdict column
-  const VX=RX+136;
-  lbl(o,VX,HB+HH-15,fr?"EVALUATION":"ASSESSMENT");
-  pill(o,VX,HB+HH-36,tierLbl,tCol,8);
-  // verdict one-liner only — no duplicate score
-  // verdict suppressed — tier pill already conveys it
-  bar(o,VX,HB+38,RW-(VX-RX)-14,4,sc,tCol);
-  tx(o,VX,HB+26,fr?"Confiance : Moyen":"Confidence: Medium","R",6.5,SEC);
-  tx(o,VX,HB+4,"BA Trace v2.6","R",6,MUT);
+  const scoreW=ss.length*11.5;
+  tx(o,rcx-scoreW/2,rcy+10,ss,"B",22,tCol);
+  tx(o,rcx-10,rcy-6,"/100","R",7.5,SEC);
+  lbl(o,rcx-24,rcy-20,"TIGERSCORE",MUT);
 
-  hl(o,HB-10);
+  // Verdict column — no duplicate text
+  const VX=RX+138;
+  lbl(o,VX,HB+HH-16,fr?"EVALUATION":"ASSESSMENT");
+  hl(o,HB+HH-22,VX,RX+RW-14,STR);
+  pill(o,VX,HB+HH-42,tierLbl,tCol,9,tier==="RED"||tier==="GREEN"?W:BLK);
+  // Score bar only
+  lbl(o,VX,HB+44,fr?"SCORE":"SCORE");
+  bar(o,VX,HB+32,RW-(VX-RX)-18,5,sc,tCol);
+  tx(o,VX,HB+20,`${sc}/100`,"B",10,tCol);
+  tx(o,VX,HB+8,fr?"Confiance : Moyen":"Confidence: Medium","R",6,SEC);
+  tx(o,VX,HB-2,"BA Trace v2.6","R",5.5,MUT);
 
-  // TOP ON-CHAIN SIGNALS
-  let cy=HB-22;
-  lbl(o,20,cy,fr?"PREUVES ON-CHAIN":"TOP ON-CHAIN SIGNALS",OR);
+  hl(o,HB-12);
+
+  // ── TOP ON-CHAIN PROOFS ──────────────────────────────────────
+  let cy=HB-24;
+  lbl(o,20,cy,fr?"PREUVES ON-CHAIN (TOP 3)":"TOP ON-CHAIN SIGNALS",OR);
   cy-=18;
-  const pShow=prf.length>0?prf:[{label:fr?"Analyse":"Analysis",
-    value:fr?"Aucun signal critique":"No major red flags",
-    level:"low",riskDescription:fr?"Wallet propre":"Clean wallet"}];
-  const PCW=(PW-40-16)/3,PCH=76;
+  const pShow=prf.length>0?prf:[
+    {label:fr?"Analyse":"Analysis",value:fr?"Aucun signal critique":"No major red flags",level:"low",riskDescription:fr?"Wallet propre":"Clean wallet"},
+  ];
+  const PCW=(PW-40-16)/3,PCH=72;
   pShow.slice(0,3).forEach((p:any,i:number)=>{
     const px=20+i*(PCW+8),py=cy-PCH;
     const lvl=(p.level??"low").toLowerCase(),col=lc(lvl);
-    const pt=fr?(lvl==="high"?"ELEVE":lvl==="medium"?"MOYEN":"FAIBLE")
-               :(lvl==="high"?"HIGH":lvl==="medium"?"MED":"LOW");
+    const pt=fr?(lvl==="high"||lvl==="critical"?"ELEVE":lvl==="medium"||lvl==="med"?"MOYEN":"FAIBLE")
+               :(lvl==="high"||lvl==="critical"?"HIGH":lvl==="medium"||lvl==="med"?"MED":"LOW");
     box(o,px,py,PCW,PCH);
     fill(o,px,py+PCH-4,PCW,4,col);
-    lbl(o,px+10,py+PCH-15,String(p.label??"").slice(0,16));
-    tx(o,px+10,py+PCH-31,String(p.value??"").slice(0,20),"B",11,W);
-    tx(o,px+10,py+34,String(p.riskDescription??"").slice(0,32),"R",6.5,SEC);
-    pill(o,px+10,py+12,pt,col,6.5);
+    lbl(o,px+10,py+PCH-16,String(p.label??"").slice(0,18));
+    tx(o,px+10,py+PCH-32,String(p.value??"").slice(0,22),"B",10.5,W);
+    tx(o,px+10,py+32,String(p.riskDescription??"").slice(0,34),"R",6,SEC);
+    pill(o,px+10,py+10,pt,col,6.5);
   });
-  cy-=PCH+10; hl(o,cy);
+  cy-=PCH+10;
+  hl(o,cy);
 
-  // RECOMMENDED ACTIONS
+  // ── RECOMMENDED ACTIONS ──────────────────────────────────────
   cy-=14;
   lbl(o,20,cy,fr?"A FAIRE MAINTENANT":"RECOMMENDED ACTIONS",OR);
   cy-=16;
   const rShow=rec.length>0?rec:[
     fr?"Verifier les liens avant de signer":"Verify URLs before signing",
-    fr?"Tester un petit montant":"Test with a small amount first",
+    fr?"Tester un petit montant d'abord":"Test with a small amount first",
     fr?"Surveiller regulierement":"Monitor regularly",
   ];
   rShow.slice(0,3).forEach((r:string)=>{
     box(o,20,cy-22,PW-40,26);
     fill(o,20,cy-22,4,26,tCol);
-    fill(o,34,cy-13,5,5,tCol);
-    tx(o,47,cy-13,String(r).slice(0,78),"R",8.5,W);
-    cy-=32;
+    o.push(`${tCol} rg ${(35).toFixed(1)} ${(cy-16).toFixed(1)} m ${(40).toFixed(1)} ${(cy-11).toFixed(1)} l ${(40).toFixed(1)} ${(cy-16).toFixed(1)} l f`);
+    tx(o,47,cy-14,String(r).slice(0,76),"R",8.5,W);
+    cy-=30;
   });
   hl(o,cy);
 
-  // MARKET SIGNALS
+  // ── MARKET SIGNALS ───────────────────────────────────────────
   cy-=14;
   lbl(o,20,cy,fr?"SIGNAUX MARCHE":"MARKET SIGNALS",OR);
   cy-=16;
-  const MCH=52,MCW=(PW-40-16)/3;
+  // 3 cards, bars start at same baseline x
+  const MCH=56,MCW=(PW-40-16)/3,BARX=10,BARW=MCW-20;
   const mets=[
-    {label:fr?"MANIPULATION":"MANIPULATION",pct:92,col:DNG},
-    {label:fr?"ALERTES":"ALERTS",pct:45,col:AMB},
-    {label:fr?"CONFIANCE":"TRUST",pct:10,col:GRN},
+    {label:fr?"MANIPULATION":"MANIPULATION",pct:92,col:DNG,
+     sub:fr?"Campagne de shill":"Shill campaign"},
+    {label:fr?"ALERTES COMM.":"COMMUNITY ALERTS",pct:45,col:AMB,
+     sub:fr?"Signalements en hausse":"Reports rising"},
+    {label:fr?"CONFIANCE":"TRUST",pct:10,col:GRN,
+     sub:fr?"Transparence OK":"Transparency OK"},
   ];
   mets.forEach((m,i)=>{
     const mx=20+i*(MCW+8),my=cy-MCH;
     box(o,mx,my,MCW,MCH);
     fill(o,mx,my+MCH-4,MCW,4,m.col);
-    lbl(o,mx+10,my+MCH-15,m.label);
-    tx(o,mx+10,my+MCH-31,`${m.pct}%`,"B",14,m.col);
-    bar(o,mx+10,my+10,MCW-20,5,m.pct,m.col);
+    lbl(o,mx+BARX,my+MCH-15,m.label);
+    tx(o,mx+BARX,my+MCH-30,`${m.pct}%`,"B",13,m.col);
+    bar(o,mx+BARX,my+14,BARW,5,m.pct,m.col);
+    tx(o,mx+BARX,my+4,m.sub,"R",6,SEC);
   });
   cy-=MCH+10;
+  hl(o,cy);
 
-  // FOOTER
-  fill(o,0,0,PW,28,HD); hl(o,28,0,PW,STR); fill(o,0,0,4,28,OR);
-  tx(o,14,16,fr?"Pas un conseil financier - Interligens Intelligence (c) 2026 - BA Audit Trace v2.6.x":"Not financial advice - Interligens Intelligence (c) 2026 - BA Audit Trace v2.6.x","R",6.5,MUT);
-  tx(o,14,6,`${ch} Report - ${rid} - ${data.date}`,"R",6,MUT);
+  // ── INVESTIGATION CARD ──────────────────────────────────────
+  cy-=14;
+  lbl(o,20,cy,fr?"DOSSIER D'INVESTIGATION":"INVESTIGATION FILE",OR);
+  cy-=14;
+  const ICH=44,IW=PW-40;
+  box(o,20,cy-ICH,IW,ICH);
+  fill(o,20,cy-ICH,3,ICH,MUT);
+  // 3 columns inside
+  const cols=[
+    {k:fr?"STATUT":"STATUS",  v:fr?"En attente":"Pending"},
+    {k:fr?"ANALYSTE":"ANALYST",v:"—"},
+    {k:fr?"PERIMETRE":"SCOPE", v:fr?"On-chain only (demo)":"On-chain only (demo)"},
+  ];
+  const CW=IW/3;
+  cols.forEach((c,i)=>{
+    const cx2=28+i*CW;
+    lbl(o,cx2,cy-14,c.k);
+    tx(o,cx2,cy-26,c.v,"B",8.5,W);
+  });
 
-  // ASSEMBLE
+  // ── FOOTER ───────────────────────────────────────────────────
+  fill(o,0,0,PW,28,HD);
+  hl(o,28,0,PW,STR);
+  fill(o,0,0,4,28,OR);
+  tx(o,14,16,fr?"Pas un conseil financier — Interligens Intelligence (c) 2026 — BA Audit Trace v2.6.x"
+              :"Not financial advice — Interligens Intelligence (c) 2026 — BA Audit Trace v2.6.x","R",6,MUT);
+  tx(o,14,5,`${ch} Report — ${rid} — ${data.date}`,"R",5.5,MUT);
+
+  // ── ASSEMBLE PDF ─────────────────────────────────────────────
   const stream=o.join("\n"),slen=Buffer.from(stream,"latin1").length;
   const f1="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
   const f2="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
@@ -221,7 +285,7 @@ function buildPDF(data:{chain:string;address:string;score:number;tier:string;
 export async function POST(req:NextRequest){
   try{
     const b=await req.json();
-    const now=new Date().toLocaleString("fr-FR",{timeZone:"Europe/Paris"});
+    const now=new Date().toLocaleString(b.lang==="fr"?"fr-FR":"en-GB",{timeZone:"Europe/Paris"});
     const pdf=buildPDF({...b,date:now});
     const ch=String(b.chain??"scan").toLowerCase();
     const ad=String(b.address??"").slice(0,8);
