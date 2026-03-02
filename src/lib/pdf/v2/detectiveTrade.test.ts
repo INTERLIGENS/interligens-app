@@ -56,3 +56,28 @@ describe("renderHtmlV2 — detective trade", () => {
     expect(html).toContain("-$500");
   });
 });
+
+describe("renderHtmlV2 — market snapshot", () => {
+  it("avec market data: affiche price et liquidity, pas unavailable", () => {
+    const scan = baseScan() as any;
+    scan.on_chain.markets = {
+      source: "dexscreener",
+      price: 0.00042,
+      liquidity_usd: 50200,
+      volume_24h_usd: 12500,
+      fdv_usd: 980000,
+      pair_age_days: 14,
+      url: "https://dexscreener.com/solana/TEST",
+      data_unavailable: false,
+      reason: null,
+      primary_pool: "TEST",
+      dex: "raydium",
+      fetched_at: new Date().toISOString(),
+      cache_hit: false,
+    };
+    const html = renderHtmlV2(scan, "en");
+    expect(html).toContain("$0.00042");
+    expect(html).toContain("50.2K");
+    expect(html).not.toContain("unavailable");
+  });
+});

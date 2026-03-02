@@ -59,6 +59,9 @@ export async function GET(request: NextRequest) {
         fdv_usd: marketSnapshot.fdv_usd,
         fetched_at: marketSnapshot.fetched_at,
         cache_hit: marketSnapshot.cache_hit,
+        pair_age_days: marketSnapshot.pair_age_days,
+        data_unavailable: marketSnapshot.data_unavailable,
+        reason: marketSnapshot.reason ?? null,
       },
     },
     risk: {

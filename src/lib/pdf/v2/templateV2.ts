@@ -57,6 +57,20 @@ function ring(score: number, col: string): string {
     </svg>`;
 }
 
+function fmtPrice(v: number | null): string {
+  if (v === null) return "—";
+  if (v < 0.01) return "$" + v.toFixed(5);
+  if (v < 1) return "$" + v.toFixed(4);
+  return "$" + v.toFixed(2);
+}
+
+function fmtCompact(v: number | null): string {
+  if (v === null) return "—";
+  if (v >= 1_000_000) return "$" + (v / 1_000_000).toFixed(1) + "M";
+  if (v >= 1_000) return "$" + (v / 1_000).toFixed(1) + "K";
+  return "$" + v.toFixed(0);
+}
+
 function fmtCurrency(v: number | null): string {
   if (v === null) return "—";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
@@ -220,10 +234,10 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
     </div>` : `
     <div style="display:grid;grid-template-columns:repeat(3,1fr) 1fr;gap:8px">
       ${[
-        [isFr ? "PRIX" : "PRICE", m.price !== null ? "$" + m.price.toFixed(m.price < 0.01 ? 8 : 4) : "—"],
-        [isFr ? "LIQUIDITÉ" : "LIQUIDITY", fmtCurrency(m.liquidity_usd)],
-        [isFr ? "VOLUME 24H" : "VOLUME 24H", fmtCurrency(m.volume_24h_usd)],
-        ["FDV", fmtCurrency(m.fdv_usd)],
+        [isFr ? "PRIX" : "PRICE", fmtPrice(m.price)],
+        [isFr ? "LIQUIDITÉ" : "LIQUIDITY", fmtCompact(m.liquidity_usd)],
+        [isFr ? "VOLUME 24H" : "VOLUME 24H", fmtCompact(m.volume_24h_usd)],
+        ["FDV", fmtCompact(m.fdv_usd)],
       ].map(([k,v]) => `
         <div class="card" style="padding:8px 10px">
           <div class="overline">${k}</div>
