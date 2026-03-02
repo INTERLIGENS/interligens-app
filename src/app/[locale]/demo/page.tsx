@@ -1,7 +1,8 @@
 "use client";
 import { getActionCopy } from "@/lib/copy/actions";
-
-import React, { useState, useMemo } from "react";
+import { buildDemoUrl } from "@/lib/demo/url";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { useSearchParams, usePathname } from "next/navigation";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import WhatToDoNow from "@/components/WhatToDoNow";
@@ -149,7 +150,20 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
+const DEMO_PRESETS = [
+  { id: "botify",  label: "BOTIFY",  tag: "SCAM",  address: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+  { id: "pump",    label: "PUMP.FUN", tag: "SOL",  address: "a3W4qutoEJA4232T2gwZUfgYJTetr96pU4SJMwppump" },
+  { id: "bonk",    label: "BONK",    tag: "SOL",   address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
+  { id: "vitalik", label: "VITALIK", tag: "ETH",   address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
+  { id: "tron",    label: "TRON",    tag: "TRX",   address: "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m6" },
+] as const;
+
 export default function TigerScanPage() {
+  const searchParams  = useSearchParams();
+  const pathname      = usePathname();
+  const hasAutoRun    = useRef(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [copyDone, setCopyDone]         = useState(false);
   const [address, setAddress]           = useState("");
   const [loading, setLoading]           = useState(false);
   const [loadStep, setLoadStep]         = useState(0);
@@ -161,6 +175,34 @@ export default function TigerScanPage() {
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
+
+  // ── Autoload depuis URL params ──
+  useEffect(() => {
+    const addr  = searchParams.get("addr");
+    const auto  = searchParams.get("auto") === "1";
+    const deep  = searchParams.get("deep") === "1";
+    const mock  = searchParams.get("mock");
+    if (addr) {
+      setAddress(addr);
+      if (deep) setIsDeep(true);
+    }
+    if (auto && addr && !hasAutoRun.current) {
+      hasAutoRun.current = true;
+      // Enlever auto=1 de l'URL sans refresh
+      const newParams = new URLSearchParams(searchParams.toString());
+      newParams.delete("auto");
+      const newUrl = pathname + (newParams.toString() ? "?" + newParams.toString() : "");
+      window.history.replaceState(null, "", newUrl);
+      // Lancer le scan après un tick
+      setTimeout(() => {
+        const detectedChain = detectChain(addr);
+        if (detectedChain && detectedChain !== "HYPER_TOKEN_ID" && !mock) {
+          document.querySelector<HTMLButtonElement>("[data-scan-btn]")?.click();
+        }
+      }, 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   React.useEffect(() => {
     setResolvedEvm(null);
@@ -245,6 +287,50 @@ export default function TigerScanPage() {
           </p>
         </div>
 
+        {/* DEMO PRESETS CHIPS */}
+        <div className="max-w-2xl mx-auto mb-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-700 shrink-0">Quick scan</span>
+            {DEMO_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setActivePreset(p.id);
+                  setAddress(p.address);
+                  setIsDeep(false);
+                  setTimeout(() => document.querySelector<HTMLButtonElement>("[data-scan-btn]")?.click(), 80);
+                }}
+                className={[
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
+                  activePreset === p.id
+                    ? "border-[#F85B05] text-[#F85B05] bg-[#F85B05]/5"
+                    : "border-zinc-800 text-zinc-500 hover:border-[#F85B05]/60 hover:text-zinc-300",
+                ].join(" ")}
+              >
+                {p.label}
+                <span className={[
+                  "text-[8px] px-1 py-0.5 rounded-sm font-black",
+                  p.tag === "SCAM" ? "bg-red-900/40 text-red-400" : "bg-zinc-900 text-zinc-600",
+                ].join(" ")}>{p.tag}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                const base = pathname ?? "/en/demo";
+                const url = buildDemoUrl({ base, addr: address, deep: isDeep, auto: true });
+                const full = window.location.origin + url;
+                navigator.clipboard.writeText(full).then(() => {
+                  setCopyDone(true);
+                  setTimeout(() => setCopyDone(false), 2000);
+                }).catch(() => window.prompt("Copy this link:", full));
+              }}
+              className="ml-auto text-[9px] font-black uppercase tracking-widest text-zinc-700 hover:text-[#F85B05] transition-colors"
+            >
+              {copyDone ? "✓ Copied" : "Copy link"}
+            </button>
+          </div>
+        </div>
+
         {/* SEARCH BAR */}
         <div className="relative max-w-2xl mx-auto mb-24">
           <div className="absolute -inset-1 bg-gradient-to-r from-[#F85B05] to-orange-900 rounded-2xl blur-lg opacity-20 animate-pulse" />
@@ -299,6 +385,7 @@ export default function TigerScanPage() {
 
               <button
                 type="submit"
+                data-scan-btn
                 disabled={!chain || chain === "HYPER_TOKEN_ID" || loading}
                 className="bg-white text-black font-black uppercase text-xs px-8 py-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all disabled:opacity-20 active:scale-95"
               >
