@@ -12,7 +12,7 @@ interface VerdictProps {
 const COPY = {
   en: {
     GREEN:  { badge: "LOW RISK",    actions: ["Safe to interact.", "Double-check the dApp URL.", "Stay alert to future changes."] },
-    ORANGE: { badge: "MEDIUM RISK", actions: ["Use a burner wallet.", "Test with a small amount first.", "Revoke approvals after use."] },
+    ORANGE: { badge: "MEDIUM RISK", actions: ["DO NOT INTERACT (swap / sign / approve)", "AVOID BUYING OR CONNECTING", "VERIFY SOURCES (case file + explorer links)"] },
     RED:    { badge: "HIGH RISK",   actions: ["Do NOT interact.", "Do NOT sign anything.", "Revoke all approvals now."] },
     confidence: "Confidence", high: "High", medium: "Medium",
     proofs: "Top Signals", todo: "What to do now", noProof: "Awaiting evidence",

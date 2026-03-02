@@ -274,7 +274,7 @@ export async function GET(req: Request) {
         code: "LOW_HISTORY",
         severity: "medium",
         title: "Very low transaction history",
-        detail: "New/burner wallets are common in scams and drains.",
+        detail: "Fresh wallet with limited history — assess risk before interacting.",
       });
     }
     if (counterparties.length > 15) {
