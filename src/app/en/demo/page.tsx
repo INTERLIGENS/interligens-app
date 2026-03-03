@@ -469,8 +469,8 @@ export default function TigerScanPage() {
 
           {error && (
             <div className="mt-4 flex justify-between items-center p-3 bg-red-900/20 border border-red-900/40 rounded-lg">
-              <span className="text-xs font-bold text-red-400">{error}</span>
-              <button onClick={runScan} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Retry</button>
+              <span className="text-xs font-bold text-red-400">{error.length > 120 ? 'Scan failed — please retry.' : error}</span>
+              <button onClick={() => runScan()} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Retry</button>
             </div>
           )}
         </div>
