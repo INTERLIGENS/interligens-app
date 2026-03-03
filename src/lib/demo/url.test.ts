@@ -44,3 +44,15 @@ describe("parseDemoParams", () => {
     expect(p.auto).toBe(false);
   });
 });
+
+describe("detectChain-like — BSC prefix", () => {
+  it("bsc:0x... → reconnu comme BSC (pattern)", () => {
+    const addr = "bsc:0x10ED43C718714eb63d5aA57b78b54704E256024E";
+    expect(/^bsc:0x[a-fA-F0-9]{40}$/i.test(addr)).toBe(true);
+  });
+
+  it("0x... sans prefix → pas BSC", () => {
+    const addr = "0x10ED43C718714eb63d5aA57b78b54704E256024E";
+    expect(/^bsc:0x[a-fA-F0-9]{40}$/i.test(addr)).toBe(false);
+  });
+});

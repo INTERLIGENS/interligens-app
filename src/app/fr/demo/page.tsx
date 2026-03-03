@@ -1,7 +1,7 @@
 "use client";
 import { getActionCopy } from "@/lib/copy/actions";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
@@ -79,8 +79,10 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
 // ─── NORMALIZER ───────────────────────────────────────────────────────────────
 
 function normalizeScanData(data: any, chain: Chain): NormalizedScan {
-  const score = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
-  const tierRaw = String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase();
+  const baseScore = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
+  const tigerScore = Number(data?.tiger_score ?? 0) || 0;
+  const score = Math.max(baseScore, tigerScore);
+  const tierRaw = score >= 70 ? "RED" : score >= 40 ? "ORANGE" : (String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase());
   const tier = (["GREEN", "ORANGE", "RED"].includes(tierRaw) ? tierRaw : "GREEN") as Tier;
 
   const proofs: TopProof[] = [];
@@ -199,6 +201,39 @@ export default function TigerScanPageFR() {
     return (new URLSearchParams(window.location.search).get("mock") as DemoScenario | null);
   });
   const mockMode = selectedScenario;
+  const hasAutoRun = useRef(false);
+
+  // ── Autoload ?addr + ?auto ──
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    const addr = p.get("addr");
+    const auto = p.get("auto") === "1";
+    const deep = p.get("deep") === "1";
+    const mock = p.get("mock");
+    if (addr && !mock) {
+      setAddress(addr);
+      if (deep) setIsDeep(true);
+      if (auto && !hasAutoRun.current) {
+        hasAutoRun.current = true;
+        const newP = new URLSearchParams(window.location.search);
+        newP.delete("auto");
+        window.history.replaceState(null, "", window.location.pathname + (newP.toString() ? "?" + newP.toString() : ""));
+        setTimeout(() => runScan(addr, undefined), 80);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const LIVE_PRESETS_FR = [
+    { id: "botify",  label: "BOTIFY",   tag: "ARNAQUE", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+    { id: "pump",    label: "PUMP.FUN", tag: "SOL",     addr: "a3W4qutoEJA4232T2gwZUfgYJTetr96pU4SJMwppump" },
+    { id: "bonk",    label: "BONK",     tag: "SOL",     addr: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
+    { id: "vitalik", label: "VITALIK",  tag: "ETH",     addr: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
+    { id: "tron",    label: "TRON",     tag: "TRX",     addr: "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m6" },
+  ] as const;
+  const [activePreset, setActivePreset] = React.useState<string | null>(null);
+  const [copyDone, setCopyDone] = React.useState(false);
 
   const DEMO_CHIPS = [
     { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
@@ -324,6 +359,45 @@ export default function TigerScanPageFR() {
         </div>
 
         {/* DEMO CHIPS */}
+        {/* PRÉRÉGLAGES EN DIRECT */}
+        <div className="max-w-2xl mx-auto mb-2">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-700 shrink-0">Scan direct</span>
+            {LIVE_PRESETS_FR.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setActivePreset(p.id);
+                  setSelectedScenario(null);
+                  setAddress(p.addr);
+                  setTimeout(() => runScan(p.addr, undefined), 60);
+                }}
+                className={[
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
+                  activePreset === p.id
+                    ? "border-[#F85B05] text-[#F85B05] bg-[#F85B05]/5"
+                    : "border-zinc-800 text-zinc-500 hover:border-[#F85B05]/60 hover:text-zinc-300",
+                ].join(" ")}
+              >
+                {p.label}
+                <span className={["text-[8px] px-1 py-0.5 rounded-sm font-black", p.tag === "ARNAQUE" ? "bg-red-900/40 text-red-400" : "bg-zinc-900 text-zinc-600"].join(" ")}>{p.tag}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                const base = window.location.pathname;
+                const params = new URLSearchParams();
+                if (address) params.set("addr", address);
+                params.set("deep", isDeep ? "1" : "0");
+                params.set("auto", "1");
+                const full = window.location.origin + base + "?" + params.toString();
+                navigator.clipboard.writeText(full).then(() => { setCopyDone(true); setTimeout(() => setCopyDone(false), 2000); }).catch(() => window.prompt("Copier ce lien :", full));
+              }}
+              className="ml-auto text-[9px] font-black uppercase tracking-widest text-zinc-700 hover:text-[#F85B05] transition-colors"
+            >{copyDone ? "✓ Copié" : "Copier le lien"}</button>
+          </div>
+        </div>
+
         <QuickDemoBar
           locale="fr"
           selectedScenario={selectedScenario}
