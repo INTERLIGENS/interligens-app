@@ -34,3 +34,20 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Pitch checklist
+
+### Commandes
+```bash
+pnpm test
+PORT=3100 pnpm dev
+./scripts/smoke-demo.sh
+```
+
+### URLs clés
+- http://localhost:3100/en/demo?mock=red
+- http://localhost:3100/fr/demo?mock=red
+- http://localhost:3100/en/demo?addr=BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb&auto=1
+- http://localhost:3100/en/demo?addr=bsc:0x0000000000000000000000000000000000000000&auto=1
+
+> smoke-demo.sh vérifie SSR + endpoints HTTP. Pas le JS client.

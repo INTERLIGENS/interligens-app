@@ -529,6 +529,7 @@ export default function TigerScanPage() {
 
               <AnimatedScoreRing score={result.score} tier={result.tier} color={getTierColor(result.tier)} duration={900} />
 
+              <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 mb-1 mt-2">Here&apos;s why this matters.</p>
               <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{result.verdict}</h2>
               <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
                 {result.verdict === "Proceed" ? "Wallet health looks clean. Still verify URLs."
@@ -545,6 +546,11 @@ export default function TigerScanPage() {
                   </div>
                 ))}
               </div>
+
+              <button
+                onClick={() => { setShowEvidence(true); setTimeout(() => document.getElementById('evidence-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}
+                className="w-full mt-2 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-[#F85B05] transition-colors text-center"
+              >Open evidence →</button>
 
               <button
                 onClick={async () => {
@@ -592,7 +598,7 @@ export default function TigerScanPage() {
               <TigerRevealCard tier={result.tier} proofs={result.proofs} />
 
               {/* Technical evidence (collapsible) */}
-              <div className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
+              <div id="evidence-section" className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
                 <button onClick={() => setShowEvidence(!showEvidence)} className="w-full flex justify-between items-center group">
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-white transition-colors underline decoration-[#F85B05] underline-offset-8">
                     Technical Evidence
