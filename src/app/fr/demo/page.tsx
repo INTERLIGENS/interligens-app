@@ -187,6 +187,7 @@ export default function TigerScanPageFR() {
   const [address, setAddress]           = useState("");
   const [loading, setLoading]           = useState(false);
   const [loadStep, setLoadStep]         = useState(0);
+  const SCAN_STEPS = ['Analyse…', 'Marché…', 'Preuves…'];
   const [result, setResult]             = useState<NormalizedScan | null>(null);
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
@@ -457,7 +458,7 @@ export default function TigerScanPageFR() {
 
           {error && (
             <div className="mt-4 flex justify-between items-center p-3 bg-red-900/20 border border-red-900/40 rounded-lg">
-              <span className="text-xs font-bold text-red-400">{error}</span>
+              <span className="text-xs font-bold text-red-400">{error.length > 120 ? 'Analyse échouée — réessayez.' : error}</span>
               <button onClick={runScan} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Réessayer</button>
             </div>
           )}
@@ -466,11 +467,16 @@ export default function TigerScanPageFR() {
         {/* Crossfade skeleton → contenu */}
         <div className="relative">
           <div style={{ opacity: loading ? 1 : 0, transition: "opacity 250ms ease-out", pointerEvents: loading ? "auto" : "none" }}>
-            {loading && <ScanSkeleton />}
+            {loading && (
+              <>
+                <p className="text-center text-[11px] font-black uppercase tracking-[0.3em] text-[#F85B05] mb-4 animate-pulse">{SCAN_STEPS[loadStep] ?? 'Analyse…'}</p>
+                <ScanSkeleton />
+              </>
+            )}
           </div>
 
           <div id="result-anchor" />
-          <div style={{ opacity: result && !loading ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: result && !loading ? "auto" : "none" }}>
+          <div style={{ opacity: result && !loading ? 1 : 0, transition: 'opacity 300ms ease-in, transform 350ms ease-out', transform: result && !loading ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(6px)', pointerEvents: result && !loading ? 'auto' : 'none' }}>
             {result && (
               <div className="grid lg:grid-cols-12 gap-8">
 
