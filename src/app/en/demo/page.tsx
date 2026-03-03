@@ -391,18 +391,7 @@ export default function TigerScanPage() {
                 <span className={["text-[8px] px-1 py-0.5 rounded-sm font-black", p.tag === "SCAM" ? "bg-red-900/40 text-red-400" : "bg-zinc-900 text-zinc-600"].join(" ")}>{p.tag}</span>
               </button>
             ))}
-            <button
-              onClick={() => {
-                const base = window.location.pathname;
-                const params = new URLSearchParams();
-                if (address) params.set("addr", address);
-                params.set("deep", isDeep ? "1" : "0");
-                params.set("auto", "1");
-                const full = window.location.origin + base + "?" + params.toString();
-                navigator.clipboard.writeText(full).then(() => { setCopyDone(true); setTimeout(() => setCopyDone(false), 2000); }).catch(() => window.prompt("Copy:", full));
-              }}
-              className="ml-auto text-[9px] font-black uppercase tracking-widest text-zinc-700 hover:text-[#F85B05] transition-colors"
-            >{copyDone ? "✓ Copied" : "Copy link"}</button>
+
           </div>
         </div>
 
@@ -484,6 +473,22 @@ export default function TigerScanPage() {
               <button onClick={runScan} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Retry</button>
             </div>
           )}
+        </div>
+
+        {/* Copy link — discret, sous la barre */}
+        <div className="flex justify-end max-w-2xl mx-auto -mt-20 mb-4 pr-1">
+          <button
+            onClick={() => {
+              const base = window.location.pathname;
+              const params = new URLSearchParams();
+              if (address) params.set("addr", address);
+              params.set("deep", isDeep ? "1" : "0");
+              params.set("auto", "1");
+              const full = window.location.origin + base + "?" + params.toString();
+              navigator.clipboard.writeText(full).then(() => { setCopyDone(true); setTimeout(() => setCopyDone(false), 2000); }).catch(() => window.prompt("Copy:", full));
+            }}
+            className="text-[9px] font-black uppercase tracking-widest text-zinc-700 hover:text-[#F85B05] transition-colors"
+          >{copyDone ? "✓ Copied" : "⬡ Copy link"}</button>
         </div>
 
         {/* Off-chain Watchlist link */}
