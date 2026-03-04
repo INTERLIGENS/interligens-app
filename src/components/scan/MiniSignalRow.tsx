@@ -55,7 +55,7 @@ export default function MiniSignalRow({
   const whale = computeWhaleLevel({ top10_pct: top10 });
   const whaleLvl = whale.level === "LOW" ? "low" : whale.level === "MED" ? "med" : "high";
   const whaleBadge = lang === "fr" ? whale.label_fr : whale.label_en;
-  const whaleVal = top10 != null ? `Top10: ${top10}%` : "Top10: —";
+  const whaleVal = whale.display ?? (lang === "fr" ? "Top10: n/d" : "Top10: n/a");
 
   // CABAL SCORE
   const market: MarketInput = rawSummary?.markets ?? rawSummary?.market ?? { data_unavailable: true };

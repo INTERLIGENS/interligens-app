@@ -7,6 +7,7 @@ export interface WhaleInput {
 export interface WhaleResult {
   level: WhaleLevel;
   top10_pct: number | null;
+  display: string;
   label_en: string;
   label_fr: string;
   why_en: string;
@@ -20,14 +21,16 @@ export function computeWhaleLevel(input: WhaleInput | null | undefined): WhaleRe
     return {
       level: "MED", top10_pct: null,
       label_en: "MED", label_fr: "MOYEN",
-      why_en: "Holder data unavailable (demo)",
-      why_fr: "Données holders indisponibles (démo)",
+      why_en: "Holder data unavailable",
+      why_fr: "Données holders indisponibles",
+      display: "Top10: n/a",
     };
   }
 
   if (pct >= 60) {
     return {
       level: "HIGH", top10_pct: pct,
+      display: `Top10: ${Math.round(pct)}%`,
       label_en: "HIGH", label_fr: "ÉLEVÉ",
       why_en: `Top 10 hold ${pct}% — high dump risk`,
       why_fr: `Top 10 détient ${pct}% — risque dump élevé`,
@@ -37,6 +40,7 @@ export function computeWhaleLevel(input: WhaleInput | null | undefined): WhaleRe
   if (pct >= 35) {
     return {
       level: "MED", top10_pct: pct,
+      display: `Top10: ${Math.round(pct)}%`,
       label_en: "MED", label_fr: "MOYEN",
       why_en: `Top 10 hold ${pct}% — moderate concentration`,
       why_fr: `Top 10 détient ${pct}% — concentration modérée`,

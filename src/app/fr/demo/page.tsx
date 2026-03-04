@@ -236,7 +236,7 @@ export default function TigerScanPageFR() {
   ] as const;
   const [activePreset, setActivePreset] = React.useState<string | null>(null);
   const [copyDone, setCopyDone] = React.useState(false);
-  const [btcData, setBtcData] = React.useState<{ok:boolean,price_usd?:number,change_24h_pct?:number}|null>(null);
+  const [tickers, setTickers] = React.useState<{ok:boolean,btc?:{price_usd:number,change_24h_pct:number},eth?:{price_usd:number,change_24h_pct:number},sol?:{price_usd:number,change_24h_pct:number}}|null>(null);
 
   const DEMO_CHIPS = [
     { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
@@ -536,13 +536,24 @@ export default function TigerScanPageFR() {
                 Générer le rapport complet (PDF)
               </button>
                 <CaseFileCTA id={address.trim() || null} lang="fr" />
-                <p className="text-center text-xs font-mono opacity-60 mt-3">
-                  {mockMode
-                    ? "BTC $95 000 (+1,2%)"
-                    : (btcData?.ok && btcData?.price_usd)
-                      ? `BTC $${btcData.price_usd.toLocaleString("fr-FR")} (${(btcData.change_24h_pct ?? 0) >= 0 ? "+" : ""}${(btcData.change_24h_pct ?? 0).toFixed(1)}%)`
-                      : "BTC —"}
-                </p>
+                <div className="mt-4 rounded-xl border border-zinc-800 bg-black/20 px-4 py-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.25em] mb-2" style={{color:"#F85B05"}}>Marché</p>
+                  {mockMode ? (
+                    <div className="flex flex-col gap-1 font-mono text-xs">
+                      <span className="text-zinc-200">BTC <span className="text-zinc-400">95 000$</span> <span className="text-emerald-400">(+1,2%)</span></span>
+                      <span className="text-zinc-200">ETH <span className="text-zinc-400">3 200$</span> <span className="text-emerald-400">(+0,8%)</span></span>
+                      <span className="text-zinc-200">SOL <span className="text-zinc-400">180$</span> <span className="text-red-400">(-0,5%)</span></span>
+                    </div>
+                  ) : tickers?.ok ? (
+                    <div className="flex flex-col gap-1 font-mono text-xs">
+                      {[["BTC", tickers.btc],["ETH", tickers.eth],["SOL", tickers.sol]].map(([sym, c]: any) => c ? (
+                        <span key={sym} className="text-zinc-200">{sym} <span className="text-zinc-400">{c.price_usd.toLocaleString("fr-FR")}$</span> <span className={c.change_24h_pct >= 0 ? "text-emerald-400" : "text-red-400"}>({c.change_24h_pct >= 0 ? "+" : ""}{c.change_24h_pct.toFixed(1).replace(".",",")}%)</span></span>
+                      ) : null)}
+                    </div>
+                  ) : (
+                    <p className="font-mono text-xs text-zinc-600">MARCHÉ —</p>
+                  )}
+                </div>
             </div>
 
             {/* RIGHT: SIGNALS + CARDS */}
