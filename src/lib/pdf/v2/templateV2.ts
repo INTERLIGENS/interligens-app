@@ -313,6 +313,41 @@ export function renderHtmlV2(scan: any, lang: string): string {
         cabalScore = Math.min(100, cabalScore);
         const cabalTier = cabalScore >= 70 ? (isFr ? "ÉLEVÉ" : "HIGH") : cabalScore >= 45 ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
         const cabalCol  = cabalScore >= 70 ? "#ef4444" : cabalScore >= 45 ? "#f97316" : "#10b981";
+        // ── RETAIL SIGNALS ──────────────────────────────────────────────
+        const exitResult = (() => {
+          const liq = Number(m?.liquidity_usd ?? 0);
+          const vol = Number(m?.volume_24h_usd ?? 0);
+          if (liq === 0) return { label: isFr ? "BLOQUEE" : "BLOCKED", col: "#ef4444" };
+          if (liq < 5000 || (vol > 0 && vol > 20 * liq)) return { label: isFr ? "ETROITE" : "TIGHT", col: "#f97316" };
+          return { label: isFr ? "OUVERTE" : "OPEN", col: "#10b981" };
+        })();
+        const whaleTop10 = scan?.on_chain?.whales_top10_pct ?? scan?.rawSummary?.whales_top10_pct ?? null;
+        const whaleLbl = whaleTop10 != null ? "Top10: " + Math.round(whaleTop10) + "%" : "Top10: -";
+        const whaleColR = whaleTop10 != null && whaleTop10 >= 60 ? "#ef4444" : whaleTop10 != null && whaleTop10 >= 35 ? "#f97316" : "#10b981";
+        const kolRaw = String(scan?.social?.manipulation?.level ?? scan?.weather?.manipulation?.level ?? "LOW").toUpperCase();
+        const kolLabel = kolRaw === "HIGH" ? (isFr ? "ELEVE" : "HIGH") : kolRaw === "MED" || kolRaw === "MEDIUM" ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
+        const kolCol = kolRaw === "HIGH" ? "#ef4444" : kolRaw === "MED" || kolRaw === "MEDIUM" ? "#f97316" : "#10b981";
+        const retailHtml = '<div style="margin-top:18px;padding:14px 16px;background:#111;border-radius:12px;border:1px solid #222;">'
+          + '<div style="font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#F85B05;margin-bottom:10px;">' + (isFr ? "Signaux Retail" : "Retail Signals") + '</div>'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
+          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Pression KOL" : "KOL Pressure") + '</div>'
+          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + (isFr ? "Influence" : "Influence") + '</div>'
+          + '<div style="font-size:10px;font-weight:800;color:' + kolCol + ';margin-top:2px;">' + kolLabel + '</div></div>'
+          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
+          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Baleines" : "Whales") + '</div>'
+          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + whaleLbl + '</div>'
+          + '<div style="font-size:10px;font-weight:800;color:' + whaleColR + ';margin-top:2px;">&nbsp;</div></div>'
+          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
+          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Score Cabal" : "Cabal Score") + '</div>'
+          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + (isFr ? (cabalScore >= 70 ? "Eleve" : cabalScore >= 45 ? "Moyen" : "Faible") : (cabalScore >= 70 ? "High" : cabalScore >= 45 ? "Med" : "Low")) + " " + cabalScore + '</div>'
+          + '<div style="font-size:10px;font-weight:800;color:' + cabalCol + ';margin-top:2px;">' + cabalTier + '</div></div>'
+          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
+          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "PUIS-JE VENDRE ?" : "CAN I SELL?") + '</div>'
+          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + exitResult.label + '</div>'
+          + '<div style="font-size:10px;font-weight:800;color:' + exitResult.col + ';margin-top:2px;">&nbsp;</div></div>'
+          + '</div></div>';
+
         const cabalWhy  = drivers[0] ?? (isFr ? "Aucun signal coordonné" : "No coordinated signal");
         return `
           <div class="card" style="padding:8px 10px">
@@ -329,6 +364,7 @@ export function renderHtmlV2(scan: any, lang: string): string {
             <div class="overline">${isFr ? "SCORE CABAL" : "CABAL SCORE"}</div>
             <div style="margin-top:4px;font-size:11px;font-weight:800;color:${cabalCol}">${cabalTier} ${cabalScore}</div>
             <div style="font-size:9px;color:#71717a;margin-top:3px">${cabalWhy}</div>
+            ${retailHtml}
           </div>`;
       })()}
     </div>
