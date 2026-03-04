@@ -120,4 +120,25 @@ describe("renderHtmlV2 — market snapshot", () => {
     expect(html).toContain("Public Signals");
     expect(html).toContain("SHILL");
   });
+
+  it("ETH chain: contains ETH badge and Ethereum Mainnet, not Solana", () => {
+    const scan = { ...baseScan() as any, chain: "ETH" };
+    const html = renderHtmlV2(scan, "en");
+    expect(html).toContain("ETH");
+    expect(html).toContain("Ethereum Mainnet");
+    expect(html).not.toContain("Solana Mainnet");
+  });
+
+  it("BSC chain: contains BSC and BNB Smart Chain", () => {
+    const scan = { ...baseScan() as any, chain: "BSC" };
+    const html = renderHtmlV2(scan, "en");
+    expect(html).toContain("BSC");
+    expect(html).toContain("BNB Smart Chain");
+  });
+
+  it("Retail Signals appears exactly once", () => {
+    const html = renderHtmlV2(baseScan() as any, "en");
+    const matches = html.match(/RETAIL SIGNALS|Retail Signals/g) ?? [];
+    expect(matches.length).toBe(1);
+  });
 });

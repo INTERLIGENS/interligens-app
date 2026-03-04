@@ -77,6 +77,16 @@ function fmtCurrency(v: number | null): string {
 
 export function renderHtmlV2(scan: any, lang: string): string {
   const isFr = lang === "fr";
+
+  const chainKey2 = String(scan?.chain ?? "SOL").toUpperCase();
+  const chainMeta: Record<string, { badge: string; helper: string; network: string }> = {
+    SOL:  { badge: "SOL",  helper: isFr ? "Aucune signature requise" : "No signature required", network: "Solana Mainnet" },
+    ETH:  { badge: "ETH",  helper: "EVM", network: "Ethereum Mainnet" },
+    BSC:  { badge: "BSC",  helper: "EVM", network: "BNB Smart Chain" },
+    TRON: { badge: "TRON", helper: "TRX", network: "TRON Mainnet" },
+  };
+  const cMeta = chainMeta[chainKey2] ?? { badge: chainKey2, helper: "", network: chainKey2 };
+
   const css = loadCss();
   const { risk, off_chain, on_chain, mint, scanned_at } = scan;
   const score = Math.min(100, Math.max(0, risk.score));
@@ -118,12 +128,12 @@ export function renderHtmlV2(scan: any, lang: string): string {
     });
   }
   if (proofs.length === 0) {
-    proofs.push({ label: isFr ? "Réseau" : "Network", value: "Solana Mainnet", level: "low", desc: isFr ? "Chaîne officielle" : "Official chain" });
+    proofs.push({ label: isFr ? "Réseau" : "Network", value: cMeta.network, level: "low", desc: isFr ? "Chaîne officielle" : "Official chain" });
     proofs.push({ label: isFr ? "Statut" : "Status", value: off_chain.status, level: score > 60 ? "high" : "low", desc: isFr ? "Source: CaseDB" : "Source: CaseDB" });
     proofs.push({ label: isFr ? "Score" : "Score", value: `${score}/100`, level: score > 70 ? "critical" : score > 40 ? "med" : "low", desc: isFr ? "TigerScore" : "TigerScore" });
   }
 
-  const _copy = getActionCopy({ scan_type: "token", tier: (risk.tier.toUpperCase() === "RED" ? "RED" : risk.tier.toUpperCase() === "AMBER" || risk.tier.toUpperCase() === "ORANGE" ? "ORANGE" : "GREEN") as any, chain: "SOL" });
+  const _copy = getActionCopy({ scan_type: "token", tier: (risk.tier.toUpperCase() === "RED" ? "RED" : risk.tier.toUpperCase() === "AMBER" || risk.tier.toUpperCase() === "ORANGE" ? "ORANGE" : "GREEN") as any, chain: (chainKey2 === "SOL" ? "SOL" : "ETH") as any });
   const recs = isFr ? _copy.fr : _copy.en;
 
   const weatherItems = [
@@ -158,6 +168,80 @@ export function renderHtmlV2(scan: any, lang: string): string {
       <div class="weather-desc">${w.desc}</div>
     </div>`).join("");
 
+
+  // ── RETAIL SIGNALS (restored) ───────────────────────────────
+  const exitResult2 = (() => {
+    const liq = m?.liquidity_usd;
+    if (!liq || liq === 0) return { label: isFr ? "BLOQUEE" : "BLOCKED", col: "#ef4444" };
+    if (liq < 5000) return { label: isFr ? "ETROITE" : "TIGHT", col: "#f97316" };
+    return { label: isFr ? "OUVERTE" : "OPEN", col: "#10b981" };
+  })();
+  const whaleTop10R = (scan as any)?.on_chain?.whales_top10_pct ?? (scan as any)?.rawSummary?.whales_top10_pct ?? null;
+  const whaleLblR = whaleTop10R != null ? "Top10: " + Math.round(whaleTop10R) + "%" : "Top10: -";
+  const whaleColR2 = whaleTop10R != null && whaleTop10R >= 60 ? "#ef4444" : whaleTop10R != null && whaleTop10R >= 35 ? "#f97316" : "#10b981";
+  const kolRawR = String((scan as any)?.social?.manipulation?.level ?? (scan as any)?.weather?.manipulation?.level ?? "LOW").toUpperCase();
+  const kolLabelR = kolRawR === "HIGH" ? (isFr ? "ELEVE" : "HIGH") : kolRawR === "MED" || kolRawR === "MEDIUM" ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
+  const kolColR = kolRawR === "HIGH" ? "#ef4444" : kolRawR === "MED" || kolRawR === "MEDIUM" ? "#f97316" : "#10b981";
+  const cabalScoreR = Math.min(100, 20
+    + (off_chain?.case_id ? 30 : 0)
+    + (tigerDrivers.some((d: any) => String(d).toLowerCase().includes("pump")) ? 25 : 0));
+  const cabalTierR = cabalScoreR >= 70 ? (isFr ? "ÉLEVÉ" : "HIGH") : cabalScoreR >= 45 ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
+  const cabalColR = cabalScoreR >= 70 ? "#ef4444" : cabalScoreR >= 45 ? "#f97316" : "#10b981";
+  const retailHtml = '<div style="margin-top:18px;padding:14px 16px;background:#111;border-radius:12px;border:1px solid #222;">'
+    + '<div style="font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#F85B05;margin-bottom:10px;">' + (isFr ? "Signaux Retail" : "Retail Signals") + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Pression KOL" : "KOL Pressure") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">Influence</div><div style="font-size:10px;font-weight:800;color:' + kolColR + ';margin-top:2px;">' + kolLabelR + '</div></div>'
+    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Baleines" : "Whales") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + whaleLblR + '</div><div style="font-size:10px;font-weight:800;color:' + whaleColR2 + ';margin-top:2px;">&nbsp;</div></div>'
+    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Score Cabal" : "Cabal Score") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + cabalScoreR + '</div><div style="font-size:10px;font-weight:800;color:' + cabalColR + ';margin-top:2px;">' + cabalTierR + '</div></div>'
+    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "PUIS-JE VENDRE ?" : "CAN I SELL?") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + exitResult2.label + '</div><div style="font-size:10px;font-weight:800;color:' + exitResult2.col + ';margin-top:2px;">&nbsp;</div></div>'
+    + '</div></div>';
+
+
+  // ── OSINT PUBLIC SIGNALS ─────────────────────────────────────
+  const osintItems: any[] = Array.isArray((scan as any)?.osint_signals) ? (scan as any).osint_signals.slice(0, 2) : [];
+  const osintHtml = osintItems.length === 0 ? "" : (
+    '<div style="margin-top:18px;padding:14px 16px;background:#111;border-radius:12px;border:1px solid #222;">'
+    + '<div style="font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#F85B05;margin-bottom:10px;">' + (isFr ? "Signaux Publics (OSINT)" : "Public Signals (OSINT)") + '</div>'
+    + osintItems.map((item: any) => {
+        const why = isFr ? (item.why_fr ?? item.why_en) : (item.why_en ?? item.why_fr);
+        const tags = (item.tags ?? []).map((t: string) => '<span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:8px;font-weight:700;background:#1e293b;color:#94a3b8;margin-right:4px;">' + t + '</span>').join("");
+        const link = item.links?.[0] ? '<a href="' + item.links[0] + '" style="font-size:9px;color:#F85B05;text-decoration:none;margin-top:4px;display:block;">Source ↗</a>' : "";
+        return '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;margin-bottom:6px;">'
+          + '<div style="margin-bottom:4px;">' + tags + '</div>'
+          + '<div style="font-size:10px;color:#d4d4d8;line-height:1.4;">' + why + '</div>'
+          + link + '</div>';
+      }).join("")
+    + '</div>'
+  );
+
+  // ── P2 EXTRAS ────────────────────────────────────────────────
+  const p2Active = !!((scan as any)?.p2 || (scan as any)?.flags?.p2);
+  const sellUsd = 1000;
+  const liqP2 = Number(m?.liquidity_usd ?? 0);
+  const slippageP2 = liqP2 > 0 ? Math.min((sellUsd / liqP2) * 120, 99) : null;
+  const receivedP2 = slippageP2 != null ? Math.round(sellUsd * (1 - slippageP2 / 100)) : null;
+  const exitImpactLine = p2Active && receivedP2 != null
+    ? (isFr ? `Vente 1k$ → ~\${receivedP2}$ (≈\${slippageP2!.toFixed(1)}%)` : `Sell $1k → ~$\${receivedP2} (≈\${slippageP2!.toFixed(1)}%)`)
+    : null;
+  const top1p2 = (scan as any)?.on_chain?.top1_pct ?? null;
+  const top3p2 = (scan as any)?.on_chain?.top3_pct ?? null;
+  const whalesSubLine = p2Active && (top1p2 != null || top3p2 != null)
+    ? (isFr ? `Top1 : \${top1p2 ?? "?"}% · Top3 : \${top3p2 ?? "?"}%` : `Top1: \${top1p2 ?? "?"}% · Top3: \${top3p2 ?? "?"}%`)
+    : null;
+  const unlimitedP2 = Number((scan as any)?.on_chain?.unlimitedCount ?? 0);
+  const spendersP2: any[] = (scan as any)?.on_chain?.spenders ?? [];
+  const unknownP2 = spendersP2.filter((x: any) => !x.badge || x.badge === "UNKNOWN");
+  const whatYouSignLine = p2Active && (unlimitedP2 > 0 || unknownP2.length >= 2)
+    ? (unlimitedP2 > 0
+        ? (isFr ? `\${unlimitedP2} approbation(s) illimitée(s) — révocation conseillée` : `\${unlimitedP2} unlimited approval(s) — revoke recommended`)
+        : (isFr ? `\${unknownP2.length} approbations inconnues détectées` : `\${unknownP2.length} unknown spender approvals`))
+    : null;
+  const p2Html = p2Active ? (
+    (exitImpactLine ? '<div style="font-size:9px;color:#a1a1aa;margin-top:3px;">' + exitImpactLine + '</div>' : '')
+    + (whalesSubLine ? '<div style="font-size:9px;color:#a1a1aa;margin-top:3px;">' + whalesSubLine + '</div>' : '')
+    + (whatYouSignLine ? '<div style="margin-top:12px;padding:8px 10px;background:#1a1a1a;border-radius:8px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Ce que tu signes" : "What you sign") + '</div><div style="font-size:10px;color:#d4d4d8;">' + whatYouSignLine + '</div></div>' : '')
+  ) : "";
+
   return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -191,8 +275,8 @@ export function renderHtmlV2(scan: any, lang: string): string {
       <div class="address-short">${ellip(mint, 22)}</div>
       <div class="address-mono">${mint}</div>
       <div class="network-row">
-        <span class="network-badge">SOL</span>
-        <span style="font-size:10px;color:#71717a">${isFr ? "Aucune signature requise" : "No signature required"}</span>
+        <span class="network-badge">${cMeta.badge}</span>
+        <span style="font-size:10px;color:#71717a">${cMeta.helper}</span>
       </div>
     </div>
 
@@ -278,148 +362,6 @@ export function renderHtmlV2(scan: any, lang: string): string {
     </div>`}
   </div>
 
-  <!-- RETAIL SIGNALS -->
-  <div>
-    <div class="section-title">${isFr ? "SIGNAUX RETAIL" : "RETAIL SIGNALS"}</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-
-      ${(() => {
-        // Exit Door
-        const liq = m?.liquidity_usd;
-        const aged = m?.pair_age_days;
-        let exitLabel = isFr ? "OUVERTE" : "OPEN";
-        let exitWhy   = isFr ? "Liquidité suffisante" : "Sufficient liquidity";
-        let exitCol   = "#10b981";
-        if (m?.data_unavailable || liq == null) { exitLabel = isFr ? "BLOQUÉE" : "BLOCKED"; exitWhy = isFr ? "Aucune liquidité active" : "No active liquidity"; exitCol = "#ef4444"; }
-        else if (liq < 20000) { exitLabel = isFr ? "BLOQUÉE" : "BLOCKED"; exitWhy = isFr ? "Liquidité trop faible" : "Liquidity too low"; exitCol = "#ef4444"; }
-        else if (liq < 100000 || (aged != null && aged <= 2)) { exitLabel = isFr ? "ÉTROITE" : "TIGHT"; exitWhy = isFr ? "Liquidité limitée" : "Limited liquidity"; exitCol = "#f97316"; }
-        // Whale
-        const top10 = (scan as any).top10_pct ?? null;
-        let whaleLabel = isFr ? "MOYEN" : "MED";
-        let whaleWhy   = isFr ? "Données holders non dispo" : "Holder data pending";
-        let whaleCol   = "#f97316";
-        if (top10 != null) {
-          if (top10 >= 60) { whaleLabel = isFr ? "ÉLEVÉ" : "HIGH"; whaleWhy = `Top10: ${top10}%`; whaleCol = "#ef4444"; }
-          else if (top10 >= 35) { whaleLabel = isFr ? "MOYEN" : "MED"; whaleWhy = `Top10: ${top10}%`; whaleCol = "#f97316"; }
-          else { whaleLabel = isFr ? "FAIBLE" : "LOW"; whaleWhy = `Top10: ${top10}%`; whaleCol = "#10b981"; }
-        }
-        // Cabal
-        let cabalScore = 20;
-        const drivers: string[] = [];
-        if (off_chain?.case_id) { cabalScore += 30; drivers.push(isFr ? "Dossier référencé" : "Referenced investigation"); }
-        if (tigerDrivers.some((d: any) => String(d).toLowerCase().includes("pump"))) { cabalScore += 25; drivers.push(isFr ? "Schéma pump.fun" : "Pump.fun pattern"); }
-        const vol = m?.volume_24h_usd ?? 0; const liqC = m?.liquidity_usd ?? 0;
-        if (vol > 0 && liqC > 0 && vol > 5 * liqC) { cabalScore += 15; drivers.push(isFr ? "Vol/liq anormal" : "Vol/liq abnormal"); }
-        cabalScore = Math.min(100, cabalScore);
-        const cabalTier = cabalScore >= 70 ? (isFr ? "ÉLEVÉ" : "HIGH") : cabalScore >= 45 ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
-        const cabalCol  = cabalScore >= 70 ? "#ef4444" : cabalScore >= 45 ? "#f97316" : "#10b981";
-
-
-        // ── P2 EXTRAS ───────────────────────────────────────────────────
-        const p2Active = !!(scan?.p2 || scan?.flags?.p2);
-        // Exit impact
-        const sellUsd = 1000;
-        const liqP2 = Number(m?.liquidity_usd ?? 0);
-        const slippageP2 = liqP2 > 0 ? Math.min((sellUsd / liqP2) * 120, 99) : null;
-        const receivedP2 = slippageP2 != null ? Math.round(sellUsd * (1 - slippageP2 / 100)) : null;
-        const exitImpactLine = p2Active && receivedP2 != null
-          ? (isFr ? `Vente 1k$ → ~${receivedP2}$ (≈${slippageP2!.toFixed(1)}%)` : `Sell $1k → ~$${receivedP2} (≈${slippageP2!.toFixed(1)}%)`)
-          : null;
-        // Whales sub
-        const top1 = scan?.on_chain?.top1_pct ?? null;
-        const top3 = scan?.on_chain?.top3_pct ?? null;
-        const whalesSubLine = p2Active && (top1 != null || top3 != null)
-          ? (isFr ? `Top1 : ${top1 ?? "?"}% · Top3 : ${top3 ?? "?"}%` : `Top1: ${top1 ?? "?"}% · Top3: ${top3 ?? "?"}%`)
-          : null;
-        // What you sign
-        const unlimitedP2 = Number(scan?.on_chain?.unlimitedCount ?? 0);
-        const spendersP2: any[] = scan?.on_chain?.spenders ?? [];
-        const unknownP2 = spendersP2.filter((x: any) => !x.badge || x.badge === "UNKNOWN");
-        const whatYouSignLine = p2Active && (unlimitedP2 > 0 || unknownP2.length >= 2)
-          ? (unlimitedP2 > 0
-              ? (isFr ? `${unlimitedP2} approbation(s) illimitée(s) — révocation conseillée` : `${unlimitedP2} unlimited approval(s) — revoke recommended`)
-              : (isFr ? `${unknownP2.length} approbations inconnues détectées` : `${unknownP2.length} unknown spender approvals`))
-          : null;
-        const p2Html = p2Active ? (
-          (exitImpactLine ? '<div style="font-size:9px;color:#a1a1aa;margin-top:3px;">' + exitImpactLine + '</div>' : '')
-          + (whalesSubLine ? '<div style="font-size:9px;color:#a1a1aa;margin-top:3px;">' + whalesSubLine + '</div>' : '')
-          + (whatYouSignLine ? '<div style="margin-top:12px;padding:8px 10px;background:#1a1a1a;border-radius:8px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Ce que tu signes" : "What you sign") + '</div><div style="font-size:10px;color:#d4d4d8;">' + whatYouSignLine + '</div></div>' : '')
-        ) : "";
-
-        // ── OSINT PUBLIC SIGNALS ────────────────────────────────────────
-        const osintItems: any[] = Array.isArray(scan?.osint_signals) ? scan.osint_signals.slice(0, 2) : [];
-        const osintHtml = osintItems.length === 0 ? "" : (
-          '<div style="margin-top:18px;padding:14px 16px;background:#111;border-radius:12px;border:1px solid #222;">'
-          + '<div style="font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#F85B05;margin-bottom:10px;">' + (isFr ? "Signaux Publics (OSINT)" : "Public Signals (OSINT)") + '</div>'
-          + osintItems.map((item: any) => {
-              const why = isFr ? (item.why_fr ?? item.why_en) : (item.why_en ?? item.why_fr);
-              const tags = (item.tags ?? []).map((t: string) => '<span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:8px;font-weight:700;background:#1e293b;color:#94a3b8;margin-right:4px;">' + t + '</span>').join("");
-              const link = item.links?.[0] ? '<a href="' + item.links[0] + '" style="font-size:9px;color:#F85B05;text-decoration:none;margin-top:4px;display:block;">Source ↗</a>' : "";
-              return '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;margin-bottom:6px;">'
-                + '<div style="margin-bottom:4px;">' + tags + '</div>'
-                + '<div style="font-size:10px;color:#d4d4d8;line-height:1.4;">' + why + '</div>'
-                + link + '</div>';
-            }).join("")
-          + '</div>'
-        );
-
-        // ── RETAIL SIGNALS ──────────────────────────────────────────────
-        const exitResult = (() => {
-          const liq = Number(m?.liquidity_usd ?? 0);
-          const vol = Number(m?.volume_24h_usd ?? 0);
-          if (liq === 0) return { label: isFr ? "BLOQUEE" : "BLOCKED", col: "#ef4444" };
-          if (liq < 5000 || (vol > 0 && vol > 20 * liq)) return { label: isFr ? "ETROITE" : "TIGHT", col: "#f97316" };
-          return { label: isFr ? "OUVERTE" : "OPEN", col: "#10b981" };
-        })();
-        const whaleTop10 = scan?.on_chain?.whales_top10_pct ?? scan?.rawSummary?.whales_top10_pct ?? null;
-        const whaleLbl = whaleTop10 != null ? "Top10: " + Math.round(whaleTop10) + "%" : "Top10: -";
-        const whaleColR = whaleTop10 != null && whaleTop10 >= 60 ? "#ef4444" : whaleTop10 != null && whaleTop10 >= 35 ? "#f97316" : "#10b981";
-        const kolRaw = String(scan?.social?.manipulation?.level ?? scan?.weather?.manipulation?.level ?? "LOW").toUpperCase();
-        const kolLabel = kolRaw === "HIGH" ? (isFr ? "ELEVE" : "HIGH") : kolRaw === "MED" || kolRaw === "MEDIUM" ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
-        const kolCol = kolRaw === "HIGH" ? "#ef4444" : kolRaw === "MED" || kolRaw === "MEDIUM" ? "#f97316" : "#10b981";
-        const retailHtml = '<div style="margin-top:18px;padding:14px 16px;background:#111;border-radius:12px;border:1px solid #222;">'
-          + '<div style="font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#F85B05;margin-bottom:10px;">' + (isFr ? "Signaux Retail" : "Retail Signals") + '</div>'
-          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
-          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Pression KOL" : "KOL Pressure") + '</div>'
-          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + (isFr ? "Influence" : "Influence") + '</div>'
-          + '<div style="font-size:10px;font-weight:800;color:' + kolCol + ';margin-top:2px;">' + kolLabel + '</div></div>'
-          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
-          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Baleines" : "Whales") + '</div>'
-          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + whaleLbl + '</div>'
-          + '<div style="font-size:10px;font-weight:800;color:' + whaleColR + ';margin-top:2px;">&nbsp;</div></div>'
-          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
-          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Score Cabal" : "Cabal Score") + '</div>'
-          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + (isFr ? (cabalScore >= 70 ? "Eleve" : cabalScore >= 45 ? "Moyen" : "Faible") : (cabalScore >= 70 ? "High" : cabalScore >= 45 ? "Med" : "Low")) + " " + cabalScore + '</div>'
-          + '<div style="font-size:10px;font-weight:800;color:' + cabalCol + ';margin-top:2px;">' + cabalTier + '</div></div>'
-          + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;">'
-          + '<div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "PUIS-JE VENDRE ?" : "CAN I SELL?") + '</div>'
-          + '<div style="font-size:11px;font-weight:700;color:#fff;">' + exitResult.label + '</div>'
-          + '<div style="font-size:10px;font-weight:800;color:' + exitResult.col + ';margin-top:2px;">&nbsp;</div></div>'
-          + '</div></div>';
-
-        const cabalWhy  = drivers[0] ?? (isFr ? "Aucun signal coordonné" : "No coordinated signal");
-        return `
-          <div class="card" style="padding:8px 10px">
-            <div class="overline">${isFr ? "SORTIE" : "EXIT DOOR"}</div>
-            <div style="margin-top:4px;font-size:11px;font-weight:800;color:${exitCol}">${exitLabel}</div>
-            <div style="font-size:9px;color:#71717a;margin-top:3px">${exitWhy}</div>
-          </div>
-          <div class="card" style="padding:8px 10px">
-            <div class="overline">${isFr ? "BALEINES" : "WHALES"}</div>
-            <div style="margin-top:4px;font-size:11px;font-weight:800;color:${whaleCol}">${whaleLabel}</div>
-            <div style="font-size:9px;color:#71717a;margin-top:3px">${whaleWhy}</div>
-          </div>
-          <div class="card" style="padding:8px 10px">
-            <div class="overline">${isFr ? "SCORE CABAL" : "CABAL SCORE"}</div>
-            <div style="margin-top:4px;font-size:11px;font-weight:800;color:${cabalCol}">${cabalTier} ${cabalScore}</div>
-            <div style="font-size:9px;color:#71717a;margin-top:3px">${cabalWhy}</div>
-            ${retailHtml}
-            ${osintHtml}
-            ${p2Html}
-          </div>`;
-      })()}
-    </div>
   </div>
 
   ${(scan as any).detective_trade ? (() => {
@@ -447,6 +389,10 @@ export function renderHtmlV2(scan: any, lang: string): string {
       </div>
     </div>`;
   })() : ""}
+
+  ${retailHtml}
+  ${osintHtml}
+  ${p2Html}
 
   <!-- INVESTIGATION -->
   <div>
