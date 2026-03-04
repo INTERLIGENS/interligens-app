@@ -264,6 +264,15 @@ export default function TigerScanPageFR() {
       .then(d => { if (d.ok && d.evmAddress?.address) setResolvedEvm(d.evmAddress.address); })
       .catch(() => {});
   }, [address, chain]);
+  React.useEffect(() => {
+    if (mockMode) {
+      setTickers({ ok: true, btc: { price_usd: 95000, change_24h_pct: 1.2 }, eth: { price_usd: 3200, change_24h_pct: 0.8 }, sol: { price_usd: 180, change_24h_pct: -0.5 } });
+      return;
+    }
+    fetch("/api/market/tickers").then(r => r.json()).then(d => setTickers(d)).catch(() => setTickers({ ok: false }));
+  }, [mockMode]);
+
+
 
   const runScan = async (overrideAddr?: string, overrideMock?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
