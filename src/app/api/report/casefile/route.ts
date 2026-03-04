@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 

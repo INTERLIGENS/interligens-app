@@ -5,6 +5,7 @@ import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import type { ScanResult } from "@/app/api/scan/solana/route";
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

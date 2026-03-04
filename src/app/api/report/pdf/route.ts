@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 
 const BG="0.020 0.020 0.020",CARD="0.058 0.070 0.086",HD="0.035 0.045 0.058";
 const STR="0.110 0.130 0.155",OR="0.973 0.357 0.020",W="1.000 1.000 1.000";
@@ -291,6 +292,8 @@ function buildPDF(data:{chain:string;address:string;score:number;tier:string;
 }
 
 export async function POST(req:NextRequest){
+  const _rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.pdf);
+  if (!_rl.allowed) return rateLimitResponse(_rl, detectLocale(req));
   try{
     const b=await req.json();
     const now=new Date().toLocaleString(b.lang==="fr"?"fr-FR":"en-GB",{timeZone:"Europe/Paris"});
