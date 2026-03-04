@@ -109,4 +109,15 @@ describe("renderHtmlV2 — market snapshot", () => {
     expect(html).toContain("DexScreener ↗");
     expect(html).not.toContain("unavailable");
   });
+
+  it("PDF contains Public Signals if osint_signals provided", () => {
+    const scanWithOsint = { ...baseScan() as any,
+      osint_signals: [
+        { id: "test-osint", tags: ["SHILL"], why_en: "Test OSINT signal", why_fr: "Signal OSINT test", links: [] }
+      ]
+    };
+    const html = renderHtmlV2(scanWithOsint as any, "en");
+    expect(html).toContain("Public Signals");
+    expect(html).toContain("SHILL");
+  });
 });

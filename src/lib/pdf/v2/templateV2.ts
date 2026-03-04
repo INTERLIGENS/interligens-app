@@ -313,6 +313,24 @@ export function renderHtmlV2(scan: any, lang: string): string {
         cabalScore = Math.min(100, cabalScore);
         const cabalTier = cabalScore >= 70 ? (isFr ? "ÉLEVÉ" : "HIGH") : cabalScore >= 45 ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
         const cabalCol  = cabalScore >= 70 ? "#ef4444" : cabalScore >= 45 ? "#f97316" : "#10b981";
+
+        // ── OSINT PUBLIC SIGNALS ────────────────────────────────────────
+        const osintItems: any[] = Array.isArray(scan?.osint_signals) ? scan.osint_signals.slice(0, 2) : [];
+        const osintHtml = osintItems.length === 0 ? "" : (
+          '<div style="margin-top:18px;padding:14px 16px;background:#111;border-radius:12px;border:1px solid #222;">'
+          + '<div style="font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#F85B05;margin-bottom:10px;">' + (isFr ? "Signaux Publics (OSINT)" : "Public Signals (OSINT)") + '</div>'
+          + osintItems.map((item: any) => {
+              const why = isFr ? (item.why_fr ?? item.why_en) : (item.why_en ?? item.why_fr);
+              const tags = (item.tags ?? []).map((t: string) => '<span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:8px;font-weight:700;background:#1e293b;color:#94a3b8;margin-right:4px;">' + t + '</span>').join("");
+              const link = item.links?.[0] ? '<a href="' + item.links[0] + '" style="font-size:9px;color:#F85B05;text-decoration:none;margin-top:4px;display:block;">Source ↗</a>' : "";
+              return '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;margin-bottom:6px;">'
+                + '<div style="margin-bottom:4px;">' + tags + '</div>'
+                + '<div style="font-size:10px;color:#d4d4d8;line-height:1.4;">' + why + '</div>'
+                + link + '</div>';
+            }).join("")
+          + '</div>'
+        );
+
         // ── RETAIL SIGNALS ──────────────────────────────────────────────
         const exitResult = (() => {
           const liq = Number(m?.liquidity_usd ?? 0);
@@ -365,6 +383,7 @@ export function renderHtmlV2(scan: any, lang: string): string {
             <div style="margin-top:4px;font-size:11px;font-weight:800;color:${cabalCol}">${cabalTier} ${cabalScore}</div>
             <div style="font-size:9px;color:#71717a;margin-top:3px">${cabalWhy}</div>
             ${retailHtml}
+            ${osintHtml}
           </div>`;
       })()}
     </div>
