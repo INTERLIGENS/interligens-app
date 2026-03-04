@@ -148,6 +148,7 @@ function TigerScanPageInner() {
   const searchParams  = useSearchParams();
   const pathname      = usePathname();
   const hasAutoRun    = useRef(false);
+
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [copyDone, setCopyDone]         = useState(false);
   const [address, setAddress]           = useState("");
@@ -159,6 +160,14 @@ function TigerScanPageInner() {
   const [showEvidence, setShowEvidence] = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
+
+
+  // Safety net: débloque le bouton si loading reste bloqué > 8s
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => { setLoading(false); setError("Scan timeout — retry."); }, 8000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const chain = useMemo(() => detectChain(address), [address]);
 
@@ -207,12 +216,11 @@ function TigerScanPageInner() {
     setError(null);
     setResult(null);
 
-    for (let i = 0; i < 3; i++) {
-      setLoadStep(i);
-      await new Promise((r) => setTimeout(r, 650));
-    }
-
     try {
+      for (let i = 0; i < 3; i++) {
+        setLoadStep(i);
+        await new Promise((r) => setTimeout(r, 650));
+      }
       const url = buildScanUrl(address, chain, isDeep);
       const res  = await fetch(url, { cache: "no-store" });
       const data = await res.json();
@@ -343,7 +351,7 @@ function TigerScanPageInner() {
               <input
                 type="text"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => { setAddress(e.target.value); setLoading(false); setError(null); }}
                 placeholder="Paste address (SOL / ETH / TRON / bsc:0x… / hyper:0x…)"
                 onKeyDown={(e) => { if (e.key === "Enter") runScan(); }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
