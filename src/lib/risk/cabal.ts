@@ -26,7 +26,7 @@ export function computeCabalScore(scan: CabalInput | null | undefined): CabalRes
   }
 
   const tigerDrivers = scan?.tiger_drivers ?? [];
-  if (tigerDrivers.some(d => d.toLowerCase().includes("pump"))) {
+  if (tigerDrivers.some(d => String(d ?? "").toLowerCase().includes("pump"))) {
     score += 25;
     drivers.push("Pump.fun pattern detected");
   }
