@@ -1,92 +1,95 @@
 import React from "react";
+import { computeExitDoor, type MarketInput } from "@/lib/risk/exitDoor";
+import { computeWhaleLevel } from "@/lib/risk/whales";
+import { computeCabalScore } from "@/lib/risk/cabal";
 
 type Tier = "green" | "orange" | "red" | undefined;
-type Level = "low" | "high";
 type Weather = any;
 
-function levelFromTier(tier: Tier): Level {
-  if (tier === "red" || tier === "orange") return "high";
-  return "low";
+function pillClasses(level: "low" | "med" | "high" | "open" | "tight" | "blocked") {
+  if (level === "low" || level === "open")    return "border-emerald-500/60 bg-emerald-500/10 text-emerald-300";
+  if (level === "med"  || level === "tight")  return "border-orange-500/60 bg-orange-500/10 text-orange-300";
+  return "border-red-500/60 bg-red-500/10 text-red-300";
 }
 
-function pillClasses(level: Level) {
-  return level === "high"
-    ? "border-orange-500/60 bg-orange-500/10 text-orange-300"
-    : "border-emerald-500/60 bg-emerald-500/10 text-emerald-300";
-}
-
-function Chip({ text, level }: { text: string; level: Level }) {
+function Chip({ text, level }: { text: string; level: string }) {
   return (
-    <span
-      className={[
-        "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest",
-        pillClasses(level),
-      ].join(" ")}
-    >
+    <span className={["shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest", pillClasses(level as any)].join(" ")}>
       {text}
     </span>
   );
 }
 
 export default function MiniSignalRow({
-  lang,
-  tier,
-  weather,
-  show,
+  lang, tier, weather, show, rawSummary,
 }: {
   lang: "en" | "fr";
   tier: Tier;
   weather: Weather;
   show: boolean;
+  rawSummary?: any;
 }) {
   if (!show) return null;
 
-  const level: Level = levelFromTier(tier);
-  const kolLevel = level;
-  const exitLevel = level;
-  const whaleLevel = level;
-
-  const t = {
-    kolTitle:  lang === "fr" ? "PRESSION KOL"    : "KOL PRESSURE",
-    exitTitle: lang === "fr" ? "SÉCURITÉ SORTIE" : "EXIT SECURITY",
-    whaleTitle:lang === "fr" ? "ALERTE BALEINES" : "WHALE ALERT",
-    kolValue:  lang === "fr" ? "Signal d'influence" : "Influence signal",
-    exitValue: lang === "fr" ? "Liquidité" : "Liquidity",
-    whaleValue:lang === "fr" ? "Risque baleine" : "Whale risk",
-    low:       "LOW",
-    high:      "HIGH",
-    protected: lang === "fr" ? "protégée" : "protected",
-    exposed:   lang === "fr" ? "exposée"  : "exposed",
+  // ── Exit Door ──
+  const market: MarketInput = rawSummary?.markets ?? rawSummary?.market ?? {
+    data_unavailable: true,
   };
+  const exit = computeExitDoor(market);
 
-  const exitState = exitLevel === "high" ? t.exposed : t.protected;
+  // ── Whale Weight ──
+  const top10_pct = rawSummary?.top10_pct ?? rawSummary?.holder_top10_pct ?? null;
+  const whale = computeWhaleLevel({ top10_pct });
+
+  // ── Cabal Score ──
+  const cabal = computeCabalScore({
+    off_chain: rawSummary?.off_chain,
+    tiger_drivers: rawSummary?.tiger_drivers ?? [],
+    market: { volume_24h_usd: market.volume_24h_usd ?? rawSummary?.volume_24h_usd, liquidity_usd: market.liquidity_usd ?? rawSummary?.liquidity_usd },
+  });
+
+  const exitLevel   = exit.level === "OPEN" ? "open" : exit.level === "TIGHT" ? "tight" : "blocked";
+  const whaleLevel  = whale.level === "LOW" ? "low" : whale.level === "MED" ? "med" : "high";
+  const cabalLevel  = cabal.tier === "LOW" ? "low" : cabal.tier === "MED" ? "med" : "high";
+
+  const exitBadge   = lang === "fr" ? exit.label_fr  : exit.label_en;
+  const whaleBadge  = lang === "fr" ? whale.label_fr : whale.label_en;
+  const cabalBadge  = lang === "fr" ? cabal.label_fr : cabal.label_en;
+  const exitWhy     = lang === "fr" ? exit.why_fr    : exit.why_en;
+  const whaleWhy    = lang === "fr" ? whale.why_fr   : whale.why_en;
+  const cabalWhy    = lang === "fr" ? cabal.why_fr   : cabal.why_en;
 
   const cardCls  = "min-w-0 rounded-2xl border border-zinc-800 bg-black/30 px-3 py-2";
   const titleCls = "text-[10px] font-extrabold uppercase tracking-[0.25em] text-slate-300";
   const rowCls   = "mt-1 flex items-center justify-between gap-2";
-  const textCls  = "min-w-0 truncate text-xs font-semibold text-slate-100";
+  const textCls  = "min-w-0 truncate text-xs font-semibold text-zinc-400";
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* EXIT DOOR */}
       <div className={cardCls}>
-        <div className={titleCls}>{t.kolTitle}</div>
+        <div className={titleCls}>{lang === "fr" ? "SORTIE" : "EXIT DOOR"}</div>
         <div className={rowCls}>
-          <span className={textCls}>{t.kolValue}</span>
-          <Chip text={kolLevel === "high" ? t.high : t.low} level={kolLevel} />
+          <span className={textCls}>{exitWhy}</span>
+          <Chip text={exitBadge} level={exitLevel} />
         </div>
       </div>
+
+      {/* WHALE WEIGHT */}
       <div className={cardCls}>
-        <div className={titleCls}>{t.exitTitle}</div>
+        <div className={titleCls}>{lang === "fr" ? "BALEINES" : "WHALES"}</div>
         <div className={rowCls}>
-          <span className={textCls}>{t.exitValue}: {exitState}</span>
-          <Chip text={exitLevel === "high" ? t.high : t.low} level={exitLevel} />
+          <span className={textCls}>{whale.top10_pct != null ? `Top10: ${whale.top10_pct}%` : `Top10: — ${whaleWhy}`}</span>
+          <Chip text={whaleBadge} level={whaleLevel} />
         </div>
       </div>
+
+      {/* CABAL SCORE */}
       <div className={cardCls}>
-        <div className={titleCls}>{t.whaleTitle}</div>
+        <div className={titleCls}>{lang === "fr" ? "SCORE CABAL" : "CABAL SCORE"}</div>
         <div className={rowCls}>
-          <span className={textCls}>{t.whaleValue}</span>
-          <Chip text={whaleLevel === "high" ? t.high : t.low} level={whaleLevel} />
+          <span className={textCls}>{cabalWhy}</span>
+          <Chip text={`${cabalBadge} ${cabal.score}`} level={cabalLevel} />
         </div>
       </div>
     </div>

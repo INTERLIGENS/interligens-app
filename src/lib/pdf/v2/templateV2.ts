@@ -279,6 +279,67 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
     </div>`}
   </div>
 
+  <!-- RETAIL SIGNALS -->
+  <div>
+    <div class="section-title">${isFr ? "SIGNAUX RETAIL" : "RETAIL SIGNALS"}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      ${(() => {
+        const { computeExitDoor } = require('@/lib/risk/exitDoor') as any;
+        const { computeWhaleLevel } = require('@/lib/risk/whales') as any;
+        const { computeCabalScore } = require('@/lib/risk/cabal') as any;
+        return "";
+      })()}
+      ${(() => {
+        // Exit Door
+        const liq = m?.liquidity_usd;
+        const aged = m?.pair_age_days;
+        let exitLabel = isFr ? "OUVERTE" : "OPEN";
+        let exitWhy   = isFr ? "Liquidité suffisante" : "Sufficient liquidity";
+        let exitCol   = "#10b981";
+        if (m?.data_unavailable || liq == null) { exitLabel = isFr ? "BLOQUÉE" : "BLOCKED"; exitWhy = isFr ? "Aucune liquidité active" : "No active liquidity"; exitCol = "#ef4444"; }
+        else if (liq < 20000) { exitLabel = isFr ? "BLOQUÉE" : "BLOCKED"; exitWhy = isFr ? "Liquidité trop faible" : "Liquidity too low"; exitCol = "#ef4444"; }
+        else if (liq < 100000 || (aged != null && aged <= 2)) { exitLabel = isFr ? "ÉTROITE" : "TIGHT"; exitWhy = isFr ? "Liquidité limitée" : "Limited liquidity"; exitCol = "#f97316"; }
+        // Whale
+        const top10 = (scan as any).top10_pct ?? null;
+        let whaleLabel = isFr ? "MOYEN" : "MED";
+        let whaleWhy   = isFr ? "Données indisponibles" : "Data unavailable";
+        let whaleCol   = "#f97316";
+        if (top10 != null) {
+          if (top10 >= 60) { whaleLabel = isFr ? "ÉLEVÉ" : "HIGH"; whaleWhy = `Top10: ${top10}%`; whaleCol = "#ef4444"; }
+          else if (top10 >= 35) { whaleLabel = isFr ? "MOYEN" : "MED"; whaleWhy = `Top10: ${top10}%`; whaleCol = "#f97316"; }
+          else { whaleLabel = isFr ? "FAIBLE" : "LOW"; whaleWhy = `Top10: ${top10}%`; whaleCol = "#10b981"; }
+        }
+        // Cabal
+        let cabalScore = 20;
+        const drivers: string[] = [];
+        if (off_chain?.case_id) { cabalScore += 30; drivers.push(isFr ? "Dossier référencé" : "Referenced investigation"); }
+        if (tigerDrivers.some((d: any) => String(d).toLowerCase().includes("pump"))) { cabalScore += 25; drivers.push(isFr ? "Schéma pump.fun" : "Pump.fun pattern"); }
+        const vol = m?.volume_24h_usd ?? 0; const liqC = m?.liquidity_usd ?? 0;
+        if (vol > 0 && liqC > 0 && vol > 5 * liqC) { cabalScore += 15; drivers.push(isFr ? "Vol/liq anormal" : "Vol/liq abnormal"); }
+        cabalScore = Math.min(100, cabalScore);
+        const cabalTier = cabalScore >= 70 ? (isFr ? "ÉLEVÉ" : "HIGH") : cabalScore >= 45 ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
+        const cabalCol  = cabalScore >= 70 ? "#ef4444" : cabalScore >= 45 ? "#f97316" : "#10b981";
+        const cabalWhy  = drivers[0] ?? (isFr ? "Aucun signal coordonné" : "No coordinated signal");
+        return `
+          <div class="card" style="padding:8px 10px">
+            <div class="overline">${isFr ? "SORTIE" : "EXIT DOOR"}</div>
+            <div style="margin-top:4px;font-size:11px;font-weight:800;color:${exitCol}">${exitLabel}</div>
+            <div style="font-size:9px;color:#71717a;margin-top:3px">${exitWhy}</div>
+          </div>
+          <div class="card" style="padding:8px 10px">
+            <div class="overline">${isFr ? "BALEINES" : "WHALES"}</div>
+            <div style="margin-top:4px;font-size:11px;font-weight:800;color:${whaleCol}">${whaleLabel}</div>
+            <div style="font-size:9px;color:#71717a;margin-top:3px">${whaleWhy}</div>
+          </div>
+          <div class="card" style="padding:8px 10px">
+            <div class="overline">${isFr ? "SCORE CABAL" : "CABAL SCORE"}</div>
+            <div style="margin-top:4px;font-size:11px;font-weight:800;color:${cabalCol}">${cabalTier} ${cabalScore}</div>
+            <div style="font-size:9px;color:#71717a;margin-top:3px">${cabalWhy}</div>
+          </div>`;
+      })()}
+    </div>
+  </div>
+
   ${(scan as any).detective_trade ? (() => {
     const tr = (scan as any).detective_trade;
     const solscanBase = "https://solscan.io/tx/";

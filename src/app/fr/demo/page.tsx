@@ -545,6 +545,7 @@ export default function TigerScanPageFR() {
                 tier={result.tier.toLowerCase() as any}
                 weather={weather}
                 show={true}
+                rawSummary={result.rawSummary}
               />
 
               <WhatToDoNow lang="fr" tier={result.tier} show={true} />
