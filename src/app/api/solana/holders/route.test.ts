@@ -31,4 +31,15 @@ describe("GET /api/solana/holders", () => {
     expect(json.top10_pct).toBeNull();
     expect(json.holders_source).toBe("unavailable");
   });
+
+  it("returns top1_pct and top3_pct when data available", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [{ amount: 300000 }, { amount: 200000 }, { amount: 100000 }, { amount: 50000 }], total: 1000000 }),
+    });
+    const res = await call("MINT3");
+    const json = await res.json();
+    expect(json.top1_pct).toBe(30);
+    expect(json.top3_pct).toBe(60);
+  });
 });

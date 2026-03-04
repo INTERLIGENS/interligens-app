@@ -314,6 +314,38 @@ export function renderHtmlV2(scan: any, lang: string): string {
         const cabalTier = cabalScore >= 70 ? (isFr ? "ÉLEVÉ" : "HIGH") : cabalScore >= 45 ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
         const cabalCol  = cabalScore >= 70 ? "#ef4444" : cabalScore >= 45 ? "#f97316" : "#10b981";
 
+
+        // ── P2 EXTRAS ───────────────────────────────────────────────────
+        const p2Active = !!(scan?.p2 || scan?.flags?.p2);
+        // Exit impact
+        const sellUsd = 1000;
+        const liqP2 = Number(m?.liquidity_usd ?? 0);
+        const slippageP2 = liqP2 > 0 ? Math.min((sellUsd / liqP2) * 120, 99) : null;
+        const receivedP2 = slippageP2 != null ? Math.round(sellUsd * (1 - slippageP2 / 100)) : null;
+        const exitImpactLine = p2Active && receivedP2 != null
+          ? (isFr ? `Vente 1k$ → ~${receivedP2}$ (≈${slippageP2!.toFixed(1)}%)` : `Sell $1k → ~$${receivedP2} (≈${slippageP2!.toFixed(1)}%)`)
+          : null;
+        // Whales sub
+        const top1 = scan?.on_chain?.top1_pct ?? null;
+        const top3 = scan?.on_chain?.top3_pct ?? null;
+        const whalesSubLine = p2Active && (top1 != null || top3 != null)
+          ? (isFr ? `Top1 : ${top1 ?? "?"}% · Top3 : ${top3 ?? "?"}%` : `Top1: ${top1 ?? "?"}% · Top3: ${top3 ?? "?"}%`)
+          : null;
+        // What you sign
+        const unlimitedP2 = Number(scan?.on_chain?.unlimitedCount ?? 0);
+        const spendersP2: any[] = scan?.on_chain?.spenders ?? [];
+        const unknownP2 = spendersP2.filter((x: any) => !x.badge || x.badge === "UNKNOWN");
+        const whatYouSignLine = p2Active && (unlimitedP2 > 0 || unknownP2.length >= 2)
+          ? (unlimitedP2 > 0
+              ? (isFr ? `${unlimitedP2} approbation(s) illimitée(s) — révocation conseillée` : `${unlimitedP2} unlimited approval(s) — revoke recommended`)
+              : (isFr ? `${unknownP2.length} approbations inconnues détectées` : `${unknownP2.length} unknown spender approvals`))
+          : null;
+        const p2Html = p2Active ? (
+          (exitImpactLine ? '<div style="font-size:9px;color:#a1a1aa;margin-top:3px;">' + exitImpactLine + '</div>' : '')
+          + (whalesSubLine ? '<div style="font-size:9px;color:#a1a1aa;margin-top:3px;">' + whalesSubLine + '</div>' : '')
+          + (whatYouSignLine ? '<div style="margin-top:12px;padding:8px 10px;background:#1a1a1a;border-radius:8px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Ce que tu signes" : "What you sign") + '</div><div style="font-size:10px;color:#d4d4d8;">' + whatYouSignLine + '</div></div>' : '')
+        ) : "";
+
         // ── OSINT PUBLIC SIGNALS ────────────────────────────────────────
         const osintItems: any[] = Array.isArray(scan?.osint_signals) ? scan.osint_signals.slice(0, 2) : [];
         const osintHtml = osintItems.length === 0 ? "" : (
@@ -384,6 +416,7 @@ export function renderHtmlV2(scan: any, lang: string): string {
             <div style="font-size:9px;color:#71717a;margin-top:3px">${cabalWhy}</div>
             ${retailHtml}
             ${osintHtml}
+            ${p2Html}
           </div>`;
       })()}
     </div>
