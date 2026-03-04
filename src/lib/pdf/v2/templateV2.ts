@@ -283,12 +283,7 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
   <div>
     <div class="section-title">${isFr ? "SIGNAUX RETAIL" : "RETAIL SIGNALS"}</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      ${(() => {
-        const { computeExitDoor } = require('@/lib/risk/exitDoor') as any;
-        const { computeWhaleLevel } = require('@/lib/risk/whales') as any;
-        const { computeCabalScore } = require('@/lib/risk/cabal') as any;
-        return "";
-      })()}
+
       ${(() => {
         // Exit Door
         const liq = m?.liquidity_usd;
@@ -302,7 +297,7 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
         // Whale
         const top10 = (scan as any).top10_pct ?? null;
         let whaleLabel = isFr ? "MOYEN" : "MED";
-        let whaleWhy   = isFr ? "Données indisponibles" : "Data unavailable";
+        let whaleWhy   = isFr ? "Données holders non dispo" : "Holder data pending";
         let whaleCol   = "#f97316";
         if (top10 != null) {
           if (top10 >= 60) { whaleLabel = isFr ? "ÉLEVÉ" : "HIGH"; whaleWhy = `Top10: ${top10}%`; whaleCol = "#ef4444"; }
