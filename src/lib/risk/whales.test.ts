@@ -14,4 +14,10 @@ describe("computeWhaleLevel", () => {
   it("20 => LOW", () => {
     expect(computeWhaleLevel({ top10_pct: 20 }).level).toBe("LOW");
   });
+
+  it("null top10 => display null (caller shows unavailable)", () => {
+    const r = computeWhaleLevel({ top10_pct: null });
+    expect(r.level).toBe("MED");
+    expect(r.display).toBeTruthy(); // returns fallback string when null
+  });
 });

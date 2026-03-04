@@ -177,7 +177,13 @@ export function renderHtmlV2(scan: any, lang: string): string {
     return { label: isFr ? "OUVERTE" : "OPEN", col: "#10b981" };
   })();
   const whaleTop10R = (scan as any)?.on_chain?.whales_top10_pct ?? (scan as any)?.rawSummary?.whales_top10_pct ?? null;
-  const whaleLblR = whaleTop10R != null ? "Top10: " + Math.round(whaleTop10R) + "%" : "Top10: -";
+  const wTop1 = (scan as any)?.on_chain?.top1_pct ?? null;
+  const wTop3 = (scan as any)?.on_chain?.top3_pct ?? null;
+  const wParts: string[] = [];
+  if (wTop1 != null) wParts.push(`Top1 ${Math.round(wTop1)}%`);
+  if (wTop3 != null) wParts.push(`Top3 ${Math.round(wTop3)}%`);
+  if (whaleTop10R != null) wParts.push(`Top10 ${Math.round(whaleTop10R)}%`);
+  const whaleLblR = wParts.length > 0 ? wParts.join(" · ") : (isFr ? "Holders indisponible (démo)" : "Holders unavailable (demo)");
   const whaleColR2 = whaleTop10R != null && whaleTop10R >= 60 ? "#ef4444" : whaleTop10R != null && whaleTop10R >= 35 ? "#f97316" : "#10b981";
   const kolRawR = String((scan as any)?.social?.manipulation?.level ?? (scan as any)?.weather?.manipulation?.level ?? "LOW").toUpperCase();
   const kolLabelR = kolRawR === "HIGH" ? (isFr ? "ELEVE" : "HIGH") : kolRawR === "MED" || kolRawR === "MEDIUM" ? (isFr ? "MOYEN" : "MED") : (isFr ? "FAIBLE" : "LOW");
@@ -190,9 +196,9 @@ export function renderHtmlV2(scan: any, lang: string): string {
   const retailHtml = '<div style="margin-top:18px;padding:14px 16px;background:#111;border-radius:12px;border:1px solid #222;">'
     + '<div style="font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#F85B05;margin-bottom:10px;">' + (isFr ? "Signaux Retail" : "Retail Signals") + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Pression KOL" : "KOL Pressure") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">Influence</div><div style="font-size:10px;font-weight:800;color:' + kolColR + ';margin-top:2px;">' + kolLabelR + '</div></div>'
-    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Baleines" : "Whales") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + whaleLblR + '</div><div style="font-size:10px;font-weight:800;color:' + whaleColR2 + ';margin-top:2px;">&nbsp;</div></div>'
-    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Score Cabal" : "Cabal Score") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + cabalScoreR + '</div><div style="font-size:10px;font-weight:800;color:' + cabalColR + ';margin-top:2px;">' + cabalTierR + '</div></div>'
+    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Influence (calls)" : "Influence (calls)") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">Influence</div><div style="font-size:10px;font-weight:800;color:' + kolColR + ';margin-top:2px;">' + kolLabelR + '</div></div>'
+    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + "Top holders" + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + whaleLblR + '</div><div style="font-size:10px;font-weight:800;color:' + whaleColR2 + ';margin-top:2px;">&nbsp;</div></div>'
+    + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "Risque cabal" : "Cabal risk") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + cabalScoreR + '</div><div style="font-size:10px;font-weight:800;color:' + cabalColR + ';margin-top:2px;">' + cabalTierR + '</div></div>'
     + '<div style="background:#1a1a1a;border-radius:8px;padding:8px 10px;"><div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:3px;">' + (isFr ? "PUIS-JE VENDRE ?" : "CAN I SELL?") + '</div><div style="font-size:11px;font-weight:700;color:#fff;">' + exitResult2.label + '</div><div style="font-size:10px;font-weight:800;color:' + exitResult2.col + ';margin-top:2px;">&nbsp;</div></div>'
     + '</div></div>';
 

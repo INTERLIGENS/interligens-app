@@ -52,10 +52,18 @@ export default function MiniSignalRow({
 
   // WHALES
   const top10 = rawSummary?.top10_pct ?? rawSummary?.holder_top10_pct ?? null;
+  const top1  = rawSummary?.top1_pct ?? null;
+  const top3  = rawSummary?.top3_pct ?? null;
   const whale = computeWhaleLevel({ top10_pct: top10 });
   const whaleLvl = whale.level === "LOW" ? "low" : whale.level === "MED" ? "med" : "high";
   const whaleBadge = lang === "fr" ? whale.label_fr : whale.label_en;
-  const whaleVal = whale.display ?? (lang === "fr" ? "Top10: n/d" : "Top10: n/a");
+  const whalePartsArr: string[] = [];
+  if (top1  != null) whalePartsArr.push(`Top1 ${Math.round(top1)}%`);
+  if (top3  != null) whalePartsArr.push(`Top3 ${Math.round(top3)}%`);
+  if (top10 != null) whalePartsArr.push(`Top10 ${Math.round(top10)}%`);
+  const whaleVal = whalePartsArr.length > 0
+    ? whalePartsArr.join(" · ")
+    : (lang === "fr" ? "Holders indisponible (démo)" : "Holders unavailable (demo)");
 
   // CABAL SCORE
   const market: MarketInput = rawSummary?.markets ?? rawSummary?.market ?? { data_unavailable: true };
@@ -86,14 +94,14 @@ export default function MiniSignalRow({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {/* Row 1 */}
       <div className={card}>
-        <div className={title}>{lang === "fr" ? "PRESSION KOL" : "KOL PRESSURE"}</div>
+        <div className={title}>{lang === "fr" ? "INFLUENCE (CALLS)" : "INFLUENCE (CALLS)"}</div>
         <div className={row}>
           <span className={val}>{kolVal}</span>
           <Chip text={kolBadge} level={kolLvl} />
         </div>
       </div>
       <div className={card}>
-        <div className={title}>{lang === "fr" ? "BALEINES" : "WHALES"}</div>
+        <div className={title}>{lang === "fr" ? "TOP HOLDERS" : "TOP HOLDERS"}</div>
         <div className={row}>
           <span className={val}>{whaleVal}</span>
           <Chip text={whaleBadge} level={whaleLvl} />
@@ -101,7 +109,7 @@ export default function MiniSignalRow({
       </div>
       {/* Row 2 */}
       <div className={card}>
-        <div className={title}>{lang === "fr" ? "SCORE CABAL" : "CABAL SCORE"}</div>
+        <div className={title}>{lang === "fr" ? "RISQUE CABAL" : "CABAL RISK"}</div>
         <div className={row}>
           <span className={val}>{cabalVal}</span>
           <Chip text={cabalBadge} level={cabalLvl} />

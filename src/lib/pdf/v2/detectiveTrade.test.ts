@@ -8,7 +8,7 @@ function baseScan(): ScanResult {
     chain: "solana",
     scanned_at: new Date().toISOString(),
     off_chain: { status: "Referenced", source: "case_db", case_id: "CASE-TEST", summary: null, claims: [], sources: [] },
-    on_chain: { markets: { source: null, primary_pool: null, dex: null, url: null, price: null, liquidity_usd: null, volume_24h_usd: null, fdv_usd: null, fetched_at: new Date().toISOString(), cache_hit: false } },
+    on_chain: { top1_pct: 18, top3_pct: 41, whales_top10_pct: 62, markets: { source: null, primary_pool: null, dex: null, url: null, price: null, liquidity_usd: null, volume_24h_usd: null, fdv_usd: null, fetched_at: new Date().toISOString(), cache_hit: false } },
     risk: { score: 88, tier: "RED", breakdown: { base_score: 100, claim_penalty: 12, severity_multiplier: 1 }, flags: [] },
   };
 }
