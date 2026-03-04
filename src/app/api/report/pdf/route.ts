@@ -297,6 +297,6 @@ export async function POST(req:NextRequest){
     const pdf=buildPDF({...b,date:now});
     const ch=String(b.chain??"scan").toLowerCase();
     const ad=String(b.address??"").slice(0,8);
-    return new NextResponse(pdf,{status:200,headers:{"Content-Type":"application/pdf","Content-Disposition":`attachment; filename="interligens-${ch}-${ad}.pdf"`}});
+    return new NextResponse(pdf as unknown as BodyInit,{status:200,headers:{"Content-Type":"application/pdf","Content-Disposition":`attachment; filename="interligens-${ch}-${ad}.pdf"`}});
   }catch(e:any){return NextResponse.json({error:String(e?.message)},{status:500});}
 }

@@ -67,6 +67,7 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
       if (address.trim().toLowerCase().endsWith("pump"))
         return `/api/scan/solana?mint=${a}&deep=${d}`;
       return `/api/wallet/scan?address=${a}&deep=${d}`;
+    default: return `/api/scan/sol?address=${a}&deep=${d}`;
   }
 }
 
@@ -104,28 +105,6 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       proofs.push({ label: "Network",  value: "BNB Smart Chain", level: "low",    riskDescription: "Official BSC mainnet" });
       proofs.push({ label: "Contract", value: "Not checked",     level: "medium", riskDescription: "Add BSCSCAN_API_KEY for live data" });
       proofs.push({ label: "Score",    value: `${score}/100`,    level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
-    }
-  } else if (chain === "BSC") {
-    const apiProofs = Array.isArray(data?.proofs) ? data.proofs : [];
-    if (apiProofs.length > 0) {
-      apiProofs.slice(0, 3).forEach((p) =>
-        proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.riskDescription ?? "" })
-      );
-    } else {
-      proofs.push({ label: "Network",  value: "BNB Smart Chain", level: "low",    riskDescription: "Official BSC mainnet" });
-      proofs.push({ label: "Contract", value: "Not checked",     level: "medium", riskDescription: "Add BSCSCAN_API_KEY for live data" });
-      proofs.push({ label: "Score",    value: score + "/100",    level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
-    }
-  } else if (chain === "HYPER") {
-    const apiProofs = Array.isArray(data?.proofs) ? data.proofs : [];
-    if (apiProofs.length > 0) {
-      apiProofs.slice(0, 3).forEach((p: any) =>
-        proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.riskDescription ?? "" })
-      );
-    } else {
-      proofs.push({ label: "Network",   value: "HyperEVM Mainnet", level: "low",    riskDescription: "Official Hyperliquid EVM chain" });
-      proofs.push({ label: "Contract",  value: "Not checked",      level: "medium", riskDescription: "Add HYPER_API_KEY for live data" });
-      proofs.push({ label: "Score",     value: score + "/100",     level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
     }
   } else {
     // TRON

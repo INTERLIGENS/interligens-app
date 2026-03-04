@@ -360,8 +360,8 @@ export default function DemoScanLanding() {
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 28, alignItems: "start" }}>
                     <ScoreGauge score={display.score} tier={display.tier} />
                     <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 4 }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "fit-content", padding: "8px 16px", borderRadius: 999, fontWeight: 800, fontSize: 14, letterSpacing: 1, textTransform: "uppercase", borderWidth: 1, borderStyle: "solid", borderColor: TIER_COLOR[display.tier] + "55", background: TIER_BG[display.tier], color: TIER_COLOR[display.tier] }}>
-                        <span style={{ width: 8, height: 8, borderRadius: 999, background: TIER_COLOR[display.tier] }} />{display.tier}
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "fit-content", padding: "8px 16px", borderRadius: 999, fontWeight: 800, fontSize: 14, letterSpacing: 1, textTransform: "uppercase", borderWidth: 1, borderStyle: "solid", borderColor: TIER_COLOR[display.tier as keyof typeof TIER_COLOR] + "55", background: TIER_BG[display.tier as keyof typeof TIER_BG], color: TIER_COLOR[display.tier as keyof typeof TIER_COLOR] }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 999, background: TIER_COLOR[display.tier as keyof typeof TIER_COLOR] }} />{display.tier}
                       </div>
                       <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.3px" }}>{display.headline}</div>
                       <div style={{ color: "rgba(255,255,255,.68)", fontSize: 14, lineHeight: 1.6 }}>{display.sub}</div>

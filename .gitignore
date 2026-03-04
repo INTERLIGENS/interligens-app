@@ -50,3 +50,4 @@ check_demo_restore.sh
 # --- Local demo media ---
 public/tiger/
 
+backups/

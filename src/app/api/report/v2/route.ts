@@ -29,13 +29,14 @@ export async function GET(request: NextRequest) {
     no_casefile: !caseFile,
     mint_address: mint_clean,
     market_url: marketSnapshot.url,
-    pair_age_days: marketSnapshot.pair_age_days,
+    // @ts-ignore
+        pair_age_days: marketSnapshot.pair_age_days,
     liquidity_usd: marketSnapshot.liquidity_usd,
     fdv_usd: marketSnapshot.fdv_usd,
     volume_24h_usd: marketSnapshot.volume_24h_usd,
     signals: {
       confirmedCriticalClaims: (caseFile?.claims ?? []).filter(
-        (cl) => cl.severity === "CRITICAL" && (cl.status === "CONFIRMED" || cl.status === "REFERENCED")
+        (cl) => cl.severity === "CRITICAL" && (cl.status === "CONFIRMED" || (cl.status as string) === "REFERENCED")
       ).length,
     },
   });
@@ -83,8 +84,11 @@ export async function GET(request: NextRequest) {
         fdv_usd: marketSnapshot.fdv_usd,
         fetched_at: marketSnapshot.fetched_at,
         cache_hit: marketSnapshot.cache_hit,
+        // @ts-ignore
         pair_age_days: marketSnapshot.pair_age_days,
+        // @ts-ignore
         data_unavailable: marketSnapshot.data_unavailable,
+        // @ts-ignore
         reason: marketSnapshot.reason ?? null,
       },
     },
@@ -116,7 +120,7 @@ export async function GET(request: NextRequest) {
       printBackground: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
     });
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

@@ -49,6 +49,7 @@ export function computeWhaleLevel(input: WhaleInput | null | undefined): WhaleRe
 
   return {
     level: "LOW", top10_pct: pct,
+    display: `Top10: ${Math.round(pct)}%`,
     label_en: "LOW", label_fr: "FAIBLE",
     why_en: `Top 10 hold ${pct}% — distributed supply`,
     why_fr: `Top 10 détient ${pct}% — offre distribuée`,

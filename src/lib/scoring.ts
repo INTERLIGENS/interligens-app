@@ -38,7 +38,7 @@ export function computeScore(
     };
   }
 
-  const confirmed = claims.filter((c) => c.status === "CONFIRMED" || c.status === "REFERENCED" || c.status === "REFERENCED");
+  const confirmed = claims.filter((c: any) => c.status === "CONFIRMED" || c.status === "REFERENCED");
   const claimPenalty = confirmed.reduce((acc, c) => {
     return acc + (SEVERITY_WEIGHT[c.severity] ?? 5);
   }, 0);

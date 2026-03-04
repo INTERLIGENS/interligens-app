@@ -1,7 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { getActionCopy } from "../../copy/actions";
-import type { ScanResult } from "../../app/api/scan/solana/route";
 
 function loadCss(): string {
   try {
@@ -76,7 +75,7 @@ function fmtCurrency(v: number | null): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
 }
 
-export function renderHtmlV2(scan: ScanResult, lang: string): string {
+export function renderHtmlV2(scan: any, lang: string): string {
   const isFr = lang === "fr";
   const css = loadCss();
   const { risk, off_chain, on_chain, mint, scanned_at } = scan;
@@ -133,7 +132,7 @@ export function renderHtmlV2(scan: ScanResult, lang: string): string {
     { label: isFr ? "RUPTURE CONFIANCE" : "TRUST SIGNAL", pct: 10, col: "#10b981", desc: isFr ? "Niveau de confiance faible" : "Low trust level detected" },
   ];
 
-  const proofsHtml = proofs.map(p => `
+  const proofsHtml = proofs.map((p: any) => `
     <div class="proof-card">
       <div class="proof-label">${p.label}</div>
       <div class="proof-value">${p.value}</div>

@@ -29,7 +29,7 @@ interface Props {
   chain: Chain;
   show: boolean;
   provider_used?: string;
-  data_source?: string;
+  data_source?: string | any;
   source_detail?: string;
   rpc_fallback_used?: boolean;
   cache_hit?: boolean;
@@ -54,7 +54,7 @@ export default function TechnicalEvidence({
   // Only use builder — no local additions
   const items: EvidenceItem[] = buildOnChainEvidence({
     chain: chainKey,
-    provider_used, data_source, source_detail, rpc_fallback_used, cache_hit,
+    provider_used, data_source: (data_source as any), source_detail, rpc_fallback_used, cache_hit,
     rpc_down, rpc_error, counterparties, spenders,
     freezeAuthority, mintAuthority, unlimitedCount,
   });

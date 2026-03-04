@@ -16,7 +16,7 @@ import { computeCabalScore } from "@/lib/risk/cabal";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-type Chain = "SOL" | "ETH" | "TRON" | "BSC";
+type Chain = "SOL" | "ETH" | "TRON" | "BSC" | "HYPER" | "HYPER_TOKEN_ID";
 type RiskLevel = "low" | "medium" | "high";
 type Tier = "GREEN" | "ORANGE" | "RED";
 
@@ -74,6 +74,7 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
     case "TRON": return `/api/scan/tron?address=${a}&deep=${d}`;
     case "ETH":  return `/api/scan/eth?address=${a}&deep=${d}`;
     case "SOL":  return `/api/scan/solana?mint=${a}`;
+    default: return `/api/scan/sol?address=${encodeURIComponent(address.trim())}&deep=${String(deep)}`;
   }
 }
 
@@ -120,17 +121,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       proofs.push({ label: "Réseau",   value: "BNB Smart Chain", level: "low",    riskDescription: "BSC mainnet officiel" });
       proofs.push({ label: "Contrat",  value: "Non vérifié",     level: "medium", riskDescription: "Ajoute BSCSCAN_API_KEY pour les données live" });
       proofs.push({ label: "Score",    value: `${score}/100`,    level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
-    }
-  } else if (chain === "BSC") {
-    const apiProofs = Array.isArray(data?.proofs) ? data.proofs : [];
-    if (apiProofs.length > 0) {
-      apiProofs.slice(0, 3).forEach((p) =>
-        proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.riskDescription ?? "" })
-      );
-    } else {
-      proofs.push({ label: "Reseau",  value: "BNB Smart Chain", level: "low",    riskDescription: "BSC mainnet officiel" });
-      proofs.push({ label: "Contrat", value: "Non verifie",     level: "medium", riskDescription: "Ajoute BSCSCAN_API_KEY pour les donnees live" });
-      proofs.push({ label: "Score",   value: str(score)+"/100", level: "low",    riskDescription: "Evaluation du risque" });
+    // TRON
     }
   } else {
     // TRON
@@ -461,7 +452,7 @@ export default function TigerScanPageFR() {
           {error && (
             <div className="mt-4 flex justify-between items-center p-3 bg-red-900/20 border border-red-900/40 rounded-lg">
               <span className="text-xs font-bold text-red-400">{error.length > 120 ? 'Analyse échouée — réessayez.' : error}</span>
-              <button onClick={runScan} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Réessayer</button>
+              <button onClick={() => runScan()} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Réessayer</button>
             </div>
           )}
         </div>
