@@ -236,7 +236,7 @@ export default function TigerScanPageFR() {
   ] as const;
   const [activePreset, setActivePreset] = React.useState<string | null>(null);
   const [copyDone, setCopyDone] = React.useState(false);
-  const [btcData, setBtcData] = React.useState<{price:number|null,change:number|null}|null>(null);
+  const [btcData, setBtcData] = React.useState<{ok:boolean,price_usd?:number,change_24h_pct?:number}|null>(null);
 
   const DEMO_CHIPS = [
     { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
@@ -538,10 +538,10 @@ export default function TigerScanPageFR() {
                 <CaseFileCTA id={address.trim() || null} lang="fr" />
                 <p className="text-center text-xs font-mono opacity-60 mt-3">
                   {mockMode
-                    ? "BTC $95,000 (+1,2%)"
-                    : btcData?.price
-                      ? `BTC $${btcData.price.toLocaleString("fr-FR")} (${(btcData.change ?? 0) >= 0 ? "+" : ""}${(btcData.change ?? 0).toFixed(1)}%)`
-                      : "BTC — (démo)"}
+                    ? "BTC $95 000 (+1,2%)"
+                    : (btcData?.ok && btcData?.price_usd)
+                      ? `BTC $${btcData.price_usd.toLocaleString("fr-FR")} (${(btcData.change_24h_pct ?? 0) >= 0 ? "+" : ""}${(btcData.change_24h_pct ?? 0).toFixed(1)}%)`
+                      : "BTC —"}
                 </p>
             </div>
 
