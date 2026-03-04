@@ -12,6 +12,7 @@ import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
+import { computeCabalScore } from "@/lib/risk/cabal";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -235,6 +236,7 @@ export default function TigerScanPageFR() {
   ] as const;
   const [activePreset, setActivePreset] = React.useState<string | null>(null);
   const [copyDone, setCopyDone] = React.useState(false);
+  const [btcData, setBtcData] = React.useState<{price:number|null,change:number|null}|null>(null);
 
   const DEMO_CHIPS = [
     { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
@@ -534,6 +536,13 @@ export default function TigerScanPageFR() {
                 Générer le rapport complet (PDF)
               </button>
                 <CaseFileCTA id={address.trim() || null} lang="fr" />
+                <p className="text-center text-xs font-mono opacity-60 mt-3">
+                  {mockMode
+                    ? "BTC $95,000 (+1,2%)"
+                    : btcData?.price
+                      ? `BTC $${btcData.price.toLocaleString("fr-FR")} (${(btcData.change ?? 0) >= 0 ? "+" : ""}${(btcData.change ?? 0).toFixed(1)}%)`
+                      : "BTC — (démo)"}
+                </p>
             </div>
 
             {/* RIGHT: SIGNALS + CARDS */}
@@ -548,7 +557,34 @@ export default function TigerScanPageFR() {
                 rawSummary={result.rawSummary}
               />
 
-              <WhatToDoNow lang="fr" tier={result.tier} show={true} />
+              {/* POURQUOI CE SCORE */}
+              {(() => {
+                const _cabal = computeCabalScore({
+                  chain: result.chain,
+                  address: address.trim(),
+                  off_chain: result.rawSummary?.off_chain,
+                  tiger_drivers: result.rawSummary?.tiger_drivers ?? [],
+                  market: result.rawSummary?.markets,
+                  spenders: result.spenders,
+                  unlimitedCount: result.unlimitedCount,
+                });
+                const _p = ["casefile_present","pump_like","wash_hype","unknown_spenders","unlimited_approvals"];
+                const _top = _p.find(d => _cabal.drivers.includes(d));
+                const _map: Record<string,string> = {
+                  casefile_present: "Dossier d'investigation référencé",
+                  pump_like: "Pattern pump + déséquilibre FDV/liquidité",
+                  wash_hype: "Ratio volume/liquidité anormal",
+                  unknown_spenders: "Approbations de contrats inconnus",
+                  unlimited_approvals: "Approbations illimitées détectées",
+                };
+                const _why = _top ? _map[_top] : "Signaux limités (démo)";
+                return (
+                  <div className="rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3">
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-zinc-500 mb-1">Pourquoi Ce Score</p>
+                    <p className="text-xs font-semibold text-zinc-300 leading-snug line-clamp-2">{_why}</p>
+                  </div>
+                );
+              })()}
 
               <MarketWeather
                 lang="fr"
