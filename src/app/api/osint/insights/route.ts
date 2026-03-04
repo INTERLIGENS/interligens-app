@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { DEMO_WATCHLIST, DEMO_PROOFS, aggregateSignalsForHandle, signalPriority } from "@/lib/osint/watchlist";
+import { checkAuth } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,9 @@ export interface Insight {
   updatedAt: string;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const _auth = await checkAuth(req);
+  if (!_auth.authorized) return _auth.response!;
   const insights: Insight[] = Object.keys(DEMO_PROOFS).map((handle) => {
     const signals = aggregateSignalsForHandle(handle);
     const proofs = DEMO_PROOFS[handle] ?? [];

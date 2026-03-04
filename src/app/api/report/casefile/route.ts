@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
+import { checkAuth } from "@/lib/security/auth";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,8 @@ function getBaseUrl(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const _auth = await checkAuth(req);
+  if (!_auth.authorized) return _auth.response!;
   const { searchParams } = new URL(req.url);
   const mint = (searchParams.get("mint") || "").trim();
   const lang = searchParams.get("lang") ?? "en";

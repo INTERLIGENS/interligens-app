@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkAuth } from "@/lib/security/auth";
 
 interface OsintItem { id: string; tags: string[]; why_en: string; why_fr: string; links: string[] }
 interface CacheEntry { items: OsintItem[]; fetched_at: string; ts: number }
@@ -34,6 +35,8 @@ const GENERIC_ITEM: OsintItem[] = [
 ];
 
 export async function GET(req: Request) {
+  const _auth = await checkAuth(req);
+  if (!_auth.authorized) return _auth.response!;
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim() ?? "";
   const lang = searchParams.get("lang") === "fr" ? "fr" : "en";

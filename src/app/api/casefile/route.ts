@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { checkAuth } from "@/lib/security/auth";
 
 export const BOTIFY_MINT = "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb";
 
@@ -183,6 +184,8 @@ function computeScore(claims: any[], linking: any[], onChain: any, mint: string)
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  const _auth = await checkAuth(req);
+  if (!_auth.authorized) return _auth.response!;
   const sanitizeMint = (req.nextUrl.searchParams.get("mint") ?? "").trim();
   if (!sanitizeMint) return NextResponse.json({error:"mint required"},{status:400});
 
