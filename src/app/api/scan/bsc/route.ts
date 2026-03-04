@@ -1,3 +1,4 @@
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextRequest, NextResponse } from "next/server";
 
 const BSCSCAN_KEY = process.env.BSCSCAN_API_KEY ?? "";
@@ -9,6 +10,9 @@ async function bscScanGet(module: string, action: string, address: string, extra
 }
 
 export async function GET(req: NextRequest) {
+  const _rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
+  if (!_rl.allowed) return rateLimitResponse(_rl, detectLocale(req));
+
   const address = req.nextUrl.searchParams.get("address")?.trim() ?? "";
   const deep    = req.nextUrl.searchParams.get("deep") === "true";
 

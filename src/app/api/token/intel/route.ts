@@ -1,3 +1,4 @@
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextResponse } from "next/server";
 
 type Chain = "SOL" | "ETH";
@@ -10,6 +11,9 @@ function isSol(a: string) {
 }
 
 export async function GET(req: Request) {
+  const _rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
+  if (!_rl.allowed) return rateLimitResponse(_rl, detectLocale(req));
+
   try {
     const url = new URL(req.url);
     const chain = (url.searchParams.get("chain") || "").toUpperCase() as Chain;

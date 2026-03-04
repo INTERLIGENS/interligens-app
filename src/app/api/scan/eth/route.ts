@@ -1,3 +1,4 @@
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextResponse } from "next/server";
 import { rpcCall } from "@/lib/rpc";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
@@ -80,6 +81,9 @@ async function etherscanV2<T>(url: string) {
 }
 
 export async function GET(req: Request) {
+  const _rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
+  if (!_rl.allowed) return rateLimitResponse(_rl, detectLocale(req));
+
   try {
     const { searchParams } = new URL(req.url);
     const address = (searchParams.get("address") || "").trim();

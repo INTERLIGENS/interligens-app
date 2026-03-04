@@ -1,3 +1,4 @@
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextResponse } from "next/server";
 
 type Tier = "GREEN" | "ORANGE" | "RED";
@@ -61,6 +62,9 @@ function mockHoldings(seed: number, tier: Tier) {
 }
 
 export async function POST(req: Request) {
+  const _rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
+  if (!_rl.allowed) return rateLimitResponse(_rl, detectLocale(req));
+
   try {
     const body = await req.json().catch(() => ({}));
     const address = String(body?.address ?? "").trim();

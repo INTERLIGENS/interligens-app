@@ -1,3 +1,4 @@
+import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextRequest, NextResponse } from "next/server";
 
 type Tier = "green" | "orange" | "red";
@@ -12,6 +13,9 @@ function tierFrom(score: number): Tier {
 }
 
 export async function GET(req: NextRequest) {
+  const _rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
+  if (!_rl.allowed) return rateLimitResponse(_rl, detectLocale(req));
+
   const { searchParams } = new URL(req.url);
   const address = (searchParams.get("address") || "").trim();
   const deep = (searchParams.get("deep") || "false") === "true";
