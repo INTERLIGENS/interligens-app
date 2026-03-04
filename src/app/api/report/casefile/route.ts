@@ -1,3 +1,4 @@
+import { puppeteerSsrfGuard } from "@/lib/security/ssrfGuard";
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
@@ -76,6 +77,9 @@ export async function GET(req: NextRequest) {
   try {
     const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
     const page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on("request", puppeteerSsrfGuard);
+
     await page.setContent(html, { waitUntil: "networkidle0" });
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true, margin: { top: "32px", right: "32px", bottom: "32px", left: "32px" } });
     await browser.close();

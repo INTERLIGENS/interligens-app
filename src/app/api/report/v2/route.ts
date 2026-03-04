@@ -1,3 +1,4 @@
+import { puppeteerSsrfGuard } from "@/lib/security/ssrfGuard";
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { loadCaseByMint } from "@/lib/caseDb";
@@ -118,6 +119,9 @@ export async function GET(request: NextRequest) {
       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
     });
     const page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on("request", puppeteerSsrfGuard);
+
     await page.setContent(html, { waitUntil: "load" });
     const pdfBuffer = await page.pdf({
       format: "A4",

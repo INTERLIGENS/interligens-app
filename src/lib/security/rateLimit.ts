@@ -88,8 +88,12 @@ async function slidingWindowUpstash(key: string, cfg: RateLimitConfig): Promise<
   });
 
   if (!res.ok) {
-    // Fail open — ne jamais bloquer si Redis est indisponible
     console.error("[rateLimit] Upstash error", res.status);
+    // Fail-closed pour PDF (coûteux/Puppeteer) — fail-open pour scan/osint
+    if (cfg.keyPrefix === "rl:pdf") {
+      const retryAfter = Math.ceil(cfg.windowMs / 1000);
+      return { allowed: false, remaining: 0, limit: cfg.max, retryAfter, resetAt: now + cfg.windowMs };
+    }
     return { allowed: true, remaining: cfg.max, limit: cfg.max, retryAfter: 0, resetAt: now + cfg.windowMs };
   }
 
