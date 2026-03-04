@@ -1,0 +1,130 @@
+name: Security Gates
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+# Annule les runs en cours si un nouveau push arrive sur la même branche
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ── 1. Secret scanning (Gitleaks) ────────────────────────────────────────────
+  gitleaks:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # historique complet pour scanner tous les commits PR
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # La config est lue depuis .gitleaks.toml à la racine
+
+  # ── 2. SAST — Semgrep ────────────────────────────────────────────────────────
+  semgrep:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep (TypeScript + OWASP)
+        run: >
+          semgrep scan
+          --config p/typescript
+          --config p/react
+          --config p/owasp-top-ten
+          --config p/secrets
+          --error
+          --quiet
+          --exclude 'node_modules/**'
+          --exclude '.next/**'
+          --exclude 'backups/**'
+          --exclude '.backup_*/**'
+          --exclude '**/*.test.ts'
+          --exclude '**/*.test.tsx'
+          .
+
+  # ── 3. Dependency audit ───────────────────────────────────────────────────────
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm audit (moderate+)
+        run: pnpm audit --audit-level=moderate
+
+  # ── 4. Quality gates ──────────────────────────────────────────────────────────
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Build sans variables secrètes — les routes qui en ont besoin
+          # doivent gérer l'absence gracieusement (feature flags / fallback)
+          NODE_ENV: production
+
+  # ── 5. Job récapitulatif (branch protection: 1 seul job à surveiller) ────────
+  all-gates-passed:
+    name: All Security Gates Passed
+    runs-on: ubuntu-latest
+    needs: [gitleaks, semgrep, audit, quality]
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          if [[ "${{ needs.gitleaks.result }}"  != "success" ]] ||
+             [[ "${{ needs.semgrep.result }}"   != "success" ]] ||
+             [[ "${{ needs.audit.result }}"     != "success" ]] ||
+             [[ "${{ needs.quality.result }}"   != "success" ]]; then
+            echo "❌ Un ou plusieurs security gates ont échoué."
+            exit 1
+          fi
+          echo "✅ Tous les security gates sont verts."

@@ -1,0 +1,28 @@
+# Gitleaks config — INTERLIGENS-WEB
+# Doc: https://github.com/gitleaks/gitleaks
+
+[extend]
+# Utilise les règles gitleaks par défaut (patterns secrets courants)
+useDefault = true
+
+# Allowlist — faux positifs connus à ignorer
+[allowlist]
+  description = "Faux positifs connus"
+  paths = [
+    # Dossiers de backup locaux (jamais déployés)
+    '''.backup_''',
+    '''backups/''',
+    '''\.backup_''',
+    # Fixtures de test — contiennent des adresses wallet factices
+    '''\.test\.ts$''',
+    '''\.test\.tsx$''',
+    '''__fixtures__''',
+    # Lock files — contiennent des hashes normaux
+    '''pnpm-lock\.yaml$''',
+  ]
+  regexes = [
+    # Adresses wallet Ethereum/Solana dans le code forensic — ce sont des cibles scannées, pas des secrets
+    '''0x[0-9a-fA-F]{40}''',
+    # TigerScore fixtures
+    '''BOTIFY|TIGER|DEMO_''',
+  ]
