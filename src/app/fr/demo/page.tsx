@@ -188,6 +188,7 @@ export default function TigerScanPageFR() {
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
+  const [debug] = React.useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1");
 
   const [selectedScenario, setSelectedScenario] = React.useState<DemoScenario | null>(() => {
     if (typeof window === "undefined") return null;
@@ -621,9 +622,10 @@ export default function TigerScanPageFR() {
                 {showEvidence && (
                   <>
                     <TechnicalEvidence lang="fr" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
+                    {debug && (
                     <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
-                      <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-300">
-                        Avancé (données brutes)
+                      <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-orange-400 hover:text-orange-300">
+                        Avancé (debug)
                       </summary>
                       <div className="px-4 pb-4">
                         <pre className="overflow-auto rounded-lg border border-zinc-900 bg-black p-4 font-mono text-[10px] text-zinc-500">
@@ -631,6 +633,7 @@ export default function TigerScanPageFR() {
                         </pre>
                       </div>
                     </details>
+                    )}
                   </>
                 )}
               </div>

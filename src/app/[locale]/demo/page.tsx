@@ -147,6 +147,7 @@ const DEMO_PRESETS = [
 function TigerScanPageInner() {
   const searchParams  = useSearchParams();
   const pathname      = usePathname();
+  const debug         = searchParams.get("debug") === "1";
   const hasAutoRun    = useRef(false);
 
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -543,9 +544,10 @@ function TigerScanPageInner() {
                 {showEvidence && (
                   <>
                     <TechnicalEvidence lang="en" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} />
+                    {debug && (
                     <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
-                      <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-300">
-                        Advanced (raw data)
+                      <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-orange-400 hover:text-orange-300">
+                        Advanced (debug)
                       </summary>
                       <div className="px-4 pb-4">
                         <pre className="overflow-auto rounded-lg border border-zinc-900 bg-black p-4 font-mono text-[10px] text-zinc-500">
@@ -553,6 +555,7 @@ function TigerScanPageInner() {
                         </pre>
                       </div>
                     </details>
+                    )}
                   </>
                 )}
               </div>
