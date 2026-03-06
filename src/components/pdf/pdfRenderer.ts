@@ -39,7 +39,7 @@ function tierBadge(tier: string, t: I18n): string {
   return `<span style="background:${bg};color:#fff;padding:6px 20px;border-radius:8px;font-size:16px;font-weight:900;letter-spacing:1px;">${label}</span>`;
 }
 
-export function renderCaseFilePDF(scan: ScanResult, lang?: string): string {
+export function renderCaseFilePDF(scan: ScanResult, lang?: string, graphReport?: any): string {
   const t = getLang(lang);
   const { off_chain, on_chain, risk, mint, scanned_at } = scan;
   const m = on_chain.markets;
@@ -225,6 +225,84 @@ td { border-bottom:1px solid #e5e7eb; font-size:13px; color:#1f2937; vertical-al
     </tbody>
   </table>
 </div>
+
+
+<!-- PAGE 7: SCAM FAMILY GRAPH -->
+${graphReport ? `
+<div class="page">
+  ${footer}
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span style="font-size:22px;">🕸</span><h2 style="margin:0;">${lang === "fr" ? "Famille de Scam — Graphe" : "Scam Family Graph"}</h2></div>
+  <p style="color:#6b7280;font-size:12px;margin-bottom:20px;">${lang === "fr" ? "Analyse de clusters de wallets · heuristiques on-chain · Helius Developer" : "Wallet cluster analysis · on-chain heuristics · Helius Developer"} · ${lang === "fr" ? "Statut" : "Status"}: <strong style="color:#ea580c">${graphReport.overall_status}</strong></p>
+
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+    ${[
+      [lang === "fr" ? "Seeds" : "Seeds", `${graphReport.limits?.seeds_used ?? 0}/${graphReport.limits?.max_seeds ?? 50}`],
+      [lang === "fr" ? "Txs analysées" : "Txs scanned", (graphReport.limits?.tx_fetched ?? 0).toLocaleString()],
+      [lang === "fr" ? "Clusters" : "Clusters", graphReport.clusters?.length ?? 0],
+      [lang === "fr" ? "Tokens liés" : "Related", graphReport.related_projects?.length ?? 0],
+    ].map(([lbl, val]) => `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${lbl}</div><div style="font-size:20px;font-weight:800;color:#ea580c;">${val}</div></div>`).join("")}
+  </div>
+
+  <!-- Clusters table -->
+  ${graphReport.clusters?.length > 0 ? `
+  <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;color:#1e293b;">${lang==="fr"?"Clusters Détectés":"Clusters Detected"}</h3>
+  <table style="margin-bottom:24px;">
+    <thead><tr>
+      <th style="width:160px;">${lang==="fr"?"Label":"Label"}</th>
+      <th style="width:120px;">${lang==="fr"?"Heuristique":"Heuristic"}</th>
+      <th style="width:60px;text-align:center;">${lang==="fr"?"Wallets":"Wallets"}</th>
+      <th style="width:100px;text-align:center;">${lang==="fr"?"Statut":"Status"}</th>
+      <th>Ref. TX</th>
+    </tr></thead>
+    <tbody>${(graphReport.clusters ?? []).slice(0,6).map((cl: any) => `
+      <tr>
+        <td style="padding:7px 10px;font-weight:600;font-size:12px;">${cl.label}</td>
+        <td style="padding:7px 10px;font-size:11px;color:#6b7280;font-family:monospace;">{{ shared_funder: "${lang==="fr"?"Financeur commun":"Shared Funder"}", co_trading: "Co-Trading", lp_overlap: "LP Overlap" }[cl.heuristic] ?? cl.heuristic}</td>
+        <td style="padding:7px 10px;text-align:center;">${cl.wallets?.length ?? 0}</td>
+        <td style="padding:7px 10px;text-align:center;"><span style="background:${cl.status==="CORROBORATED"?"#f9731620":"#6b728020"};color:${cl.status==="CORROBORATED"?"#ea580c":"#6b7280"};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">${cl.status}</span></td>
+        <td style="padding:7px 10px;font-family:monospace;font-size:10px;color:#6b7280;">${cl.proofs?.[0]?.tx_signature?.slice(0,16) ?? "—"}…</td>
+      </tr>`).join("")}
+    </tbody>
+  </table>` : `<p style="color:#6b7280;font-size:13px;margin-bottom:24px;">${lang==="fr"?"Aucun cluster détecté.":"No clusters detected."}</p>`}
+
+  <!-- Related projects table -->
+  ${graphReport.related_projects?.length > 0 ? `
+  <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;color:#1e293b;">${lang==="fr"?"Projets Liés":"Related Projects"}</h3>
+  <table>
+    <thead><tr>
+      <th>Token</th>
+      <th style="width:80px;text-align:center;">${lang==="fr"?"Score":"Score"}</th>
+      <th style="width:90px;text-align:center;">${lang==="fr"?"Wallets communs":"Shared wallets"}</th>
+      <th>Signals</th>
+      <th style="width:100px;text-align:center;">${lang==="fr"?"Statut":"Status"}</th>
+    </tr></thead>
+    <tbody>${(graphReport.related_projects ?? []).slice(0,8).map((p: any) => `
+      <tr>
+        <td style="padding:7px 10px;font-weight:600;">${p.symbol ? `${p.symbol} <span style="font-weight:400;color:#6b7280;font-size:11px;">${p.name??""}</span>` : `<code style="font-size:10px;">${p.mint?.slice(0,14)}…</code>`}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:800;font-size:16px;color:${p.link_score>=70?"#dc2626":p.link_score>=40?"#ea580c":"#6b7280"};">${p.link_score}</td>
+        <td style="padding:7px 10px;text-align:center;">${p.shared_wallets}</td>
+        <td style="padding:7px 10px;font-size:11px;color:#6b7280;">${(p.signals??[]).join(", ")}</td>
+        <td style="padding:7px 10px;text-align:center;"><span style="background:${p.status==="CORROBORATED"?"#f9731620":"#6b728020"};color:${p.status==="CORROBORATED"?"#ea580c":"#6b7280"};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">${p.status}</span></td>
+      </tr>`).join("")}
+    </tbody>
+  </table>` : ""}
+
+  <div style="margin-top:24px;padding:12px 16px;background:#fef9ec;border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#6b7280;">
+    ${lang==="fr"
+      ? "⚠ Les données RÉFÉRENCÉES sont observationnelles. Les données CORROBORÉES sont soutenues par des preuves de transactions on-chain. Cette analyse ne constitue pas un conseil financier ou juridique."
+      : "⚠ REFERENCED data is observational only. CORROBORATED data is supported by on-chain transaction evidence. This analysis does not constitute financial or legal advice."}
+  </div>
+</div>` : `
+<div class="page">
+  ${footer}
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span style="font-size:22px;">🕸</span><h2 style="margin:0;">${lang === "fr" ? "Famille de Scam — Graphe" : "Scam Family Graph"}</h2></div>
+  <div style="padding:32px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;color:#6b7280;">
+    <p style="font-size:16px;margin-bottom:8px;">📊</p>
+    <p style="font-size:13px;">${lang === "fr" ? "Données graphe non disponibles pour ce token." : "Graph data unavailable for this token."}</p>
+    <p style="font-size:11px;margin-top:8px;">${lang === "fr" ? "Relancez l'analyse avec HELIUS_API_KEY configuré." : "Re-run analysis with HELIUS_API_KEY configured."}</p>
+  </div>
+</div>`}
 
 </body>
 </html>`;

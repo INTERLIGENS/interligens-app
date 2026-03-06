@@ -1,6 +1,10 @@
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextRequest, NextResponse } from "next/server";
 
+import { vaultLookup } from "@/lib/vault/vaultLookup";
+import { checkScanLimit } from "@/lib/vault/scanRateLimit";
+import { auditScanLookup } from "@/lib/vault/auditScan";
+
 type Tier = "green" | "orange" | "red";
 
 function clamp(n: number, a = 0, b = 100) {
@@ -29,9 +33,12 @@ export async function GET(req: NextRequest) {
 
   const tier = tierFrom(score);
 
+
+  let intelVault = { match: false, categories: [] as string[], explainAvailable: false };
+  try { const { vaultLookup } = await import("@/lib/vault/vaultLookup"); const _vr = await vaultLookup("tron", address); intelVault = { ..._vr, explainAvailable: _vr.match }; } catch {}
   return NextResponse.json({
     chain: "tron",
-    address,
+    address, intelVault,
     score,
     tier,
     proofs: [

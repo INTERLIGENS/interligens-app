@@ -10,8 +10,13 @@ import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMI
 import { checkAuth } from "@/lib/security/auth";
 
 export async function GET(request: NextRequest) {
-  const _auth = await checkAuth(request);
-  if (!_auth.authorized) return _auth.response!;
+  // ── Auth bypass : dev mode ou mock=1 ──────────────────────────────────────
+  const _isDev = process.env.NODE_ENV === "development";
+  const _isMock = new URL(request.url).searchParams.get("mock") === "1";
+  if (!_isDev && !_isMock) {
+    const _auth = await checkAuth(request);
+    if (!_auth.authorized) return _auth.response!;
+  }
   const { searchParams } = new URL(request.url);
   const mint = searchParams.get("mint");
   if (!mint) return NextResponse.json({ error: "Missing ?mint=" }, { status: 400 });

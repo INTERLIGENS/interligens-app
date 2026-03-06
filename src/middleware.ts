@@ -26,3 +26,5 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: ["/", "/demo"],
 };
+
+// NOTE: Admin route guard is now in a separate middleware — see patch-04

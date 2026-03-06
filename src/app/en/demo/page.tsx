@@ -2,6 +2,8 @@
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { getTier, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
+import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
@@ -11,10 +13,13 @@ import { DEMO_PRESETS, type DemoScenario } from "@/lib/demo/presets";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
+import AnalyzingCard from "@/components/scan/AnalyzingCard";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { computeCabalScore } from "@/lib/risk/cabal";
+import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
+import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +55,8 @@ interface NormalizedScan {
   unlimitedCount?: number;
   freezeAuthority?: boolean;
   mintAuthority?: boolean;
+  recidivismDetected: boolean;
+  recidivismConfidence: "HIGH" | "MED" | "LOW";
 }
 
 type ScanChain = Exclude<Chain, "HYPER_TOKEN_ID">;
@@ -90,8 +97,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   const baseScore = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
   const tigerScore = Number(data?.tiger_score ?? 0) || 0;
   const score = Math.max(baseScore, tigerScore);
-  const tierRaw = score >= 70 ? "RED" : score >= 40 ? "ORANGE" : (String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase());
-  const tier = (["GREEN", "ORANGE", "RED"].includes(tierRaw) ? tierRaw : "GREEN") as Tier;
+  const tier = getTier(score);
 
   const proofs: TopProof[] = [];
 
@@ -150,7 +156,8 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     }
   }
 
-  const verdict = score > 70 ? "Avoid" : score > 30 ? "Caution" : "Proceed";
+  const _t = getTier(score);
+  const verdict = _t === "RED" ? "Avoid" : _t === "ORANGE" ? "Caution" : "Proceed";
   const _ac = getActionCopy({ scan_type: "token", tier: score > 70 ? "RED" : score > 30 ? "ORANGE" : "GREEN", chain: (chain as any) ?? "SOL" });
   const recommendations = _ac.en;
 
@@ -173,6 +180,8 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     unlimitedCount: data?.approvalsSummary?.unlimited ?? 0,
     freezeAuthority: data?.freezeAuthority ?? false,
     mintAuthority: data?.mintAuthority ?? false,
+    recidivismDetected: false,
+    recidivismConfidence: "LOW" as "HIGH"|"MED"|"LOW",
   };
 }
 
@@ -182,6 +191,8 @@ export default function TigerScanPage() {
   const [address, setAddress]           = useState("");
   const [loading, setLoading]           = useState(false);
   const [loadStep, setLoadStep]         = useState(0);
+  const [analysisStatus, setAnalysisStatus] = useState<"idle"|"running"|"done"|"error">("idle");
+  const [graphData, setGraphData] = useState<any>(null);
   const [result, setResult]             = useState<NormalizedScan | null>(null);
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
@@ -231,6 +242,8 @@ export default function TigerScanPage() {
   ] as const;
   const [activePreset, setActivePreset] = React.useState<string | null>(null);
   const [copyDone, setCopyDone] = React.useState(false);
+  const [recidivismDetected, setRecidivismDetected] = React.useState(false);
+  const [recidivismConfidence, setRecidivismConfidence] = React.useState<"HIGH"|"MED"|"LOW">("LOW");
   const [tickers, setTickers] = React.useState<{ok:boolean,btc?:{price_usd:number,change_24h_pct:number},eth?:{price_usd:number,change_24h_pct:number},sol?:{price_usd:number,change_24h_pct:number}}|null>(null);
 
   const DEMO_CHIPS = [
@@ -300,21 +313,51 @@ export default function TigerScanPage() {
     }
     if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
+    setAnalysisStatus("running");
+    setGraphData(null);
+    setRecidivismDetected(false);
+    setRecidivismConfidence("LOW");
     setError(null);
     setResult(null);
 
     for (let i = 0; i < 3; i++) {
       setLoadStep(i);
-      await new Promise((r) => setTimeout(r, 650));
+      await new Promise((r) => setTimeout(r, 300));
     }
 
     try {
       const url = buildScanUrl(address, chain, isDeep);
-      const res  = await fetch(url, { cache: "no-store" });
+
+      // Scan + graph en PARALLÈLE — temps total = max(scan, graph)
+      const graphUrl = chain === "SOL"
+        ? `/api/scan/solana/graph?mint=${encodeURIComponent(address.trim())}&hops=1&days=14`
+        : null;
+
+      const [res, gData] = await Promise.all([
+        fetch(url, { cache: "no-store" }),
+        graphUrl
+          ? fetch(graphUrl, { cache: "no-store", signal: AbortSignal.timeout(15000) })
+              .then(r => r.ok ? r.json() : null).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || data?.error || `Error ${res.status}`);
 
-      setResult(normalizeScanData({ ...data, deep: isDeep }, chain));
+      const normalizedResult = normalizeScanData({ ...data, deep: isDeep }, chain);
+
+      // Recidivism injecté DANS le result — un seul state, zéro async race
+      if (gData?.clusters) {
+        const rv = detectRecidivism(gData);
+        if (rv.detected) {
+          normalizedResult.recidivismDetected = true;
+          normalizedResult.recidivismConfidence = rv.confidence;
+        }
+      }
+
+      // Un seul setResult → un seul render → score final direct
+      setResult(normalizedResult);
+      setAnalysisStatus("done");
 
       try {
         const heatRes = await fetch("/api/social/heat", {
@@ -328,6 +371,7 @@ export default function TigerScanPage() {
     } catch (err: any) {
       const msg = String(err?.message ?? "Scan failed.");
       setError(msg.includes("rate") ? "ETH rate limit: retry in a few seconds." : msg);
+      setAnalysisStatus("error");
     } finally {
       setLoading(false);
       setLoadStep(0);
@@ -507,15 +551,39 @@ export default function TigerScanPage() {
         </div>
 
 
-        {/* Crossfade skeleton → content */}
+        {/* Analysis status flow */}
         <div className="relative">
-          <div style={{ opacity: loading ? 1 : 0, transition: "opacity 250ms ease-out", pointerEvents: loading ? "auto" : "none" }}>
-            {loading && <ScanSkeleton />}
-          </div>
-
           <div id="result-anchor" />
-          <div style={{ opacity: result && !loading ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: result && !loading ? "auto" : "none" }}>
-            {result && (
+
+          {/* RUNNING: AnalyzingCard — masque le score */}
+          {analysisStatus === "running" && (
+            <div className="grid lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-5">
+                <AnalyzingCard locale="en" step={loadStep} />
+              </div>
+              <div className="lg:col-span-7">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 h-40 animate-pulse" />
+              </div>
+            </div>
+          )}
+
+          {/* DONE: résultat final uniquement */}
+          <div style={{ opacity: analysisStatus === "done" && result && !loading ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: analysisStatus === "done" && result && !loading ? "auto" : "none" }}>
+            {result && (() => {
+              // Source de vérité : result OU graphData (pour éviter race condition)
+              const _graphRv = graphData?.clusters ? detectRecidivism(graphData) : null;
+              const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
+              const _recConf = result.recidivismDetected ? result.recidivismConfidence : (_graphRv?.confidence ?? "LOW");
+              const _fv = computeFinalVerdict(result.score, result.tier, _recDetected, _recConf);
+              const finalTier = _fv.tier;
+              const finalScore = _fv.score;
+              const _vc = getVerdictCopy(_fv.tier, "en");
+              const finalVerdict = _vc.label;
+              const finalSub = _vc.subtitle;
+              const finalActions = _vc.actions;
+              const finalDisclaimer = _vc.disclaimer;
+              const getTierColorFinal = getTierColorUtil;
+              return (
               <div className="grid lg:grid-cols-12 gap-8">
 
             {/* LEFT: VERDICT */}
@@ -523,30 +591,29 @@ export default function TigerScanPage() {
               <div className="absolute top-6 right-6">
                 <span
                   className="px-3 py-1 rounded-sm border text-[10px] font-black uppercase tracking-widest"
-                  style={{ borderColor: getTierColor(result.tier), color: getTierColor(result.tier) }}
+                  style={{ borderColor: getTierColorFinal(finalTier), color: getTierColorFinal(finalTier) }}
                 >
-                  {result.tier}
+                  {finalTier}
                 </span>
               </div>
 
-              <AnimatedScoreRing score={result.score} tier={result.tier} color={getTierColor(result.tier)} duration={900} />
+              <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
               <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 mb-1 mt-2">Here&apos;s why this matters.</p>
-              <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{result.verdict}</h2>
+              <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{finalVerdict}</h2>
               <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
-                {result.verdict === "Proceed" ? "Wallet health looks clean. Still verify URLs."
-                : result.verdict === "Caution" ? "Suspicious signals detected. Proceed with caution."
-                : "High-risk patterns detected. Avoid interaction."}
+                {finalSub}
               </p>
 
               <div className="w-full space-y-3 mb-4">
                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">What to do now ↓</p>
-                {result.recommendations.map((rec, i) => (
+                {finalActions.map((a, i) => (
                   <div key={i} className="flex items-center gap-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 text-left hover:border-zinc-600 transition-all">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#F85B05] shrink-0" />
-                    <span className="text-xs font-bold uppercase tracking-tight">{rec}</span>
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getTierColorFinal(finalTier) }} />
+                    <span className="text-xs font-bold uppercase tracking-tight">{a}</span>
                   </div>
                 ))}
+                <p className="text-[10px] text-zinc-600 italic leading-snug mt-2 px-1">{finalDisclaimer}</p>
               </div>
 
               <button
@@ -595,10 +662,19 @@ export default function TigerScanPage() {
             {/* RIGHT: SIGNALS + CARDS */}
             <div className="lg:col-span-7 flex flex-col gap-6">
 
+              {/* ── RECIDIVISM ALERT — signal #1 ───────────────────── */}
+              {result.chain === "SOL" && (
+                <RecidivismAlertBanner
+                  mint={address.trim()}
+                  locale="en"
+                  graphData={graphData}
+                />
+              )}
+
               {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
               <MiniSignalRow
                 lang="en"
-                tier={result.tier.toLowerCase() as any}
+                tier={finalTier.toLowerCase() as any}
                 weather={weather}
                 show={true}
                 rawSummary={result.rawSummary}
@@ -643,7 +719,20 @@ export default function TigerScanPage() {
                 }
               />
 
-              <TigerRevealCard tier={result.tier} proofs={result.proofs} />
+              <TigerRevealCard tier={finalTier} proofs={result.proofs} />
+
+              {/* ── SCAM FAMILY GRAPH ───────────────────────────────── */}
+              {result.chain === "SOL" && (
+                <div id="scam-family-block">
+                <ScamFamilyBlock
+                  mint={address.trim()}
+                  hops={1}
+                  days={30}
+                  locale="en"
+                  showDebug={debug}
+                />
+                </div>
+              )}
 
               {/* Technical evidence (collapsible) */}
               <div id="evidence-section" className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
@@ -681,7 +770,8 @@ export default function TigerScanPage() {
 
             </div>
           </div>
-            )}
+            );
+            })()}
           </div>
         </div>
 

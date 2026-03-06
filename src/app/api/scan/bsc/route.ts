@@ -1,6 +1,10 @@
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextRequest, NextResponse } from "next/server";
 
+import { vaultLookup } from "@/lib/vault/vaultLookup";
+import { checkScanLimit } from "@/lib/vault/scanRateLimit";
+import { auditScanLookup } from "@/lib/vault/auditScan";
+
 const BSCSCAN_KEY = process.env.BSCSCAN_API_KEY ?? "";
 
 async function bscScanGet(module: string, action: string, address: string, extra = "") {
@@ -17,6 +21,7 @@ export async function GET(req: NextRequest) {
   const deep    = req.nextUrl.searchParams.get("deep") === "true";
 
   if (!/^0x[a-fA-F0-9]{40}$/i.test(address)) {
+
     return NextResponse.json({ error: "Invalid BSC address" }, { status: 400 });
   }
 
@@ -51,6 +56,9 @@ export async function GET(req: NextRequest) {
     if (contractAge !== null && contractAge < 7) score += 25;
     score = Math.min(score, 100);
 
+
+    let intelVault = { match: false, categories: [] as string[], explainAvailable: false };
+    try { const { vaultLookup } = await import("@/lib/vault/vaultLookup"); const _vr = await vaultLookup("bsc", address); intelVault = { ..._vr, explainAvailable: _vr.match }; } catch {}
     const tier = score > 70 ? "RED" : score > 30 ? "ORANGE" : "GREEN";
 
     return NextResponse.json({
@@ -61,6 +69,7 @@ export async function GET(req: NextRequest) {
         { label: "Contract age", value: contractAge !== null ? `${contractAge}d` : "Unknown", level: contractAge !== null && contractAge < 7 ? "high" : "low", riskDescription: contractAge !== null && contractAge < 7 ? "Very new contract" : "Established contract" },
       ],
       rawSummary: { mode: "live-bscscan", deep, txCount: txList.length, verified: isVerified },
+      intelVault,
     });
   } catch (err: any) {
     return NextResponse.json({ error: "BSC scan failed", detail: String(err?.message) }, { status: 500 });

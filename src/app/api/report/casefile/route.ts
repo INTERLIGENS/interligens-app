@@ -14,8 +14,13 @@ function getBaseUrl(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const _auth = await checkAuth(req);
-  if (!_auth.authorized) return _auth.response!;
+  // ── Auth bypass : dev mode ou mock=1 ──────────────────────────────────────
+  const _isDev = process.env.NODE_ENV === "development";
+  const _isMock = new URL(req.url).searchParams.get("mock") === "1";
+  if (!_isDev && !_isMock) {
+    const _auth = await checkAuth(req);
+    if (!_auth.authorized) return _auth.response!;
+  }
   const { searchParams } = new URL(req.url);
   const mint = (searchParams.get("mint") || "").trim();
   const lang = searchParams.get("lang") ?? "en";
@@ -72,7 +77,18 @@ export async function GET(req: NextRequest) {
     } catch(e) { console.error("[market] injection failed", e); }
   }
 
-  const html = renderCaseFilePDF(casefile, lang);
+  // ── Fetch graph report (best-effort, non-bloquant) ──────────────────────
+  let graphReport: any = null;
+  try {
+    const graphUrl = `${baseUrl}/api/scan/solana/graph?mint=${encodeURIComponent(mint)}&hops=1&days=30`;
+    const gRes = await fetch(graphUrl, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+    if (gRes.ok) {
+      const gData = await gRes.json();
+      if (gData?.version === "1.0") graphReport = gData;
+    }
+  } catch(e) { console.warn("[casefile] graph fetch skipped:", e instanceof Error ? e.message : e); }
+
+  const html = renderCaseFilePDF(casefile, lang, graphReport);
 
   try {
     const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });

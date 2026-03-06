@@ -1,6 +1,10 @@
 ignoredBuiltDependencies:
+  - esbuild
   - sharp
   - unrs-resolver
 
 onlyBuiltDependencies:
+  - '@prisma/engines'
+  - better-sqlite3
+  - prisma
   - puppeteer

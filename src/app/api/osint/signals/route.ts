@@ -35,13 +35,14 @@ const GENERIC_ITEM: OsintItem[] = [
 ];
 
 export async function GET(req: Request) {
-  const _auth = await checkAuth(req);
-  if (!_auth.authorized) return _auth.response!;
   const { searchParams } = new URL(req.url);
+  const mock = searchParams.get("mock") === "1";
+  if (!mock) {
+    const _auth = await checkAuth(req);
+    if (!_auth.authorized) return _auth.response!;
+  }
   const q = searchParams.get("q")?.trim() ?? "";
   const lang = searchParams.get("lang") === "fr" ? "fr" : "en";
-  const mock = searchParams.get("mock") === "1";
-
   const cacheKey = q + ":" + lang;
   const hit = cache.get(cacheKey);
   if (!mock && hit && Date.now() - hit.ts < TTL)

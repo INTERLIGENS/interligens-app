@@ -220,5 +220,11 @@ export async function GET(request: NextRequest) {
       `cache_hit=${marketSnapshot.cache_hit}`
   );
 
-  return NextResponse.json(result);
+  // ── Intel Vault ──────────────────────────────────────────────────────────
+  let intelVault = { match: false, categories: [] as string[], explainAvailable: false };
+  try {
+    const _vr = await vaultLookup("solana", mint_clean);
+    intelVault = { ..._vr, explainAvailable: _vr.match };
+  } catch {}
+  return NextResponse.json({ ...result, intelVault });
 }

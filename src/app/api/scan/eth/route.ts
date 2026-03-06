@@ -375,8 +375,19 @@ export async function GET(req: Request) {
       rpc_error: rpcError,
     };
 
-    ethCacheSet(cacheKey, resp);
-    return NextResponse.json(resp);
+    // ── Intel Vault ────────────────────────────────────────────────────────────
+    let intelVault = { match: false, categories: [] as string[], explainAvailable: false };
+    try {
+      const _ip = (req.headers.get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
+      const _rl = checkScanLimit(_ip);
+      if (!_rl.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      const _vr = await vaultLookup("ethereum", address);
+      await auditScanLookup({ address, chain: "ethereum", match: _vr.match, categoriesCount: _vr.categories.length });
+      const _isAdmin = req.headers.get("x-admin-token") === process.env.ADMIN_TOKEN;
+      intelVault = { ..._vr, explainAvailable: _vr.match && _isAdmin };
+    } catch {}
+    ethCacheSet(cacheKey, { ...resp, intelVault });
+    return NextResponse.json({ ...resp, intelVault });
   } catch (e: any) {
     const msg = String(e?.message || "ETH scan failed");
     if (msg.toLowerCase().includes("rate limit")) {
