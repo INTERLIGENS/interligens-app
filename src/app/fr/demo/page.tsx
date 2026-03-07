@@ -524,7 +524,7 @@ export default function TigerScanPageFR() {
           <div style={{ opacity: analysisStatus === 'done' && result && !loading ? 1 : 0, transition: 'opacity 300ms ease-in, transform 350ms ease-out', transform: analysisStatus === 'done' && result && !loading ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(6px)', pointerEvents: analysisStatus === 'done' && result && !loading ? 'auto' : 'none' }}>
             {result && (() => {
               // Source de vérité : result OU graphData (pour éviter race condition)
-              const _graphRv = graphData?.clusters ? detectRecidivism(graphData) : null;
+              const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
               const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
               const _recConf = result.recidivismDetected ? result.recidivismConfidence : (_graphRv?.confidence ?? "LOW");
               const _fv = computeFinalVerdict(result.score, result.tier, _recDetected, _recConf);

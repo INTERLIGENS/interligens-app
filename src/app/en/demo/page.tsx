@@ -571,7 +571,7 @@ export default function TigerScanPage() {
           <div style={{ opacity: analysisStatus === "done" && result && !loading ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: analysisStatus === "done" && result && !loading ? "auto" : "none" }}>
             {result && (() => {
               // Source de vérité : result OU graphData (pour éviter race condition)
-              const _graphRv = graphData?.clusters ? detectRecidivism(graphData) : null;
+              const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
               const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
               const _recConf = result.recidivismDetected ? result.recidivismConfidence : (_graphRv?.confidence ?? "LOW");
               const _fv = computeFinalVerdict(result.score, result.tier, _recDetected, _recConf);
