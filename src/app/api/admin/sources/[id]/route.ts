@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAuth } from "@/lib/security/auth";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await checkAuth(req);
   if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -15,19 +15,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if ("sourceName" in data) data["name"] = data["sourceName"];
 
   const source = await prisma.sourceRegistry.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data,
   });
   return NextResponse.json(source);
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await checkAuth(req);
   if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await prisma.sourceRegistry.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data: { status: "paused" },
   });
-  return NextResponse.json({ deleted: true, id: params.id });
+  return NextResponse.json({ deleted: true, id: (await params).id });
 }

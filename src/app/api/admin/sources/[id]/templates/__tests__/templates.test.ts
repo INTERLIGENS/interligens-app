@@ -27,7 +27,7 @@ describe("Source Templates", () => {
 
   it("GET retourne les templates", async () => {
     vi.mocked(prisma.sourceTemplate.findMany).mockResolvedValue([{ id: "t1" }] as never);
-    const res = await GET(makeReq("GET"), { params: { id: "s1" } });
+    const res = await GET(makeReq("GET"), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.templates).toHaveLength(1);
@@ -38,13 +38,13 @@ describe("Source Templates", () => {
     const res = await POST(makeReq("POST", {
       inputType: "sheet",
       columnMapping: { address: "Wallet", chain: "Chain" },
-    }), { params: { id: "s1" } });
+    }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(201);
     expect(prisma.sourceTemplate.create).toHaveBeenCalledOnce();
   });
 
   it("POST 400 si columnMapping manquant", async () => {
-    const res = await POST(makeReq("POST", { inputType: "csv" }), { params: { id: "s1" } });
+    const res = await POST(makeReq("POST", { inputType: "csv" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(400);
   });
 });

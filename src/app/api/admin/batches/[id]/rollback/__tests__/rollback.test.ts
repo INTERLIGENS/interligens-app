@@ -36,7 +36,7 @@ describe("Rollback batch", () => {
     vi.mocked(prisma.ingestionBatch.update).mockResolvedValue({} as never);
     vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
 
-    const res = await POST(makeReq(), { params: { id: "b1" } });
+    const res = await POST(makeReq(), { params: Promise.resolve({ id: "b1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.rolledBack).toBe(true);
@@ -47,13 +47,13 @@ describe("Rollback batch", () => {
 
   it("409 si batch pas approved", async () => {
     vi.mocked(prisma.ingestionBatch.findUnique).mockResolvedValue({ id: "b1", status: "pending" } as never);
-    const res = await POST(makeReq(), { params: { id: "b1" } });
+    const res = await POST(makeReq(), { params: Promise.resolve({ id: "b1" }) });
     expect(res.status).toBe(409);
   });
 
   it("404 si batch inexistant", async () => {
     vi.mocked(prisma.ingestionBatch.findUnique).mockResolvedValue(null);
-    const res = await POST(makeReq(), { params: { id: "x" } });
+    const res = await POST(makeReq(), { params: Promise.resolve({ id: "x" }) });
     expect(res.status).toBe(404);
   });
 });

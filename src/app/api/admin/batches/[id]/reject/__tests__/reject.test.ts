@@ -27,7 +27,7 @@ describe("Reject batch", () => {
   it("rejette un batch pending", async () => {
     vi.mocked(prisma.ingestionBatch.findUnique).mockResolvedValue({ id: "b1", status: "pending" } as never);
     vi.mocked(prisma.$transaction).mockResolvedValue([]);
-    const res = await POST(makeReq(), { params: { id: "b1" } });
+    const res = await POST(makeReq(), { params: Promise.resolve({ id: "b1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.rejected).toBe(true);
@@ -36,13 +36,13 @@ describe("Reject batch", () => {
 
   it("409 si batch déjà approved", async () => {
     vi.mocked(prisma.ingestionBatch.findUnique).mockResolvedValue({ id: "b1", status: "approved" } as never);
-    const res = await POST(makeReq(), { params: { id: "b1" } });
+    const res = await POST(makeReq(), { params: Promise.resolve({ id: "b1" }) });
     expect(res.status).toBe(409);
   });
 
   it("404 si batch inexistant", async () => {
     vi.mocked(prisma.ingestionBatch.findUnique).mockResolvedValue(null);
-    const res = await POST(makeReq(), { params: { id: "x" } });
+    const res = await POST(makeReq(), { params: Promise.resolve({ id: "x" }) });
     expect(res.status).toBe(404);
   });
 });

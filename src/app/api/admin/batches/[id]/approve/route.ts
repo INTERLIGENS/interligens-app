@@ -8,12 +8,12 @@ import { rebuildCacheForAddresses } from "@/lib/vault/vaultLookup";
 import type { NormalizedRow } from "@/lib/intel-vault/types";
 import crypto from "crypto";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = requireAdmin(req);
   if (authError) return authError;
 
   const batch = await prisma.ingestionBatch.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     include: { rawDocuments: { take: 1 } },
   });
 
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Données corrompues" }, { status: 422 });
   }
 
-  const { created, updated } = await upsertRows(rows, params.id);
+  const { created, updated } = await upsertRows(rows, (await params).id);
 
   // Rebuild vault cache for affected addresses
   await rebuildCacheForAddresses(rows.map(r => ({ chain: r.chain, address: r.address })));
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const actorId = crypto.createHash("sha256").update(actorToken).digest("hex").slice(0, 12);
 
   await prisma.ingestionBatch.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data: {
       status: "approved",
       approvedBy: actorId,
@@ -60,14 +60,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     data: {
       action: "approve_batch",
       actorId,
-      batchId: params.id,
+      batchId: (await params).id,
       meta: JSON.stringify({ created, updated, total: rows.length }),
     },
   });
 
   return NextResponse.json({
     success: true,
-    batchId: params.id,
+    batchId: (await params).id,
     created,
     updated,
     total: rows.length,

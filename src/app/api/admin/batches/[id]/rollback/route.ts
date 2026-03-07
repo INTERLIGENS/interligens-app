@@ -3,23 +3,23 @@ import { prisma } from "@/lib/prisma";
 import { checkAuth } from "@/lib/security/auth";
 import { rebuildCacheForAddresses } from "@/lib/vault/vaultLookup";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await checkAuth(req);
   if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const batch = await prisma.ingestionBatch.findUnique({ where: { id: params.id } });
+  const batch = await prisma.ingestionBatch.findUnique({ where: { id: (await params).id } });
   if (!batch) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (batch.status !== "approved") return NextResponse.json({ error: "Only approved batches can be rolled back" }, { status: 409 });
 
   // Get distinct addresses from this batch
   const labels = await prisma.addressLabel.findMany({
-    where: { batchId: params.id },
+    where: { batchId: (await params).id },
     select: { chain: true, address: true },
   });
 
   // Deactivate labels
   await prisma.addressLabel.updateMany({
-    where: { batchId: params.id },
+    where: { batchId: (await params).id },
     data: { isActive: false },
   });
 
@@ -29,14 +29,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Update batch status
   await prisma.ingestionBatch.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data: { status: "rolled_back", rolledBackAt: new Date() },
   });
 
   await prisma.auditLog.create({
-    data: { action: "BATCH_ROLLBACK", actorId: "admin", batchId: params.id,
+    data: { action: "BATCH_ROLLBACK", actorId: "admin", batchId: (await params).id,
             meta: JSON.stringify({ labelsDeactivated: labels.length }) },
   });
 
-  return NextResponse.json({ rolledBack: true, id: params.id, labelsDeactivated: labels.length });
+  return NextResponse.json({ rolledBack: true, id: (await params).id, labelsDeactivated: labels.length });
 }

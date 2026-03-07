@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAuth } from "@/lib/security/auth";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await checkAuth(req);
   if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const batch = await prisma.ingestionBatch.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     select: { status: true, processedRows: true, totalRows: true,
               processingStartedAt: true, processingEndedAt: true, errorMessage: true },
   });
