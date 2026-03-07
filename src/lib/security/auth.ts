@@ -27,7 +27,11 @@ export function extractBearerToken(req: Request): string | null {
     if (token.length > 0) return token;
   }
 
-  // 2. Query param ?token= (fallback)
+  // 2. Custom header x-admin-token (UI)
+  const xToken = req.headers.get("x-admin-token")?.trim();
+  if (xToken && xToken.length > 0) return xToken;
+
+  // 3. Query param ?token= (fallback)
   const url = new URL(req.url);
   const queryToken = url.searchParams.get("token")?.trim();
   if (queryToken && queryToken.length > 0) return queryToken;
