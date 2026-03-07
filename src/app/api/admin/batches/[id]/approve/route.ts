@@ -1,3 +1,4 @@
+import { runApproveJob } from "@/lib/vault/approveJob";
 // src/app/api/admin/batches/[id]/approve/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";

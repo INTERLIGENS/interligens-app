@@ -34,6 +34,7 @@ model SourceRegistry {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   batches            IngestionBatch[]
+  templates          SourceTemplate[]
 }
 
 model IngestionBatch {
@@ -46,11 +47,16 @@ model IngestionBatch {
   totalRows     Int             @default(0)
   matchedAddrs  Int             @default(0)
   dedupedRows   Int             @default(0)
-  warnings      String?
-  approvedBy    String?
-  approvedAt    DateTime?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  warnings             String?
+  approvedBy           String?
+  approvedAt           DateTime?
+  processingStartedAt  DateTime?
+  processingEndedAt    DateTime?
+  processedRows        Int       @default(0)
+  errorMessage         String?
+  rolledBackAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
   rawDocuments  RawDocument[]
   labels        AddressLabel[]
   auditLogs     AuditLog[]
@@ -79,6 +85,7 @@ model AddressLabel {
   visibility  String          @default("internal_only")
   license     String?
   tosRisk     String          @default("low")
+  isActive    Boolean         @default(true)
   firstSeenAt DateTime        @default(now())
   lastSeenAt  DateTime        @default(now())
   batchId     String?
@@ -107,4 +114,15 @@ model AuditLog {
   batch     IngestionBatch? @relation(fields: [batchId], references: [id])
   meta      String?
   createdAt DateTime        @default(now())
+}
+
+model SourceTemplate {
+  id            String         @id @default(cuid())
+  sourceId      String
+  source        SourceRegistry @relation(fields: [sourceId], references: [id])
+  inputType     String
+  columnMapping String
+  rules         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
