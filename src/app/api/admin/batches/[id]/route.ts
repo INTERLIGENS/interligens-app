@@ -3,12 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/intel-vault/auth";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = requireAdmin(req);
   if (authError) return authError;
 
   const batch = await prisma.ingestionBatch.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     include: { rawDocuments: { take: 1 } },
   });
 
