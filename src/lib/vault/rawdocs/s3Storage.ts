@@ -54,7 +54,7 @@ export const s3Storage: RawDocsStorage = {
     const res = await fetch(url, {
       method: "PUT",
       headers: { ...headers, Authorization: authHeader },
-      body: buffer,
+      body: buffer as unknown as BodyInit,
     });
     if (!res.ok) throw new Error(`S3 upload failed: ${res.status}`);
 
