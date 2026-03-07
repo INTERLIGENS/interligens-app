@@ -1,9 +1,9 @@
 // src/app/admin/login/page.tsx
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AdminLogin() {
+function AdminLoginInner() {
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
@@ -39,4 +39,8 @@ export default function AdminLogin() {
       </div>
     </div>
   );
+}
+
+export default function AdminLogin() {
+  return <Suspense><AdminLoginInner /></Suspense>
 }
