@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:deploy": "prisma migrate deploy",
-    "db:status": "prisma migrate status"
+    "db:status": "prisma migrate status",
+    "vercel-build": "python3 scripts/swap_prisma_provider.py && prisma db push && next build"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.4.2",

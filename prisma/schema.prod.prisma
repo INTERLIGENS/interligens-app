@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+
+
+
+
+model SourceRegistry {
+  id                 String   @id @default(cuid())
+  handle             String?  @unique
+  sourceName         String
+  name               String   @unique
+  sourceType         String   @default("other")
+  url                String?
+  homepageUrl        String?
+  description        String?
+  defaultChain       String?
+  defaultLabelType   String?
+  defaultLabel       String?
+  defaultVisibility  String   @default("internal_only")
+  license            String?
+  tosRisk            String   @default("low")
+  trusted            Boolean  @default(false)
+  status             String   @default("active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  batches            IngestionBatch[]
+  templates          SourceTemplate[]
+}
+
+model IngestionBatch {
+  id            String          @id @default(cuid())
+  sourceId      String?
+  source        SourceRegistry? @relation(fields: [sourceId], references: [id])
+  status        String     @default("pending")
+  inputType     String
+  inputPayload  String
+  totalRows     Int             @default(0)
+  matchedAddrs  Int             @default(0)
+  dedupedRows   Int             @default(0)
+  warnings             String?
+  approvedBy           String?
+  approvedAt           DateTime?
+  processingStartedAt  DateTime?
+  processingEndedAt    DateTime?
+  processedRows        Int       @default(0)
+  errorMessage         String?
+  rolledBackAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  rawDocuments  RawDocument[]
+  labels        AddressLabel[]
+  auditLogs     AuditLog[]
+}
+
+model RawDocument {
+  id        String         @id @default(cuid())
+  batchId   String
+  batch     IngestionBatch @relation(fields: [batchId], references: [id])
+  content   String
+  mimeType  String         @default("text/plain")
+  createdAt DateTime       @default(now())
+}
+
+model AddressLabel {
+  id          String          @id @default(cuid())
+  chain       String
+  address     String
+  labelType   String
+  label       String
+  confidence  String          @default("low")
+  entityName  String?
+  sourceName  String
+  sourceUrl   String?
+  evidence    String?
+  visibility  String          @default("internal_only")
+  license     String?
+  tosRisk     String          @default("low")
+  isActive    Boolean         @default(true)
+  firstSeenAt DateTime        @default(now())
+  lastSeenAt  DateTime        @default(now())
+  batchId     String?
+  batch       IngestionBatch? @relation(fields: [batchId], references: [id])
+
+  @@unique([chain, address, labelType, label, sourceUrl], name: "dedup_key")
+  @@index([chain, address])
+  @@index([batchId])
+}
+
+model RiskSummaryCache {
+  id        String   @id @default(cuid())
+  chain     String
+  address   String
+  summary   String
+  updatedAt DateTime @updatedAt
+
+  @@unique([chain, address], name: "chain_address")
+}
+
+model AuditLog {
+  id        String          @id @default(cuid())
+  action    String
+  actorId   String
+  batchId   String?
+  batch     IngestionBatch? @relation(fields: [batchId], references: [id])
+  meta      String?
+  createdAt DateTime        @default(now())
+}
+
+model SourceTemplate {
+  id            String         @id @default(cuid())
+  sourceId      String
+  source        SourceRegistry @relation(fields: [sourceId], references: [id])
+  inputType     String
+  columnMapping String
+  rules         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
