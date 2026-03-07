@@ -162,6 +162,19 @@ export async function GET(request: NextRequest) {
   const rawClaims = caseFile?.claims ?? [];
   const scoring = computeScore(rawClaims);
 
+  // ── Fetch lineage graph ──────────────────────────────────────────────────
+  let scamLineage: "CONFIRMED" | "REFERENCED" | "NONE" = "NONE";
+  try {
+    const graphUrl = new URL(`/api/scan/solana/graph?mint=${mint_clean}`, request.url);
+    const graphRes = await fetch(graphUrl.toString(), { signal: AbortSignal.timeout(8000) });
+    if (graphRes.ok) {
+      const graphData = await graphRes.json();
+      const status = graphData?.overall_status as string | undefined;
+      if (status === "CONFIRMED") scamLineage = "CONFIRMED";
+      else if (status === "REFERENCED") scamLineage = "REFERENCED";
+    }
+  } catch { /* fail-open */ }
+
   const tigerScan = computeTigerScoreFromScan({
     chain: "SOL",
     is_contract: isProgram,
@@ -178,6 +191,7 @@ export async function GET(request: NextRequest) {
     liquidity_usd: marketSnapshot.liquidity_usd,
     fdv_usd: marketSnapshot.fdv_usd,
     volume_24h_usd: marketSnapshot.volume_24h_usd,
+    scam_lineage: scamLineage,
     signals: {
       confirmedCriticalClaims: rawClaims.filter(
         (cl) => cl.severity === "CRITICAL" && (cl.status === "CONFIRMED" || (cl.status as string) === "REFERENCED")

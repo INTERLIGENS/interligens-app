@@ -18,6 +18,7 @@ export type ScanNormalized = {
   liquidity_usd?: number | null;
   fdv_usd?: number | null;
   volume_24h_usd?: number | null;
+  scam_lineage?: "CONFIRMED" | "REFERENCED" | "NONE";
   signals?: {
     unlimitedApprovals?: number;
     approvalsTotal?: number;
@@ -54,6 +55,7 @@ export function computeTigerScoreFromScan(input: ScanNormalized): TigerScanResul
     mintAuthorityActive: s.mintAuthorityActive,
     mutableMetadata: s.mutableMetadata,
     confirmedCriticalClaims: (s.confirmedCriticalClaims ?? 0) + (s.knownBadAddresses ?? 0),
+    scam_lineage: input.scam_lineage,
     // Market boosters
     scan_type: input.scan_type,
     no_casefile: input.no_casefile,

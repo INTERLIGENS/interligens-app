@@ -22,6 +22,7 @@ export type TigerInput = {
   alertsLevel?: "low" | "med" | "high";
   trustLevel?: "low" | "med" | "high";
   confirmedCriticalClaims?: number;
+  scam_lineage?: "CONFIRMED" | "REFERENCED" | "NONE";
   // ── Market boosters (SOL token, no casefile) ──
   scan_type?: "token" | "wallet";
   no_casefile?: boolean;
@@ -82,6 +83,12 @@ export function computeTigerScore(input: TigerInput): TigerResult {
 
   if (input.trustLevel === "low")
     add({ id: "trust_low", label: "Low trust score", severity: "med", delta: 15, why: "Transparency signals below acceptable threshold" });
+
+  if (input.scam_lineage === "CONFIRMED")
+    add({ id: "scam_lineage_confirmed", label: "Confirmed scam lineage", severity: "critical", delta: 70, why: "On-chain links to confirmed scam wallets" });
+
+  if (input.scam_lineage === "REFERENCED")
+    add({ id: "scam_lineage_referenced", label: "Scam lineage detected", severity: "high", delta: 50, why: "On-chain links to wallets tied to prior scam operations" });
 
   if ((input.confirmedCriticalClaims ?? 0) >= 1)
     add({ id: "confirmed_critical_claims", label: "Confirmed critical claims on file", severity: "critical", delta: 70, why: "Detective-referenced critical evidence found" });
