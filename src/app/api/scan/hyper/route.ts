@@ -11,43 +11,6 @@ export async function GET(req: NextRequest) {
   const deep    = req.nextUrl.searchParams.get("deep") === "true";
 
   if (!/^0x[a-fA-F0-9]{40}$/i.test(address)) {
-  // ── Intel Vault lookup (non-breaking) ────────────────────────────────────────
-  let intelVault: {
-    match: boolean;
-    categories: string[];
-    topLabel?: string;
-    confidence?: string;
-    severity?: string;
-    explainAvailable: boolean;
-  } = { match: false, categories: [], explainAvailable: false };
-  try {
-    const _vaultChain   = String(chain).toLowerCase();
-    const _vaultAddress = String(address).trim();
-    if (_vaultAddress) {
-      const _ip  = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-      const _rl  = checkScanLimit(_ip);
-      if (!_rl.allowed) {
-        return NextResponse.json({
-      intelVault, error: "Too many requests" }, { status: 429 });
-      }
-      const _vr = await vaultLookup(_vaultChain, _vaultAddress);
-      await auditScanLookup({
-        address: _vaultAddress, chain: _vaultChain,
-        match: _vr.match, categoriesCount: _vr.categories.length,
-      });
-      const _adminHeader = req.headers.get("x-admin-token");
-      const _isAdmin = !!(_adminHeader && _adminHeader === process.env.ADMIN_TOKEN);
-      intelVault = {
-        match:       _vr.match,
-        categories:  _vr.categories,
-        ...(_vr.topLabel   ? { topLabel:   _vr.topLabel   } : {}),
-        ...(_vr.confidence ? { confidence: _vr.confidence } : {}),
-        ...(_vr.severity   ? { severity:   _vr.severity   } : {}),
-        explainAvailable: _vr.match && _isAdmin,
-      };
-    }
-  } catch { /* vault non-blocking */ }
-  // ─────────────────────────────────────────────────────────────────────────────
 
     return NextResponse.json({ error: "Invalid HyperEVM address. Must be 0x + 40 hex chars." }, { status: 400 });
   }

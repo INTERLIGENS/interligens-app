@@ -14,16 +14,25 @@ datasource db {
 
 
 model SourceRegistry {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  url         String?
-  description String?
-  license     String?
-  tosRisk     String  @default("low")
-  trusted     Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  batches     IngestionBatch[]
+  id                 String   @id @default(cuid())
+  handle             String?  @unique
+  sourceName         String
+  name               String   @unique
+  sourceType         String   @default("other")
+  url                String?
+  homepageUrl        String?
+  description        String?
+  defaultChain       String?
+  defaultLabelType   String?
+  defaultLabel       String?
+  defaultVisibility  String   @default("internal_only")
+  license            String?
+  tosRisk            String   @default("low")
+  trusted            Boolean  @default(false)
+  status             String   @default("active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  batches            IngestionBatch[]
 }
 
 model IngestionBatch {

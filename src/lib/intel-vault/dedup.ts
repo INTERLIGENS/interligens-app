@@ -8,15 +8,15 @@ export async function upsertRows(rows: NormalizedRow[], batchId: string): Promis
 
   for (const row of rows) {
     const key = {
-      chain: row.chain as never,
+      chain: row.chain as string,
       address: row.address,
-      labelType: row.labelType as never,
+      labelType: row.labelType as string,
       label: row.label,
       sourceUrl: row.sourceUrl ?? null,
     };
 
     const existing = await prisma.addressLabel.findUnique({
-      where: { dedup_key: key },
+      where: { dedup_key: key } as never,
     });
 
     if (existing) {
@@ -26,7 +26,7 @@ export async function upsertRows(rows: NormalizedRow[], batchId: string): Promis
         evidence = [evidence, row.evidence].filter(Boolean).join(" | ");
       }
       await prisma.addressLabel.update({
-        where: { dedup_key: key },
+        where: { dedup_key: key } as never,
         data: { lastSeenAt: new Date(), evidence: evidence || null },
       });
       updated++;

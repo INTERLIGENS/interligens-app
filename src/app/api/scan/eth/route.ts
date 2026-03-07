@@ -1,4 +1,7 @@
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
+import { vaultLookup } from "@/lib/vault/vaultLookup";
+import { checkScanLimit } from "@/lib/vault/scanRateLimit";
+import { auditScanLookup } from "@/lib/vault/auditScan";
 import { NextResponse } from "next/server";
 import { rpcCall } from "@/lib/rpc";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";

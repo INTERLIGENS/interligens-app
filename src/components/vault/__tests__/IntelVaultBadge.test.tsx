@@ -54,7 +54,7 @@ describe("IntelVaultBadge", () => {
           categories: ["whale"],
           severity: "info",
           // These should never appear
-          ...({ entityName: "SECRET", sourceUrl: "https://secret.com" } as never),
+          ...({ entityName: "SECRET", sourceUrl: "https://secret.com" } as any),
         }}
       />
     );
