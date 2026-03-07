@@ -127,3 +127,24 @@ model SourceTemplate {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
+
+model CommunitySubmission {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  status           String   @default("pending")
+  chain            String
+  address          String
+  labelType        String
+  label            String?
+  message          String?
+  evidenceUrl      String?
+  txHash           String?
+  reporterContact  String?
+  ipHash           String
+  userAgentHash    String?
+  source           String   @default("community")
+  severityDerived  String   @default("info")
+  adminNotes       String?
+  linkedBatchId    String?
+}
