@@ -42,7 +42,10 @@ export function detectRecidivism(g: GraphReport): {
   const totalProofs = g.clusters.reduce((n, c) => n + c.proofs.length, 0);
   const allProofs = g.clusters.flatMap(c => c.proofs).slice(0, 3);
   const topRelated = [...filtered].sort((a, b) => b.link_score - a.link_score).slice(0, 3);
-  const detected = corroboratedRelated > 0 || strongCluster || g.overall_status === "CONFIRMED" || g.overall_status === "REFERENCED";
+  const hasGraphData = g.clusters.length > 0 || (g.related_projects ?? []).length > 0;
+  const detected = corroboratedRelated > 0 || strongCluster
+    || g.overall_status === "CONFIRMED"
+    || (!hasGraphData && g.overall_status === "REFERENCED");
   const confidence = computeConfidence(g.clusters);
   return { detected, corroboratedRelated, totalRelated: filtered.length, totalProofs, topRelated, topProofs: allProofs, confidence };
 }

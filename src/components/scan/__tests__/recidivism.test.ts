@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { detectRecidivism } from "../RecidivismAlertBanner";
 
-const base = { clusters: [], related_projects: [], overall_status: "REFERENCED" };
+const base = { clusters: [], related_projects: [], overall_status: "NONE" };
 const proof = (s: string, h = "shared_funder") => ({ type: h, tx_signature: s, timestamp: 1700000000, detail: "test" });
 
 describe("detectRecidivism — logique", () => {
