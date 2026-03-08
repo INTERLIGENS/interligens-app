@@ -5,7 +5,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     addressLabel: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
       update: vi.fn(),
     },
   },
@@ -34,21 +36,21 @@ describe("upsertRows dedup logic", () => {
   });
 
   it("crée un nouveau label si inexistant", async () => {
-    (prisma.addressLabel.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    (prisma.addressLabel.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new" });
+    (prisma.addressLabel.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.addressLabel.createMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 1 });
 
     const result = await upsertRows([ROW], "batch-1");
     expect(result.created).toBe(1);
     expect(result.updated).toBe(0);
-    expect(prisma.addressLabel.create).toHaveBeenCalledOnce();
+    expect(prisma.addressLabel.createMany).toHaveBeenCalledOnce();
   });
 
   it("met à jour un label existant (merge evidence)", async () => {
-    (prisma.addressLabel.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (prisma.addressLabel.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
       ...ROW,
       id: "existing",
       evidence: "eth=1.0",
-    });
+    }]);
     (prisma.addressLabel.update as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "existing" });
 
     const result = await upsertRows([ROW], "batch-1");
@@ -62,11 +64,11 @@ describe("upsertRows dedup logic", () => {
   });
 
   it("ne duplique pas l'evidence si identique", async () => {
-    (prisma.addressLabel.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (prisma.addressLabel.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
       ...ROW,
       id: "existing",
       evidence: "eth=1.2, usd=3000",
-    });
+    }]);
     (prisma.addressLabel.update as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "existing" });
 
     await upsertRows([ROW], "batch-1");
