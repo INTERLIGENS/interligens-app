@@ -54,7 +54,7 @@ export async function upsertRows(rows: NormalizedRow[], batchId: string): Promis
           tosRisk: row.tosRisk as never,
           batchId,
         })),
-        skipDuplicates: true,
+        skipDuplicates: true as never,
       });
       created += result.count;
     }
