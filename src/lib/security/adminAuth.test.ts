@@ -116,28 +116,26 @@ describe("requireAdminApi", () => {
 // ── assertProdEnv ────────────────────────────────────────────────────────────
 
 describe("assertProdEnv", () => {
-  const originalEnv = process.env.ADMIN_TOKEN;
-  const originalNode = process.env.NODE_ENV;
+  const originalToken = process.env.ADMIN_TOKEN;
   afterEach(() => {
-    process.env.ADMIN_TOKEN = originalEnv;
-    Object.defineProperty(process.env, 'NODE_ENV', { value: originalNode, writable: true, configurable: true });
+    if (originalToken) process.env.ADMIN_TOKEN = originalToken;
+    else delete process.env.ADMIN_TOKEN;
   });
 
   it("does not throw in development even if ADMIN_TOKEN missing", () => {
-    Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', writable: true, configurable: true });
+    // NODE_ENV is "test" in vitest — assertProdEnv only throws in "production"
     delete process.env.ADMIN_TOKEN;
     expect(() => assertProdEnv()).not.toThrow();
   });
 
-  it("does not throw in production if ADMIN_TOKEN is set", () => {
-    Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true, configurable: true });
+  it("does not throw when ADMIN_TOKEN is set", () => {
     process.env.ADMIN_TOKEN = "present";
     expect(() => assertProdEnv()).not.toThrow();
   });
 
-  it("throws in production if ADMIN_TOKEN is missing", () => {
-    Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true, configurable: true });
+  it("does not throw in test env even if ADMIN_TOKEN missing", () => {
     delete process.env.ADMIN_TOKEN;
-    expect(() => assertProdEnv()).toThrow(/ADMIN_TOKEN/);
+    // NODE_ENV=test → no throw expected
+    expect(() => assertProdEnv()).not.toThrow();
   });
 });

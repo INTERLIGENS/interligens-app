@@ -7,4 +7,5 @@ export const ENV_KEYS = [
   "SCAN_RATE_LIMIT",
   "DATABASE_URL",
   "UPSTASH_REDIS_REST_URL",
+  "INTERLIGENS_API_TOKEN",
 ] as const;

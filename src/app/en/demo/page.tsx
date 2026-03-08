@@ -356,6 +356,7 @@ export default function TigerScanPage() {
       }
 
       // Un seul setResult → un seul render → score final direct
+      setGraphData(gData);
       setResult(normalizedResult);
       setAnalysisStatus("done");
 

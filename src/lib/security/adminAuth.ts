@@ -13,6 +13,7 @@
 
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,8 +44,16 @@ export function getAdminTokenFromReq(req: NextRequest): string | null {
   if (legacy) {
     console.warn(
       "[adminAuth] DEPRECATION WARNING: x-interligens-api-token is deprecated. " +
-        "Migrate to x-admin-token before 2025-06-01.",
+        "Migrate to x-admin-token before 2026-03-15.",
     );
+    // Fire-and-forget AuditLog (no IP, no secret value)
+    prisma.auditLog.create({
+      data: {
+        action: "LEGACY_TOKEN_USED",
+        actorId: "system",
+        meta: "x-interligens-api-token header used — migrate to x-admin-token",
+      },
+    }).catch(() => { /* non-blocking */ });
     return legacy;
   }
 
@@ -73,6 +82,20 @@ export function assertProdEnv(): void {
         "Set it in Vercel → Settings → Environment Variables.",
     );
   }
+}
+
+/**
+ * Safe 500 response for missing ADMIN_TOKEN in production.
+ * Use in route handlers that call assertProdEnv() in a try/catch.
+ */
+export function prodEnvErrorResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      error: "Admin token missing in production env",
+      detail: "Set ADMIN_TOKEN in Vercel → Settings → Environment Variables.",
+    },
+    { status: 500 },
+  );
 }
 
 /**
