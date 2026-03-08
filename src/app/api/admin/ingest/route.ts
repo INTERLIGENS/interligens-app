@@ -1,7 +1,7 @@
 // src/app/api/admin/ingest/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/intel-vault/auth";
 import { parseCsv, parseJson, parseSheet, parseText } from "@/lib/intel-vault/parsers";
 import type { ParseOptions, NormalizedRow } from "@/lib/intel-vault/types";
 
@@ -22,10 +22,9 @@ interface IngestPayload {
 }
 
 export async function POST(req: NextRequest) {
-  const authError = requireAdmin(req);
-  if (authError) return authError;
-
-  let body: IngestPayload;
+    const deny = requireAdminApi(req);
+  if (deny) return deny;
+let body: IngestPayload;
   try {
     body = await req.json();
   } catch {

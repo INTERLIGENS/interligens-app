@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { checkAuth } from "@/lib/security/auth";
 
 const EXPORT_MAX_ROWS = parseInt(process.env.EXPORT_MAX_ROWS ?? "250000");
 const ALLOW_ENTITY_EXPORT = process.env.ALLOW_ENTITY_EXPORT === "true";
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req);
-  if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const deny = requireAdminApi(req);
+  if (deny) return deny;
 
   const format = req.nextUrl.searchParams.get("format") ?? "json";
   const includeEntityName = ALLOW_ENTITY_EXPORT &&

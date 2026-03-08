@@ -1,11 +1,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { checkAuth } from "@/lib/security/auth";
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req);
-  if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const deny = requireAdminApi(req);
+  if (deny) return deny;
 
   const status = new URL(req.url).searchParams.get("status") ?? "pending";
   const submissions = await prisma.communitySubmission.findMany({

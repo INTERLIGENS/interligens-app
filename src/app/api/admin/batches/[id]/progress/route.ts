@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { checkAuth } from "@/lib/security/auth";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await checkAuth(req);
-  if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const deny = requireAdminApi(req);
+  if (deny) return deny;
 
   const batch = await prisma.ingestionBatch.findUnique({
     where: { id: (await params).id },

@@ -1,18 +1,17 @@
 import { runApproveJob } from "@/lib/vault/approveJob";
 // src/app/api/admin/batches/[id]/approve/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/intel-vault/auth";
 import { upsertRows } from "@/lib/intel-vault/dedup";
 import { rebuildCacheForAddresses } from "@/lib/vault/vaultLookup";
 import type { NormalizedRow } from "@/lib/intel-vault/types";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = requireAdmin(req);
-  if (authError) return authError;
-
-  const batch = await prisma.ingestionBatch.findUnique({
+    const deny = requireAdminApi(req);
+  if (deny) return deny;
+const batch = await prisma.ingestionBatch.findUnique({
     where: { id: (await params).id },
     include: { rawDocuments: { take: 1 } },
   });

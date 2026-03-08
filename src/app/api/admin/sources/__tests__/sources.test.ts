@@ -19,6 +19,12 @@ import { POST, GET } from "../route";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+vi.mock("@/lib/security/adminAuth", () => ({
+  requireAdminApi: () => null,
+  isAdminApi: () => true,
+}));
+
+
 function makeReq(method: string, body?: unknown) {
   return new NextRequest("http://localhost/api/admin/sources", {
     method,

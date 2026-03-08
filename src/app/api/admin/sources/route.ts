@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { checkAuth } from "@/lib/security/auth";
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req);
-  if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const deny = requireAdminApi(req);
+  if (deny) return deny;
 
   const page = parseInt(req.nextUrl.searchParams.get("page") ?? "1");
   const pageSize = 50;
@@ -20,8 +20,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await checkAuth(req);
-  if (!auth.authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const deny = requireAdminApi(req);
+  if (deny) return deny;
 
   const body = await req.json();
   const { handle, sourceName, sourceType, homepageUrl, description,

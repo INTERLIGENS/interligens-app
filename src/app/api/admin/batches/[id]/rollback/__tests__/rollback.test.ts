@@ -20,6 +20,12 @@ import { POST } from "../route";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+vi.mock("@/lib/security/adminAuth", () => ({
+  requireAdminApi: () => null,
+  isAdminApi: () => true,
+}));
+
+
 function makeReq() {
   return new NextRequest("http://localhost/api/admin/batches/b1/rollback", { method: "POST" });
 }

@@ -1,5 +1,6 @@
 // src/app/api/admin/investigation/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/security/adminAuth";
 import { readPriorityList, addEntry, removeEntry } from "@/lib/solanaGraph/priorityStore";
 import type { Priority, InvestigationEntryType } from "@/lib/solanaGraph/types";
 export const runtime = "nodejs";
