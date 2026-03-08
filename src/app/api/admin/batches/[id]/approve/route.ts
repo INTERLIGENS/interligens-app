@@ -34,13 +34,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { created, updated } = await upsertRows(rows, (await params).id);
 
-  // Rebuild vault cache for affected addresses
-  await rebuildCacheForAddresses(rows.map(r => ({ chain: r.chain, address: r.address })));
-
-  // Invalidate cache for affected addresses
-  const addresses = rows.map(r => ({ chain: r.chain, address: r.address }));
-  for (const { chain, address } of addresses) {
-    await prisma.riskSummaryCache.deleteMany({ where: { chain, address } });
+  // Invalidate cache — single query with IN clause
+  const addresses = rows.map(r => r.address);
+  await prisma.riskSummaryCache.deleteMany({ where: { address: { in: addresses } } });
+  // Rebuild cache only for small batches to avoid timeout
+  if (rows.length <= 200) {
+    await rebuildCacheForAddresses(rows.map(r => ({ chain: r.chain, address: r.address })));
   }
 
   const actorToken = req.headers.get("x-admin-token") ?? "admin";
