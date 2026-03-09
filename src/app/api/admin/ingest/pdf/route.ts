@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const { hasS3 } = await import("@/lib/config/env");
   const storage = hasS3() ? s3Storage : getRawDocsStorage();
   const docId = crypto.randomUUID();
-  try { await storage.save(buffer, { mime: "application/pdf", filename: file.name, batchId: docId }); } catch(e) { console.warn("[pdf-ingest] storage save failed (non-blocking):", e); }
+  await storage.save(buffer, { mime: "application/pdf", filename: file.name, batchId: docId });
 
   // Extract text: fallback to raw buffer regex (pdf-parse not supported in serverless)
   let text = "";
