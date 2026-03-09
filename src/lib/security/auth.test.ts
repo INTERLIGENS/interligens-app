@@ -22,7 +22,7 @@ function makeReq(opts: {
 // ── Setup env mock ────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  vi.stubEnv("INTERLIGENS_API_TOKEN", VALID_TOKEN);
+  vi.stubEnv("ADMIN_TOKEN", VALID_TOKEN);
 });
 
 afterEach(() => {
@@ -104,7 +104,7 @@ describe("checkAuth — mauvais token", () => {
   });
 
   it("retourne 401 avec token vide string", async () => {
-    vi.stubEnv("INTERLIGENS_API_TOKEN", VALID_TOKEN);
+    vi.stubEnv("ADMIN_TOKEN", VALID_TOKEN);
     const result = await checkAuth(makeReq({ authHeader: "Bearer " }));
     expect(result.authorized).toBe(false);
   });
@@ -127,9 +127,10 @@ describe("checkAuth — bon token", () => {
 
 // ── checkAuth — env var absente ───────────────────────────────────────────────
 
-describe("checkAuth — INTERLIGENS_API_TOKEN absent", () => {
+// // @pr4:env-updated
+describe("checkAuth — ADMIN_TOKEN absent", () => {
   it("bloque tout si la var d'env n'est pas configurée (fail-closed)", async () => {
-    vi.stubEnv("INTERLIGENS_API_TOKEN", "");
+    vi.stubEnv("ADMIN_TOKEN", "");
     // Même avec le bon token — si l'env est vide, on refuse
     const result = await checkAuth(makeReq({ authHeader: `Bearer ${VALID_TOKEN}` }));
     expect(result.authorized).toBe(false);
