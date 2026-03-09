@@ -7,5 +7,5 @@ export const ENV_KEYS = [
   "SCAN_RATE_LIMIT",
   "DATABASE_URL",
   "UPSTASH_REDIS_REST_URL",
-  "INTERLIGENS_API_TOKEN",
+  // @pr4:key-removed INTERLIGENS_API_TOKEN retiré 2026-03-15
 ] as const;

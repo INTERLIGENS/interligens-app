@@ -17,6 +17,7 @@ function makeReq(headers: Record<string, string> = {}): NextRequest {
 
 // ── getAdminTokenFromReq ─────────────────────────────────────────────────────
 
+// @pr4:legacy-tests-removed — x-interligens-api-token tests supprimés
 describe("getAdminTokenFromReq", () => {
   it("returns null when no header present", () => {
     expect(getAdminTokenFromReq(makeReq())).toBeNull();
@@ -24,21 +25,6 @@ describe("getAdminTokenFromReq", () => {
 
   it("returns x-admin-token when present", () => {
     expect(getAdminTokenFromReq(makeReq({ "x-admin-token": "abc123" }))).toBe("abc123");
-  });
-
-  it("falls back to x-interligens-api-token (compat)", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const result = getAdminTokenFromReq(makeReq({ "x-interligens-api-token": "legacytoken" }));
-    expect(result).toBe("legacytoken");
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("DEPRECATION"));
-    warnSpy.mockRestore();
-  });
-
-  it("prefers x-admin-token over legacy header", () => {
-    const result = getAdminTokenFromReq(
-      makeReq({ "x-admin-token": "primary", "x-interligens-api-token": "legacy" }),
-    );
-    expect(result).toBe("primary");
   });
 });
 
@@ -103,13 +89,6 @@ describe("requireAdminApi", () => {
     const body = await res!.json();
     expect(body.error).toBe("Server misconfiguration");
     expect(body.detail).toContain("ADMIN_TOKEN");
-  });
-
-  it("accepts legacy x-interligens-api-token (compat)", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const res = requireAdminApi(makeReq({ "x-interligens-api-token": "mysecrettoken" }));
-    expect(res).toBeNull();
-    warnSpy.mockRestore();
   });
 });
 

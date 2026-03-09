@@ -13,7 +13,6 @@
 
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 
 // @pr1:cookie-support
 const ADMIN_COOKIE_NAME = "admin_token";
@@ -36,9 +35,10 @@ function safeCompare(a: string, b: string): boolean {
 }
 
 /**
- * Read the admin token from request headers.
- * Primary:  x-admin-token
- * Compat:   x-interligens-api-token (deprecated, remove after 2025-06-01)
+ * Read the admin token from request headers or cookie.
+ * Primary:  x-admin-token header
+ * Cookie:   admin_token httpOnly (posé par POST /api/admin/auth/login)
+ * @pr4:compat-removed — x-interligens-api-token supprimé (token Vercel retiré 2026-03-15)
  */
 export function getAdminTokenFromReq(req: NextRequest): string | null {
   const primary = req.headers.get("x-admin-token");
@@ -47,23 +47,6 @@ export function getAdminTokenFromReq(req: NextRequest): string | null {
   // Cookie httpOnly posé par POST /api/admin/auth/login
   const cookie = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (cookie) return cookie;
-
-  const legacy = req.headers.get("x-interligens-api-token");
-  if (legacy) {
-    console.warn(
-      "[adminAuth] DEPRECATION WARNING: x-interligens-api-token is deprecated. " +
-        "Migrate to x-admin-token before 2026-03-15.",
-    );
-    // Fire-and-forget AuditLog (no IP, no secret value)
-    prisma.auditLog.create({
-      data: {
-        action: "LEGACY_TOKEN_USED",
-        actorId: "system",
-        meta: "x-interligens-api-token header used — migrate to x-admin-token",
-      },
-    }).catch(() => { /* non-blocking */ });
-    return legacy;
-  }
 
   return null;
 }

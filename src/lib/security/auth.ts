@@ -3,7 +3,8 @@
  *
  * Guard Bearer token pour les routes API sensibles.
  *
- * Config: variable d'environnement INTERLIGENS_API_TOKEN (Vercel env / .env.local)
+ * Config: variable d'environnement ADMIN_TOKEN (Vercel env / .env.local)
+ * @pr4:migrated-to-ADMIN_TOKEN — INTERLIGENS_API_TOKEN retiré 2026-03-15
  *
  * Accepte le token via:
  *   - Header:  Authorization: Bearer <token>
@@ -100,18 +101,18 @@ export interface AuthResult {
 }
 
 /**
- * Vérifie le token Bearer de la requête contre INTERLIGENS_API_TOKEN.
+ * Vérifie le token Bearer de la requête contre ADMIN_TOKEN.
  *
  * Usage dans une route:
  *   const auth = await checkAuth(req);
  *   if (!auth.authorized) return auth.response!;
  */
 export async function checkAuth(req: Request): Promise<AuthResult> {
-  const expected = process.env.INTERLIGENS_API_TOKEN ?? "";
+  const expected = process.env.ADMIN_TOKEN ?? "";
 
   // Si la var d'env n'est pas configurée, on bloque tout (pas de fail-open sur auth)
   if (expected.length === 0) {
-    console.error("[auth] INTERLIGENS_API_TOKEN is not set — blocking request");
+    console.error("[auth] ADMIN_TOKEN is not set — blocking request");
     return { authorized: false, response: unauthorizedResponse(req) };
   }
 
