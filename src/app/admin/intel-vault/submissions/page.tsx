@@ -22,7 +22,7 @@ export default function SubmissionsPage() {
   const load = async (s: string) => {
     setLoading(true);
     const r = await fetch(`/api/admin/submissions?status=${s}`, {
-      headers: { "x-admin-token": document.cookie.match(/admin_token=([^;]+)/)?.[1] ?? "" },
+      credentials: "same-origin",
     });
     const d = await r.json();
     setItems(d.submissions ?? []);
@@ -32,10 +32,10 @@ export default function SubmissionsPage() {
   useEffect(() => { load(filter); }, [filter]);
 
   const act = async (id: string, action: string) => {
-    const token = document.cookie.match(/admin_token=([^;]+)/)?.[1] ?? "";
     await fetch(`/api/admin/submissions/${id}`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-admin-token": token },
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ action, adminNotes: note[id] ?? "" }),
     });
     load(filter);

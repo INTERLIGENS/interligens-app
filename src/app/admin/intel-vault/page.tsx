@@ -6,17 +6,6 @@ import { useRouter } from "next/navigation";
 type InputType = "url" | "file" | "text" | "address" | "pdf";
 type LabelType = "scam"|"phishing"|"drainer"|"exploiter"|"insider"|"kol"|"whale"|"airdrop_target"|"cluster_member"|"incident_related"|"other";
 
-function getAdminToken() {
-  return sessionStorage.getItem("admin_token") ?? "";
-}
-function promptAdminToken() {
-  const t = sessionStorage.getItem("admin_token");
-  if (t) return t;
-  const v = window.prompt("ADMIN_TOKEN (x-admin-token) :");
-  if (v) sessionStorage.setItem("admin_token", v);
-  return v ?? "";
-}
-
 export default function IntelVaultPage() {
   const router = useRouter();
   const [inputType, setInputType] = useState<InputType>("url");
@@ -57,16 +46,14 @@ export default function IntelVaultPage() {
         fd.append("label", label);
         res = await fetch("/api/admin/ingest/pdf", {
           method: "POST",
-          headers: { "x-admin-token": getAdminToken() },
+          credentials: "same-origin",
           body: fd,
         });
       } else {
         res = await fetch("/api/admin/ingest", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-token": getAdminToken(),
-          },
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
           body: JSON.stringify({ type: inputType, payload: payloadContent }),
         });
       }
@@ -151,7 +138,7 @@ export default function IntelVaultPage() {
                   const f = e.target.files?.[0] ?? null;
                   setPdfFile(f);
                   if (sources.length === 0) {
-                    const res = await fetch("/api/admin/sources", { headers: { "x-admin-token": promptAdminToken(), "Authorization": "Basic " + btoa("interligens-admin:c2e7707d164d7ce4b9a0df98302263b2") } });
+                    const res = await fetch("/api/admin/sources", { credentials: "same-origin" });
                     if (res.ok) { const d = await res.json(); setSources(d.sources ?? []); }
                   }
                 }}

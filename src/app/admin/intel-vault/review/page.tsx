@@ -12,9 +12,7 @@ interface BatchSummary {
   warnings: string[];
 }
 
-function getAdminToken() {
-  return document.cookie.split(";").find(c => c.trim().startsWith("admin_token="))?.split("=")[1] ?? "";
-}
+
 
 export default function ReviewPage() {
   const router = useRouter();

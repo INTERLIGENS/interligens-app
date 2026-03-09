@@ -19,9 +19,7 @@ interface BatchData {
   sample: Array<{ chain: string; address: string; labelType: string; label: string; confidence: string; sourceName: string; evidence?: string }>;
 }
 
-function getAdminToken() {
-  return document.cookie.split(";").find(c => c.trim().startsWith("admin_token="))?.split("=")[1] ?? "";
-}
+
 
 export default function BatchPreviewPage() {
   const { id } = useParams() as { id: string };
@@ -34,7 +32,7 @@ export default function BatchPreviewPage() {
 
   useEffect(() => {
     fetch(`/api/admin/batches/${id}`, {
-      headers: { "x-admin-token": getAdminToken() },
+      credentials: "same-origin",
     })
       .then(r => r.json())
       .then(setBatch)
@@ -48,7 +46,7 @@ export default function BatchPreviewPage() {
     try {
       const res = await fetch(`/api/admin/batches/${id}/approve`, {
         method: "POST",
-        headers: { "x-admin-token": getAdminToken() },
+        credentials: "same-origin",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erreur");

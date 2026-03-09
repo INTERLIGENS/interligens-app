@@ -6,14 +6,32 @@ import { useRouter, useSearchParams } from "next/navigation";
 function AdminLoginInner() {
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/admin/intel-vault";
 
-  function handleSubmit() {
-    // Set cookie and redirect
-    document.cookie = `admin_token=${token}; path=/; SameSite=Strict`;
-    router.push(redirect);
+  async function handleSubmit() {
+    if (!token.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ token: token.trim() }),
+      });
+      if (!res.ok) {
+        setError("Token invalide.");
+        return;
+      }
+      router.push(redirect);
+    } catch {
+      setError("Erreur réseau.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -32,9 +50,10 @@ function AdminLoginInner() {
         {error && <p className="text-red-400 text-sm">{error}</p>}
         <button
           onClick={handleSubmit}
-          className="w-full bg-orange-500 hover:bg-orange-400 text-black font-semibold py-2 rounded-lg text-sm transition"
+          disabled={loading}
+          className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-semibold py-2 rounded-lg text-sm transition"
         >
-          Accéder
+          {loading ? "Vérification…" : "Accéder"}
         </button>
       </div>
     </div>
