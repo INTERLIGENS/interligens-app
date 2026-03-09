@@ -1,6 +1,7 @@
 import { puppeteerSsrfGuard } from "@/lib/security/ssrfGuard";
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
@@ -121,7 +122,8 @@ export async function GET(request: NextRequest) {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      executablePath: await chromium.executablePath(),
+      args: chromium.args,
     });
     const page = await browser.newPage();
     await page.setRequestInterception(true);
