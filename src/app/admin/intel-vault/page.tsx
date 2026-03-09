@@ -7,7 +7,14 @@ type InputType = "url" | "file" | "text" | "address" | "pdf";
 type LabelType = "scam"|"phishing"|"drainer"|"exploiter"|"insider"|"kol"|"whale"|"airdrop_target"|"cluster_member"|"incident_related"|"other";
 
 function getAdminToken() {
-  return document.cookie.split(";").find(c => c.trim().startsWith("admin_token="))?.split("=")[1] ?? "";
+  return sessionStorage.getItem("admin_token") ?? "";
+}
+function promptAdminToken() {
+  const t = sessionStorage.getItem("admin_token");
+  if (t) return t;
+  const v = window.prompt("ADMIN_TOKEN (x-admin-token) :");
+  if (v) sessionStorage.setItem("admin_token", v);
+  return v ?? "";
 }
 
 export default function IntelVaultPage() {
@@ -144,7 +151,7 @@ export default function IntelVaultPage() {
                   const f = e.target.files?.[0] ?? null;
                   setPdfFile(f);
                   if (sources.length === 0) {
-                    const res = await fetch("/api/admin/sources", { headers: { "x-admin-token": getAdminToken(), "Authorization": "Basic " + btoa("interligens-admin:c2e7707d164d7ce4b9a0df98302263b2") } });
+                    const res = await fetch("/api/admin/sources", { headers: { "x-admin-token": promptAdminToken(), "Authorization": "Basic " + btoa("interligens-admin:c2e7707d164d7ce4b9a0df98302263b2") } });
                     if (res.ok) { const d = await res.json(); setSources(d.sources ?? []); }
                   }
                 }}
