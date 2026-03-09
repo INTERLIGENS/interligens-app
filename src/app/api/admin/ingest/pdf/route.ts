@@ -31,13 +31,10 @@ export async function POST(req: NextRequest) {
   const docId = crypto.randomUUID();
   try { await storage.save(buffer, { mime: "application/pdf", filename: file.name, batchId: docId }); } catch(e) { console.warn("[pdf-ingest] storage save failed (non-blocking):", e); }
 
-  // Extract text via pdf-parse
+  // Extract text: fallback to raw buffer regex (pdf-parse not supported in serverless)
   let text = "";
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
-    const parsed = await pdfParse(buffer);
-    text = parsed.text;
+    text = buffer.toString("latin1").replace(/[^\x20-\x7E\n]/g, " ");
   } catch (e) {
     return NextResponse.json({ error: "PDF parse failed: " + String(e) }, { status: 422 });
   }
