@@ -8,6 +8,7 @@ import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import type { ScanResult } from "@/app/api/scan/solana/route";
+import { uploadPdf, isStorageEnabled } from "@/lib/storage/pdfStorage";
 
 export async function GET(request: NextRequest) {
   const _auth = await checkAuth(request);
@@ -57,8 +58,35 @@ export async function GET(request: NextRequest) {
     await page.setContent(html, { waitUntil: "networkidle0" });
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true, margin: { top: "32px", right: "32px", bottom: "32px", left: "32px" } });
     await browser.close();
+
+    const pdfBuf = Buffer.from(pdfBuffer);
     const filename = `casefile-${mint_clean.slice(0, 8)}-${Date.now()}.pdf`;
-    return new NextResponse(Buffer.from(pdfBuffer), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${filename}"` } });
+
+    // ── Storage R2 (non-bloquant) ────────────────────────────────
+    if (isStorageEnabled()) {
+      const upload = await uploadPdf({ buffer: pdfBuf, subject: mint_clean, batchId: "casefile" });
+      if (upload) {
+        return NextResponse.json({
+          status: "stored",
+          signedUrl: upload.signedUrl,
+          key: upload.key,
+          sha256: upload.sha256,
+          sizeBytes: upload.sizeBytes,
+          expiresInSeconds: parseInt(process.env.PDF_SIGNED_URL_TTL_SECONDS ?? "900", 10),
+        });
+      }
+      // upload === null : R2 down → fallback stream direct
+      console.warn("[pdf/casefile] R2 upload failed, falling back to stream", { mint: mint_clean });
+    }
+
+    // Fallback / storage OFF : stream direct (comportement original)
+    return new NextResponse(pdfBuf, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "no-store",
+      },
+    });
   } catch (err) {
     console.error("[pdf/casefile] Puppeteer error:", err);
     return NextResponse.json({ error: "PDF generation failed", detail: String(err) }, { status: 500 });
