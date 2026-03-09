@@ -1,6 +1,6 @@
 // src/app/admin/intel-vault/page.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type InputType = "url" | "file" | "text" | "address" | "pdf";
@@ -21,6 +21,14 @@ export default function IntelVaultPage() {
   const [sources, setSources] = useState<{id:string,name:string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [stats, setStats] = useState<{ sources: number; labels: number; batches: number } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/stats", { credentials: "same-origin" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setStats(d))
+      .catch(() => null);
+  }, []);
 
   async function handleIngest() {
     setLoading(true);
