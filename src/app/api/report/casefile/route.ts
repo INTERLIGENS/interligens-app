@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
   try {
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath: await chromium.executablePath("https://github.com/Sparticuz/chromium/releases/download/v143.0.0/chromium-v143.0.0-pack.tar"),
+      executablePath: await chromium.executablePath("https://pub-bbfbc08b4f584a1a91027b0ca9b696fd.r2.dev/chromium-v143.0.4-pack.x64.tar"),
       args: chromium.args,
     });
     const page = await browser.newPage();
