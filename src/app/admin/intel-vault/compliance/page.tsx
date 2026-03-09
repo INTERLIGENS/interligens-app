@@ -15,7 +15,6 @@ async function getLegacyUsageCount(): Promise<number> {
 export default async function CompliancePage() {
   const envStatus = ENV_KEYS.map(k => ({ key: k, present: !!process.env[k] }));
   const adminTokenPresent = !!process.env.ADMIN_TOKEN;
-  const legacyTokenPresent = !!process.env.INTERLIGENS_API_TOKEN;
   const legacyUsageCount = await getLegacyUsageCount();
   const shimDeadline = "15 mars 2026";
 
@@ -67,29 +66,8 @@ export default async function CompliancePage() {
               </td>
               <td style={{ color: "#888", fontSize: "0.8rem" }}>Header: x-admin-token</td>
             </tr>
-            <tr style={{ borderBottom: "1px solid #222" }}>
-              <td style={{ padding: "0.4rem 0", color: "#e2e8f0" }}>INTERLIGENS_API_TOKEN (legacy)</td>
-              <td style={{ color: legacyTokenPresent ? "#fbbf24" : "#22c55e", fontWeight: "bold" }}>
-                {legacyTokenPresent ? "⚠ present (à supprimer)" : "✓ absent"}
-              </td>
-              <td style={{ color: "#888", fontSize: "0.8rem" }}>Shim deadline: {shimDeadline}</td>
-            </tr>
-            <tr>
-              <td style={{ padding: "0.4rem 0", color: "#e2e8f0" }}>Legacy token usages (total)</td>
-              <td style={{ color: legacyUsageCount === 0 ? "#22c55e" : "#fbbf24", fontWeight: "bold" }}>
-                {legacyUsageCount === -1 ? "N/A" : legacyUsageCount}
-              </td>
-              <td style={{ color: "#888", fontSize: "0.8rem" }}>
-                {legacyUsageCount > 0 ? "⚠ Identifier la source avant suppression" : "OK à supprimer"}
-              </td>
-            </tr>
           </tbody>
         </table>
-
-        <p style={{ color: "#888", fontSize: "0.8rem", margin: 0 }}>
-          Action requise avant le {shimDeadline} : supprimer INTERLIGENS_API_TOKEN dans Vercel → Settings → Env Vars → Production → Redeploy.
-          Voir <code>docs/OPS_ADMIN_PLAYBOOK.md</code> section 7.
-        </p>
       </section>
 
       {/* ── QUICK OPS ── */}
