@@ -144,7 +144,7 @@ export default function IntelVaultPage() {
                   const f = e.target.files?.[0] ?? null;
                   setPdfFile(f);
                   if (sources.length === 0) {
-                    const res = await fetch("/api/admin/sources", { headers: { "x-admin-token": getAdminToken() } });
+                    const res = await fetch("/api/admin/sources", { headers: { "x-admin-token": getAdminToken(), "Authorization": "Basic " + btoa("interligens-admin:c2e7707d164d7ce4b9a0df98302263b2") } });
                     if (res.ok) { const d = await res.json(); setSources(d.sources ?? []); }
                   }
                 }}
