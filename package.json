@@ -19,7 +19,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1004.0",
     "@prisma/adapter-better-sqlite3": "^7.4.2",
     "@prisma/client": "^5.22.0",
-    "@sparticuz/chromium": "^143.0.4",
+    "@sparticuz/chromium-min": "^143.0.4",
     "@vercel/analytics": "^1.6.1",
     "better-sqlite3": "^12.6.2",
     "csv-parse": "^6.1.0",

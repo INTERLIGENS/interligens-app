@@ -20,7 +20,7 @@ importers:
       '@prisma/client':
         specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
-      '@sparticuz/chromium':
+      '@sparticuz/chromium-min':
         specifier: ^143.0.4
         version: 143.0.4
       '@vercel/analytics':
@@ -1333,8 +1333,8 @@ packages:
     resolution: {integrity: sha512-O/IEdcCUKkubz60tFbGA7ceITTAJsty+lBjNoorP4Z6XRqaFb/OjQjZODophEcuq68nKm6/0r+6/lLQ+XVpk8g==}
     engines: {node: '>=18.0.0'}
 
-  '@sparticuz/chromium@143.0.4':
-    resolution: {integrity: sha512-/6I7uQTRhRDD2/gGPQ1Gkf+Dqk0RYDACPJDZfSzz0OWk4JmUTonNHPXbrn6UIklOHlnDLf8xAAzkOZKB/cJpLA==}
+  '@sparticuz/chromium-min@143.0.4':
+    resolution: {integrity: sha512-vAV731SUEVH0FUmMc+404ZoRq0glq7DlhEGpAX0C7/rXupZ0HasOIJHbrjNNNE+VElenkdmwBm8MVTzwYcFPyQ==}
     engines: {node: '>=20.11.0'}
 
   '@standard-schema/spec@1.1.0':
@@ -5111,7 +5111,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@sparticuz/chromium@143.0.4':
+  '@sparticuz/chromium-min@143.0.4':
     dependencies:
       follow-redirects: 1.15.11
       tar-fs: 3.1.1

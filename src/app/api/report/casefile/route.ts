@@ -1,7 +1,7 @@
 import { puppeteerSsrfGuard } from "@/lib/security/ssrfGuard";
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import chromium from "@sparticuz/chromium-min";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { checkAuth } from "@/lib/security/auth";
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
   try {
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath("https://github.com/Sparticuz/chromium/releases/download/v143.0.0/chromium-v143.0.0-pack.tar"),
       args: chromium.args,
     });
     const page = await browser.newPage();
