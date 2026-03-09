@@ -15,6 +15,10 @@ import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// @pr1:cookie-support
+const ADMIN_COOKIE_NAME = "admin_token";
+const ADMIN_COOKIE_MAX_AGE = 60 * 60 * 8; // 8h
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function safeCompare(a: string, b: string): boolean {
@@ -39,6 +43,10 @@ function safeCompare(a: string, b: string): boolean {
 export function getAdminTokenFromReq(req: NextRequest): string | null {
   const primary = req.headers.get("x-admin-token");
   if (primary) return primary;
+
+  // Cookie httpOnly posé par POST /api/admin/auth/login
+  const cookie = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  if (cookie) return cookie;
 
   const legacy = req.headers.get("x-interligens-api-token");
   if (legacy) {
@@ -139,4 +147,40 @@ export function requireAdminApi(req: NextRequest): NextResponse | null {
   }
 
   return null;
+}
+
+// ── Cookie management (server-side only) ─────────────────────────────────────
+
+/**
+ * Pose le cookie admin_token httpOnly sur une NextResponse existante.
+ * Appeler uniquement dans POST /api/admin/auth/login.
+ */
+export function setAdminCookie(res: NextResponse): void {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) throw new Error("[adminAuth] ADMIN_TOKEN manquant — impossible de créer le cookie");
+  res.cookies.set({
+    name: ADMIN_COOKIE_NAME,
+    value: token,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: ADMIN_COOKIE_MAX_AGE,
+    path: "/",
+  });
+}
+
+/**
+ * Supprime le cookie admin_token.
+ * Appeler dans POST /api/admin/auth/logout.
+ */
+export function clearAdminCookie(res: NextResponse): void {
+  res.cookies.set({
+    name: ADMIN_COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 0,
+    path: "/",
+  });
 }
