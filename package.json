@@ -14,6 +14,7 @@
     "vercel-build": "prisma generate --schema prisma/schema.prod.prisma && prisma migrate deploy --schema prisma/schema.prod.prisma && next build"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1004.0",
     "@prisma/adapter-better-sqlite3": "^7.4.2",
     "@prisma/client": "^5.22.0",
     "better-sqlite3": "^12.6.2",
