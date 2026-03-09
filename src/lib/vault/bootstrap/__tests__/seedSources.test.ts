@@ -96,6 +96,7 @@ describe("seedDefaultSources", () => {
 
     const report = await seedDefaultSources();
 
+    // // @pr3:count-updated
     expect(report.total).toBe(DEFAULT_SOURCES.length);
     expect(report.created + report.skipped + report.failed).toBe(DEFAULT_SOURCES.length);
   });
