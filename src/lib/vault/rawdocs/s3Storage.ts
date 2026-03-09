@@ -12,7 +12,7 @@ function getClient() {
       accessKeyId: env.RAWDOCS_S3_ACCESS_KEY,
       secretAccessKey: env.RAWDOCS_S3_SECRET_KEY,
     },
-    forcePathStyle: false,
+    forcePathStyle: true,
   });
 }
 
