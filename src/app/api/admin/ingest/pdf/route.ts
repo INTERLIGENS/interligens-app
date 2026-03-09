@@ -6,6 +6,7 @@ import { extractAddresses } from "@/lib/ingest/extractAddresses";
 import { getRawDocsStorage } from "@/lib/vault/rawdocs/getStorage";
 
 export async function POST(req: NextRequest) {
+  try {
     const deny = requireAdminApi(req);
   if (deny) return deny;
 
@@ -88,4 +89,7 @@ export async function POST(req: NextRequest) {
     chainDistribution: chainCounts,
     sample: candidates.slice(0, 5),
   });
+  } catch (e: any) {
+    return NextResponse.json({ error: "PDF route crash", detail: String(e?.message ?? e) }, { status: 500 });
+  }
 }
