@@ -4,6 +4,9 @@ import { buildSecurityHeaders, buildApiHeaders } from "./src/lib/security/header
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min"],
+  experimental: {
+  },
   async headers() {
     return [
       {
