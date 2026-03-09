@@ -9,8 +9,8 @@ function getClient() {
     region: env.RAWDOCS_S3_REGION || "auto",
     endpoint: env.RAWDOCS_S3_ENDPOINT,
     credentials: {
-      accessKeyId: env.RAWDOCS_S3_ACCESS_KEY,
-      secretAccessKey: env.RAWDOCS_S3_SECRET_KEY,
+      accessKeyId: env.RAWDOCS_S3_ACCESS_KEY.trim().replace(/\n/g, ""),
+      secretAccessKey: env.RAWDOCS_S3_SECRET_KEY.trim().replace(/\n/g, ""),
     },
     forcePathStyle: true,
   });
