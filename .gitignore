@@ -52,3 +52,7 @@ public/tiger/
 
 backups/
 .env*.local
+
+# Wrangler local state
+.wrangler/
+/tmp/
