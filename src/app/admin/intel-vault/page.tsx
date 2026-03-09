@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type InputType = "url" | "file" | "text" | "address";
+type InputType = "url" | "file" | "text" | "address" | "pdf";
 type LabelType = "scam"|"phishing"|"drainer"|"exploiter"|"insider"|"kol"|"whale"|"airdrop_target"|"cluster_member"|"incident_related"|"other";
 
 function getAdminToken() {
@@ -20,6 +20,9 @@ export default function IntelVaultPage() {
   const [label, setLabel] = useState("");
   const [defaultLabelType, setDefaultLabelType] = useState<LabelType>("other");
   const [visibility, setVisibility] = useState("internal_only");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [sourceId, setSourceId] = useState("");
+  const [sources, setSources] = useState<{id:string,name:string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,14 +39,30 @@ export default function IntelVaultPage() {
       payloadContent.defaultLabelType = defaultLabelType;
       payloadContent.visibility = visibility;
 
-      const res = await fetch("/api/admin/ingest", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-token": getAdminToken(),
-        },
-        body: JSON.stringify({ type: inputType, payload: payloadContent }),
-      });
+      let res: Response;
+      if (inputType === "pdf") {
+        if (!pdfFile) throw new Error("Sélectionne un fichier PDF");
+        if (!sourceId) throw new Error("Sélectionne une source");
+        const fd = new FormData();
+        fd.append("file", pdfFile);
+        fd.append("sourceId", sourceId);
+        fd.append("labelType", defaultLabelType);
+        fd.append("label", label);
+        res = await fetch("/api/admin/ingest/pdf", {
+          method: "POST",
+          headers: { "x-admin-token": getAdminToken() },
+          body: fd,
+        });
+      } else {
+        res = await fetch("/api/admin/ingest", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-token": getAdminToken(),
+          },
+          body: JSON.stringify({ type: inputType, payload: payloadContent }),
+        });
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erreur inconnue");
@@ -79,7 +98,7 @@ export default function IntelVaultPage() {
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Source</h2>
           <div className="flex gap-2 flex-wrap">
-            {(["url","file","text","address"] as InputType[]).map(t => (
+            {(["url","file","text","address","pdf"] as InputType[]).map(t => (
               <button
                 key={t}
                 onClick={() => setInputType(t)}
@@ -89,7 +108,7 @@ export default function IntelVaultPage() {
                     : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
-                {t === "url" ? "🔗 URL" : t === "file" ? "📄 Fichier CSV/JSON" : t === "text" ? "✍️ Texte / Thread" : "📍 Adresse unique"}
+                {t === "url" ? "🔗 URL" : t === "file" ? "📄 Fichier CSV/JSON" : t === "text" ? "✍️ Texte / Thread" : t === "pdf" ? "📑 PDF" : "📍 Adresse unique"}
               </button>
             ))}
           </div>
@@ -113,6 +132,34 @@ export default function IntelVaultPage() {
                 : "Colle le thread, tweet ou texte brut ici (les adresses seront extraites)"}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 font-mono"
             />
+          )}
+
+
+          {inputType === "pdf" && (
+            <div className="space-y-3">
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={async e => {
+                  const f = e.target.files?.[0] ?? null;
+                  setPdfFile(f);
+                  if (sources.length === 0) {
+                    const res = await fetch("/api/admin/sources", { headers: { "x-admin-token": getAdminToken() } });
+                    if (res.ok) { const d = await res.json(); setSources(d.sources ?? []); }
+                  }
+                }}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300"
+              />
+              {pdfFile && <p className="text-xs text-gray-400">📄 {pdfFile.name} ({(pdfFile.size/1024).toFixed(0)} Ko)</p>}
+              <select
+                value={sourceId}
+                onChange={e => setSourceId(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">— Sélectionner une source —</option>
+                {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
           )}
 
           {inputType === "address" && (
