@@ -4,6 +4,7 @@ import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { extractAddresses } from "@/lib/ingest/extractAddresses";
 import { getRawDocsStorage } from "@/lib/vault/rawdocs/getStorage";
+import { s3Storage } from "@/lib/vault/rawdocs/s3Storage";
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,7 +26,8 @@ export async function POST(req: NextRequest) {
   // Store raw doc
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const storage = getRawDocsStorage();
+  const { hasS3 } = await import("@/lib/config/env");
+  const storage = hasS3() ? s3Storage : getRawDocsStorage();
   const docId = crypto.randomUUID();
   await storage.save(buffer, { mime: "application/pdf", filename: file.name, batchId: docId });
 
