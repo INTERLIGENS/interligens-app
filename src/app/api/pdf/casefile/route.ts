@@ -2,7 +2,8 @@ import { puppeteerSsrfGuard } from "@/lib/security/ssrfGuard";
 import { checkAuth } from "@/lib/security/auth";
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
@@ -50,7 +51,11 @@ export async function GET(request: NextRequest) {
   const html = renderCaseFilePDF(scanResult, lang);
 
   try {
-    const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath: await chromium.executablePath(),
+      args: chromium.args,
+    });
     const page = await browser.newPage();
     await page.setRequestInterception(true);
     page.on("request", puppeteerSsrfGuard);
