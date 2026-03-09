@@ -76,7 +76,10 @@ async function etherscanV2<T>(url: string) {
   if (json?.result === undefined) return json as T;
 
   if (json?.status === "0") {
-    const msg = String(json?.result || json?.message || "Etherscan error");
+    const result = json?.result;
+    // Tableau vide ou "0" = pas d'historique, pas une erreur
+    if (Array.isArray(result) || result === "0" || result === "" || result === null) return json as T;
+    const msg = String(result || json?.message || "Etherscan error");
     throw new Error(msg);
   }
 
@@ -396,6 +399,6 @@ export async function GET(req: Request) {
     if (msg.toLowerCase().includes("rate limit")) {
       return NextResponse.json({ error: "ETH scan failed", detail: msg }, { status: 429 });
     }
-    return NextResponse.json({ error: "ETH scan failed", detail: msg }, { status: 500 });
+    return NextResponse.json({ error: "ETH scan failed", detail: msg, raw: String(e), stack: e?.stack ?? null, keys: Object.keys(e ?? {}) }, { status: 500 });
   }
 }
