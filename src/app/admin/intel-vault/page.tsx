@@ -21,7 +21,7 @@ export default function IntelVaultPage() {
   const [defaultLabelType, setDefaultLabelType] = useState<LabelType>("other");
   const [visibility, setVisibility] = useState("internal_only");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [sourceId, setSourceId] = useState("");
+  const [sourceId, setSourceId] = useState("cmmivrvaf0000lwyik76w9i5n");
   const [sources, setSources] = useState<{id:string,name:string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
