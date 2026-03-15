@@ -576,7 +576,7 @@ export default function TigerScanPageFR() {
               <button
                 onClick={async () => {
                   if (!result) return;
-                  const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=fr`);
+                  const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=fr&mock=1`);
                   if (!res.ok) return;
                   const blob = await res.blob();
                   const url  = URL.createObjectURL(blob);
