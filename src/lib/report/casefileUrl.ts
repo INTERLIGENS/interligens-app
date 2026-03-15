@@ -4,7 +4,7 @@ export type CaseFileParams = {
 };
 
 export function buildCaseFileUrl({ id, lang }: CaseFileParams): string {
-  return `/api/report/casefile?mint=${encodeURIComponent(id)}&lang=${lang}&t=${Date.now()}`;
+  return `/api/report/casefile?mint=${encodeURIComponent(id)}&lang=${lang}&mock=1&t=${Date.now()}`;
 }
 
 export function buildCaseFileFilename(id: string): string {
