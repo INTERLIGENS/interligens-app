@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/report/v2/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/pdf/casefile/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/report/casefile/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
