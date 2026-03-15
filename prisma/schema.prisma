@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -140,4 +140,43 @@ model CommunitySubmission {
   severityDerived String   @default("info")
   adminNotes      String?
   linkedBatchId   String?
+}
+
+model GraphCase {
+  id           String      @id @default(cuid())
+  title        String
+  pivotAddress String
+  chain        String
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  nodes        GraphNode[]
+  edges        GraphEdge[]
+}
+
+model GraphNode {
+  id       String      @id @default(cuid())
+  caseId   String
+  type     String
+  label    String
+  metadata String      @default("{}")
+  posX     Float       @default(0)
+  posY     Float       @default(0)
+  flagged  Boolean     @default(false)
+  case     GraphCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  edgesOut GraphEdge[] @relation("EdgeSource")
+  edgesIn  GraphEdge[] @relation("EdgeTarget")
+}
+
+model GraphEdge {
+  id         String    @id @default(cuid())
+  caseId     String
+  sourceId   String
+  targetId   String
+  relation   String
+  evidence   String?
+  confidence String    @default("MEDIUM")
+  case       GraphCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  source     GraphNode @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target     GraphNode @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
 }
