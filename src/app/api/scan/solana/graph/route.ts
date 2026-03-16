@@ -1,67 +1,117 @@
-// src/app/api/scan/solana/graph/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { buildGraphReport } from "@/lib/solanaGraph/engine";
-import type { HopsDepth, DaysWindow } from "@/lib/solanaGraph/types";
-
-import { vaultLookup } from "@/lib/vault/vaultLookup";
-import { checkScanLimit } from "@/lib/vault/scanRateLimit";
-import { auditScanLookup } from "@/lib/vault/auditScan";
-
-export const runtime = "nodejs";
-export const maxDuration = 60;
-
-// ── Cache TTL 30min (mémoire process) ────────────────────────────────────────
-const _cache = new Map<string, { expiresAt: number; value: unknown }>();
-function cacheGet(key: string): unknown | null {
-  const e = _cache.get(key);
-  if (!e) return null;
-  if (Date.now() > e.expiresAt) { _cache.delete(key); return null; }
-  return e.value;
-}
-function cacheSet(key: string, value: unknown, ttlMs = 30 * 60 * 1000) {
-  _cache.set(key, { expiresAt: Date.now() + ttlMs, value });
-}
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
-  const sp = req.nextUrl.searchParams;
-  const mint   = sp.get("mint")   ?? undefined;
-  const wallet = sp.get("wallet") ?? undefined;
-  if (!mint && !wallet)
-    return NextResponse.json({ error: "Missing mint or wallet" }, { status: 400 });
-
-  const hops: HopsDepth = sp.get("hops") === "2" ? 2 : 1;
-  const daysRaw = Number(sp.get("days") ?? 30);
-  const days: DaysWindow = daysRaw === 14 ? 14 : daysRaw === 90 ? 90 : 30;
-
-  const key = `graph:${mint ?? wallet}:h${hops}:d${days}`;
-  const t0  = Date.now();
-
-  // Cache hit ?
-  const cached = cacheGet(key);
-  if (cached) {
-    const ms = Date.now() - t0;
-    console.log("[graph]", { cache_hit: true, key, ms });
-    return NextResponse.json(cached, {
-      headers: { "X-Cache": "HIT", "Cache-Control": "no-store" },
-    });
-  }
+  const { searchParams } = new URL(req.url)
+  const mint = searchParams.get('mint')
+  if (!mint) return NextResponse.json({ clusters: [], related_projects: [], overall_status: 'NONE' })
 
   try {
-    const report = await buildGraphReport(mint, wallet, hops, days);
-    cacheSet(key, report);
-    const ms = Date.now() - t0;
-    console.log("[graph]", { cache_hit: false, key, ms });
-    return NextResponse.json(report, {
-      headers: {
-        "X-Cache": report.cache_hit ? "HIT" : "MISS",
-        "X-Graph-Status": report.overall_status,
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Graph computation failed" },
-      { status: 500 }
-    );
+    // Check our GraphCase DB first
+    const graphCase = await prisma.graphCase.findFirst({
+      where: { pivotAddress: mint.toLowerCase() },
+      include: { nodes: true, edges: true }
+    })
+
+    if (graphCase) {
+      const nodes = graphCase.nodes
+      const edges = graphCase.edges
+
+      // Build clusters from our edges
+      const clusters: any[] = []
+      const relationGroups: Record<string, any[]> = {}
+
+      for (const edge of edges) {
+        if (!relationGroups[edge.relation]) relationGroups[edge.relation] = []
+        relationGroups[edge.relation].push(edge)
+      }
+
+      // funded_by → shared_funder cluster
+      if (relationGroups['funded_by']?.length > 0) {
+        const fundedEdges = relationGroups['funded_by']
+        const funders = [...new Set(fundedEdges.map(e => e.sourceId))]
+        clusters.push({
+          label: `${funders.length} shared funder${funders.length > 1 ? 's' : ''} detected`,
+          heuristic: 'shared_funder',
+          strength: fundedEdges.length >= 4 ? 'STRONG' : 'MODERATE',
+          status: 'CORROBORATED',
+          wallets: fundedEdges.map(e => {
+            const node = nodes.find(n => n.id === e.targetId)
+            return node?.label ?? e.targetId
+          }),
+          proofs: fundedEdges.slice(0, 3).map(e => ({
+            type: 'funded_by',
+            tx_signature: e.evidence ?? 'internal_doc',
+            timestamp: Date.now() / 1000,
+            detail: `${nodes.find(n => n.id === e.sourceId)?.label ?? 'team'} → ${nodes.find(n => n.id === e.targetId)?.label ?? 'wallet'}`
+          }))
+        })
+      }
+
+      // controls → coordinated control cluster
+      if (relationGroups['controls']?.length > 2) {
+        const controlEdges = relationGroups['controls']
+        clusters.push({
+          label: `${controlEdges.length} wallets under coordinated control`,
+          heuristic: 'co_trading',
+          strength: 'STRONG',
+          status: 'CORROBORATED',
+          wallets: controlEdges.map(e => nodes.find(n => n.id === e.targetId)?.label ?? e.targetId),
+          proofs: controlEdges.slice(0, 3).map(e => ({
+            type: 'controls',
+            tx_signature: e.evidence ?? 'internal_doc',
+            timestamp: Date.now() / 1000,
+            detail: `controls: ${nodes.find(n => n.id === e.targetId)?.label ?? 'wallet'}`
+          }))
+        })
+      }
+
+      // promoted → related projects
+      const promoEdges = relationGroups['promoted'] ?? []
+      const related_projects = promoEdges.map(e => {
+        const node = nodes.find(n => n.id === e.sourceId)
+        return {
+          mint: node?.label ?? e.sourceId,
+          symbol: node?.type === 'social' ? 'KOL' : 'DOMAIN',
+          name: node?.label ?? '',
+          status: 'CORROBORATED',
+          link_score: 85,
+          shared_wallets: 1,
+          signals: ['promoted', e.confidence === 'HIGH' ? 'undisclosed_paid_promo' : 'suspected_promo']
+        }
+      })
+
+      // Flagged nodes as additional signal
+      const flaggedNodes = nodes.filter(n => n.flagged)
+
+      return NextResponse.json({
+        clusters,
+        related_projects,
+        overall_status: clusters.length > 0 ? 'CONFIRMED' : flaggedNodes.length > 0 ? 'REFERENCED' : 'NONE',
+        source: 'interligens_graph_db',
+        case_id: graphCase.id,
+        case_title: graphCase.title,
+        flagged_count: flaggedNodes.length,
+        total_nodes: nodes.length,
+        total_edges: edges.length,
+      })
+    }
+
+    // No GraphCase found — return empty
+    return NextResponse.json({
+      clusters: [],
+      related_projects: [],
+      overall_status: 'NONE',
+      source: 'no_data'
+    })
+
+  } catch (e: any) {
+    console.error('[GRAPH ROUTE]', e)
+    return NextResponse.json({
+      clusters: [],
+      related_projects: [],
+      overall_status: 'NONE',
+      error: e.message
+    })
   }
 }
