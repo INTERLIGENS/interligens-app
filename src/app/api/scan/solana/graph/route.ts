@@ -94,6 +94,11 @@ export async function GET(req: NextRequest) {
         flagged_count: flaggedNodes.length,
         total_nodes: nodes.length,
         total_edges: edges.length,
+        limits: {
+          seeds_used: 1,
+          max_seeds: 50,
+          tx_fetched: edges.length,
+        }
       })
     }
 
@@ -102,7 +107,8 @@ export async function GET(req: NextRequest) {
       clusters: [],
       related_projects: [],
       overall_status: 'NONE',
-      source: 'no_data'
+      source: 'no_data',
+      limits: { seeds_used: 0, max_seeds: 50, tx_fetched: 0 }
     })
 
   } catch (e: any) {
@@ -111,7 +117,8 @@ export async function GET(req: NextRequest) {
       clusters: [],
       related_projects: [],
       overall_status: 'NONE',
-      error: e.message
+      error: e.message,
+      limits: { seeds_used: 0, max_seeds: 50, tx_fetched: 0 }
     })
   }
 }
