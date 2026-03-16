@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
       const edges = graphCase.edges
 
       // Build clusters from our edges
-      const clusters: any[] = []
+      let clusterIdx = 0
+    const clusters: any[] = []
       const relationGroups: Record<string, any[]> = {}
 
       for (const edge of edges) {
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
         const fundedEdges = relationGroups['funded_by']
         const funders = [...new Set(fundedEdges.map(e => e.sourceId))]
         clusters.push({
+          id: `cluster_${clusterIdx++}`,
           label: `${funders.length} shared funder${funders.length > 1 ? 's' : ''} detected`,
           heuristic: 'shared_funder',
           strength: fundedEdges.length >= 4 ? 'STRONG' : 'MODERATE',
@@ -52,6 +54,7 @@ export async function GET(req: NextRequest) {
       if (relationGroups['controls']?.length > 2) {
         const controlEdges = relationGroups['controls']
         clusters.push({
+          id: `cluster_${clusterIdx++}`,
           label: `${controlEdges.length} wallets under coordinated control`,
           heuristic: 'co_trading',
           strength: 'STRONG',
