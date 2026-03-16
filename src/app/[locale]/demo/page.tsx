@@ -10,6 +10,7 @@ import TechnicalEvidence from "@/components/TechnicalEvidence";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
+import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -509,6 +510,16 @@ function TigerScanPageInner() {
 
             {/* RIGHT: SIGNALS + CARDS */}
             <div className="lg:col-span-7 flex flex-col gap-6">
+
+              {/* ── RETAIL VERDICT BANNER ── */}
+              <RetailVerdictBanner
+                tier={result.tier}
+                score={result.score}
+                proofs={result.proofs}
+                address={address.trim()}
+                chain={result.chain}
+                lang="en"
+              />
 
               {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
               <MiniSignalRow
