@@ -111,7 +111,7 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
 
   return (
     <div style={{
-      background: v.bg,
+      background: (v as any).bg,
       border: `1px solid ${v.border}`,
       borderRadius: 16,
       padding: '20px 24px',
@@ -126,13 +126,20 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
       }} />
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-        <span style={{ fontSize: 32 }}>{v.emoji}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 10,
+          background: v.color + '22',
+          border: '1px solid ' + v.color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, fontWeight: 900, color: v.color, flexShrink: 0,
+          fontFamily: 'monospace',
+        }}>{(v as any).icon}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 900, color: v.color, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: v.color, letterSpacing: '0.05em', lineHeight: 1, textTransform: 'uppercase', fontFamily: 'monospace' }}>
             {v.title}
           </div>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{v.sub}</div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, letterSpacing: '0.02em' }}>{v.sub}</div>
         </div>
         {/* TigerScore — secondary */}
         <div style={{
