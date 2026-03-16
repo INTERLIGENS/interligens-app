@@ -36,6 +36,7 @@ model SourceRegistry {
   updatedAt          DateTime @updatedAt
   batches            IngestionBatch[]
   templates          SourceTemplate[]
+  intakeRecords      IntakeRecord[]
 }
 
 model IngestionBatch {
@@ -58,9 +59,11 @@ model IngestionBatch {
   rolledBackAt         DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
-  rawDocuments  RawDocument[]
-  labels        AddressLabel[]
-  auditLogs     AuditLog[]
+  rawDocuments   RawDocument[]
+  labels         AddressLabel[]
+  auditLogs      AuditLog[]
+  intakeRecords  IntakeRecord[] @relation("IntakePrimary")
+  intakeRecords2 IntakeRecord[] @relation("IntakeSecondary")
 }
 
 model RawDocument {
@@ -206,4 +209,47 @@ model WalletLabel {
   @@index([chain])
   @@index([category])
   @@index([verified])
+}
+
+model IntakeRecord {
+  id               String          @id @default(cuid())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  status           String          @default("pending")
+  inputType        String
+  sourceRef        String?
+  sourceId         String?
+  source           SourceRegistry? @relation(fields: [sourceId], references: [id])
+  submittedBy      String?
+  provenance       String          @default("{}")
+  parserUsed       String          @default("unknown")
+  extractVersion   String          @default("v1")
+  rawText          String?
+  rawTextTruncated Boolean         @default(false)
+  extracted        String          @default("{}")
+  classification   String          @default("rawdoc")
+  routerConfidence Float           @default(0)
+  extractWarnings  String          @default("[]")
+  pendingBatch     Boolean         @default(false)
+  linkedBatchId    String?
+  linkedBatch      IngestionBatch? @relation("IntakePrimary", fields: [linkedBatchId], references: [id])
+  linkedBatchId2   String?
+  linkedBatch2     IngestionBatch? @relation("IntakeSecondary", fields: [linkedBatchId2], references: [id])
+  ipHash           String?
+  userAgentHash    String?
+  adminNotes       String?
+}
+
+model KolProfile {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  handle          String   @unique
+  platform        String   @default("x")
+  label           String   @default("unknown")
+  riskFlag        String   @default("unverified")
+  wallets         String   @default("[]")
+  sourceIntakeIds String   @default("[]")
+  confidence      String   @default("low")
+  status          String   @default("active")
 }
