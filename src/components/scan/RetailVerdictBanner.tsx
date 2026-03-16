@@ -21,9 +21,9 @@ interface Props {
 
 const VERDICTS = {
   en: {
-    RED:    { emoji: '🚨', title: 'DANGER — Do not buy', sub: 'This token shows critical risk signals', color: '#ef4444', bg: '#ef444411', border: '#ef444433' },
-    ORANGE: { emoji: '⚠️', title: 'CAUTION — High risk detected', sub: 'Several warning signals identified', color: '#f59e0b', bg: '#f59e0b11', border: '#f59e0b33' },
-    GREEN:  { emoji: '✅', title: 'CLEAN — No major risk detected', sub: 'This token appears relatively safe', color: '#10b981', bg: '#10b98111', border: '#10b98133' },
+    RED:    { emoji: '🚨', title: 'DANGER — Do not buy', sub: 'This token shows critical risk signals', color: '#ef4444', bg: '#1a0505', border: '#ef4444' },
+    ORANGE: { emoji: '⚠️', title: 'CAUTION — High risk detected', sub: 'Several warning signals identified', color: '#f59e0b', bg: '#1a1005', border: '#f59e0b' },
+    GREEN:  { emoji: '✅', title: 'CLEAN — No major risk detected', sub: 'This token appears relatively safe', color: '#10b981', bg: '#051a10', border: '#10b981' },
   },
   fr: {
     RED:    { emoji: '🚨', title: 'DANGER — Ne pas acheter', sub: 'Ce token présente des signaux critiques', color: '#ef4444', bg: '#ef444411', border: '#ef444433' },

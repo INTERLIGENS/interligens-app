@@ -512,14 +512,33 @@ function TigerScanPageInner() {
             <div className="lg:col-span-7 flex flex-col gap-6">
 
               {/* ── RETAIL VERDICT BANNER ── */}
-              <RetailVerdictBanner
-                tier={result.tier}
-                score={result.score}
-                proofs={result.proofs}
-                address={address.trim()}
-                chain={result.chain}
-                lang="en"
-              />
+              <div style={{ background: '#1a0505', border: '2px solid #ef4444', borderRadius: 16, padding: '20px 24px', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 32 }}>🚨</span>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: '#ef4444' }}>
+                      {result.tier === 'RED' ? 'DANGER — Do not buy' : result.tier === 'ORANGE' ? 'CAUTION — High risk' : 'CLEAN — Looks safe'}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+                      TigerScore: {result.score}/100 · Analyzed by INTERLIGENS AI 🐯
+                    </div>
+                  </div>
+                </div>
+                {result.tier !== 'GREEN' && (
+                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                    {result.proofs.filter((p: any) => p.level !== 'low').slice(0, 3).map((p: any, i: number) => (
+                      <div key={i} style={{ fontSize: 13, color: '#e2e8f0', background: '#0f172a', borderRadius: 8, padding: '7px 12px', borderLeft: '3px solid #ef4444' }}>
+                        ⚠️ {p.riskDescription}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <a href={"/en/scan/" + address.trim() + "/timeline"} style={{ background: '#ef4444', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                    See how this scam unfolded →
+                  </a>
+                </div>
+              </div>
 
               {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
               <MiniSignalRow
