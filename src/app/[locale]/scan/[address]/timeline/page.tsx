@@ -73,7 +73,7 @@ export default function TimelinePage() {
             href={`/${locale}/scan?addr=${address}`}
             style={{ display: 'inline-block', background: '#1e293b', border: '1px solid #374151', borderRadius: 8, color: '#94a3b8', padding: '10px 20px', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}
           >
-            ← {isFr ? 'Retour au scan complet' : 'Back to full scan'}
+            {isFr ? "← Retour au scan complet" : "← Back to full scan"}
           </a>
         </div>
       </div>
