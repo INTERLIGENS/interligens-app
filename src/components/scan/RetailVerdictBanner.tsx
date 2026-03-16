@@ -170,7 +170,7 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {isSolana && address && (
           
-            href={"/en/scan/" + address + "/timeline"}
+          <a
             style={{
               background: v.color,
               color: '#fff',
