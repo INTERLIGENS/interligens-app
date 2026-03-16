@@ -13,7 +13,6 @@ export default function TimelinePage() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  const isFr = lang === 'fr'
 
   useEffect(() => {
     if (!address) return
@@ -61,7 +60,7 @@ export default function TimelinePage() {
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 16 }}>
             <div style={{ width: 40, height: 40, border: '3px solid #1f2937', borderTop: '3px solid #4f46e5', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <div style={{ color: '#6b7280', fontSize: 13 }}>{isFr ? 'Analyse en cours...' : isFr ? 'Analyse en cours...' : 'Analyzing...'}</div>
+            <div style={{ color: '#6b7280', fontSize: 13 }}>{isFr ? 'Analyse en cours...' : 'Analyzing...'}</div>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         ) : (
