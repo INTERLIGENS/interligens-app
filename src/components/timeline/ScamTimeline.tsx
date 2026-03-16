@@ -179,15 +179,7 @@ export default function ScamTimeline({ data, lang = 'en' }: Props) {
                       >
                         📋 {isFr ? 'Copier' : 'Copy'}
                       </button>
-                      
-                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🚨 ${title}\n\n${desc}\n\nAnalysé par @INTERLIGENS`)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 5, color: '#94a3b8', padding: '4px 10px', fontSize: 10, cursor: 'pointer', fontWeight: 600, textDecoration: 'none' }}
-                      >
-                        𝕏 {isFr ? 'Partager' : 'Share'}
-                      </a>
+                      <a href={"https://twitter.com/intent/tweet?text=" + encodeURIComponent("INTERLIGENS: " + title + " - " + desc)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 5, color: '#94a3b8', padding: '4px 10px', fontSize: 10, cursor: 'pointer', fontWeight: 600, textDecoration: 'none' }}>X {isFr ? 'Partager' : 'Share'}</a>
                     </div>
                   </div>
                 )}
