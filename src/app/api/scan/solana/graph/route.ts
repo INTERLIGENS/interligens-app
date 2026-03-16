@@ -98,7 +98,10 @@ export async function GET(req: NextRequest) {
           seeds_used: 1,
           max_seeds: 50,
           tx_fetched: edges.length,
-        }
+          wallets_expanded_hop1: nodes.length,
+        },
+        provider: { name: 'INTERLIGENS Graph DB' },
+        query: { hops: 1, days: 30 }
       })
     }
 
@@ -108,7 +111,9 @@ export async function GET(req: NextRequest) {
       related_projects: [],
       overall_status: 'NONE',
       source: 'no_data',
-      limits: { seeds_used: 0, max_seeds: 50, tx_fetched: 0 }
+      limits: { seeds_used: 0, max_seeds: 50, tx_fetched: 0, wallets_expanded_hop1: 0 },
+      provider: { name: 'INTERLIGENS' },
+      query: { hops: 1, days: 30 }
     })
 
   } catch (e: any) {
@@ -118,7 +123,9 @@ export async function GET(req: NextRequest) {
       related_projects: [],
       overall_status: 'NONE',
       error: e.message,
-      limits: { seeds_used: 0, max_seeds: 50, tx_fetched: 0 }
+      limits: { seeds_used: 0, max_seeds: 50, tx_fetched: 0, wallets_expanded_hop1: 0 },
+      provider: { name: 'INTERLIGENS' },
+      query: { hops: 1, days: 30 }
     })
   }
 }

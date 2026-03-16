@@ -43,26 +43,26 @@ function toPlainLanguage(proof: Proof, lang: 'en' | 'fr'): string | null {
   const desc = (proof.riskDescription ?? '').toLowerCase()
   const map: Record<string, Record<string, string>> = {
     en: {
-      'drain vector':       '💸 Unlimited token approvals — drain risk',
-      'unverified program': '⚠️ Unverified programs detected',
-      'burner behavior':    '🔥 New burner wallet behavior',
-      'unlimited':          '💸 Unlimited spend approvals',
-      'unknown':            '❓ Unknown smart contracts',
-      'attack surface':     '🎯 High number of contract interactions',
-      'detective':          '🕵️ Detective Referenced — case on file',
-      'off-chain':          '📋 Off-chain investigation result',
-      'case':               '🗂 Case identifier found',
+      'drain vector':       'Unlimited token approvals — drain risk',
+      'unverified program': 'Unverified programs detected',
+      'burner behavior':    'New burner wallet behavior',
+      'unlimited':          'Unlimited spend approvals',
+      'unknown':            'Unknown smart contracts',
+      'attack surface':     'High number of contract interactions',
+      'detective':          'Detective Referenced — case on file',
+      'off-chain':          'Off-chain investigation result',
+      'case':               'Case identifier found',
     },
     fr: {
-      'drain vector':       '💸 Approbations illimitées — risque de drain',
-      'unverified program': '⚠️ Programmes non vérifiés',
-      'burner behavior':    '🔥 Comportement wallet jetable',
-      'unlimited':          '💸 Approbations illimitées détectées',
-      'unknown':            '❓ Contrats inconnus',
-      'attack surface':     '🎯 Nombreuses interactions contrats',
-      'detective':          '🕵️ Référencé par un détective',
-      'off-chain':          '📋 Investigation off-chain',
-      'case':               '🗂 Identifiant de dossier trouvé',
+      'drain vector':       'Approbations illimitées — risque de drain',
+      'unverified program': 'Programmes non vérifiés',
+      'burner behavior':    'Comportement wallet jetable',
+      'unlimited':          'Approbations illimitées détectées',
+      'unknown':            'Contrats inconnus',
+      'attack surface':     'Nombreuses interactions contrats',
+      'detective':          'Référencé par un détective',
+      'off-chain':          'Investigation off-chain',
+      'case':               'Identifiant de dossier trouvé',
     }
   }
   for (const [key, val] of Object.entries(map[lang])) {
@@ -83,7 +83,7 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
     .slice(0, 3) as string[]
 
   const generic = {
-    en: { RED: ['🚨 Risk score critically high', '🔍 Multiple red flags detected'], ORANGE: ['⚠️ Risk score above safe threshold'], GREEN: ['✅ No critical signals detected'] },
+    en: { RED: ['Risk score critically high', 'Multiple red flags detected'], ORANGE: ['Risk score above safe threshold'], GREEN: ['No critical signals detected'] },
     fr: { RED: ["🚨 Score de risque critique", "🔍 Plusieurs red flags détectés"], ORANGE: ["⚠️ Score au-dessus du seuil"], GREEN: ["✅ Aucun signal critique"] }
   }
   while (reasons.length < 2) {
@@ -101,11 +101,9 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${v.color}, transparent)` }} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 10, background: v.color + '22', border: '2px solid ' + v.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 900, color: v.color, flexShrink: 0, fontFamily: 'monospace' }}>
-          {v.icon}
-        </div>
+        <div style={{ width: 6, height: 52, borderRadius: 3, background: v.color, flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 24, fontWeight: 900, color: v.color, letterSpacing: '0.08em', lineHeight: 1, fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: v.color, letterSpacing: '-0.02em', lineHeight: 1, fontFamily: "'Inter', 'Helvetica Neue', sans-serif", textTransform: 'uppercase' as const }}>
             {v.title}
           </div>
           <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, letterSpacing: '0.02em' }}>{v.sub}</div>
@@ -133,7 +131,7 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
           </a>
         )}
         <div style={{ fontSize: 10, color: '#4b5563', marginLeft: 'auto' }}>
-          {poweredBy} <span style={{ color: '#818cf8', fontWeight: 700 }}>INTERLIGENS AI 🐯</span>
+          {poweredBy} <span style={{ color: '#818cf8', fontWeight: 700, letterSpacing: '0.05em' }}>INTERLIGENS AI</span>
         </div>
       </div>
     </div>
