@@ -40,12 +40,13 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle0' })
-    const pdf = await page.pdf({
+    const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' }
     })
     await browser.close()
+    const pdf = Buffer.from(pdfBuffer)
 
     const filename = `INTERLIGENS_GraphReport_${graphCase.title.replace(/\s+/g, '_')}_${lang.toUpperCase()}.pdf`
 
