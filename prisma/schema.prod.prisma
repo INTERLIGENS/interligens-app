@@ -187,3 +187,23 @@ model GraphEdge {
   source     GraphNode @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
   target     GraphNode @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
 }
+
+model WalletLabel {
+  id          String   @id @default(cuid())
+  address     String
+  chain       String
+  label       String
+  category    String
+  confidence  String   @default("MEDIUM")
+  source      String
+  sourceUrl   String?
+  verified    Boolean  @default(false)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([address])
+  @@index([chain])
+  @@index([category])
+  @@index([verified])
+}

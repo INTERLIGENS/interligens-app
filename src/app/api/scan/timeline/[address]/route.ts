@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { lookupAddresses } from '@/lib/labels/lookup'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ address: string }> }) {
   try {
@@ -17,6 +18,12 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
 
     const nodes = graphCase.nodes
     const edges = graphCase.edges
+
+    // Enrich nodes with WalletLabel data
+    const walletAddresses = nodes.map(n => {
+      try { return JSON.parse(n.metadata)?.wallet || n.label } catch { return n.label }
+    })
+    const labelMap = await lookupAddresses(walletAddresses)
 
     const getNode = (id: string) => nodes.find(n => n.id === id)
     const getMeta = (n: any) => { try { return JSON.parse(n.metadata) } catch { return {} } }
@@ -55,7 +62,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
         risk: 'high',
         descEn: `${funders.length} team member${funders.length > 1 ? 's' : ''} pre-allocated tokens to ${funded.length} connected wallet${funded.length > 1 ? 's' : ''} — including family members — before public launch.`,
         descFr: `${funders.length} membre${funders.length > 1 ? 's' : ''} de l'équipe ont pré-alloué des tokens à ${funded.length} wallet${funded.length > 1 ? 's' : ''} connectés — dont des membres de la famille — avant le lancement public.`,
-        actors: funded.map(n => ({ label: n!.label, type: n!.type, flagged: n!.flagged, wallet: getMeta(n).wallet || n!.label })),
+        actors: funded.map(n => {
+          const wallet = getMeta(n).wallet || n!.label
+          const knownLabel = labelMap[wallet.toLowerCase()]
+          return { label: knownLabel ? knownLabel.label : n!.label, type: n!.type, flagged: n!.flagged, wallet, knownLabel }
+        }),
         evidence: fundEdges[0]?.evidence ?? null,
         flagCount: funded.filter(n => n!.flagged).length,
         redFlag: true,
@@ -75,7 +86,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
         risk: 'high',
         descEn: `${promoters.length} influencer${promoters.length > 1 ? 's' : ''} and platform${promoters.length > 1 ? 's' : ''} were paid to promote the token. This is undisclosed paid promotion.`,
         descFr: `${promoters.length} influenceur${promoters.length > 1 ? 's' : ''} et plateforme${promoters.length > 1 ? 's' : ''} ont été payés pour promouvoir le token. Il s'agit de promotion payante non divulguée.`,
-        actors: promoters.map(n => ({ label: n!.label, type: n!.type, flagged: n!.flagged, wallet: getMeta(n).wallet || n!.label })),
+        actors: promoters.map(n => {
+          const wallet = getMeta(n).wallet || n!.label
+          const knownLabel = labelMap[wallet.toLowerCase()]
+          return { label: knownLabel ? knownLabel.label : n!.label, type: n!.type, flagged: n!.flagged, wallet, knownLabel }
+        }),
         evidence: promoEdges[0]?.evidence ?? null,
         flagCount: promoters.length,
         redFlag: true,
