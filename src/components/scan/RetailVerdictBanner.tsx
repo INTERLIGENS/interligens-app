@@ -21,56 +21,54 @@ interface Props {
 
 const VERDICTS = {
   en: {
-    RED:    { emoji: '🚨', title: 'DANGER — Do not buy', sub: 'This token shows critical risk signals', color: '#ef4444', bg: '#1a0505', border: '#ef4444' },
-    ORANGE: { emoji: '⚠️', title: 'CAUTION — High risk detected', sub: 'Several warning signals identified', color: '#f59e0b', bg: '#1a1005', border: '#f59e0b' },
-    GREEN:  { emoji: '✅', title: 'CLEAN — No major risk detected', sub: 'This token appears relatively safe', color: '#10b981', bg: '#051a10', border: '#10b981' },
+    RED:    { icon: '✕', title: 'DO NOT BUY', sub: 'Critical risk signals detected by INTERLIGENS', color: '#ef4444', border: '#ef4444' },
+    ORANGE: { icon: '!', title: 'HIGH RISK', sub: 'Multiple warning signals identified', color: '#f59e0b', border: '#f59e0b' },
+    GREEN:  { icon: '✓', title: 'CLEAN', sub: 'No major risk detected', color: '#10b981', border: '#10b981' },
   },
   fr: {
-    RED:    { emoji: '🚨', title: 'DANGER — Ne pas acheter', sub: 'Ce token présente des signaux critiques', color: '#ef4444', bg: '#ef444411', border: '#ef444433' },
-    ORANGE: { emoji: '⚠️', title: 'PRUDENCE — Risques détectés', sub: 'Plusieurs signaux d\'alerte identifiés', color: '#f59e0b', bg: '#f59e0b11', border: '#f59e0b33' },
-    GREEN:  { emoji: '✅', title: 'FIABLE — Aucun risque majeur', sub: 'Ce token semble relativement sûr', color: '#10b981', bg: '#10b98111', border: '#10b98133' },
+    RED:    { icon: '✕', title: 'NE PAS ACHETER', sub: 'Signaux critiques détectés par INTERLIGENS', color: '#ef4444', border: '#ef4444' },
+    ORANGE: { icon: '!', title: 'RISQUE ÉLEVÉ', sub: "Plusieurs signaux d'alerte identifiés", color: '#f59e0b', border: '#f59e0b' },
+    GREEN:  { icon: '✓', title: 'FIABLE', sub: 'Aucun risque majeur détecté', color: '#10b981', border: '#10b981' },
   }
 }
 
-// Translate technical proof to plain language
+const BG = {
+  RED:    'linear-gradient(135deg, #1a0505 0%, #0f0202 100%)',
+  ORANGE: 'linear-gradient(135deg, #1a1005 0%, #0f0a02 100%)',
+  GREEN:  'linear-gradient(135deg, #051a10 0%, #020f08 100%)',
+}
+
 function toPlainLanguage(proof: Proof, lang: 'en' | 'fr'): string | null {
-  const desc = proof.riskDescription?.toLowerCase() ?? ''
-  const label = proof.label?.toLowerCase() ?? ''
-  const value = proof.value?.toLowerCase() ?? ''
-
-  if (proof.level === 'low') return null // Skip safe signals
-
+  if (proof.level === 'low') return null
+  const desc = (proof.riskDescription ?? '').toLowerCase()
   const map: Record<string, Record<string, string>> = {
     en: {
-      'drain vector':       '💸 Unlimited token approvals detected — drain risk',
-      'unverified program': '⚠️ Unverified programs in this wallet',
-      'burner behavior':    '🔥 Very low transaction history — looks like a new burner',
-      'unlimited':          '💸 Unlimited spend approvals detected',
-      'unknown':            '❓ Unknown or unverified smart contracts',
-      'low history':        '🕐 Very recent or inactive wallet',
+      'drain vector':       '💸 Unlimited token approvals — drain risk',
+      'unverified program': '⚠️ Unverified programs detected',
+      'burner behavior':    '🔥 New burner wallet behavior',
+      'unlimited':          '💸 Unlimited spend approvals',
+      'unknown':            '❓ Unknown smart contracts',
       'attack surface':     '🎯 High number of contract interactions',
+      'detective':          '🕵️ Detective Referenced — case on file',
+      'off-chain':          '📋 Off-chain investigation result',
+      'case':               '🗂 Case identifier found',
     },
     fr: {
-      'drain vector':       '💸 Approbations illimitées détectées — risque de drain',
-      'unverified program': '⚠️ Programmes non vérifiés dans ce wallet',
-      'burner behavior':    '🔥 Historique très faible — wallet jetable probable',
-      'unlimited':          '💸 Approbations de dépenses illimitées détectées',
-      'unknown':            '❓ Contrats intelligents inconnus ou non vérifiés',
-      'low history':        '🕐 Wallet très récent ou inactif',
-      'attack surface':     '🎯 Nombreuses interactions de contrats',
+      'drain vector':       '💸 Approbations illimitées — risque de drain',
+      'unverified program': '⚠️ Programmes non vérifiés',
+      'burner behavior':    '🔥 Comportement wallet jetable',
+      'unlimited':          '💸 Approbations illimitées détectées',
+      'unknown':            '❓ Contrats inconnus',
+      'attack surface':     '🎯 Nombreuses interactions contrats',
+      'detective':          '🕵️ Référencé par un détective',
+      'off-chain':          '📋 Investigation off-chain',
+      'case':               '🗂 Identifiant de dossier trouvé',
     }
   }
-
-  for (const [key, translation] of Object.entries(map[lang])) {
-    if (desc.includes(key) || label.includes(key) || value.includes(key)) {
-      return translation
-    }
+  for (const [key, val] of Object.entries(map[lang])) {
+    if (desc.includes(key)) return val
   }
-
-  // Fallback — use riskDescription directly if high risk
-  if (proof.level === 'high') {
-    return `⚠️ ${proof.riskDescription}`
-  }
+  if (proof.level === 'high') return `⚠️ ${proof.riskDescription}`
   return null
 }
 
@@ -78,118 +76,60 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
   const v = VERDICTS[lang][tier]
   const isSolana = chain === 'SOL' || chain === 'solana'
 
-  // Get plain language reasons (max 4, only medium/high)
   const reasons = proofs
     .filter(p => p.level !== 'low')
     .map(p => toPlainLanguage(p, lang))
     .filter(Boolean)
-    .slice(0, 4) as string[]
+    .slice(0, 3) as string[]
 
-  // Add generic reasons based on tier if not enough
-  const genericReasons = {
-    en: {
-      RED:    ['🚨 Risk score critically high', '🔍 Multiple red flags detected by INTERLIGENS AI'],
-      ORANGE: ['⚠️ Risk score above safe threshold', '🔍 Review full analysis before investing'],
-      GREEN:  ['✅ No critical signals detected', '🔍 Always do your own research'],
-    },
-    fr: {
-      RED:    ['🚨 Score de risque critique', '🔍 Plusieurs red flags détectés par l\'IA INTERLIGENS'],
-      ORANGE: ['⚠️ Score de risque au-dessus du seuil', '🔍 Vérifiez l\'analyse complète avant d\'investir'],
-      GREEN:  ['✅ Aucun signal critique détecté', '🔍 Faites toujours vos propres recherches'],
-    }
+  const generic = {
+    en: { RED: ['🚨 Risk score critically high', '🔍 Multiple red flags detected'], ORANGE: ['⚠️ Risk score above safe threshold'], GREEN: ['✅ No critical signals detected'] },
+    fr: { RED: ["🚨 Score de risque critique", "🔍 Plusieurs red flags détectés"], ORANGE: ["⚠️ Score au-dessus du seuil"], GREEN: ["✅ Aucun signal critique"] }
   }
-
   while (reasons.length < 2) {
-    const next = genericReasons[lang][tier][reasons.length]
+    const next = generic[lang][tier][reasons.length]
     if (next) reasons.push(next)
     else break
   }
 
-  const timelineLabel = lang === 'fr' ? 'Voir comment le scam s\'est déroulé →' : 'See how this scam unfolded →'
-  const scoreLabel = lang === 'fr' ? 'Score de risque' : 'Risk score'
+  const ctaLabel = lang === 'fr' ? "Voir comment le scam s'est déroulé →" : 'See how this scam unfolded →'
   const poweredBy = lang === 'fr' ? 'Analysé par' : 'Analyzed by'
+  const scoreLabel = lang === 'fr' ? 'SCORE RISQUE' : 'RISK SCORE'
 
   return (
-    <div style={{
-      background: (v as any).bg,
-      border: `1px solid ${v.border}`,
-      borderRadius: 16,
-      padding: '20px 24px',
-      marginBottom: 8,
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Glow effect */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-        background: `linear-gradient(90deg, transparent, ${v.color}, transparent)`
-      }} />
+    <div style={{ background: BG[tier], border: `1px solid ${v.border}`, borderRadius: 16, padding: '20px 24px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${v.color}, transparent)` }} />
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 10,
-          background: v.color + '22',
-          border: '1px solid ' + v.color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22, fontWeight: 900, color: v.color, flexShrink: 0,
-          fontFamily: 'monospace',
-        }}>{(v as any).icon}</div>
+        <div style={{ width: 52, height: 52, borderRadius: 10, background: v.color + '22', border: '2px solid ' + v.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 900, color: v.color, flexShrink: 0, fontFamily: 'monospace' }}>
+          {v.icon}
+        </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: v.color, letterSpacing: '0.05em', lineHeight: 1, textTransform: 'uppercase', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 24, fontWeight: 900, color: v.color, letterSpacing: '0.08em', lineHeight: 1, fontFamily: 'monospace' }}>
             {v.title}
           </div>
           <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, letterSpacing: '0.02em' }}>{v.sub}</div>
         </div>
-        {/* TigerScore — secondary */}
-        <div style={{
-          background: '#0f172a',
-          border: `1px solid ${v.color}44`,
-          borderRadius: 10,
-          padding: '8px 14px',
-          textAlign: 'center',
-          minWidth: 70
-        }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: v.color }}>{score}</div>
-          <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{scoreLabel}</div>
+        <div style={{ background: '#0f172a', border: `1px solid ${v.color}44`, borderRadius: 10, padding: '8px 14px', textAlign: 'center', minWidth: 72, flexShrink: 0 }}>
+          <div style={{ fontSize: 24, fontWeight: 900, color: v.color, fontFamily: 'monospace' }}>{score}</div>
+          <div style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.08em' }}>{scoreLabel}</div>
         </div>
       </div>
 
-      {/* Reasons */}
       {reasons.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
           {reasons.map((r, i) => (
-            <div key={i} style={{
-              fontSize: 13,
-              color: '#e2e8f0',
-              background: '#0f172a88',
-              borderRadius: 8,
-              padding: '7px 12px',
-              borderLeft: `3px solid ${v.color}`,
-            }}>
+            <div key={i} style={{ fontSize: 13, color: '#e2e8f0', background: '#0f172a88', borderRadius: 8, padding: '8px 14px', borderLeft: `3px solid ${v.color}` }}>
               {r}
             </div>
           ))}
         </div>
       )}
 
-      {/* CTA — Timeline if available */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
         {isSolana && address && (
-          
-          <a
-            style={{
-              background: v.color,
-              color: '#fff',
-              borderRadius: 8,
-              padding: '8px 16px',
-              fontSize: 12,
-              fontWeight: 700,
-              textDecoration: 'none',
-              display: 'inline-block',
-            }}
-          >
-            {timelineLabel}
+          <a href={'/en/scan/' + address + '/timeline'} style={{ background: v.color, color: '#fff', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'monospace', letterSpacing: '0.03em' }}>
+            {ctaLabel}
           </a>
         )}
         <div style={{ fontSize: 10, color: '#4b5563', marginLeft: 'auto' }}>
