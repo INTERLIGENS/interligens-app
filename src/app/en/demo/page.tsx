@@ -246,7 +246,7 @@ export default function TigerScanPage() {
   const [recidivismDetected, setRecidivismDetected] = React.useState(false);
   const [recidivismConfidence, setRecidivismConfidence] = React.useState<"HIGH"|"MED"|"LOW">("LOW");
   const [tickers, setTickers] = React.useState<{ok:boolean,btc?:{price_usd:number,change_24h_pct:number},eth?:{price_usd:number,change_24h_pct:number},sol?:{price_usd:number,change_24h_pct:number}}|null>(null);
-  const corrobData: null = null; // TODO: wire real corroboration data
+  const corrobData: any = null; // TODO: wire real corroboration data
 
   const DEMO_CHIPS = [
     { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
