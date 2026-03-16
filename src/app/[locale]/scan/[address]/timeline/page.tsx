@@ -8,6 +8,7 @@ export default function TimelinePage() {
   const address = params?.address as string
   const locale = params?.locale as string
   const lang = (locale === 'fr' ? 'fr' : 'en') as 'en' | 'fr'
+  const isFr = lang === 'fr'
 
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -49,10 +50,10 @@ export default function TimelinePage() {
         {/* PAGE TITLE */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700, letterSpacing: '0.2em', marginBottom: 8 }}>
-            {isFr ? 'SUIVI DE L\'ARGENT' : 'FOLLOW THE MONEY'}
+            {isFr ? 'SUIVI DE L\'ARGENT' : '{isFr ? 'SUIVI DE L\'ARGENT' : 'FOLLOW THE MONEY'}'}
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, marginBottom: 8 }}>
-            {isFr ? 'Comment ce scam s\'est déroulé' : 'How this scam unfolded'}
+            {isFr ? 'Comment ce scam s\'est déroulé' : '{isFr ? 'Comment ce scam s\'est déroulé' : 'How this scam unfolded'}'}
           </h1>
           <div style={{ fontSize: 13, color: '#6b7280', fontFamily: 'monospace', wordBreak: 'break-all' }}>{address}</div>
         </div>
@@ -60,7 +61,7 @@ export default function TimelinePage() {
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 16 }}>
             <div style={{ width: 40, height: 40, border: '3px solid #1f2937', borderTop: '3px solid #4f46e5', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <div style={{ color: '#6b7280', fontSize: 13 }}>{isFr ? 'Analyse en cours...' : 'Analyzing...'}</div>
+            <div style={{ color: '#6b7280', fontSize: 13 }}>{isFr ? 'Analyse en cours...' : isFr ? 'Analyse en cours...' : 'Analyzing...'}</div>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         ) : (

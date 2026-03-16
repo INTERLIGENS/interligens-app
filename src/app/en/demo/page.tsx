@@ -664,6 +664,27 @@ export default function TigerScanPage() {
             {/* RIGHT: SIGNALS + CARDS */}
             <div className="lg:col-span-7 flex flex-col gap-6">
 
+              {/* ── CORROBORATION SCORE ── */}
+              {corrobData?.found && (
+                <div style={{ background: '#0f172a', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 10, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ textAlign: 'center', minWidth: 64 }}>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: corrobData.label.color, lineHeight: 1, fontFamily: 'monospace' }}>{corrobData.score}</div>
+                    <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2 }}>CORROBORATION</div>
+                  </div>
+                  <div style={{ width: 1, height: 40, background: '#1f2937' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: corrobData.label.color, letterSpacing: '0.1em', marginBottom: 4 }}>{corrobData.label.en}</div>
+                    <div style={{ fontSize: 12, color: '#f9fafb', fontWeight: 600 }}>{corrobData.caseTitle}</div>
+                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>
+                      {corrobData.totalNodes} entities · {corrobData.totalEdges} links · {corrobData.flaggedNodes} suspects · {corrobData.highEdges} HIGH confidence
+                    </div>
+                  </div>
+                  <a href={'/en/scan/' + address.trim() + '/timeline'} style={{ background: corrobData.label.color + '22', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 6, color: corrobData.label.color, padding: '6px 14px', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                    Full investigation →
+                  </a>
+                </div>
+              )}
+
               {/* ── RETAIL VERDICT BANNER ── */}
               <RetailVerdictBanner
                 tier={finalTier}
