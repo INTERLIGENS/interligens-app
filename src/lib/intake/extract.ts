@@ -3,7 +3,7 @@ import { extractAddresses } from "@/lib/ingest/extractAddresses";
 export type ParserUsed = "csv" | "json" | "pdf_text" | "text" | "sheet_csv" | "unknown";
 
 export interface ExtractedAddress { chain: string; address: string; occurrences?: number; evidence?: string; }
-export interface ExtractedHandle  { handle: string; platform?: string; occurrences?: number; }
+export interface ExtractedHandle  { handle: string; platform?: string; occurrences?: number; tier?: string; price?: string | number; }
 export interface ExtractedDomain  { domain: string; occurrences?: number; }
 
 export interface ExtractResult {
@@ -80,6 +80,28 @@ function extractTxHashes(text: string): string[] {
   return [...seen];
 }
 
+function parseStructuredCsv(text: string): Map<string, { tier?: string; price?: string }> {
+  // Try to extract tier/price metadata from CSV columns (handle, solana_address, tier, price_usd)
+  const meta = new Map<string, { tier?: string; price?: string }>();
+  const lines = text.split("\n");
+  if (lines.length < 2) return meta;
+  const header = lines[0].toLowerCase().split(",").map(h => h.trim());
+  const handleIdx = header.findIndex(h => h.includes("handle") || h.includes("username"));
+  const tierIdx   = header.findIndex(h => h.includes("tier"));
+  const priceIdx  = header.findIndex(h => h.includes("price"));
+  if (handleIdx === -1) return meta;
+  for (const line of lines.slice(1)) {
+    const cols = line.split(",").map(c => c.trim());
+    const handle = cols[handleIdx]?.toLowerCase();
+    if (!handle || !handle.startsWith("@")) continue;
+    meta.set(handle, {
+      tier:  tierIdx  !== -1 ? cols[tierIdx]  : undefined,
+      price: priceIdx !== -1 ? cols[priceIdx] : undefined,
+    });
+  }
+  return meta;
+}
+
 function processText(text: string, parserUsed: ParserUsed): ExtractResult {
   const warnings: string[] = [];
 
@@ -91,7 +113,15 @@ function processText(text: string, parserUsed: ParserUsed): ExtractResult {
   const { text: storedText, truncated } = truncate(text);
   const rawAddresses = extractAddresses(text);
   const addresses: ExtractedAddress[] = rawAddresses.map(a => ({ chain: a.chain, address: a.address }));
-  const handles  = extractHandles(text);
+
+  // For structured CSVs, extract tier/price metadata per handle
+  const csvMeta = (parserUsed === "csv" || parserUsed === "sheet_csv") ? parseStructuredCsv(text) : new Map();
+  const rawHandles = extractHandles(text);
+  const handles: ExtractedHandle[] = rawHandles.map(h => {
+    const meta = csvMeta.get(h.handle);
+    return { ...h, tier: meta?.tier, price: meta?.price };
+  });
+
   const domains  = extractDomains(text);
   const txHashes = extractTxHashes(text);
 

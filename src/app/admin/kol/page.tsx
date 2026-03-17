@@ -50,10 +50,10 @@ export default function KolDirectory() {
       />
 
       <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1e293b", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
-              {["Handle","Platform","Label","Risk","Wallets","Source","Created"].map(h => (
+              {["Handle","Tier","Price/Post","Platform","Label","Risk","Wallets","Source","Created"].map(h => (
                 <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 11, letterSpacing: "0.05em" }}>{h.toUpperCase()}</th>
               ))}
             </tr>
@@ -69,6 +69,10 @@ export default function KolDirectory() {
               return (
                 <tr key={p.id} style={{ borderBottom: "1px solid #0f172a" }}>
                   <td style={{ padding: "10px 14px", color: "#c4b5fd", fontWeight: 700 }}>{p.handle}</td>
+                  <td style={{ padding: "10px 14px" }}>
+                    {p.tier ? <span style={{ background: "#1e1b4b", color: "#a5b4fc", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700 }}>{p.tier}</span> : <span style={{ color: "#475569" }}>—</span>}
+                  </td>
+                  <td style={{ padding: "10px 14px", color: "#22c55e", fontWeight: 700 }}>{p.pricePerPost ? `$${p.pricePerPost.toLocaleString()}` : "—"}</td>
                   <td style={{ padding: "10px 14px", color: "#94a3b8" }}>{p.platform}</td>
                   <td style={{ padding: "10px 14px" }}>
                     <span style={{ color: TIER_COLOR[p.label] ?? "#6b7280", fontWeight: 700 }}>{p.label}</span>

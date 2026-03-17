@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import type { ExtractResult } from "./extract";
 
+// Extend handle type locally to support tier/price metadata
+type EnrichedHandle = ExtractResult["extracted"]["handles"][0] & { tier?: string; price?: string | number };
+
 export type Classification = "ioc" | "kol" | "rawdoc" | "mixed";
 
 export interface RouterResult {
@@ -39,7 +42,7 @@ export async function routeIntake(
 
   // ── KOL upsert ────────────────────────────────────────────────────────────
   if (classification === "kol" || classification === "mixed") {
-    for (const h of extracted.handles) {
+    for (const h of extracted.handles as EnrichedHandle[]) {
       const handle = h.handle.startsWith("@") ? h.handle.toLowerCase() : "@" + h.handle.toLowerCase();
       const existing = await prisma.kolProfile.findUnique({ where: { handle } });
       if (existing) {
@@ -47,16 +50,36 @@ export async function routeIntake(
         if (!ids.includes(intakeId)) {
           await prisma.kolProfile.update({
             where: { handle },
-            data:  { sourceIntakeIds: JSON.stringify([...ids, intakeId]) },
+            data: {
+              sourceIntakeIds: JSON.stringify([...ids, intakeId]),
+              ...(h.tier       ? { tier: h.tier }                    : {}),
+              ...(h.price      ? { pricePerPost: Number(h.price) }   : {}),
+              ...(h.platform   ? { platform: h.platform }            : {}),
+            },
           });
         }
       } else {
         await prisma.kolProfile.create({
-          data: { handle, platform: h.platform ?? "x", sourceIntakeIds: JSON.stringify([intakeId]) },
+          data: {
+            handle,
+            platform:     h.platform ?? "x",
+            sourceIntakeIds: JSON.stringify([intakeId]),
+            tier:         h.tier ?? null,
+            pricePerPost: h.price ? Number(h.price) : null,
+          },
         });
         kolsCreated++;
       }
     }
+  }
+
+  // ── DomainIoc upsert ────────────────────────────────────────────────────────
+  for (const d of extracted.domains) {
+    await prisma.domainIoc.upsert({
+      where: { domain: d.domain },
+      update: { sourceIntakeId: intakeId },
+      create: { domain: d.domain, sourceIntakeId: intakeId, labelType: "phishing", confidence: "low" },
+    });
   }
 
   // ── Batch quarantine ──────────────────────────────────────────────────────

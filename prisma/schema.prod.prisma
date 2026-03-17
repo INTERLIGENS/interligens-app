@@ -252,4 +252,22 @@ model KolProfile {
   sourceIntakeIds String   @default("[]")
   confidence      String   @default("low")
   status          String   @default("active")
+  tier            String?
+  pricePerPost    Float?
+  followerCount   Int?
+  bio             String?
+  tags            String   @default("[]")
+  notes           String?
+}
+
+model DomainIoc {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  domain        String   @unique
+  labelType     String   @default("phishing")
+  confidence    String   @default("low")
+  status        String   @default("active")
+  sourceIntakeId String?
+  notes         String?
 }
