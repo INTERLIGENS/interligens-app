@@ -9,5 +9,15 @@
     "src/app/api/report/casefile/route.ts": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/intake-watch",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/corroboration",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }
