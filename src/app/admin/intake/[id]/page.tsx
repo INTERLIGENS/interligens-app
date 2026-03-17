@@ -12,8 +12,7 @@ export default function IntakeDetail() {
 
   async function load() {
     setLoading(true);
-    const token = localStorage.getItem("admin_token") ?? "";
-    const res = await fetch(`/api/admin/intake/${id}`, { headers: { "x-admin-token": token } });
+        const res = await fetch(`/api/admin/intake/${id}`, { credentials: "include", headers: { } });
     const data = await res.json();
     setRecord(data);
     setLoading(false);
@@ -21,10 +20,10 @@ export default function IntakeDetail() {
 
   async function action(act: string) {
     setActing(true); setMsg(null);
-    const token = localStorage.getItem("admin_token") ?? "";
-    const res = await fetch(`/api/admin/intake/${id}/actions`, {
+        const res = await fetch(`/api/admin/intake/${id}/actions`, {
       method: "POST",
-      headers: { "x-admin-token": token, "Content-Type": "application/json" },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: act }),
     });
     const data = await res.json();

@@ -18,8 +18,7 @@ export default function NewIntake() {
 
   async function submit() {
     setLoading(true); setError(null); setResult(null);
-    const token = localStorage.getItem("admin_token") ?? "";
-    const provenance = { investigatorHandle: investigator || "david", context, tags: tags ? tags.split(",").map(t => t.trim()) : [] };
+        const provenance = { investigatorHandle: investigator || "david", context, tags: tags ? tags.split(",").map(t => t.trim()) : [] };
 
     try {
       let res: Response;
@@ -28,12 +27,12 @@ export default function NewIntake() {
         fd.append("type", "file");
         fd.append("file", file);
         fd.append("provenance", JSON.stringify(provenance));
-        res = await fetch("/api/admin/intake", { method: "POST", headers: { "x-admin-token": token }, body: fd });
+        res = await fetch("/api/admin/intake", { method: "POST", credentials: "include", headers: { }, body: fd });
       } else {
         const body = tab === "url"
           ? { type: "url", url, provenance }
           : { type: "text", text, provenance };
-        res = await fetch("/api/admin/intake", { method: "POST", headers: { "x-admin-token": token, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        res = await fetch("/api/admin/intake", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       }
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Error"); return; }

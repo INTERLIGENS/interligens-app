@@ -28,11 +28,10 @@ export default function IntakeInbox() {
 
   async function load() {
     setLoading(true);
-    const token = localStorage.getItem("admin_token") ?? ADMIN_TOKEN;
-    const params = new URLSearchParams({ page: String(page) });
+        const params = new URLSearchParams({ page: String(page) });
     if (status) params.set("status", status);
     if (classification) params.set("classification", classification);
-    const res = await fetch(`/api/admin/intake?${params}`, { headers: { "x-admin-token": token } });
+    const res = await fetch(`/api/admin/intake?${params}`, { credentials: "include", headers: { } });
     const data = await res.json();
     setRecords(data.records ?? []);
     setTotal(data.total ?? 0);

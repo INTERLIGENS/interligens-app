@@ -27,6 +27,7 @@ export function extractAddresses(text: string): CandidateLabel[] {
     const s = m[0];
     if (seen.has(s)) continue;
     if (/^0x/.test(s)) continue;
+    if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(s)) continue; // already captured as TRON
     if (s.length < 32 || s.length > 44) continue;
     add(s, "SOL");
   }
