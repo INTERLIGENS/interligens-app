@@ -50,10 +50,10 @@ export default function TimelinePage() {
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700, letterSpacing: '0.2em', marginBottom: 8 }}>
             {isFr ? 'SUIVI DE L\'ARGENT' : 'FOLLOW THE MONEY'}
-            {isFr ? 'SUIVI DE L\'ARGENT' : 'FOLLOW THE MONEY'}
+          </div>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, marginBottom: 8 }}>
             {isFr ? 'Comment ce scam s\'est déroulé' : 'How this scam unfolded'}
-            {isFr ? 'Comment ce scam s\'est déroulé' : 'How this scam unfolded'}
+          </h1>
           <div style={{ fontSize: 13, color: '#6b7280', fontFamily: 'monospace', wordBreak: 'break-all' }}>{address}</div>
         </div>
 
