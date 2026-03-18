@@ -114,11 +114,13 @@ export default function ScamTimeline({ data, lang = 'en' }: Props) {
                 onClick={() => setActiveChapter(isActive ? null : chapter.id)}
                 style={{
                   width: 56, height: 56, borderRadius: '50%',
-                  background: isActive ? riskColor : '#0f172a',
+                  background: chapter.icon === '04' ? riskColor : (isActive ? riskColor : '#0f172a'),
                   border: `2px solid ${riskColor}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 22, cursor: 'pointer', flexShrink: 0,
-                  boxShadow: isActive ? `0 0 20px ${riskColor}66` : 'none',
+                  fontSize: 13, fontWeight: 900, fontFamily: 'monospace', letterSpacing: '0.05em',
+                  cursor: 'pointer', flexShrink: 0,
+                  color: chapter.icon === '04' ? '#fff' : riskColor,
+                  boxShadow: chapter.icon === '04' ? `0 0 24px ${riskColor}99` : (isActive ? `0 0 20px ${riskColor}66` : 'none'),
                   transition: 'all 0.2s',
                 }}
               >

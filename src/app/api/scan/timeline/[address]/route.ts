@@ -37,7 +37,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
     chapters.push({
       id: 'deploy',
       order: 1,
-      icon: '🔨',
+      icon: '01',
       titleEn: 'Token Deployed',
       titleFr: 'Token Déployé',
       risk: 'medium',
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
       chapters.push({
         id: 'insiders',
         order: 2,
-        icon: '💰',
+        icon: '02',
         titleEn: 'Insiders & Family Funded',
         titleFr: 'Initiés & Famille Financés',
         risk: 'high',
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
       chapters.push({
         id: 'kols',
         order: 3,
-        icon: '📣',
+        icon: '03',
         titleEn: 'KOLs & Promoters Paid',
         titleFr: 'KOLs & Promoteurs Payés',
         risk: 'high',
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
       chapters.push({
         id: 'cashout',
         order: 4,
-        icon: '💀',
+        icon: '04',
         titleEn: 'Cashout Detected',
         titleFr: 'Cashout Détecté',
         risk: 'critical',
