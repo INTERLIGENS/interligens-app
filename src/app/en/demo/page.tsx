@@ -246,7 +246,8 @@ export default function TigerScanPage() {
   const [recidivismDetected, setRecidivismDetected] = React.useState(false);
   const [recidivismConfidence, setRecidivismConfidence] = React.useState<"HIGH"|"MED"|"LOW">("LOW");
   const [tickers, setTickers] = React.useState<{ok:boolean,btc?:{price_usd:number,change_24h_pct:number},eth?:{price_usd:number,change_24h_pct:number},sol?:{price_usd:number,change_24h_pct:number}}|null>(null);
-  const corrobData: any = null; // TODO: wire real corroboration data
+  const [corrobData, setCorrobData] = React.useState<any>(null);
+  const [addressLabel, setAddressLabel] = React.useState<any>(null);
 
   const DEMO_CHIPS = [
     { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
@@ -360,6 +361,18 @@ export default function TigerScanPage() {
       // Un seul setResult → un seul render → score final direct
       setGraphData(gData);
       setResult(normalizedResult);
+      // WalletLabel + Corroboration lookup
+      const trimmed = address.trim()
+      setAddressLabel(null)
+      setCorrobData(null)
+      fetch('/api/scan/label?address=' + trimmed)
+        .then(r => r.json())
+        .then(d => { if (d.found) setAddressLabel(d) })
+        .catch(() => {})
+      fetch('/api/scan/corroboration?address=' + trimmed)
+        .then(r => r.json())
+        .then(d => { if (d.found) setCorrobData(d) })
+        .catch(() => {})
       setAnalysisStatus("done");
 
       try {
@@ -681,6 +694,38 @@ export default function TigerScanPage() {
                     </div>
                   </div>
                   <a href={'/en/scan/' + address.trim() + '/timeline'} style={{ background: corrobData.label.color + '22', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 6, color: corrobData.label.color, padding: '6px 14px', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                    Full investigation →
+                  </a>
+                </div>
+              )}
+
+              {/* ── KNOWN ADDRESS BADGE ── */}
+              {addressLabel?.found && (
+                <div style={{ background: addressLabel.badgeColor + '11', border: '1px solid ' + addressLabel.badgeColor + '44', borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 4, height: 40, background: addressLabel.badgeColor, borderRadius: 2, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: addressLabel.badgeColor, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>{addressLabel.badgeText}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f9fafb' }}>{addressLabel.label}</div>
+                    {addressLabel.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{addressLabel.notes}</div>}
+                    <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>Source: {addressLabel.source} · {addressLabel.confidence} confidence</div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── CORROBORATION SCORE ── */}
+              {corrobData?.found && (
+                <div style={{ background: '#0f172a', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 10, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ textAlign: 'center', minWidth: 64 }}>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: corrobData.label.color, lineHeight: 1, fontFamily: 'monospace' }}>{corrobData.score}</div>
+                    <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>CORROBORATION</div>
+                  </div>
+                  <div style={{ width: 1, height: 40, background: '#1f2937' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: corrobData.label.color, letterSpacing: '0.1em', marginBottom: 4 }}>{corrobData.label.en}</div>
+                    <div style={{ fontSize: 12, color: '#f9fafb', fontWeight: 600 }}>{corrobData.caseTitle}</div>
+                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{corrobData.totalNodes} entities · {corrobData.totalEdges} links · {corrobData.flaggedNodes} suspects</div>
+                  </div>
+                  <a href={'/en/scan/' + address.trim() + '/timeline'} style={{ background: corrobData.label.color + '22', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 6, color: corrobData.label.color, padding: '6px 14px', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
                     Full investigation →
                   </a>
                 </div>
