@@ -1,3 +1,4 @@
+import { describe, it, expect, vi } from 'vitest'
 import { extractFromText, extractFromUrl } from "../extract";
 
 describe("extractHandles", () => {

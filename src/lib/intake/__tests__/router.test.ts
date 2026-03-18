@@ -1,18 +1,19 @@
+import { describe, it, expect, vi } from 'vitest'
 import { routeIntake } from "../router";
 
 // Mock prisma
-jest.mock("@/lib/prisma", () => ({
+vi.mock("@/lib/prisma", () => ({
   prisma: {
     kolProfile: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create:     jest.fn().mockResolvedValue({ id: "kol_1" }),
-      update:     jest.fn().mockResolvedValue({ id: "kol_1" }),
+      findUnique: vi.fn().mockResolvedValue(null),
+      create:     vi.fn().mockResolvedValue({ id: "kol_1" }),
+      update:     vi.fn().mockResolvedValue({ id: "kol_1" }),
     },
     ingestionBatch: {
-      create: jest.fn().mockResolvedValue({ id: "batch_1" }),
+      create: vi.fn().mockResolvedValue({ id: "batch_1" }),
     },
     auditLog: {
-      create: jest.fn().mockResolvedValue({}),
+      create: vi.fn().mockResolvedValue({}),
     },
   },
 }));
@@ -40,8 +41,8 @@ describe("router classification", () => {
   });
 
   it("mixed low confidence: pendingBatch=true, no batch created", async () => {
-    const { prisma } = require("@/lib/prisma");
-    (prisma.ingestionBatch.create as jest.Mock).mockClear();
+    const { prisma } = await import("@/lib/prisma");
+    (prisma.ingestionBatch.create as ReturnType<typeof vi.fn>).mockClear();
     const r = await routeIntake("id4", { addresses: addr(1), handles: [{ handle: "@user" }], domains: [], txHashes: [] }, "text");
     expect(r.classification).toBe("mixed");
     expect(r.confidence).toBeLessThan(0.8);
