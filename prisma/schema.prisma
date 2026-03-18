@@ -200,3 +200,192 @@ model WalletLabel {
   @@index([category])
   @@index([verified])
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// INTERLIGENS — Surveillance Influenceurs
+// Ajouter ces modèles à la fin de ton prisma/schema.prisma existant
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Influencer {
+  id        String   @id @default(cuid())
+  handle    String   @unique
+  platform  String   @default("x")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallets     Wallet[]
+  socialPosts SocialPost[]
+  signals     Signal[]
+
+  @@map("influencers")
+}
+
+model Wallet {
+  id             String   @id @default(cuid())
+  address        String
+  chain          String   @default("ethereum")
+  influencerId   String
+  verifiedMethod String   // "ENS_ONCHAIN" | "POST_X" | "ARKHAM" | "MANUAL"
+  verifiedAt     DateTime
+  confidence     Float    @default(1.0)
+  ensName        String?
+  createdAt      DateTime @default(now())
+
+  influencer    Influencer     @relation(fields: [influencerId], references: [id])
+  onchainEvents OnchainEvent[]
+
+  @@unique([address, chain])
+  @@map("wallets")
+}
+
+enum CaptureStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  BLOCKED
+}
+
+model SocialPost {
+  id               String        @id @default(cuid())
+  influencerId     String
+  postUrl          String
+  postedAtUtc      DateTime?
+  capturedAtUtc    DateTime
+  textExcerpt      String?       @db.VarChar(500)
+  screenshotSha256 String?
+  htmlSha256       String?
+  manifestSha256   String?
+  storageKeys      Json?
+  captureStatus    CaptureStatus @default(PENDING)
+  errors           String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  influencer Influencer @relation(fields: [influencerId], references: [id])
+  signals    Signal[]
+
+  @@map("social_posts")
+}
+
+// Phase B placeholder
+model OnchainEvent {
+  id            String   @id @default(cuid())
+  txHash        String   @unique
+  walletAddress String
+  chain         String   @default("ethereum")
+  blockTimeUtc  DateTime
+  blockNumber   Int
+  tokenAddress  String?
+  direction     String?
+  amountRaw     String?
+  amountUsd     Float?
+  counterparty  String?
+  rawJson       Json?
+  createdAt     DateTime @default(now())
+
+  wallet  Wallet?  @relation(fields: [walletAddress, chain], references: [address, chain])
+  signals Signal[]
+
+  @@map("onchain_events")
+}
+
+// Phase C placeholder
+model Signal {
+  id                     String   @id @default(cuid())
+  type                   String
+  influencerId           String
+  tokenAddress           String?
+  t0Post                 DateTime?
+  t1Event                DateTime?
+  windowMinutes          Int?
+  severity               String?
+  confidence             Float?
+  evidenceManifestSha256 String?
+  socialPostId           String?
+  onchainEventId         String?
+  createdAt              DateTime @default(now())
+
+  influencer   Influencer    @relation(fields: [influencerId], references: [id])
+  socialPost   SocialPost?   @relation(fields: [socialPostId], references: [id])
+  onchainEvent OnchainEvent? @relation(fields: [onchainEventId], references: [id])
+
+  @@map("signals")
+}
+
+model IntakeRecord {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  status           String   @default("pending")
+  inputType        String
+  sourceRef        String?
+  sourceId         String?
+  submittedBy      String?
+  provenance       String   @default("{}")
+  parserUsed       String   @default("unknown")
+  extractVersion   String   @default("v1")
+  rawText          String?
+  rawTextTruncated Boolean  @default(false)
+  extracted        String   @default("{}")
+  classification   String   @default("rawdoc")
+  routerConfidence Float    @default(0)
+  extractWarnings  String   @default("[]")
+  pendingBatch     Boolean  @default(false)
+  linkedBatchId    String?
+  linkedBatchId2   String?
+  ipHash           String?
+  userAgentHash    String?
+  adminNotes       String?
+  @@map("IntakeRecord")
+}
+
+model KolProfile {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  handle          String   @unique
+  platform        String   @default("x")
+  label           String   @default("unknown")
+  riskFlag        String   @default("unverified")
+  wallets         String   @default("[]")
+  sourceIntakeIds String   @default("[]")
+  confidence      String   @default("low")
+  status          String   @default("active")
+  bio             String?
+  followerCount   Int?
+  notes           String?
+  pricePerPost    Float?
+  tags            String   @default("[]")
+  tier            String?
+  @@map("KolProfile")
+}
+
+model WatchSource {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  name         String
+  url          String    @unique
+  investigator String    @default("@david")
+  tags         String    @default("[]")
+  active       Boolean   @default(true)
+  lastChecked  DateTime?
+  lastHash     String?
+  lastIntakeId String?
+  errorCount   Int       @default(0)
+  @@map("WatchSource")
+}
+
+model DomainIoc {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  domain         String   @unique
+  labelType      String   @default("phishing")
+  confidence     String   @default("low")
+  status         String   @default("active")
+  sourceIntakeId String?
+  notes          String?
+  @@map("DomainIoc")
+}

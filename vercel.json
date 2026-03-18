@@ -1,23 +1,8 @@
 {
-  "functions": {
-    "src/app/api/report/v2/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/pdf/casefile/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/report/casefile/route.ts": {
-      "maxDuration": 60
-    }
-  },
   "crons": [
     {
-      "path": "/api/cron/intake-watch",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/corroboration",
-      "schedule": "0 2 * * *"
+      "path": "/api/cron/onchain/sync",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
