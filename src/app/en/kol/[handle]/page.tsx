@@ -1,4 +1,5 @@
 'use client'
+import KolNarrative from '@/components/kol/KolNarrative'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
@@ -101,7 +102,7 @@ export default function KOLPage() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 6 }}>
-                SERIAL SCAMMER · {kol.platform.toUpperCase()} · {kol.status.toUpperCase()}
+                HIGH-RISK ACTOR · {kol.platform.toUpperCase()} · {kol.status.toUpperCase()}
               </div>
               <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 4 }}>{displayName}</div>
               <div style={{ fontSize: 12, color: '#4b5563', fontFamily: 'monospace' }}>@{kol.handle}</div>
@@ -133,6 +134,8 @@ export default function KOLPage() {
           )}
         </div>
 
+        <KolNarrative kol={{ ...kol, followerCount: followers }} />
+
         {/* LE PEDIGREE */}
         {kol.caseLinks.length > 0 && (
           <div style={{ marginBottom: 28 }}>
@@ -156,7 +159,7 @@ export default function KOLPage() {
                         <span style={{ background: roleColor + '22', color: roleColor, padding: '3px 10px', borderRadius: 4, fontSize: 9, fontWeight: 900, letterSpacing: '0.15em' }}>{roleLabel}</span>
                         <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#f9fafb', fontWeight: 700 }}>{c.caseId}</span>
                         {c.paidUsd && (
-                          <span style={{ marginLeft: 'auto', fontSize: 13, color: '#ef4444', fontWeight: 900, fontFamily: 'monospace' }}>{fmtUsd(c.paidUsd)} paid</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 13, color: '#ef4444', fontWeight: 900, fontFamily: 'monospace' }}>{'Est. proceeds: ' + fmtUsd(c.paidUsd)}</span>
                         )}
                       </div>
                       {c.evidence && (
@@ -194,8 +197,19 @@ export default function KOLPage() {
           </div>
         )}
 
-        <div style={{ fontSize: 10, color: '#1f2937', textAlign: 'center' as const, lineHeight: 1.8, borderTop: '1px solid #0f172a', paddingTop: 24 }}>
-          INTERLIGENS · All data sourced from verified on-chain records and public documents · Not legal advice
+        <div style={{ background: '#0a0a0a', border: '1px solid #1f293788', borderRadius: 10, padding: '16px 20px', marginTop: 8 }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 8 }}>EVIDENCE STANDARD — IMPORTANT NOTICE</div>
+          <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.7 }}>
+            This profile is an evidence-based analytical summary built from publicly accessible blockchain records, archived public communications, and cited third-party sources. Statements are categorized as (i) directly observable on-chain facts, (ii) source-attributed public claims, or (iii) analytical inferences. INTERLIGENS does not assert criminal guilt, intent, or liability. USD values are estimates based on observable transactions and documented pricing assumptions. Terms such as "high-risk," "linked," "associated," and "estimated" reflect analytical assessment — not judicial findings.
+          </div>
+          <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+            {[['VERIFIED ON-CHAIN', '#10b981'], ['SOURCE-ATTRIBUTED', '#3b82f6'], ['ANALYTICAL ESTIMATE', '#f59e0b'], ['NOT A LEGAL JUDGMENT', '#6b7280']].map(([label, color]) => (
+              <span key={label} style={{ background: color + '11', border: '1px solid ' + color + '33', color, fontSize: 8, fontWeight: 900, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.1em' }}>{label}</span>
+            ))}
+          </div>
+          <div style={{ marginTop: 10, fontSize: 10, color: '#1f2937' }}>
+            If you believe any information is inaccurate, submit a correction request to legal@interligens.com · INTERLIGENS Delaware C-Corp · Not legal advice
+          </div>
         </div>
       </div>
     </div>
