@@ -463,3 +463,46 @@ model SocialPostCandidate {
   @@unique([postId, influencerId])
   @@map("social_post_candidates")
 }
+
+model AlertSubscription {
+  id                String   @id @default(cuid())
+  email             String?
+  webhookUrl        String?
+  handles           String   @default("[]")
+  severityThreshold String   @default("PROBABLE")
+  status            String   @default("active")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  deliveries AlertDelivery[]
+
+  @@map("alert_subscriptions")
+}
+
+model AlertDelivery {
+  id             String    @id @default(cuid())
+  subscriptionId String
+  signalId       String
+  status         String    @default("pending")
+  channel        String
+  deliveredAt    DateTime?
+  error          String?
+  createdAt      DateTime  @default(now())
+
+  subscription AlertSubscription @relation(fields: [subscriptionId], references: [id])
+
+  @@map("alert_deliveries")
+}
+
+model CaseFile {
+  id          String    @id @default(cuid())
+  signalId    String    @unique
+  storageKey  String?
+  pdfSha256   String?
+  status      String    @default("pending")
+  generatedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@map("casefiles")
+}
