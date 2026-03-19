@@ -73,13 +73,13 @@ export default function TechnicalEvidence({
         why_fr: "Permet au contrat d'exécuter une logique externe, contournant les sécurités." },
     ],
     solana: [
-      { id: "s1", label: "Freeze Authority", value: "Check token config", severity: "critical",
+      { id: "s1", label: "Freeze Authority", label_fr: "Autorité de gel", value: "Check token config", value_fr: "Vérifier la config", severity: "critical",
         why_en: "The mint authority can freeze your tokens, preventing any sell or transfer.",
         why_fr: "L'autorité de mint peut geler vos jetons, empêchant toute vente ou transfert." },
-      { id: "s2", label: "Mutable Metadata", value: "Check on-chain metadata", severity: "med",
+      { id: "s2", label: "Mutable Metadata", label_fr: "Métadonnées modifiables", value: "Check on-chain metadata", value_fr: "Vérifier on-chain", severity: "med",
         why_en: "The project can change the token's name/image to impersonate others.",
         why_fr: "Le projet peut changer le nom/image du jeton pour usurper une identité." },
-      { id: "s3", label: "Unknown Programs", value: "Verify all interactions", severity: "high",
+      { id: "s3", label: "Unknown Programs", label_fr: "Programmes inconnus", value: "Verify all interactions", value_fr: "Vérifier les interactions", severity: "high",
         why_en: "Transactions interact with unofficial programs that haven't been audited.",
         why_fr: "La transaction interagit avec des programmes non officiels, sans audit." },
     ],
@@ -100,7 +100,7 @@ export default function TechnicalEvidence({
           {/* Row 1: label + badge */}
           <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <span className="text-xs font-black uppercase tracking-widest shrink-0">
-              {item.label}
+              {lang === 'fr' && (item as any).label_fr ? (item as any).label_fr : item.label}
             </span>
             {item.badge && (
               <span className={`text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 ${BADGE_COLOR[item.badge] ?? BADGE_COLOR.UNKNOWN}`}>
@@ -111,7 +111,7 @@ export default function TechnicalEvidence({
 
           {/* Row 2: value (break-all if address) */}
           <p className={`font-mono mb-1 opacity-80 ${isAddress(item.value) ? "text-[10px] break-all" : "text-xs truncate"}`}>
-            {item.value}
+            {lang === 'fr' && (item as any).value_fr ? (item as any).value_fr : item.value}
           </p>
 
           {/* Row 3: why (1 line) */}

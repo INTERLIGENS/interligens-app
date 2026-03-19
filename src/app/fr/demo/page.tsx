@@ -587,6 +587,10 @@ export default function TigerScanPageFR() {
                 className="w-full mt-2 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-[#F85B05] transition-colors text-center"
               >Voir les preuves →</button>
 
+              {corrobData?.found && (
+                <a href={'/fr/scan/' + address.trim() + '/timeline'} className="w-full mt-1 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors text-center block" style={{ color: corrobData.label.color, textDecoration: 'none' }}>{'Investigation disponible (' + corrobData.score + '/100) →'}</a>
+              )}
+
               <button
                 onClick={async () => {
                   if (!result) return;
