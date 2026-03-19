@@ -511,3 +511,53 @@ model CaseFile {
 
   @@map("casefiles")
 }
+
+model KOLProfile {
+  id            String   @id @default(cuid())
+  handle        String   @unique
+  platform      String
+  displayName   String?
+  followers     Int?
+  avatarUrl     String?
+  status        String   @default("active")
+  totalScammed  Float?
+  rugCount      Int      @default(0)
+  firstSeenAt   DateTime?
+  lastSeenAt    DateTime?
+  notes         String?
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  wallets       KOLWallet[]
+  caseLinks     KOLCaseLink[]
+  @@index([handle])
+  @@index([platform])
+}
+
+model KOLWallet {
+  id         String   @id @default(cuid())
+  kolId      String
+  address    String
+  chain      String
+  label      String?
+  status     String   @default("active")
+  totalIn    Float?
+  totalOut   Float?
+  createdAt  DateTime @default(now())
+  kol        KOLProfile @relation(fields: [kolId], references: [id], onDelete: Cascade)
+  @@index([kolId])
+  @@index([address])
+}
+
+model KOLCaseLink {
+  id        String   @id @default(cuid())
+  kolId     String
+  caseId    String
+  role      String
+  paidUsd   Float?
+  evidence  String?
+  createdAt DateTime @default(now())
+  kol       KOLProfile @relation(fields: [kolId], references: [id], onDelete: Cascade)
+  @@index([kolId])
+  @@index([caseId])
+}
