@@ -4,6 +4,7 @@ import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useRef, useMemo } from "react";
+import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
@@ -193,6 +194,8 @@ export default function TigerScanPageFR() {
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
+  const [corrobData, setCorrobData] = useState<any>(null);
+  const [addressLabel, setAddressLabel] = useState<any>(null);
   const [error, setError]               = useState<string | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
@@ -349,6 +352,17 @@ export default function TigerScanPageFR() {
 
       // Un seul setResult → un seul render → score final direct
       setGraphData(gData);
+      setAddressLabel(null)
+      setCorrobData(null)
+      const trimmed = address.trim()
+      fetch('/api/scan/label?address=' + trimmed)
+        .then(r => r.json())
+        .then(d => { if (d.found) setAddressLabel(d) })
+        .catch(() => {})
+      fetch('/api/scan/corroboration?address=' + trimmed)
+        .then(r => r.json())
+        .then(d => { if (d.found) setCorrobData(d) })
+        .catch(() => {})
       setResult(normalizedResult);
       setAnalysisStatus("done");
 
@@ -613,6 +627,48 @@ export default function TigerScanPageFR() {
 
             {/* RIGHT: SIGNALS + CARDS */}
             <div className="lg:col-span-7 flex flex-col gap-6">
+
+              {/* ── CORROBORATION SCORE ── */}
+              {corrobData?.found && (
+                <div style={{ background: '#0f172a', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 10, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ textAlign: 'center', minWidth: 64 }}>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: corrobData.label.color, lineHeight: 1, fontFamily: 'monospace' }}>{corrobData.score}</div>
+                    <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>CORROBORATION</div>
+                  </div>
+                  <div style={{ width: 1, height: 40, background: '#1f2937' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: corrobData.label.color, letterSpacing: '0.1em', marginBottom: 4 }}>{corrobData.label.fr}</div>
+                    <div style={{ fontSize: 12, color: '#f9fafb', fontWeight: 600 }}>{corrobData.caseTitle}</div>
+                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{corrobData.totalNodes} entités · {corrobData.totalEdges} liens · {corrobData.flaggedNodes} suspects</div>
+                  </div>
+                  <a href={'/fr/scan/' + address.trim() + '/timeline'} style={{ background: corrobData.label.color + '22', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 6, color: corrobData.label.color, padding: '6px 14px', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
+                    Investigation complète →
+                  </a>
+                </div>
+              )}
+
+              {/* ── KNOWN ADDRESS BADGE ── */}
+              {addressLabel?.found && (
+                <div style={{ background: addressLabel.badgeColor + '11', border: '1px solid ' + addressLabel.badgeColor + '44', borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 4, height: 40, background: addressLabel.badgeColor, borderRadius: 2, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: addressLabel.badgeColor, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>{addressLabel.badgeText}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f9fafb' }}>{addressLabel.label}</div>
+                    {addressLabel.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{addressLabel.notes}</div>}
+                    <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>Source: {addressLabel.source} · {addressLabel.confidence} confiance</div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── RETAIL VERDICT BANNER FR ── */}
+              <RetailVerdictBanner
+                tier={finalTier}
+                score={result.score}
+                proofs={result.proofs}
+                address={address.trim()}
+                chain={result.chain}
+                lang="fr"
+              />
 
               {/* ── RECIDIVISM ALERT — signal #1 ───────────────────── */}
               {result.chain === "SOL" && (
