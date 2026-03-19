@@ -299,6 +299,7 @@ model Influencer {
   signals     Signal[]
   watchlist   SocialWatchlist?
   candidates  SocialPostCandidate[]
+  score       InfluencerScore?
 
   @@map("influencers")
 }
@@ -375,25 +376,55 @@ model OnchainEvent {
 
 // Phase C placeholder
 model Signal {
-  id                     String   @id @default(cuid())
-  type                   String
-  influencerId           String
-  tokenAddress           String?
-  t0Post                 DateTime?
-  t1Event                DateTime?
-  windowMinutes          Int?
-  severity               String?
-  confidence             Float?
-  evidenceManifestSha256 String?
-  socialPostId           String?
-  onchainEventId         String?
-  createdAt              DateTime @default(now())
+  id                       String    @id @default(cuid())
+  type                     String
+  influencerId             String
+  walletAddress            String?
+  tokenAddress             String?
+  t0PostUrl                String?
+  t0PostedAtUtc            DateTime?
+  t0CapturedAtUtc          DateTime?
+  t0CapturedManifestSha256 String?
+  t0Post                   DateTime?
+  t1TxHash                 String?
+  t1BlockNumber            Int?
+  t1BlockTimeUtc           DateTime?
+  t1Event                  DateTime?
+  direction                String?
+  amountRaw                String?
+  holdingBeforeRaw         String?
+  soldPctOfHolding         Float?
+  windowBucket             String?
+  windowMinutes            Int?
+  severity                 String?
+  confidence               Float?
+  evidenceManifestSha256   String?
+  evidenceRefs             Json?
+  socialPostId             String?
+  onchainEventId           String?
+  notes                    String?
+  createdAt                DateTime  @default(now())
 
   influencer   Influencer    @relation(fields: [influencerId], references: [id])
   socialPost   SocialPost?   @relation(fields: [socialPostId], references: [id])
   onchainEvent OnchainEvent? @relation(fields: [onchainEventId], references: [id])
 
   @@map("signals")
+}
+
+model InfluencerScore {
+  id            String   @id @default(cuid())
+  influencerId  String   @unique
+  periodDays    Int      @default(30)
+  score         Int      @default(0)
+  blatantCount  Int      @default(0)
+  probableCount Int      @default(0)
+  possibleCount Int      @default(0)
+  updatedAt     DateTime @default(now())
+
+  influencer Influencer @relation(fields: [influencerId], references: [id])
+
+  @@map("influencer_scores")
 }
 
 
