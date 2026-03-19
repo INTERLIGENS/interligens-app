@@ -637,7 +637,7 @@ export default function TigerScanPage() {
               >Open evidence →</button>
 
               {corrobData?.found && (
-                
+                <a
                   href={'/en/scan/' + address.trim() + '/timeline'}
                   className="w-full mt-1 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors text-center block"
                   style={{ color: corrobData.label.color, textDecoration: 'none' }}
