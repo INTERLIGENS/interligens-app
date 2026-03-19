@@ -374,24 +374,51 @@ model IntakeRecord {
 }
 
 model KolProfile {
-  id              String   @id @default(cuid())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  handle          String   @unique
-  platform        String   @default("x")
-  label           String   @default("unknown")
-  riskFlag        String   @default("unverified")
-  wallets         String   @default("[]")
-  sourceIntakeIds String   @default("[]")
-  confidence      String   @default("low")
-  status          String   @default("active")
+  id              String      @id @default(cuid())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  handle          String      @unique
+  platform        String      @default("x")
+  displayName     String?
+  label           String      @default("unknown")
+  riskFlag        String      @default("unverified")
+  sourceIntakeIds String      @default("[]")
+  confidence      String      @default("low")
+  status          String      @default("active")
   bio             String?
   followerCount   Int?
   notes           String?
   pricePerPost    Float?
-  tags            String   @default("[]")
+  tags            String      @default("[]")
   tier            String?
+  rugCount        Int         @default(0)
+  totalScammed    Float?
+  verified        Boolean     @default(false)
+  kolWallets      KolWallet[]
+  kolCases        KolCase[]
   @@map("KolProfile")
+}
+
+model KolWallet {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  kolHandle String
+  address   String
+  chain     String     @default("SOL")
+  label     String?
+  status    String     @default("active")
+  kol       KolProfile @relation(fields: [kolHandle], references: [handle])
+}
+
+model KolCase {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  kolHandle String
+  caseId    String
+  role      String     @default("promoter")
+  paidUsd   Float?
+  evidence  String?
+  kol       KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
 model WatchSource {
