@@ -148,6 +148,7 @@ const DEMO_PRESETS = [
 function TigerScanPageInner() {
   const searchParams  = useSearchParams();
   const pathname      = usePathname();
+  const locale        = pathname?.startsWith('/fr') ? 'fr' : 'en';
   const debug         = searchParams.get("debug") === "1";
   const hasAutoRun    = useRef(false);
 
