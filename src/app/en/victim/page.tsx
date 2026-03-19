@@ -107,19 +107,19 @@ export default function VictimPage() {
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>WHAT TO DO NOW:</div>
                   <a href="https://www.binance.com/en/support/requests/new" target="_blank" rel="noreferrer"
                     style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 8, color: '#f9fafb', padding: '12px 16px', fontSize: 13, textDecoration: 'none', display: 'block' }}>
-                    📋 Report to Binance — Submit evidence of scam funds received
+                    Report to Binance — Submit evidence of scam funds received
                   </a>
                   <a href="https://www.ic3.gov" target="_blank" rel="noreferrer"
                     style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 8, color: '#f9fafb', padding: '12px 16px', fontSize: 13, textDecoration: 'none', display: 'block' }}>
-                    🏛 Report to IC3 (FBI Internet Crime Complaint Center)
+                    Report to IC3 (FBI Internet Crime Complaint Center)
                   </a>
                   <a href="https://www.finma.ch/en/reporting/reporting-misconduct/" target="_blank" rel="noreferrer"
                     style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 8, color: '#f9fafb', padding: '12px 16px', fontSize: 13, textDecoration: 'none', display: 'block' }}>
-                    🇨🇭 Report to FINMA (Swiss Financial Authority)
+                    Report to FINMA (Swiss Financial Authority)
                   </a>
                   <a href={'/en/scan/timeline/auto?address=' + address}
                     style={{ background: '#4f46e5', border: 'none', borderRadius: 8, color: '#fff', padding: '12px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'block', textAlign: 'center' as const }}>
-                    🔍 See full investigation →
+                    See full investigation →
                   </a>
                 </div>
               </div>
