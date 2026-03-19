@@ -216,6 +216,8 @@ model Influencer {
   wallets     Wallet[]
   socialPosts SocialPost[]
   signals     Signal[]
+  watchlist   SocialWatchlist?
+  candidates  SocialPostCandidate[]
 
   @@map("influencers")
 }
@@ -388,4 +390,45 @@ model DomainIoc {
   sourceIntakeId String?
   notes          String?
   @@map("DomainIoc")
+}
+
+
+model SocialWatchlist {
+  id             String    @id @default(cuid())
+  influencerId   String    @unique
+  handle         String
+  provider       String    @default("nitter_rss")
+  status         String    @default("active")
+  lastCheckedAt  DateTime?
+  lastSeenPostId String?
+  errorMessage   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  influencer Influencer @relation(fields: [influencerId], references: [id])
+
+  @@map("social_watchlist")
+}
+
+model SocialPostCandidate {
+  id                 String    @id @default(cuid())
+  influencerId       String
+  watchlistId        String?
+  postUrl            String
+  postId             String
+  discoveredAtUtc    DateTime  @default(now())
+  postedAtUtc        DateTime?
+  sourceProvider     String
+  status             String    @default("new")
+  attempts           Int       @default(0)
+  lastAttemptAtUtc   DateTime?
+  errorMessage       String?
+  linkedSocialPostId String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  influencer Influencer @relation(fields: [influencerId], references: [id])
+
+  @@unique([postId, influencerId])
+  @@map("social_post_candidates")
 }
