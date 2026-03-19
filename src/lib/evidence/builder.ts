@@ -4,6 +4,8 @@ import { isKnownBad } from "../entities/knownBad";
 export type EvidenceItem = {
   id: string;
   label: string;
+  label_fr?: string;
+  value_fr?: string;
   value: string;
   severity: "low" | "med" | "high" | "critical";
   why_en: string;
