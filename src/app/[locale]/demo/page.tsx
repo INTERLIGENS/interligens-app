@@ -157,6 +157,8 @@ function TigerScanPageInner() {
   const [loading, setLoading]           = useState(false);
   const [loadStep, setLoadStep]         = useState(0);
   const [result, setResult]             = useState<NormalizedScan | null>(null);
+  const [corrobData, setCorrobData] = useState<any>(null);
+  const [addressLabel, setAddressLabel] = useState<any>(null);
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
@@ -242,6 +244,17 @@ function TigerScanPageInner() {
           }
         } catch { /* enrichissement optionnel */ }
       }
+      setAddressLabel(null)
+      setCorrobData(null)
+      const trimmed = address.trim()
+      fetch('/api/scan/label?address=' + trimmed)
+        .then(r => r.json())
+        .then(d => { if (d.found) setAddressLabel(d) })
+        .catch(() => {})
+      fetch('/api/scan/corroboration?address=' + trimmed)
+        .then(r => r.json())
+        .then(d => { if (d.found) setCorrobData(d) })
+        .catch(() => {})
       setResult(normalizeScanData(enrichedData, chain));
 
       try {
@@ -511,34 +524,46 @@ function TigerScanPageInner() {
             {/* RIGHT: SIGNALS + CARDS */}
             <div className="lg:col-span-7 flex flex-col gap-6">
 
-              {/* ── RETAIL VERDICT BANNER ── */}
-              <div style={{ background: '#1a0505', border: '2px solid #ef4444', borderRadius: 16, padding: '20px 24px', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 32 }}>🚨</span>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: '#ef4444' }}>
-                      {result.tier === 'RED' ? 'DANGER — Do not buy' : result.tier === 'ORANGE' ? 'CAUTION — High risk' : 'CLEAN — Looks safe'}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
-                      TigerScore: {result.score}/100 · Analyzed by INTERLIGENS AI 🐯
-                    </div>
+              {/* ── CORROBORATION SCORE ── */}
+              {corrobData?.found && (
+                <div style={{ background: '#0f172a', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 10, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ textAlign: 'center', minWidth: 64 }}>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: corrobData.label.color, lineHeight: 1, fontFamily: 'monospace' }}>{corrobData.score}</div>
+                    <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>CORROBORATION</div>
                   </div>
-                </div>
-                {result.tier !== 'GREEN' && (
-                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                    {result.proofs.filter((p: any) => p.level !== 'low').slice(0, 3).map((p: any, i: number) => (
-                      <div key={i} style={{ fontSize: 13, color: '#e2e8f0', background: '#0f172a', borderRadius: 8, padding: '7px 12px', borderLeft: '3px solid #ef4444' }}>
-                        ⚠️ {p.riskDescription}
-                      </div>
-                    ))}
+                  <div style={{ width: 1, height: 40, background: '#1f2937' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: corrobData.label.color, letterSpacing: '0.1em', marginBottom: 4 }}>{locale === 'fr' ? corrobData.label.fr : corrobData.label.en}</div>
+                    <div style={{ fontSize: 12, color: '#f9fafb', fontWeight: 600 }}>{corrobData.caseTitle}</div>
+                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{corrobData.totalNodes} entities · {corrobData.totalEdges} links · {corrobData.flaggedNodes} suspects</div>
                   </div>
-                )}
-                <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <a href={"/en/scan/" + address.trim() + "/timeline"} style={{ background: '#ef4444', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-                    See how this scam unfolded →
+                  <a href={"/" + locale + "/scan/" + address.trim() + "/timeline"} style={{ background: corrobData.label.color + '22', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 6, color: corrobData.label.color, padding: '6px 14px', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
+                    {locale === 'fr' ? 'Investigation complète →' : 'Full investigation →'}
                   </a>
                 </div>
-              </div>
+              )}
+
+              {/* ── KNOWN ADDRESS BADGE ── */}
+              {addressLabel?.found && (
+                <div style={{ background: addressLabel.badgeColor + '11', border: '1px solid ' + addressLabel.badgeColor + '44', borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 4, height: 40, background: addressLabel.badgeColor, borderRadius: 2, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: addressLabel.badgeColor, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>{addressLabel.badgeText}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f9fafb' }}>{addressLabel.label}</div>
+                    {addressLabel.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{addressLabel.notes}</div>}
+                  </div>
+                </div>
+              )}
+
+              {/* ── RETAIL VERDICT BANNER ── */}
+              <RetailVerdictBanner
+                tier={result.tier}
+                score={result.score}
+                proofs={result.proofs}
+                address={address.trim()}
+                chain={result.chain}
+                lang={locale === 'fr' ? 'fr' : 'en'}
+              />
 
               {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
               <MiniSignalRow
