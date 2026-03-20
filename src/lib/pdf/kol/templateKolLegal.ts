@@ -489,8 +489,8 @@ export function renderKolPdfLegal(kol: any): string {
           <td><span class="badge badge-confirmed">On-Chain Verified</span></td>
         </tr>
         <tr>
-          <td><strong>Family wallet distribution</strong></td>
-          <td>Insider supply distributed to 7 public-source-linked wallets (BK: 4, SAM: 3) prior to public launch. Consistent with concealed insider allocation.</td>
+          <td><strong>Associated-wallet pre-launch allocation pattern</strong></td>
+          <td>Insider supply distributed to 7 public-source-linked associated wallets (BK cluster: 4, SAM cluster: 3) prior to public launch. Consistent with concealed insider allocation.</td>
           <td><span class="badge badge-source">Public-Source-Linked</span></td>
         </tr>
         <tr>
@@ -594,9 +594,9 @@ export function renderKolPdfLegal(kol: any): string {
       <span class="section-title">Exhibit Index</span>
     </div>
     <table class="w-table">
-      <thead><tr><th>Exhibit ID</th><th>Type</th><th>Description</th><th>Source</th><th>Verification</th></tr></thead>
+      <thead><tr><th>Exhibit ID</th><th>Type</th><th>Description</th><th>Source</th><th>Classification</th><th>Confidence</th><th>Page</th></tr></thead>
       <tbody>
-        <tr><td class="mono">EX-01</td><td>Social Post</td><td>X post @kokoski — exit statement 19/03/2026 23:25 UTC</td><td>X/Twitter public</td><td><span class="badge badge-confirmed">Archived</span></td></tr>
+        <tr><td class="mono">EX-01</td><td>Social Post</td><td>X post @kokoski — exit statement 19/03/2026 23:25 UTC</td><td>X/Twitter public</td><td>Source-attributed</td><td><span class="badge badge-source">Confirmed</span></td><td style="font-size:8px">p.2</td></tr>
         ${cashouts.map((e: any, i: number) => `
         <tr>
           <td class="mono">EX-0${i+2}</td>
@@ -605,8 +605,8 @@ export function renderKolPdfLegal(kol: any): string {
           <td>Helius API · Solscan</td>
           <td><span class="badge badge-confirmed">On-Chain</span></td>
         </tr>`).join("")}
-        <tr><td class="mono">EX-${cashouts.length + 2}</td><td>Exit Event</td><td>HeaiDUtMQ hub — $210K USDC coordinated cashout 20/03/2026</td><td>Helius API · Solscan</td><td><span class="badge badge-confirmed">On-Chain</span></td></tr>
-        ${evmEv ? `<tr><td class="mono">EX-${cashouts.length + 3}</td><td>EVM Portfolio</td><td>EVM wallet $401K — Arkham Intelligence entity confirmed</td><td>Arkham Intelligence</td><td><span class="badge badge-source">Platform-Confirmed</span></td></tr>` : ""}
+        <tr><td class="mono">EX-${cashouts.length + 2}</td><td>Exit Event</td><td>HeaiDUtMQ hub — $210K USDC coordinated cashout 20/03/2026</td><td>Helius API · Solscan</td><td>On-chain verified</td><td><span class="badge badge-confirmed">Confirmed</span></td><td style="font-size:8px">p.4-5</td></tr>
+        ${evmEv ? `<tr><td class="mono">EX-${cashouts.length + 3}</td><td>EVM Portfolio</td><td>EVM wallet $401K — Arkham Intelligence entity confirmed</td><td>Arkham Intelligence</td><td>Platform-confirmed</td><td><span class="badge badge-source">Strong linkage</span></td><td style="font-size:8px">p.3,6</td></tr>` : ""}
       </tbody>
     </table>
   </div>
