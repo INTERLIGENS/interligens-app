@@ -603,7 +603,9 @@ export function renderKolPdfLegal(kol: any): string {
           <td>Blockchain TX</td>
           <td>${e.label}</td>
           <td>Helius API · Solscan</td>
-          <td><span class="badge badge-confirmed">On-Chain</span></td>
+          <td>On-chain verified</td>
+          <td><span class="badge badge-confirmed">Confirmed</span></td>
+          <td style="font-size:8px">p.4–5</td>
         </tr>`).join("")}
         <tr><td class="mono">EX-${cashouts.length + 2}</td><td>Exit Event</td><td>HeaiDUtMQ hub — $210K USDC coordinated cashout 20/03/2026</td><td>Helius API · Solscan</td><td>On-chain verified</td><td><span class="badge badge-confirmed">Confirmed</span></td><td style="font-size:8px">p.4-5</td></tr>
         ${evmEv ? `<tr><td class="mono">EX-${cashouts.length + 3}</td><td>EVM Portfolio</td><td>EVM wallet $401K — Arkham Intelligence entity confirmed</td><td>Arkham Intelligence</td><td>Platform-confirmed</td><td><span class="badge badge-source">Strong linkage</span></td><td style="font-size:8px">p.3,6</td></tr>` : ""}
