@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { renderKolPdf } from "@/lib/pdf/kol/templateKol"
+import { renderKolPdfLegal } from "@/lib/pdf/kol/templateKolLegal"
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     })
     if (!kol) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    const html = renderKolPdf(kol, mode)
+    const html = mode === "lawyer" ? renderKolPdfLegal(kol) : renderKolPdf(kol, mode)
 
     if (format === "html") {
       return new NextResponse(html, { headers: { "Content-Type": "text/html" } })
