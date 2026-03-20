@@ -11,6 +11,7 @@ const ROLE_COLOR: Record<string, string> = {
 
 export default function KolNetworkPage() {
   const [data, setData] = useState<any>(null)
+  const [publishability, setPublishability] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const [adminToken, setAdminToken] = useState('')
@@ -18,7 +19,20 @@ export default function KolNetworkPage() {
 
   const load = async (token: string) => {
     const res = await fetch('/api/admin/kol/network', { headers: { Authorization: 'Bearer ' + token } })
-    if (res.ok) { setData(await res.json()); setAuthed(true) }
+    if (res.ok) {
+        const d = await res.json()
+        setData(d)
+        setAuthed(true)
+        // Fetch publishability for each KOL
+        const results: Record<string, any> = {}
+        for (const kol of d.kols ?? []) {
+          try {
+            const pr = await fetch('/api/admin/kol/publishability?handle=' + kol.handle, { headers: { Authorization: 'Bearer ' + token } })
+            if (pr.ok) results[kol.handle] = await pr.json()
+          } catch {}
+        }
+        setPublishability(results)
+      }
     setLoading(false)
   }
 
@@ -86,7 +100,14 @@ export default function KolNetworkPage() {
                     <div style={{ fontSize: 12, fontWeight: 700 }}>{kol.displayName}</div>
                     <div style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace' }}>@{kol.handle}</div>
                   </div>
-                  {kol.verified && <span style={{ marginLeft: 'auto', fontSize: 8, color: '#ef4444', fontWeight: 900 }}>✓</span>}
+                  <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 2 }}>
+                    {kol.verified && <span style={{ fontSize: 8, color: '#ef4444', fontWeight: 900 }}>✓ VERIFIED</span>}
+                    {publishability[kol.handle] && (
+                      <span style={{ fontSize: 7, fontWeight: 900, padding: '2px 6px', borderRadius: 3, background: publishability[kol.handle].publishable ? '#10b98122' : '#ef444422', color: publishability[kol.handle].publishable ? '#10b981' : '#ef4444' }}>
+                        {publishability[kol.handle].publishable ? '● PUBLISHABLE' : '● BLOCKED'}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
                   <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700 }}>{kol.rugCount} rugs</span>

@@ -150,8 +150,8 @@ model GraphCase {
   notes        String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
-  nodes        GraphNode[]
   edges        GraphEdge[]
+  nodes        GraphNode[]
 }
 
 model GraphNode {
@@ -163,9 +163,9 @@ model GraphNode {
   posX     Float       @default(0)
   posY     Float       @default(0)
   flagged  Boolean     @default(false)
-  case     GraphCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
   edgesOut GraphEdge[] @relation("EdgeSource")
   edgesIn  GraphEdge[] @relation("EdgeTarget")
+  case     GraphCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
 }
 
 model GraphEdge {
@@ -182,71 +182,57 @@ model GraphEdge {
 }
 
 model WalletLabel {
-  id          String   @id @default(cuid())
-  address     String
-  chain       String   // "evm" | "solana" | "any"
-  label       String
-  category    String   // "scammer" | "team" | "kol" | "cex" | "mixer" | "victim" | "other"
-  confidence  String   @default("MEDIUM") // "HIGH" | "MEDIUM" | "LOW"
-  source      String   // "admin" | "community" | "etherscan" | "osint_pdf" | ...
-  sourceUrl   String?
-  verified    Boolean  @default(false)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  address    String
+  chain      String
+  label      String
+  category   String
+  confidence String   @default("MEDIUM")
+  source     String
+  sourceUrl  String?
+  verified   Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([address])
   @@index([chain])
   @@index([category])
   @@index([verified])
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERLIGENS — Surveillance Influenceurs
-// Ajouter ces modèles à la fin de ton prisma/schema.prisma existant
-// ─────────────────────────────────────────────────────────────────────────────
 
 model Influencer {
-  id        String   @id @default(cuid())
-  handle    String   @unique
-  platform  String   @default("x")
-  metadata  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  wallets     Wallet[]
-  socialPosts SocialPost[]
-  signals     Signal[]
-  watchlist   SocialWatchlist?
-  candidates  SocialPostCandidate[]
+  id          String                @id @default(cuid())
+  handle      String                @unique
+  platform    String                @default("x")
+  metadata    Json?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
   score       InfluencerScore?
+  signals     Signal[]
+  candidates  SocialPostCandidate[]
+  socialPosts SocialPost[]
+  watchlist   SocialWatchlist?
+  wallets     Wallet[]
 
   @@map("influencers")
 }
 
 model Wallet {
-  id             String   @id @default(cuid())
+  id             String         @id @default(cuid())
   address        String
-  chain          String   @default("ethereum")
+  chain          String         @default("ethereum")
   influencerId   String
-  verifiedMethod String   // "ENS_ONCHAIN" | "POST_X" | "ARKHAM" | "MANUAL"
+  verifiedMethod String
   verifiedAt     DateTime
-  confidence     Float    @default(1.0)
+  confidence     Float          @default(1.0)
   ensName        String?
-  createdAt      DateTime @default(now())
-
-  influencer    Influencer     @relation(fields: [influencerId], references: [id])
-  onchainEvents OnchainEvent[]
+  createdAt      DateTime       @default(now())
+  onchainEvents  OnchainEvent[]
+  influencer     Influencer     @relation(fields: [influencerId], references: [id])
 
   @@unique([address, chain])
   @@map("wallets")
-}
-
-enum CaptureStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  BLOCKED
 }
 
 model SocialPost {
@@ -264,14 +250,12 @@ model SocialPost {
   errors           String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
-
-  influencer Influencer @relation(fields: [influencerId], references: [id])
-  signals    Signal[]
+  signals          Signal[]
+  influencer       Influencer    @relation(fields: [influencerId], references: [id])
 
   @@map("social_posts")
 }
 
-// Phase B placeholder
 model OnchainEvent {
   id            String   @id @default(cuid())
   txHash        String   @unique
@@ -286,62 +270,58 @@ model OnchainEvent {
   counterparty  String?
   rawJson       Json?
   createdAt     DateTime @default(now())
-
-  wallet  Wallet?  @relation(fields: [walletAddress, chain], references: [address, chain])
-  signals Signal[]
+  wallet        Wallet   @relation(fields: [walletAddress, chain], references: [address, chain])
+  signals       Signal[]
 
   @@map("onchain_events")
 }
 
-// Phase C placeholder
 model Signal {
-  id                       String    @id @default(cuid())
+  id                       String        @id @default(cuid())
   type                     String
   influencerId             String
-  walletAddress            String?
   tokenAddress             String?
+  t0Post                   DateTime?
+  t1Event                  DateTime?
+  windowMinutes            Int?
+  severity                 String?
+  confidence               Float?
+  evidenceManifestSha256   String?
+  socialPostId             String?
+  onchainEventId           String?
+  createdAt                DateTime      @default(now())
+  walletAddress            String?
   t0PostUrl                String?
   t0PostedAtUtc            DateTime?
   t0CapturedAtUtc          DateTime?
   t0CapturedManifestSha256 String?
-  t0Post                   DateTime?
   t1TxHash                 String?
   t1BlockNumber            Int?
   t1BlockTimeUtc           DateTime?
-  t1Event                  DateTime?
   direction                String?
   amountRaw                String?
   holdingBeforeRaw         String?
   soldPctOfHolding         Float?
   windowBucket             String?
-  windowMinutes            Int?
-  severity                 String?
-  confidence               Float?
-  evidenceManifestSha256   String?
   evidenceRefs             Json?
-  socialPostId             String?
-  onchainEventId           String?
   notes                    String?
-  createdAt                DateTime  @default(now())
-
-  influencer   Influencer    @relation(fields: [influencerId], references: [id])
-  socialPost   SocialPost?   @relation(fields: [socialPostId], references: [id])
-  onchainEvent OnchainEvent? @relation(fields: [onchainEventId], references: [id])
+  influencer               Influencer    @relation(fields: [influencerId], references: [id])
+  onchainEvent             OnchainEvent? @relation(fields: [onchainEventId], references: [id])
+  socialPost               SocialPost?   @relation(fields: [socialPostId], references: [id])
 
   @@map("signals")
 }
 
 model InfluencerScore {
-  id           String   @id @default(cuid())
-  influencerId String   @unique
-  periodDays   Int      @default(30)
-  score        Int      @default(0)
-  blatantCount Int      @default(0)
-  probableCount Int     @default(0)
-  possibleCount Int     @default(0)
-  updatedAt    DateTime @default(now())
-
-  influencer Influencer @relation(fields: [influencerId], references: [id])
+  id            String     @id @default(cuid())
+  influencerId  String     @unique
+  periodDays    Int        @default(30)
+  score         Int        @default(0)
+  blatantCount  Int        @default(0)
+  probableCount Int        @default(0)
+  possibleCount Int        @default(0)
+  updatedAt     DateTime   @default(now())
+  influencer    Influencer @relation(fields: [influencerId], references: [id])
 
   @@map("influencer_scores")
 }
@@ -370,6 +350,7 @@ model IntakeRecord {
   ipHash           String?
   userAgentHash    String?
   adminNotes       String?
+
   @@map("IntakeRecord")
 }
 
@@ -379,7 +360,6 @@ model KolProfile {
   updatedAt       DateTime    @updatedAt
   handle          String      @unique
   platform        String      @default("x")
-  displayName     String?
   label           String      @default("unknown")
   riskFlag        String      @default("unverified")
   sourceIntakeIds String      @default("[]")
@@ -391,34 +371,46 @@ model KolProfile {
   pricePerPost    Float?
   tags            String      @default("[]")
   tier            String?
+  displayName     String?
   rugCount        Int         @default(0)
   totalScammed    Float?
   verified        Boolean     @default(false)
-  kolWallets      KolWallet[]
   kolCases        KolCase[]
+  kolWallets      KolWallet[]
+
   @@map("KolProfile")
 }
 
 model KolWallet {
-  id        String     @id @default(cuid())
-  createdAt DateTime   @default(now())
-  kolHandle String
-  address   String
-  chain     String     @default("SOL")
-  label     String?
-  status    String     @default("active")
-  kol       KolProfile @relation(fields: [kolHandle], references: [handle])
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  kolHandle   String
+  address     String
+  chain       String     @default("SOL")
+  label       String?
+  status      String     @default("active")
+  claimType   String?    @default("source_attributed")
+  sourceLabel String?
+  sourceUrl   String?
+  kol         KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
 model KolCase {
-  id        String     @id @default(cuid())
-  createdAt DateTime   @default(now())
-  kolHandle String
-  caseId    String
-  role      String     @default("promoter")
-  paidUsd   Float?
-  evidence  String?
-  kol       KolProfile @relation(fields: [kolHandle], references: [handle])
+  id              String     @id @default(cuid())
+  createdAt       DateTime   @default(now())
+  kolHandle       String
+  caseId          String
+  role            String     @default("promoter")
+  paidUsd         Float?
+  evidence        String?
+  claimType       String?    @default("analytical_estimate")
+  confidenceLevel String?    @default("provisional")
+  sourceUrl       String?
+  sourceLabel     String?
+  methodologyRef  String?    @default("/en/methodology")
+  lastReviewedAt  DateTime?  @default(now()) @db.Timestamp(6)
+  versionNote     String?
+  kol             KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
 model WatchSource {
@@ -434,6 +426,7 @@ model WatchSource {
   lastHash     String?
   lastIntakeId String?
   errorCount   Int       @default(0)
+
   @@map("WatchSource")
 }
 
@@ -447,76 +440,72 @@ model DomainIoc {
   status         String   @default("active")
   sourceIntakeId String?
   notes          String?
+
   @@map("DomainIoc")
 }
 
-
 model SocialWatchlist {
-  id             String    @id @default(cuid())
-  influencerId   String    @unique
+  id             String     @id @default(cuid())
+  influencerId   String     @unique
   handle         String
-  provider       String    @default("nitter_rss")
-  status         String    @default("active")
+  provider       String     @default("nitter_rss")
+  status         String     @default("active")
   lastCheckedAt  DateTime?
   lastSeenPostId String?
   errorMessage   String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  influencer Influencer @relation(fields: [influencerId], references: [id])
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  influencer     Influencer @relation(fields: [influencerId], references: [id])
 
   @@map("social_watchlist")
 }
 
 model SocialPostCandidate {
-  id                 String    @id @default(cuid())
+  id                 String     @id @default(cuid())
   influencerId       String
   watchlistId        String?
   postUrl            String
   postId             String
-  discoveredAtUtc    DateTime  @default(now())
+  discoveredAtUtc    DateTime   @default(now())
   postedAtUtc        DateTime?
   sourceProvider     String
-  status             String    @default("new")
-  attempts           Int       @default(0)
+  status             String     @default("new")
+  attempts           Int        @default(0)
   lastAttemptAtUtc   DateTime?
   errorMessage       String?
   linkedSocialPostId String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  influencer Influencer @relation(fields: [influencerId], references: [id])
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  influencer         Influencer @relation(fields: [influencerId], references: [id])
 
   @@unique([postId, influencerId])
   @@map("social_post_candidates")
 }
 
 model AlertSubscription {
-  id                String   @id @default(cuid())
+  id                String          @id @default(cuid())
   email             String?
   webhookUrl        String?
-  handles           String   @default("[]")
-  severityThreshold String   @default("PROBABLE")
-  status            String   @default("active")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  deliveries AlertDelivery[]
+  handles           String          @default("[]")
+  severityThreshold String          @default("PROBABLE")
+  status            String          @default("active")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deliveries        AlertDelivery[]
 
   @@map("alert_subscriptions")
 }
 
 model AlertDelivery {
-  id             String    @id @default(cuid())
+  id             String            @id @default(cuid())
   subscriptionId String
   signalId       String
-  status         String    @default("pending")
+  status         String            @default("pending")
   channel        String
   deliveredAt    DateTime?
   error          String?
-  createdAt      DateTime  @default(now())
-
-  subscription AlertSubscription @relation(fields: [subscriptionId], references: [id])
+  createdAt      DateTime          @default(now())
+  subscription   AlertSubscription @relation(fields: [subscriptionId], references: [id])
 
   @@map("alert_deliveries")
 }
@@ -535,57 +524,62 @@ model CaseFile {
 }
 
 model KOLProfile {
-  id            String   @id @default(cuid())
-  handle        String   @unique
-  platform      String   // twitter | telegram | youtube | tiktok
-  displayName   String?
-  followers     Int?
-  avatarUrl     String?
-  status        String   @default("active") // active | inactive | arrested | unknown
-  totalScammed  Float?   // USD estimé
-  rugCount      Int      @default(0)
-  firstSeenAt   DateTime?
-  lastSeenAt    DateTime?
-  notes         String?
-  verified      Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  wallets       KOLWallet[]
-  caseLinks     KOLCaseLink[]
+  id           String        @id @default(cuid())
+  handle       String        @unique
+  platform     String
+  displayName  String?
+  followers    Int?
+  avatarUrl    String?
+  status       String        @default("active")
+  totalScammed Float?
+  rugCount     Int           @default(0)
+  firstSeenAt  DateTime?
+  lastSeenAt   DateTime?
+  notes        String?
+  verified     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  caseLinks    KOLCaseLink[]
+  wallets      KOLWallet[]
 
   @@index([handle])
   @@index([platform])
 }
 
 model KOLWallet {
-  id         String   @id @default(cuid())
-  kolId      String
-  address    String
-  chain      String
-  label      String?
-  status     String   @default("active") // active | closed | unknown
-  totalIn    Float?
-  totalOut   Float?
-  createdAt  DateTime @default(now())
-
-  kol        KOLProfile @relation(fields: [kolId], references: [id], onDelete: Cascade)
+  id        String     @id @default(cuid())
+  kolId     String
+  address   String
+  chain     String
+  label     String?
+  status    String     @default("active")
+  totalIn   Float?
+  totalOut  Float?
+  createdAt DateTime   @default(now())
+  kol       KOLProfile @relation(fields: [kolId], references: [id], onDelete: Cascade)
 
   @@index([kolId])
   @@index([address])
 }
 
 model KOLCaseLink {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   kolId     String
   caseId    String
-  role      String   // promoter | team | advisor | unknown
+  role      String
   paidUsd   Float?
   evidence  String?
-  createdAt DateTime @default(now())
-
+  createdAt DateTime   @default(now())
   kol       KOLProfile @relation(fields: [kolId], references: [id], onDelete: Cascade)
 
   @@index([kolId])
   @@index([caseId])
+}
+
+enum CaptureStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  BLOCKED
 }
