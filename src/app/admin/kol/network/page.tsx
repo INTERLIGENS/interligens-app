@@ -117,26 +117,25 @@ export default function KolNetworkPage() {
                     <div style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace' }}>@{kol.handle}</div>
                   </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 2 }}>
-                    {kol.verified && <span style={{ fontSize: 8, color: '#ef4444', fontWeight: 900 }}>✓ VERIFIED</span>}
+                    {kol.verified && <span style={{ fontSize: 8, color: '#10b981', fontWeight: 900 }}>✓ VERIFIED</span>}
                     {publishability[kol.handle] && (
                       <span style={{ fontSize: 7, fontWeight: 900, padding: '2px 6px', borderRadius: 3, background: publishability[kol.handle].publishable ? '#10b98122' : '#ef444422', color: publishability[kol.handle].publishable ? '#10b981' : '#ef4444' }}>
-                        {publishability[kol.handle].publishable ? '● PUBLISHABLE' : '● BLOCKED'}
-                      </span>
-                    )}
-                    <button
-                      onClick={e => { e.stopPropagation(); investigate(kol.handle) }}
-                      style={{ fontSize: 7, fontWeight: 900, padding: '2px 8px', borderRadius: 3, background: investigating === kol.handle ? '#f59e0b22' : '#3b82f622', color: investigating === kol.handle ? '#f59e0b' : '#3b82f6', border: 'none', cursor: 'pointer', letterSpacing: '0.1em' }}>
-                      {investigating === kol.handle ? '⟳ SCANNING...' : '🔍 INVESTIGATE'}
-                    </button>
-                    {investigateResults[kol.handle] && (
-                      <span style={{ fontSize: 7, color: '#10b981' }}>
-                        ✓ {investigateResults[kol.handle].evidenceCreated} new
+                        {publishability[kol.handle].publishable ? '● PUB' : '● BLOCKED'}
                       </span>
                     )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
                   <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700 }}>{kol.rugCount} rugs</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); investigate(kol.handle) }}
+                    style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 3,
+                      background: 'transparent', color: investigating === kol.handle ? '#f59e0b' : '#374151',
+                      border: 'none', cursor: 'pointer' }}>
+                    {investigating === kol.handle ? '⟳' : '🔍'} {investigating === kol.handle ? 'scanning...' : 'investigate'}
+                    {investigateResults[kol.handle] ? ' ✓' : ''}
+                  </button>
+
                   <span style={{ fontSize: 9, color: '#f59e0b' }}>{fmtUsd(kol.totalScammed)}</span>
                   <span style={{ fontSize: 9, color: '#6b7280' }}>{kol.walletCount}w · {kol.caseCount}c</span>
                   {connections.length > 0 && <span style={{ fontSize: 9, color: '#8b5cf6' }}>{connections.length} links</span>}
