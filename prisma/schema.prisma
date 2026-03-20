@@ -280,31 +280,31 @@ model Signal {
   id                       String        @id @default(cuid())
   type                     String
   influencerId             String
-  tokenAddress             String?
-  t0Post                   DateTime?
-  t1Event                  DateTime?
-  windowMinutes            Int?
-  severity                 String?
-  confidence               Float?
-  evidenceManifestSha256   String?
-  socialPostId             String?
-  onchainEventId           String?
-  createdAt                DateTime      @default(now())
   walletAddress            String?
+  tokenAddress             String?
   t0PostUrl                String?
   t0PostedAtUtc            DateTime?
   t0CapturedAtUtc          DateTime?
   t0CapturedManifestSha256 String?
+  t0Post                   DateTime?
   t1TxHash                 String?
   t1BlockNumber            Int?
   t1BlockTimeUtc           DateTime?
+  t1Event                  DateTime?
   direction                String?
   amountRaw                String?
   holdingBeforeRaw         String?
   soldPctOfHolding         Float?
   windowBucket             String?
+  windowMinutes            Int?
+  severity                 String?
+  confidence               Float?
+  evidenceManifestSha256   String?
   evidenceRefs             Json?
+  socialPostId             String?
+  onchainEventId           String?
   notes                    String?
+  createdAt                DateTime      @default(now())
   influencer               Influencer    @relation(fields: [influencerId], references: [id])
   onchainEvent             OnchainEvent? @relation(fields: [onchainEventId], references: [id])
   socialPost               SocialPost?   @relation(fields: [socialPostId], references: [id])
@@ -355,34 +355,34 @@ model IntakeRecord {
 }
 
 model KolProfile {
-  id              String      @id @default(cuid())
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  handle          String      @unique
-  platform        String      @default("x")
-  label           String      @default("unknown")
-  riskFlag        String      @default("unverified")
-  sourceIntakeIds String      @default("[]")
-  confidence      String      @default("low")
-  status          String      @default("active")
+  id              String        @id @default(cuid())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  handle          String        @unique
+  platform        String        @default("x")
+  displayName     String?
+  label           String        @default("unknown")
+  riskFlag        String        @default("unverified")
+  sourceIntakeIds String        @default("[]")
+  confidence      String        @default("low")
+  status          String        @default("active")
   bio             String?
   followerCount   Int?
   notes           String?
   pricePerPost    Float?
-  tags            String      @default("[]")
+  tags            String        @default("[]")
   tier            String?
-  displayName     String?
-  rugCount        Int         @default(0)
+  rugCount        Int           @default(0)
   totalScammed    Float?
-  verified        Boolean     @default(false)
+  verified        Boolean       @default(false)
   evmAddress      String?
   exitDate        DateTime?
-  exitPostUrl     String?
   exitNarrative   String?
-  totalDocumented Float?      @default(0)
+  exitPostUrl     String?
+  totalDocumented Float?        @default(0)
   kolCases        KolCase[]
-  kolWallets      KolWallet[]
   evidences       KolEvidence[]
+  kolWallets      KolWallet[]
 
   @@map("KolProfile")
 }
@@ -411,10 +411,10 @@ model KolCase {
   evidence        String?
   claimType       String?    @default("analytical_estimate")
   confidenceLevel String?    @default("provisional")
-  sourceUrl       String?
-  sourceLabel     String?
-  methodologyRef  String?    @default("/en/methodology")
   lastReviewedAt  DateTime?  @default(now()) @db.Timestamp(6)
+  methodologyRef  String?    @default("/en/methodology")
+  sourceLabel     String?
+  sourceUrl       String?
   versionNote     String?
   kol             KolProfile @relation(fields: [kolHandle], references: [handle])
 }

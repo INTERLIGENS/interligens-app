@@ -1,33 +1,40 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export const dynamic = 'force-dynamic'
-
 export async function GET() {
   try {
-    const kols: any[] = await prisma.$queryRawUnsafe(`
-      SELECT k.*, 
-        (SELECT COUNT(*) FROM "public"."KolWallet" w WHERE w."kolHandle" = k.handle) AS "walletCount",
-        (SELECT COUNT(*) FROM "public"."KolCase" c WHERE c."kolHandle" = k.handle) AS "caseCount"
-      FROM "public"."KolProfile" k
-      WHERE k."riskFlag" = 'confirmed_scammer' AND k.verified = true
-      ORDER BY k."totalScammed" DESC NULLS LAST
-    `)
-    return NextResponse.json({
-      kols: kols.map(k => ({
-        handle: k.handle,
-        displayName: k.displayName,
-        platform: k.platform,
-        status: k.status,
-        verified: k.verified,
-        rugCount: k.rugCount ?? 0,
-        totalScammed: k.totalScammed ? Number(k.totalScammed) : null,
-        followerCount: k.followerCount,
-        walletCount: Number(k.walletCount ?? 0),
-        caseCount: Number(k.caseCount ?? 0),
-      }))
+    const kols = await prisma.kolProfile.findMany({
+      select: {
+        handle: true,
+        displayName: true,
+        platform: true,
+        riskFlag: true,
+        rugCount: true,
+        totalScammed: true,
+        verified: true,
+        confidence: true,
+        followerCount: true,
+        exitDate: true,
+        evmAddress: true,
+      },
+      where: { riskFlag: { not: 'unverified' } },
+      orderBy: { totalScammed: 'desc' },
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+
+    // Enrichir avec totalDocumented depuis KolEvidence
+    const enriched = await Promise.all(kols.map(async (kol) => {
+      const evs = await prisma.kolEvidence.aggregate({
+        where: { kolHandle: kol.handle },
+        _sum: { amountUsd: true },
+      })
+      return {
+        ...kol,
+        totalDocumented: evs._sum.amountUsd || 0,
+      }
+    }))
+
+    return NextResponse.json({ kols: enriched })
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
