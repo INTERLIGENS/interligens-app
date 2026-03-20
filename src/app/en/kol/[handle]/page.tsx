@@ -120,6 +120,14 @@ export default function KOLPage() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
+                  ↓ PUBLIC REPORT
+                </a>
+                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=lawyer`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
+                  ↓ LEGAL VERSION
+                </a>
+              </div>
               <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Est. Investor Losses</div>
             </div>
           </div>
@@ -128,8 +136,8 @@ export default function KOLPage() {
             {[
               { value: String(kol.rugCount), label: 'Rug-Linked Cases', color: '#ef4444' },
               { value: followers ? Math.round(followers/1000) + 'K' : '?', label: 'Audience Reached', color: '#f59e0b' },
-              { value: String(kol.wallets.length), label: 'Wallets Documented', color: '#8b5cf6' },
-              { value: String(kol.caseLinks.length), label: 'Documented Cases', color: '#3b82f6' },
+              { value: String(kol?.wallets?.length ?? 0), label: 'Wallets Documented', color: '#8b5cf6' },
+              { value: String(kol?.caseLinks?.length ?? 0), label: 'Documented Cases', color: '#3b82f6' },
             ].map(s => (
               <div key={s.label} style={{ background: '#0a0a0a', borderRadius: 10, padding: '12px 18px', textAlign: 'center' as const, flex: 1, minWidth: 100 }}>
                 <div style={{ fontSize: 22, fontWeight: 900, color: s.color, fontFamily: 'monospace' }}>{s.value}</div>
@@ -149,7 +157,7 @@ export default function KOLPage() {
         <KolNarrative kol={{ ...kol, followerCount: followers }} />
 
         {/* ── DOCUMENTED CASE HISTORY ── */}
-        {kol.caseLinks.length > 0 && (
+        {(kol?.caseLinks?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />
@@ -199,7 +207,7 @@ export default function KOLPage() {
         )}
 
         {/* ── ASSOCIATED WALLETS ── */}
-        {kol.wallets.length > 0 && (
+        {(kol?.wallets?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />

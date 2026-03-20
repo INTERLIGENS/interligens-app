@@ -18,9 +18,9 @@ const fmtUsd = (n?: number) => !n ? 'an undisclosed amount' : n >= 1000000 ? '$'
 
 export default function KolNarrative({ kol }: NarrativeProps) {
   const [expanded, setExpanded] = useState(false)
-  const devCases = kol.caseLinks.filter(c => c.role === 'dev')
-  const promoterCases = kol.caseLinks.filter(c => c.role === 'paid_promoter' || c.role === 'promoter')
-  const associatedWallets = kol.wallets.filter(w =>
+  const devCases = (kol.caseLinks ?? []).filter(c => c.role === 'dev')
+  const promoterCases = (kol.caseLinks ?? []).filter(c => c.role === 'paid_promoter' || c.role === 'promoter')
+  const associatedWallets = (kol.wallets ?? []).filter(w =>
     w.label?.toLowerCase().match(/associated|source-attributed|source-identified|cluster/)
     || w.label?.toLowerCase().match(/mom|dad|family|carter/)
   )
@@ -68,7 +68,7 @@ export default function KolNarrative({ kol }: NarrativeProps) {
       </div>
       {expanded && (
         <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-          {kol.caseLinks.map(c => {
+          {(kol.caseLinks ?? []).map(c => {
             const ca = c.evidence ? extractCA(c.evidence) : null
             if (!ca) return null
             return (
@@ -78,7 +78,7 @@ export default function KolNarrative({ kol }: NarrativeProps) {
               </a>
             )
           })}
-          {kol.wallets.slice(0, 2).map(w => (
+          {(kol.wallets ?? []).slice(0, 2).map(w => (
             <a key={w.address} href={'https://solscan.io/account/' + w.address} target="_blank"
               style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 6, padding: '6px 12px', fontSize: 10, fontWeight: 700, color: '#94a3b8', textDecoration: 'none' }}>
               Wallet {w.address.slice(0,8)}... — Solscan →
