@@ -229,7 +229,7 @@ export function renderKolPdfLegal(kol: any): string {
     </div>
     <div class="stats-row">
       <div class="stat-cell">
-        <label>Rugs Confirmed</label>
+        <label>Rug-Linked Cases</label>
         <div class="val val-amber">${kol.rugCount}</div>
       </div>
       <div class="stat-cell">
@@ -294,7 +294,7 @@ export function renderKolPdfLegal(kol: any): string {
         <tr><td><strong>Platform</strong></td><td>${kol.platform?.toUpperCase()}</td><td>—</td></tr>
         <tr><td><strong>Followers</strong></td><td>${kol.followerCount ? kol.followerCount.toLocaleString() : "—"}</td><td>Public profile</td></tr>
         <tr><td><strong>EVM Address</strong></td><td><span class="mono">${kol.evmAddress ?? "—"}</span></td><td>Arkham Intelligence entity confirmed</td></tr>
-        <tr><td><strong>Risk Classification</strong></td><td><span class="badge badge-red">${kol.riskFlag?.replace("_"," ").toUpperCase()}</span></td><td>INTERLIGENS analytical classification</td></tr>
+        <tr><td><strong>Risk Classification</strong></td><td><span class="badge badge-red">${kol.riskFlag?.replace("_"," ").toUpperCase() ?? "HIGH-RISK ACTOR"}</span></td><td>INTERLIGENS analytical classification</td></tr>
         <tr><td><strong>Verification Status</strong></td><td>${kol.verified ? '<span class="badge badge-confirmed">VERIFIED</span>' : '<span class="badge badge-provisional">UNVERIFIED</span>'}</td><td>—</td></tr>
       </tbody>
     </table>
@@ -345,7 +345,7 @@ export function renderKolPdfLegal(kol: any): string {
             <td style="font-size:9px;font-weight:500">${e.label.split("—")[0].trim()}</td>
             <td><span class="mono">${addr}</span></td>
             <td>SOL</td>
-            <td><span class="badge badge-source">Source-Attributed</span></td>
+            <td><span class="badge badge-source">Public-Source-Linked</span></td>
             <td><span class="badge badge-confirmed">Confirmed</span></td>
             <td class="amount-cell">${fmtUsd(e.amountUsd)}</td>
           </tr>`).join("")
@@ -404,7 +404,7 @@ export function renderKolPdfLegal(kol: any): string {
         </tr>
         <tr>
           <td><strong>Automated disposal pattern</strong></td>
-          <td>Dad (SAM) wallet executed swaps at exact 4-hour intervals 30 Jan–5 Feb 2026. Consistent with scripted/bot-operated cashout.</td>
+          <td>Associated Wallet E (SAM) wallet executed swaps at exact 4-hour intervals 30 Jan–5 Feb 2026. Consistent with scripted/bot-operated cashout.</td>
           <td><span class="badge badge-confirmed">On-Chain Verified</span></td>
         </tr>
         <tr>
@@ -415,7 +415,7 @@ export function renderKolPdfLegal(kol: any): string {
         <tr>
           <td><strong>Family wallet distribution</strong></td>
           <td>Insider supply distributed to 7 family-linked wallets (BK: 4, SAM: 3) prior to public launch. Consistent with concealed insider allocation.</td>
-          <td><span class="badge badge-source">Source-Attributed</span></td>
+          <td><span class="badge badge-source">Public-Source-Linked</span></td>
         </tr>
         <tr>
           <td><strong>Mixer / relay cycling</strong></td>
@@ -425,7 +425,7 @@ export function renderKolPdfLegal(kol: any): string {
         <tr>
           <td><strong>Recurrence pattern</strong></td>
           <td>${kol.rugCount}+ confirmed rug events across distinct projects. Launch-to-cashout sequence reproduced consistently.</td>
-          <td><span class="badge badge-source">Source-Attributed</span></td>
+          <td><span class="badge badge-source">Public-Source-Linked</span></td>
         </tr>
       </tbody>
     </table>
@@ -479,6 +479,115 @@ export function renderKolPdfLegal(kol: any): string {
     <div class="integrity-box" style="margin-top:16px">
       <div class="integrity-title">Evidence Handling &amp; Integrity Statement</div>
       <p class="integrity-text">This report is a structured analytical compilation of publicly observable blockchain records, archived public-source materials, and internally generated tracing outputs. Each exhibit is referenced by source and UTC collection time. Source artifacts were preserved in their collected form and normalized into an internal evidence record. This report is intended to support legal assessment, investigative triage, preservation requests, and follow-on compulsory process where required. It does not constitute a complete forensic chain of custody as defined under applicable criminal procedure rules — such chain of custody is established by authorized law enforcement using their own evidence collection procedures.</p>
+    </div>
+  </div>
+
+
+  <!-- ── ATTRIBUTION LADDER ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <span class="section-title">Attribution Ladder</span>
+    </div>
+    <table class="w-table">
+      <thead><tr><th>Level</th><th>Definition</th><th>Wallets / Elements</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-confirmed">VERIFIED ON-CHAIN</span></td>
+          <td style="font-size:8.5px;color:var(--ink-muted)">Directly observable on blockchain. TX hash independently verifiable.</td>
+          <td style="font-size:8.5px">${cashouts.filter((e: any) => e.sampleTx).length} cashout events · Exit hub TX · Bot pattern (4h intervals)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-source">PUBLIC-SOURCE-LINKED</span></td>
+          <td style="font-size:8.5px;color:var(--ink-muted)">Attributed via cited public sources (investigator threads, leaked documents, public admissions).</td>
+          <td style="font-size:8.5px">Family wallet labels via @mariaqueennft + @dethective · KOL identity via self-disclosure</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-provisional">ANALYTICAL INFERENCE</span></td>
+          <td style="font-size:8.5px;color:var(--ink-muted)">Derived from pattern analysis. Not independently confirmed. Presented as indicator, not fact.</td>
+          <td style="font-size:8.5px">CEX deposit identification · Mixer pattern · Total loss estimate ($4.5M)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── EXHIBIT APPENDIX ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">11</span>
+      <span class="section-title">Exhibit Index</span>
+    </div>
+    <table class="w-table">
+      <thead><tr><th>Exhibit ID</th><th>Type</th><th>Description</th><th>Source</th><th>Verification</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">EX-01</td><td>Social Post</td><td>X post @kokoski — exit statement 19/03/2026 23:25 UTC</td><td>X/Twitter public</td><td><span class="badge badge-confirmed">Archived</span></td></tr>
+        ${cashouts.map((e: any, i: number) => `
+        <tr>
+          <td class="mono">EX-0${i+2}</td>
+          <td>Blockchain TX</td>
+          <td>${e.label}</td>
+          <td>Helius API · Solscan</td>
+          <td><span class="badge badge-confirmed">On-Chain</span></td>
+        </tr>`).join("")}
+        <tr><td class="mono">EX-${cashouts.length + 2}</td><td>Exit Event</td><td>HeaiDUtMQ hub — $210K USDC coordinated cashout 20/03/2026</td><td>Helius API · Solscan</td><td><span class="badge badge-confirmed">On-Chain</span></td></tr>
+        ${evmEv ? `<tr><td class="mono">EX-${cashouts.length + 3}</td><td>EVM Portfolio</td><td>EVM wallet $401K — Arkham Intelligence entity confirmed</td><td>Arkham Intelligence</td><td><span class="badge badge-source">Platform-Confirmed</span></td></tr>` : ""}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── EXCHANGE FREEZE ANNEX ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">12</span>
+      <span class="section-title">Exchange Freeze Annex — Machine-Readable</span>
+    </div>
+    <table class="w-table">
+      <thead><tr><th>Wallet</th><th>Chain</th><th>Asset</th><th>Key TX Hash</th><th>UTC</th><th>Amount</th><th>Urgency</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">HeaiDUtMQ...hqS4R</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">Hub wallet</span></td>
+          <td>SOL</td><td>USDC</td>
+          <td><span class="mono">5wctB93Y...MNs</span></td>
+          <td style="font-size:8px">2026-03-20 08:05 UTC</td>
+          <td class="amount-cell">$210K</td>
+          <td><span class="badge badge-red">CRITICAL</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">1234CoNG...RsHa</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">Vanity consolidation</span></td>
+          <td>SOL</td><td>USDC</td>
+          <td><span class="mono">Multiple</span></td>
+          <td style="font-size:8px">2026-03-20 08:05–11:32 UTC</td>
+          <td class="amount-cell">$257K</td>
+          <td><span class="badge badge-red">CRITICAL</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">D5YqVMo...9cM</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">CEX deposit — 50 senders</span></td>
+          <td>SOL</td><td>USDC</td>
+          <td><span class="mono">Multiple</span></td>
+          <td style="font-size:8px">2026-03-20</td>
+          <td class="amount-cell">$64K</td>
+          <td><span class="badge badge-red">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">ET3F3q4...xSn</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">CEX deposit — 72 senders, 1 dest</span></td>
+          <td>SOL</td><td>USDC</td>
+          <td><span class="mono">Multiple</span></td>
+          <td style="font-size:8px">2026-03-07 to 2026-03-20</td>
+          <td class="amount-cell">$97K</td>
+          <td><span class="badge badge-red">HIGH</span></td>
+        </tr>
+        ${evmEv ? `<tr>
+          <td><span class="mono">0x32B6...ecF</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">EVM personal wallet</span></td>
+          <td>ETH/EVM</td><td>MULTI</td>
+          <td><span class="mono">Arkham confirmed</span></td>
+          <td style="font-size:8px">Active since Jan 2023</td>
+          <td class="amount-cell">$401K</td>
+          <td><span class="badge badge-source">HIGH</span></td>
+        </tr>` : ""}
+      </tbody>
+    </table>
+    <div style="margin-top:10px;padding:8px 12px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted)">
+      Contact for legal process: legal@interligens.com · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
     </div>
   </div>
 
