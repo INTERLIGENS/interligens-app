@@ -120,6 +120,7 @@ export default function KOLPage() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
+              <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Est. Investor Losses</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
                   ↓ PUBLIC REPORT
@@ -128,7 +129,6 @@ export default function KOLPage() {
                   ↓ LEGAL VERSION
                 </a>
               </div>
-              <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Est. Investor Losses</div>
             </div>
           </div>
 

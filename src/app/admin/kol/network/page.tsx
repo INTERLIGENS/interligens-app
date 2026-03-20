@@ -16,6 +16,22 @@ export default function KolNetworkPage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [adminToken, setAdminToken] = useState('')
   const [authed, setAuthed] = useState(false)
+  const [investigating, setInvestigating] = useState<string | null>(null)
+  const [investigateResults, setInvestigateResults] = useState<Record<string, any>>({})
+
+  const investigate = async (handle: string) => {
+    setInvestigating(handle)
+    try {
+      const res = await fetch('/api/admin/kol/investigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ handle })
+      })
+      const d = await res.json()
+      setInvestigateResults(prev => ({ ...prev, [handle]: d }))
+    } catch(e) { console.error(e) }
+    setInvestigating(null)
+  }
 
   const load = async (token: string) => {
     const res = await fetch('/api/admin/kol/network', { headers: { Authorization: 'Bearer ' + token } })
@@ -105,6 +121,16 @@ export default function KolNetworkPage() {
                     {publishability[kol.handle] && (
                       <span style={{ fontSize: 7, fontWeight: 900, padding: '2px 6px', borderRadius: 3, background: publishability[kol.handle].publishable ? '#10b98122' : '#ef444422', color: publishability[kol.handle].publishable ? '#10b981' : '#ef4444' }}>
                         {publishability[kol.handle].publishable ? '● PUBLISHABLE' : '● BLOCKED'}
+                      </span>
+                    )}
+                    <button
+                      onClick={e => { e.stopPropagation(); investigate(kol.handle) }}
+                      style={{ fontSize: 7, fontWeight: 900, padding: '2px 8px', borderRadius: 3, background: investigating === kol.handle ? '#f59e0b22' : '#3b82f622', color: investigating === kol.handle ? '#f59e0b' : '#3b82f6', border: 'none', cursor: 'pointer', letterSpacing: '0.1em' }}>
+                      {investigating === kol.handle ? '⟳ SCANNING...' : '🔍 INVESTIGATE'}
+                    </button>
+                    {investigateResults[kol.handle] && (
+                      <span style={{ fontSize: 7, color: '#10b981' }}>
+                        ✓ {investigateResults[kol.handle].evidenceCreated} new
                       </span>
                     )}
                   </div>
