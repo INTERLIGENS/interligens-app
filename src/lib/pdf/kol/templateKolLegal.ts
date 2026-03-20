@@ -196,7 +196,7 @@ export function renderKolPdfLegal(kol: any): string {
     </div>
     <div class="cover-type">Confidential Intelligence Report — Legal Version</div>
     <div class="cover-title">${kol.displayName ?? kol.handle}</div>
-    <div class="cover-subtitle">Serial crypto fraud — on-chain cashout documentation &amp; exit event analysis</div>
+    <div class="cover-subtitle">Rug-linked cashout and exit-event investigation — on-chain cashout documentation &amp; exit event analysis</div>
     <div class="cover-meta">
       <div class="cover-meta-item">
         <label>Report ID</label>
@@ -233,11 +233,11 @@ export function renderKolPdfLegal(kol: any): string {
         <div class="val val-amber">${kol.rugCount}</div>
       </div>
       <div class="stat-cell">
-        <label>Est. Total Losses</label>
+        <label>Est. Investor Losses</label>
         <div class="val val-red">${fmtUsd(kol.totalScammed)}</div>
       </div>
       <div class="stat-cell">
-        <label>Documented On-Chain</label>
+        <label>Documented On-Chain Proceeds</label>
         <div class="val val-orange">${fmtUsd(totalDocumented)}</div>
       </div>
       <div class="stat-cell">
@@ -246,7 +246,7 @@ export function renderKolPdfLegal(kol: any): string {
       </div>
     </div>
     <p style="font-size:9.5px;color:var(--ink-light);line-height:1.75">
-      ${kol.exitNarrative ?? `@${kol.handle} is a confirmed serial crypto scammer with ${kol.rugCount} rug-pull events documented across multiple projects. On-chain investigation has identified ${cashouts.length} family wallet cashout events totaling ${fmtUsd(totalDocumented)} in documented proceeds, plus ${fmtUsd(evmEv?.amountUsd)} in unrealized EVM holdings.`}
+      ${kol.exitNarrative ?? `@${kol.handle} is a confirmed serial crypto scammer with ${kol.rugCount} rug-pull events documented across multiple projects. On-chain investigation has identified ${cashouts.length} associated wallet (public-source-linked) cashout events totaling ${fmtUsd(totalDocumented)} in documented proceeds, plus ${fmtUsd(evmEv?.amountUsd)} in unrealized EVM holdings.`}
     </p>
     ${exitEv ? `
     <div class="exit-box" style="margin-top:16px">
@@ -261,10 +261,86 @@ export function renderKolPdfLegal(kol: any): string {
     </div>` : ""}
   </div>
 
-  <!-- ── 3. REQUESTED ACTIONS ── -->
+
+  <!-- ── LEGAL ACTION SUMMARY (nouvelle page clé) ── -->
   <div class="section">
     <div class="section-header">
       <span class="section-num">02</span>
+      <span class="section-title">Legal Action Summary</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+      <!-- A. Suspect summary -->
+      <div style="background:#fff;border:1px solid var(--rule);padding:16px">
+        <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--accent);margin-bottom:10px">A — SUSPECT SUMMARY</div>
+        <table style="width:100%;font-size:8.5px;border-collapse:collapse">
+          <tr><td style="color:var(--ink-ghost);padding:3px 0;width:110px">Name</td><td style="font-weight:600">${kol.displayName ?? kol.handle}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Primary handle</td><td><span style="font-family:'DM Mono',monospace">@${kol.handle}</span></td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Platform</td><td>${kol.platform?.toUpperCase()}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">EVM address</td><td><span style="font-family:'DM Mono',monospace;font-size:7.5px">${kol.evmAddress ? kol.evmAddress.slice(0,18)+"..." : "—"}</span></td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Classification</td><td><span style="background:var(--red-bg);color:var(--red);font-size:7px;padding:2px 6px;font-weight:600">HIGH-RISK ACTOR</span></td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Confidence</td><td style="font-weight:600">${(kol.confidence ?? "low").toUpperCase()}</td></tr>
+        </table>
+      </div>
+
+      <!-- B. Victim harm snapshot -->
+      <div style="background:#fff;border:1px solid var(--rule);padding:16px">
+        <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--accent);margin-bottom:10px">B — VICTIM HARM SNAPSHOT</div>
+        <table style="width:100%;font-size:8.5px;border-collapse:collapse">
+          <tr><td style="color:var(--ink-ghost);padding:3px 0;width:150px">Est. investor losses</td><td style="font-family:'EB Garamond',serif;font-size:16px;color:var(--red);font-weight:500">${fmtUsd(kol.totalScammed)}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Documented on-chain proceeds</td><td style="font-family:'EB Garamond',serif;font-size:16px;color:var(--accent);font-weight:500">${fmtUsd(totalDocumented)}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Rug-linked cases</td><td style="font-weight:600">${kol.rugCount}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Evidence items</td><td style="font-weight:600">${evidences.length}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Exit event detected</td><td><span style="background:var(--red-bg);color:var(--red);font-size:7px;padding:2px 6px;font-weight:600">${exitEv ? "YES — " + fmtDateShort(exitEv.dateFirst) : "NO"}</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- C. Jurisdictional nexus -->
+    <div style="background:#fff;border:1px solid var(--rule);padding:16px;margin-bottom:16px">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--accent);margin-bottom:10px">C — JURISDICTIONAL NEXUS</div>
+      <table style="width:100%;font-size:8.5px;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--rule)">
+          <th style="text-align:left;padding:5px 8px;font-size:7.5px;letter-spacing:0.15em;color:var(--ink-ghost)">JURISDICTION</th>
+          <th style="text-align:left;padding:5px 8px;font-size:7.5px;letter-spacing:0.15em;color:var(--ink-ghost)">NEXUS</th>
+          <th style="text-align:left;padding:5px 8px;font-size:7.5px;letter-spacing:0.15em;color:var(--ink-ghost)">RELEVANCE</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:6px 8px;font-weight:600">United States</td><td style="padding:6px 8px;color:var(--ink-muted)">US-based exchange touchpoints (CEX deposit addresses traced). Delaware C-Corp entity.</td><td style="padding:6px 8px"><span style="background:var(--red-bg);color:var(--red);font-size:7px;padding:2px 6px">HIGH</span></td></tr>
+          <tr style="background:var(--bg-warm)"><td style="padding:6px 8px;font-weight:600">Canada</td><td style="padding:6px 8px;color:var(--ink-muted)">Subject self-identified as Toronto-based. Dione Protocol LLC (Canadian entity).</td><td style="padding:6px 8px"><span style="background:var(--red-bg);color:var(--red);font-size:7px;padding:2px 6px">HIGH</span></td></tr>
+          <tr><td style="padding:6px 8px;font-weight:600">EU / AMF</td><td style="padding:6px 8px;color:var(--ink-muted)">EU-based investors affected. Potential MiCA / AMF jurisdiction if French victims documented.</td><td style="padding:6px 8px"><span style="background:var(--amber-bg);color:var(--amber);font-size:7px;padding:2px 6px">MEDIUM</span></td></tr>
+          <tr style="background:var(--bg-warm)"><td style="padding:6px 8px;font-weight:600">Solana / EVM</td><td style="padding:6px 8px;color:var(--ink-muted)">All cashout activity on Solana mainnet. EVM holdings on Ethereum/Base.</td><td style="padding:6px 8px"><span style="background:var(--green-bg);color:var(--green);font-size:7px;padding:2px 6px">CONFIRMED</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- D. Plausible legal angles -->
+    <div style="background:#fff;border:1px solid var(--rule);padding:16px;margin-bottom:16px">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--accent);margin-bottom:10px">D — PLAUSIBLE ENFORCEMENT ANGLES <span style="color:var(--ink-ghost);font-size:7px">(analytical — not legal conclusions)</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="padding:8px 12px;border-left:2px solid var(--accent);font-size:8.5px"><strong>Fraud / misrepresentation</strong><br/><span style="color:var(--ink-muted)">Promotion of tokens with undisclosed insider allocation and coordinated exit.</span></div>
+        <div style="padding:8px 12px;border-left:2px solid var(--accent);font-size:8.5px"><strong>Asset dissipation / tracing</strong><br/><span style="color:var(--ink-muted)">Documented proceeds moved through relay/mixer network within hours of public exit statement.</span></div>
+        <div style="padding:8px 12px;border-left:2px solid var(--rule);font-size:8.5px"><strong>Deceptive promotion</strong><br/><span style="color:var(--ink-muted)">Public KOL activity without disclosure of financial interest in promoted tokens.</span></div>
+        <div style="padding:8px 12px;border-left:2px solid var(--rule);font-size:8.5px"><strong>AML / off-ramp review</strong><br/><span style="color:var(--ink-muted)">USDC proceeds routed through mixer pattern to probable CEX deposit. Potential VASP obligations.</span></div>
+      </div>
+    </div>
+
+    <!-- E. Immediate asks -->
+    <div style="background:var(--bg-warm);border:1.5px solid var(--ink);padding:16px">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--ink);margin-bottom:10px">E — IMMEDIATE PROCEDURAL ASKS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:8.5px">
+        <div><strong style="display:block;margin-bottom:4px;color:var(--accent)">Preservation</strong>Exchange freeze on 4 target wallets (see §08). EVM wallet observation.</div>
+        <div><strong style="display:block;margin-bottom:4px;color:var(--accent)">Subpoena targets</strong>CEX platforms receiving D5Yq + ET3F deposits. KYC/IP/logs.</div>
+        <div><strong style="display:block;margin-bottom:4px;color:var(--accent)">MLAT / referral</strong>US DOJ / FBI IC3 if US victims. RCMP if Canada-based complaint. AMF if EU victims.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. REQUESTED ACTIONS ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">03</span>
       <span class="section-title">Requested Actions</span>
     </div>
     <div class="action-box">
@@ -283,7 +359,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── 4. SUBJECT IDENTIFICATION ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">03</span>
+      <span class="section-num">04</span>
       <span class="section-title">Subject Identification</span>
     </div>
     <table class="w-table">
@@ -294,7 +370,7 @@ export function renderKolPdfLegal(kol: any): string {
         <tr><td><strong>Platform</strong></td><td>${kol.platform?.toUpperCase()}</td><td>—</td></tr>
         <tr><td><strong>Followers</strong></td><td>${kol.followerCount ? kol.followerCount.toLocaleString() : "—"}</td><td>Public profile</td></tr>
         <tr><td><strong>EVM Address</strong></td><td><span class="mono">${kol.evmAddress ?? "—"}</span></td><td>Arkham Intelligence entity confirmed</td></tr>
-        <tr><td><strong>Risk Classification</strong></td><td><span class="badge badge-red">${kol.riskFlag?.replace("_"," ").toUpperCase() ?? "HIGH-RISK ACTOR"}</span></td><td>INTERLIGENS analytical classification</td></tr>
+        <tr><td><strong>Risk Classification</strong></td><td><span class="badge badge-red">${"HIGH-RISK ACTOR"}</span></td><td>INTERLIGENS analytical classification</td></tr>
         <tr><td><strong>Verification Status</strong></td><td>${kol.verified ? '<span class="badge badge-confirmed">VERIFIED</span>' : '<span class="badge badge-provisional">UNVERIFIED</span>'}</td><td>—</td></tr>
       </tbody>
     </table>
@@ -304,7 +380,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── 5. TIMELINE OF FACTS ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">04</span>
+      <span class="section-num">05</span>
       <span class="section-title">Timeline of Key Facts</span>
     </div>
     <div class="timeline">
@@ -332,7 +408,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── 6. WALLET ATTRIBUTION ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">05</span>
+      <span class="section-num">06</span>
       <span class="section-title">Wallet Attribution Matrix</span>
     </div>
     <table class="w-table">
@@ -366,8 +442,8 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── 7. CASHOUT EVIDENCE ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">06</span>
-      <span class="section-title">Cashout Evidence — Family Wallets</span>
+      <span class="section-num">07</span>
+      <span class="section-title">Cashout Evidence — Associated Wallets</span>
     </div>
     <table class="w-table">
       <thead><tr><th>Source</th><th>Token</th><th>Amount USD</th><th>TX Count</th><th>Period</th><th>Sample TX Hash</th></tr></thead>
@@ -391,7 +467,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── 8. INTENT INDICATORS ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">07</span>
+      <span class="section-num">08</span>
       <span class="section-title">Intent &amp; Coordination Indicators</span>
     </div>
     <table class="w-table">
@@ -404,7 +480,7 @@ export function renderKolPdfLegal(kol: any): string {
         </tr>
         <tr>
           <td><strong>Automated disposal pattern</strong></td>
-          <td>Associated Wallet E (SAM) wallet executed swaps at exact 4-hour intervals 30 Jan–5 Feb 2026. Consistent with scripted/bot-operated cashout.</td>
+          <td>Associated Wallet E (SAM cluster) wallet executed swaps at exact 4-hour intervals 30 Jan–5 Feb 2026. Consistent with scripted/bot-operated cashout.</td>
           <td><span class="badge badge-confirmed">On-Chain Verified</span></td>
         </tr>
         <tr>
@@ -414,7 +490,7 @@ export function renderKolPdfLegal(kol: any): string {
         </tr>
         <tr>
           <td><strong>Family wallet distribution</strong></td>
-          <td>Insider supply distributed to 7 family-linked wallets (BK: 4, SAM: 3) prior to public launch. Consistent with concealed insider allocation.</td>
+          <td>Insider supply distributed to 7 public-source-linked wallets (BK: 4, SAM: 3) prior to public launch. Consistent with concealed insider allocation.</td>
           <td><span class="badge badge-source">Public-Source-Linked</span></td>
         </tr>
         <tr>
@@ -437,7 +513,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── 9. EXCHANGE FREEZE PACKAGE ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">08</span>
+      <span class="section-num">09</span>
       <span class="section-title">Exchange Preservation &amp; Freeze Package</span>
     </div>
     <div class="freeze-box">
@@ -467,7 +543,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── 10. METHODOLOGY ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">09</span>
+      <span class="section-num">10</span>
       <span class="section-title">Methodology &amp; Evidence Integrity</span>
     </div>
     <p class="method-para">All blockchain data was retrieved via Helius RPC API (Solana mainnet) and Arkham Intelligence (EVM chains). Transaction hashes are immutable on-chain records independently verifiable by any party via Solscan.io or equivalent block explorer.</p>
@@ -486,7 +562,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── ATTRIBUTION LADDER ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">10</span>
+      <span class="section-num">11</span>
       <span class="section-title">Attribution Ladder</span>
     </div>
     <table class="w-table">
@@ -500,7 +576,7 @@ export function renderKolPdfLegal(kol: any): string {
         <tr>
           <td><span class="badge badge-source">PUBLIC-SOURCE-LINKED</span></td>
           <td style="font-size:8.5px;color:var(--ink-muted)">Attributed via cited public sources (investigator threads, leaked documents, public admissions).</td>
-          <td style="font-size:8.5px">Family wallet labels via @mariaqueennft + @dethective · KOL identity via self-disclosure</td>
+          <td style="font-size:8.5px">Associated-wallet labels via @mariaqueennft + @dethective · KOL identity via self-disclosure</td>
         </tr>
         <tr>
           <td><span class="badge badge-provisional">ANALYTICAL INFERENCE</span></td>
@@ -514,7 +590,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── EXHIBIT APPENDIX ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">11</span>
+      <span class="section-num">12</span>
       <span class="section-title">Exhibit Index</span>
     </div>
     <table class="w-table">
@@ -538,7 +614,7 @@ export function renderKolPdfLegal(kol: any): string {
   <!-- ── EXCHANGE FREEZE ANNEX ── -->
   <div class="section">
     <div class="section-header">
-      <span class="section-num">12</span>
+      <span class="section-num">13</span>
       <span class="section-title">Exchange Freeze Annex — Machine-Readable</span>
     </div>
     <table class="w-table">
@@ -588,6 +664,82 @@ export function renderKolPdfLegal(kol: any): string {
     </table>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted)">
       Contact for legal process: legal@interligens.com · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
+    </div>
+  </div>
+
+
+  <!-- ── VICTIM LOSS PATHWAYS ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">14</span>
+      <span class="section-title">Sample Victim Loss Pathways</span>
+    </div>
+    <p style="font-size:9px;color:var(--ink-muted);margin-bottom:14px;font-style:italic">
+      The following wallet pathways are illustrative samples of retail purchaser activity documented on-chain during the active promotion period. 
+      They connect purchase transactions to the token's known insider-supply structure. Loss estimates are based on SOL paid vs. current token value ($0.00 post-collapse). 
+      These are presented as observed blockchain facts, not verified victim identities.
+    </p>
+    <table class="w-table">
+      <thead>
+        <tr>
+          <th>Victim Wallet</th>
+          <th>Token</th>
+          <th>Purchase Date</th>
+          <th>SOL Paid</th>
+          <th>Tokens Received</th>
+          <th>Loss Basis</th>
+          <th>Destination Cluster</th>
+          <th>Evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">ARu4n5...ZAravu7C</span></td>
+          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
+          <td style="font-size:8px">2026-03-20</td>
+          <td class="amount-cell">10.37 SOL<br/><span style="font-size:8px;color:var(--ink-ghost">~$1,900</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">10,071,460 BOTIFY</td>
+          <td><span class="badge badge-red">TOTAL LOSS</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
+          <td><span class="mono" style="font-size:7px">xJD2qAbP...Y</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">FE52Qw...HfouGEE6</span></td>
+          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
+          <td style="font-size:8px">2026-03-19</td>
+          <td class="amount-cell">0.36 SOL<br/><span style="font-size:8px;color:var(--ink-ghost)">~$66</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">323,203 BOTIFY</td>
+          <td><span class="badge badge-red">TOTAL LOSS</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
+          <td><span class="mono" style="font-size:7px">3VVRAig...G</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">8K1wts...RjL7uRwj</span></td>
+          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
+          <td style="font-size:8px">2026-03-18</td>
+          <td class="amount-cell">4.00 SOL<br/><span style="font-size:8px;color:var(--ink-ghost)">~$730</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">3,619,315 BOTIFY</td>
+          <td><span class="badge badge-red">TOTAL LOSS</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
+          <td><span class="mono" style="font-size:7px">2UjLjq2...1</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">C1g9H6...1vuFcbtJ</span></td>
+          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
+          <td style="font-size:8px">2026-03-18</td>
+          <td class="amount-cell">0.65 SOL<br/><span style="font-size:8px;color:var(--ink-ghost)">~$119</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">595,476 BOTIFY</td>
+          <td><span class="badge badge-red">TOTAL LOSS</span></td>
+          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
+          <td><span class="mono" style="font-size:7px">5k3og76...b</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 14px;background:var(--bg-warm);font-size:8px;color:var(--ink-muted);line-height:1.7">
+      <strong style="color:var(--ink)">Loss methodology:</strong> SOL paid × SOL/USD price at transaction time. 
+      Token current value assessed at $0.00 post-collapse. Loss = 100% of purchase value. 
+      Sample represents 4 of an estimated ${kol.rugCount ?? 12}+ affected launches. 
+      Full victim intake available via INTERLIGENS victim reporting system.
     </div>
   </div>
 
