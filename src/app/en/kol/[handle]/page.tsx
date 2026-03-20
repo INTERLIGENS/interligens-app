@@ -1,5 +1,6 @@
 'use client'
 import KolNarrative from '@/components/kol/KolNarrative'
+import CashoutProof from '@/components/kol/CashoutProof'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
@@ -185,6 +186,9 @@ export default function KOLPage() {
                         <a href={c.sourceUrl} target="_blank" style={{ display: 'inline-block', marginTop: 8, fontSize: 9, color: '#3b82f6', textDecoration: 'none', fontWeight: 700 }}>
                           {c.sourceLabel ?? 'Source'} →
                         </a>
+                      )}
+                      {(c.claimType === 'verified_onchain' || c.claimType === 'source_attributed') && (
+                        <CashoutProof handle={kol.handle} caseId={c.caseId} />
                       )}
                     </div>
                   </div>
