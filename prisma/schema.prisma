@@ -375,8 +375,14 @@ model KolProfile {
   rugCount        Int         @default(0)
   totalScammed    Float?
   verified        Boolean     @default(false)
+  evmAddress      String?
+  exitDate        DateTime?
+  exitPostUrl     String?
+  exitNarrative   String?
+  totalDocumented Float?      @default(0)
   kolCases        KolCase[]
   kolWallets      KolWallet[]
+  evidences       KolEvidence[]
 
   @@map("KolProfile")
 }
@@ -411,6 +417,28 @@ model KolCase {
   lastReviewedAt  DateTime?  @default(now()) @db.Timestamp(6)
   versionNote     String?
   kol             KolProfile @relation(fields: [kolHandle], references: [handle])
+}
+
+model KolEvidence {
+  id            String     @id @default(cuid())
+  createdAt     DateTime   @default(now())
+  kolHandle     String
+  type          String
+  label         String
+  description   String?
+  wallets       String     @default("[]")
+  amountUsd     Float?
+  txCount       Int?       @default(0)
+  dateFirst     DateTime?
+  dateLast      DateTime?
+  token         String?
+  sampleTx      String?
+  sourceUrl     String?
+  twitterPost   String?
+  postTimestamp DateTime?
+  deltaMinutes  Int?
+  rawJson       String?
+  kol           KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
 model WatchSource {
