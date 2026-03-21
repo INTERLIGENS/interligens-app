@@ -1,6 +1,3 @@
-/**
- * src/app/api/admin/onchain/status/route.ts
- */
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
@@ -16,10 +13,10 @@ export async function GET(req: NextRequest) {
       WHERE "lastSyncAt" > NOW() - INTERVAL '24 hours'
     `,
     prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*) as count FROM wallet_sync_state WHERE status = 'error'::"SyncStatus"
+      SELECT COUNT(*) as count FROM wallet_sync_state WHERE status = 'error'
     `,
     prisma.$queryRaw<any[]>`
-      SELECT "walletAddress", "txHash", "eventType", direction, "blockTimeUtc", "tokenSymbol", "isCexDeposit"
+      SELECT "walletAddress", "txHash", "eventType", direction, "blockTimeUtc", "isCexDeposit"
       FROM onchain_events ORDER BY "blockTimeUtc" DESC LIMIT 5
     `,
   ]);
