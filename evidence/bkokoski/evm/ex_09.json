@@ -1,0 +1,21 @@
+{
+  "exhibit_id": "EX-09",
+  "type": "evm_wallet",
+  "label": "EVM wallet $401K — Arkham Intelligence entity confirmed",
+  "address": "0x32B6006e5b942F47Ab4DB68eE70f683370853ecF",
+  "portfolio_usd": 400732,
+  "arkham_entity": "kokoskib",
+  "arkham_labels": [
+    "DOGE Whale",
+    "OpenSea User"
+  ],
+  "arkham_url": "https://platform.arkhamintelligence.com/explorer/address/0x32B6006e5b942F47Ab4DB68eE70f683370853ecF",
+  "active_since": "2023-01",
+  "status_20260320": "not liquidated",
+  "source": "Arkham Intelligence",
+  "collected_utc": "2026-03-20T08:51:00Z",
+  "classification": "platform_confirmed",
+  "confidence": "confirmed",
+  "screenshot_needed": true,
+  "file_sha256": "9026206870B80452FD897F657EAE91A120E38145D0C32F10AE3F49F3C619485B"
+}

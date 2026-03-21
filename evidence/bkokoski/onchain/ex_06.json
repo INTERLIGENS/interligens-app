@@ -1,0 +1,19 @@
+{
+  "exhibit_id": "EX-06",
+  "type": "onchain_cashout_bot",
+  "label": "Associated Wallet E (SAM cluster) — bot 4h pattern, 72 SOL",
+  "wallet": "9PQwizgbW2ruvypLQ9baVRZ4tiJdhDrEzD63m4oMqtxB",
+  "chain": "SOL",
+  "token": "BOTIFY/GHOST/SOL",
+  "amount_usd": 14500,
+  "tx_count": 33,
+  "bot_interval_hours": 4,
+  "date_first": "2026-01-30",
+  "date_last": "2026-03-07",
+  "sample_tx": "4TeCfwBebVpBWcEKgZBPCUZ6Xkr89gmy5WmQToyryUwb9HxgUHqLa2Ekt6jNLfke",
+  "source": "Helius API v0",
+  "collected_utc": "2026-03-20T08:00:00Z",
+  "classification": "on_chain_verified",
+  "confidence": "confirmed",
+  "file_sha256": "C47C5E96F9EBBC2F5759DC114C32529F9B4D094130036F94E1F1521CC3F19205"
+}

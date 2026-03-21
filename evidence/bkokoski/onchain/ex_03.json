@@ -1,0 +1,18 @@
+{
+  "exhibit_id": "EX-03",
+  "type": "onchain_cashout",
+  "label": "Associated Wallet B (BK cluster) — GHOST/BOTIFY cashout $802",
+  "wallet": "HSueXrabQVABdHezbQ5Q4UbgLTx4Nc6VqyX5R88zzxmz",
+  "chain": "SOL",
+  "token": "GHOST/BOTIFY",
+  "amount_usd": 802,
+  "tx_count": 15,
+  "date_first": "2025-12-21",
+  "date_last": "2026-01-28",
+  "sample_tx": "3wM3wsJ7qbWubnFEPu94SUL9BwHQky5EgtPoVYr8g3Sgk4bkB9aDwFQVUTAQ5pt2",
+  "source": "Helius API v0",
+  "collected_utc": "2026-03-20T08:00:00Z",
+  "classification": "on_chain_verified",
+  "confidence": "confirmed",
+  "file_sha256": "1D79492B20087EC14F4716BDCE626E61EFE4C63D42FC886AA316AB419E91D144"
+}

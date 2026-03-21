@@ -1,0 +1,21 @@
+{
+  "exhibit_id": "EX-08",
+  "type": "coordinated_exit",
+  "label": "Coordinated exit — $210,008 USDC in 3h, hub HeaiDUtMQ",
+  "hub_wallet": "HeaiDUtMQjt163afwV7zeAJhzDi16SsEGK1T4AyhqS4R",
+  "vanity_wallet": "1234CoNGEgHsyaQtWZbAeYRF9iw7WsiSrxvNZvL5RsHa",
+  "cex_1": "D5YqVMoSxnqeZAKAUUE1Dm3bmjtdxQ5DCF356ozqN9cM",
+  "cex_2": "ET3F3q42vUpfDHW8rgrhA1S2WPwb6Fhx97fsLR3EkxSn",
+  "amount_usd": 210008,
+  "tx_count": 50,
+  "twitter_post_utc": "2026-03-19T23:25:00Z",
+  "hub_first_tx_utc": "2026-03-20T08:05:00Z",
+  "delta_minutes": 520,
+  "vanity_consolidated_usd": 256969,
+  "hub_tx": "5wctB93YgV13v3LwfSwrwL2KLh1dNWqb9HUgokuCe7YcaUkJpRmBM7RRBnUaVUshuDpJsqoC71SNwair4SEYwMNs",
+  "source": "Helius API v0",
+  "collected_utc": "2026-03-20T11:30:00Z",
+  "classification": "on_chain_verified",
+  "confidence": "confirmed",
+  "file_sha256": "05C6EB26FF4DCD9E508B2CC1569A9483656E209ED10576E6102325E7C7FA9B6B"
+}

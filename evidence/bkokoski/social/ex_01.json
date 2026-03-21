@@ -1,0 +1,15 @@
+{
+  "exhibit_id": "EX-01",
+  "type": "social_post",
+  "label": "X post @kokoski — exit statement 19/03/2026 23:25 UTC",
+  "platform": "X/Twitter",
+  "handle": "@kokoski",
+  "content": "stepping back from Dione, stay tuned BK",
+  "timestamp_utc": "2026-03-19T23:25:00Z",
+  "collected_utc": "2026-03-20T08:00:00Z",
+  "relevance": "Exit statement 520 min before hub activation",
+  "classification": "source_attributed",
+  "confidence": "confirmed",
+  "screenshot_needed": true,
+  "file_sha256": "1C97317993AC8F91F05FFB9BF9153CE7CD9E3C5E248963843136FA16A8AA2FB2"
+}

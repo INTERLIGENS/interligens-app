@@ -1,0 +1,18 @@
+{
+  "exhibit_id": "EX-07",
+  "type": "onchain_cashout",
+  "label": "Associated Wallet F (SAM cluster) — 213k GHOST in 3 minutes",
+  "wallet": "23cdxwyFgC4ru5FdN5NEcGLzPioBkqknhGU8rLK2S9P1",
+  "chain": "SOL",
+  "token": "GHOST",
+  "amount_usd": 4960,
+  "tx_count": 2,
+  "date_first": "2025-11-26",
+  "date_last": "2025-11-26",
+  "sample_tx": "2EYF6JECN1Y1Wntcsbcyc9S2tAn7PkQBAT7CMfzonumqHu2dFDcSALoEmDndsLA3",
+  "source": "Helius API v0",
+  "collected_utc": "2026-03-20T08:00:00Z",
+  "classification": "on_chain_verified",
+  "confidence": "confirmed",
+  "file_sha256": "8D9F1DBE118D1189FEA88C463E4D68B7526C575662E7B1112D5E2FFD2CAF2D2E"
+}

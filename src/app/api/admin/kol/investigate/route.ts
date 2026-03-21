@@ -111,8 +111,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── Filtrer les wallets déjà couverts par evidences manuelles ──
+  const existingWallets = new Set(
+    (await prisma.kolEvidence.findMany({ where: { kolHandle: handle } }))
+      .flatMap((e: any) => { try { return JSON.parse(e.wallets) } catch { return [] } })
+  )
+
   // ── Créer les KolEvidence automatiquement ──
   for (const r of results) {
+    if (existingWallets.has(r.wallet)) continue
     const existing = await prisma.kolEvidence.findFirst({
       where: { kolHandle: handle, sampleTx: r.sampleTx ?? undefined }
     })

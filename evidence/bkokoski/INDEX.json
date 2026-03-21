@@ -1,0 +1,58 @@
+{
+  "case": "bkokoski",
+  "subject": "Brandon Kokoski (BK)",
+  "generated_utc": "2026-03-21T09:28:35.577221Z",
+  "total_exhibits": 9,
+  "total_documented_usd": 649669,
+  "screenshots_needed": [
+    "EX-01 X post @kokoski 19/03/2026",
+    "EX-09 Arkham EVM wallet"
+  ],
+  "exhibits": [
+    {
+      "id": "EX-01",
+      "type": "social_post",
+      "label": "X post @kokoski \u2014 exit statement 19/03/2026 23:25 UTC"
+    },
+    {
+      "id": "EX-02",
+      "type": "onchain_cashout",
+      "label": "Associated Wallet A (BK cluster) \u2014 GHOST cashout $5,207 USDC"
+    },
+    {
+      "id": "EX-03",
+      "type": "onchain_cashout",
+      "label": "Associated Wallet B (BK cluster) \u2014 GHOST/BOTIFY cashout $802"
+    },
+    {
+      "id": "EX-04",
+      "type": "onchain_cashout",
+      "label": "Associated Wallet C (BK cluster) \u2014 GHOST dump 28.6 SOL"
+    },
+    {
+      "id": "EX-05",
+      "type": "onchain_cashout",
+      "label": "Associated Wallet D (BK cluster) \u2014 451k BOTIFY relay via F4q3"
+    },
+    {
+      "id": "EX-06",
+      "type": "onchain_cashout_bot",
+      "label": "Associated Wallet E (SAM cluster) \u2014 bot 4h pattern, 72 SOL"
+    },
+    {
+      "id": "EX-07",
+      "type": "onchain_cashout",
+      "label": "Associated Wallet F (SAM cluster) \u2014 213k GHOST in 3 minutes"
+    },
+    {
+      "id": "EX-08",
+      "type": "coordinated_exit",
+      "label": "Coordinated exit \u2014 $210,008 USDC in 3h, hub HeaiDUtMQ"
+    },
+    {
+      "id": "EX-09",
+      "type": "evm_wallet",
+      "label": "EVM wallet $401K \u2014 Arkham Intelligence entity confirmed"
+    }
+  ]
+}

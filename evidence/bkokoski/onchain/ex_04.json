@@ -1,0 +1,18 @@
+{
+  "exhibit_id": "EX-04",
+  "type": "onchain_cashout",
+  "label": "Associated Wallet C (BK cluster) — GHOST dump 28.6 SOL",
+  "wallet": "FzDXp1AqPhmwqkXjeFeTohbVcDEbJM9bjDcH9DPN4nEc",
+  "chain": "SOL",
+  "token": "GHOST",
+  "amount_usd": 4500,
+  "tx_count": 15,
+  "date_first": "2025-10-30",
+  "date_last": "2026-02-06",
+  "sample_tx": "n5UQrHo6uHSZ8SkriqqgZzpMwSQ1f7ca9qDKLbRceRCRdsTgCinuRx8xtk4eUSuV",
+  "source": "Helius API v0",
+  "collected_utc": "2026-03-20T08:00:00Z",
+  "classification": "on_chain_verified",
+  "confidence": "confirmed",
+  "file_sha256": "2723ED428EA0E5FDC916A0F086A7CBEAA65BECCF2DA80FE5406A663A5A1CAD46"
+}

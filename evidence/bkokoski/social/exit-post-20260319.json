@@ -1,0 +1,14 @@
+{
+  "exhibit_id": "EX-01",
+  "type": "social_post",
+  "platform": "X/Twitter",
+  "handle": "@kokoski",
+  "url": "https://x.com/kokoski",
+  "content": "stepping back from Dione, stay tuned BK",
+  "timestamp_utc": "2026-03-19T23:25:00Z",
+  "collected_utc": "2026-03-20T08:00:00Z",
+  "collector": "INTERLIGENS investigation",
+  "relevance": "Exit statement published 520 minutes before coordinated cashout hub activation",
+  "classification": "source_attributed",
+  "confidence": "confirmed"
+}
