@@ -111,6 +111,70 @@ export async function POST(req: NextRequest) {
     }
   }
 
+
+  // ── PATTERN 3: Corrélation post X → cashout ──
+  const xCorrelations: any[] = []
+  try {
+    const nitterUrl = `https://nitter.net/${kol.handle}/rss`
+    const rssRes = await fetch(nitterUrl, { 
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(8000)
+    })
+    
+    if (rssRes.ok) {
+      const rssText = await rssRes.text()
+      // Parser les posts depuis le RSS
+      const items = [...rssText.matchAll(/<item>(.*?)<\/item>/gs)]
+      
+      for (const item of items.slice(0, 20)) {
+        const raw = item[1]
+        const title = raw.match(/<title>(.*?)<\/title>/s)?.[1]?.replace(/<[^>]+>/g, '') ?? ''
+        const pubDate = raw.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? ''
+        const link = raw.match(/<link>(.*?)<\/link>/)?.[1] ?? ''
+        
+        if (!pubDate) continue
+        const postTs = new Date(pubDate).getTime() / 1000
+        if (isNaN(postTs)) continue
+        
+        // Chercher cashouts dans les 24h après ce post
+        const window24h = 24 * 3600
+        const relatedCashouts = results.filter(r => {
+          if (!r.dateFirst) return false
+          const cashoutTs = new Date(r.dateFirst).getTime() / 1000
+          const delta = cashoutTs - postTs
+          return delta >= 0 && delta <= window24h
+        })
+        
+        if (relatedCashouts.length > 0) {
+          const totalCashout = relatedCashouts.reduce((s, r) => s + (r.amountUsd ?? 0), 0)
+          const deltaMin = Math.round((new Date(relatedCashouts[0].dateFirst).getTime()/1000 - postTs) / 60)
+          
+          xCorrelations.push({
+            type: 'x_cashout_correlation',
+            wallet: relatedCashouts[0].wallet,
+            label: `Post X → cashout correlation: "${title.slice(0, 60)}"`,
+            description: `Post publié ${new Date(postTs*1000).toISOString().slice(0,16)} UTC. Cashout détecté ${deltaMin} minutes plus tard.`,
+            wallets: JSON.stringify(relatedCashouts.map(r => r.wallet)),
+            amountUsd: totalCashout,
+            txCount: relatedCashouts.reduce((s, r) => s + (r.txCount ?? 0), 0),
+            dateFirst: new Date(postTs * 1000),
+            dateLast: relatedCashouts[relatedCashouts.length-1]?.dateLast,
+            token: 'USDC',
+            sampleTx: relatedCashouts[0].sampleTx,
+            sourceUrl: link,
+            twitterPost: link,
+            postTimestamp: new Date(postTs * 1000),
+            deltaMinutes: deltaMin
+          })
+        }
+      }
+    }
+  } catch (e) {
+    console.log('X correlation skipped:', e)
+  }
+  
+  results.push(...xCorrelations)
+
   // ── Filtrer les wallets déjà couverts par evidences manuelles ──
   const existingWallets = new Set(
     (await prisma.kolEvidence.findMany({ where: { kolHandle: handle } }))
