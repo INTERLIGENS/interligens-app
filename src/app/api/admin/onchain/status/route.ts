@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const deny = requireAdminApi(req);
   if (deny) return deny;
 
-  const [totalWallets, syncedLast24h, errorCount, recentEvents] = await Promise.all([
+  const [totalWallets, syncedLast24h, errorCount, totalEvents] = await Promise.all([
     prisma.wallet.count({ where: { chain: "ethereum" } }),
     prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM wallet_sync_state
@@ -15,9 +15,8 @@ export async function GET(req: NextRequest) {
     prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM wallet_sync_state WHERE status = 'error'
     `,
-    prisma.$queryRaw<any[]>`
-      SELECT "walletAddress", "txHash", "eventType", direction, "blockTimeUtc", "isCexDeposit"
-      FROM onchain_events ORDER BY "blockTimeUtc" DESC LIMIT 5
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*) as count FROM onchain_events
     `,
   ]);
 
@@ -25,6 +24,6 @@ export async function GET(req: NextRequest) {
     totalWallets,
     syncedLast24h: Number(syncedLast24h[0]?.count ?? 0),
     errorCount: Number(errorCount[0]?.count ?? 0),
-    recentEvents,
+    totalEvents: Number(totalEvents[0]?.count ?? 0),
   });
 }

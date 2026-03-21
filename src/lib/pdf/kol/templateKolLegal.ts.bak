@@ -398,7 +398,7 @@ export function renderKolPdfLegal(kol: any): string {
         <div class="tl-time">${fmtDateShort(exitEv.dateFirst)}<br/><strong style="color:var(--red)">EXIT EVENT</strong></div>
         <div class="tl-content red">
           <div class="tl-label">Coordinated exit — ${fmtUsd(exitEv.amountUsd)} USDC moved in 3h</div>
-          <div class="tl-detail">Post X published 19/03/2026 23:25 UTC · Hub activated ${exitEv.deltaMinutes ? Math.floor(exitEv.deltaMinutes/60) + "h " + (exitEv.deltaMinutes%60) + "m" : ""} later · Vanity wallet 1234Co consolidates $256,969 USDC · D5Yq = TITAN EXCHANGE (CEX deposit — Solscan label confirmed) confirmed (50 unique senders)</div>
+          <div class="tl-detail">Post X published 19/03/2026 23:25 UTC · Hub activated ${exitEv.deltaMinutes ? Math.floor(exitEv.deltaMinutes/60) + "h " + (exitEv.deltaMinutes%60) + "m" : ""} later · Vanity wallet 1234Co consolidates $256,969 USDC · D5Yq = CEX deposit confirmed (50 unique senders)</div>
           ${exitEv.sampleTx ? `<div class="tl-tx">Hub TX: ${exitEv.sampleTx}</div>` : ""}
         </div>
       </div>` : ""}
@@ -639,7 +639,7 @@ export function renderKolPdfLegal(kol: any): string {
           <td><span class="badge badge-red">CRITICAL</span></td>
         </tr>
         <tr>
-          <td><span class="mono">D5YqVMo...9cM</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">TITAN EXCHANGE (CEX deposit — Solscan label confirmed) — 50 senders</span></td>
+          <td><span class="mono">D5YqVMo...9cM</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">CEX deposit — 50 senders</span></td>
           <td>SOL</td><td>USDC</td>
           <td><span class="mono">Multiple</span></td>
           <td style="font-size:8px">2026-03-20</td>
@@ -766,92 +766,6 @@ export function renderKolPdfLegal(kol: any): string {
   </div>
 
 </div>
-
-
-      <!-- ══════════════════════════════════════════════════════
-           §15 — Network Analysis — Connected Actors
-           ══════════════════════════════════════════════════════ -->
-      <div class="page-break"></div>
-      <section class="section">
-        <h2 class="section-title">15 Network Analysis — Connected Actors</h2>
-
-        <p class="section-intro">
-          The following individuals have been identified as part of a documented network
-          of coordinated KOL activity overlapping with the BK (Brandon Kokoski) investigation.
-          Connections are established via public source attribution, on-chain correlation,
-          and confirmed meeting records.
-        </p>
-
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Handle</th>
-              <th>Real Identity</th>
-              <th>Role / Link</th>
-              <th>Confidence</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="row-critical">
-              <td>@GordonGekko</td>
-              <td>Unknown — under investigation</td>
-              <td>Co-KOL. Meeting confirmed with BK + @planted — 30/04/2025. Coordinated shill activity documented across BOTIFY / GHOST promotion period.</td>
-              <td>PUBLIC-SOURCE-LINKED</td>
-              <td>ACTIVE — WATCHLIST</td>
-            </tr>
-            <tr class="row-critical">
-              <td>@planted</td>
-              <td>Djordje Stupar</td>
-              <td>Identity confirmed via public source. Meeting confirmed: BK + @GordonGekko — 30/04/2025. Coordinated promotion pattern matches BK/SAM exit timeline.</td>
-              <td>CONFIRMED</td>
-              <td>ACTIVE — WATCHLIST</td>
-            </tr>
-            <tr class="row-high">
-              <td>@DonWedge</td>
-              <td>Unknown — under investigation</td>
-              <td>Co-promotion activity documented. Network overlap with BK cluster. Cashout pattern under review.</td>
-              <td>PUBLIC-SOURCE-LINKED</td>
-              <td>ACTIVE — WATCHLIST</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3 class="subsection-title">Meeting Record — 30/04/2025</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">CONFIRMED MEETING</div>
-          <div class="indicator-content">
-            <strong>Participants:</strong> @bkokoski (Brandon Kokoski) · @GordonGekko · @planted (Djordje Stupar)<br/>
-            <strong>Date:</strong> 30 April 2025<br/>
-            <strong>Source:</strong> Public source — confirmed via cross-referenced social media records<br/>
-            <strong>Significance:</strong> Establishes in-person coordination between three actors across whose
-            accounts coordinated promotion of BOTIFY and GHOST was documented. Meeting occurred
-            within the active promotion and cashout period (Nov 2025 – Mar 2026).
-          </div>
-        </div>
-
-        <h3 class="subsection-title">TITAN EXCHANGE — CEX Role in Network</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">CEX IDENTIFIED</div>
-          <div class="indicator-content">
-            <strong>Exchange:</strong> TITAN EXCHANGE<br/>
-            <strong>Deposit wallet:</strong> D5YqVMoSxnqeZAKAUUE1Dm3bmjtdxQ5DCF356ozqN9cM<br/>
-            <strong>Identification:</strong> Solscan entity label — confirmed<br/>
-            <strong>Senders:</strong> 50 unique wallets · <strong>Amount received:</strong> $64K USDC<br/>
-            <strong>Role in cashout:</strong> Terminal off-ramp for BK cluster proceeds routed through
-            HeaiDUtMQ hub → 1234Co vanity wallet → D5Yq (TITAN EXCHANGE) deposit.<br/>
-            <strong>Recommended action:</strong> Preservation request to TITAN EXCHANGE compliance team.
-            Reference Report ID <code>INTL-MN0LVDFO-KOL</code>.
-          </div>
-        </div>
-
-        <p class="legal-note">
-          Network connections above are analytical observations derived from public sources and
-          on-chain data. They do not constitute accusations of criminal conduct. All subjects
-          are presumed innocent. This section is intended to support investigative triage only.
-        </p>
-      </section>
-
-      </body>
+</body>
 </html>`
 }

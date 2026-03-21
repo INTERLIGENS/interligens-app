@@ -1,287 +1,125 @@
-// seed-kol-network.mjs
-// Sprint 5 — Seed @planted (Djordje Stupar) + @GordonGekko + @DonWedge
-// Run: node seed-kol-network.mjs
 
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 
-// Toujours utiliser .env.local (ep-bold-sky prod)
-if (fs.existsSync(".env.local")) {
-  dotenv.config({ path: ".env.local" });
-  console.log("✅ Using .env.local (ep-bold-sky)");
-} else {
-  dotenv.config();
-  console.warn("⚠️  .env.local not found — falling back to .env");
-}
+if (fs.existsSync(".env.local")) { dotenv.config({ path: ".env.local" }); }
+else { dotenv.config(); }
 
 const prisma = new PrismaClient();
 
+async function upsertKol(handle, data) {
+  return prisma.kolProfile.upsert({
+    where: { handle },
+    update: {},
+    create: { handle, ...data },
+  });
+}
+
 async function main() {
-  console.log("\n── SEEDING KOL NETWORK (planted + GordonGekko + DonWedge) ──\n");
+  console.log("\n── SEEDING KOL NETWORK ──\n");
 
-  // ─────────────────────────────────────────
-  // 1. @planted — Djordje Stupar
-  // ─────────────────────────────────────────
-  const planted = await prisma.kolProfile.upsert({
-    where: { handle: "planted" },
-    update: {},
-    create: {
-      handle: "planted",
-      displayName: "planted",
-      realName: "Djordje Stupar",
-      platform: "X",
-      followers: 12000,
-      riskScore: 82,
-      riskTier: "HIGH",
-      verified: true,
-      notes:
-        "Identity confirmed via public source cross-reference. " +
-        "Meeting confirmed: BK (Brandon Kokoski) + @GordonGekko — 30/04/2025. " +
-        "Coordinated promotion activity on BOTIFY + GHOST documented during active cashout period. " +
-        "Network connection to BK cluster established.",
-      cases: {
-        create: [
-          {
-            tokenName: "BOTIFY",
-            tokenMint: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-            chain: "SOLANA",
-            role: "CO_PROMOTER",
-            status: "CONFIRMED",
-            estimatedLoss: 450000,
-            notes:
-              "Promotion activity documented alongside @bkokoski during BOTIFY active period. " +
-              "Pattern matches coordinated shill campaign.",
-          },
-          {
-            tokenName: "GHOST",
-            tokenMint: null,
-            chain: "SOLANA",
-            role: "CO_PROMOTER",
-            status: "UNDER_REVIEW",
-            estimatedLoss: null,
-            notes: "GHOST promotion overlap with BK/SAM cluster. Under investigation.",
-          },
-        ],
-      },
-      evidences: {
-        create: [
-          {
-            type: "SOCIAL_MEETING",
-            source: "PUBLIC_SOURCE",
-            classification: "SOURCE_ATTRIBUTED",
-            confidence: "CONFIRMED",
-            description:
-              "Meeting confirmed: @planted (Djordje Stupar) + @bkokoski (Brandon Kokoski) + @GordonGekko — 30/04/2025.",
-            txHash: null,
-            usdAmount: null,
-            collectedAt: new Date("2025-04-30"),
-            exhibitId: "EX-P01",
-          },
-          {
-            type: "COORDINATED_PROMOTION",
-            source: "PUBLIC_SOURCE",
-            classification: "SOURCE_ATTRIBUTED",
-            confidence: "STRONG_LINKAGE",
-            description:
-              "Promotion cadence on BOTIFY matches BK cluster active period. " +
-              "Cross-account timing analysis confirms coordinated posting.",
-            txHash: null,
-            usdAmount: null,
-            collectedAt: new Date("2026-01-15"),
-            exhibitId: "EX-P02",
-          },
-        ],
-      },
-    },
+  // @planted
+  const planted = await upsertKol("planted", {
+    platform: "x",
+    displayName: "planted",
+    label: "Djordje Stupar",
+    riskFlag: "high",
+    confidence: "confirmed",
+    status: "active",
+    tier: "HIGH",
+    rugCount: 2,
+    followerCount: 12000,
+    verified: true,
+    notes: "Identity confirmed via public source. Meeting confirmed: BK + @GordonGekko — 30/04/2025. Coordinated promotion BOTIFY + GHOST.",
+    tags: JSON.stringify(["network-bk","botify","ghost","co-promoter"]),
+    evidences: { create: [
+      { type: "SOCIAL_MEETING", label: "Meeting confirmed — BK + GordonGekko — 30/04/2025", description: "Meeting confirmed: @planted (Djordje Stupar) + @bkokoski + @GordonGekko — 30/04/2025.", wallets: "[]", dateFirst: new Date("2025-04-30"), dateLast: new Date("2025-04-30") },
+      { type: "COORDINATED_PROMOTION", label: "Co-promotion BOTIFY — timing overlap BK cluster", description: "Promotion cadence on BOTIFY matches BK cluster. Coordinated posting confirmed.", wallets: "[]", token: "BOTIFY", dateFirst: new Date("2026-01-01"), dateLast: new Date("2026-03-20") },
+    ]},
+    kolCases: { create: [
+      { caseId: "BOTIFY", role: "co_promoter", paidUsd: 450000, evidence: "Promotion alongside @bkokoski during BOTIFY active period.", claimType: "source_attributed", confidenceLevel: "confirmed" },
+      { caseId: "GHOST",  role: "co_promoter", evidence: "GHOST overlap with BK/SAM cluster. Under investigation.", claimType: "analytical_estimate", confidenceLevel: "provisional" },
+    ]},
   });
-  console.log(`✅ @planted seeded — id: ${planted.id}`);
+  console.log("✅ @planted — id:", planted.id, "| label:", planted.label);
 
-  // ─────────────────────────────────────────
-  // 2. @GordonGekko
-  // ─────────────────────────────────────────
-  const gordon = await prisma.kolProfile.upsert({
-    where: { handle: "GordonGekko" },
-    update: {},
-    create: {
-      handle: "GordonGekko",
-      displayName: "GordonGekko",
-      realName: null,
-      platform: "X",
-      followers: 28000,
-      riskScore: 78,
-      riskTier: "HIGH",
-      verified: false,
-      notes:
-        "Real identity under investigation. " +
-        "Meeting confirmed with @bkokoski + @planted (Djordje Stupar) — 30/04/2025. " +
-        "Coordinated KOL activity across BOTIFY/GHOST promotion period documented. " +
-        "Watchlist active — monitoring X API.",
-      cases: {
-        create: [
-          {
-            tokenName: "BOTIFY",
-            tokenMint: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-            chain: "SOLANA",
-            role: "CO_PROMOTER",
-            status: "UNDER_REVIEW",
-            estimatedLoss: 800000,
-            notes:
-              "Co-promotion during BOTIFY active period. Network overlap with BK cluster. " +
-              "Cashout attribution pending wallet deanonymization.",
-          },
-          {
-            tokenName: "GHOST",
-            tokenMint: null,
-            chain: "SOLANA",
-            role: "CO_PROMOTER",
-            status: "UNDER_REVIEW",
-            estimatedLoss: null,
-            notes: "GHOST overlap — cross-reference with @lynk0x pattern ongoing.",
-          },
-        ],
-      },
-      evidences: {
-        create: [
-          {
-            type: "SOCIAL_MEETING",
-            source: "PUBLIC_SOURCE",
-            classification: "SOURCE_ATTRIBUTED",
-            confidence: "CONFIRMED",
-            description:
-              "Meeting confirmed: @GordonGekko + @bkokoski + @planted (Djordje Stupar) — 30/04/2025. " +
-              "Establishes in-person coordination between network actors.",
-            txHash: null,
-            usdAmount: null,
-            collectedAt: new Date("2025-04-30"),
-            exhibitId: "EX-G01",
-          },
-          {
-            type: "COORDINATED_PROMOTION",
-            source: "PUBLIC_SOURCE",
-            classification: "SOURCE_ATTRIBUTED",
-            confidence: "STRONG_LINKAGE",
-            description:
-              "Cross-account promotion activity on BOTIFY + GHOST. " +
-              "Timing overlap with BK/SAM cluster cashout events.",
-            txHash: null,
-            usdAmount: null,
-            collectedAt: new Date("2026-02-01"),
-            exhibitId: "EX-G02",
-          },
-        ],
-      },
-    },
+  // @GordonGekko
+  const gordon = await upsertKol("GordonGekko", {
+    platform: "x",
+    displayName: "GordonGekko",
+    label: "Unknown — under investigation",
+    riskFlag: "high",
+    confidence: "strong_linkage",
+    status: "active",
+    tier: "HIGH",
+    rugCount: 2,
+    followerCount: 28000,
+    verified: false,
+    notes: "Real identity under investigation. Meeting confirmed: @bkokoski + @planted — 30/04/2025. Coordinated KOL activity BOTIFY/GHOST.",
+    tags: JSON.stringify(["network-bk","botify","ghost","co-promoter"]),
+    evidences: { create: [
+      { type: "SOCIAL_MEETING", label: "Meeting confirmed — BK + planted — 30/04/2025", description: "Meeting confirmed: @GordonGekko + @bkokoski + @planted (Djordje Stupar) — 30/04/2025.", wallets: "[]", dateFirst: new Date("2025-04-30"), dateLast: new Date("2025-04-30") },
+      { type: "COORDINATED_PROMOTION", label: "Co-promotion BOTIFY + GHOST — timing overlap BK/SAM", description: "Cross-account promotion BOTIFY + GHOST. Timing overlap with BK/SAM cashout events.", wallets: "[]", token: "BOTIFY", dateFirst: new Date("2026-01-01"), dateLast: new Date("2026-03-20") },
+    ]},
+    kolCases: { create: [
+      { caseId: "BOTIFY", role: "co_promoter", paidUsd: 800000, evidence: "Co-promotion BOTIFY. Network overlap BK cluster.", claimType: "analytical_estimate", confidenceLevel: "provisional" },
+      { caseId: "GHOST",  role: "co_promoter", evidence: "GHOST overlap — cross-ref @lynk0x ongoing.", claimType: "analytical_estimate", confidenceLevel: "provisional" },
+    ]},
   });
-  console.log(`✅ @GordonGekko seeded — id: ${gordon.id}`);
+  console.log("✅ @GordonGekko — id:", gordon.id);
 
-  // ─────────────────────────────────────────
-  // 3. @DonWedge
-  // ─────────────────────────────────────────
-  const donwedge = await prisma.kolProfile.upsert({
-    where: { handle: "DonWedge" },
-    update: {},
-    create: {
-      handle: "DonWedge",
-      displayName: "DonWedge",
-      realName: null,
-      platform: "X",
-      followers: 15000,
-      riskScore: 71,
-      riskTier: "HIGH",
-      verified: false,
-      notes:
-        "Real identity under investigation. " +
-        "Network overlap with BK cluster documented. " +
-        "Co-promotion activity on multiple rug-linked tokens. Watchlist active.",
-      cases: {
-        create: [
-          {
-            tokenName: "BOTIFY",
-            tokenMint: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-            chain: "SOLANA",
-            role: "CO_PROMOTER",
-            status: "UNDER_REVIEW",
-            estimatedLoss: null,
-            notes: "Promotion overlap with BK cluster. Cashout pattern under review.",
-          },
-        ],
-      },
-      evidences: {
-        create: [
-          {
-            type: "COORDINATED_PROMOTION",
-            source: "PUBLIC_SOURCE",
-            classification: "SOURCE_ATTRIBUTED",
-            confidence: "STRONG_LINKAGE",
-            description:
-              "Network overlap with BK cluster established via cross-account analysis. " +
-              "Co-promotion pattern on BOTIFY matches insider timeline.",
-            txHash: null,
-            usdAmount: null,
-            collectedAt: new Date("2026-01-20"),
-            exhibitId: "EX-D01",
-          },
-        ],
-      },
-    },
+  // @DonWedge
+  const donwedge = await upsertKol("DonWedge", {
+    platform: "x",
+    displayName: "DonWedge",
+    label: "Unknown — under investigation",
+    riskFlag: "high",
+    confidence: "strong_linkage",
+    status: "active",
+    tier: "HIGH",
+    rugCount: 1,
+    followerCount: 15000,
+    verified: false,
+    notes: "Real identity under investigation. Network overlap BK cluster. Co-promotion multiple rug-linked tokens.",
+    tags: JSON.stringify(["network-bk","botify","co-promoter"]),
+    evidences: { create: [
+      { type: "COORDINATED_PROMOTION", label: "Network overlap BK cluster — BOTIFY", description: "Network overlap BK cluster. Co-promotion BOTIFY matches insider timeline.", wallets: "[]", token: "BOTIFY", dateFirst: new Date("2026-01-01"), dateLast: new Date("2026-03-20") },
+    ]},
+    kolCases: { create: [
+      { caseId: "BOTIFY", role: "co_promoter", evidence: "Promotion overlap BK cluster. Cashout under review.", claimType: "analytical_estimate", confidenceLevel: "provisional" },
+    ]},
   });
-  console.log(`✅ @DonWedge seeded — id: ${donwedge.id}`);
+  console.log("✅ @DonWedge — id:", donwedge.id);
 
-  // ─────────────────────────────────────────
-  // 4. Link network — ajoute HRuLzZ evidence à bkokoski
-  // ─────────────────────────────────────────
+  // HRuLzZ sur @bkokoski
   const bk = await prisma.kolProfile.findUnique({ where: { handle: "bkokoski" } });
   if (bk) {
-    // Check si evidence HRuLzZ existe déjà
-    const existing = await prisma.kolEvidence.findFirst({
-      where: {
-        kolProfileId: bk.id,
-        description: { contains: "HRuLzZ" },
-      },
-    });
-
+    const existing = await prisma.kolEvidence.findFirst({ where: { kolHandle: "bkokoski", label: { contains: "HRuLzZ" } } });
     if (!existing) {
-      await prisma.kolEvidence.create({
-        data: {
-          kolProfileId: bk.id,
-          type: "ONCHAIN_CORRELATION",
-          source: "HELIUS_RPC",
-          classification: "ON_CHAIN_VERIFIED",
-          confidence: "CONFIRMED",
-          description:
-            "Wallet HRuLzZ...d14LUx identified as common funding source for Associated Wallets A, B, and C (BK cluster). " +
-            "All three wallets received initial SOL from same source address within 24h window. " +
-            "Establishes centralized control — consistent with single actor operating multiple wallets.",
-          txHash: null,
-          usdAmount: null,
-          collectedAt: new Date("2026-03-21"),
-          exhibitId: "EX-11-HRuLzZ",
-        },
-      });
-      console.log("✅ HRuLzZ correlation evidence ajoutée à @bkokoski");
+      await prisma.kolEvidence.create({ data: {
+        kolHandle: "bkokoski",
+        type: "ONCHAIN_CORRELATION",
+        label: "HRuLzZ — common funding source wallets A/B/C",
+        description: "Wallet HRuLzZ...d14LUx = common funding source for wallets A, B, C (BK cluster). All three funded from same source within 24h. Centralized control confirmed.",
+        wallets: JSON.stringify(["5ed7HUrYWS8h7EwM6wBpCvUHP4jc5McWYcL2yX4QimQj","HSueXrabQVABdHezbQ5Q4UbgLTx4Nc6VqyX5R88zzxmz","FzDXp1AqPhmwqkXjeFeTohbVcDEbJM9bjDcH9DPN4nEc"]),
+        dateFirst: new Date("2026-03-21"),
+      }});
+      console.log("✅ HRuLzZ evidence ajoutée à @bkokoski");
     } else {
-      console.log("ℹ️  HRuLzZ evidence déjà présente pour @bkokoski");
+      console.log("ℹ️  HRuLzZ déjà présent");
     }
   } else {
-    console.warn("⚠️  @bkokoski non trouvé en DB — lancer seed-kokoski.mjs d'abord");
+    console.warn("⚠️  @bkokoski non trouvé");
   }
 
-  // ─────────────────────────────────────────
-  // Summary
-  // ─────────────────────────────────────────
   const total = await prisma.kolProfile.count();
-  const evidenceTotal = await prisma.kolEvidence.count();
-  console.log(`\n── DONE ──`);
-  console.log(`   KolProfile total : ${total}`);
-  console.log(`   KolEvidence total: ${evidenceTotal}`);
+  const evTotal = await prisma.kolEvidence.count();
+  console.log("\n── DONE ──");
+  console.log("   KolProfile total :", total);
+  console.log("   KolEvidence total:", evTotal);
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Seed failed:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error("❌ Seed failed:", e.message); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });
