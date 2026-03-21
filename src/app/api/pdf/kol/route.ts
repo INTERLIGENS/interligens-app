@@ -26,21 +26,15 @@ export async function GET(request: NextRequest) {
 
     const puppeteer = await import("puppeteer-core")
     const isDev = process.env.NODE_ENV === "development"
+    const chromium = await import("@sparticuz/chromium-min")
 
-    let executablePath: string
-    let args: string[]
+    const executablePath = isDev
+      ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      : await chromium.default.executablePath("https://pub-bbfbc08b4f584a1a91027b0ca9b696fd.r2.dev/chromium-v143.0.4-pack.x64.tar")
 
-    if (isDev) {
-      // Local Mac — utilise Chrome installé
-      executablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      args = ["--no-sandbox", "--disable-setuid-sandbox"]
-    } else {
-      const chromium = await import("@sparticuz/chromium-min")
-      executablePath = await chromium.default.executablePath(
-        process.env.CHROMIUM_REMOTE_EXEC_PATH!
-      )
-      args = chromium.default.args
-    }
+    const args = isDev
+      ? ["--no-sandbox", "--disable-setuid-sandbox"]
+      : chromium.default.args
 
     const browser = await puppeteer.default.launch({ executablePath, args, headless: true })
 
