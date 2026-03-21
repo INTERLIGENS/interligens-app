@@ -612,3 +612,12 @@ enum CaptureStatus {
   FAILED
   BLOCKED
 }
+
+model XApiUsage {
+  id            String   @id @default(cuid())
+  monthStart    DateTime
+  totalCostUsd  Float    @default(0)
+  tweetsFetched Int      @default(0)
+  userLookups   Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
