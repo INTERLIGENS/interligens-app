@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { XAuthProvider } from "./providers/xAuthProvider";
 import { NitterRssProvider } from "./providers/nitterRss";
 import { PlaywrightProfileProvider } from "./providers/playwrightProfile";
 import { captureSocialPost } from "../evidencePack";
@@ -173,12 +174,21 @@ export async function captureCandidates(): Promise<{
 // ─── PROVIDER WITH FALLBACK ──────────────────────────────────────────────────
 
 async function fetchWithFallback(handle: string, sincePostId?: string) {
-  const nitter = new NitterRssProvider();
+  // 1. XAuth
   try {
-    return await nitter.fetchLatest(handle, sincePostId);
+    return await new XAuthProvider().fetchLatest(handle, sincePostId);
   } catch (e: any) {
-    if (!e.message?.includes("PROVIDER_UNAVAILABLE")) throw e;
-    const playwright = new PlaywrightProfileProvider();
-    return await playwright.fetchLatest(handle, sincePostId);
+    if (e.message?.includes("RATE_LIMITED") || e.message?.includes("PROVIDER_UNAVAILABLE")) {
+      // fallback
+    } else throw e;
   }
+  // 2. Nitter
+  if (process.env.NITTER_BASE_URL) {
+    try { return await new NitterRssProvider().fetchLatest(handle, sincePostId); } catch {}
+  }
+  // 3. Playwright
+  if (process.env.SOCIAL_PROVIDER_FALLBACK_ENABLED === "true") {
+    return await new PlaywrightProfileProvider().fetchLatest(handle, sincePostId);
+  }
+  throw new Error("PROVIDER_UNAVAILABLE: all providers failed");
 }
