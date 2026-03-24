@@ -64,8 +64,8 @@ for (let i = 0; i < wallets.length; i++) {
 
     // Fetch txlist + tokentx
     const [txList, tokenTx] = await Promise.all([
-      fetchEtherscan(`https://api.etherscan.io/v2/api?module=account&action=txlist&address=${address}&startblock=${startBlock}&sort=asc&apikey=${ETHERSCAN_KEY}`),
-      fetchEtherscan(`https://api.etherscan.io/v2/api?module=account&action=tokentx&address=${address}&startblock=${startBlock}&sort=asc&apikey=${ETHERSCAN_KEY}`),
+      fetchEtherscan(`https://api.etherscan.io/v2/api?module=account&action=txlist&address=${address}&startblock=${startBlock}&chainid=1&sort=asc&page=1&offset=100&apikey=${ETHERSCAN_KEY}`),
+      fetchEtherscan(`https://api.etherscan.io/v2/api?module=account&action=tokentx&address=${address}&startblock=${startBlock}&chainid=1&sort=asc&page=1&offset=100&apikey=${ETHERSCAN_KEY}`),
     ]);
 
     await sleep(250); // rate limit 5 req/s
