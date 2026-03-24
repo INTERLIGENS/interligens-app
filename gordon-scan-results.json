@@ -1,0 +1,157 @@
+[
+  {
+    "label": "Gordon_1",
+    "address": "Eu8i6rpMPXyg5NaEY23qEbFeMhrs953FdqxYxweXm24J",
+    "solBalance": 0,
+    "tokenBalances": [
+      {
+        "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+        "amount": 0,
+        "decimals": 6
+      }
+    ],
+    "totalTxs": 79,
+    "swapTxs": 0,
+    "botifyTxs": [],
+    "ghostTxs": [],
+    "bkClusterLinks": [],
+    "usdcMoved": 1441.412166589,
+    "firstTx": "2025-01-11",
+    "lastTx": "2025-01-20",
+    "cashoutIndicators": [
+      "1441 SOL moved"
+    ]
+  },
+  {
+    "label": "Gordon_2",
+    "address": "4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3",
+    "solBalance": "0.0075",
+    "tokenBalances": [
+      {
+        "mint": "B9J557T9arZBeSn3JKTvMTrqSQWyKTKEaxsedjSwbLQL",
+        "amount": 41970000000,
+        "decimals": 9
+      },
+      {
+        "mint": "FasH397CeZLNYWkd3wWK9vrmjd1z93n3b59DssRXpump",
+        "amount": 6900000,
+        "decimals": 6
+      },
+      {
+        "mint": "pkrzqRiSVPWKJhLdkqdJiGf8H8sF5jqpRvheiiwpump",
+        "amount": 5126511099951,
+        "decimals": 6
+      },
+      {
+        "mint": "22513u2QwiY6xaJn7nVFWGKy3aBdw6WfZsRPW2RRtCKj",
+        "amount": 0,
+        "decimals": 6
+      },
+      {
+        "mint": "dYGWTH5MxBoVpoYV3sBjG5fQMe379cWfWibu5vWKwJY",
+        "amount": 700000000,
+        "decimals": 8
+      },
+      {
+        "mint": "5pPkhLEJDMFDHUuE1wW5os5YJeyNUDVmih1DKgMFpB38",
+        "amount": 10000000,
+        "decimals": 6
+      },
+      {
+        "mint": "C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWWkXpump",
+        "amount": 6653600054,
+        "decimals": 6
+      },
+      {
+        "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+        "amount": 190020,
+        "decimals": 6
+      },
+      {
+        "mint": "HHp6ERxJCapjwMVdkXmSooDe9JnmyHVn34JEWW8xk5zd",
+        "amount": 454929000000,
+        "decimals": 6
+      },
+      {
+        "mint": "CCrrZZ2DczJwxNtgc728ivuP3yo5UK7wkw16RJQvpump",
+        "amount": 0,
+        "decimals": 6
+      }
+    ],
+    "totalTxs": 100,
+    "swapTxs": 0,
+    "botifyTxs": [],
+    "ghostTxs": [],
+    "bkClusterLinks": [],
+    "usdcMoved": 0,
+    "firstTx": "2025-12-10",
+    "lastTx": "2026-01-18",
+    "cashoutIndicators": []
+  },
+  {
+    "label": "Gordon_3",
+    "address": "3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6",
+    "solBalance": "0.0340",
+    "tokenBalances": [
+      {
+        "mint": "B9J557T9arZBeSn3JKTvMTrqSQWyKTKEaxsedjSwbLQL",
+        "amount": 41970000000,
+        "decimals": 9
+      },
+      {
+        "mint": "H4SFaUnxrZRoFnhBeotZnuqw4mfVtJ2nCvGrPmQupump",
+        "amount": 0,
+        "decimals": 6
+      },
+      {
+        "mint": "3JsFukWp24NjGf1CMQW3W6WQjq7hiPu4DfekeStYbonk",
+        "amount": 50000000000,
+        "decimals": 6
+      },
+      {
+        "mint": "H8G1gkfjM486jHVQTyqVAGMftjBu4xm4jbtHX7Mn3koP",
+        "amount": 0,
+        "decimals": 9
+      },
+      {
+        "mint": "5w68xqRpVFqi7hCXuN7QLc5ReLv1PfpmT9TVm11Cpump",
+        "amount": 0,
+        "decimals": 6
+      },
+      {
+        "mint": "B8W9pBFXGRCom5smtS57skpYoA9smQAmyNrnztsVpump",
+        "amount": 0,
+        "decimals": 6
+      },
+      {
+        "mint": "4sXJD9EBHnpEbf5N47RA1ZgC21Sqt459tSBrGRwCVeVn",
+        "amount": 821433164082732,
+        "decimals": 9
+      },
+      {
+        "mint": "B5boCskXEFb1RJJ9EqJNV3gt5fjhk85DeD7BgbLcpump",
+        "amount": 0,
+        "decimals": 6
+      },
+      {
+        "mint": "CKYJeS7k1xL6rK1iztywKKMjZ1SadwjrdQ9QXRQLS4Zp",
+        "amount": 563620000,
+        "decimals": 9
+      },
+      {
+        "mint": "5zyo3yhLa1iMPX2PgJAodF9MDbkWHZAngZHuqi1QUP5Z",
+        "amount": 200000000000,
+        "decimals": 6
+      }
+    ],
+    "totalTxs": 100,
+    "swapTxs": 0,
+    "botifyTxs": [],
+    "ghostTxs": [],
+    "bkClusterLinks": [],
+    "usdcMoved": 0,
+    "firstTx": "2025-12-10",
+    "lastTx": "2026-01-18",
+    "cashoutIndicators": []
+  }
+]

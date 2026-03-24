@@ -662,30 +662,10 @@ export function renderKolPdfLegal(kol: any): string {
           <td class="amount-cell">$401K</td>
           <td><span class="badge badge-source">HIGH</span></td>
         </tr>` : ""}
-      
-            <tr class="row-high">
-              <td>3xcErQV4...EJxf<br/><small>BINANCE deposit</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>Multiple</td>
-              <td>2025-01-13 to 2025-01-20</td>
-              <td>$36,750</td>
-              <td>HIGH</td>
-            </tr>
-            <tr class="row-high">
-              <td>3g1hYfna...5xQx<br/><small>KuCoin 2 relay</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>1</td>
-              <td>2025-01-20</td>
-              <td>$63,000</td>
-              <td>HIGH</td>
-            </tr>
-            </tbody>
+      </tbody>
     </table>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted)">
-      Contact for legal process: legal@interligens.com
-Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQV4) · KUCOIN 2 (3g1hYfna) · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
+      Contact for legal process: legal@interligens.com · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
     </div>
   </div>
 
@@ -1002,27 +982,6 @@ Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQ
           Les adresses EVM des figures publiques sont présentées comme contexte analytique uniquement.
           Elles ne constituent pas une accusation de participation à l'activité sous enquête.
         </p>
-
-        <h3 class="subsection-title">GordonGekko — CEX Cashout Confirmé</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">CEX DEPOSITS CONFIRMED — PRESERVATION REQUIRED</div>
-          <div class="indicator-content">
-            <strong>Chaîne de cashout documentée (Jan 2025) :</strong><br/><br/>
-            <strong>① BINANCE — 245 SOL (≈$36,750)</strong><br/>
-            Wallet dépôt: <code>3xcErQV4y3dEbSZbmyv3gHSFz7JCHufo9weuw71fEJxf</code><br/>
-            Tags Solscan: <em>#Binance Exchange #Deposit Address</em> — confirmé<br/>
-            Source: Gordon_1 (Eu8i6rp...) en 5 transactions — Jan 2025<br/>
-            Action: Subpoena / MLAT — KYC identification du titulaire<br/><br/>
-            <strong>② KUCOIN 2 — 420 SOL (≈$63,000)</strong><br/>
-            Wallet relay: <code>3g1hYfna2A1nj7WZctKeYYb5eNEQHobvFbwhRrnh5xQx</code><br/>
-            Funded by: Gordon_1 confirmé Solscan — TX sortante vers KuCoin 2 documentée<br/>
-            Wallet actuellement vide (SOL balance: 0) — fonds dissipés<br/>
-            Action: Preservation request KuCoin compliance<br/><br/>
-            <strong>③ Gordon_1 → Gordon_2 — 55 SOL direct</strong><br/>
-            TX: <code>3sK4ziqxiyvnf7JLKR54...</code> — 13/01/2025<br/>
-            Établit contrôle centralisé des wallets Gordon 1 et 2 par le même acteur.<br/>
-          </div>
-        </div>
 </section>
 
       </body>

@@ -87,6 +87,8 @@ export async function GET(
     cexTargets: [
       { name: "TITAN EXCHANGE", wallet: "D5YqVMoSxnqeZAKAUUE1Dm3bmjtdxQ5DCF356ozqN9cM", amountUsd: 64000, action: "Immediate freeze + KYC disclosure + SAR", complicityScore: 78 },
       { name: "UNKNOWN CEX (ET3F)", wallet: "ET3F3q42vUpfDHW8rgrhA1S2WPwb6Fhx97fsLR3EkxSn", amountUsd: 97000, action: "Preservation request + subpoena / MLAT", complicityScore: 81 },
+      { name: "BINANCE", wallet: "3xcErQV4y3dEbSZbmyv3gHSFz7JCHufo9weuw71fEJxf", amountUsd: 36750, action: "Subpoena / MLAT — KYC @GordonGekko account holder", complicityScore: 72 },
+      { name: "KUCOIN 2", wallet: "3g1hYfna2A1nj7WZctKeYYb5eNEQHobvFbwhRrnh5xQx", amountUsd: 63000, action: "Preservation request — @GordonGekko cashout Jan 2025", complicityScore: 68 },
     ],
     victimPathways: [
       { wallet: "ARu4n5...ZAravu7C", token: "BOTIFY", solPaid: 10.37, usdLoss: 1900, purchaseDate: "2026-03-20" },

@@ -662,30 +662,10 @@ export function renderKolPdfLegal(kol: any): string {
           <td class="amount-cell">$401K</td>
           <td><span class="badge badge-source">HIGH</span></td>
         </tr>` : ""}
-      
-            <tr class="row-high">
-              <td>3xcErQV4...EJxf<br/><small>BINANCE deposit</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>Multiple</td>
-              <td>2025-01-13 to 2025-01-20</td>
-              <td>$36,750</td>
-              <td>HIGH</td>
-            </tr>
-            <tr class="row-high">
-              <td>3g1hYfna...5xQx<br/><small>KuCoin 2 relay</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>1</td>
-              <td>2025-01-20</td>
-              <td>$63,000</td>
-              <td>HIGH</td>
-            </tr>
-            </tbody>
+      </tbody>
     </table>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted)">
-      Contact for legal process: legal@interligens.com
-Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQV4) · KUCOIN 2 (3g1hYfna) · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
+      Contact for legal process: legal@interligens.com · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
     </div>
   </div>
 
@@ -936,93 +916,6 @@ Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQ
           Les adresses EVM des figures publiques sont présentées comme contexte analytique uniquement.
           Elles ne constituent pas une accusation de participation à l'activité sous enquête.
         </p>
-
-        <h3 class="subsection-title">GordonGekko — Wallets SOL Confirmés</h3>
-        <table class="data-table">
-          <thead>
-            <tr><th>Label</th><th>Adresse SOL</th><th>Source</th><th>Confiance</th></tr>
-          </thead>
-          <tbody>
-            <tr class="row-high">
-              <td>Gordon 1</td>
-              <td><code>Eu8i6rpMPXyg5NaEY23qEbFeMhrs953FdqxYxweXm24J</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-            <tr class="row-high">
-              <td>Gordon 2</td>
-              <td><code>4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-            <tr class="row-high">
-              <td>Gordon 3</td>
-              <td><code>3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3 class="subsection-title">Wallet Partagé — @lynk0x / @regrets10x</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">SHARED WALLET — COORDINATION INDICATOR</div>
-          <div class="indicator-content">
-            <strong>Wallet BSC :</strong> <code>0x4950afc2a8e5834a1858a94f98b68cd00f96fe12</code><br/>
-            <strong>Attribué à :</strong> @lynk0x ET @regrets10x (TIER 1 KOL)<br/>
-            <strong>Source :</strong> @dethective Telegram — The Wallet Cave — 22/03/2026<br/>
-            <strong>Significance :</strong> Un wallet unique contrôlant deux identités KOL distinctes constitue
-            un indicateur fort de coordination ou de persona multiple. Cross-référence gmgn.ai confirmée.
-            Les deux comptes ont promu des tokens communs avec timing coordonné.<br/>
-            <strong>Classification :</strong> SOURCE-ATTRIBUTED — coordination analytique inférée
-          </div>
-        </div>
-
-        <h3 class="subsection-title">Figures Publiques — Adresses EVM (Contexte)</h3>
-        <table class="data-table">
-          <thead>
-            <tr><th>Nom</th><th>Adresse EVM</th><th>Source</th><th>Pertinence</th></tr>
-          </thead>
-          <tbody>
-            <tr class="row-medium">
-              <td>James Wynn</td>
-              <td><code>0x5078c2fbea2b2ad61bc840bc023e35fce56bedb6</code></td>
-              <td>@dethective — cross-ref referral links</td>
-              <td>Overlap promotion BOTIFY / US memecoin ecosystem</td>
-            </tr>
-            <tr class="row-medium">
-              <td>Andrew Tate</td>
-              <td><code>0xb78d97390a96a17fd2b58fedbeb3dd876c8f660a</code></td>
-              <td>@dethective — cross-ref referral links</td>
-              <td>Contexte — réseau KOL à haute visibilité</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="legal-note">
-          Les adresses EVM des figures publiques sont présentées comme contexte analytique uniquement.
-          Elles ne constituent pas une accusation de participation à l'activité sous enquête.
-        </p>
-
-        <h3 class="subsection-title">GordonGekko — CEX Cashout Confirmé</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">CEX DEPOSITS CONFIRMED — PRESERVATION REQUIRED</div>
-          <div class="indicator-content">
-            <strong>Chaîne de cashout documentée (Jan 2025) :</strong><br/><br/>
-            <strong>① BINANCE — 245 SOL (≈$36,750)</strong><br/>
-            Wallet dépôt: <code>3xcErQV4y3dEbSZbmyv3gHSFz7JCHufo9weuw71fEJxf</code><br/>
-            Tags Solscan: <em>#Binance Exchange #Deposit Address</em> — confirmé<br/>
-            Source: Gordon_1 (Eu8i6rp...) en 5 transactions — Jan 2025<br/>
-            Action: Subpoena / MLAT — KYC identification du titulaire<br/><br/>
-            <strong>② KUCOIN 2 — 420 SOL (≈$63,000)</strong><br/>
-            Wallet relay: <code>3g1hYfna2A1nj7WZctKeYYb5eNEQHobvFbwhRrnh5xQx</code><br/>
-            Funded by: Gordon_1 confirmé Solscan — TX sortante vers KuCoin 2 documentée<br/>
-            Wallet actuellement vide (SOL balance: 0) — fonds dissipés<br/>
-            Action: Preservation request KuCoin compliance<br/><br/>
-            <strong>③ Gordon_1 → Gordon_2 — 55 SOL direct</strong><br/>
-            TX: <code>3sK4ziqxiyvnf7JLKR54...</code> — 13/01/2025<br/>
-            Établit contrôle centralisé des wallets Gordon 1 et 2 par le même acteur.<br/>
-          </div>
-        </div>
 </section>
 
       </body>

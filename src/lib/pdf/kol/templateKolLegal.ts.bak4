@@ -662,30 +662,10 @@ export function renderKolPdfLegal(kol: any): string {
           <td class="amount-cell">$401K</td>
           <td><span class="badge badge-source">HIGH</span></td>
         </tr>` : ""}
-      
-            <tr class="row-high">
-              <td>3xcErQV4...EJxf<br/><small>BINANCE deposit</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>Multiple</td>
-              <td>2025-01-13 to 2025-01-20</td>
-              <td>$36,750</td>
-              <td>HIGH</td>
-            </tr>
-            <tr class="row-high">
-              <td>3g1hYfna...5xQx<br/><small>KuCoin 2 relay</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>1</td>
-              <td>2025-01-20</td>
-              <td>$63,000</td>
-              <td>HIGH</td>
-            </tr>
-            </tbody>
+      </tbody>
     </table>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted)">
-      Contact for legal process: legal@interligens.com
-Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQV4) · KUCOIN 2 (3g1hYfna) · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
+      Contact for legal process: legal@interligens.com · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
     </div>
   </div>
 
