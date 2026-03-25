@@ -10,6 +10,8 @@ const NAV = [
   { href: "/admin/corroboration",  label: "Corroboration",  icon: "🔗" },
   { href: "/admin/labels",         label: "Labels",         icon: "🏷" },
   { href: "/admin/export",          label: "Export",         icon: "📤" },
+  { href: "/admin/cases",           label: "Cases",          icon: "—" },
+  { href: "/admin/alerts",          label: "Alerts",         icon: "—" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
