@@ -381,6 +381,7 @@ model KolProfile {
   exitNarrative   String?
   exitPostUrl     String?
   totalDocumented Float?        @default(0)
+  publishable     Boolean       @default(false)
   kolCases        KolCase[]
   evidences       KolEvidence[]
   kolWallets      KolWallet[]
@@ -620,4 +621,19 @@ model XApiUsage {
   tweetsFetched Int      @default(0)
   userLookups   Int      @default(0)
   updatedAt     DateTime @updatedAt
+}
+
+model WatchScan {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  handle        String
+  status        String   @default("pending")
+  postsFound    Int      @default(0)
+  postsArchived Int      @default(0)
+  errorMessage  String?
+  durationMs    Int?
+  triggeredBy   String   @default("cron")
+
+  @@index([handle])
+  @@index([createdAt])
 }

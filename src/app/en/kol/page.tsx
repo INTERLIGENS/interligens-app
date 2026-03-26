@@ -1,192 +1,179 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import Link from 'next/link'
 
-interface KolSummary {
+interface KolRow {
   handle: string
   displayName?: string
-  platform: string
-  riskFlag: string
-  rugCount: number
+  tier?: string
   totalScammed?: number
-  totalDocumented?: number
+  rugCount: number
+  followerCount?: number
+  riskFlag?: string
   verified: boolean
-  confidence: string
-  exitDate?: string
+  _count: { evidences: number; kolCases: number }
 }
 
-const RISK_COLOR: Record<string, string> = {
-  confirmed_scammer: '#ef4444',
-  suspected:         '#f97316',
-  under_review:      '#f59e0b',
-  cleared:           '#10b981',
-}
-
-const fmtUsd = (n?: number) => {
-  if (!n) return '—'
-  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return '$' + (n / 1_000).toFixed(0) + 'K'
-  return '$' + n.toFixed(0)
-}
-
-export default function KolListPage() {
-  const [kols, setKols] = useState<KolSummary[]>([])
+export default function KolListingPage() {
+  const [kols, setKols] = useState<KolRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [sort, setSort] = useState<'totalScammed'|'rugCount'|'totalDocumented'>('totalScammed')
 
   useEffect(() => {
-    fetch('/api/kol')
+    fetch('/api/v1/kol?limit=100')
       .then(r => r.json())
-      .then(d => setKols(d.kols || []))
+      .then(d => {
+        const sorted = (d.profiles ?? []).sort((a: KolRow, b: KolRow) => {
+          const diff = (b.totalScammed ?? 0) - (a.totalScammed ?? 0)
+          if (diff !== 0) return diff
+          return b.rugCount - a.rugCount
+        })
+        setKols(sorted)
+      })
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  const sorted = [...kols].sort((a, b) => (b[sort] || 0) - (a[sort] || 0))
+  const fmtUsd = (n?: number) => {
+    if (!n) return '—'
+    if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M'
+    if (n >= 1_000) return '$' + (n / 1_000).toFixed(0) + 'K'
+    return '$' + n
+  }
+
+  const tierColor: Record<string, string> = {
+    S: '#ef4444', A: '#f97316', B: '#f59e0b', C: '#6b7280',
+  }
+
+  const riskColor: Record<string, string> = {
+    confirmed_scammer: '#ef4444',
+    high_risk: '#f97316',
+    medium_risk: '#f59e0b',
+    unverified: '#6b7280',
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#050505', padding: '48px 24px', fontFamily: 'monospace' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
 
-        {/* Header */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ fontSize: 10, color: '#F85B05', letterSpacing: '0.3em', marginBottom: 8 }}>
-            INTERLIGENS — INTELLIGENCE DATABASE
+      {/* HEADER */}
+      <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <a href="/en/demo" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← INTERLIGENS</a>
+        <span style={{ color: '#1f2937' }}>·</span>
+        <span style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>KOL INTELLIGENCE REGISTRY</span>
+      </div>
+
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
+
+        {/* TITLE */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>
+            PUBLIC REGISTRY
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 900, color: '#f1f5f9', margin: 0, letterSpacing: '-0.02em' }}>
-            KOL THREAT REGISTRY
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
+            KOL Risk Intelligence
           </h1>
-          <p style={{ fontSize: 12, color: '#4b5563', marginTop: 8 }}>
-            Verified on-chain investigations. All claims source-attributed or blockchain-verified.
+          <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8 }}>
+            Documented influencers linked to scam promotions, rug pulls, and retail investor harm on Solana and EVM chains.
           </p>
         </div>
 
-        {/* Sort */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {(['totalScammed', 'rugCount', 'totalDocumented'] as const).map(s => (
-            <button key={s} onClick={() => setSort(s)} style={{
-              fontSize: 9, fontWeight: 900, letterSpacing: '0.15em',
-              padding: '6px 12px', borderRadius: 4, cursor: 'pointer', border: 'none',
-              background: sort === s ? '#F85B05' : '#111',
-              color: sort === s ? '#fff' : '#4b5563',
-            }}>
-              {s === 'totalScammed' ? 'TOTAL SCAMMED' : s === 'rugCount' ? 'RUG COUNT' : 'DOCUMENTED'}
-            </button>
-          ))}
-        </div>
-
-        {/* Stats bar */}
+        {/* STATS BAR */}
         {!loading && (
-          <div style={{ display: 'flex', gap: 24, marginBottom: 32, padding: '16px 20px', background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8 }}>
+          <div style={{ display: 'flex', gap: 24, marginBottom: 28, padding: '14px 20px', background: '#0d1117', border: '1px solid #1e2330', borderRadius: 8 }}>
             <div>
-              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>PROFILES</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: '#f1f5f9' }}>{kols.length}</div>
+              <div style={{ color: '#F85B05', fontSize: 18, fontWeight: 800 }}>{kols.length}</div>
+              <div style={{ color: '#6b7280', fontSize: 10, letterSpacing: '0.12em', fontFamily: 'monospace' }}>PROFILES</div>
             </div>
+            <div style={{ width: 1, background: '#1e2330' }} />
             <div>
-              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>TOTAL SCAMMED</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: '#ef4444' }}>
-                {fmtUsd(kols.reduce((a, k) => a + (k.totalScammed || 0), 0))}
+              <div style={{ color: '#ef4444', fontSize: 18, fontWeight: 800 }}>
+                {fmtUsd(kols.reduce((s, k) => s + (k.totalScammed ?? 0), 0))}
               </div>
+              <div style={{ color: '#6b7280', fontSize: 10, letterSpacing: '0.12em', fontFamily: 'monospace' }}>TOTAL DOCUMENTED HARM</div>
             </div>
+            <div style={{ width: 1, background: '#1e2330' }} />
             <div>
-              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>DOCUMENTED ON-CHAIN</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: '#F85B05' }}>
-                {fmtUsd(kols.reduce((a, k) => a + (k.totalDocumented || 0), 0))}
+              <div style={{ color: '#f59e0b', fontSize: 18, fontWeight: 800 }}>
+                {kols.reduce((s, k) => s + k.rugCount, 0)}
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>TOTAL RUGS</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>
-                {kols.reduce((a, k) => a + (k.rugCount || 0), 0)}
-              </div>
+              <div style={{ color: '#6b7280', fontSize: 10, letterSpacing: '0.12em', fontFamily: 'monospace' }}>RUG EVENTS</div>
             </div>
           </div>
         )}
 
-        {/* List */}
+        {/* TABLE */}
         {loading ? (
-          <div style={{ color: '#374151', fontSize: 12 }}>Loading...</div>
-        ) : sorted.length === 0 ? (
-          <div style={{ color: '#374151', fontSize: 12 }}>No profiles yet.</div>
+          <div style={{ color: '#374151', fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.15em', padding: '60px 0', textAlign: 'center' }}>
+            LOADING REGISTRY...
+          </div>
+        ) : kols.length === 0 ? (
+          <div style={{ color: '#374151', fontSize: 12, fontFamily: 'monospace', padding: '60px 0', textAlign: 'center' }}>
+            NO PUBLISHED PROFILES YET
+          </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {sorted.map((kol, i) => (
-              <Link key={kol.handle} href={`/en/kol/${kol.handle}`} style={{ textDecoration: 'none' }}>
-                <div style={{
-                  background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 10,
-                  padding: '20px 24px', cursor: 'pointer', transition: 'border-color 0.2s',
-                  display: 'flex', alignItems: 'center', gap: 24,
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#F85B05')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = '#1f2937')}
-                >
-                  {/* Rank */}
-                  <div style={{ fontSize: 24, fontWeight: 900, color: i === 0 ? '#ef4444' : '#1f2937', minWidth: 32 }}>
-                    #{i + 1}
-                  </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* TABLE HEADER */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 80px 80px 100px', gap: 12, padding: '8px 16px', color: '#4b5563', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em' }}>
+              <div>HANDLE</div>
+              <div>TIER</div>
+              <div>HARM (USD)</div>
+              <div>RUGS</div>
+              <div>EVIDENCE</div>
+              <div style={{ textAlign: 'right' }}>PROFILE</div>
+            </div>
 
-                  {/* Identity */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: '#f1f5f9' }}>
-                        {kol.displayName || kol.handle}
-                      </span>
-                      <span style={{ fontSize: 10, color: '#4b5563' }}>@{kol.handle}</span>
-                      {kol.verified && (
-                        <span style={{ fontSize: 8, fontWeight: 900, color: '#10b981', letterSpacing: '0.15em',
-                          background: '#10b98115', padding: '2px 6px', borderRadius: 3 }}>
-                          VERIFIED
-                        </span>
-                      )}
-                      {kol.exitDate && (
-                        <span style={{ fontSize: 8, fontWeight: 900, color: '#ef4444', letterSpacing: '0.15em',
-                          background: '#ef444415', padding: '2px 6px', borderRadius: 3 }}>
-                          EXIT {new Date(kol.exitDate).toLocaleDateString('en-US', {month:'short',year:'numeric'})}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.15em',
-                        color: RISK_COLOR[kol.riskFlag] || '#6b7280',
-                        background: (RISK_COLOR[kol.riskFlag] || '#6b7280') + '15',
-                        padding: '2px 8px', borderRadius: 3 }}>
-                        {kol.riskFlag?.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </div>
+            {kols.map(kol => (
+              <a key={kol.handle} href={`/en/kol/${kol.handle}`} style={{ textDecoration: 'none', display: 'grid', gridTemplateColumns: '1fr 80px 120px 80px 80px 100px', gap: 12, padding: '14px 16px', background: '#0d1117', border: '1px solid #1e2330', borderRadius: 6, alignItems: 'center', transition: 'border-color 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = '#F85B05')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2330')}
+              >
+                {/* HANDLE */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1e2330', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F85B05', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+                    {(kol.displayName ?? kol.handle).slice(0, 1).toUpperCase()}
                   </div>
-
-                  {/* Stats */}
-                  <div style={{ display: 'flex', gap: 32 }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.15em' }}>RUGS</div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: '#f59e0b' }}>{kol.rugCount}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.15em' }}>SCAMMED</div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: '#ef4444' }}>
-                        {fmtUsd(kol.totalScammed)}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.15em' }}>DOCUMENTED</div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: '#F85B05' }}>
-                        {fmtUsd(kol.totalDocumented)}
-                      </div>
-                    </div>
+                  <div>
+                    <div style={{ color: '#f9fafb', fontSize: 13, fontWeight: 600 }}>@{kol.handle}</div>
+                    {kol.displayName && kol.displayName !== kol.handle && (
+                      <div style={{ color: '#6b7280', fontSize: 11 }}>{kol.displayName}</div>
+                    )}
                   </div>
-
-                  <div style={{ fontSize: 12, color: '#374151' }}>→</div>
+                  {kol.verified && (
+                    <span style={{ background: '#ef444422', border: '1px solid #ef444444', color: '#ef4444', fontSize: 8, fontWeight: 900, padding: '2px 6px', borderRadius: 3, letterSpacing: '0.12em', fontFamily: 'monospace' }}>VERIFIED</span>
+                  )}
                 </div>
-              </Link>
+
+                {/* TIER */}
+                <div style={{ color: tierColor[kol.tier ?? ''] ?? '#6b7280', fontFamily: 'monospace', fontWeight: 800, fontSize: 13 }}>
+                  {kol.tier ? `TIER ${kol.tier}` : '—'}
+                </div>
+
+                {/* HARM */}
+                <div style={{ color: kol.totalScammed ? '#ef4444' : '#6b7280', fontWeight: 700, fontSize: 13, fontFamily: 'monospace' }}>
+                  {fmtUsd(kol.totalScammed)}
+                </div>
+
+                {/* RUGS */}
+                <div style={{ color: kol.rugCount > 0 ? '#f97316' : '#6b7280', fontWeight: 700, fontSize: 13, fontFamily: 'monospace' }}>
+                  {kol.rugCount > 0 ? kol.rugCount : '—'}
+                </div>
+
+                {/* EVIDENCE */}
+                <div style={{ color: '#6b7280', fontSize: 11, fontFamily: 'monospace' }}>
+                  {kol._count.evidences} items
+                </div>
+
+                {/* LINK */}
+                <div style={{ textAlign: 'right', color: '#F85B05', fontSize: 10, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.1em' }}>
+                  VIEW →
+                </div>
+              </a>
             ))}
           </div>
         )}
 
-        {/* Footer */}
-        <div style={{ marginTop: 48, fontSize: 10, color: '#1f2937', textAlign: 'center' }}>
-          All data is derived from publicly accessible blockchain records and cited sources.{' '}
-          <Link href="/en/methodology" style={{ color: '#374151' }}>Methodology</Link>
-          {' · '}
-          <Link href="/en/correction" style={{ color: '#374151' }}>Request correction</Link>
+        {/* FOOTER */}
+        <div style={{ marginTop: 48, borderTop: '1px solid #1e2330', paddingTop: 20, color: '#374151', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.1em', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Not financial advice — INTERLIGENS Intelligence © 2026</span>
+          <a href="/en/methodology" style={{ color: '#4b5563', textDecoration: 'none' }}>METHODOLOGY →</a>
         </div>
       </div>
     </div>
