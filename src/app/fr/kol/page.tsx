@@ -22,6 +22,13 @@ const RISK_COLOR: Record<string, string> = {
   cleared:           '#10b981',
 }
 
+const RISK_LABEL: Record<string, string> = {
+  confirmed_scammer: 'ARNAQUEUR CONFIRMÉ',
+  suspected:         'SUSPECTÉ',
+  under_review:      'EN COURS D\'EXAMEN',
+  cleared:           'INNOCENTÉ',
+}
+
 const fmtUsd = (n?: number) => {
   if (!n) return '—'
   if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M'
@@ -29,7 +36,7 @@ const fmtUsd = (n?: number) => {
   return '$' + n.toFixed(0)
 }
 
-export default function KolListPage() {
+export default function KolListPageFR() {
   const [kols, setKols] = useState<KolSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<'totalScammed'|'rugCount'|'totalDocumented'>('totalScammed')
@@ -50,13 +57,13 @@ export default function KolListPage() {
         {/* Header */}
         <div style={{ marginBottom: 40 }}>
           <div style={{ fontSize: 10, color: '#F85B05', letterSpacing: '0.3em', marginBottom: 8 }}>
-            INTERLIGENS — INTELLIGENCE DATABASE
+            INTERLIGENS — BASE DE DONNÉES D'INTELLIGENCE
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 900, color: '#f1f5f9', margin: 0, letterSpacing: '-0.02em' }}>
-            KOL THREAT REGISTRY
+            REGISTRE DES MENACES KOL
           </h1>
           <p style={{ fontSize: 12, color: '#4b5563', marginTop: 8 }}>
-            Verified on-chain investigations. All claims source-attributed or blockchain-verified.
+            Investigations on-chain vérifiées. Toutes les affirmations sont sourcées ou vérifiées sur la blockchain.
           </p>
         </div>
 
@@ -69,7 +76,7 @@ export default function KolListPage() {
               background: sort === s ? '#F85B05' : '#111',
               color: sort === s ? '#fff' : '#4b5563',
             }}>
-              {s === 'totalScammed' ? 'TOTAL SCAMMED' : s === 'rugCount' ? 'RUG COUNT' : 'DOCUMENTED'}
+              {s === 'totalScammed' ? 'TOTAL ARNAQUÉ' : s === 'rugCount' ? 'NB. DE RUGS' : 'DOCUMENTÉ'}
             </button>
           ))}
         </div>
@@ -78,17 +85,17 @@ export default function KolListPage() {
         {!loading && (
           <div style={{ display: 'flex', gap: 24, marginBottom: 32, padding: '16px 20px', background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8 }}>
             <div>
-              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>PROFILES</div>
+              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>PROFILS</div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#f1f5f9' }}>{kols.length}</div>
             </div>
             <div>
-              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>TOTAL SCAMMED</div>
+              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>TOTAL ARNAQUÉ</div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#ef4444' }}>
                 {fmtUsd(kols.reduce((a, k) => a + (k.totalScammed || 0), 0))}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>DOCUMENTED ON-CHAIN</div>
+              <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.2em' }}>DOCUMENTÉ ON-CHAIN</div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#F85B05' }}>
                 {fmtUsd(kols.reduce((a, k) => a + (k.totalDocumented || 0), 0))}
               </div>
@@ -106,7 +113,7 @@ export default function KolListPage() {
         {loading ? (
           <div style={{ color: '#374151', fontSize: 12 }}>Chargement...</div>
         ) : sorted.length === 0 ? (
-          <div style={{ color: '#374151', fontSize: 12 }}>No profiles yet.</div>
+          <div style={{ color: '#374151', fontSize: 12 }}>Aucun profil pour le moment.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {sorted.map((kol, i) => (
@@ -134,13 +141,13 @@ export default function KolListPage() {
                       {kol.verified && (
                         <span style={{ fontSize: 8, fontWeight: 900, color: '#10b981', letterSpacing: '0.15em',
                           background: '#10b98115', padding: '2px 6px', borderRadius: 3 }}>
-                          VERIFIED
+                          VÉRIFIÉ
                         </span>
                       )}
                       {kol.exitDate && (
                         <span style={{ fontSize: 8, fontWeight: 900, color: '#ef4444', letterSpacing: '0.15em',
                           background: '#ef444415', padding: '2px 6px', borderRadius: 3 }}>
-                          EXIT {new Date(kol.exitDate).toLocaleDateString('en-US', {month:'short',year:'numeric'})}
+                          EXIT {new Date(kol.exitDate).toLocaleDateString('fr-FR', {month:'short',year:'numeric'})}
                         </span>
                       )}
                     </div>
@@ -149,7 +156,7 @@ export default function KolListPage() {
                         color: RISK_COLOR[kol.riskFlag] || '#6b7280',
                         background: (RISK_COLOR[kol.riskFlag] || '#6b7280') + '15',
                         padding: '2px 8px', borderRadius: 3 }}>
-                        {kol.riskFlag?.replace('_', ' ').toUpperCase()}
+                        {RISK_LABEL[kol.riskFlag] || kol.riskFlag?.replace('_', ' ').toUpperCase()}
                       </span>
                     </div>
                   </div>
@@ -161,13 +168,13 @@ export default function KolListPage() {
                       <div style={{ fontSize: 18, fontWeight: 900, color: '#f59e0b' }}>{kol.rugCount}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.15em' }}>SCAMMED</div>
+                      <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.15em' }}>ARNAQUÉ</div>
                       <div style={{ fontSize: 18, fontWeight: 900, color: '#ef4444' }}>
                         {fmtUsd(kol.totalScammed)}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.15em' }}>DOCUMENTED</div>
+                      <div style={{ fontSize: 9, color: '#374151', letterSpacing: '0.15em' }}>DOCUMENTÉ</div>
                       <div style={{ fontSize: 18, fontWeight: 900, color: '#F85B05' }}>
                         {fmtUsd(kol.totalDocumented)}
                       </div>
@@ -183,10 +190,10 @@ export default function KolListPage() {
 
         {/* Footer */}
         <div style={{ marginTop: 48, fontSize: 10, color: '#1f2937', textAlign: 'center' }}>
-          All data is derived from publicly accessible blockchain records and cited sources.{' '}
-          <Link href="/en/methodology" style={{ color: '#374151' }}>Methodology</Link>
+          Toutes les données sont issues d'enregistrements blockchain publics et de sources citées.{' '}
+          <Link href="/fr/methodology" style={{ color: '#374151' }}>Méthodologie</Link>
           {' · '}
-          <Link href="/en/correction" style={{ color: '#374151' }}>Request correction</Link>
+          <Link href="/fr/correction" style={{ color: '#374151' }}>Demander une correction</Link>
         </div>
       </div>
     </div>
