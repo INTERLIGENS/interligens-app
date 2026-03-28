@@ -9,9 +9,9 @@ interface CashoutProofProps {
 
 const CA_MAP: Record<string, string | null> = {
   'BOTIFY-MAIN':   'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb',
-  'GHOST-RUG':     'De4ULouuU2cAQkhKuYrsrFtJGRRmcSwQD5esmnAUpump',
+  'GHOST-RUG':     'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb',
   'DIONE-RUG':     'De4ULouuU2cAQkhKuYrsrFtJGRRmcSwQD5esmnAUpump',
-  'SERIAL-12RUGS': null,
+  'SERIAL-12RUGS': 'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb',
 }
 
 export default function CashoutProof({ handle, caseId, tokenCA }: CashoutProofProps) {

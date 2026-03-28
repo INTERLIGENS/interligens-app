@@ -1,77 +1,158 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
 
-export const dynamic = 'force-dynamic'
+const prisma = new PrismaClient();
+const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`;
 
-const HELIUS = process.env.HELIUS_API_KEY ?? ''
-const BOTIFY_CA = 'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb'
-const DIONE_CA  = 'De4ULouuU2cAQkhKuYrsrFtJGRRmcSwQD5esmnAUpump'
-
-async function fetchWalletTx(address: string, ca: string, before?: string): Promise<any[]> {
-  const url = `https://api.helius.xyz/v0/addresses/${address}/transactions?api-key=${HELIUS}&limit=100${before ? '&before=' + before : ''}`
-  const res = await fetch(url, { signal: AbortSignal.timeout(12000) })
-  if (!res.ok) return []
-  const txs = await res.json()
-  if (!Array.isArray(txs)) return []
-  const found: any[] = []
-  for (const t of txs) {
-    for (const tr of (t.tokenTransfers ?? [])) {
-      if (tr.mint === ca) {
-        found.push({
-          sig: t.signature,
-          type: t.type,
-          timestamp: t.timestamp,
-          date: new Date(t.timestamp * 1000).toISOString().slice(0,10),
-          tokenAmount: tr.tokenAmount,
-          from: tr.fromUserAccount,
-          to: tr.toUserAccount,
-          mint: ca,
-          solscanUrl: 'https://solscan.io/tx/' + t.signature,
-        })
-      }
-    }
-  }
-  return found
+async function helius(method: string, params: any[]) {
+  const res = await fetch(HELIUS_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  const j = await res.json();
+  return j.result ?? null;
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ handle: string }> }) {
-  const { handle } = await params
-  const h = decodeURIComponent(handle).trim().toLowerCase().replace(/^@/, '')
-  const caFilter = req.nextUrl.searchParams.get('ca')
+async function getTokenTransfers(walletAddress: string, tokenCA: string) {
+  const receives: any[] = [];
+  const sells: any[] = [];
 
-  try {
-    const wallets: any[] = await prisma.$queryRawUnsafe(
-      `SELECT * FROM "public"."KolWallet" WHERE "kolHandle" = $1`, h
-    )
-    if (!wallets.length) return NextResponse.json({ found: false, txs: [] })
+  // 1. Trouver le token account du wallet pour ce CA
+  const tokenAccounts = await helius("getTokenAccountsByOwner", [
+    walletAddress,
+    { mint: tokenCA },
+    { encoding: "jsonParsed" },
+  ]);
 
-    const CAS = caFilter ? [caFilter] : [BOTIFY_CA, DIONE_CA]
-    const allTxs: any[] = []
+  if (!tokenAccounts?.value?.length) return { receives, sells };
 
-    for (const w of wallets) {
-      for (const ca of CAS) {
-        // Page 1
-        const p1 = await fetchWalletTx(w.address, ca)
-        allTxs.push(...p1.map(t => ({ ...t, walletLabel: w.label, walletAddress: w.address })))
+  const tokenAccount = tokenAccounts.value[0].pubkey;
 
-        // Page 2 if needed
-        if (p1.length === 100) {
-          const last = p1[p1.length - 1]
-          const p2 = await fetchWalletTx(w.address, ca, last.sig)
-          allTxs.push(...p2.map(t => ({ ...t, walletLabel: w.label, walletAddress: w.address })))
+  // 2. Récupérer les signatures sur ce token account
+  const sigs = await helius("getSignaturesForAddress", [
+    tokenAccount,
+    { limit: 40 },
+  ]);
+  if (!sigs?.length) return { receives, sells };
+
+  // 3. Parser chaque transaction
+  for (const sigInfo of sigs.slice(0, 30)) {
+    try {
+      const tx = await helius("getTransaction", [
+        sigInfo.signature,
+        { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
+      ]);
+      if (!tx || tx.meta?.err) continue;
+
+      const blockTime = tx.blockTime;
+      const date = blockTime ? new Date(blockTime * 1000).toISOString() : null;
+      const solscanUrl = `https://solscan.io/tx/${sigInfo.signature}`;
+
+      const pre = tx.meta?.preTokenBalances ?? [];
+      const post = tx.meta?.postTokenBalances ?? [];
+
+      // Trouver les changements de balance pour ce wallet
+      for (const preEntry of pre) {
+        if (preEntry.mint !== tokenCA) continue;
+        const postEntry = post.find((p: any) => p.accountIndex === preEntry.accountIndex);
+        const preBal = parseFloat(preEntry.uiTokenAmount?.uiAmountString ?? "0");
+        const postBal = parseFloat(postEntry?.uiTokenAmount?.uiAmountString ?? "0");
+        const diff = postBal - preBal;
+
+        if (diff > 0.01) {
+          // tokens reçus = receive (insider allocation / transfer entrant)
+          const from = tx.transaction?.message?.accountKeys?.[0]?.pubkey ?? "unknown";
+          receives.push({
+            tokenAmount: diff.toFixed(2),
+            date,
+            from,
+            solscanUrl,
+          });
+        } else if (diff < -0.01) {
+          // tokens sortants = sell / swap
+          sells.push({
+            tokenAmount: Math.abs(diff).toFixed(2),
+            date,
+            walletAddress,
+            solscanUrl,
+          });
         }
       }
+    } catch {
+      continue;
+    }
+  }
+
+  return { receives, sells };
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ handle: string }> }
+) {
+  const { handle } = await params;
+  const { searchParams } = new URL(req.url);
+  const ca = searchParams.get("ca");
+
+  try {
+    const profile = await prisma.kolProfile.findUnique({
+      where: { handle },
+      include: { kolWallets: true },
+    });
+
+    if (!profile) {
+      return NextResponse.json({ error: "KOL not found" }, { status: 404 });
     }
 
-    // Sort by timestamp desc
-    allTxs.sort((a, b) => b.timestamp - a.timestamp)
+    if (!ca) {
+      return NextResponse.json({ found: false, receives: [], sells: [], total: 0, reason: "No token CA provided" });
+    }
 
-    // Separate receives vs sells
-    const receives = allTxs.filter(t => t.type === 'TRANSFER' && wallets.some(w => w.address === t.to))
-    const sells    = allTxs.filter(t => t.type === 'SWAP' || (t.type === 'TRANSFER' && wallets.some(w => w.address === t.from)))
+    if (!process.env.HELIUS_API_KEY) {
+      return NextResponse.json({ fallback: true, message: "Helius API key not configured" }, { status: 503 });
+    }
 
-    return NextResponse.json({ found: true, total: allTxs.length, receives, sells, all: allTxs.slice(0, 50) })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    const solWallets = profile.kolWallets.filter(
+      (w) => w.status === "active" && w.chain?.toUpperCase() === "SOL"
+    );
+
+    if (!solWallets.length) {
+      return NextResponse.json({ found: false, receives: [], sells: [], total: 0, reason: "No SOL wallets on record" });
+    }
+
+    const allReceives: any[] = [];
+    const allSells: any[] = [];
+
+    for (const wallet of solWallets) {
+      const { receives, sells } = await getTokenTransfers(wallet.address, ca);
+      allReceives.push(...receives);
+      allSells.push(...sells);
+    }
+
+    // Trier par date décroissante
+    const sortByDate = (a: any, b: any) =>
+      new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime();
+    allReceives.sort(sortByDate);
+    allSells.sort(sortByDate);
+
+    const total = allReceives.length + allSells.length;
+
+    return NextResponse.json({
+      found: total > 0,
+      receives: allReceives,
+      sells: allSells,
+      total,
+      walletCount: solWallets.length,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error("[cashout]", err);
+    return NextResponse.json(
+      { fallback: true, message: "RPC unavailable", error: err.message },
+      { status: 503 }
+    );
+  } finally {
+    await prisma.$disconnect();
   }
 }

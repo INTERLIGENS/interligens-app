@@ -195,9 +195,7 @@ export default function KOLPage() {
                           {c.sourceLabel ?? 'Source'} →
                         </a>
                       )}
-                      {(c.claimType === 'verified_onchain' || c.claimType === 'source_attributed') && (
-                        <CashoutProof handle={kol.handle} caseId={c.caseId} />
-                      )}
+                      <CashoutProof handle={kol.handle} caseId={c.caseId} />
                     </div>
                   </div>
                 )

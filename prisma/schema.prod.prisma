@@ -384,6 +384,7 @@ model KolProfile {
   last_reviewed_at DateTime?
   version_note     String?
   publishable     Boolean       @default(false)
+  cashoutCache    Json?
   kolCases        KolCase[]
   evidences       KolEvidence[]
   kolWallets      KolWallet[]
