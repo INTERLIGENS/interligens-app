@@ -380,6 +380,8 @@ model KolProfile {
   exitNarrative   String?
   exitPostUrl     String?
   totalDocumented Float?        @default(0)
+  last_reviewed_at DateTime?
+  version_note     String?
   kolCases        KolCase[]
   evidences       KolEvidence[]
   kolWallets      KolWallet[]

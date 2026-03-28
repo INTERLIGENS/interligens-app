@@ -230,6 +230,20 @@ export default function KOLPage() {
           </div>
         )}
 
+
+        {/* ── LAST REVIEWED ── */}
+        {(kol as any).last_reviewed_at && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 16px', background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8 }}>
+            <span style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em' }}>LAST REVIEWED</span>
+            <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#4b5563' }}>
+              {new Date((kol as any).last_reviewed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+            {(kol as any).version_note && (
+              <span style={{ fontSize: 10, color: '#6b7280', borderLeft: '1px solid #1f2937', paddingLeft: 12 }}>{(kol as any).version_note}</span>
+            )}
+          </div>
+        )}
+
         {/* ── EVIDENCE STANDARD ── */}
         <div style={{ background: '#0a0a0a', border: '1px solid #1f293788', borderRadius: 10, padding: '18px 22px', marginBottom: 20 }}>
           <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 10 }}>EVIDENCE STANDARD — IMPORTANT NOTICE</div>
