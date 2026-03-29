@@ -71,8 +71,26 @@ async function getTokenTransfers(walletAddress: string, tokenCA: string) {
           });
         } else if (diff < -0.01) {
           // tokens sortants = sell / swap
+          // Calculer USD reçu via changement balance SOL
+          const accountKeys = tx.transaction?.message?.accountKeys ?? [];
+          const walletIndex = accountKeys.findIndex((k: any) => 
+            (k.pubkey ?? k) === walletAddress
+          );
+          let amountUsd = null;
+          if (walletIndex >= 0) {
+            const preSol = (tx.meta?.preBalances?.[walletIndex] ?? 0) / 1e9;
+            const postSol = (tx.meta?.postBalances?.[walletIndex] ?? 0) / 1e9;
+            const solReceived = postSol - preSol;
+            if (solReceived > 0.001) {
+              // Prix SOL historique approximatif basé sur la date
+              const txYear = blockTime ? new Date(blockTime * 1000).getFullYear() : 2025;
+              const solPrice = txYear >= 2026 ? 185 : txYear === 2025 ? 145 : 120;
+              amountUsd = parseFloat((solReceived * solPrice).toFixed(2));
+            }
+          }
           sells.push({
             tokenAmount: Math.abs(diff).toFixed(2),
+            amountUsd,
             date,
             walletAddress,
             solscanUrl,

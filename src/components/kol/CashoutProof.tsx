@@ -9,7 +9,9 @@ interface CashoutProofProps {
 
 const CA_MAP: Record<string, string | null> = {
   'BOTIFY-MAIN':   'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb',
+  'BOTIFY':        'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb',
   'GHOST-RUG':     'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb',
+  'GHOST':         'De4ULouuU2cAQkhKuYrsrFtJGRRmcSwQD5esmnAUpump',
   'DIONE-RUG':     'De4ULouuU2cAQkhKuYrsrFtJGRRmcSwQD5esmnAUpump',
   'SERIAL-12RUGS': 'BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb',
 }
@@ -78,6 +80,7 @@ export default function CashoutProof({ handle, caseId, tokenCA }: CashoutProofPr
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', borderBottom: '1px solid #0f172a' }}>
               <span style={{ background: '#ef444422', color: '#ef4444', fontSize: 8, fontWeight: 900, padding: '2px 7px', borderRadius: 3, flexShrink: 0 }}>OUT</span>
               <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#94a3b8' }}>{Number(tx.tokenAmount).toLocaleString()} tokens</span>
+              {tx.amountUsd && <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#10b981', fontWeight: 700 }}>${tx.amountUsd.toLocaleString()}</span>}
               <span style={{ fontSize: 9, color: '#374151' }}>{fmtDate(tx.date)}</span>
               <span style={{ fontSize: 9, color: '#4b5563' }}>{truncAddr(tx.walletAddress)}</span>
               <a href={tx.solscanUrl} target="_blank" style={{ marginLeft: 'auto', fontSize: 8, fontWeight: 900, color: '#F85B05', textDecoration: 'none', fontFamily: 'monospace', flexShrink: 0 }}>TX →</a>
