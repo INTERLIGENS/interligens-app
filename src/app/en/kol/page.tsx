@@ -6,11 +6,13 @@ interface KolRow {
   displayName?: string
   tier?: string
   totalScammed?: number
+  totalProceedsUsd?: number
   rugCount: number
   followerCount?: number
   riskFlag?: string
   verified: boolean
-  _count: { evidences: number; kolCases: number }
+  evidenceCount: number
+  caseCount: number
 }
 
 export default function KolListingPage() {
@@ -21,7 +23,7 @@ export default function KolListingPage() {
     fetch('/api/v1/kol?limit=100')
       .then(r => r.json())
       .then(d => {
-        const sorted = (d.profiles ?? []).sort((a: KolRow, b: KolRow) => {
+        const sorted = (d.results ?? d.profiles ?? []).sort((a: KolRow, b: KolRow) => {
           const diff = (b.totalScammed ?? 0) - (a.totalScammed ?? 0)
           if (diff !== 0) return diff
           return b.rugCount - a.rugCount
@@ -111,17 +113,18 @@ export default function KolListingPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* TABLE HEADER */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 80px 80px 100px', gap: 12, padding: '8px 16px', color: '#4b5563', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 80px 80px 110px 100px', gap: 12, padding: '8px 16px', color: '#4b5563', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em' }}>
               <div>HANDLE</div>
               <div>TIER</div>
               <div>HARM (USD)</div>
               <div>RUGS</div>
               <div>EVIDENCE</div>
+              <div>OBS. PROCEEDS</div>
               <div style={{ textAlign: 'right' }}>PROFILE</div>
             </div>
 
             {kols.map(kol => (
-              <a key={kol.handle} href={`/en/kol/${kol.handle}`} style={{ textDecoration: 'none', display: 'grid', gridTemplateColumns: '1fr 80px 120px 80px 80px 100px', gap: 12, padding: '14px 16px', background: '#0d1117', border: '1px solid #1e2330', borderRadius: 6, alignItems: 'center', transition: 'border-color 0.15s' }}
+              <a key={kol.handle} href={`/en/kol/${kol.handle}`} style={{ textDecoration: 'none', display: 'grid', gridTemplateColumns: '1fr 80px 120px 80px 80px 110px 100px', gap: 12, padding: '14px 16px', background: '#0d1117', border: '1px solid #1e2330', borderRadius: 6, alignItems: 'center', transition: 'border-color 0.15s' }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = '#F85B05')}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2330')}
               >
@@ -151,6 +154,11 @@ export default function KolListingPage() {
                   {fmtUsd(kol.totalScammed)}
                 </div>
 
+                {/* OBS. PROCEEDS */}
+                <div style={{ color: kol.totalProceedsUsd ? '#FFB800' : '#6b7280', fontWeight: 700, fontSize: 13, fontFamily: 'monospace' }}>
+                  {kol.totalProceedsUsd ? fmtUsd(kol.totalProceedsUsd) : '—'}
+                </div>
+
                 {/* RUGS */}
                 <div style={{ color: kol.rugCount > 0 ? '#f97316' : '#6b7280', fontWeight: 700, fontSize: 13, fontFamily: 'monospace' }}>
                   {kol.rugCount > 0 ? kol.rugCount : '—'}
@@ -158,7 +166,7 @@ export default function KolListingPage() {
 
                 {/* EVIDENCE */}
                 <div style={{ color: '#6b7280', fontSize: 11, fontFamily: 'monospace' }}>
-                  {kol._count.evidences} items
+                  {kol.evidenceCount} items
                 </div>
 
                 {/* LINK */}

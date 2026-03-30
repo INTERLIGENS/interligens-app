@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { getPriceAtDate } from "@/lib/kol/pricing";
 
 const prisma = new PrismaClient();
 const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`;
@@ -82,10 +83,10 @@ async function getTokenTransfers(walletAddress: string, tokenCA: string) {
             const postSol = (tx.meta?.postBalances?.[walletIndex] ?? 0) / 1e9;
             const solReceived = postSol - preSol;
             if (solReceived > 0.001) {
-              // Prix SOL historique approximatif basé sur la date
-              const txYear = blockTime ? new Date(blockTime * 1000).getFullYear() : 2025;
-              const solPrice = txYear >= 2026 ? 185 : txYear === 2025 ? 145 : 120;
-              amountUsd = parseFloat((solReceived * solPrice).toFixed(2));
+              // Prix SOL historique via Coingecko
+              const txDate = blockTime ? new Date(blockTime * 1000).toISOString() : new Date().toISOString();
+              const { price: solPrice } = await getPriceAtDate("SOL", txDate);
+              amountUsd = solPrice > 0 ? parseFloat((solReceived * solPrice).toFixed(2)) : null;
             }
           }
           sells.push({

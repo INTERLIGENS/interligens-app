@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     ...(platform ? { platform } : {}),
   };
 
-  const [profiles, total] = await Promise.all([
+  const [profiles, total, proceedsList] = await Promise.all([
     prisma.kolProfile.findMany({
       where,
       take: limit,
@@ -37,28 +37,36 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.kolProfile.count({ where }),
+    prisma.$queryRaw`SELECT "kolHandle", "totalProceedsUsd", confidence as "proceedsConfidence" FROM "KolProceedsSummary"` as Promise<any[]>,
   ]);
+
+  const proceedsMap = new Map(proceedsList.map((r: any) => [r.kolHandle, r]));
 
   return NextResponse.json({
     version: "1.0",
     total,
     limit,
     offset,
-    results: profiles.map((p) => ({
-      handle: p.handle,
-      displayName: p.displayName,
-      label: p.label,
-      platform: p.platform,
-      followerCount: p.followerCount,
-      tier: p.tier,
-      riskFlag: p.riskFlag,
-      confidence: p.confidence,
-      verified: p.verified,
-      rugCount: p.rugCount,
-      totalScammed: p.totalScammed,
-      evidenceCount: p._count.evidences,
-      caseCount: p._count.kolCases,
-      profileUrl: `https://interligens.com/en/kol/${p.handle}`,
-    })),
+    results: profiles.map((p) => {
+      const proceeds = proceedsMap.get(p.handle);
+      return {
+        handle: p.handle,
+        displayName: p.displayName,
+        label: p.label,
+        platform: p.platform,
+        followerCount: p.followerCount,
+        tier: p.tier,
+        riskFlag: p.riskFlag,
+        confidence: p.confidence,
+        verified: p.verified,
+        rugCount: p.rugCount,
+        totalScammed: p.totalScammed,
+        evidenceCount: p._count.evidences,
+        caseCount: p._count.kolCases,
+        totalProceedsUsd: proceeds?.totalProceedsUsd ?? null,
+        proceedsConfidence: proceeds?.proceedsConfidence ?? null,
+        profileUrl: `https://interligens.com/en/kol/${p.handle}`,
+      };
+    }),
   });
 }

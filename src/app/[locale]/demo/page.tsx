@@ -11,6 +11,9 @@ import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
+import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
+import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
+import type { Locale } from "@/lib/explanation/types";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -175,6 +178,8 @@ function TigerScanPageInner() {
   }, [loading]);
 
   const chain = useMemo(() => detectChain(address), [address]);
+  const analysisSummary = useMemo(() => result ? normalizeToAnalysisSummary({ ...result, address: address.trim() }) : null, [result, address]);
+  const explanationLocale = (locale === "fr" ? "fr" : "en") as Locale;
 
   // ── Autoload depuis URL params ──
   useEffect(() => {
@@ -488,6 +493,10 @@ function TigerScanPageInner() {
                 ))}
               </div>
 
+              {analysisSummary && (
+                <div className="mt-4 p-3 border border-green-500 text-green-400 text-xs">DEBUG: analysisSummary OK score={analysisSummary.tigerScore} verdict={analysisSummary.verdict}</div>
+              )}
+
               <button
                 onClick={async () => {
                   if (!result) return;
@@ -505,7 +514,7 @@ function TigerScanPageInner() {
               >
                 Generate Full Report (PDF)
               </button>
-                <button
+              <button
                   onClick={async () => {
                     if (!result) return;
                     const res = await fetch(`/api/report/casefile?mint=${encodeURIComponent(address.trim())}&mock=1`);

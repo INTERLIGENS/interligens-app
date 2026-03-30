@@ -11,6 +11,9 @@ import CaseFileCTA from "@/components/CaseFileCTA";
 import QuickDemoBar from "@/components/demo/QuickDemoBar";
 import { DEMO_PRESETS, type DemoScenario } from "@/lib/demo/presets";
 import WhatToDoNow from "@/components/WhatToDoNow";
+import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
+import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
+import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
 import AnalyzingCard from "@/components/scan/AnalyzingCard";
@@ -202,6 +205,8 @@ export default function TigerScanPage() {
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
+  const analysisSummary = useMemo(() => result ? normalizeToAnalysisSummary({ ...result, address: address.trim() }) : null, [result, address]);
+  const explanationLocale = "en" as Locale;
   const [debug] = React.useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1");
 
   // Mock mode + scenario state
@@ -614,6 +619,13 @@ export default function TigerScanPage() {
 
               <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
+                            <a href="/en/demo/why" className="inline-flex items-center gap-2 mt-6 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white transition-all border border-[#F85B05]/40 hover:border-[#F85B05] bg-[#F85B05]/8 hover:bg-[#F85B05]/15 px-5 py-2.5 rounded-lg shadow-[0_0_12px_rgba(248,91,5,0.08)]">
+                Why this score?
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.5 6h7M6.5 2.5l3 3.5-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
+
               <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 mb-1 mt-2">Here&apos;s why this matters.</p>
               <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{finalVerdict}</h2>
               <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
@@ -644,6 +656,10 @@ export default function TigerScanPage() {
                 >
                   Investigation available ({corrobData.score}/100) →
                 </a>
+              )}
+
+                            {analysisSummary && (
+                <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
               )}
 
               <button

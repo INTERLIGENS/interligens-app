@@ -1,6 +1,7 @@
 'use client'
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
+import ProceedsCard from '@/components/kol/ProceedsCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
@@ -157,6 +158,8 @@ export default function KOLPage() {
         <KolNarrative kol={{ ...kol, followerCount: followers }} />
 
         {/* ── DOCUMENTED CASE HISTORY ── */}
+        <ProceedsCard handle={kol.handle} lang="en" />
+
         {(kol?.caseLinks?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>

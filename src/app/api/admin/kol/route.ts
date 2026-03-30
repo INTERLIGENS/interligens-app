@@ -15,7 +15,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = requireAdminApi(req)
   if (auth) return auth
-  const data = await req.json()
-  const kol = await prisma.kOLProfile.create({ data })
-  return NextResponse.json(kol, { status: 201 })
+  try {
+    const data = await req.json()
+    const kol = await prisma.kolProfile.create({ data })
+    return NextResponse.json(kol, { status: 201 })
+  } catch (e: any) {
+    console.error('[KOL POST]', e)
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
 }
