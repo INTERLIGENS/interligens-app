@@ -494,7 +494,7 @@ function TigerScanPageInner() {
               </div>
 
               {analysisSummary && (
-                <div className="mt-4 p-3 border border-green-500 text-green-400 text-xs">DEBUG: analysisSummary OK score={analysisSummary.tigerScore} verdict={analysisSummary.verdict}</div>
+                <ExplanationLayer summary={analysisSummary} locale={locale} />
               )}
 
               <button

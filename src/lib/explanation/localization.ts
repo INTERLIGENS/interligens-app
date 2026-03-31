@@ -57,3 +57,40 @@ export const VERDICT_SUMMARY_INTRO: Record<Verdict, Record<Locale, string>> = {
     fr: 'Le scan a relevé des indicateurs de risque critiques, avec un score de {score}/100.',
   },
 }
+
+// ── Phase 1B strings ──────────────────────────────────────────────────────────
+
+export const ASK_MORE_LABEL: Record<Locale, string> = {
+  en: 'Ask more about this scan',
+  fr: 'Poser une question sur ce scan',
+}
+
+export const INPUT_PLACEHOLDER: Record<Locale, string> = {
+  en: 'e.g. What does the deployer risk mean?',
+  fr: 'ex. Que signifie le risque déployeur ?',
+}
+
+export const ASK_BUTTON: Record<Locale, string> = {
+  en: 'Ask',
+  fr: 'Demander',
+}
+
+export const SCOPE_NOTICE: Record<Locale, string> = {
+  en: 'Analysis of this scan only.',
+  fr: 'Analyse de ce scan uniquement.',
+}
+
+export const REFUSAL_RESPONSE: Record<Locale, string> = {
+  en: 'This question is outside the scope of this scan. INTERLIGENS does not provide investment advice or market commentary.',
+  fr: "Cette question dépasse le cadre de ce scan. INTERLIGENS ne fournit pas de conseils en investissement ni de commentaires de marché.",
+}
+
+export const FALLBACK_RESPONSE: Record<Locale, string> = {
+  en: 'In-depth analysis is temporarily unavailable. The scan result above contains all critical information.',
+  fr: "L'analyse approfondie est temporairement indisponible. Le résultat du scan ci-dessus contient toutes les informations essentielles.",
+}
+
+export const THINKING_LABEL: Record<Locale, string> = {
+  en: 'Analyzing scan evidence…',
+  fr: 'Analyse des données du scan…',
+}

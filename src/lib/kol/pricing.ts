@@ -25,7 +25,7 @@ const YEARLY_FALLBACK: Record<string, Record<number, number>> = {
 
 export type PricingSource =
   | "stablecoin"
-  | "coingecko_historical"
+  | "binance_historical"
   | "yearly_fallback"
   | "inferred_swap_value"
   | "unavailable"
@@ -91,11 +91,11 @@ export async function getPriceAtDate(
           try {
             await prisma.$executeRawUnsafe(`
               INSERT INTO "PriceCache" (symbol, "dateOnly", "priceUsd", source)
-              VALUES ($1, $2, $3, 'coingecko_historical')
+              VALUES ($1, $2, $3, 'binance_historical')
               ON CONFLICT (symbol, "dateOnly") DO NOTHING
             `, upper, dateOnly, close);
           } catch { /* non-blocking */ }
-          const result = { price: close, source: "coingecko_historical" as PricingSource };
+          const result = { price: close, source: "binance_historical" as PricingSource };
           memCache.set(memKey, result);
           return result;
         }
