@@ -12,121 +12,154 @@ function noData(intent: ChipIntent, locale: Locale): AnswerBlock {
 }
 
 const handlers: Record<ChipIntent, Handler> = {
+
   why_score(summary, locale) {
-    const reasons =
-      summary.topReasons.length > 0
-        ? summary.topReasons.join('; ')
-        : locale === 'fr' ? 'plusieurs signaux combinés' : 'multiple combined signals'
-    const body =
-      locale === 'fr'
-        ? `Le TigerScore™ de ${summary.tigerScore}/100 reflète l'analyse combinée de plusieurs branches d'intelligence. Les principaux contributeurs sont : ${reasons}.`
-        : `The TigerScore™ of ${summary.tigerScore}/100 reflects the combined analysis across multiple intelligence branches. The main contributors are: ${reasons}.`
-    return { title: title('why_score', locale), body }
+    const reasons = summary.topReasons.length > 0
+      ? summary.topReasons.slice(0, 3).map((r, i) => (i + 1) + ". " + r).join("\n")
+      : null
+
+    if (locale === "fr") {
+      const intro = `Ce score de ${summary.tigerScore}/100 vient de signaux détectés directement dans les données du scan.`
+      const body = reasons ? `${intro}
+${reasons}` : `${intro} Plusieurs branches d'analyse ont contribué au résultat.`
+      return { title: title("why_score", locale), body }
+    }
+
+    const intro = `This score of ${summary.tigerScore}/100 comes from signals found directly in the scan data.`
+    const body = reasons ? `${intro}
+${reasons}` : `${intro} Multiple analysis branches contributed to the result.`
+    return { title: title("why_score", locale), body }
   },
 
   top_red_flags(summary, locale) {
-    if (summary.topReasons.length === 0) return noData('top_red_flags', locale)
-    const list = summary.topReasons.map((r, i) => `${i + 1}. ${r}`).join('\n')
-    const intro = locale === 'fr' ? 'Le scan a identifié les signaux suivants :' : 'The scan identified the following signals:'
-    return { title: title('top_red_flags', locale), body: `${intro}\n${list}` }
+    if (summary.topReasons.length === 0) return noData("top_red_flags", locale)
+    const list = summary.topReasons.slice(0, 3).map((r, i) => (i + 1) + ". " + r).join("\n")
+    if (locale === "fr") {
+      return { title: title("top_red_flags", locale), body: `Voici ce que le scan a trouvé :
+${list}` }
+    }
+    return { title: title("top_red_flags", locale), body: `Here is what the scan found:
+${list}` }
   },
 
   what_to_do(summary, locale) {
     if (summary.whatToDoNow) {
-      return { title: title('what_to_do', locale), body: summary.whatToDoNow }
+      return { title: title("what_to_do", locale), body: summary.whatToDoNow }
     }
-    const body: Record<string, Record<Locale, string>> = {
+    const map: Record<string, Record<Locale, string>> = {
       LOW: {
-        en: 'The scan result is low risk. Continue monitoring as conditions may change.',
-        fr: 'Le résultat du scan est à faible risque. Continuez à surveiller, les conditions peuvent évoluer.',
+        en: "No major flags right now. Still worth checking back if anything changes.",
+        fr: "Pas de gros signal pour l’instant. Revérifiez si la situation évolue.",
       },
       MODERATE: {
-        en: 'Exercise caution. Review the flagged signals before making any decision.',
-        fr: 'Faites preuve de prudence. Examinez les signaux relevés avant toute décision.',
+        en: "Some signals here. Look at the red flags before doing anything.",
+        fr: "Quelques signaux à surveiller. Regardez les alertes avant de faire quoi que ce soit.",
       },
       HIGH: {
-        en: 'High risk detected. Avoid interaction until the flagged signals are resolved or independently verified.',
-        fr: "Risque élevé détecté. Évitez toute interaction jusqu'à ce que les signaux soient résolus ou vérifiés de façon indépendante.",
+        en: "High risk. Avoid interacting with this until you understand exactly what is flagged.",
+        fr: "Risque élevé. Évitez toute interaction avant de comprendre ce qui est signalé.",
       },
       CRITICAL: {
-        en: 'Critical risk indicators were found. Strongly avoid interaction with this contract or token.',
-        fr: 'Des indicateurs de risque critiques ont été relevés. Évitez fortement toute interaction avec ce contrat ou token.',
+        en: "Do not interact. Swap, sign, approve — none of it. The scan found serious issues.",
+        fr: "N’interagissez pas. Ni swap, ni signature, ni approbation. Le scan a détecté des problèmes graves.",
       },
     }
-    return { title: title('what_to_do', locale), body: body[summary.verdict][locale] }
+    return { title: title("what_to_do", locale), body: map[summary.verdict][locale] }
   },
 
   deployer_risk(summary, locale) {
-    if (!summary.deployerRisk || summary.deployerRisk === 'NONE') return noData('deployer_risk', locale)
-    const level: Record<string, Record<Locale, string>> = {
+    if (!summary.deployerRisk || summary.deployerRisk === "NONE") return noData("deployer_risk", locale)
+    const map: Record<string, Record<Locale, string>> = {
       MEDIUM: {
-        en: 'The deployer has some signals in their history that warrant attention. This does not confirm malicious intent but reduces confidence.',
-        fr: "Le déployeur présente certains signaux dans son historique qui méritent attention. Cela ne confirme pas une intention malveillante mais réduit la confiance.",
+        en: "The wallet that created this token has some history worth noting. Not confirmed bad — but not clean either.",
+        fr: "Le wallet qui a créé ce token a un historique qui mérite attention. Pas confirmé problématique — mais pas propre non plus.",
       },
       HIGH: {
-        en: 'The deployer shows high-risk historical behavior. Previous contracts or wallets linked to this deployer have been flagged.',
-        fr: 'Le déployeur présente un comportement historique à haut risque. Des contrats ou wallets précédents liés à ce déployeur ont été signalés.',
+        en: "The wallet that launched this token has been linked to other flagged projects. Same actor, different token.",
+        fr: "Le wallet qui a lancé ce token a été lié à d’autres projets signalés. Même acteur, token différent.",
       },
     }
-    return { title: title('deployer_risk', locale), body: level[summary.deployerRisk]?.[locale] ?? INSUFFICIENT_DATA[locale] }
+    return { title: title("deployer_risk", locale), body: map[summary.deployerRisk]?.[locale] ?? INSUFFICIENT_DATA[locale] }
   },
 
   holder_concentration(summary, locale) {
-    if (summary.holderConcentration === undefined) return noData('holder_concentration', locale)
+    if (summary.holderConcentration === undefined) return noData("holder_concentration", locale)
     const pct = summary.holderConcentration
-    const body =
-      locale === 'fr'
-        ? `${pct}% des tokens sont concentrés dans un petit nombre de wallets. Une forte concentration augmente le risque de dump coordonné.`
-        : `${pct}% of tokens are concentrated in a small number of wallets. High concentration increases the risk of a coordinated dump.`
-    return { title: title('holder_concentration', locale), body }
+    if (locale === "fr") {
+      const level = pct >= 90 ? "C’est massif." : pct >= 70 ? "C’est beaucoup." : "C’est à surveiller."
+      return {
+        title: title("holder_concentration", locale),
+        body: `${pct}% de ce token est dans très peu de wallets. ${level} Si ces wallets vendent en même temps, le prix s’effondre et vous ne pouvez pas sortir.`,
+      }
+    }
+    const level = pct >= 90 ? "That is massive." : pct >= 70 ? "That is a lot." : "Worth keeping an eye on."
+    return {
+      title: title("holder_concentration", locale),
+      body: `${pct}% of this token sits in very few wallets. ${level} If those wallets sell at the same time, the price crashes and you cannot get out.`,
+    }
   },
 
   liquidity_risk(summary, locale) {
-    if (!summary.liquidityRisk) return noData('liquidity_risk', locale)
-    const level: Record<string, Record<Locale, string>> = {
+    if (!summary.liquidityRisk) return noData("liquidity_risk", locale)
+    const map: Record<string, Record<Locale, string>> = {
       LOW: {
-        en: 'Liquidity appears adequate. Entry and exit risk from liquidity is currently low.',
-        fr: "La liquidité semble adéquate. Le risque d'entrée et de sortie lié à la liquidité est actuellement faible.",
+        en: "Liquidity looks okay right now. Getting in or out should not be a major problem.",
+        fr: "La liquidité semble correcte pour l’instant. Entrer ou sortir ne devrait pas poser de gros problème.",
       },
       MEDIUM: {
-        en: 'Liquidity is moderate. Large transactions may be impacted by slippage or thin order depth.',
-        fr: 'La liquidité est modérée. Les transactions importantes peuvent être impactées par le slippage ou la profondeur limitée.',
+        en: "Liquidity is thin. If you are moving a large amount, expect slippage — you may get less than expected.",
+        fr: "La liquidité est faible. Pour un gros montant, attendez-vous à du slippage — vous obtiendrez moins que prévu.",
       },
       HIGH: {
-        en: 'Liquidity risk is high. Exiting a position may be difficult or costly under current conditions.',
-        fr: "Le risque de liquidité est élevé. Sortir d'une position peut être difficile ou coûteux dans les conditions actuelles.",
+        en: "Serious liquidity problem. Selling this token could be very difficult — or impossible at a fair price.",
+        fr: "Problème de liquidité sérieux. Vendre ce token peut être très difficile — voire impossible à un prix correct.",
       },
     }
-    return { title: title('liquidity_risk', locale), body: level[summary.liquidityRisk]?.[locale] ?? INSUFFICIENT_DATA[locale] }
+    return { title: title("liquidity_risk", locale), body: map[summary.liquidityRisk]?.[locale] ?? INSUFFICIENT_DATA[locale] }
   },
 
   recidivism(summary, locale) {
-    if (!summary.recidivismFlag) return noData('recidivism', locale)
-    const body =
-      locale === 'fr'
-        ? "Un ou plusieurs acteurs liés à ce projet ont été associés à des projets précédemment signalés. Ce signal indique un comportement répété et augmente significativement le niveau de risque."
-        : 'One or more actors linked to this project have been associated with previously flagged projects. This signal indicates repeated behavior and significantly increases risk level.'
-    return { title: title('recidivism', locale), body }
+    if (!summary.recidivismFlag) return noData("recidivism", locale)
+    if (locale === "fr") {
+      return {
+        title: title("recidivism", locale),
+        body: "Un ou plusieurs acteurs liés à ce token ont déjà été signalés sur d’autres projets. Ce n’est pas une coïncidence — c’est un pattern.",
+      }
+    }
+    return {
+      title: title("recidivism", locale),
+      body: "One or more actors linked to this token have been flagged on other projects before. This is not a coincidence — it is a pattern.",
+    }
   },
 
   linked_projects(summary, locale) {
-    if (!summary.linkedProjects || summary.linkedProjects.length === 0) return noData('linked_projects', locale)
-    const list = summary.linkedProjects.join(', ')
-    const body =
-      locale === 'fr'
-        ? `Les projets liés suivants ont été identifiés : ${list}. Ces connexions proviennent de l'analyse des wallets et des comportements on-chain.`
-        : `The following linked projects were identified: ${list}. These connections come from wallet graph analysis and on-chain behavior.`
-    return { title: title('linked_projects', locale), body }
+    if (!summary.linkedProjects || summary.linkedProjects.length === 0) return noData("linked_projects", locale)
+    const list = summary.linkedProjects.join(", ")
+    if (locale === "fr") {
+      return {
+        title: title("linked_projects", locale),
+        body: `Ce token est connecté à d’autres projets ou wallets dans le scan : ${list}. Ces liens viennent de l’analyse on-chain — pas d’une supposition.`,
+      }
+    }
+    return {
+      title: title("linked_projects", locale),
+      body: `This token is connected to other projects or wallets in the scan: ${list}. These links come from on-chain analysis — not guesswork.`,
+    }
   },
 
   intel_vault(summary, locale) {
-    if (summary.intelVaultMatches === undefined || summary.intelVaultMatches === 0) return noData('intel_vault', locale)
+    if (!summary.intelVaultMatches || summary.intelVaultMatches === 0) return noData("intel_vault", locale)
     const count = summary.intelVaultMatches
-    const body =
-      locale === 'fr'
-        ? `L'Intel Vault a trouvé ${count} correspondance(s) avec des entrées de menaces connues, des listes de surveillance ou des signalements d'enquêteurs.`
-        : `The Intel Vault found ${count} match(es) against known threat entries, watchlists, or investigator reports.`
-    return { title: title('intel_vault', locale), body }
+    if (locale === "fr") {
+      return {
+        title: title("intel_vault", locale),
+        body: `${count} correspondance${count > 1 ? "s" : ""} trouvée${count > 1 ? "s" : ""} dans l’Intel Vault INTERLIGENS. Ça signifie que cette adresse ou ses acteurs apparaissent dans des sources d’enquête documentées.`,
+      }
+    }
+    return {
+      title: title("intel_vault", locale),
+      body: `${count} match${count > 1 ? "es" : ""} found in the INTERLIGENS Intel Vault. That means this address or its actors appear in documented investigative sources.`,
+    }
   },
 }
 
