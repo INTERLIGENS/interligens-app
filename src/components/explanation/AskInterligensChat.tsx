@@ -6,9 +6,7 @@ import { classifyQuestion } from '@/lib/explanation/classifier'
 import { getAnswer } from '@/lib/explanation/answerHandlers'
 import { FALLBACK_RESPONSE, REFUSAL_RESPONSE } from '@/lib/explanation/localization'
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-type ChatMode = 'default' | 'evidence' | 'actions' | 'explain'
+type ChatMode = 'default' | 'explain' | 'actions' | 'details'
 
 interface ChatMsg {
   id: string
@@ -23,99 +21,173 @@ interface Props {
   locale: Locale
 }
 
-// ── Copy ───────────────────────────────────────────────────────────────────────
+// ── i18n ──────────────────────────────────────────────────────────────────────
 
-const COPY = {
-  askMore:      { en: 'Ask more about this scan', fr: 'Poser une question sur ce scan' },
-  placeholder:  { en: 'e.g. What does the deployer risk mean?', fr: 'ex. Que signifie le risque du wallet ?' },
-  ask:          { en: 'Ask', fr: 'Demander' },
-  scope:        { en: 'Analysis of this scan only.', fr: 'Analyse de ce scan uniquement.' },
-  thinking:     { en: 'Analyzing evidence…', fr: 'Analyse en cours…' },
-  disclaimer:   { en: 'Not financial advice. Evidence-based analysis only.', fr: 'Pas un conseil financier. Analyse basée sur les données du scan.' },
+const C = {
+  askMore:      { en: 'Ask more about this scan',              fr: 'Poser une question sur ce scan' },
+  placeholder:  { en: 'e.g. What does the deployer risk mean?', fr: 'ex. Que signifie le risque du wallet ?' },
+  ask:          { en: 'Ask',                                   fr: 'Demander' },
+  scope:        { en: 'Analysis of this scan only.',           fr: 'Analyse de ce scan uniquement.' },
+  thinking:     { en: 'Analyzing…',                       fr: 'Analyse en cours…' },
+  disclaimer:   { en: 'Not financial advice. Evidence-based only.', fr: 'Pas un conseil financier. Basé sur les données du scan.' },
   followupUsed: { en: 'Follow-up used. Run a new scan to ask more.', fr: 'Follow-up utilisé. Relance un nouveau scan pour poser d’autres questions.' },
-  reset:        { en: 'Reset Q&A', fr: 'Réinitialiser' },
-  counter:      { en: 'Follow-up', fr: 'Follow-up' },
-  btnEvidence:  { en: 'Show evidence', fr: 'Voir les preuves' },
-  btnActions:   { en: 'What should I do now', fr: 'Que faire maintenant ?' },
-  btnExplain:   { en: 'Why is this critical?', fr: 'Pourquoi c’est critique ?' },
-  evidenceTitle: { en: 'Evidence (excerpt)', fr: 'Preuves (extrait)' },
-  actionsTitle:  { en: 'What to do now', fr: 'Que faire maintenant' },
-  explainTitle:  { en: 'Why this is critical', fr: 'Pourquoi c’est critique' },
+  reset:        { en: 'Reset Q&A',                             fr: 'Réinitialiser la Q&A' },
+  resetTip:     { en: 'Clears only this scan’s Q&A thread.', fr: 'Efface uniquement la discussion de ce scan.' },
+  counter:      { en: 'Follow-up',                             fr: 'Follow-up' },
+  label:        { en: 'INTERLIGENS',                           fr: 'INTERLIGENS' },
+  // Button labels
+  btnWhy:       { en: 'Why?',                                  fr: 'Pourquoi ?' },
+  btnActions:   { en: 'What should I do now?',                 fr: 'Que faire maintenant ?' },
+  btnDetails:   { en: 'See details',                           fr: 'Voir les détails' },
+  // Mode titles
+  titleWhy:     { en: 'Why?',                                  fr: 'Pourquoi ?' },
+  titleActions: { en: 'What should I do now?',                 fr: 'Que faire maintenant ?' },
+  titleDetails: { en: 'Details',                               fr: 'Détails' },
 }
 
-const t = (key: keyof typeof COPY, locale: Locale): string => COPY[key][locale]
+const t = (key: keyof typeof C, locale: Locale): string => C[key][locale]
 
-// ── Mode detection ─────────────────────────────────────────────────────────────
+// ── Retail answer builder ─────────────────────────────────────────────────────
 
-const EVIDENCE_TRIGGERS = /yes|yeah|yep|go|sure|show|ok|oui|ouais|vas-y|montre|allez|continue|preuves|evidence/i
-const ACTIONS_TRIGGERS  = /do now|should i do|que faire|quoi faire|maintenant|actions|steps/i
-const EXPLAIN_TRIGGERS  = /why|critical|pourquoi|critique|explain|explique/i
-
-function detectMode(input: string): ChatMode {
-  if (EVIDENCE_TRIGGERS.test(input)) return 'evidence'
-  if (ACTIONS_TRIGGERS.test(input))  return 'actions'
-  if (EXPLAIN_TRIGGERS.test(input))  return 'explain'
-  return 'default'
-}
-
-// ── Deterministic mode responses ───────────────────────────────────────────────
-
-function buildEvidenceResponse(summary: AnalysisSummary, locale: Locale): string {
+function buildDefaultAnswer(summary: AnalysisSummary, locale: Locale): string {
   const isFr = locale === 'fr'
-  const title = t('evidenceTitle', locale)
-  const bullets: string[] = []
 
-  if (summary.topReasons.length > 0) {
-    summary.topReasons.slice(0, 3).forEach(r => bullets.push(r))
+  // CRITICAL — exact required strings
+  if (summary.verdict === 'CRITICAL') {
+    return isFr
+      ? "Je te conseille de ne pas acheter.\nCette adresse est déjà liée à un dossier d’enquête.\nSi tu veux, je peux te montrer pourquoi."
+      : "I recommend you don’t buy.\nThis address is already linked to an investigation file.\nIf you want, I can show you why."
   }
-  if (summary.exitSecurityFlags && summary.exitSecurityFlags.length > 0) {
-    summary.exitSecurityFlags.slice(0, 2).forEach(f => bullets.push(f))
+
+  // HIGH
+  if (summary.verdict === 'HIGH') {
+    return isFr
+      ? "Là, gros warning.\nPlusieurs signaux inquiétants ont été détectés sur cette adresse.\nTu veux que je t'explique ce qui ne va pas ?"
+      : "Big warning here.\nSeveral concerning signals were detected on this address.\nWant me to explain what’s wrong?"
   }
-  if (summary.intelVaultMatches && summary.intelVaultMatches > 0) {
-    bullets.push(isFr
-      ? summary.intelVaultMatches + ' correspondance(s) dans l’Intel Vault'
-      : summary.intelVaultMatches + ' match(es) in Intel Vault')
+
+  // MODERATE
+  if (summary.verdict === 'MODERATE') {
+    return isFr
+      ? "Pas totalement propre.\nQuelques points méritent attention avant de faire quoi que ce soit.\nTu veux les voir ?"
+      : "Not fully clean.\nA few points deserve attention before doing anything.\nWant to see them?"
   }
-  if (bullets.length === 0) {
-    return isFr ? 'Données insuffisantes pour afficher les preuves.' : 'Insufficient data to show evidence.'
-  }
-  return [title, ...bullets.map(b => "• " + b)].join("\n")
+
+  // LOW
+  return isFr
+    ? "Plutôt propre pour l’instant.\nAucun signal critique détecté.\nTu veux quand même vérifier les détails ?"
+    : "Relatively clean for now.\nNo critical signals detected.\nWant to check the details anyway?"
 }
 
-function buildActionsResponse(summary: AnalysisSummary, locale: Locale): string {
-  const isFr = locale === 'fr'
-  const title = t('actionsTitle', locale)
-  if (summary.whatToDoNow) return title + "\n" + summary.whatToDoNow
-
-  const steps: Record<string, Record<Locale, string[]>> = {
-    LOW:      { en: ["No urgent action needed.", "Monitor if situation changes."], fr: ["Pas d\u2019action urgente.", "Surveille si \u00e7a \u00e9volue."] },
-    MODERATE: { en: ["Do not rush.", "Review the flagged signals.", "Verify independently before any decision."], fr: ["Ne te pr\u00e9cipite pas.", "Regarde les signaux signal\u00e9s.", "V\u00e9rifie ind\u00e9pendamment avant toute d\u00e9cision."] },
-    HIGH:     { en: ["Avoid interacting until signals are resolved.", "Do not sign or approve anything.", "Revoke existing approvals if already exposed."], fr: ["\u00c9vite d\u2019interagir tant que les signaux ne sont pas r\u00e9solus.", "Ne signe ni n\u2019approuve rien.", "R\u00e9voque les approbations existantes si tu es d\u00e9j\u00e0 expos\u00e9."] },
-    CRITICAL: { en: ["Do not interact. No swap, no signing, no approval.", "If already exposed, revoke approvals immediately.", "Move funds to a clean wallet."], fr: ["N\u2019interagis pas. Ni swap, ni signature, ni approbation.", "Si tu es d\u00e9j\u00e0 expos\u00e9, r\u00e9voque les approbations imm\u00e9diatement.", "D\u00e9place tes fonds vers un wallet propre."] },
-  }
-  const list = steps[summary.verdict]?.[locale] ?? []
-  if (list.length === 0) return isFr ? "Donn\u00e9es insuffisantes." : "Insufficient data."
-  return title + "\n" + list.map((s, i) => (i + 1) + ". " + s).join("\n")
-}
+// ── Mode response builders ────────────────────────────────────────────────────
 
 function buildExplainResponse(summary: AnalysisSummary, locale: Locale): string {
   const isFr = locale === 'fr'
-  const title = t('explainTitle', locale)
+  const title = t('titleWhy', locale)
   const bullets: string[] = []
 
-  if (summary.topReasons.length > 0) {
-    bullets.push(...summary.topReasons.slice(0, 3))
+  // Bullet 1 — case file / investigation / caseDB
+  const hasCaseFile = summary.topReasons.some(r =>
+    /case|dossier|detective|casedb|referenced|référencé|investigation/i.test(r)
+  ) || (summary.intelVaultMatches && summary.intelVaultMatches > 0) || summary.recidivismFlag
+  if (hasCaseFile) {
+    bullets.push(isFr
+      ? 'On a déjà vu cette adresse dans une enquête.'
+      : 'This address already appears in an investigation.')
   }
-  if (summary.recidivismFlag) {
-    bullets.push(isFr ? "Acteur r\u00e9cidiviste d\u00e9tect\u00e9" : "Repeat actor detected")
+
+  // Bullet 2 — off-chain / external check
+  const hasOffChain = summary.topReasons.some(r =>
+    /off.chain|hors.chaîne|external|externe|critical|critique/i.test(r)
+  ) || summary.deployerRisk === 'HIGH'
+  if (hasOffChain) {
+    bullets.push(isFr
+      ? 'Des vérifications externes confirment un risque élevé.'
+      : 'External checks confirm a high risk.')
   }
-  if (summary.deployerRisk === 'HIGH') {
-    bullets.push(isFr ? "Wallet d\u00e9ployeur \u00e0 risque \u00e9lev\u00e9" : "High-risk deployer wallet")
+
+  // Bullet 3 — exit / trap signals
+  const hasExitSignal = (summary.exitSecurityFlags && summary.exitSecurityFlags.length > 0)
+    || summary.topReasons.some(r => /exit|sortie|trap|piège|approv|statut|status/i.test(r))
+  if (hasExitSignal) {
+    bullets.push(isFr
+      ? 'On voit des signaux typiques de pièges (approbations, sorties compliquées, etc.).'
+      : 'We see patterns typical of traps (approvals, hard exits, etc.).')
   }
+
+  // Fallback if no bullets matched
+  if (bullets.length === 0 && summary.topReasons.length > 0) {
+    bullets.push(isFr
+      ? 'Plusieurs signaux de risque ont été détectés sur cette adresse.'
+      : 'Several risk signals were detected on this address.')
+  }
+
   if (bullets.length === 0) {
-    return isFr ? "Donn\u00e9es insuffisantes pour expliquer le verdict." : "Insufficient data to explain the verdict."
+    return isFr ? 'Données insuffisantes pour détailler.' : 'Insufficient data to detail.'
   }
-  return [title, ...bullets.map(b => "\u2022 " + b)].join("\n")
+
+  return title + '\n' + bullets.slice(0, 3).map(b => '• ' + b).join('\n')
+}
+
+function buildActionsResponse(locale: Locale): string {
+  const isFr = locale === 'fr'
+  const title = t('titleActions', locale)
+  const steps = isFr
+    ? [
+        'N’interagis pas : pas de swap, pas de signature, pas d’approbation.',
+        'Si tu as déjà approuvé : révoque les autorisations.',
+        'Si tu as déjà envoyé des fonds : sécurise le reste vers un nouveau wallet.',
+      ]
+    : [
+        'Don’t interact: no swap, no signature, no approvals.',
+        'If you already approved: revoke permissions.',
+        'If you already sent funds: secure what’s left to a new wallet.',
+      ]
+  return title + '\n' + steps.map((s, i) => (i + 1) + '. ' + s).join('\n')
+}
+
+function buildDetailsResponse(summary: AnalysisSummary, locale: Locale): string {
+  const isFr = locale === 'fr'
+  const title = t('titleDetails', locale)
+  const bullets: string[] = []
+
+  // Internal labels ONLY in details mode
+  const hasCaseDB = summary.topReasons.some(r => /case|detective|casedb|referenced|référencé/i.test(r))
+    || (summary.intelVaultMatches && summary.intelVaultMatches > 0)
+  if (hasCaseDB) {
+    bullets.push(isFr
+      ? 'Interne : correspondance CaseDB (dossier existant)'
+      : 'Internal: CaseDB match (existing file)')
+  }
+
+  const hasOffChain = summary.topReasons.some(r => /off.chain|hors.chaîne|investigation/i.test(r))
+    || summary.deployerRisk === 'HIGH'
+  if (hasOffChain) {
+    bullets.push(isFr
+      ? 'Interne : investigation hors-chaîne = critique'
+      : 'Internal: off-chain investigation = critical')
+  }
+
+  if (summary.exitSecurityFlags && summary.exitSecurityFlags.length > 0) {
+    const flag = summary.exitSecurityFlags[0]
+    bullets.push(isFr
+      ? 'Interne : signal de sortie détecté (' + flag + ')'
+      : 'Internal: exit signal detected (' + flag + ')')
+  }
+
+  if (summary.recidivismFlag) {
+    bullets.push(isFr ? 'Interne : acteur récidiviste' : 'Internal: repeat actor')
+  }
+
+  if (bullets.length === 0) {
+    summary.topReasons.slice(0, 3).forEach(r => bullets.push('• ' + r))
+  }
+
+  if (bullets.length === 0) {
+    return isFr ? 'Données insuffisantes.' : 'Insufficient data.'
+  }
+
+  return title + '\n' + bullets.slice(0, 4).map(b => '• ' + b).join('\n')
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -130,15 +202,18 @@ export function AskInterligensChat({ summary, locale }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const limitReached = followupsUsed >= maxFollowups
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight
     }
-  }, [messages])
+  }, [messages, isLoading])
 
   function addMsg(msg: Omit<ChatMsg, 'id' | 'createdAt'>) {
-    setMessages(prev => [...prev, { ...msg, id: Math.random().toString(36).slice(2), createdAt: Date.now() }])
+    setMessages(prev => [...prev, {
+      ...msg,
+      id: Math.random().toString(36).slice(2),
+      createdAt: Date.now(),
+    }])
   }
 
   function handleReset() {
@@ -148,28 +223,30 @@ export function AskInterligensChat({ summary, locale }: Props) {
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
-  async function handleSubmit(questionOverride?: string) {
+  async function handleSubmit(questionOverride?: string, modeOverride?: ChatMode) {
     const trimmed = (questionOverride ?? input).trim()
     if (!trimmed || isLoading || limitReached) return
 
-    // Append user message
     addMsg({ role: 'user', content: trimmed })
     setInput('')
     setIsLoading(true)
 
-    // Count follow-up if this is not the first message
-    if (messages.length > 0) {
-      setFollowupsUsed(prev => prev + 1)
-    }
+    const isFollowUp = messages.length > 0
+    if (isFollowUp) setFollowupsUsed(prev => prev + 1)
+
+    // Small delay for UX feel
+    await new Promise(r => setTimeout(r, 180))
 
     try {
-      // 1. Deterministic check first
+      // Refusal check
       const classification = classifyQuestion(trimmed, summary)
       if (classification.class === 'refusal') {
         addMsg({ role: 'assistant', content: REFUSAL_RESPONSE[locale], mode: 'default' })
         setIsLoading(false)
         return
       }
+
+      // Deterministic chip handler
       if (classification.class === 'deterministic' && classification.intent) {
         const result = getAnswer(classification.intent, summary, locale)
         addMsg({ role: 'assistant', content: result.body, mode: 'default' })
@@ -177,27 +254,31 @@ export function AskInterligensChat({ summary, locale }: Props) {
         return
       }
 
-      // 2. Mode detection for follow-up routing
-      const mode = detectMode(trimmed)
-
-      // 3. Deterministic mode responses (no LLM needed)
-      if (mode === 'evidence') {
-        addMsg({ role: 'assistant', content: buildEvidenceResponse(summary, locale), mode: 'evidence' })
-        setIsLoading(false)
-        return
-      }
-      if (mode === 'actions') {
-        addMsg({ role: 'assistant', content: buildActionsResponse(summary, locale), mode: 'actions' })
-        setIsLoading(false)
-        return
-      }
-      if (mode === 'explain') {
+      // Explicit mode from button click
+      if (modeOverride === 'explain') {
         addMsg({ role: 'assistant', content: buildExplainResponse(summary, locale), mode: 'explain' })
         setIsLoading(false)
         return
       }
+      if (modeOverride === 'actions') {
+        addMsg({ role: 'assistant', content: buildActionsResponse(locale), mode: 'actions' })
+        setIsLoading(false)
+        return
+      }
+      if (modeOverride === 'details') {
+        addMsg({ role: 'assistant', content: buildDetailsResponse(summary, locale), mode: 'details' })
+        setIsLoading(false)
+        return
+      }
 
-      // 4. LLM for interpretive questions
+      // First message — retail default answer
+      if (!isFollowUp) {
+        addMsg({ role: 'assistant', content: buildDefaultAnswer(summary, locale), mode: 'default' })
+        setIsLoading(false)
+        return
+      }
+
+      // Follow-up free text — LLM
       const res = await fetch('/api/scan/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -217,9 +298,14 @@ export function AskInterligensChat({ summary, locale }: Props) {
     if (e.key === 'Enter') handleSubmit()
   }
 
-  // Last assistant message for showing action buttons
   const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant')
-  const showActionButtons = lastAssistantMsg && !limitReached
+  const showButtons = !!lastAssistantMsg && !limitReached
+
+  const ACTION_BUTTONS: { label: string; mode: ChatMode }[] = [
+    { label: t('btnWhy', locale),     mode: 'explain' },
+    { label: t('btnActions', locale), mode: 'actions' },
+    { label: t('btnDetails', locale), mode: 'details' },
+  ]
 
   return (
     <div className="mt-4 border-t border-zinc-800/60 pt-4">
@@ -241,7 +327,8 @@ export function AskInterligensChat({ summary, locale }: Props) {
           {messages.length > 0 && (
             <button
               onClick={handleReset}
-              className="font-mono text-[9px] uppercase tracking-wider text-zinc-600 hover:text-zinc-400 transition-colors"
+              title={t('resetTip', locale)}
+              className="font-mono text-[9px] uppercase tracking-wider text-zinc-600 hover:text-[#F85B05]/60 transition-colors"
             >
               {t('reset', locale)}
             </button>
@@ -249,32 +336,36 @@ export function AskInterligensChat({ summary, locale }: Props) {
         </div>
       </div>
 
-      {/* Thread */}
+      {/* Message thread */}
       {messages.length > 0 && (
         <div
           ref={threadRef}
-          className="mb-3 max-h-64 overflow-y-auto flex flex-col gap-2 pr-1"
+          className="mb-3 flex flex-col gap-2 max-h-72 overflow-y-auto pr-1 scroll-smooth"
         >
           {messages.map(msg => (
-            <div key={msg.id} className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+            <div
+              key={msg.id}
+              className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
+            >
               <div className={[
-                'max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed',
+                'rounded-xl px-3 py-2 text-xs leading-relaxed',
                 msg.role === 'user'
-                  ? 'bg-zinc-800 text-zinc-300'
-                  : 'bg-zinc-900/60 border border-zinc-800 text-zinc-300',
+                  ? 'max-w-[60%] bg-zinc-800 text-zinc-300 text-right'
+                  : 'max-w-[78%] bg-zinc-900/60 border border-zinc-800 text-zinc-300 text-left',
               ].join(' ')}>
                 {msg.role === 'assistant' && (
                   <span className="block text-[8px] font-black uppercase tracking-[0.15em] text-[#F85B05]/60 mb-1">
-                    INTERLIGENS
+                    {t('label', locale)}
                   </span>
                 )}
-                <span className="whitespace-pre-line">{msg.content}</span>
+                <span className="whitespace-pre-line block">{msg.content}</span>
               </div>
             </div>
           ))}
+
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
+              <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 px-3 py-2">
                 <span className="text-[9px] uppercase tracking-wider text-zinc-600 animate-pulse">
                   {t('thinking', locale)}
                 </span>
@@ -284,19 +375,15 @@ export function AskInterligensChat({ summary, locale }: Props) {
         </div>
       )}
 
-      {/* Action buttons */}
-      {showActionButtons && (
+      {/* Quick action buttons */}
+      {showButtons && (
         <div className="flex flex-wrap gap-2 mb-3">
-          {[
-            { label: t('btnEvidence', locale), q: t('btnEvidence', locale) },
-            { label: t('btnActions', locale),  q: t('btnActions', locale) },
-            { label: t('btnExplain', locale),  q: t('btnExplain', locale) },
-          ].map(btn => (
+          {ACTION_BUTTONS.map(btn => (
             <button
-              key={btn.label}
-              onClick={() => handleSubmit(btn.q)}
+              key={btn.mode}
+              onClick={() => handleSubmit(btn.label, btn.mode)}
               disabled={isLoading}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:border-zinc-600 hover:text-zinc-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:border-[#F85B05]/40 hover:text-zinc-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {btn.label}
             </button>
@@ -304,9 +391,9 @@ export function AskInterligensChat({ summary, locale }: Props) {
         </div>
       )}
 
-      {/* Input or locked state */}
+      {/* Input or lock banner */}
       {limitReached ? (
-        <div className="rounded-lg border border-zinc-800/50 bg-zinc-900/30 px-4 py-3 text-[10px] text-zinc-600 text-center">
+        <div className="rounded-lg border border-zinc-800/40 bg-zinc-900/20 px-4 py-2.5 text-[10px] text-zinc-600 text-center">
           {t('followupUsed', locale)}
         </div>
       ) : (
