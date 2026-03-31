@@ -81,10 +81,19 @@ export async function GET(
     SELECT
       "kolHandle", "reviewStatus", "reviewNote", "computedAt", "updatedAt",
       "totalProceedsUsd", "eventCount", "walletCount", "confidence",
-      "methodologyVersion", "coverageStatus", "coverageNote"
+      "methodologyVersion", "coverageStatus", "coverageNote", "pricingQuality"
     FROM "KolProceedsSummary"
     WHERE "kolHandle" = ${handle}
     LIMIT 1
+  ` as any[];
+
+  const pricingStats = await prisma.$queryRaw`
+    SELECT
+      "pricingSource",
+      COUNT(*) as count
+    FROM "KolProceedsEvent"
+    WHERE "kolHandle" = ${handle}
+    GROUP BY "pricingSource"
   ` as any[];
 
   if (!rows.length) {
@@ -112,6 +121,11 @@ export async function GET(
     methodologyVersion: s.methodologyVersion,
     coverageStatus: s.coverageStatus,
     coverageNote: s.coverageNote,
+    pricingQuality: s.pricingQuality,
+    pricingSourceBreakdown: pricingStats.map((r: any) => ({
+      source: r.pricingSource,
+      count: Number(r.count),
+    })),
     allowedTransitions: VALID_TRANSITIONS[s.reviewStatus] ?? [],
   });
 }

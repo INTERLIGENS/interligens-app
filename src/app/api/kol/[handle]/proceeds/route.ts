@@ -18,7 +18,7 @@ export async function GET(
         "largestEventUsd", "largestEventDate",
         "walletCount", "caseCount", "eventCount",
         confidence, "methodologyVersion", "computedAt",
-        "coverageStatus", "coverageNote"
+        "coverageStatus", "coverageNote", "pricingQuality"
       FROM "KolProceedsSummary"
       WHERE "kolHandle" = ${handle}
       AND "reviewStatus" = 'published'
@@ -49,6 +49,7 @@ export async function GET(
       computedAt: s.computedAt,
       coverageStatus: s.coverageStatus,
       coverageNote: s.coverageNote ?? null,
+      pricingQuality: s.pricingQuality ?? null,
     });
   } catch (err: any) {
     console.error("[proceeds/public]", err);
