@@ -1,30 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
-import { setInvestigatorCookie } from "@/lib/security/investigatorAuth";
+import {
+  loginWithAccessCode,
+  auditLog,
+  hashIP,
+} from "@/lib/security/investigatorAuth";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/security/rateLimit";
+
+const LOGIN_RATE_LIMIT = {
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5,                   // 5 attempts per IP
+  keyPrefix: "rl:inv-login",
+};
 
 export async function POST(req: NextRequest) {
-  let body: { token?: string };
+  const ip = getClientIp(req);
+  const userAgent = req.headers.get("user-agent") ?? "";
+
+  // Rate limiting
+  const rl = await checkRateLimit(ip, LOGIN_RATE_LIMIT);
+  if (!rl.allowed) {
+    await auditLog({
+      eventType: "login_rate_limited",
+      ipHash: hashIP(ip),
+      userAgent,
+    });
+    return rateLimitResponse(rl, "en");
+  }
+
+  // Parse body
+  let body: { code?: string };
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { token } = body;
-  if (!token || typeof token !== "string") {
-    return NextResponse.json({ error: "Token required" }, { status: 400 });
+  const { code } = body;
+  if (!code || typeof code !== "string" || code.length < 4) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const expected = process.env.INVESTIGATOR_TOKEN;
-  if (!expected) {
-    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
-  }
-
-  if (token !== expected) {
-    await new Promise((r) => setTimeout(r, 200));
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-  }
-
+  // Authenticate
   const res = NextResponse.json({ ok: true });
-  setInvestigatorCookie(res);
+  const result = await loginWithAccessCode(code, res, { ip, userAgent });
+
+  if (!result.success) {
+    // Uniform delay — no timing oracle
+    await new Promise((r) => setTimeout(r, 200 + Math.random() * 100));
+    return NextResponse.json({ error: "Access denied" }, { status: 401 });
+  }
+
   return res;
 }

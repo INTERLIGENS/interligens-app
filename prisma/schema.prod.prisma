@@ -640,3 +640,56 @@ model WatchScan {
   @@index([handle])
   @@index([createdAt])
 }
+
+// ─── INVESTIGATOR DASHBOARD ─────────────────────────────────────────────────
+
+model InvestigatorAccess {
+  id             String    @id @default(cuid())
+  label          String                          // e.g. "BA-01", "advisor-gordon"
+  accessCodeHash String                          // SHA-256 hex
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastUsedAt     DateTime?
+  notes          String?
+
+  sessions  InvestigatorSession[]
+  auditLogs InvestigatorAuditLog[]
+
+  @@index([accessCodeHash])
+}
+
+model InvestigatorSession {
+  id                   String    @id @default(cuid())
+  investigatorAccessId String
+  sessionTokenHash     String                    // SHA-256 of opaque session token
+  createdAt            DateTime  @default(now())
+  expiresAt            DateTime
+  lastSeenAt           DateTime  @default(now())
+  revokedAt            DateTime?
+  ipHash               String?
+  userAgent            String?
+
+  access InvestigatorAccess @relation(fields: [investigatorAccessId], references: [id])
+
+  @@index([sessionTokenHash])
+  @@index([investigatorAccessId])
+}
+
+model InvestigatorAuditLog {
+  id                   String    @id @default(cuid())
+  investigatorAccessId String?
+  eventType            String                    // login_success, login_fail, logout, access_denied
+  route                String?
+  timestamp            DateTime  @default(now())
+  ipHash               String?
+  userAgent            String?
+  metadata             Json?
+
+  access InvestigatorAccess? @relation(fields: [investigatorAccessId], references: [id])
+
+  @@index([investigatorAccessId])
+  @@index([eventType])
+  @@index([timestamp])
+}

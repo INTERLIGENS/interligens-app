@@ -1,32 +1,30 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 // ─── THEME ──────────────────────────────────────────────────────────────────
 const BG = "#0A0C10";
 const SURFACE = "#111318";
+const SURFACE2 = "#161920";
 const BORDER = "#1E2028";
 const AMBER = "#FFB800";
 const CYAN = "#00E5FF";
+const RED = "#FF3B5C";
+const GREEN = "#22C55E";
 const TEXT = "#F9FAFB";
 const MUTED = "#6B7280";
-const RED = "#EF4444";
+const DIMMED = "#3B3F4A";
 
 type Tab = "cases" | "kols" | "alerts" | "pdfs" | "proceeds";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "cases", label: "Case Files", icon: "\u{1F4C1}" },
-  { id: "kols", label: "KOL Network", icon: "\u{1F441}" },
-  { id: "alerts", label: "Alertes Watcher", icon: "\u26A0\uFE0F" },
-  { id: "pdfs", label: "Legal PDF", icon: "\u{1F4C4}" },
-  { id: "proceeds", label: "Observed Proceeds", icon: "\u{1F4B0}" },
+const TABS: { id: Tab; label: string }[] = [
+  { id: "cases", label: "Case Files" },
+  { id: "kols", label: "KOL Network" },
+  { id: "alerts", label: "Watcher Alerts" },
+  { id: "pdfs", label: "Legal PDF" },
+  { id: "proceeds", label: "Observed Proceeds" },
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
-
-function mono(s: string, max = 12) {
-  if (s.length <= max) return s;
-  return s.slice(0, 6) + "..." + s.slice(-4);
-}
 
 function fmtUsd(n?: number | null) {
   if (n == null) return "\u2014";
@@ -35,11 +33,17 @@ function fmtUsd(n?: number | null) {
   return "$" + n.toFixed(0);
 }
 
-function severityColor(s: string) {
-  const u = s.toUpperCase();
-  if (u === "RED" || u === "CRITICAL" || u === "HIGH") return RED;
-  if (u === "ORANGE" || u === "MEDIUM") return AMBER;
-  return "#22C55E";
+function fmtDate(d?: string | null) {
+  if (!d) return "\u2014";
+  return d.slice(0, 10);
+}
+
+function tierColor(tier: string) {
+  const u = tier.toUpperCase();
+  if (u === "RED" || u === "CRITICAL") return RED;
+  if (u === "HIGH" || u === "S" || u === "A") return "#F97316";
+  if (u === "WATCH" || u === "MEDIUM" || u === "B") return AMBER;
+  return MUTED;
 }
 
 function Badge({ text, color }: { text: string; color: string }) {
@@ -53,9 +57,9 @@ function Badge({ text, color }: { text: string; color: string }) {
         fontWeight: 700,
         letterSpacing: "0.05em",
         fontFamily: "monospace",
-        background: color + "18",
+        background: color + "15",
         color,
-        border: `1px solid ${color}40`,
+        border: `1px solid ${color}30`,
       }}
     >
       {text}
@@ -63,7 +67,7 @@ function Badge({ text, color }: { text: string; color: string }) {
   );
 }
 
-// ─── DATA HOOKS ─────────────────────────────────────────────────────────────
+// ─── DATA HOOK ──────────────────────────────────────────────────────────────
 
 function useFetch<T>(url: string) {
   const [data, setData] = useState<T | null>(null);
@@ -84,61 +88,225 @@ function useFetch<T>(url: string) {
   return { data, loading };
 }
 
-// ─── SECTION: CASE FILES ────────────────────────────────────────────────────
+// ─── SKELETON ───────────────────────────────────────────────────────────────
 
-function CaseFilesSection() {
-  const { data, loading } = useFetch<{
-    cases: Array<{
-      case_id: string;
-      token_name: string;
-      ticker: string;
-      chain: string;
-      status: string;
-      severity: string;
-      opened_at: string;
-      investigator: string;
-      summary: string;
-    }>;
-  }>("/api/investigator/cases");
+function Skeleton({ lines = 3 }: { lines?: number }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "16px 0" }}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            height: 56,
+            background: SURFACE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 6,
+            animation: "skPulse 1.5s ease-in-out infinite",
+            animationDelay: `${i * 0.15}s`,
+          }}
+        />
+      ))}
+      <style>{`@keyframes skPulse{0%,100%{opacity:.4}50%{opacity:.7}}`}</style>
+    </div>
+  );
+}
 
-  if (loading) return <LoadingBar />;
-  const cases = data?.cases ?? [];
-  if (!cases.length) return <EmptyState text="No published case files." />;
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        padding: "48px 0",
+        textAlign: "center",
+        color: DIMMED,
+        fontSize: 13,
+        fontFamily: "monospace",
+        letterSpacing: "0.05em",
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+// ─── TOP METRICS BAR ────────────────────────────────────────────────────────
+
+function MetricsBar() {
+  const { data } = useFetch<{
+    publishedCases: number;
+    trackedEntities: number;
+    watcherSignals: number;
+    publishedPdfs: number;
+    totalProceeds: number;
+  }>("/api/investigator/metrics");
+
+  if (!data) return null;
+
+  const items = [
+    { label: "Published Cases", value: String(data.publishedCases) },
+    { label: "Tracked Entities", value: String(data.trackedEntities) },
+    { label: "Watcher Signals", value: String(data.watcherSignals) },
+    { label: "Published PDFs", value: String(data.publishedPdfs) },
+    { label: "Observed Proceeds", value: fmtUsd(data.totalProceeds) },
+  ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      style={{
+        display: "flex",
+        gap: 1,
+        background: BORDER,
+        borderRadius: 6,
+        overflow: "hidden",
+        marginBottom: 24,
+      }}
+    >
+      {items.map((m) => (
+        <div
+          key={m.label}
+          style={{
+            flex: 1,
+            background: SURFACE,
+            padding: "14px 12px",
+            textAlign: "center",
+            minWidth: 0,
+          }}
+        >
+          <div
+            style={{
+              color: AMBER,
+              fontSize: 18,
+              fontWeight: 800,
+              fontFamily: "monospace",
+              lineHeight: 1,
+            }}
+          >
+            {m.value}
+          </div>
+          <div
+            style={{
+              color: MUTED,
+              fontSize: 9,
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              marginTop: 6,
+              fontFamily: "monospace",
+              textTransform: "uppercase",
+            }}
+          >
+            {m.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── SECTION: CASE FILES ────────────────────────────────────────────────────
+
+interface CaseData {
+  id: string;
+  caseCode: string;
+  title: string;
+  assetSymbol: string;
+  summary: string;
+  chain: string;
+  riskTier: string;
+  status: string;
+  publishedAt: string;
+  openedAt: string;
+  updatedAt?: string;
+  evidenceCount: number;
+  claimCount: number;
+  relatedKolHandles: string[];
+  pdfs: { id: string; title: string; language: string }[];
+  proceedsCount: number;
+  totalProceeds: number;
+}
+
+function CaseFilesSection() {
+  const { data, loading } = useFetch<{ cases: CaseData[] }>("/api/investigator/cases");
+
+  if (loading) return <Skeleton lines={2} />;
+  const cases = data?.cases ?? [];
+  if (!cases.length) return <EmptyState text="NO PUBLISHED CASE FILES" />;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {cases.map((c) => (
         <div
-          key={c.case_id}
+          key={c.id}
           style={{
             background: SURFACE,
             border: `1px solid ${BORDER}`,
             borderRadius: 6,
-            padding: 16,
+            padding: 20,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
             <div>
-              <span style={{ color: CYAN, fontSize: 10, fontFamily: "monospace", fontWeight: 700 }}>
-                {c.case_id}
-              </span>
-              <h3 style={{ margin: "4px 0 0", fontSize: 16, fontWeight: 700, color: TEXT }}>
-                {c.token_name} <span style={{ color: MUTED, fontWeight: 400 }}>{c.ticker}</span>
+              <div style={{ color: CYAN, fontSize: 10, fontFamily: "monospace", fontWeight: 700 }}>
+                {c.caseCode}
+              </div>
+              <h3 style={{ margin: "4px 0 0", fontSize: 17, fontWeight: 700, color: TEXT }}>
+                {c.title}
               </h3>
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <Badge text={c.severity} color={severityColor(c.severity)} />
-              <Badge text={c.chain.toUpperCase()} color={CYAN} />
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <Badge text={c.riskTier} color={tierColor(c.riskTier)} />
+              <Badge text={c.chain} color={CYAN} />
+              <Badge text={c.status} color={c.status === "Published" ? GREEN : AMBER} />
             </div>
           </div>
-          <p style={{ color: MUTED, fontSize: 12, lineHeight: 1.5, margin: "0 0 10px" }}>
+
+          {/* Summary */}
+          <p style={{ color: MUTED, fontSize: 12, lineHeight: 1.6, margin: "0 0 14px" }}>
             {c.summary}
           </p>
-          <div style={{ display: "flex", gap: 16, fontSize: 10, color: MUTED, fontFamily: "monospace" }}>
-            <span>STATUS: <span style={{ color: TEXT }}>{c.status}</span></span>
-            <span>OPENED: <span style={{ color: TEXT }}>{c.opened_at.slice(0, 10)}</span></span>
-            <span>BY: <span style={{ color: TEXT }}>{c.investigator}</span></span>
+
+          {/* Stats row */}
+          <div
+            style={{
+              display: "flex",
+              gap: 20,
+              fontSize: 10,
+              color: MUTED,
+              fontFamily: "monospace",
+              flexWrap: "wrap",
+              marginBottom: 12,
+            }}
+          >
+            <span>OPENED <span style={{ color: TEXT }}>{fmtDate(c.openedAt)}</span></span>
+            <span>PUBLISHED <span style={{ color: TEXT }}>{fmtDate(c.publishedAt)}</span></span>
+            {c.updatedAt && <span>UPDATED <span style={{ color: TEXT }}>{fmtDate(c.updatedAt)}</span></span>}
+            <span>EVIDENCE <span style={{ color: AMBER }}>{c.evidenceCount}</span></span>
+            <span>CLAIMS <span style={{ color: AMBER }}>{c.claimCount}</span></span>
+            <span>PROCEEDS <span style={{ color: RED }}>{fmtUsd(c.totalProceeds)}</span></span>
           </div>
+
+          {/* Related PDFs */}
+          {c.pdfs.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {c.pdfs.map((p) => (
+                <span
+                  key={p.id}
+                  style={{
+                    display: "inline-block",
+                    padding: "4px 10px",
+                    borderRadius: 3,
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                    fontWeight: 600,
+                    background: SURFACE2,
+                    border: `1px solid ${BORDER}`,
+                    color: CYAN,
+                  }}
+                >
+                  PDF: {p.title}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -147,241 +315,362 @@ function CaseFilesSection() {
 
 // ─── SECTION: KOL NETWORK ───────────────────────────────────────────────────
 
+interface KolData {
+  handle: string;
+  displayName?: string;
+  tier?: string;
+  totalScammed?: number;
+  totalProceedsUsd?: number;
+  rugCount: number;
+  followerCount?: number;
+  riskFlag?: string;
+  verified: boolean;
+  evidenceCount: number;
+  caseCount: number;
+  confidence?: string;
+}
+
+function classifyRisk(k: KolData): { label: string; color: string } {
+  const flag = k.riskFlag?.toLowerCase() ?? "";
+  if (flag.includes("confirmed")) return { label: "CONFIRMED SCAMMER", color: RED };
+  if (flag.includes("high")) return { label: "HIGH RISK", color: "#F97316" };
+  if (flag.includes("medium")) return { label: "MEDIUM RISK", color: AMBER };
+  if (flag.includes("victim")) return { label: "VICTIM POOL", color: CYAN };
+  return { label: "UNVERIFIED", color: MUTED };
+}
+
 function KolNetworkSection() {
-  const { data, loading } = useFetch<{
-    kols: Array<{
-      handle: string;
-      displayName?: string;
-      tier?: string;
-      totalScammed?: number;
-      totalProceedsUsd?: number;
-      rugCount: number;
-      followerCount?: number;
-      riskFlag?: string;
-      verified: boolean;
-      evidenceCount: number;
-      caseCount: number;
-    }>;
-  }>("/api/investigator/kols");
+  const { data, loading } = useFetch<{ kols: KolData[] }>("/api/investigator/kols");
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  if (loading) return <LoadingBar />;
+  if (loading) return <Skeleton lines={5} />;
   const kols = data?.kols ?? [];
-  if (!kols.length) return <EmptyState text="No KOL profiles published." />;
-
-  const tierColor: Record<string, string> = {
-    S: RED, A: "#F97316", B: AMBER, C: MUTED,
-  };
+  if (!kols.length) return <EmptyState text="NO PUBLISHED KOL PROFILES" />;
 
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-            {["Handle", "Tier", "Risk", "Rugs", "Scammed", "Proceeds", "Evidence"].map((h) => (
+            {["Handle", "Classification", "Rug Count", "Est. Scammed", "Proceeds", "Evidence", "Cases"].map((h) => (
               <th
                 key={h}
                 style={{
                   textAlign: "left",
-                  padding: "8px 10px",
-                  color: MUTED,
+                  padding: "10px 10px",
+                  color: DIMMED,
                   fontWeight: 600,
-                  fontSize: 10,
-                  letterSpacing: "0.1em",
+                  fontSize: 9,
+                  letterSpacing: "0.12em",
                   fontFamily: "monospace",
+                  textTransform: "uppercase",
                 }}
               >
-                {h.toUpperCase()}
+                {h}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {kols.slice(0, 50).map((k) => (
-            <tr key={k.handle} style={{ borderBottom: `1px solid ${BORDER}15` }}>
-              <td style={{ padding: "8px 10px", color: TEXT, fontWeight: 600 }}>
-                <a
-                  href={`/en/kol/${k.handle}`}
-                  style={{ color: CYAN, textDecoration: "none" }}
-                >
-                  @{k.handle}
-                </a>
-                {k.displayName && (
-                  <span style={{ color: MUTED, fontWeight: 400, marginLeft: 6 }}>
-                    {k.displayName}
-                  </span>
-                )}
-              </td>
-              <td style={{ padding: "8px 10px" }}>
-                {k.tier && (
-                  <span style={{ color: tierColor[k.tier] ?? MUTED, fontWeight: 800, fontFamily: "monospace" }}>
-                    {k.tier}
-                  </span>
-                )}
-              </td>
-              <td style={{ padding: "8px 10px" }}>
-                {k.riskFlag && <Badge text={k.riskFlag.replace(/_/g, " ")} color={RED} />}
-              </td>
-              <td style={{ padding: "8px 10px", color: TEXT, fontFamily: "monospace" }}>{k.rugCount}</td>
-              <td style={{ padding: "8px 10px", color: AMBER, fontFamily: "monospace" }}>{fmtUsd(k.totalScammed)}</td>
-              <td style={{ padding: "8px 10px", color: RED, fontFamily: "monospace" }}>{fmtUsd(k.totalProceedsUsd)}</td>
-              <td style={{ padding: "8px 10px", color: MUTED, fontFamily: "monospace" }}>{k.evidenceCount}</td>
-            </tr>
-          ))}
+          {kols.slice(0, 50).map((k) => {
+            const risk = classifyRisk(k);
+            return (
+              <tr
+                key={k.handle}
+                onClick={() => setExpanded(expanded === k.handle ? null : k.handle)}
+                style={{
+                  borderBottom: `1px solid ${BORDER}10`,
+                  cursor: "pointer",
+                  background: expanded === k.handle ? SURFACE2 : "transparent",
+                }}
+              >
+                <td style={{ padding: "10px 10px" }}>
+                  <a
+                    href={`/en/kol/${k.handle}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ color: CYAN, textDecoration: "none", fontWeight: 600 }}
+                  >
+                    @{k.handle}
+                  </a>
+                  {k.displayName && (
+                    <span style={{ color: MUTED, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>
+                      {k.displayName}
+                    </span>
+                  )}
+                </td>
+                <td style={{ padding: "10px 10px" }}>
+                  <Badge text={risk.label} color={risk.color} />
+                </td>
+                <td style={{ padding: "10px 10px", color: TEXT, fontFamily: "monospace", fontWeight: 600 }}>
+                  {k.rugCount}
+                </td>
+                <td style={{ padding: "10px 10px", color: AMBER, fontFamily: "monospace", fontWeight: 600 }}>
+                  {fmtUsd(k.totalScammed)}
+                </td>
+                <td style={{ padding: "10px 10px", color: RED, fontFamily: "monospace", fontWeight: 600 }}>
+                  {fmtUsd(k.totalProceedsUsd)}
+                </td>
+                <td style={{ padding: "10px 10px", color: MUTED, fontFamily: "monospace" }}>
+                  {k.evidenceCount}
+                </td>
+                <td style={{ padding: "10px 10px", color: MUTED, fontFamily: "monospace" }}>
+                  {k.caseCount}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-// ─── SECTION: ALERTES WATCHER ───────────────────────────────────────────────
+// ─── SECTION: WATCHER ALERTS ────────────────────────────────────────────────
 
-function AlertesWatcherSection() {
-  const { data, loading } = useFetch<{
-    alerts: Array<{
-      handle: string;
-      displayName: string;
-      category: string;
-      whyTracked: string;
-      signals: { ctaDangerous: boolean; domainRisk: boolean; caDetected: boolean; narrativeSpike: boolean };
-      priority: number;
-      proofCount: number;
-    }>;
-  }>("/api/investigator/alerts");
+interface AlertData {
+  id: string;
+  entity: string;
+  entityHandle: string;
+  signalType: string;
+  severity: string;
+  proofCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  linkedCaseId: string | null;
+  linkedKolHandle: string | null;
+  note: string;
+}
 
-  if (loading) return <LoadingBar />;
+function signalColor(type: string) {
+  switch (type) {
+    case "CTA_DANGEROUS": return RED;
+    case "CA_DETECTED": return "#F97316";
+    case "DOMAIN_RISK": return CYAN;
+    case "NARRATIVE_SPIKE": return AMBER;
+    case "SELL_WHILE_SHILL": return RED;
+    default: return MUTED;
+  }
+}
+
+function severityColor(s: string) {
+  switch (s) {
+    case "CRITICAL": return RED;
+    case "HIGH": return "#F97316";
+    case "MEDIUM": return AMBER;
+    default: return MUTED;
+  }
+}
+
+function WatcherAlertsSection() {
+  const { data, loading } = useFetch<{ alerts: AlertData[] }>("/api/investigator/alerts");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  if (loading) return <Skeleton lines={4} />;
   const alerts = data?.alerts ?? [];
-  if (!alerts.length) return <EmptyState text="No active watcher alerts." />;
-
-  const catColor: Record<string, string> = {
-    CA_promoter: RED,
-    cta_pusher: "#F97316",
-    narrative_actor: AMBER,
-    domain_risk: CYAN,
-    generic: MUTED,
-  };
+  if (!alerts.length) return <EmptyState text="NO ACTIVE WATCHER ALERTS" />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {alerts.map((a) => (
         <div
-          key={a.handle}
+          key={a.id}
           style={{
             background: SURFACE,
             border: `1px solid ${BORDER}`,
             borderRadius: 6,
-            padding: "12px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
+            overflow: "hidden",
           }}
         >
           <div
+            onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
             style={{
-              width: 4,
-              height: 36,
-              borderRadius: 2,
-              background: catColor[a.category] ?? MUTED,
-              flexShrink: 0,
+              padding: "12px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              cursor: "pointer",
             }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-              <span style={{ color: TEXT, fontSize: 13, fontWeight: 600 }}>
-                @{a.handle}
-              </span>
-              <Badge text={a.category.replace(/_/g, " ")} color={catColor[a.category] ?? MUTED} />
+          >
+            {/* Severity bar */}
+            <div
+              style={{
+                width: 4,
+                height: 36,
+                borderRadius: 2,
+                background: severityColor(a.severity),
+                flexShrink: 0,
+              }}
+            />
+
+            {/* Info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                <span style={{ color: TEXT, fontSize: 13, fontWeight: 600 }}>
+                  @{a.entityHandle}
+                </span>
+                <Badge text={a.signalType.replace(/_/g, " ")} color={signalColor(a.signalType)} />
+                <Badge text={a.severity} color={severityColor(a.severity)} />
+              </div>
+              <div style={{ color: MUTED, fontSize: 11 }}>{a.entity}</div>
             </div>
-            <div style={{ color: MUTED, fontSize: 11 }}>{a.whyTracked}</div>
+
+            {/* Right side */}
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+              {a.linkedCaseId && (
+                <span style={{ color: CYAN, fontSize: 9, fontFamily: "monospace", fontWeight: 700 }}>
+                  CASE
+                </span>
+              )}
+              <div style={{ color: MUTED, fontSize: 10, fontFamily: "monospace", textAlign: "right" }}>
+                <div>{a.proofCount} proof{a.proofCount !== 1 ? "s" : ""}</div>
+                <div style={{ fontSize: 9, color: DIMMED }}>Last: {fmtDate(a.lastSeenAt)}</div>
+              </div>
+              <span style={{ color: DIMMED, fontSize: 10 }}>
+                {expandedId === a.id ? "\u25B2" : "\u25BC"}
+              </span>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            {a.signals.ctaDangerous && <SignalDot label="CTA" color={RED} />}
-            {a.signals.caDetected && <SignalDot label="CA" color="#F97316" />}
-            {a.signals.domainRisk && <SignalDot label="DOM" color={CYAN} />}
-            {a.signals.narrativeSpike && <SignalDot label="NAR" color={AMBER} />}
-          </div>
-          <div style={{ color: MUTED, fontSize: 10, fontFamily: "monospace", flexShrink: 0 }}>
-            {a.proofCount} proof{a.proofCount !== 1 ? "s" : ""}
-          </div>
+
+          {/* Expanded detail */}
+          {expandedId === a.id && (
+            <div
+              style={{
+                padding: "0 16px 14px 34px",
+                borderTop: `1px solid ${BORDER}`,
+                paddingTop: 12,
+              }}
+            >
+              <p style={{ color: MUTED, fontSize: 12, lineHeight: 1.5, margin: "0 0 8px" }}>
+                {a.note}
+              </p>
+              <div style={{ display: "flex", gap: 16, fontSize: 10, fontFamily: "monospace", color: DIMMED }}>
+                <span>First seen: <span style={{ color: TEXT }}>{fmtDate(a.firstSeenAt)}</span></span>
+                <span>Last seen: <span style={{ color: TEXT }}>{fmtDate(a.lastSeenAt)}</span></span>
+                {a.linkedKolHandle && (
+                  <a
+                    href={`/en/kol/${a.linkedKolHandle}`}
+                    style={{ color: CYAN, textDecoration: "none" }}
+                  >
+                    View KOL Profile →
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>
   );
 }
 
-function SignalDot({ label, color }: { label: string; color: string }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 20,
-        borderRadius: 3,
-        fontSize: 8,
-        fontWeight: 800,
-        fontFamily: "monospace",
-        background: color + "20",
-        color,
-        border: `1px solid ${color}40`,
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
 // ─── SECTION: LEGAL PDF ─────────────────────────────────────────────────────
 
-function LegalPdfSection() {
-  const { data, loading } = useFetch<{
-    pdfs: Array<{
-      filename: string;
-      url: string;
-      sizeKb: number;
-      modified: string;
-    }>;
-  }>("/api/investigator/pdfs");
+interface PdfData {
+  id: string;
+  title: string;
+  language: string;
+  version: string;
+  publishedAt: string;
+  fileSize: number;
+  relatedCaseId: string | null;
+  downloadUrl: string;
+}
 
-  if (loading) return <LoadingBar />;
+function LegalPdfSection() {
+  const { data, loading } = useFetch<{ pdfs: PdfData[] }>("/api/investigator/pdfs");
+
+  if (loading) return <Skeleton lines={3} />;
   const pdfs = data?.pdfs ?? [];
-  if (!pdfs.length) return <EmptyState text="No published legal PDFs." />;
+  if (!pdfs.length) return <EmptyState text="NO PUBLISHED LEGAL DOCUMENTS" />;
+
+  // Group by case
+  const grouped = new Map<string, PdfData[]>();
+  for (const p of pdfs) {
+    const key = p.relatedCaseId ?? "other";
+    const arr = grouped.get(key) ?? [];
+    arr.push(p);
+    grouped.set(key, arr);
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {pdfs.map((p) => (
-        <a
-          key={p.filename}
-          href={p.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            background: SURFACE,
-            border: `1px solid ${BORDER}`,
-            borderRadius: 6,
-            padding: "12px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            textDecoration: "none",
-            transition: "border-color 0.15s",
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.borderColor = AMBER + "60")}
-          onMouseOut={(e) => (e.currentTarget.style.borderColor = BORDER)}
-        >
-          <span style={{ fontSize: 22, flexShrink: 0 }}>{"\u{1F4C4}"}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: TEXT, fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {p.filename}
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {[...grouped.entries()].map(([caseId, items]) => (
+        <div key={caseId}>
+          {caseId !== "other" && (
+            <div
+              style={{
+                color: DIMMED,
+                fontSize: 9,
+                fontFamily: "monospace",
+                fontWeight: 700,
+                letterSpacing: "0.15em",
+                marginBottom: 8,
+                textTransform: "uppercase",
+              }}
+            >
+              Related Case: {caseId}
             </div>
-            <div style={{ color: MUTED, fontSize: 10, fontFamily: "monospace", marginTop: 2 }}>
-              {p.sizeKb} KB &middot; {p.modified.slice(0, 10)}
-            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {items.map((p) => (
+              <a
+                key={p.id}
+                href={p.downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: SURFACE,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 6,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  textDecoration: "none",
+                  transition: "border-color 0.15s",
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.borderColor = AMBER + "50")}
+                onMouseOut={(e) => (e.currentTarget.style.borderColor = BORDER)}
+              >
+                {/* Icon */}
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 4,
+                    background: SURFACE2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span style={{ color: AMBER, fontSize: 11, fontFamily: "monospace", fontWeight: 900 }}>
+                    PDF
+                  </span>
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: TEXT, fontSize: 13, fontWeight: 600 }}>
+                    {p.title}
+                  </div>
+                  <div style={{ display: "flex", gap: 12, marginTop: 3, fontSize: 10, fontFamily: "monospace", color: MUTED }}>
+                    <span>{p.language}</span>
+                    <span>v{p.version}</span>
+                    <span>{p.fileSize} KB</span>
+                    <span>Published {fmtDate(p.publishedAt)}</span>
+                  </div>
+                </div>
+
+                {/* Download */}
+                <span style={{ color: CYAN, fontSize: 11, fontWeight: 700, fontFamily: "monospace", flexShrink: 0 }}>
+                  OPEN &rarr;
+                </span>
+              </a>
+            ))}
           </div>
-          <span style={{ color: CYAN, fontSize: 11, fontWeight: 700, fontFamily: "monospace", flexShrink: 0 }}>
-            OPEN &rarr;
-          </span>
-        </a>
+        </div>
       ))}
     </div>
   );
@@ -389,113 +678,110 @@ function LegalPdfSection() {
 
 // ─── SECTION: OBSERVED PROCEEDS ─────────────────────────────────────────────
 
-function ObservedProceedsSection() {
-  const { data, loading } = useFetch<{
-    proceeds: Array<{
-      case_id: string;
-      token: string;
-      ticker: string;
-      wallet: string;
-      pnl_usd: number | null;
-      buy_tx: string;
-      sell_tx: string;
-      notes: string;
-    }>;
-  }>("/api/investigator/proceeds");
-
-  if (loading) return <LoadingBar />;
-  const proceeds = data?.proceeds ?? [];
-  if (!proceeds.length) return <EmptyState text="No observed proceeds data." />;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {proceeds.map((p, i) => (
-        <div
-          key={p.case_id + i}
-          style={{
-            background: SURFACE,
-            border: `1px solid ${BORDER}`,
-            borderRadius: 6,
-            padding: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div>
-              <span style={{ color: CYAN, fontSize: 10, fontFamily: "monospace", fontWeight: 700 }}>
-                {p.case_id}
-              </span>
-              <span style={{ color: TEXT, fontSize: 14, fontWeight: 700, marginLeft: 10 }}>
-                {p.token} <span style={{ color: MUTED }}>{p.ticker}</span>
-              </span>
-            </div>
-            <div
-              style={{
-                color: p.pnl_usd && p.pnl_usd > 0 ? RED : "#22C55E",
-                fontSize: 18,
-                fontWeight: 800,
-                fontFamily: "monospace",
-              }}
-            >
-              {fmtUsd(p.pnl_usd)}
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11 }}>
-            <div>
-              <span style={{ color: MUTED, fontFamily: "monospace", fontSize: 9 }}>WALLET</span>
-              <div style={{ color: AMBER, fontFamily: "monospace", marginTop: 2 }}>
-                {mono(p.wallet, 16)}
-              </div>
-            </div>
-            <div>
-              <span style={{ color: MUTED, fontFamily: "monospace", fontSize: 9 }}>BUY TX</span>
-              <div style={{ color: TEXT, fontFamily: "monospace", marginTop: 2 }}>
-                {mono(p.buy_tx, 16)}
-              </div>
-            </div>
-            <div>
-              <span style={{ color: MUTED, fontFamily: "monospace", fontSize: 9 }}>SELL TX</span>
-              <div style={{ color: TEXT, fontFamily: "monospace", marginTop: 2 }}>
-                {mono(p.sell_tx, 16)}
-              </div>
-            </div>
-            {p.notes && (
-              <div>
-                <span style={{ color: MUTED, fontFamily: "monospace", fontSize: 9 }}>NOTES</span>
-                <div style={{ color: MUTED, marginTop: 2 }}>{p.notes}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+interface ProceedData {
+  id: string;
+  entityId: string;
+  entityType: string;
+  entityLabel: string;
+  caseId: string | null;
+  chain: string;
+  walletShort: string;
+  buyTx: string;
+  sellTx: string;
+  amount: number;
+  currency: string;
+  usdValue: number;
+  observedAt: string;
+  note: string;
+  evidenceCount: number;
 }
 
-// ─── SHARED ─────────────────────────────────────────────────────────────────
+function ObservedProceedsSection() {
+  const { data, loading } = useFetch<{ proceeds: ProceedData[] }>("/api/investigator/proceeds");
 
-function LoadingBar() {
+  if (loading) return <Skeleton lines={4} />;
+  const proceeds = data?.proceeds ?? [];
+  if (!proceeds.length) return <EmptyState text="NO OBSERVED PROCEEDS DATA" />;
+
+  const totalUsd = proceeds.reduce((s, p) => s + p.usdValue, 0);
+
   return (
-    <div style={{ padding: 32, textAlign: "center" }}>
+    <div>
+      {/* Summary bar */}
       <div
         style={{
-          width: 60,
-          height: 3,
-          background: AMBER,
-          borderRadius: 2,
-          margin: "0 auto",
-          animation: "pulse 1.2s ease-in-out infinite",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 14,
+          padding: "12px 16px",
+          background: SURFACE,
+          border: `1px solid ${BORDER}`,
+          borderRadius: 6,
         }}
-      />
-      <style>{`@keyframes pulse { 0%,100% { opacity:.3 } 50% { opacity:1 } }`}</style>
-    </div>
-  );
-}
+      >
+        <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>
+          TOTAL OBSERVED ACROSS {proceeds.length} ENTRIES
+        </span>
+        <span style={{ color: RED, fontSize: 20, fontWeight: 800, fontFamily: "monospace" }}>
+          {fmtUsd(totalUsd)}
+        </span>
+      </div>
 
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div style={{ padding: "40px 0", textAlign: "center", color: MUTED, fontSize: 13 }}>
-      {text}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {proceeds.map((p) => (
+          <div
+            key={p.id}
+            style={{
+              background: SURFACE,
+              border: `1px solid ${BORDER}`,
+              borderRadius: 6,
+              padding: 18,
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ color: TEXT, fontSize: 14, fontWeight: 700 }}>
+                  {p.entityLabel}
+                </span>
+                <Badge
+                  text={p.entityType.toUpperCase()}
+                  color={p.entityType === "kol" ? CYAN : p.entityType === "cluster" ? "#F97316" : AMBER}
+                />
+                {p.caseId && (
+                  <span style={{ color: DIMMED, fontSize: 9, fontFamily: "monospace" }}>
+                    {p.caseId}
+                  </span>
+                )}
+              </div>
+              <div
+                style={{
+                  color: p.usdValue > 0 ? RED : GREEN,
+                  fontSize: 20,
+                  fontWeight: 800,
+                  fontFamily: "monospace",
+                }}
+              >
+                {fmtUsd(p.usdValue)}
+              </div>
+            </div>
+
+            {/* Note */}
+            <p style={{ color: MUTED, fontSize: 12, lineHeight: 1.5, margin: "0 0 10px" }}>
+              {p.note}
+            </p>
+
+            {/* Meta row */}
+            <div style={{ display: "flex", gap: 16, fontSize: 10, color: DIMMED, fontFamily: "monospace", flexWrap: "wrap" }}>
+              <span>CHAIN <span style={{ color: CYAN }}>{p.chain}</span></span>
+              <span>WALLET <span style={{ color: AMBER }}>{p.walletShort}</span></span>
+              <span>OBSERVED <span style={{ color: TEXT }}>{fmtDate(p.observedAt)}</span></span>
+              <span>EVIDENCE <span style={{ color: TEXT }}>{p.evidenceCount}</span></span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -504,6 +790,19 @@ function EmptyState({ text }: { text: string }) {
 
 export default function InvestigatorDashboard() {
   const [tab, setTab] = useState<Tab>("cases");
+  const [loadedAt] = useState(() => new Date());
+
+  const getTimeSince = useCallback(() => {
+    const diff = Math.round((Date.now() - loadedAt.getTime()) / 60000);
+    if (diff < 1) return "just now";
+    return `${diff}m ago`;
+  }, [loadedAt]);
+
+  const [timeSince, setTimeSince] = useState("just now");
+  useEffect(() => {
+    const t = setInterval(() => setTimeSince(getTimeSince()), 30000);
+    return () => clearInterval(t);
+  }, [getTimeSince]);
 
   async function handleLogout() {
     await fetch("/api/investigator/auth/logout", { method: "POST" });
@@ -511,15 +810,8 @@ export default function InvestigatorDashboard() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: BG,
-        color: TEXT,
-        fontFamily: "Inter, system-ui, sans-serif",
-      }}
-    >
-      {/* ── HEADER ──────────────────────────────────────────────────────── */}
+    <div style={{ minHeight: "100vh", background: BG, color: TEXT, fontFamily: "Inter, system-ui, sans-serif" }}>
+      {/* ── HEADER ──────────────────────────────────────────────────── */}
       <header
         style={{
           background: "#08090D",
@@ -534,57 +826,49 @@ export default function InvestigatorDashboard() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            style={{
-              color: AMBER,
-              fontSize: 11,
-              fontWeight: 900,
-              letterSpacing: "0.2em",
-              fontFamily: "monospace",
-            }}
-          >
+          <span style={{ color: AMBER, fontSize: 11, fontWeight: 900, letterSpacing: "0.2em", fontFamily: "monospace" }}>
             INTERLIGENS
           </span>
           <span style={{ color: BORDER }}>|</span>
-          <span
-            style={{
-              color: CYAN,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.15em",
-              fontFamily: "monospace",
-            }}
-          >
+          <span style={{ color: CYAN, fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", fontFamily: "monospace" }}>
             INVESTIGATOR DASHBOARD
           </span>
         </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            background: "transparent",
-            border: `1px solid ${BORDER}`,
-            borderRadius: 4,
-            color: MUTED,
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: "0.1em",
-            fontFamily: "monospace",
-            padding: "6px 14px",
-            cursor: "pointer",
-          }}
-        >
-          LOGOUT
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ color: DIMMED, fontSize: 9, fontFamily: "monospace" }}>
+            Last refresh: {timeSince}
+          </span>
+          <button
+            onClick={handleLogout}
+            style={{
+              background: "transparent",
+              border: `1px solid ${BORDER}`,
+              borderRadius: 4,
+              color: MUTED,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              fontFamily: "monospace",
+              padding: "6px 14px",
+              cursor: "pointer",
+            }}
+          >
+            LOGOUT
+          </button>
+        </div>
       </header>
 
-      {/* ── CONTENT ─────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 20px 80px" }}>
+      {/* ── CONTENT ─────────────────────────────────────────────────── */}
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px 80px" }}>
+        {/* METRICS BAR */}
+        <MetricsBar />
+
         {/* TAB BAR */}
         <nav
           style={{
             display: "flex",
             gap: 4,
-            marginBottom: 28,
+            marginBottom: 24,
             overflowX: "auto",
             paddingBottom: 2,
           }}
@@ -596,10 +880,10 @@ export default function InvestigatorDashboard() {
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 style={{
-                  background: active ? AMBER + "15" : "transparent",
-                  border: `1px solid ${active ? AMBER + "40" : "transparent"}`,
+                  background: active ? AMBER + "12" : "transparent",
+                  border: `1px solid ${active ? AMBER + "35" : "transparent"}`,
                   borderRadius: 6,
-                  padding: "10px 16px",
+                  padding: "10px 18px",
                   color: active ? AMBER : MUTED,
                   fontSize: 11,
                   fontWeight: 700,
@@ -610,7 +894,7 @@ export default function InvestigatorDashboard() {
                   transition: "all 0.15s",
                 }}
               >
-                {t.icon}&ensp;{t.label}
+                {t.label}
               </button>
             );
           })}
@@ -619,24 +903,24 @@ export default function InvestigatorDashboard() {
         {/* ACTIVE SECTION */}
         {tab === "cases" && <CaseFilesSection />}
         {tab === "kols" && <KolNetworkSection />}
-        {tab === "alerts" && <AlertesWatcherSection />}
+        {tab === "alerts" && <WatcherAlertsSection />}
         {tab === "pdfs" && <LegalPdfSection />}
         {tab === "proceeds" && <ObservedProceedsSection />}
       </div>
 
-      {/* ── FOOTER ──────────────────────────────────────────────────────── */}
+      {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer
         style={{
           borderTop: `1px solid ${BORDER}`,
           padding: "14px 24px",
           textAlign: "center",
-          color: MUTED,
-          fontSize: 10,
+          color: DIMMED,
+          fontSize: 9,
           fontFamily: "monospace",
-          letterSpacing: "0.1em",
+          letterSpacing: "0.12em",
         }}
       >
-        INTERLIGENS INTELLIGENCE PLATFORM &middot; PUBLISHED DATA ONLY &middot; NOT AN ACCUSATION
+        INTERLIGENS INTELLIGENCE PLATFORM &middot; PUBLISHED DATA ONLY &middot; FACTS NOT ACCUSATIONS &middot; NDA CONFIDENTIAL
       </footer>
     </div>
   );

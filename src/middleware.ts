@@ -21,14 +21,6 @@ function checkBasicAuth(req: NextRequest): boolean {
   return u === user && rest.join(":") === pass;
 }
 
-function checkInvestigatorCookie(req: NextRequest): boolean {
-  const envToken = process.env.INVESTIGATOR_TOKEN;
-  if (!envToken) return false;
-  const cookie = req.cookies.get("investigator_token")?.value;
-  if (!cookie) return false;
-  return cookie === envToken;
-}
-
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -38,14 +30,19 @@ export function middleware(req: NextRequest) {
     if (!checkBasicAuth(req)) return basicAuthFail();
   }
 
-  // Investigator routes — cookie auth (login page + auth API excluded)
-  const isInvestigatorRoute =
-    (pathname.startsWith("/en/investigator") && !pathname.startsWith("/en/investigator/login")) ||
-    (pathname.startsWith("/api/investigator") && !pathname.startsWith("/api/investigator/auth"));
-  if (isInvestigatorRoute) {
-    if (!checkInvestigatorCookie(req)) {
-      // Redirect page requests to login, block API with 401
-      if (pathname.startsWith("/api/")) {
+  // Investigator routes — session cookie presence check (UX gate).
+  // Full DB session validation happens in API route handlers.
+  const isInvestigatorPage =
+    pathname.startsWith("/en/investigator") &&
+    !pathname.startsWith("/en/investigator/login");
+  const isInvestigatorApi =
+    pathname.startsWith("/api/investigator") &&
+    !pathname.startsWith("/api/investigator/auth");
+
+  if (isInvestigatorPage || isInvestigatorApi) {
+    const hasSession = !!req.cookies.get("investigator_session")?.value;
+    if (!hasSession) {
+      if (isInvestigatorApi) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       const loginUrl = req.nextUrl.clone();

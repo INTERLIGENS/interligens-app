@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireInvestigatorApi } from "@/lib/security/investigatorAuth";
-import fs from "fs";
-import path from "path";
+import { requireInvestigatorSession } from "@/lib/security/investigatorAuth";
+import { getPublishedCases, getPdfsForCase, getProceedsForCase } from "@/lib/investigator/registry";
 
 export async function GET(req: NextRequest) {
-  const deny = requireInvestigatorApi(req);
+  const deny = await requireInvestigatorSession(req);
   if (deny) return deny;
 
-  const casesDir = path.join(process.cwd(), "src", "data", "cases");
-  try {
-    const files = fs.readdirSync(casesDir).filter((f) => f.endsWith(".json"));
-    const cases = files.map((f) => {
-      const raw = fs.readFileSync(path.join(casesDir, f), "utf-8");
-      const parsed = JSON.parse(raw);
-      return parsed.case_meta ?? null;
-    }).filter(Boolean);
-    return NextResponse.json({ cases });
-  } catch {
-    return NextResponse.json({ cases: [] });
-  }
+  const cases = getPublishedCases().map((c) => ({
+    ...c,
+    pdfs: getPdfsForCase(c.id).map((p) => ({ id: p.id, title: p.title, language: p.language })),
+    proceedsCount: getProceedsForCase(c.id).length,
+    totalProceeds: getProceedsForCase(c.id).reduce((sum, p) => sum + p.usdValue, 0),
+  }));
+
+  return NextResponse.json({ cases });
 }
