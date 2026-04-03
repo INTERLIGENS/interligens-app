@@ -1,0 +1,73 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH SCHEMA PRISMA — KOL Seed Engine v1
+// Instructions : ouvrir prisma/schema.prod.prisma dans VSCode
+// et appliquer les 3 modifications ci-dessous
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// ══════════════════════════════════════════════════════════════════
+// MODIFICATION 1 — Dans model KolProfile (qui existe déjà)
+// Ajouter ces lignes après la ligne "publishable Boolean @default(false)"
+// ══════════════════════════════════════════════════════════════════
+
+  publishStatus           String  @default("draft")    // draft|reviewed|published|restricted
+  internalNote            String?
+  walletAttributionStatus String  @default("none")     // none|partial|confirmed
+  evidenceStatus          String  @default("none")     // none|weak|moderate|strong
+  proceedsStatus          String  @default("none")     // none|estimated|verified
+  editorialStatus         String  @default("pending")  // pending|reviewed|approved
+
+  // Ajouter aussi dans la section relations de KolProfile :
+  aliases    KolAlias[]
+  tokenLinks KolTokenLink[]
+
+
+// ══════════════════════════════════════════════════════════════════
+// MODIFICATION 2 — Dans model KolWallet (qui existe déjà)
+// Ajouter ces lignes après "sourceUrl String?"
+// ══════════════════════════════════════════════════════════════════
+
+  confidence        String  @default("medium")  // suspected|low|medium|high|confirmed
+  attributionSource String?
+  attributionNote   String?
+
+
+// ══════════════════════════════════════════════════════════════════
+// MODIFICATION 3 — Dans model KolEvidence (qui existe déjà)
+// Ajouter cette ligne après "rawJson String?"
+// ══════════════════════════════════════════════════════════════════
+
+  dedupKey  String?
+
+
+// ══════════════════════════════════════════════════════════════════
+// MODIFICATION 4 — Coller ces 2 nouveaux models à la FIN du fichier
+// (après le model LaundrySignal)
+// ══════════════════════════════════════════════════════════════════
+
+model KolAlias {
+  id        String     @id @default(cuid())
+  kolHandle String
+  alias     String
+  type      String     @default("secondary")  // old | secondary | alt | real_name
+  createdAt DateTime   @default(now())
+  kol       KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+
+  @@unique([kolHandle, alias])
+  @@index([alias])
+}
+
+model KolTokenLink {
+  id              String     @id @default(cuid())
+  kolHandle       String
+  contractAddress String
+  chain           String
+  tokenSymbol     String?
+  role            String     @default("promoter")  // promoter | deployer | holder | suspected
+  note            String?
+  createdAt       DateTime   @default(now())
+  kol             KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+
+  @@unique([kolHandle, contractAddress, chain])
+  @@index([kolHandle])
+}

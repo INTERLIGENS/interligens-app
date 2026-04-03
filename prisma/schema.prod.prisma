@@ -384,6 +384,14 @@ model KolProfile {
   last_reviewed_at DateTime?
   version_note     String?
   publishable     Boolean       @default(false)
+  publishStatus           String  @default("draft")
+  internalNote            String?
+  walletAttributionStatus String  @default("none")
+  evidenceStatus          String  @default("none")
+  proceedsStatus          String  @default("none")
+  editorialStatus         String  @default("pending")
+  aliases    KolAlias[]
+  tokenLinks KolTokenLink[]
   cashoutCache    Json?
   kolCases        KolCase[]
   evidences       KolEvidence[]
@@ -404,6 +412,9 @@ model KolWallet {
   claimType   String?    @default("source_attributed")
   sourceLabel String?
   sourceUrl   String?
+  confidence        String  @default("medium")
+  attributionSource String?
+  attributionNote   String?
   kol         KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
@@ -444,6 +455,7 @@ model KolEvidence {
   postTimestamp DateTime?
   deltaMinutes  Int?
   rawJson       String?
+  dedupKey      String?
   kol           KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
@@ -1049,4 +1061,32 @@ model LaundrySignal {
   detail    String
   rawData   Json?
   trail     LaundryTrail   @relation(fields: [trailId], references: [id], onDelete: Cascade)
+}
+
+
+model KolAlias {
+  id        String     @id @default(cuid())
+  kolHandle String
+  alias     String
+  type      String     @default("secondary")
+  createdAt DateTime   @default(now())
+  kol       KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+
+  @@unique([kolHandle, alias])
+  @@index([alias])
+}
+
+model KolTokenLink {
+  id              String     @id @default(cuid())
+  kolHandle       String
+  contractAddress String
+  chain           String
+  tokenSymbol     String?
+  role            String     @default("promoter")
+  note            String?
+  createdAt       DateTime   @default(now())
+  kol             KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+
+  @@unique([kolHandle, contractAddress, chain])
+  @@index([kolHandle])
 }
