@@ -11,36 +11,31 @@ import {
   detectLocale,
   RATE_LIMIT_PRESETS,
 } from "@/lib/security/rateLimit";
-import { lookupValue } from "@/lib/intelligence";
+import { lookupValue, matchEntity } from "@/lib/intelligence";
 import { prisma } from "@/lib/prisma";
 import { normalizeValue, buildDedupKey } from "@/lib/intelligence/normalize";
+import type { IntelEntityType } from "@/lib/intelligence";
 
-export async function GET(req: Request) {
-  const rl = await checkRateLimit(
-    getClientIp(req),
-    RATE_LIMIT_PRESETS.scan
-  );
+async function handleLookup(req: Request, value: string, type?: string, chain?: string) {
+  const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
   if (!rl.allowed) return rateLimitResponse(rl, detectLocale(req));
-
-  const url = new URL(req.url);
-  const value = (url.searchParams.get("value") || "").trim();
-  const chain = url.searchParams.get("chain") || undefined;
 
   if (!value) {
     return NextResponse.json({ error: "Missing value" }, { status: 400 });
   }
 
-  const signal = await lookupValue(value, chain);
+  const signal = type
+    ? await matchEntity({ type: type as IntelEntityType, value, chain })
+    : await lookupValue(value, chain);
 
   // Enforce displaySafety gate for public route
   if (signal.matchCount > 0) {
-    // Look up the entity to check displaySafety
     const types = ["ADDRESS", "CONTRACT", "TOKEN_CA", "DOMAIN", "PROJECT"] as const;
     let isRetailSafe = false;
 
-    for (const type of types) {
-      const normalized = normalizeValue(type, value);
-      const dedupKey = buildDedupKey(type, normalized);
+    for (const t of types) {
+      const normalized = normalizeValue(t, value);
+      const dedupKey = buildDedupKey(t, normalized);
       const entity = await prisma.canonicalEntity.findUnique({
         where: { dedupKey },
         select: { displaySafety: true },
@@ -52,7 +47,6 @@ export async function GET(req: Request) {
     }
 
     if (!isRetailSafe) {
-      // Entity exists but not cleared for retail — return empty signal
       return NextResponse.json({
         match: false,
         ims: 0,
@@ -74,4 +68,19 @@ export async function GET(req: Request) {
     externalUrl: signal.externalUrl,
     matchBasis: signal.matchBasis,
   });
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const value = (url.searchParams.get("value") || "").trim();
+  const chain = url.searchParams.get("chain") || undefined;
+  return handleLookup(req, value, undefined, chain);
+}
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  const value = (body.value || "").trim();
+  const type = body.type || undefined;
+  const chain = body.chain || undefined;
+  return handleLookup(req, value, type, chain);
 }
