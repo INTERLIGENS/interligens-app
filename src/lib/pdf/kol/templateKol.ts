@@ -20,7 +20,7 @@ function solscanTx(tx: string): string {
   return `https://solscan.io/tx/${tx}`
 }
 
-export function renderKolPdf(kol: any, mode: string): string {
+export function renderKolPdf(kol: any, mode: string, laundryTrail?: any, lang: string = "en"): string {
   const isLawyer = mode === "lawyer"
   const evidences = kol.evidences ?? []
   const wallets = kol.kolWallets ?? []
@@ -211,6 +211,37 @@ export function renderKolPdf(kol: any, mode: string): string {
       </tbody>
     </table>
   </div>
+
+  ${laundryTrail ? `
+  <!-- LAUNDRY TRAIL -->
+  <div class="section">
+    <div class="section-title">LAUNDRY TRAIL</div>
+    <div style="margin-bottom:10px;">
+      <span style="font-size:8px;color:#374151;letter-spacing:0.15em;">SIGNALS DETECTED: </span>
+      ${laundryTrail.signals.map((s: any) => {
+        const colors: Record<string, string> = { FRAG: '#f59e0b', BRIDGE: '#00E5FF', MIXER: '#ef4444', PRIV: '#ef4444', DEG: '#f59e0b', CASH: '#f59e0b' }
+        const color = colors[s.family] ?? '#6b7280'
+        const label = s.confirmed ? s.family : ('~' + s.family)
+        const desc = !s.confirmed && s.family === 'MIXER' ? 'mixer-adjacent routing observed' : ''
+        return `<span style="background:${color}20;border:1px solid ${color}55;color:${color};font-size:9px;font-weight:900;padding:2px 8px;border-radius:3px;letter-spacing:0.1em;margin-right:6px;${!s.confirmed ? 'opacity:0.6;' : ''}">${label}</span>${desc ? `<span style="font-size:8px;color:#6b7280;margin-right:8px;">(${desc})</span>` : ''}`
+      }).join('')}
+    </div>
+    <div style="margin-bottom:6px;">
+      <span style="font-size:8px;color:#374151;letter-spacing:0.15em;">TRAIL TYPE: </span>
+      <span style="font-size:10px;color:#f1f5f9;">${laundryTrail.trailType}</span>
+    </div>
+    <div style="margin-bottom:6px;">
+      <span style="font-size:8px;color:#374151;letter-spacing:0.15em;">LAUNDRY RISK: </span>
+      <span style="font-size:10px;font-weight:900;color:${laundryTrail.laundryRisk === 'CRITICAL' || laundryTrail.laundryRisk === 'HIGH' ? '#ef4444' : laundryTrail.laundryRisk === 'MODERATE' ? '#f59e0b' : '#10b981'}">${laundryTrail.laundryRisk}</span>
+    </div>
+    <div style="margin-bottom:10px;">
+      <span style="font-size:8px;color:#374151;letter-spacing:0.15em;">RECOVERY DIFFICULTY: </span>
+      <span style="font-size:10px;font-weight:900;color:${laundryTrail.recoveryDifficulty === 'SEVERE' ? '#ef4444' : laundryTrail.recoveryDifficulty === 'PARTIAL' ? '#f59e0b' : '#10b981'}">${laundryTrail.recoveryDifficulty}</span>${laundryTrail.trailBreakHop ? ` <span style="font-size:9px;color:#6b7280;">— trail breaks at hop ${laundryTrail.trailBreakHop}</span>` : ''}
+    </div>
+    ${(() => { const nar = lang === 'fr' ? (laundryTrail.narrativeTextFr ?? laundryTrail.narrativeText) : laundryTrail.narrativeText; return nar ? `<div style="font-size:10px;color:#9ca3af;line-height:1.7;margin-bottom:10px;">${nar}</div>` : '' })()}
+    <div style="font-size:9px;color:#374151;font-style:italic;">${lang === 'fr' ? (laundryTrail.evidenceNoteFr ?? laundryTrail.evidenceNote) : laundryTrail.evidenceNote}</div>
+  </div>
+  ` : ''}
 
   ${evmEv ? `
   <!-- EVM WALLET -->

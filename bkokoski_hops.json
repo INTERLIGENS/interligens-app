@@ -1,0 +1,104 @@
+[
+  {
+    "address": "5ed7HUrYWS8h7EwM6wBpCvUHP4jc5McWYcL2yX4QimQj",
+    "chain": "solana",
+    "timestamp": 1711900000000,
+    "amountUsd": 5207,
+    "protocol": "dex_sell",
+    "hopIndex": 0,
+    "_note": "Mom (BK) — GHOST cashout $5,207 USDC, 26 TX. Real KolEvidence."
+  },
+  {
+    "address": "HSueXrabQVABdHezbQ5Q4UbgLTx4Nc6VqyX5R88zzxmz",
+    "chain": "solana",
+    "timestamp": 1711903600000,
+    "amountUsd": 802,
+    "protocol": "dex_sell",
+    "hopIndex": 1,
+    "_note": "Dad (BK) — GHOST/BOTIFY cashout $802 USDC + 550k BOTIFY, 15 TX. Real KolEvidence."
+  },
+  {
+    "address": "FzDXp1AqPhmwqkXjeFeTohbVcDEbJM9bjDcH9DPN4nEc",
+    "chain": "solana",
+    "timestamp": 1711907200000,
+    "amountUsd": 4500,
+    "protocol": "dex_sell",
+    "hopIndex": 2,
+    "_note": "Carter (BK) — GHOST dump 28.6 SOL (~$4,500), 15 TX. Real KolEvidence."
+  },
+  {
+    "address": "CFEBsnVtB3qz9ano2nL9mVjmUu26EGDpoY9nGEAqRTqR",
+    "chain": "solana",
+    "timestamp": 1711910800000,
+    "amountUsd": 8700,
+    "protocol": "dex_sell",
+    "hopIndex": 3,
+    "_note": "Illya (BK) — 451k BOTIFY relay via F4q3 -> $8,700, 21 TX. Real KolEvidence."
+  },
+  {
+    "address": "F4q3S6J1bsrCwHJeesiFpCSgfp9dznkr2vZsQVdJHbXL",
+    "chain": "solana",
+    "timestamp": 1711912000000,
+    "amountUsd": 0,
+    "hopIndex": 4,
+    "_note": "Illya relay wallet — intermediate hop in BOTIFY relay chain. Real KolEvidence."
+  },
+  {
+    "address": "9PQwizgbW2ruvypLQ9baVRZ4tiJdhDrEzD63m4oMqtxB",
+    "chain": "solana",
+    "timestamp": 1711914400000,
+    "amountUsd": 14500,
+    "protocol": "dex_sell",
+    "hopIndex": 5,
+    "_note": "Dad (SAM) — bot 4h + 700k BOTIFY + 500k GHOST -> 72 SOL ($14,500), 33 TX. Real KolEvidence."
+  },
+  {
+    "address": "23cdxwyFgC4ru5FdN5NEcGLzPioBkqknhGU8rLK2S9P1",
+    "chain": "solana",
+    "timestamp": 1711918000000,
+    "amountUsd": 4960,
+    "protocol": "dex_sell",
+    "hopIndex": 6,
+    "_note": "Mum (SAM) — 213k GHOST dumped in 3 min -> 24.8 SOL ($4,960), 2 TX. Real KolEvidence."
+  },
+  {
+    "address": "HeaiDUtMQjt163afwV7zeAJhzDi16SsEGK1T4AyhqS4R",
+    "chain": "solana",
+    "timestamp": 1742486400000,
+    "amountUsd": 210000,
+    "protocol": "coordinated_exit",
+    "hopIndex": 7,
+    "_note": "Coordinated exit wallet 1 — part of $210K USDC exit event 20/03/2026 across 4 wallets in 3h. Real KolEvidence."
+  },
+  {
+    "address": "0x32B6006e5b942F47Ab4DB68eE70f683370853ecF",
+    "chain": "ethereum",
+    "timestamp": 1742500000000,
+    "amountUsd": 400732,
+    "isBridge": true,
+    "evidenceLevel": "adjacent",
+    "hopIndex": 8,
+    "_note": "EVM wallet — $400,732 confirmed via Arkham Intelligence. SOL-native family network with confirmed EVM presence = adjacent evidence of cross-chain movement. No direct bridge TX observed."
+  },
+  {
+    "address": "unresolved_destination_1",
+    "chain": "unknown",
+    "timestamp": 1742600000000,
+    "hopIndex": 9,
+    "_note": "Trail degradation — EVM holdings destination and SOL exit proceeds destination remain unresolved."
+  },
+  {
+    "address": "unresolved_destination_2",
+    "chain": "unknown",
+    "timestamp": 1742700000000,
+    "hopIndex": 10,
+    "_note": "Trail degradation — direct personal wallets not yet identified. Coverage partial."
+  },
+  {
+    "address": "unresolved_destination_3",
+    "chain": "unknown",
+    "timestamp": 1742800000000,
+    "hopIndex": 11,
+    "_note": "Trail degradation — fund attribution unreliable beyond known family wallet perimeter."
+  }
+]

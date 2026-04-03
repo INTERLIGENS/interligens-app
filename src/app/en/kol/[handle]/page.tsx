@@ -2,6 +2,7 @@
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
 import ProceedsCard from '@/components/kol/ProceedsCard'
+import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
@@ -48,6 +49,7 @@ export default function KOLPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [laundryTrail, setLaundryTrail] = useState<any>(null)
 
   useEffect(() => {
     if (!handle) return
@@ -56,6 +58,10 @@ export default function KOLPage() {
       .then(d => { if (d.found) setKol(d.kol); else setNotFound(true) })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
+    fetch('/api/laundry/' + handle)
+      .then(r => r.json())
+      .then(d => { if (d) setLaundryTrail(d) })
+      .catch(() => {})
   }, [handle])
 
   const fmtUsd = (n?: number) => {
@@ -159,6 +165,8 @@ export default function KOLPage() {
 
         {/* ── DOCUMENTED CASE HISTORY ── */}
         <ProceedsCard handle={kol.handle} lang="en" />
+
+        {laundryTrail && <LaundryTrailCard laundryTrail={laundryTrail} lang="en" />}
 
         {(kol?.caseLinks?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>

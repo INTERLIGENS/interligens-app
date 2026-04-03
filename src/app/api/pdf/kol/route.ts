@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const handle = searchParams.get("handle")
     const mode = searchParams.get("mode") ?? "retail"
     const format = searchParams.get("format") ?? "pdf"
+    const lang = searchParams.get("lang") ?? "en"
 
     if (!handle) return NextResponse.json({ error: "Missing ?handle=" }, { status: 400 })
 
@@ -18,7 +19,60 @@ export async function GET(request: NextRequest) {
     })
     if (!kol) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    const html = mode === "lawyer" ? renderKolPdfLegal(kol) : renderKolPdf(kol, mode)
+    // Build cashout evidence from KolProceedsEvent if no onchain_cashout in KolEvidence
+    const hasCashoutEvidence = kol.evidences.some((e: any) => e.type === "onchain_cashout")
+    if (!hasCashoutEvidence) {
+      const cashoutRows: any[] = await prisma.$queryRawUnsafe(`
+        SELECT
+          pe."walletAddress",
+          pe."tokenSymbol",
+          SUM(pe."amountUsd")::float as "totalUsd",
+          COUNT(*)::int as "txCount",
+          MIN(pe."eventDate") as "dateFirst",
+          MAX(pe."eventDate") as "dateLast",
+          (array_agg(pe."txHash" ORDER BY pe."amountUsd" DESC))[1] as "sampleTx"
+        FROM "KolProceedsEvent" pe
+        WHERE pe."kolHandle" = $1
+        GROUP BY pe."walletAddress", pe."tokenSymbol"
+        ORDER BY "totalUsd" DESC
+      `, handle)
+
+      for (const row of cashoutRows) {
+        const wallet = kol.kolWallets.find((w: any) => w.address === row.walletAddress)
+        kol.evidences.push({
+          id: `proceeds-${row.walletAddress}-${row.tokenSymbol}`,
+          type: "onchain_cashout",
+          label: wallet?.label ?? row.walletAddress.slice(0, 12) + "...",
+          wallets: JSON.stringify([row.walletAddress]),
+          token: row.tokenSymbol,
+          amountUsd: row.totalUsd,
+          txCount: row.txCount,
+          dateFirst: row.dateFirst,
+          dateLast: row.dateLast,
+          sampleTx: row.sampleTx,
+          description: null,
+          kolHandle: handle,
+          createdAt: new Date(),
+        } as any)
+      }
+    }
+
+    // Deduplicate evidence by (type, label) — guard against seed re-runs
+    const seenKeys = new Set<string>()
+    kol.evidences = kol.evidences.filter((e: any) => {
+      const key = `${e.type}|${e.label}`
+      if (seenKeys.has(key)) return false
+      seenKeys.add(key)
+      return true
+    })
+
+    const laundryTrail = await prisma.laundryTrail.findFirst({
+      where: { kolHandle: handle },
+      include: { signals: true },
+      orderBy: { createdAt: "desc" },
+    })
+
+    const html = mode === "lawyer" ? renderKolPdfLegal(kol) : renderKolPdf(kol, mode, laundryTrail, lang)
 
     if (format === "html") {
       return new NextResponse(html, { headers: { "Content-Type": "text/html" } })

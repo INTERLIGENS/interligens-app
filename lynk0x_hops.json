@@ -1,0 +1,32 @@
+[
+  {
+    "address": "EKvYizd7LqTmMj4QmKsHm8wdg7TxZfoHhG664FdnHCRh",
+    "chain": "solana",
+    "timestamp": 1711900000000,
+    "amountUsd": 26820,
+    "protocol": "dex_sell",
+    "hopIndex": 0,
+    "_note": "BOTIFY payment wallet (shared with Regrets10x). $26,820 cashout in 3 TX. Real KolEvidence onchain_cashout."
+  },
+  {
+    "address": "unresolved_destination_1",
+    "chain": "unknown",
+    "timestamp": 1712000000000,
+    "hopIndex": 1,
+    "_note": "Trail degradation — only 1 wallet identified. Direct personal wallets unknown."
+  },
+  {
+    "address": "unresolved_destination_2",
+    "chain": "unknown",
+    "timestamp": 1712100000000,
+    "hopIndex": 2,
+    "_note": "Trail degradation — proceeds destination beyond payment wallet unresolved."
+  },
+  {
+    "address": "unresolved_destination_3",
+    "chain": "unknown",
+    "timestamp": 1712200000000,
+    "hopIndex": 3,
+    "_note": "Trail degradation — fund attribution unreliable beyond known wallet perimeter."
+  }
+]

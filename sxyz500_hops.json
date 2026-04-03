@@ -1,0 +1,49 @@
+[
+  {
+    "address": "9PQwizgbW2ruvypLQ9baVRZ0tiJdhDrEzD63m4oMqtxB",
+    "chain": "solana",
+    "timestamp": 1712500000000,
+    "amountUsd": 0,
+    "hopIndex": 0,
+    "_note": "Dad wallet — received supply on BOTIFY + GHOST, sold. Real KolWallet. No proceeds events captured for this wallet."
+  },
+  {
+    "address": "EjKURS65kyjQdydjmcwQUX8twjxQHVJwez1E9DXU9fVQ",
+    "chain": "solana",
+    "timestamp": 1712503600000,
+    "amountUsd": 1091,
+    "protocol": "dex_sell",
+    "hopIndex": 1,
+    "_note": "Simon wallet — 30 BOTIFY-MAIN DEX sells totaling $1,091. Real KolProceedsEvent data."
+  },
+  {
+    "address": "D1W3zviRxGa3tzFUuwqj1uZPM79hJAx9cdidDcxhV96K",
+    "chain": "solana",
+    "timestamp": 1712507200000,
+    "amountUsd": 3265,
+    "protocol": "dex_sell",
+    "hopIndex": 2,
+    "_note": "Rut wallet — 4 BOTIFY-MAIN DEX sells totaling $3,265. Real KolProceedsEvent data."
+  },
+  {
+    "address": "unresolved_destination_1",
+    "chain": "unknown",
+    "timestamp": 1712600000000,
+    "hopIndex": 3,
+    "_note": "Trail degradation — direct personal wallets not yet confirmed. Coverage partial."
+  },
+  {
+    "address": "unresolved_destination_2",
+    "chain": "unknown",
+    "timestamp": 1712700000000,
+    "hopIndex": 4,
+    "_note": "Trail degradation — proceeds destination beyond identified network wallets is unresolved."
+  },
+  {
+    "address": "unresolved_destination_3",
+    "chain": "unknown",
+    "timestamp": 1712800000000,
+    "hopIndex": 5,
+    "_note": "Trail degradation — fund attribution unreliable beyond known wallet perimeter."
+  }
+]

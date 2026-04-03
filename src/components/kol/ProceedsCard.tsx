@@ -30,6 +30,19 @@ function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n)
 }
 
+function translateCoverageNote(note: string): string {
+  return note
+    .replace("Coverage limited to", "Couverture limitée à")
+    .replace("identified SOL associated wallets", "portefeuilles SOL associés identifiés")
+    .replace("identified SOL network wallets", "portefeuilles SOL réseau identifiés")
+    .replace("identified SOL family wallets", "portefeuilles SOL familiaux identifiés")
+    .replace("Direct personal wallets unconfirmed", "Portefeuilles personnels directs non confirmés")
+    .replace("Direct wallets not yet confirmed", "Portefeuilles directs non encore confirmés")
+    .replace("Direct wallets and EVM activity not yet captured", "Portefeuilles directs et activité EVM non encore capturés")
+    .replace("GHOST token excluded — accounts closed", "Token GHOST exclu — comptes clôturés")
+    .replace("Minimum observed under current methodology", "Minimum observé selon la méthodologie actuelle")
+}
+
 export default function ProceedsCard({ handle, lang = "en" }: { handle: string; lang?: string }) {
   const [data, setData] = useState<ProceedsSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,7 +108,7 @@ export default function ProceedsCard({ handle, lang = "en" }: { handle: string; 
       {/* Coverage note */}
       {isPartial && data.coverageNote && (
         <div className="bg-[#0A0C10] border border-[#1E2330] rounded-lg px-4 py-3">
-          <p className="text-xs text-[#7A8599]">{data.coverageNote}</p>
+          <p className="text-xs text-[#7A8599]">{lang === "fr" ? translateCoverageNote(data.coverageNote) : data.coverageNote}</p>
         </div>
       )}
 

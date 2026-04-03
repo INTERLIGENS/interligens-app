@@ -2,6 +2,7 @@
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
 import ProceedsCard from '@/components/kol/ProceedsCard'
+import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
@@ -51,6 +52,7 @@ export default function KOLPageFR() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [laundryTrail, setLaundryTrail] = useState<any>(null)
 
   useEffect(() => {
     if (!handle) return
@@ -59,6 +61,10 @@ export default function KOLPageFR() {
       .then(d => { if (d.found) setKol(d.kol); else setNotFound(true) })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
+    fetch('/api/laundry/' + handle)
+      .then(r => r.json())
+      .then(d => { if (d) setLaundryTrail(d) })
+      .catch(() => {})
   }, [handle])
 
   const fmtUsd = (n?: number) => {
@@ -126,10 +132,10 @@ export default function KOLPageFR() {
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
               <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Pertes estimées investisseurs</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
+                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail&lang=fr`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
                   ↓ RAPPORT PUBLIC
                 </a>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=lawyer`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
+                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=lawyer&lang=fr`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
                   ↓ VERSION JURIDIQUE
                 </a>
               </div>
@@ -162,6 +168,8 @@ export default function KOLPageFR() {
 
         {/* HISTORIQUE DES CAS */}
         <ProceedsCard handle={kol.handle} lang="fr" />
+
+        {laundryTrail && <LaundryTrailCard laundryTrail={laundryTrail} lang="fr" />}
 
         {(kol?.caseLinks?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>

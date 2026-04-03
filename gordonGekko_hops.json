@@ -1,0 +1,60 @@
+[
+  {
+    "address": "Eu8i6rpMPXyg5NaEY23qEbFeMhrs953FdqxYxweXm24J",
+    "chain": "solana",
+    "timestamp": 1736755200000,
+    "amountUsd": 0,
+    "hopIndex": 0,
+    "_note": "Gordon 1 — SOL wallet confirmed via @dethective. No BOTIFY cashout events observed on this wallet."
+  },
+  {
+    "address": "4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3",
+    "chain": "solana",
+    "timestamp": 1736755541000,
+    "amountUsd": 8827,
+    "protocol": "dex_sell",
+    "hopIndex": 1,
+    "_note": "Gordon 2 — SOL wallet. 28 confirmed BOTIFY DEX sells totaling $8,827. Period: Jan 13 – May 31, 2025."
+  },
+  {
+    "address": "3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6",
+    "chain": "solana",
+    "timestamp": 1747068438000,
+    "amountUsd": 31800,
+    "protocol": "dex_sell",
+    "hopIndex": 2,
+    "_note": "Gordon 3 — SOL wallet. 30 confirmed BOTIFY DEX sells totaling $31,800. Period: May 12 – Jun 30, 2025."
+  },
+  {
+    "address": "0xa5B0eDF6B55128E0DdaE8e51aC538c3188401D41",
+    "chain": "ethereum",
+    "timestamp": 1748300000000,
+    "amountUsd": null,
+    "protocol": "hyperliquid",
+    "isBridge": true,
+    "evidenceLevel": "adjacent",
+    "hopIndex": 3,
+    "_note": "Hyperliquid EVM address confirmed attributed to Gordon. SOL-native actor with EVM presence = adjacent evidence of cross-chain movement. No direct bridge TX hash available."
+  },
+  {
+    "address": "unresolved_destination_1",
+    "chain": "unknown",
+    "timestamp": 1748400000000,
+    "hopIndex": 4,
+    "_note": "Beyond known wallets — proceeds destination unresolved. Trail degrades."
+  },
+  {
+    "address": "unresolved_destination_2",
+    "chain": "unknown",
+    "timestamp": 1748500000000,
+    "hopIndex": 5,
+    "_note": "Trail degradation — wallet graph remains incomplete."
+  },
+  {
+    "address": "unresolved_destination_3",
+    "chain": "unknown",
+    "timestamp": 1748600000000,
+    "hopIndex": 6,
+    "_note": "Trail degradation — fund attribution unreliable at this depth."
+  }
+]
