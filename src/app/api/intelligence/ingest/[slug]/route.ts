@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ingestSource, SOURCES } from "@/lib/intelligence";
 import type { SourceSlug } from "@/lib/intelligence";
 
+export const maxDuration = 300; // 5 minutes — OFAC XML is ~200MB
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }

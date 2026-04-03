@@ -1,8 +1,8 @@
-// ───────���──────────────────────────��──────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Case Intelligence — Ingest Pipeline
 // Takes SourceRaw[] from any fetcher, deduplicates, upserts into
 // CanonicalEntity + SourceObservation, tracks IntelIngestionBatch.
-// ───���─────────────────��───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from "@/lib/prisma";
 import { buildDedupKey } from "./normalize";
@@ -34,8 +34,17 @@ const FETCHERS: Record<string, () => Promise<SourceRaw[]>> = {
   fca: fetchFca,
   scamsniffer: fetchScamSniffer,
   forta: fetchForta,
-  // amf + goplus stubs — skip silently
 };
+
+// ── Chunk helper ────────────────────────────────────────────────────────────
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
 
 // ── Main ingest function ────────────────────────────────────────────────────
 
@@ -107,141 +116,164 @@ export async function ingestSource(
       }
     }
 
-    // Upsert each row
-    for (const raw of unique) {
-      const dedupKey = buildDedupKey(raw.entityType, raw.value);
+    // Process in chunks of 50 to reduce round-trips
+    const chunks = chunk(unique, 50);
+    for (const batch of chunks) {
+      // Gather all dedupKeys for this chunk to do a single lookup
+      const dedupKeys = batch.map((r) => buildDedupKey(r.entityType, r.value));
 
-      // Upsert CanonicalEntity
-      const existing = await prisma.canonicalEntity.findUnique({
-        where: { dedupKey },
-        include: { observations: { select: { riskClass: true, sourceSlug: true } } },
+      const existingEntities = await prisma.canonicalEntity.findMany({
+        where: { dedupKey: { in: dedupKeys } },
+        include: {
+          observations: {
+            select: { riskClass: true, sourceSlug: true },
+          },
+        },
       });
+      const entityMap = new Map(existingEntities.map((e) => [e.dedupKey, e]));
 
-      if (existing) {
-        // Compute new strongest risk across all observations + this one
-        let strongest = raw.riskClass;
-        for (const obs of existing.observations) {
-          strongest = strongerRisk(
-            strongest,
-            obs.riskClass as IntelRiskClass
+      // Build transaction operations for this chunk
+      const ops: any[] = [];
+
+      for (const raw of batch) {
+        const dedupKey = buildDedupKey(raw.entityType, raw.value);
+        const existing = entityMap.get(dedupKey);
+
+        if (existing) {
+          // Compute new strongest risk
+          let strongest = raw.riskClass;
+          for (const obs of existing.observations) {
+            strongest = strongerRisk(strongest, obs.riskClass as IntelRiskClass);
+          }
+
+          const alreadyHasSource = existing.observations.some(
+            (o) => o.sourceSlug === slug
           );
-        }
 
-        await prisma.canonicalEntity.update({
-          where: { id: existing.id },
-          data: {
-            riskClass: strongest,
-            strongestSource:
-              strongest === raw.riskClass ? slug : existing.strongestSource,
-            sourceCount: { increment: existing.observations.some(
-              (o) => o.sourceSlug === slug
-            ) ? 0 : 1 },
-            lastSeenAt: now,
-            isActive: true,
-          },
-        });
+          ops.push(
+            prisma.canonicalEntity.update({
+              where: { id: existing.id },
+              data: {
+                riskClass: strongest,
+                strongestSource:
+                  strongest === raw.riskClass ? slug : existing.strongestSource,
+                sourceCount: alreadyHasSource
+                  ? existing.sourceCount
+                  : existing.sourceCount + 1,
+                lastSeenAt: now,
+                isActive: true,
+              },
+            })
+          );
 
-        // Upsert SourceObservation
-        const existingObs = await prisma.sourceObservation.findUnique({
-          where: {
-            entityId_sourceSlug: {
-              entityId: existing.id,
-              sourceSlug: slug,
-            },
-          },
-        });
-
-        if (existingObs) {
-          await prisma.sourceObservation.update({
-            where: { id: existingObs.id },
-            data: {
-              riskClass: raw.riskClass,
-              label: raw.label,
-              matchBasis: raw.matchBasis,
-              externalUrl: raw.externalUrl,
-              jurisdiction: raw.jurisdiction,
-              listType: raw.listType,
-              listIsActive: true,
-              lastVerifiedAt: now,
-              meta: (raw.meta as any) ?? undefined,
-            },
-          });
-          recordsUpdated++;
+          // Upsert SourceObservation via unique constraint
+          if (alreadyHasSource) {
+            ops.push(
+              prisma.sourceObservation.update({
+                where: {
+                  entityId_sourceSlug: {
+                    entityId: existing.id,
+                    sourceSlug: slug,
+                  },
+                },
+                data: {
+                  riskClass: raw.riskClass,
+                  label: raw.label,
+                  matchBasis: raw.matchBasis,
+                  externalUrl: raw.externalUrl,
+                  jurisdiction: raw.jurisdiction,
+                  listType: raw.listType,
+                  listIsActive: true,
+                  lastVerifiedAt: now,
+                  meta: (raw.meta as any) ?? undefined,
+                },
+              })
+            );
+            recordsUpdated++;
+          } else {
+            ops.push(
+              prisma.sourceObservation.create({
+                data: {
+                  entityId: existing.id,
+                  sourceSlug: slug,
+                  sourceTier: raw.sourceTier,
+                  riskClass: raw.riskClass,
+                  label: raw.label,
+                  matchBasis: raw.matchBasis,
+                  externalUrl: raw.externalUrl,
+                  externalId: raw.externalId,
+                  jurisdiction: raw.jurisdiction,
+                  listType: raw.listType,
+                  listIsActive: true,
+                  observedAt: raw.observedAt,
+                  meta: (raw.meta as any) ?? undefined,
+                },
+              })
+            );
+            recordsNew++;
+          }
         } else {
-          await prisma.sourceObservation.create({
-            data: {
-              entityId: existing.id,
-              sourceSlug: slug,
-              sourceTier: raw.sourceTier,
-              riskClass: raw.riskClass,
-              label: raw.label,
-              matchBasis: raw.matchBasis,
-              externalUrl: raw.externalUrl,
-              externalId: raw.externalId,
-              jurisdiction: raw.jurisdiction,
-              listType: raw.listType,
-              listIsActive: true,
-              observedAt: raw.observedAt,
-              meta: (raw.meta as any) ?? undefined,
-            },
-          });
+          // Create new entity + observation
+          ops.push(
+            prisma.canonicalEntity.create({
+              data: {
+                type: raw.entityType,
+                value: raw.value,
+                chain: raw.chain,
+                riskClass: raw.riskClass,
+                strongestSource: slug,
+                sourceCount: 1,
+                firstSeenAt: now,
+                lastSeenAt: now,
+                dedupKey,
+                observations: {
+                  create: {
+                    sourceSlug: slug,
+                    sourceTier: raw.sourceTier,
+                    riskClass: raw.riskClass,
+                    label: raw.label,
+                    matchBasis: raw.matchBasis,
+                    externalUrl: raw.externalUrl,
+                    externalId: raw.externalId,
+                    jurisdiction: raw.jurisdiction,
+                    listType: raw.listType,
+                    listIsActive: true,
+                    observedAt: raw.observedAt,
+                    meta: (raw.meta as any) ?? undefined,
+                  },
+                },
+              },
+            })
+          );
           recordsNew++;
         }
-      } else {
-        // Create new entity + observation
-        await prisma.canonicalEntity.create({
-          data: {
-            type: raw.entityType,
-            value: raw.value,
-            chain: raw.chain,
-            riskClass: raw.riskClass,
-            strongestSource: slug,
-            sourceCount: 1,
-            firstSeenAt: now,
-            lastSeenAt: now,
-            dedupKey,
-            observations: {
-              create: {
-                sourceSlug: slug,
-                sourceTier: raw.sourceTier,
-                riskClass: raw.riskClass,
-                label: raw.label,
-                matchBasis: raw.matchBasis,
-                externalUrl: raw.externalUrl,
-                externalId: raw.externalId,
-                jurisdiction: raw.jurisdiction,
-                listType: raw.listType,
-                listIsActive: true,
-                observedAt: raw.observedAt,
-                meta: (raw.meta as any) ?? undefined,
-              },
-            },
-          },
-        });
-        recordsNew++;
+      }
+
+      // Execute chunk as a single transaction
+      if (ops.length > 0) {
+        await prisma.$transaction(ops);
       }
     }
 
     // Mark entities from this source that weren't in this batch as removed
-    // (important for OFAC delisting tracking)
-    const freshValues = new Set(unique.map((r) => r.value));
-    const staleObs = await prisma.sourceObservation.findMany({
-      where: {
-        sourceSlug: slug,
-        listIsActive: true,
-        entity: {
-          value: { notIn: [...freshValues] },
+    const freshValues = unique.map((r) => r.value);
+    if (freshValues.length > 0) {
+      const staleObs = await prisma.sourceObservation.findMany({
+        where: {
+          sourceSlug: slug,
+          listIsActive: true,
+          entity: { value: { notIn: freshValues } },
         },
-      },
-      select: { id: true, entityId: true },
-    });
-
-    for (const obs of staleObs) {
-      await prisma.sourceObservation.update({
-        where: { id: obs.id },
-        data: { listIsActive: false, removedAt: now },
+        select: { id: true },
       });
-      recordsRemoved++;
+
+      if (staleObs.length > 0) {
+        await prisma.sourceObservation.updateMany({
+          where: { id: { in: staleObs.map((o) => o.id) } },
+          data: { listIsActive: false, removedAt: now },
+        });
+        recordsRemoved = staleObs.length;
+      }
     }
 
     // Finalize batch
@@ -311,7 +343,7 @@ export async function ingestSource(
   }
 }
 
-// ── Ingest all sources ──��───────────────────────────────────────────────────
+// ── Ingest all sources ──────────────────────────────────────────────────────
 
 export async function ingestAll(
   triggeredBy: string = "manual"
