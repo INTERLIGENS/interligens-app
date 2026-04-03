@@ -10,6 +10,7 @@ import {
   Download,
   Bell,
   FolderOpen,
+  Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
 ]
 
 const CASE_ITEMS = [
+  { href: "/admin/intelligence",  label: "Intelligence",   icon: Shield     },
   { href: "/admin/cases",         label: "Cases",          icon: FolderOpen },
   { href: "/admin/alerts",        label: "Alerts",         icon: Bell       },
 ]

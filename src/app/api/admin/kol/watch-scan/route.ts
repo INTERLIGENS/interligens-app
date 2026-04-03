@@ -15,23 +15,23 @@ const MONTHLY_BUDGET = 75
 
 async function checkBudget(): Promise<boolean> {
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   try {
-    const usage = await prisma.xApiUsage.findFirst({ where: { monthStart } })
-    return (usage?.totalCostUsd ?? 0) < 75
+    const usage = await prisma.xApiUsage.findFirst({ where: { month } })
+    return Number(usage?.estimatedUsd ?? 0) < 75
   } catch { return true }
 }
 
 async function trackUsage(tweets: number, userLookups: number) {
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   const cost = (tweets * 0.005) + (userLookups * 0.010)
   try {
-    const existing = await prisma.xApiUsage.findFirst({ where: { monthStart } })
+    const existing = await prisma.xApiUsage.findUnique({ where: { month } })
     if (existing) {
-      await prisma.xApiUsage.update({ where: { id: existing.id }, data: { totalCostUsd: { increment: cost }, tweetsFetched: { increment: tweets }, userLookups: { increment: userLookups } } })
+      await prisma.xApiUsage.update({ where: { id: existing.id }, data: { estimatedUsd: { increment: cost }, callCount: { increment: tweets + userLookups }, lastCall: now } })
     } else {
-      await prisma.xApiUsage.create({ data: { monthStart, totalCostUsd: cost, tweetsFetched: tweets, userLookups } })
+      await prisma.xApiUsage.create({ data: { month, estimatedUsd: cost, callCount: tweets + userLookups, lastCall: now } })
     }
   } catch(e) { console.log("budget track error:", e) }
 }

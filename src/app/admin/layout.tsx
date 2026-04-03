@@ -27,6 +27,9 @@ const NAV = [
 ];
 
 const CASES = [
+  { href: "/admin/intelligence", label: "Intelligence", icon: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1L2 4.5v3c0 4.5 2.5 7 6 8.5 3.5-1.5 6-4 6-8.5v-3L8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  )},
   { href: "/admin/cases",  label: "Cases",  icon: (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V3a3 3 0 016 0v1" stroke="currentColor" strokeWidth="1.3"/></svg>
   )},

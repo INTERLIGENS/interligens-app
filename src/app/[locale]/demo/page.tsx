@@ -10,6 +10,7 @@ import TechnicalEvidence from "@/components/TechnicalEvidence";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
+import CaseIntelBadge from "@/components/intelligence/CaseIntelBadge";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
@@ -552,6 +553,13 @@ function TigerScanPageInner() {
                   </a>
                 </div>
               )}
+
+              {/* ── CASE INTELLIGENCE BADGE ── */}
+              <CaseIntelBadge
+                address={address.trim()}
+                chain={result.chain === "ETH" ? "ethereum" : result.chain === "SOL" ? "solana" : undefined}
+                locale={locale === "fr" ? "fr" : "en"}
+              />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
               {addressLabel?.found && (
