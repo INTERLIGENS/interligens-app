@@ -44,11 +44,21 @@ function computeIMS(
   }
   const ims = Math.min(100, Math.round(maxWeighted));
 
-  // ICS: corroboration — how many distinct active sources confirm
-  const activeSources = new Set(
-    observations.filter((o) => o.listIsActive).map((o) => o.sourceSlug)
-  );
-  const ics = Math.min(100, activeSources.size * 25);
+  // ICS: corroboration score (0.0–1.0)
+  // Tier-1 regulatory source alone = 0.95 (near-certain).
+  // Each additional source adds diminishing confidence.
+  const activeObs = observations.filter((o) => o.listIsActive);
+  const tierWeights: Record<number, number> = { 1: 0.95, 2: 0.50, 3: 0.25 };
+  let ics = 0;
+  const seenSlugs = new Set<string>();
+  for (const obs of activeObs) {
+    if (seenSlugs.has(obs.sourceSlug)) continue;
+    seenSlugs.add(obs.sourceSlug);
+    const w = tierWeights[obs.sourceTier] ?? 0.25;
+    // Each source fills remaining gap: ics = 1 - (1 - ics) * (1 - w)
+    ics = 1 - (1 - ics) * (1 - w);
+  }
+  ics = Math.round(ics * 100) / 100; // two decimal places
 
   return { ims, ics };
 }
