@@ -4,6 +4,9 @@
     { "path": "/api/cron/social/discover", "schedule": "0 6 * * *" },
     { "path": "/api/cron/social/capture", "schedule": "0 7 * * *" },
     { "path": "/api/cron/signals/run", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/alerts/deliver", "schedule": "0 9 * * *" }
+    { "path": "/api/cron/alerts/deliver", "schedule": "0 9 * * *" },
+    { "path": "/api/intelligence/ingest/ofac", "schedule": "0 6 * * *" },
+    { "path": "/api/intelligence/ingest/fca", "schedule": "30 7 * * *" },
+    { "path": "/api/intelligence/ingest/forta", "schedule": "0 */6 * * *" }
   ]
 }
