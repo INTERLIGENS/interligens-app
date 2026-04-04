@@ -18,7 +18,9 @@
     "osint:wallets": "tsx scripts/osint/run.ts",
     "seed:tokens": "tsx scripts/seed/data/token-links.ts",
     "seed:snapshots": "tsx scripts/seed/data/evidence-snapshots.ts",
-    "seed:snapshots:upload": "tsx scripts/osint/uploadEvidence.ts"
+    "seed:snapshots:upload": "tsx scripts/osint/uploadEvidence.ts",
+    "watcher:v2": "tsx scripts/watcher/watcherV2.ts",
+    "watcher:v2:dry": "DRY_RUN=true tsx scripts/watcher/watcherV2.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

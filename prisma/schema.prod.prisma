@@ -534,6 +534,12 @@ model SocialPostCandidate {
   lastAttemptAtUtc   DateTime?
   errorMessage       String?
   linkedSocialPostId String?
+  detectedTokens     String     @default("[]")
+  detectedAddresses  String     @default("[]")
+  signalTypes        String     @default("[]")
+  signalScore        Int        @default(0)
+  dedupKey           String?    @unique
+  profileSnapshot    String?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   influencer         Influencer @relation(fields: [influencerId], references: [id])
