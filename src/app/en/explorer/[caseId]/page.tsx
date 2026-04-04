@@ -151,6 +151,7 @@ export default function CaseDossierPage() {
           <span>Not financial advice {'\u2014'} INTERLIGENS Intelligence {'\u00a9'} 2026</span>
           <div style={{ display: 'flex', gap: 16 }}>
             <a href="/en/explorer" style={{ color: '#4b5563', textDecoration: 'none' }}>EXPLORER {'\u2192'}</a>
+            <a href="/en/methodology" style={{ color: '#4b5563', textDecoration: 'none' }}>METHODOLOGY {'\u2192'}</a>
             <a href="/en/kol" style={{ color: '#4b5563', textDecoration: 'none' }}>LEADERBOARD {'\u2192'}</a>
           </div>
         </div>

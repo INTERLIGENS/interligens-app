@@ -1128,3 +1128,42 @@ model EvidenceSnapshot {
   @@index([relationType, relationKey])
   @@index([isPublic, reviewStatus])
 }
+
+model TransparencySubmission {
+  id               String   @id @default(cuid())
+  submittedHandle  String?
+  projectName      String?
+  platform         String?  @default("X")
+  submitterContact String?
+  notes            String?
+  status           String   @default("submitted")
+  reviewStatus     String   @default("pending")
+  publicVisibility String   @default("internal_only")
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  decisionNote     String?
+  publicNote       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  wallets          TransparencyWallet[]
+
+  @@index([status])
+  @@index([publicVisibility])
+}
+
+model TransparencyWallet {
+  id               String   @id @default(cuid())
+  submissionId     String
+  chain            String
+  address          String
+  label            String?
+  ownershipClaim   String   @default("self_submitted")
+  note             String?
+  kolHandle        String?
+  isPublic         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  submission       TransparencySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([chain, address])
+}

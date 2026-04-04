@@ -98,6 +98,7 @@ export default function KOLPage() {
   const [laundryTrail, setLaundryTrail] = useState<any>(null)
   const [cluster, setCluster] = useState<any>(null)
   const [coordination, setCoordination] = useState<any>(null)
+  const [transparency, setTransparency] = useState<any[]>([])
 
   useEffect(() => {
     if (!handle) return
@@ -117,6 +118,10 @@ export default function KOLPage() {
     fetch('/api/coordination/' + handle)
       .then(r => r.json())
       .then(d => { if (d && d.signals?.length > 0) setCoordination(d) })
+      .catch(() => {})
+    fetch('/api/transparency/wallets?handle=' + handle)
+      .then(r => r.json())
+      .then(d => { if (d?.wallets?.length > 0) setTransparency(d.wallets) })
       .catch(() => {})
   }, [handle])
 
@@ -477,6 +482,28 @@ export default function KOLPage() {
             {(kol as any).version_note && (
               <span style={{ fontSize: 10, color: '#6b7280', borderLeft: '1px solid #1f2937', paddingLeft: 12 }}>{(kol as any).version_note}</span>
             )}
+          </div>
+        )}
+
+        {/* ── VOLUNTARY DISCLOSURE ── */}
+        {transparency.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Voluntary Disclosure</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #1e2330', borderRadius: 10, padding: '18px 22px' }}>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
+                This actor has voluntarily submitted wallet addresses for public monitoring.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                {transparency.map((w: any) => (
+                  <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0a0a0a', borderRadius: 6 }}>
+                    <span style={{ background: '#4b556315', color: '#6b7280', fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 3, fontFamily: 'monospace' }}>{w.chain}</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>{w.address.length > 20 ? w.address.slice(0, 8) + '...' + w.address.slice(-6) : w.address}</span>
+                    {w.label && <span style={{ fontSize: 10, color: '#4b5563' }}>{w.label}</span>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 9, color: '#374151', fontFamily: 'monospace', letterSpacing: '0.1em' }}>SELF-SUBMITTED — NOT OSINT ATTRIBUTED</div>
+            </div>
           </div>
         )}
 

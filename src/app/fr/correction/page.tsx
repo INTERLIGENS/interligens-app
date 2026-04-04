@@ -9,7 +9,9 @@ export default function CorrectionPageFR() {
       <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <a href="/fr" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← INTERLIGENS</a>
         <span style={{ color: '#1f2937' }}>·</span>
-        <span style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>DEMANDE DE CORRECTION</span>
+        <span style={{ color: '#F85B05', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>DEMANDE DE CORRECTION</span>
+        <span style={{ color: '#1f2937' }}>·</span>
+        <a href="/fr/methodology" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>METHODOLOGIE</a>
       </div>
 
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '60px 24px' }}>
