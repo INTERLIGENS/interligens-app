@@ -131,7 +131,7 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
 
 export async function getLaunchDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null }>): Promise<DossierItem[]> {
   const tokens = await prisma.kolTokenLink.findMany({
-    select: { id: true, tokenSymbol: true, contractAddress: true, chain: true, kolHandle: true, role: true, note: true, createdAt: true },
+    select: { id: true, tokenSymbol: true, contractAddress: true, chain: true, kolHandle: true, role: true, note: true, caseId: true, documentationStatus: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
   })
 
@@ -151,6 +151,8 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
     const depths: string[] = []
     const allFlags: Set<string> = new Set()
     const notes: string[] = []
+    let bestDocStatus = 'partial'
+    const DOC_ORDER: Record<string, number> = { partial: 0, documented: 1, confirmed: 2 }
 
     for (const e of entries) {
       const profile = published.get(e.kolHandle)
@@ -159,12 +161,16 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       depths.push(profile.evidenceDepth)
       for (const f of parseBehaviorFlags(profile.behaviorFlags)) allFlags.add(f)
       if (e.note) notes.push(e.note)
+      if ((DOC_ORDER[e.documentationStatus ?? 'partial'] ?? 0) > (DOC_ORDER[bestDocStatus] ?? 0)) {
+        bestDocStatus = e.documentationStatus ?? 'partial'
+      }
     }
 
     if (actors.length === 0) continue
 
     const chain = entries[0].chain
     const bestDepth = strongestDepth(depths)
+    const caseId = entries.find(e => e.caseId)?.caseId ?? null
 
     dossiers.push({
       id: `launch-${tokenKey}`,
@@ -178,8 +184,8 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       proceedsCoverage: 'none',
       evidenceDepth: bestDepth,
       strongestFlags: [...allFlags].slice(0, 5),
-      documentationStatus: (DEPTH_ORDER[bestDepth] ?? 0) >= 3 ? 'documented' : 'partial',
-      href: `/en/kol/${actors[0].handle}`,
+      documentationStatus: bestDocStatus,
+      href: caseId ? `/en/kol/${actors[0].handle}` : `/en/kol/${actors[0].handle}`,
     })
   }
 
@@ -222,7 +228,7 @@ export async function getExplorerStats() {
       _sum: { totalDocumented: true },
     }),
     prisma.kolWallet.count({ where: { isPubliclyUsable: true, kol: where } }),
-    prisma.kolTokenLink.count({ where: { kol: where } }),
+    prisma.kolTokenLink.findMany({ where: { kol: where }, select: { tokenSymbol: true }, distinct: ['tokenSymbol'] }).then(r => r.length),
     prisma.kolProfile.count({ where: { ...where, evidenceDepth: { in: ['strong', 'comprehensive'] } } }),
   ])
 

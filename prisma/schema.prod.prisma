@@ -1098,6 +1098,9 @@ model KolTokenLink {
   tokenSymbol     String?
   role            String     @default("promoter")
   note            String?
+  caseId              String?
+  documentationStatus String   @default("partial")
+  attributionNote     String?
   createdAt       DateTime   @default(now())
   kol             KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
 

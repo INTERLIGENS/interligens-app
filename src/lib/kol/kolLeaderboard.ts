@@ -117,9 +117,7 @@ export async function getLeaderboardStats() {
     prisma.kolWallet.count({
       where: { kol: where },
     }),
-    prisma.kolTokenLink.count({
-      where: { kol: where },
-    }),
+    prisma.kolTokenLink.findMany({ where: { kol: where }, select: { tokenSymbol: true }, distinct: ['tokenSymbol'] }).then(r => r.length),
     prisma.kolProfile.count({
       where: { ...where, totalDocumented: { not: null, gt: 0 } },
     }),
