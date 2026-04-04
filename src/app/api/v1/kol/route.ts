@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
 
 export const maxDuration = 15;
 
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
   const offset = parseInt(searchParams.get("offset") ?? "0");
 
   const where = {
+    ...PUBLIC_KOL_FILTER,
     ...(tier ? { tier } : {}),
     ...(platform ? { platform } : {}),
   };
@@ -33,6 +35,11 @@ export async function GET(req: NextRequest) {
         verified: true,
         rugCount: true,
         totalScammed: true,
+        summary: true,
+        evidenceDepth: true,
+        completenessLevel: true,
+        profileStrength: true,
+        behaviorFlags: true,
         _count: { select: { evidences: true, kolCases: true } },
       },
     }),
@@ -63,6 +70,11 @@ export async function GET(req: NextRequest) {
         totalScammed: p.totalScammed,
         evidenceCount: p._count.evidences,
         caseCount: p._count.kolCases,
+        summary: p.summary,
+        evidenceDepth: p.evidenceDepth,
+        completenessLevel: p.completenessLevel,
+        profileStrength: p.profileStrength,
+        behaviorFlags: p.behaviorFlags,
         totalProceedsUsd: proceeds?.totalProceedsUsd ?? null,
         proceedsConfidence: proceeds?.proceedsConfidence ?? null,
         profileUrl: `https://interligens.com/en/kol/${p.handle}`,

@@ -13,7 +13,9 @@
     "db:status": "prisma migrate status",
     "vercel-build": "prisma generate --schema prisma/schema.prod.prisma && next build",
     "seed:sources": "tsx scripts/seed-sources.ts",
-    "seed:kol": "tsx scripts/seed/run.ts"
+    "seed:kol": "tsx scripts/seed/run.ts",
+    "seed:densify": "tsx scripts/seed/densify.ts",
+    "osint:wallets": "tsx scripts/osint/run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

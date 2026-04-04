@@ -390,6 +390,17 @@ model KolProfile {
   evidenceStatus          String  @default("none")
   proceedsStatus          String  @default("none")
   editorialStatus         String  @default("pending")
+  summary                     String?
+  observedBehaviorSummary     String?
+  documentedFacts             String?
+  partialFacts                String?
+  behaviorFlags               String  @default("[]")
+  evidenceDepth               String  @default("none")
+  completenessLevel           String  @default("incomplete")
+  proceedsCoverage            String  @default("none")
+  walletAttributionStrength   String  @default("none")
+  profileStrength             String  @default("minimal")
+  lastEnrichedAt              DateTime?
   aliases    KolAlias[]
   tokenLinks KolTokenLink[]
   cashoutCache    Json?
@@ -415,6 +426,9 @@ model KolWallet {
   confidence        String  @default("medium")
   attributionSource String?
   attributionNote   String?
+  isPubliclyUsable  Boolean  @default(false)
+  attributionStatus String   @default("review")
+  discoveredAt      DateTime?
   kol         KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 

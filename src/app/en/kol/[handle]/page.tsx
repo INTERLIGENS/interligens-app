@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation'
 
 interface KolWallet {
   id: string; address: string; chain: string; label?: string; status: string
+  confidence?: string
 }
 interface KolCaseLink {
   id: string; caseId: string; role: string; paidUsd?: number; evidence?: string
@@ -21,6 +22,15 @@ interface KOL {
   totalScammed?: number; rugCount: number; notes?: string; verified: boolean
   wallets: KolWallet[]; caseLinks: KolCaseLink[]
   riskFlag?: string; confidence?: string; bio?: string
+  summary?: string; observedBehaviorSummary?: string
+  documentedFacts?: string; partialFacts?: string
+  behaviorFlags?: string; evidenceDepth?: string
+  completenessLevel?: string; profileStrength?: string
+  proceedsCoverage?: string; walletAttributionStrength?: string
+  totalDocumented?: number
+  aliases?: { id: string; alias: string; type: string }[]
+  tokenLinks?: { id: string; contractAddress: string; chain: string; tokenSymbol?: string; role: string }[]
+  evidences?: { id: string; type: string; label: string; description?: string; sourceUrl?: string; dateFirst?: string }[]
 }
 
 const ROLE_COLOR: Record<string, string> = {
@@ -40,6 +50,42 @@ const CONF_BADGE: Record<string, { label: string; color: string }> = {
   confirmed:     { label: 'CONFIRMED',      color: '#10b981' },
   strong_linkage:{ label: 'STRONG LINKAGE', color: '#f59e0b' },
   provisional:   { label: 'PROVISIONAL',    color: '#6b7280' },
+}
+
+const DEPTH_BADGE: Record<string, { label: string; color: string }> = {
+  comprehensive: { label: 'COMPREHENSIVE', color: '#10b981' },
+  strong:        { label: 'STRONG',        color: '#3b82f6' },
+  moderate:      { label: 'MODERATE',      color: '#f59e0b' },
+  weak:          { label: 'WEAK',          color: '#6b7280' },
+  none:          { label: '—',             color: '#374151' },
+}
+const COMPLETENESS_BADGE: Record<string, { label: string; color: string }> = {
+  complete:    { label: 'COMPLETE',    color: '#10b981' },
+  substantial: { label: 'SUBSTANTIAL', color: '#3b82f6' },
+  partial:     { label: 'PARTIAL',     color: '#f59e0b' },
+  incomplete:  { label: 'INCOMPLETE',  color: '#6b7280' },
+}
+const STRENGTH_BADGE: Record<string, { label: string; color: string }> = {
+  confirmed: { label: 'CONFIRMED', color: '#10b981' },
+  high:      { label: 'HIGH',      color: '#3b82f6' },
+  medium:    { label: 'MEDIUM',    color: '#f59e0b' },
+  low:       { label: 'LOW',       color: '#6b7280' },
+  none:      { label: '—',         color: '#374151' },
+}
+
+const FLAG_LABELS: Record<string, string> = {
+  REPEATED_CASHOUT:       'Repeated cashout pattern',
+  MULTI_HOP_TRANSFER:     'Multi-hop transfer obfuscation',
+  CROSS_CASE_RECURRENCE:  'Recurrence across multiple cases',
+  MULTI_LAUNCH_LINKED:    'Linked to multiple token launches',
+  LAUNDERING_INDICATORS:  'Laundering indicators detected',
+  KNOWN_LINKED_WALLETS:   'Known linked wallets identified',
+  COORDINATED_PROMOTION:  'Coordinated promotion activity',
+}
+
+function parseFlags(raw?: string): string[] {
+  if (!raw) return []
+  try { return JSON.parse(raw) } catch { return [] }
 }
 
 export default function KOLPage() {
@@ -88,15 +134,32 @@ export default function KOLPage() {
 
   const displayName = kol.displayName ?? kol.handle
   const followers = kol.followerCount ?? kol.followers
+  const flags = parseFlags(kol.behaviorFlags)
+  const depth = DEPTH_BADGE[kol.evidenceDepth ?? 'none'] ?? DEPTH_BADGE.none
+  const comp = COMPLETENESS_BADGE[kol.completenessLevel ?? 'incomplete'] ?? COMPLETENESS_BADGE.incomplete
+  const walletStr = STRENGTH_BADGE[kol.walletAttributionStrength ?? 'none'] ?? STRENGTH_BADGE.none
+  const hasProceeds = (kol.totalDocumented ?? 0) > 0
+  const hasLaundry = !!laundryTrail
+
+  // Section header helper
+  const SectionHeader = ({ children }: { children: string }) => (
+    <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />
+      {children}
+      <span style={{ flex: 1, height: 1, background: '#1f2937', display: 'inline-block' }} />
+    </div>
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
 
       {/* ── HEADER ── */}
       <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <a href="/en/demo" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← INTERLIGENS</a>
+        <a href="/en/kol" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← KOL REGISTRY</a>
         <span style={{ color: '#1f2937' }}>·</span>
         <span style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>RISK INTELLIGENCE PROFILE</span>
+        <span style={{ color: '#1f2937' }}>{'\u00b7'}</span>
+        <a href="/en/explorer" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>EXPLORER</a>
         {kol.verified && (
           <span style={{ marginLeft: 'auto', background: '#ef444422', border: '1px solid #ef444444', color: '#ef4444', fontSize: 9, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.15em' }}>
             ✓ VERIFIED
@@ -123,7 +186,17 @@ export default function KOLPage() {
                 HIGH-RISK ACTOR · {kol.platform.toUpperCase()} · {kol.status.toUpperCase()}
               </div>
               <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 4 }}>{displayName}</div>
-              <div style={{ fontSize: 12, color: '#4b5563', fontFamily: 'monospace' }}>@{kol.handle}</div>
+              <div style={{ fontSize: 12, color: '#4b5563', fontFamily: 'monospace', marginBottom: 8 }}>@{kol.handle}</div>
+              {/* Aliases */}
+              {(kol.aliases?.length ?? 0) > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {kol.aliases!.map(a => (
+                    <span key={a.id} style={{ background: '#4b556315', color: '#6b7280', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 3, fontFamily: 'monospace' }}>
+                      @{a.alias}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
@@ -139,12 +212,15 @@ export default function KOLPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, marginBottom: kol.notes ? 20 : 0 }}>
+          {/* Stats grid */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, marginBottom: 20 }}>
             {[
               { value: String(kol.rugCount), label: 'Rug-Linked Cases', color: '#ef4444' },
               { value: followers ? Math.round(followers/1000) + 'K' : '?', label: 'Audience Reached', color: '#f59e0b' },
               { value: String(kol?.wallets?.length ?? 0), label: 'Wallets Documented', color: '#8b5cf6' },
               { value: String(kol?.caseLinks?.length ?? 0), label: 'Documented Cases', color: '#3b82f6' },
+              { value: String(kol?.evidences?.length ?? 0), label: 'Evidence Items', color: '#F85B05' },
+              { value: String(kol?.tokenLinks?.length ?? 0), label: 'Token Links', color: '#ec4899' },
             ].map(s => (
               <div key={s.label} style={{ background: '#0a0a0a', borderRadius: 10, padding: '12px 18px', textAlign: 'center' as const, flex: 1, minWidth: 100 }}>
                 <div style={{ fontSize: 22, fontWeight: 900, color: s.color, fontFamily: 'monospace' }}>{s.value}</div>
@@ -153,12 +229,90 @@ export default function KOLPage() {
             ))}
           </div>
 
+          {/* Density badges row */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: kol.notes ? 20 : 0 }}>
+            <span style={{ background: depth.color + '15', border: '1px solid ' + depth.color + '44', color: depth.color, fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+              EVIDENCE: {depth.label}
+            </span>
+            <span style={{ background: comp.color + '15', border: '1px solid ' + comp.color + '44', color: comp.color, fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+              COMPLETENESS: {comp.label}
+            </span>
+            <span style={{ background: walletStr.color + '15', border: '1px solid ' + walletStr.color + '44', color: walletStr.color, fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+              WALLET ATTRIB: {walletStr.label}
+            </span>
+            {hasProceeds && (
+              <span style={{ background: '#10b98115', border: '1px solid #10b98144', color: '#10b981', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+                PROCEEDS: {fmtUsd(kol.totalDocumented)}
+              </span>
+            )}
+            {hasLaundry && (
+              <span style={{ background: '#ef444415', border: '1px solid #ef444444', color: '#ef4444', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+                LAUNDRY TRAIL DETECTED
+              </span>
+            )}
+          </div>
+
           {kol.notes && (
             <div style={{ background: '#0a0a0a', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#94a3b8', borderLeft: '3px solid #4f46e5', lineHeight: 1.6 }}>
               {kol.notes}
             </div>
           )}
         </div>
+
+        {/* ── FACTUAL SUMMARY ── */}
+        {kol.summary && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Factual Summary</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #1e2330', borderRadius: 10, padding: '18px 22px', fontSize: 13, color: '#d1d5db', lineHeight: 1.75 }}>
+              {kol.summary}
+            </div>
+          </div>
+        )}
+
+        {/* ── DOCUMENTED FACTS ── */}
+        {kol.documentedFacts && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Documented Facts</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #10b98133', borderLeft: '3px solid #10b981', borderRadius: 10, padding: '18px 22px', fontSize: 13, color: '#d1d5db', lineHeight: 1.75 }}>
+              {kol.documentedFacts}
+            </div>
+          </div>
+        )}
+
+        {/* ── PARTIAL / INCOMPLETE FACTS ── */}
+        {kol.partialFacts && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Incomplete / Pending Investigation</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #f59e0b33', borderLeft: '3px solid #f59e0b', borderRadius: 10, padding: '18px 22px' }}>
+              <div style={{ fontSize: 8, fontWeight: 900, color: '#f59e0b', letterSpacing: '0.15em', marginBottom: 8 }}>
+                THE FOLLOWING ELEMENTS ARE INCOMPLETE OR UNDER INVESTIGATION
+              </div>
+              <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.75 }}>
+                {kol.partialFacts}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── BEHAVIOR FLAGS ── */}
+        {flags.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Detected Behavior Patterns</SectionHeader>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {flags.map(flag => (
+                <div key={flag} style={{ background: '#0d1117', border: '1px solid #f9731633', borderRadius: 8, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f97316', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: '#d1d5db', fontWeight: 600 }}>
+                    {FLAG_LABELS[flag] ?? flag}
+                  </span>
+                  <span style={{ marginLeft: 'auto', fontSize: 8, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+                    {flag}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── PATTERN SUMMARY (KolNarrative) ── */}
         <KolNarrative kol={{ ...kol, followerCount: followers }} />
@@ -170,11 +324,7 @@ export default function KOLPage() {
 
         {(kol?.caseLinks?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />
-              Documented Case History
-              <span style={{ flex: 1, height: 1, background: '#1f2937', display: 'inline-block' }} />
-            </div>
+            <SectionHeader>Documented Case History</SectionHeader>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
               {kol.caseLinks.map((c, i) => {
                 const roleColor = ROLE_COLOR[c.role] ?? '#6b7280'
@@ -218,11 +368,7 @@ export default function KOLPage() {
         {/* ── ASSOCIATED WALLETS ── */}
         {(kol?.wallets?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />
-              Associated Wallets — On-Chain Record
-              <span style={{ flex: 1, height: 1, background: '#1f2937', display: 'inline-block' }} />
-            </div>
+            <SectionHeader>Associated Wallets — On-Chain Record</SectionHeader>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
               {kol.wallets.map(w => (
                 <div key={w.id} style={{ background: '#0a0a0a', border: '1px solid #111827', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
@@ -230,6 +376,11 @@ export default function KOLPage() {
                   <span style={{ background: '#3b82f615', color: '#3b82f6', padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', flexShrink: 0 }}>DOCUMENTED</span>
                   <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', flex: 1 }}>{truncAddr(w.address)}</span>
                   {w.label && <span style={{ fontSize: 10, color: '#4b5563', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{w.label}</span>}
+                  {w.confidence && (
+                    <span style={{ background: (STRENGTH_BADGE[w.confidence]?.color ?? '#6b7280') + '15', color: STRENGTH_BADGE[w.confidence]?.color ?? '#6b7280', padding: '2px 6px', borderRadius: 3, fontSize: 8, fontWeight: 900, letterSpacing: '0.1em' }}>
+                      {w.confidence.toUpperCase()}
+                    </span>
+                  )}
                   <span style={{ background: '#1f2937', color: '#4b5563', padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700 }}>{w.chain}</span>
                   <span style={{ fontSize: 10, color: copied === w.address ? '#10b981' : '#374151', fontFamily: 'monospace', minWidth: 40, textAlign: 'right' as const }}>{copied === w.address ? '✓ copied' : 'copy'}</span>
                   <a href={explorerUrl(w.address, w.chain)} target="_blank" onClick={e => e.stopPropagation()} style={{ fontSize: 9, fontWeight: 900, color: '#F85B05', textDecoration: 'none', letterSpacing: '0.1em', whiteSpace: 'nowrap' as const }}>ON-CHAIN →</a>
@@ -238,7 +389,6 @@ export default function KOLPage() {
             </div>
           </div>
         )}
-
 
         {/* ── LAST REVIEWED ── */}
         {(kol as any).last_reviewed_at && (

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
@@ -9,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
   try {
     const directCount = await prisma.kolEvidence.count({ where: { kolHandle: h } })
     const kol = await prisma.kolProfile.findFirst({
-      where: { handle: { equals: h, mode: "insensitive" } },
+      where: { handle: { equals: h, mode: "insensitive" }, ...PUBLIC_KOL_FILTER },
       include: { evidences: true, kolWallets: true, kolCases: true }
     })
     if (!kol) return NextResponse.json({ found: false }, { status: 404 })

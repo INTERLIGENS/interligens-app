@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation'
 
 interface KolPortefeuille {
   id: string; address: string; chain: string; label?: string; status: string
+  confidence?: string
 }
 interface KolCaseLink {
   id: string; caseId: string; role: string; paidUsd?: number; evidence?: string
@@ -21,6 +22,15 @@ interface KOL {
   totalScammed?: number; rugCount: number; notes?: string; verified: boolean
   wallets: KolPortefeuille[]; caseLinks: KolCaseLink[]
   riskFlag?: string; confidence?: string; bio?: string
+  summary?: string; observedBehaviorSummary?: string
+  documentedFacts?: string; partialFacts?: string
+  behaviorFlags?: string; evidenceDepth?: string
+  completenessLevel?: string; profileStrength?: string
+  proceedsCoverage?: string; walletAttributionStrength?: string
+  totalDocumented?: number
+  aliases?: { id: string; alias: string; type: string }[]
+  tokenLinks?: { id: string; contractAddress: string; chain: string; tokenSymbol?: string; role: string }[]
+  evidences?: { id: string; type: string; label: string; description?: string; sourceUrl?: string; dateFirst?: string }[]
 }
 
 const ROLE_COLOR: Record<string, string> = {
@@ -28,21 +38,57 @@ const ROLE_COLOR: Record<string, string> = {
   dev: '#8b5cf6', insider: '#ec4899',
 }
 const ROLE_LABEL: Record<string, string> = {
-  paid_promoter: 'PROMOTEUR RÉMUNÉRÉ — SOURCES CITÉES',
-  advisor:       'CONSEILLER — SOURCES CITÉES',
-  promoter:      'PROMOTEUR — SOURCES CITÉES',
-  dev:           'DÉVELOPPEUR',
-  insider:       'INITIÉ',
+  paid_promoter: 'PROMOTEUR REMUNERE — SOURCES CITEES',
+  advisor:       'CONSEILLER — SOURCES CITEES',
+  promoter:      'PROMOTEUR — SOURCES CITEES',
+  dev:           'DEVELOPPEUR',
+  insider:       'INITIE',
 }
 const CLAIM_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  verified_onchain:    { label: 'VÉRIFIÉ ON-CHAIN',      color: '#10b981', bg: '#10b98115' },
-  source_attributed:   { label: 'SOURCE CITÉE',          color: '#3b82f6', bg: '#3b82f615' },
+  verified_onchain:    { label: 'VERIFIE ON-CHAIN',      color: '#10b981', bg: '#10b98115' },
+  source_attributed:   { label: 'SOURCE CITEE',          color: '#3b82f6', bg: '#3b82f615' },
   analytical_estimate: { label: 'ESTIMATION ANALYTIQUE', color: '#f59e0b', bg: '#f59e0b15' },
 }
 const CONF_BADGE: Record<string, { label: string; color: string }> = {
-  confirmed:      { label: 'CONFIRMÉ',   color: '#10b981' },
+  confirmed:      { label: 'CONFIRME',   color: '#10b981' },
   strong_linkage: { label: 'LIEN FORT',  color: '#f59e0b' },
   provisional:    { label: 'PROVISOIRE', color: '#6b7280' },
+}
+
+const DEPTH_BADGE: Record<string, { label: string; color: string }> = {
+  comprehensive: { label: 'EXHAUSTIF',  color: '#10b981' },
+  strong:        { label: 'SOLIDE',     color: '#3b82f6' },
+  moderate:      { label: 'MODERE',     color: '#f59e0b' },
+  weak:          { label: 'FAIBLE',     color: '#6b7280' },
+  none:          { label: '—',          color: '#374151' },
+}
+const COMPLETENESS_BADGE: Record<string, { label: string; color: string }> = {
+  complete:    { label: 'COMPLET',      color: '#10b981' },
+  substantial: { label: 'SUBSTANTIEL',  color: '#3b82f6' },
+  partial:     { label: 'PARTIEL',      color: '#f59e0b' },
+  incomplete:  { label: 'INCOMPLET',    color: '#6b7280' },
+}
+const STRENGTH_BADGE: Record<string, { label: string; color: string }> = {
+  confirmed: { label: 'CONFIRME', color: '#10b981' },
+  high:      { label: 'ELEVE',    color: '#3b82f6' },
+  medium:    { label: 'MOYEN',    color: '#f59e0b' },
+  low:       { label: 'FAIBLE',   color: '#6b7280' },
+  none:      { label: '—',        color: '#374151' },
+}
+
+const FLAG_LABELS: Record<string, string> = {
+  REPEATED_CASHOUT:       'Schema de cashout repete',
+  MULTI_HOP_TRANSFER:     'Transferts multi-sauts (obfuscation)',
+  CROSS_CASE_RECURRENCE:  'Recurrence sur plusieurs affaires',
+  MULTI_LAUNCH_LINKED:    'Lie a plusieurs lancements de tokens',
+  LAUNDERING_INDICATORS:  'Indicateurs de blanchiment detectes',
+  KNOWN_LINKED_WALLETS:   'Wallets lies identifies',
+  COORDINATED_PROMOTION:  'Activite de promotion coordonnee',
+}
+
+function parseFlags(raw?: string): string[] {
+  if (!raw) return []
+  try { return JSON.parse(raw) } catch { return [] }
 }
 
 export default function KOLPageFR() {
@@ -91,18 +137,34 @@ export default function KOLPageFR() {
 
   const displayName = kol.displayName ?? kol.handle
   const followers = kol.followerCount ?? kol.followers
+  const flags = parseFlags(kol.behaviorFlags)
+  const depth = DEPTH_BADGE[kol.evidenceDepth ?? 'none'] ?? DEPTH_BADGE.none
+  const comp = COMPLETENESS_BADGE[kol.completenessLevel ?? 'incomplete'] ?? COMPLETENESS_BADGE.incomplete
+  const walletStr = STRENGTH_BADGE[kol.walletAttributionStrength ?? 'none'] ?? STRENGTH_BADGE.none
+  const hasProceeds = (kol.totalDocumented ?? 0) > 0
+  const hasLaundry = !!laundryTrail
+
+  const SectionHeader = ({ children }: { children: string }) => (
+    <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />
+      {children}
+      <span style={{ flex: 1, height: 1, background: '#1f2937', display: 'inline-block' }} />
+    </div>
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
 
       {/* HEADER */}
       <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <a href="/fr" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← INTERLIGENS</a>
+        <a href="/fr/kol" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← REGISTRE KOL</a>
         <span style={{ color: '#1f2937' }}>·</span>
         <span style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>PROFIL D'INTELLIGENCE DES RISQUES</span>
+        <span style={{ color: '#1f2937' }}>{'\u00b7'}</span>
+        <a href="/fr/explorer" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>EXPLORATEUR</a>
         {kol.verified && (
           <span style={{ marginLeft: 'auto', background: '#ef444422', border: '1px solid #ef444444', color: '#ef4444', fontSize: 9, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.15em' }}>
-            ✓ VÉRIFIÉ
+            ✓ VERIFIE
           </span>
         )}
       </div>
@@ -123,14 +185,23 @@ export default function KOLPageFR() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 6 }}>
-                ACTEUR À HAUT RISQUE · {kol.platform.toUpperCase()} · {kol.status.toUpperCase()}
+                ACTEUR A HAUT RISQUE · {kol.platform.toUpperCase()} · {kol.status.toUpperCase()}
               </div>
               <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 4 }}>{displayName}</div>
-              <div style={{ fontSize: 12, color: '#4b5563', fontFamily: 'monospace' }}>@{kol.handle}</div>
+              <div style={{ fontSize: 12, color: '#4b5563', fontFamily: 'monospace', marginBottom: 8 }}>@{kol.handle}</div>
+              {(kol.aliases?.length ?? 0) > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {kol.aliases!.map(a => (
+                    <span key={a.id} style={{ background: '#4b556315', color: '#6b7280', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 3, fontFamily: 'monospace' }}>
+                      @{a.alias}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
-              <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Pertes estimées investisseurs</div>
+              <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Pertes estimees investisseurs</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail&lang=fr`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
                   ↓ RAPPORT PUBLIC
@@ -142,12 +213,15 @@ export default function KOLPageFR() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, marginBottom: kol.notes ? 20 : 0 }}>
+          {/* Stats grid */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, marginBottom: 20 }}>
             {[
-              { value: String(kol.rugCount), label: 'Cas liés à des rugs', color: '#ef4444' },
-              { value: followers ? Math.round(followers/1000) + 'K' : '?', label: 'Audience touchée', color: '#f59e0b' },
-              { value: String(kol?.wallets?.length ?? 0), label: 'Portefeuilles documentés', color: '#8b5cf6' },
-              { value: String(kol?.caseLinks?.length ?? 0), label: 'Cas documentés', color: '#3b82f6' },
+              { value: String(kol.rugCount), label: 'Cas lies a des rugs', color: '#ef4444' },
+              { value: followers ? Math.round(followers/1000) + 'K' : '?', label: 'Audience touchee', color: '#f59e0b' },
+              { value: String(kol?.wallets?.length ?? 0), label: 'Portefeuilles documentes', color: '#8b5cf6' },
+              { value: String(kol?.caseLinks?.length ?? 0), label: 'Cas documentes', color: '#3b82f6' },
+              { value: String(kol?.evidences?.length ?? 0), label: 'Elements de preuve', color: '#F85B05' },
+              { value: String(kol?.tokenLinks?.length ?? 0), label: 'Tokens lies', color: '#ec4899' },
             ].map(s => (
               <div key={s.label} style={{ background: '#0a0a0a', borderRadius: 10, padding: '12px 18px', textAlign: 'center' as const, flex: 1, minWidth: 100 }}>
                 <div style={{ fontSize: 22, fontWeight: 900, color: s.color, fontFamily: 'monospace' }}>{s.value}</div>
@@ -156,12 +230,90 @@ export default function KOLPageFR() {
             ))}
           </div>
 
+          {/* Density badges */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: kol.notes ? 20 : 0 }}>
+            <span style={{ background: depth.color + '15', border: '1px solid ' + depth.color + '44', color: depth.color, fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+              PREUVES : {depth.label}
+            </span>
+            <span style={{ background: comp.color + '15', border: '1px solid ' + comp.color + '44', color: comp.color, fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+              COMPLETUDE : {comp.label}
+            </span>
+            <span style={{ background: walletStr.color + '15', border: '1px solid ' + walletStr.color + '44', color: walletStr.color, fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+              ATTRIB. WALLETS : {walletStr.label}
+            </span>
+            {hasProceeds && (
+              <span style={{ background: '#10b98115', border: '1px solid #10b98144', color: '#10b981', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+                PRODUITS : {fmtUsd(kol.totalDocumented)}
+              </span>
+            )}
+            {hasLaundry && (
+              <span style={{ background: '#ef444415', border: '1px solid #ef444444', color: '#ef4444', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+                PISTE DE BLANCHIMENT DETECTEE
+              </span>
+            )}
+          </div>
+
           {kol.notes && (
             <div style={{ background: '#0a0a0a', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#94a3b8', borderLeft: '3px solid #4f46e5', lineHeight: 1.6 }}>
               {kol.notes}
             </div>
           )}
         </div>
+
+        {/* ── RESUME FACTUEL ── */}
+        {kol.summary && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Resume factuel</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #1e2330', borderRadius: 10, padding: '18px 22px', fontSize: 13, color: '#d1d5db', lineHeight: 1.75 }}>
+              {kol.summary}
+            </div>
+          </div>
+        )}
+
+        {/* ── FAITS DOCUMENTES ── */}
+        {kol.documentedFacts && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Faits documentes</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #10b98133', borderLeft: '3px solid #10b981', borderRadius: 10, padding: '18px 22px', fontSize: 13, color: '#d1d5db', lineHeight: 1.75 }}>
+              {kol.documentedFacts}
+            </div>
+          </div>
+        )}
+
+        {/* ── FAITS PARTIELS / EN COURS ── */}
+        {kol.partialFacts && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Incomplet / En cours d'investigation</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #f59e0b33', borderLeft: '3px solid #f59e0b', borderRadius: 10, padding: '18px 22px' }}>
+              <div style={{ fontSize: 8, fontWeight: 900, color: '#f59e0b', letterSpacing: '0.15em', marginBottom: 8 }}>
+                LES ELEMENTS SUIVANTS SONT INCOMPLETS OU EN COURS D'INVESTIGATION
+              </div>
+              <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.75 }}>
+                {kol.partialFacts}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── ALERTES COMPORTEMENTALES ── */}
+        {flags.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Schemas comportementaux detectes</SectionHeader>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {flags.map(flag => (
+                <div key={flag} style={{ background: '#0d1117', border: '1px solid #f9731633', borderRadius: 8, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f97316', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: '#d1d5db', fontWeight: 600 }}>
+                    {FLAG_LABELS[flag] ?? flag}
+                  </span>
+                  <span style={{ marginLeft: 'auto', fontSize: 8, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+                    {flag}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* PATTERN SUMMARY */}
         <KolNarrative kol={{ ...kol, followerCount: followers }} />
@@ -173,11 +325,7 @@ export default function KOLPageFR() {
 
         {(kol?.caseLinks?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />
-              Historique des cas documentés
-              <span style={{ flex: 1, height: 1, background: '#1f2937', display: 'inline-block' }} />
-            </div>
+            <SectionHeader>Historique des cas documentes</SectionHeader>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
               {kol.caseLinks.map((c, i) => {
                 const roleColor = ROLE_COLOR[c.role] ?? '#6b7280'
@@ -197,7 +345,7 @@ export default function KOLPageFR() {
                         {confBadge && <span style={{ background: confBadge.color + '15', color: confBadge.color, padding: '2px 8px', borderRadius: 3, fontSize: 8, fontWeight: 700 }}>{confBadge.label}</span>}
                         {c.paidUsd && (
                           <span style={{ marginLeft: 'auto', fontSize: 13, color: '#ef4444', fontWeight: 900, fontFamily: 'monospace' }}>
-                            {fmtUsd(c.paidUsd)} gains estimés
+                            {fmtUsd(c.paidUsd)} gains estimes
                           </span>
                         )}
                       </div>
@@ -218,23 +366,24 @@ export default function KOLPageFR() {
           </div>
         )}
 
-        {/* PORTEFEUILLES ASSOCIÉS */}
+        {/* PORTEFEUILLES ASSOCIES */}
         {(kol?.wallets?.length ?? 0) > 0 && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', textTransform: 'uppercase' as const, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: '#1f2937', display: 'inline-block' }} />
-              Portefeuilles associés — Registre on-chain
-              <span style={{ flex: 1, height: 1, background: '#1f2937', display: 'inline-block' }} />
-            </div>
+            <SectionHeader>Portefeuilles associes — Registre on-chain</SectionHeader>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
               {kol.wallets.map(w => (
                 <div key={w.id} style={{ background: '#0a0a0a', border: '1px solid #111827', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
                   onClick={() => copyAddr(w.address)}>
-                  <span style={{ background: '#3b82f615', color: '#3b82f6', padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', flexShrink: 0 }}>DOCUMENTÉ</span>
+                  <span style={{ background: '#3b82f615', color: '#3b82f6', padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', flexShrink: 0 }}>DOCUMENTE</span>
                   <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', flex: 1 }}>{truncAddr(w.address)}</span>
                   {w.label && <span style={{ fontSize: 10, color: '#4b5563', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{w.label}</span>}
+                  {w.confidence && (
+                    <span style={{ background: (STRENGTH_BADGE[w.confidence]?.color ?? '#6b7280') + '15', color: STRENGTH_BADGE[w.confidence]?.color ?? '#6b7280', padding: '2px 6px', borderRadius: 3, fontSize: 8, fontWeight: 900, letterSpacing: '0.1em' }}>
+                      {w.confidence.toUpperCase()}
+                    </span>
+                  )}
                   <span style={{ background: '#1f2937', color: '#4b5563', padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700 }}>{w.chain}</span>
-                  <span style={{ fontSize: 10, color: copied === w.address ? '#10b981' : '#374151', fontFamily: 'monospace', minWidth: 40, textAlign: 'right' as const }}>{copied === w.address ? '✓ copié' : 'copier'}</span>
+                  <span style={{ fontSize: 10, color: copied === w.address ? '#10b981' : '#374151', fontFamily: 'monospace', minWidth: 40, textAlign: 'right' as const }}>{copied === w.address ? '✓ copie' : 'copier'}</span>
                   <a href={explorerUrl(w.address, w.chain)} target="_blank" onClick={e => e.stopPropagation()} style={{ fontSize: 9, fontWeight: 900, color: '#F85B05', textDecoration: 'none', letterSpacing: '0.1em', whiteSpace: 'nowrap' as const }}>ON-CHAIN →</a>
                 </div>
               ))}
@@ -242,11 +391,10 @@ export default function KOLPageFR() {
           </div>
         )}
 
-
-        {/* DERNIÈRE RÉVISION */}
+        {/* DERNIERE REVISION */}
         {(kol as any).last_reviewed_at && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 16px', background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8 }}>
-            <span style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em' }}>DERNIÈRE RÉVISION</span>
+            <span style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em' }}>DERNIERE REVISION</span>
             <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#4b5563' }}>
               {new Date((kol as any).last_reviewed_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
@@ -260,21 +408,21 @@ export default function KOLPageFR() {
         <div style={{ background: '#0a0a0a', border: '1px solid #1f293788', borderRadius: 10, padding: '18px 22px', marginBottom: 20 }}>
           <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 10 }}>STANDARD DE PREUVE — AVIS IMPORTANT</div>
           <div style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.75 }}>
-            Ce profil est une synthèse analytique fondée sur des éléments de preuve, issus d'enregistrements publics de la blockchain, de communications publiques archivées et de sources tierces citées. Toutes les affirmations sont classées comme : (i) faits directement observables on-chain, (ii) déclarations publiques attribuées à des sources, ou (iii) inférences analytiques fondées sur une méthodologie divulguée. INTERLIGENS n'allègue aucune culpabilité pénale, intention ou responsabilité juridique. Les montants en USD sont des estimations méthodologiques. Les termes « haut risque », « lié », « associé », « lié à un rug » et « estimé » reflètent une classification analytique — et non des conclusions judiciaires.
+            Ce profil est une synthese analytique fondee sur des elements de preuve, issus d'enregistrements publics de la blockchain, de communications publiques archivees et de sources tierces citees. Toutes les affirmations sont classees comme : (i) faits directement observables on-chain, (ii) declarations publiques attribuees a des sources, ou (iii) inferences analytiques fondees sur une methodologie divulguee. INTERLIGENS n'allegue aucune culpabilite penale, intention ou responsabilite juridique. Les montants en USD sont des estimations methodologiques.
           </div>
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
             {[
-              ['VÉRIFIÉ ON-CHAIN',           '#10b981'],
-              ['SOURCE CITÉE',               '#3b82f6'],
+              ['VERIFIE ON-CHAIN',           '#10b981'],
+              ['SOURCE CITEE',               '#3b82f6'],
               ['ESTIMATION ANALYTIQUE',      '#f59e0b'],
-              ['NON UNE DÉCISION JUDICIAIRE','#6b7280'],
+              ['NON UNE DECISION JUDICIAIRE','#6b7280'],
             ].map(([label, color]) => (
               <span key={label} style={{ background: color + '15', border: '1px solid ' + color + '44', color, fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>{label}</span>
             ))}
           </div>
           <div style={{ marginTop: 12, fontSize: 10, color: '#1f2937', display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
             <a href="/fr/correction" style={{ color: '#374151', textDecoration: 'none', fontWeight: 700 }}>Demander une correction →</a>
-            <a href="/fr/methodology" style={{ color: '#374151', textDecoration: 'none', fontWeight: 700 }}>Voir la méthodologie →</a>
+            <a href="/fr/methodology" style={{ color: '#374151', textDecoration: 'none', fontWeight: 700 }}>Voir la methodologie →</a>
             <span>INTERLIGENS Delaware C-Corp · Ne constitue pas un conseil juridique · legal@interligens.com</span>
           </div>
         </div>

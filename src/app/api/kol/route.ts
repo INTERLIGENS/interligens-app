@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 
 export async function GET() {
   try {
@@ -16,8 +17,13 @@ export async function GET() {
         followerCount: true,
         exitDate: true,
         evmAddress: true,
+        summary: true,
+        evidenceDepth: true,
+        completenessLevel: true,
+        profileStrength: true,
+        behaviorFlags: true,
       },
-      where: { riskFlag: { not: 'unverified' } },
+      where: { riskFlag: { not: 'unverified' }, ...PUBLIC_KOL_FILTER },
       orderBy: { totalScammed: 'desc' },
     })
 
