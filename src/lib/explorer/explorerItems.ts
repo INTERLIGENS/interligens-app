@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 import { parseBehaviorFlags, type BehaviorFlagKey } from '@/lib/kol/behaviorFlags'
+import { getSnapshotCountByDossier } from '@/lib/evidence/evidenceSnapshots'
 
 export type DossierKind = 'case' | 'launch'
 
@@ -29,6 +30,7 @@ export interface DossierItem {
   multiLaunchRecurrence: boolean
   multiLaunchCount?: number
   topCoordinationSignal?: { labelEn: string; labelFr: string; strength: string } | null
+  snapshotCount: number
 }
 
 export interface ExplorerFilters {
@@ -126,9 +128,10 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
       evidenceDepth: bestDepth,
       strongestFlags: [...allFlags].slice(0, 5),
       documentationStatus: docStatus,
-      href: `/en/kol/${actors[0].handle}`,
+      href: `/en/explorer/${caseId}`,
       sharedActorGroup: false,
       multiLaunchRecurrence: false,
+      snapshotCount: 0,
     })
   }
 
@@ -196,6 +199,7 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       href: `/en/kol/${actors[0].handle}`,
       sharedActorGroup: false,
       multiLaunchRecurrence: false,
+      snapshotCount: 0,
     })
   }
 
@@ -243,6 +247,13 @@ export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
       caseDossiers[i].multiLaunchRecurrence = true
       caseDossiers[i].multiLaunchCount = sharedCount + 1
     }
+  }
+
+  // Enrich with snapshot counts
+  const allRelationKeys = items.map(i => i.title)
+  const snapCounts = await getSnapshotCountByDossier(allRelationKeys)
+  for (const item of items) {
+    item.snapshotCount = snapCounts.get(item.title) ?? 0
   }
 
   // Compute top coordination signal per dossier from available data (no extra DB calls)

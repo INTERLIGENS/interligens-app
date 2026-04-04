@@ -16,7 +16,8 @@
     "seed:kol": "tsx scripts/seed/run.ts",
     "seed:densify": "tsx scripts/seed/densify.ts",
     "osint:wallets": "tsx scripts/osint/run.ts",
-    "seed:tokens": "tsx scripts/seed/data/token-links.ts"
+    "seed:tokens": "tsx scripts/seed/data/token-links.ts",
+    "seed:snapshots": "tsx scripts/seed/data/evidence-snapshots.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

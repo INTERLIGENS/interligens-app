@@ -12,6 +12,7 @@ interface Dossier {
   evidenceDepth: string; strongestFlags: string[]; documentationStatus: string; href: string
   sharedActorGroup?: boolean; multiLaunchRecurrence?: boolean; multiLaunchCount?: number
   topCoordinationSignal?: { labelEn: string; labelFr: string; strength: string } | null
+  snapshotCount?: number
 }
 interface Stats {
   publishedProfiles: number; minimumObservedProceeds: number
@@ -179,6 +180,7 @@ export default function ExplorerFR() {
                       <Badge label={kb.l} color={kb.c} />
                       <Badge label={doc.l} color={doc.c} />
                       {depth && <Badge label={'PREUVES ' + depth.l} color={depth.c} />}
+                      {(d.snapshotCount ?? 0) > 0 && <Badge label={`${d.snapshotCount} preuves au dossier`} color="#3b82f6" />}
                       <span style={{ marginLeft: 'auto', color: '#374151', fontSize: 10, fontFamily: 'monospace' }}>{fmtDate(d.primaryDate)}</span>
                     </div>
 

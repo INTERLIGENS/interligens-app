@@ -11,6 +11,7 @@ interface Dossier {
   evidenceDepth: string; strongestFlags: string[]; documentationStatus: string; href: string
   sharedActorGroup?: boolean; multiLaunchRecurrence?: boolean; multiLaunchCount?: number
   topCoordinationSignal?: { labelEn: string; labelFr: string; strength: string } | null
+  snapshotCount?: number
 }
 interface Stats {
   publishedProfiles: number; minimumObservedProceeds: number
@@ -176,6 +177,7 @@ export default function ExplorerEN() {
                       <Badge label={kb.l} color={kb.c} />
                       <Badge label={doc.l} color={doc.c} />
                       {depth && <Badge label={depth.l + ' EVIDENCE'} color={depth.c} />}
+                      {(d.snapshotCount ?? 0) > 0 && <Badge label={`${d.snapshotCount} evidence on file`} color="#3b82f6" />}
                       <span style={{ marginLeft: 'auto', color: '#374151', fontSize: 10, fontFamily: 'monospace' }}>{fmtDate(d.primaryDate)}</span>
                     </div>
 
