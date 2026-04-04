@@ -10,6 +10,8 @@ interface Dossier {
   linkedActors: Actor[]; linkedActorsCount: number
   proceedsObservedTotal: number | null; proceedsCoverage: string
   evidenceDepth: string; strongestFlags: string[]; documentationStatus: string; href: string
+  sharedActorGroup?: boolean; multiLaunchRecurrence?: boolean; multiLaunchCount?: number
+  topCoordinationSignal?: { labelEn: string; labelFr: string; strength: string } | null
 }
 interface Stats {
   publishedProfiles: number; minimumObservedProceeds: number
@@ -212,6 +214,12 @@ export default function ExplorerFR() {
                       {d.strongestFlags.slice(0, 2).map(f => (
                         <Badge key={f} label={FLAG_L[f] ?? f} color="#f97316" />
                       ))}
+                      {d.multiLaunchRecurrence && d.multiLaunchCount && (
+                        <Badge label={`Meme groupe d'acteurs sur ${d.multiLaunchCount} dossiers`} color="#ef4444" />
+                      )}
+                      {d.topCoordinationSignal && d.topCoordinationSignal.strength === 'strong' && (
+                        <Badge label={d.topCoordinationSignal.labelFr} color="#ef4444" />
+                      )}
                       <span style={{ marginLeft: 'auto', color: '#F85B05', fontSize: 10, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.1em' }}>VOIR DOSSIER {'\u2192'}</span>
                     </div>
                   </div>

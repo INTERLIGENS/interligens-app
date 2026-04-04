@@ -25,6 +25,10 @@ export interface DossierItem {
   strongestFlags: string[]
   documentationStatus: string
   href: string
+  sharedActorGroup: boolean
+  multiLaunchRecurrence: boolean
+  multiLaunchCount?: number
+  topCoordinationSignal?: { labelEn: string; labelFr: string; strength: string } | null
 }
 
 export interface ExplorerFilters {
@@ -123,6 +127,8 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
       strongestFlags: [...allFlags].slice(0, 5),
       documentationStatus: docStatus,
       href: `/en/kol/${actors[0].handle}`,
+      sharedActorGroup: false,
+      multiLaunchRecurrence: false,
     })
   }
 
@@ -155,6 +161,8 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
     const DOC_ORDER: Record<string, number> = { partial: 0, documented: 1, confirmed: 2 }
 
     for (const e of entries) {
+      // Skip review-status links from public display
+      if (e.documentationStatus === 'review') continue
       const profile = published.get(e.kolHandle)
       if (!profile) continue
       actors.push({ handle: e.kolHandle, displayName: profile.displayName, role: e.role, tier: profile.tier })
@@ -185,7 +193,9 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       evidenceDepth: bestDepth,
       strongestFlags: [...allFlags].slice(0, 5),
       documentationStatus: bestDocStatus,
-      href: caseId ? `/en/kol/${actors[0].handle}` : `/en/kol/${actors[0].handle}`,
+      href: `/en/kol/${actors[0].handle}`,
+      sharedActorGroup: false,
+      multiLaunchRecurrence: false,
     })
   }
 
@@ -201,6 +211,57 @@ export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
   ])
 
   let items = [...caseDossiers, ...launchDossiers]
+
+  // Cross-dossier analysis: detect shared actor groups across launches
+  const launchActorSets = launchDossiers.map(d => new Set(d.linkedActors.map(a => a.handle)))
+  for (let i = 0; i < launchDossiers.length; i++) {
+    const actorsI = launchActorSets[i]
+    let sharedCount = 0
+    for (let j = 0; j < launchDossiers.length; j++) {
+      if (i === j) continue
+      const overlap = [...actorsI].filter(h => launchActorSets[j].has(h))
+      if (overlap.length >= 2) sharedCount++
+    }
+    if (sharedCount > 0) {
+      launchDossiers[i].sharedActorGroup = true
+      launchDossiers[i].multiLaunchRecurrence = true
+      launchDossiers[i].multiLaunchCount = sharedCount + 1
+    }
+  }
+  // Same for case dossiers
+  const caseActorSets = caseDossiers.map(d => new Set(d.linkedActors.map(a => a.handle)))
+  for (let i = 0; i < caseDossiers.length; i++) {
+    const actorsI = caseActorSets[i]
+    let sharedCount = 0
+    for (let j = 0; j < caseDossiers.length; j++) {
+      if (i === j) continue
+      const overlap = [...actorsI].filter(h => caseActorSets[j].has(h))
+      if (overlap.length >= 2) sharedCount++
+    }
+    if (sharedCount > 0) {
+      caseDossiers[i].sharedActorGroup = true
+      caseDossiers[i].multiLaunchRecurrence = true
+      caseDossiers[i].multiLaunchCount = sharedCount + 1
+    }
+  }
+
+  // Compute top coordination signal per dossier from available data (no extra DB calls)
+  for (const item of items) {
+    const actorCount = item.linkedActorsCount
+    const hasCoordFlag = item.strongestFlags.includes('COORDINATED_PROMOTION')
+    const hasMultiLaunch = item.multiLaunchRecurrence
+
+    if (hasCoordFlag && actorCount >= 3) {
+      item.topCoordinationSignal = { labelEn: 'Coordinated promotion', labelFr: 'Promotion coordonnee', strength: 'strong' }
+    } else if (hasMultiLaunch && actorCount >= 2) {
+      item.topCoordinationSignal = { labelEn: 'Shared actor group', labelFr: "Groupe d'acteurs commun", strength: 'strong' }
+    } else if (hasCoordFlag) {
+      item.topCoordinationSignal = { labelEn: 'Coordinated promotion', labelFr: 'Promotion coordonnee', strength: 'moderate' }
+    } else {
+      item.topCoordinationSignal = null
+    }
+  }
+
   items.sort((a, b) => new Date(b.primaryDate).getTime() - new Date(a.primaryDate).getTime())
 
   // Apply filters

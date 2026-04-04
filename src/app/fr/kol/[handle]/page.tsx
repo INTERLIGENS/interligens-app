@@ -99,6 +99,8 @@ export default function KOLPageFR() {
   const [notFound, setNotFound] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [laundryTrail, setLaundryTrail] = useState<any>(null)
+  const [cluster, setCluster] = useState<any>(null)
+  const [coordination, setCoordination] = useState<any>(null)
 
   useEffect(() => {
     if (!handle) return
@@ -110,6 +112,14 @@ export default function KOLPageFR() {
     fetch('/api/laundry/' + handle)
       .then(r => r.json())
       .then(d => { if (d) setLaundryTrail(d) })
+      .catch(() => {})
+    fetch('/api/cluster/' + handle)
+      .then(r => r.json())
+      .then(d => { if (d && d.relatedActors?.length > 0) setCluster(d) })
+      .catch(() => {})
+    fetch('/api/coordination/' + handle)
+      .then(r => r.json())
+      .then(d => { if (d && d.signals?.length > 0) setCoordination(d) })
       .catch(() => {})
   }, [handle])
 
@@ -311,6 +321,75 @@ export default function KOLPageFR() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── ACTEURS LIES ── */}
+        {cluster && cluster.relatedActors.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Acteurs lies</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #1e2330', borderRadius: 10, padding: '20px 24px' }}>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>
+                {cluster.relatedActors.length} acteur{cluster.relatedActors.length > 1 ? 's' : ''} lie{cluster.relatedActors.length > 1 ? 's' : ''} documente{cluster.relatedActors.length > 1 ? 's' : ''} sur {cluster.relatedLaunches.length} lancement{cluster.relatedLaunches.length !== 1 ? 's' : ''} et {cluster.relatedCases.length} cas
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                {cluster.relatedActors.map((a: any) => (
+                  <a key={a.handle} href={`/fr/kol/${a.handle}`} style={{ background: '#F85B0510', border: '1px solid #F85B0533', color: '#F85B05', fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 5, fontFamily: 'monospace', textDecoration: 'none', transition: 'border-color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#F85B05')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#F85B0533')}
+                  >@{a.handle}</a>
+                ))}
+              </div>
+              {cluster.relatedLaunches.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <span style={{ color: '#4b5563', fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', fontFamily: 'monospace', paddingTop: 3 }}>LANCEMENTS :</span>
+                  {cluster.relatedLaunches.map((t: string) => (
+                    <span key={t} style={{ background: '#8b5cf615', color: '#8b5cf6', fontSize: 9, fontWeight: 900, padding: '3px 8px', borderRadius: 3, fontFamily: 'monospace' }}>{t}</span>
+                  ))}
+                </div>
+              )}
+              {cluster.relatedCases.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <span style={{ color: '#4b5563', fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', fontFamily: 'monospace', paddingTop: 3 }}>CAS :</span>
+                  {cluster.relatedCases.map((c: string) => (
+                    <span key={c} style={{ background: '#ef444415', color: '#ef4444', fontSize: 9, fontWeight: 900, padding: '3px 8px', borderRadius: 3, fontFamily: 'monospace' }}>{c}</span>
+                  ))}
+                </div>
+              )}
+              {cluster.clusterSignals.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12, borderTop: '1px solid #1e2330', paddingTop: 12 }}>
+                  {cluster.clusterSignals.slice(0, 3).map((s: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.strength === 'strong' ? '#ef4444' : s.strength === 'moderate' ? '#f97316' : '#6b7280', flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, color: '#d1d5db' }}>{s.labelFr}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 8, color: '#374151', fontFamily: 'monospace', letterSpacing: '0.1em' }}>{s.strength === 'strong' ? 'FORT' : s.strength === 'moderate' ? 'MODERE' : 'FAIBLE'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── SIGNAUX DE COORDINATION ── */}
+        {coordination && coordination.signals.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader>Signaux de coordination</SectionHeader>
+            <div style={{ background: '#0d1117', border: '1px solid #1e2330', borderRadius: 10, padding: '20px 24px' }}>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>{coordination.summaryFr}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {coordination.signals.slice(0, 4).map((s: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#0a0a0a', border: '1px solid #1e2330', borderRadius: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.strength === 'strong' ? '#ef4444' : s.strength === 'moderate' ? '#f97316' : '#6b7280', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, color: '#f9fafb', fontWeight: 600 }}>{s.labelFr}</div>
+                      <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{s.reasonSummary}</div>
+                    </div>
+                    <span style={{ fontSize: 8, fontWeight: 900, fontFamily: 'monospace', letterSpacing: '0.1em', color: s.strength === 'strong' ? '#ef4444' : s.strength === 'moderate' ? '#f97316' : '#6b7280' }}>{s.strength === 'strong' ? 'FORT' : s.strength === 'moderate' ? 'MODERE' : 'FAIBLE'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

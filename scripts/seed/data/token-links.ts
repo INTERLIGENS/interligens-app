@@ -122,10 +122,10 @@ const TOKEN_LINKS: TokenLinkEntry[] = [
     kolHandle: 'lynk0x',
     tokenSymbol: 'GHOST',
     chain: 'SOL',
-    role: 'promoter',
+    role: 'suspected',
     caseId: 'GHOST',
-    documentationStatus: 'partial',
-    note: 'GHOST overlap cross-ref with GordonGekko ongoing.',
+    documentationStatus: 'review',
+    note: 'Under investigation — no public promotion post confirmed on X. Cross-ref GordonGekko pending.',
   },
 ]
 
@@ -158,15 +158,19 @@ async function main() {
       console.log(`  + ${entry.kolHandle} → ${entry.tokenSymbol} (${entry.role})`)
       created++
     } else {
-      // Upgrade documentation status if better
-      const STATUS_ORDER: Record<string, number> = { partial: 0, documented: 1, confirmed: 2 }
+      const STATUS_ORDER: Record<string, number> = { review: -1, partial: 0, documented: 1, confirmed: 2 }
       const upgrades: Record<string, unknown> = {}
 
-      if ((STATUS_ORDER[entry.documentationStatus] ?? 0) > (STATUS_ORDER[existing.documentationStatus ?? 'partial'] ?? 0)) {
+      // Downgrade to review if explicitly set (correction flow)
+      if (entry.documentationStatus === 'review' && existing.documentationStatus !== 'review') {
+        upgrades.documentationStatus = 'review'
+        upgrades.role = entry.role
+        upgrades.note = entry.note
+      } else if ((STATUS_ORDER[entry.documentationStatus] ?? 0) > (STATUS_ORDER[existing.documentationStatus ?? 'partial'] ?? 0)) {
         upgrades.documentationStatus = entry.documentationStatus
       }
       if (entry.caseId && !existing.caseId) upgrades.caseId = entry.caseId
-      if (entry.note && !existing.note) upgrades.note = entry.note
+      if (entry.note && existing.note !== entry.note && !upgrades.note) upgrades.note = entry.note
 
       if (Object.keys(upgrades).length > 0) {
         await prisma.kolTokenLink.update({ where: { id: existing.id }, data: upgrades })

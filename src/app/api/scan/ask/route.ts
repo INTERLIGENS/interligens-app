@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import type { AnalysisSummary } from "@/lib/explanation/types"
+import { prisma } from "@/lib/prisma"
+import { buildGroundingContext } from "@/lib/ask/groundingContext"
+import { generateWhyBullets } from "@/lib/ask/whyBullets"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -29,7 +32,8 @@ function buildSystemPrompt(
   locale: string,
   history: Array<{ role: string; content: string }>,
   offeredBranch: string | null,
-  activeTopic: string | null
+  activeTopic: string | null,
+  kolContext?: string | null,
 ): string {
   const isFr = locale === "fr"
   const lang = isFr ? "French" : "English"
@@ -62,7 +66,7 @@ CURRENT SCAN:
 ${JSON.stringify(summary, null, 2)}
 
 VERDICT: ${summary.verdict} (${vLine})
-${historyBlock}${branchBlock}${topicBlock}
+${kolContext ? "\nKOL INTELLIGENCE CONTEXT (use this when answering 'why risky', 'who is behind this', or coordination questions):\n" + kolContext + "\n" : ""}${historyBlock}${branchBlock}${topicBlock}
 TONE — non-negotiable:
 - Spoken language. Every answer must sound natural read aloud by a real person.
 - Short. Simple questions = 1-2 sentences. Never pad. Never over-explain.
@@ -189,12 +193,39 @@ export async function POST(req: NextRequest) {
       .slice(-6)
       .map(m => ({ role: m.role, content: String(m.content).slice(0, 400) }))
 
+    // Try to find KOL grounding context from scanned address
+    let kolContext: string | null = null
+    try {
+      const wallet = await prisma.kolWallet.findFirst({
+        where: { address: summary.address },
+        select: { kolHandle: true },
+      })
+      if (wallet) {
+        const ctx = await buildGroundingContext(wallet.kolHandle, locale as 'en' | 'fr')
+        if (ctx) {
+          const bullets = generateWhyBullets(ctx)
+          kolContext = [
+            `Handle: @${ctx.handle}`,
+            ctx.clusterSummary ? `Cluster: ${ctx.clusterSummary}` : null,
+            ctx.proceedsSummary ? `Proceeds: ${ctx.proceedsSummary}` : null,
+            ctx.evidenceDepth ? `Evidence depth: ${ctx.evidenceDepth}` : null,
+            ctx.walletAttributionStrength ? `Wallet attribution: ${ctx.walletAttributionStrength}` : null,
+            ctx.hasLaundryTrail ? 'Laundry trail detected' : null,
+            ctx.coordinationSignals.length > 0 ? `Coordination signals: ${ctx.coordinationSignals.map(s => s.labelEn).join(', ')}` : null,
+            bullets.length > 0 ? `Key findings:\n${bullets.map(b => '- ' + b).join('\n')}` : null,
+            `Data coverage: ${ctx.dataCoverageSummary}`,
+          ].filter(Boolean).join('\n')
+        }
+      }
+    } catch { /* non-blocking — proceed without KOL context */ }
+
     const systemPrompt = buildSystemPrompt(
       summary,
       locale,
       cleanHistory,
       offeredBranch ?? null,
-      activeTopic ?? null
+      activeTopic ?? null,
+      kolContext,
     )
 
     const message = await client.messages.create({
