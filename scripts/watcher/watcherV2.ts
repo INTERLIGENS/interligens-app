@@ -203,14 +203,18 @@ export async function runWatcherV2(): Promise<WatcherStats> {
     return stats;
   }
 
+  // Spending guard: limit handles per run
+  const maxHandles = parseInt(process.env.WATCHER_MAX_HANDLES ?? '50', 10);
+  const watchlist = handlesV2.slice(0, maxHandles);
+
   console.log(`\n🔭 WATCHER V2 — X API Native Scan`);
-  console.log(`   ${handlesV2.length} handles in watchlist`);
+  console.log(`   Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles`);
   console.log(`   DRY_RUN: ${DRY_RUN}\n`);
 
   // Process in batches of 10
   const BATCH_SIZE = 10;
-  for (let i = 0; i < handlesV2.length; i += BATCH_SIZE) {
-    const batch = handlesV2.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < watchlist.length; i += BATCH_SIZE) {
+    const batch = watchlist.slice(i, i + BATCH_SIZE);
     console.log(`\n── Batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} handles) ──`);
 
     for (const entry of batch) {
