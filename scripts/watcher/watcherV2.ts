@@ -240,7 +240,8 @@ export async function runWatcherV2(): Promise<WatcherStats> {
       });
 
       // 2. Get recent tweets
-      const tweets = await getUserTweets(xUser.id, 10);
+      const maxResults = handle === 'GordonGekko' ? 100 : 10;
+      const tweets = await getUserTweets(xUser.id, maxResults);
       stats.tweetsFetched += tweets.length;
       console.log(`    ${tweets.length} tweets fetched`);
 
