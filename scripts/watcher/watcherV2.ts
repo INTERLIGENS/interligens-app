@@ -14,7 +14,7 @@ if (xToken) process.env.X_BEARER_TOKEN = xToken;
 
 import { PrismaClient } from '@prisma/client';
 import { getUserByUsername, getUserTweets, hasToken } from '../../src/lib/xapi/client';
-import { detectSignals } from '../../src/lib/watcher/tokenDetector';
+import { detectSignals, shouldKeep } from '../../src/lib/watcher/tokenDetector';
 import { handlesV2, type WatchHandle } from './handles-v2';
 import { runSeedBatch } from '../seed/engine';
 import type { SeedKolProfile } from '../seed/types';
@@ -254,7 +254,7 @@ export async function runWatcherV2(): Promise<WatcherStats> {
         const detection = detectSignals(tweet.text);
         tweetsWithScores.push({ signalScore: detection.signalScore });
 
-        if (detection.signalScore >= 10) {
+        if (shouldKeep(detection, 20)) {
           await upsertCandidate(influencerId, handle, tweet, detection, profileSnapshot, stats);
           console.log(`    🎯 signal: score=${detection.signalScore} tokens=${detection.detectedTokens.join(',')} types=${detection.signalTypes.join(',')}`);
         }

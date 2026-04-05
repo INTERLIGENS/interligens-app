@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
-import { detectSignals } from "@/lib/watcher/tokenDetector";
+import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
 
 function verifyCronSecret(req: NextRequest): boolean {
@@ -65,7 +65,7 @@ async function scanAll() {
 
     for (const tweet of tweets) {
       const detection = detectSignals(tweet.text);
-      if (detection.signalScore < 10) continue;
+      if (!shouldKeep(detection, 20)) continue;
 
       const dedupKey = `${tweet.id}:${handle}`;
       const existing = await prisma.socialPostCandidate.findUnique({ where: { dedupKey } });
