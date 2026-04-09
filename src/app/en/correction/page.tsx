@@ -72,7 +72,7 @@ export default function CorrectionPage() {
           <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.75, marginBottom: 14 }}>
             Send your submission with supporting evidence to:
           </div>
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#F85B05', fontFamily: 'monospace' }}>legal@interligens.com</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#F85B05', fontFamily: 'monospace' }}>admin@interligens.com</div>
           <div style={{ fontSize: 11, color: '#374151', marginTop: 10 }}>
             Subject line: <span style={{ fontFamily: 'monospace', color: '#4b5563' }}>CORRECTION REQUEST — [Profile Handle] — [Request Type]</span>
           </div>
@@ -82,9 +82,9 @@ export default function CorrectionPage() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', marginBottom: 14 }}>REVIEW PROCESS</div>
           {[
-            { time: '24h', action: 'Verifiable factual errors corrected immediately upon confirmation.' },
-            { time: '48h', action: 'Source misattribution and wallet disputes reviewed and responded to.' },
-            { time: '72h', action: 'Complex or contested cases assessed with written response.' },
+            { time: '~24h', action: 'Target for verifiable factual errors upon confirmation.' },
+            { time: '~48h', action: 'Target for source misattribution and wallet disputes.' },
+            { time: '~72h', action: 'Target for complex or contested cases. Written response provided.' },
           ].map(p => (
             <div key={p.time} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 12 }}>
               <span style={{ background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 4, padding: '3px 10px', fontSize: 10, fontWeight: 900, color: '#F85B05', fontFamily: 'monospace', flexShrink: 0 }}>{p.time}</span>

@@ -117,7 +117,7 @@ export default function MethodologyPageFR() {
         </div>
 
         <div style={{ borderTop: '1px solid #111827', paddingTop: 24, fontSize: 11, color: '#374151', lineHeight: 1.7, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 8 }}>
-          <span>Questions sur la methodologie : <span style={{ color: '#F85B05' }}>legal@interligens.com</span>
+          <span>Questions sur la methodologie : <span style={{ color: '#F85B05' }}>admin@interligens.com</span>
           <br />INTERLIGENS Delaware C-Corp · Ne constitue pas un conseil juridique · Ne constitue pas un conseil financier</span>
           <div style={{ display: 'flex', gap: 16 }}>
             <a href="/fr/correction" style={{ color: '#4b5563', textDecoration: 'none', fontWeight: 700 }}>Demander une correction →</a>

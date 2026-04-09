@@ -529,7 +529,7 @@ export default function KOLPageFR() {
           <div style={{ marginTop: 12, fontSize: 10, color: '#1f2937', display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
             <a href="/fr/correction" style={{ color: '#374151', textDecoration: 'none', fontWeight: 700 }}>Demander une correction →</a>
             <a href="/fr/methodology" style={{ color: '#374151', textDecoration: 'none', fontWeight: 700 }}>Voir la methodologie →</a>
-            <span>INTERLIGENS Delaware C-Corp · Ne constitue pas un conseil juridique · legal@interligens.com</span>
+            <span>INTERLIGENS Delaware C-Corp · Ne constitue pas un conseil juridique · admin@interligens.com</span>
           </div>
         </div>
 

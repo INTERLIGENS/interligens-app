@@ -74,7 +74,7 @@ export default function CorrectionPageFR() {
           <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.75, marginBottom: 14 }}>
             Envoyez votre soumission avec les preuves à l'appui à :
           </div>
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#F85B05', fontFamily: 'monospace' }}>legal@interligens.com</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#F85B05', fontFamily: 'monospace' }}>admin@interligens.com</div>
           <div style={{ fontSize: 11, color: '#374151', marginTop: 10 }}>
             Objet : <span style={{ fontFamily: 'monospace', color: '#4b5563' }}>DEMANDE DE CORRECTION — [Handle du profil] — [Type de demande]</span>
           </div>

@@ -142,7 +142,7 @@ export async function GET(
     handle,
     legalPdfAvailable: true,
     requiresAuth: true,
-    contactEmail: "legal@interligens.com",
+    contactEmail: "admin@interligens.com",
     method: "POST /api/kol/[handle]/pdf-legal with { email, purpose } or Bearer token",
   });
 }

@@ -233,7 +233,7 @@ export default async function ClassActionPage({ params }: { params: Promise<{ ha
         <p className="text-xs text-white/20 border-t border-white/10 pt-4">
           This report is an analytical compilation of on-chain data and public source materials.
           It does not constitute legal advice or judicial findings. All subjects are presumed innocent.
-          INTERLIGENS Inc. — Delaware C-Corp — legal@interligens.com
+          INTERLIGENS Inc. — Delaware C-Corp — admin@interligens.com
         </p>
       </div>
     </div>

@@ -35,7 +35,7 @@ You are responsible for the security of your access credentials. Do not share yo
 This agreement remains in effect for the duration of your access and survives termination. Confidentiality obligations persist after access revocation.
 
 7. GOVERNING LAW
-This agreement is governed by the laws of the European Union and the applicable jurisdiction of the platform operator.
+This agreement is governed by the laws of the State of Delaware, United States, and is subject to the exclusive jurisdiction of the courts of the State of Delaware.
 
 By proceeding, you confirm that you have read, understood, and agree to be bound by these terms.`;
 

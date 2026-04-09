@@ -114,10 +114,10 @@ export default function KolLeaderboardEN() {
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px' }}>
         {/* TITLE */}
         <div style={{ marginBottom: 32 }}>
-          <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>PUBLIC REGISTRY</div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>KOL Risk Intelligence Leaderboard</h1>
+          <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>DOCUMENTED PROFILES</div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>KOL Registry<span style={{ color: '#F85B05' }}>.</span></h1>
           <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8 }}>
-            Documented influencers ranked by observed proceeds, evidence depth, and investigation completeness.
+            Investigated actors ranked by proceeds, evidence, and risk. Each profile is a documented dossier.
           </p>
         </div>
 
@@ -269,9 +269,9 @@ export default function KolLeaderboardEN() {
 
         {/* CROSS-NAV */}
         <div style={{ marginTop: 48, borderTop: '1px solid #1a1a1a', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' as const }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#27272a', letterSpacing: '0.15em', textTransform: 'uppercase' as const }}>See also</span>
-          <a href="/scan" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Scan &rarr;</a>
-          <a href="/en/explorer" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Case Explorer &rarr;</a>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#27272a', letterSpacing: '0.15em', textTransform: 'uppercase' as const }}>Go deeper</span>
+          <a href="/en/watchlist" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Check recent signals &rarr;</a>
+          <a href="/en/explorer" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>See related cases &rarr;</a>
           <a href="/en/methodology" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Methodology &rarr;</a>
         </div>
         <div style={{ marginTop: 16, color: '#1c1c1c', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>

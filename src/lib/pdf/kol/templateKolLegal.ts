@@ -684,7 +684,7 @@ export function renderKolPdfLegal(kol: any): string {
             </tbody>
     </table>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted)">
-      Contact for legal process: legal@interligens.com
+      Contact for legal process: admin@interligens.com
 Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQV4) · KUCOIN 2 (3g1hYfna) · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
     </div>
   </div>
@@ -775,7 +775,7 @@ Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQ
   <div class="footer">
     <div class="footer-left">
       <strong>INTERLIGENS Intelligence Platform</strong><br/>
-      interligens.com · legal@interligens.com<br/>
+      interligens.com · admin@interligens.com<br/>
       INTERLIGENS Inc. — Delaware C-Corp
     </div>
     <div class="footer-right">

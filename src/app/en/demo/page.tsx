@@ -10,6 +10,7 @@ import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
 import CaseFileCTA from "@/components/CaseFileCTA";
+import LegalFooter from "@/components/legal/LegalFooter";
 import QuickDemoBar from "@/components/demo/QuickDemoBar";
 import { DEMO_PRESETS, type DemoScenario } from "@/lib/demo/presets";
 import WhatToDoNow from "@/components/WhatToDoNow";
@@ -826,7 +827,8 @@ export default function TigerScanPage() {
           </div>
         )}
 
-        <div className="text-center pt-10">
+        <div className="pt-10 flex flex-col items-center gap-3">
+          <LegalFooter lang="en" />
           <p className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.6em]">Interligens Intelligence © 2026</p>
         </div>
       </main>

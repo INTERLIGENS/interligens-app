@@ -514,7 +514,7 @@ export default function KOLPage() {
           <div style={{ marginTop: 12, fontSize: 10, color: '#1f2937', display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
             <a href="/en/correction" style={{ color: '#374151', textDecoration: 'none', fontWeight: 700 }}>Request a correction →</a>
             <a href="/en/methodology" style={{ color: '#374151', textDecoration: 'none', fontWeight: 700 }}>View methodology →</a>
-            <span>INTERLIGENS Delaware C-Corp · Not legal advice · legal@interligens.com</span>
+            <span>INTERLIGENS Delaware C-Corp · Not legal advice · admin@interligens.com</span>
           </div>
         </div>
 

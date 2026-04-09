@@ -197,7 +197,7 @@ export default function VictimReportPage() {
               {[
                 { n: '1.', text: 'Submit the Binance report first — exchanges can freeze funds faster than law enforcement.' },
                 { n: '2.', text: 'File with IC3 — creates an official US federal record, required for civil litigation.' },
-                { n: '3.', text: 'Save confirmation numbers. Forward to legal@interligens.com if you want to join a class action.' },
+                { n: '3.', text: 'Save confirmation numbers. Forward to admin@interligens.com if you want to join a class action.' },
               ].map(s => (
                 <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 10, fontWeight: 900, color: '#F85B05', fontFamily: 'monospace', flexShrink: 0 }}>{s.n}</span>
@@ -208,7 +208,7 @@ export default function VictimReportPage() {
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setStep(2)} style={{ background: 'transparent', border: '1px solid #374151', borderRadius: 8, color: '#6b7280', fontWeight: 700, fontSize: 12, padding: '12px 20px', cursor: 'pointer' }}>← BACK</button>
-              <a href='mailto:legal@interligens.com?subject=Victim Report — Class Action Interest'
+              <a href='mailto:admin@interligens.com?subject=Victim Report — Class Action Interest'
                 style={{ background: '#0a0a0a', border: '1px solid #374151', borderRadius: 8, color: '#9ca3af', fontWeight: 700, fontSize: 12, padding: '12px 20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
                 JOIN CLASS ACTION →
               </a>

@@ -92,10 +92,10 @@ export default function ExplorerEN() {
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px' }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>PUBLIC INTELLIGENCE</div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Intelligence Explorer</h1>
+          <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>CASES &amp; LAUNCHES</div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Explorer<span style={{ color: '#F85B05' }}>.</span></h1>
           <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8 }}>
-            Documented launches, case clusters, and actor networks across the crypto influence space.
+            Documented scam cases, token launches, and connected patterns. Browse by case, not by person.
           </p>
         </div>
 
@@ -230,9 +230,9 @@ export default function ExplorerEN() {
 
         {/* CROSS-NAV */}
         <div style={{ marginTop: 48, borderTop: '1px solid #1a1a1a', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' as const }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#27272a', letterSpacing: '0.15em', textTransform: 'uppercase' as const }}>See also</span>
-          <a href="/scan" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Scan &rarr;</a>
-          <a href="/en/kol" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>KOL Registry &rarr;</a>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#27272a', letterSpacing: '0.15em', textTransform: 'uppercase' as const }}>Go deeper</span>
+          <a href="/en/kol" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>See actor profiles &rarr;</a>
+          <a href="/en/watchlist" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Check surveillance status &rarr;</a>
           <a href="/en/methodology" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Methodology &rarr;</a>
         </div>
         <div style={{ marginTop: 16, color: '#1c1c1c', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
