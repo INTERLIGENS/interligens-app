@@ -1,4 +1,5 @@
 // src/app/en/watchlist/page.tsx
+import BetaNav from "@/components/beta/BetaNav";
 import Link from "next/link";
 import { WatchlistTable } from "@/components/watchlist/WatchlistTable";
 
@@ -9,25 +10,11 @@ export const metadata = {
 
 export default function WatchlistPage() {
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans antialiased p-6 md:p-12">
+    <div className="min-h-screen bg-black text-[#E4E4E7] font-sans antialiased">
+      <BetaNav />
+      <div className="p-6 md:p-12">
 
-      {/* NAV */}
-      <nav className="max-w-5xl mx-auto flex items-center justify-between mb-16">
-        <Link href="/en/demo" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 bg-[#F85B05] flex items-center justify-center font-black text-black text-base italic shadow-[0_0_20px_rgba(248,91,5,0.3)] transition-transform group-hover:scale-110">
-            I
-          </div>
-          <span className="font-black text-lg tracking-tighter italic uppercase">
-            Interligens<span className="text-[#F85B05]">.</span>
-          </span>
-        </Link>
-        <Link
-          href="/en/demo"
-          className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 hover:text-zinc-300 transition-colors flex items-center gap-1.5"
-        >
-          ← Back to scan
-        </Link>
-      </nav>
+      {/* Nav provided by BetaNav */}
 
       <main className="max-w-5xl mx-auto space-y-8">
 
@@ -97,6 +84,7 @@ export default function WatchlistPage() {
         </p>
 
       </main>
+      </div>
     </div>
   );
 }

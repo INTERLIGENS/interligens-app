@@ -392,7 +392,7 @@ export default function TigerScanPageFR() {
   const getTierColor = getTierColorUtil;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+    <div className="min-h-screen bg-black text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
 
       {/* HEADER */}
       <nav className="max-w-7xl mx-auto flex justify-between items-center mb-20">

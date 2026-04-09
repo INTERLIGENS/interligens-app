@@ -6,11 +6,7 @@ html, body { height: 100%; }
 body{
   margin:0;
   color:#fff;
-  background:
-    radial-gradient(1200px 700px at 10% 0%, rgba(245,158,11,0.20), transparent 55%),
-    radial-gradient(900px 600px at 85% 15%, rgba(249,115,22,0.14), transparent 55%),
-    radial-gradient(900px 650px at 50% 95%, rgba(255,255,255,0.06), transparent 55%),
-    linear-gradient(180deg, #07070a, #050507);
+  background:#000000;
 }
 
 /* micro “Halide-like” polish */

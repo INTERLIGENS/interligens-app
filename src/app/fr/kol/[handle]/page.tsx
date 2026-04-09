@@ -140,12 +140,12 @@ export default function KOLPageFR() {
     chain === 'ETH' ? 'https://etherscan.io/address/' + addr : 'https://solscan.io/account/' + addr
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#374151', fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.15em' }}>CHARGEMENT DU PROFIL...</div>
     </div>
   )
   if (notFound || !kol) return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#374151', fontSize: 12, fontFamily: 'monospace' }}>PROFIL INTROUVABLE</div>
     </div>
   )
@@ -168,7 +168,7 @@ export default function KOLPageFR() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
 
       {/* HEADER */}
       <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>

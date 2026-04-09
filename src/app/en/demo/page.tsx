@@ -1,4 +1,6 @@
 "use client";
+import BetaNav from "@/components/beta/BetaNav";
+import { pushScanHistory } from "@/app/history/page";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
@@ -379,6 +381,16 @@ export default function TigerScanPage() {
       setResult(normalizedResult);
       setAnalysisStatus("done");
 
+      // Save to scan history
+      pushScanHistory({
+        address: address.trim(),
+        chain,
+        score: normalizedResult.score ?? null,
+        tier: normalizedResult.tier ?? null,
+        headline: normalizedResult.verdict ?? null,
+        scannedAt: new Date().toISOString(),
+      });
+
       try {
         const heatRes = await fetch("/api/social/heat", {
           method: "POST",
@@ -401,24 +413,9 @@ export default function TigerScanPage() {
   const getTierColor = (t: Tier) => t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12">
-
-      {/* HEADER */}
-      <nav className="max-w-7xl mx-auto flex justify-between items-center mb-20">
-        <div className="flex items-center gap-3 group cursor-default">
-          <div className="w-10 h-10 bg-[#F85B05] flex items-center justify-center font-black text-black text-xl italic shadow-[0_0_20px_rgba(248,91,5,0.4)] transition-transform group-hover:scale-110">
-            I
-          </div>
-          <span className="font-black text-2xl tracking-tighter italic uppercase">
-            Interligens<span className="text-[#F85B05]">.</span>
-          </span>
-        </div>
-        <div className="hidden md:flex gap-8 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">
-          <span>Security Protocol</span>
-          <span className="text-zinc-800">|</span>
-          <span>V2.6-Beta</span>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-black text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased">
+      <BetaNav />
+      <div className="p-6 md:p-12">
 
       <main className="max-w-5xl mx-auto">
         <div className="flex justify-end mb-3"><LocaleSwitch /></div>
@@ -604,10 +601,12 @@ export default function TigerScanPage() {
               const finalDisclaimer = _vc.disclaimer;
               const getTierColorFinal = getTierColorUtil;
               return (
+              <>
+              {/* ═══ ROW 1 — HERO: VERDICT + SIGNALS ═══ */}
               <div className="grid lg:grid-cols-12 gap-8">
 
-            {/* LEFT: VERDICT */}
-            <div className="lg:col-span-5 bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-8 flex flex-col items-center text-center relative overflow-hidden group">
+            {/* LEFT: SCORE + TIGER + VERDICT + ACTIONS */}
+            <div className="lg:col-span-5 bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-8 flex flex-col items-center text-center relative overflow-hidden">
               <div className="absolute top-6 right-6">
                 <span
                   className="px-3 py-1 rounded-sm border text-[10px] font-black uppercase tracking-widest"
@@ -619,21 +618,23 @@ export default function TigerScanPage() {
 
               <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
-                            <a href="/en/demo/why" className="inline-flex items-center gap-2 mt-6 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white transition-all border border-[#F85B05]/40 hover:border-[#F85B05] bg-[#F85B05]/8 hover:bg-[#F85B05]/15 px-5 py-2.5 rounded-lg shadow-[0_0_12px_rgba(248,91,5,0.08)]">
+              {/* Tiger card — visual anchor */}
+              <TigerRevealCard tier={finalTier} proofs={result.proofs} />
+
+              <a href="/en/demo/why" className="inline-flex items-center gap-2 mt-6 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white transition-all border border-[#F85B05]/40 hover:border-[#F85B05] bg-[#F85B05]/8 hover:bg-[#F85B05]/15 px-5 py-2.5 rounded-lg shadow-[0_0_12px_rgba(248,91,5,0.08)]">
                 Why this score?
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M2.5 6h7M6.5 2.5l3 3.5-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </a>
 
-              <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 mb-1 mt-2">Here&apos;s why this matters.</p>
-              <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{finalVerdict}</h2>
-              <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
+              <h2 className="text-4xl font-black uppercase italic mb-2 tracking-tighter mt-2">{finalVerdict}</h2>
+              <p className="text-zinc-500 text-sm font-medium mb-8 px-4 leading-relaxed italic">
                 {finalSub}
               </p>
 
               <div className="w-full space-y-3 mb-4">
-                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">What to do now ↓</p>
+                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">What to do now</p>
                 {finalActions.map((a, i) => (
                   <div key={i} className="flex items-center gap-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 text-left hover:border-zinc-600 transition-all">
                     <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getTierColorFinal(finalTier) }} />
@@ -642,70 +643,179 @@ export default function TigerScanPage() {
                 ))}
                 <p className="text-[10px] text-zinc-600 italic leading-snug mt-2 px-1">{finalDisclaimer}</p>
               </div>
-
-              <button
-                onClick={() => { setShowEvidence(true); setTimeout(() => document.getElementById('evidence-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}
-                className="w-full mt-2 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-[#F85B05] transition-colors text-center"
-              >Open evidence →</button>
-
-              {corrobData?.found && (
-                <a
-                  href={'/en/scan/' + address.trim() + '/timeline'}
-                  className="w-full mt-1 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors text-center block"
-                  style={{ color: corrobData.label.color, textDecoration: 'none' }}
-                >
-                  Investigation available ({corrobData.score}/100) →
-                </a>
-              )}
-
-                            {analysisSummary && (
-                <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
-              )}
-
-              <button
-                onClick={async () => {
-                  if (!result) return;
-                  const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en&mock=1`);
-                  if (!res.ok) return;
-                  const blob = await res.blob();
-                  const url  = URL.createObjectURL(blob);
-                  const a    = document.createElement("a");
-                  a.href     = url;
-                  a.download = `interligens-${result.chain.toLowerCase()}-${result.rawSummary?.address ?? address.slice(0,8)}.pdf`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-                className="w-full mt-4 py-4 rounded-xl border border-dashed border-[#F85B05]/40 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white hover:border-[#F85B05] transition-all"
-              >
-                Generate Full Report (PDF)
-              </button>
-                <CaseFileCTA id={address.trim() || null} lang="en" />
-                <div className="mt-4 rounded-xl border border-zinc-800 bg-black/20 px-4 py-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.25em] mb-2" style={{color:"#F85B05"}}>Market</p>
-                  {mockMode ? (
-                    <div className="flex flex-col gap-1 font-mono text-xs">
-                      <span className="text-zinc-200">BTC <span className="text-zinc-400">$95,000</span> <span className="text-emerald-400">(+1.2%)</span></span>
-                      <span className="text-zinc-200">ETH <span className="text-zinc-400">$3,200</span> <span className="text-emerald-400">(+0.8%)</span></span>
-                      <span className="text-zinc-200">SOL <span className="text-zinc-400">$180</span> <span className="text-red-400">(-0.5%)</span></span>
-                    </div>
-                  ) : tickers?.ok ? (
-                    <div className="flex flex-col gap-1 font-mono text-xs">
-                      {[["BTC", tickers.btc],["ETH", tickers.eth],["SOL", tickers.sol]].map(([sym, c]: any) => c ? (
-                        <span key={sym} className="text-zinc-200">{sym} <span className="text-zinc-400">${c.price_usd.toLocaleString("en-US")}</span> <span className={c.change_24h_pct >= 0 ? "text-emerald-400" : "text-red-400"}>({c.change_24h_pct >= 0 ? "+" : ""}{c.change_24h_pct.toFixed(1)}%)</span></span>
-                      ) : null)}
-                    </div>
-                  ) : (
-                    <p className="font-mono text-xs text-zinc-600">MARKET —</p>
-                  )}
-                </div>
             </div>
 
-            {/* RIGHT: SIGNALS + CARDS */}
-            <div className="lg:col-span-7 flex flex-col gap-6">
+            {/* RIGHT: VERDICT + RETAIL QUESTIONS + PROOF PACK + ASK AI */}
+            <div className="lg:col-span-7 flex flex-col gap-5">
 
-              {/* ── CORROBORATION SCORE ── */}
+              {/* ── RETAIL VERDICT BANNER ── */}
+              <RetailVerdictBanner
+                tier={finalTier}
+                score={result.score}
+                proofs={result.proofs}
+                address={address.trim()}
+                chain={result.chain}
+                lang="en"
+              />
+
+              {/* ── KNOWN ADDRESS BADGE ── */}
+              {addressLabel?.found && (
+                <div style={{ background: addressLabel.badgeColor + '11', border: '1px solid ' + addressLabel.badgeColor + '44', borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 4, height: 40, background: addressLabel.badgeColor, borderRadius: 2, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: addressLabel.badgeColor, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>{addressLabel.badgeText}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f9fafb' }}>{addressLabel.label}</div>
+                    {addressLabel.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{addressLabel.notes}</div>}
+                    <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>Source: {addressLabel.source} · {addressLabel.confidence} confidence</div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── RECIDIVISM ALERT ── */}
+              {result.chain === "SOL" && (
+                <RecidivismAlertBanner
+                  mint={address.trim()}
+                  locale="en"
+                  graphData={graphData}
+                />
+              )}
+
+              {/* ── BEFORE YOU BUY — 3 retail questions ── */}
+              <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4">Before you buy</p>
+                <div className="space-y-3">
+                  {(() => {
+                    const _liquidity = result.rawSummary?.markets?.liquidity_usd;
+                    const _freeze = result.freezeAuthority;
+                    const _mint = result.mintAuthority;
+                    const _holders = result.rawSummary?.holder_concentration;
+                    const _related = graphData?.related_projects?.length ?? 0;
+                    return [
+                      {
+                        q: "Can you get your money out?",
+                        a: _liquidity && _liquidity < 5000
+                          ? "Liquidity is dangerously low. Selling may be impossible or cause massive slippage."
+                          : _liquidity && _liquidity < 50000
+                          ? "Limited liquidity. You may face difficulty selling large positions."
+                          : "Liquidity appears sufficient for small to mid-size exits.",
+                        level: _liquidity && _liquidity < 5000 ? "red" : _liquidity && _liquidity < 50000 ? "orange" : "green",
+                      },
+                      {
+                        q: "Who really controls this token?",
+                        a: _freeze || _mint
+                          ? "The deployer retains authority to freeze or mint tokens. Your holdings can be locked or diluted."
+                          : _holders && _holders > 60
+                          ? "Top wallets hold a concentrated share. Insider dumps are a real risk."
+                          : "No unusual authority flags detected. Standard token controls.",
+                        level: (_freeze || _mint) ? "red" : (_holders && _holders > 60) ? "orange" : "green",
+                      },
+                      {
+                        q: "Is this linked to other bad projects?",
+                        a: _related > 2
+                          ? `Linked to ${_related} related projects through shared wallets or deployer patterns. This is part of a larger operation.`
+                          : _related > 0
+                          ? `${_related} potential link${_related > 1 ? 's' : ''} found through on-chain patterns. Proceed with caution.`
+                          : "No known links to other flagged projects at this time.",
+                        level: _related > 2 ? "red" : _related > 0 ? "orange" : "green",
+                      },
+                    ];
+                  })().map((item) => {
+                    const dot = item.level === "red" ? "#ef4444" : item.level === "orange" ? "#F85B05" : "#22c55e";
+                    return (
+                      <div key={item.q} className="bg-black/40 border border-zinc-800/60 rounded-lg p-4">
+                        <div className="flex items-center gap-2.5 mb-1.5">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} />
+                          <span className="text-[12px] font-bold text-white">{item.q}</span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 leading-relaxed ml-[18px]">{item.a}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── PROOF PACK ── */}
+              <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05]">Proof Pack</span>
+                  <span className="text-[9px] text-zinc-700 font-mono">{result.proofs?.length ?? 0} signals · {result.chain}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      if (!result) return;
+                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en&mock=1`);
+                      if (!res.ok) return;
+                      const blob = await res.blob();
+                      const url  = URL.createObjectURL(blob);
+                      const a    = document.createElement("a");
+                      a.href     = url;
+                      a.download = `interligens-${result.chain.toLowerCase()}-${result.rawSummary?.address ?? address.slice(0,8)}.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex-1 py-2.5 rounded-lg border border-[#F85B05]/30 text-[10px] font-black uppercase tracking-[0.15em] text-[#F85B05] hover:bg-[#F85B05]/10 transition-all"
+                  >
+                    PDF Report
+                  </button>
+                  <button
+                    onClick={() => { setShowEvidence(true); setTimeout(() => document.getElementById('evidence-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}
+                    className="flex-1 py-2.5 rounded-lg border border-zinc-800 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 hover:text-[#F85B05] hover:border-zinc-600 transition-all"
+                  >
+                    Evidence
+                  </button>
+                  {corrobData?.found && (
+                    <a
+                      href={'/en/scan/' + address.trim() + '/timeline'}
+                      className="flex-1 py-2.5 rounded-lg border border-zinc-800 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 hover:text-[#F85B05] hover:border-zinc-600 transition-all text-center no-underline"
+                    >
+                      Timeline
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* ── ASK TIGER ANALYST — prominent with tiger vignette ── */}
+              {analysisSummary && (
+                <div className="rounded-xl overflow-hidden" style={{ background: '#080808', border: '1px solid rgba(248,91,5,0.2)', boxShadow: '0 0 30px rgba(248,91,5,0.06)' }}>
+                  <div className="px-5 pt-4 pb-2 flex items-center gap-3">
+                    <img src="/tiger/analyst.png" alt="" className="w-7 h-7 rounded-full object-cover" style={{ border: '1.5px solid #F85B05' }} />
+                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[#F85B05]">Ask Tiger Analyst</span>
+                    <span className="text-[9px] text-zinc-600 ml-auto font-mono">AI-powered</span>
+                  </div>
+                  <div className="px-5 pb-5">
+                    <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
+                  </div>
+                </div>
+              )}
+
+              {/* ── 3 SIGNAL CARDS ── */}
+              <MiniSignalRow
+                lang="en"
+                tier={finalTier.toLowerCase() as any}
+                weather={weather}
+                show={true}
+                rawSummary={result.rawSummary}
+              />
+            </div>
+          </div>
+
+              {/* ═══ ROW 2 — SCAM FAMILY / RELATED (full width) ═══ */}
+              {result.chain === "SOL" && (
+                <div className="mt-8">
+                  <ScamFamilyBlock
+                    mint={address.trim()}
+                    hops={1}
+                    days={30}
+                    locale="en"
+                    showDebug={debug}
+                  />
+                </div>
+              )}
+
+              {/* ── CORROBORATION ── */}
               {corrobData?.found && (
-                <div style={{ background: '#0f172a', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 10, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div className="mt-6" style={{ background: '#0f172a', border: '1px solid ' + corrobData.label.color + '44', borderRadius: 10, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
                   <div style={{ textAlign: 'center', minWidth: 64 }}>
                     <div style={{ fontSize: 32, fontWeight: 900, color: corrobData.label.color, lineHeight: 1, fontFamily: 'monospace' }}>{corrobData.score}</div>
                     <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2 }}>CORROBORATION</div>
@@ -724,146 +834,52 @@ export default function TigerScanPage() {
                 </div>
               )}
 
-              {/* ── KNOWN ADDRESS BADGE ── */}
-              {addressLabel?.found && (
-                <div style={{ background: addressLabel.badgeColor + '11', border: '1px solid ' + addressLabel.badgeColor + '44', borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 4, height: 40, background: addressLabel.badgeColor, borderRadius: 2, flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: addressLabel.badgeColor, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>{addressLabel.badgeText}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f9fafb' }}>{addressLabel.label}</div>
-                    {addressLabel.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{addressLabel.notes}</div>}
-                    <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>Source: {addressLabel.source} · {addressLabel.confidence} confidence</div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── RETAIL VERDICT BANNER ── */}
-              <RetailVerdictBanner
-                tier={finalTier}
-                score={result.score}
-                proofs={result.proofs}
-                address={address.trim()}
-                chain={result.chain}
-                lang="en"
-              />
-
-              {/* ── RECIDIVISM ALERT — signal #1 ───────────────────── */}
-              {result.chain === "SOL" && (
-                <RecidivismAlertBanner
-                  mint={address.trim()}
-                  locale="en"
-                  graphData={graphData}
-                />
-              )}
-
-              {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
-              <MiniSignalRow
-                lang="en"
-                tier={finalTier.toLowerCase() as any}
-                weather={weather}
-                show={true}
-                rawSummary={result.rawSummary}
-              />
-
-              {/* WHY THIS SCORE */}
-              {(() => {
-                const _cabal = computeCabalScore({
-                  chain: result.chain,
-                  address: address.trim(),
-                  off_chain: result.rawSummary?.off_chain,
-                  tiger_drivers: result.rawSummary?.tiger_drivers ?? [],
-                  market: result.rawSummary?.markets,
-                  spenders: result.spenders,
-                  unlimitedCount: result.unlimitedCount,
-                });
-                const _p = ["casefile_present","pump_like","wash_hype","unknown_spenders","unlimited_approvals"];
-                const _top = _p.find(d => _cabal.drivers.includes(d));
-                const _map: Record<string,string> = {
-                  casefile_present: "Referenced investigation on file",
-                  pump_like: "Pump-like pattern + FDV/liquidity imbalance",
-                  wash_hype: "Abnormal volume vs liquidity ratio",
-                  unknown_spenders: "Unknown contract approvals detected",
-                  unlimited_approvals: "Unlimited token approvals found",
-                };
-                const _why = _top ? _map[_top] : "Signals are limited (demo)";
-                return (
-                  <div className="rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-zinc-500 mb-1">Why This Score</p>
-                    <p className="text-xs font-semibold text-zinc-300 leading-snug line-clamp-2">{_why}</p>
-                  </div>
-                );
-              })()}
-
-              <MarketWeather
-                lang="en"
-                show={true}
-                data={
-                  weather?.manipulation && weather?.alerts && weather?.trust
-                    ? weather
-                    : { manipulation: { level: "red", value: 92 }, alerts: { level: "orange", value: 45 }, trust: { level: "green", value: 10 } }
-                }
-              />
-
-              <TigerRevealCard tier={finalTier} proofs={result.proofs} />
-
-              {/* ── SCAM FAMILY GRAPH ───────────────────────────────── */}
-              {result.chain === "SOL" && (
-                <div id="scam-family-block">
-                <ScamFamilyBlock
-                  mint={address.trim()}
-                  hops={1}
-                  days={30}
-                  locale="en"
-                  showDebug={debug}
-                />
-                </div>
-              )}
-
-              {/* Technical evidence (collapsible) */}
-              <div id="evidence-section" className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
+              {/* ═══ ROW 3 — DEPTH (collapsible) ═══ */}
+              <div id="evidence-section" className="mt-6 bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-5">
                 <button onClick={() => setShowEvidence(!showEvidence)} className="w-full flex justify-between items-center group">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-white transition-colors underline decoration-[#F85B05] underline-offset-8">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-white transition-colors">
                     Technical Evidence
                   </span>
-                  <span className="text-xl text-zinc-700 group-hover:text-[#F85B05]">{showEvidence ? "−" : "+"}</span>
+                  <span className="text-lg text-zinc-700 group-hover:text-[#F85B05]">{showEvidence ? "−" : "+"}</span>
                 </button>
 
                 {showEvidence && (
-                  <>
+                  <div className="mt-4 space-y-4">
                     <TechnicalEvidence lang="en" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
                     {debug && (
-                    <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
-                      <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-orange-400 hover:text-orange-300">
-                        Advanced (debug)
-                      </summary>
-                      <div className="px-4 pb-4">
-                        <pre className="overflow-auto rounded-lg border border-zinc-900 bg-black p-4 font-mono text-[10px] text-zinc-500">
-                          {JSON.stringify(result.rawSummary, null, 2)}
-                        </pre>
-                      </div>
-                    </details>
+                      <details className="rounded-xl border border-zinc-900 bg-black/40">
+                        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-[#FF6B00]/60 hover:text-[#FF6B00]">Raw data (debug)</summary>
+                        <div className="px-4 pb-4">
+                          <pre className="overflow-auto rounded-lg border border-zinc-900 bg-black p-4 font-mono text-[10px] text-zinc-500">{JSON.stringify(result.rawSummary, null, 2)}</pre>
+                        </div>
+                      </details>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
 
-              <div className="p-6 bg-[#F85B05]/5 border border-dashed border-[#F85B05]/20 rounded-2xl">
-                <p className="text-[10px] text-zinc-600 uppercase font-black leading-relaxed tracking-widest">
-                  BA Audit Trace: Model v2.6.x — proofs are mapped to measurable facts (no defamation).
-                </p>
-              </div>
-
-            </div>
-          </div>
+              <CaseFileCTA id={address.trim() || null} lang="en" />
+          </>
             );
             })()}
           </div>
         </div>
 
+        {/* ── GO DEEPER ── */}
+        {result && (
+          <div className="mt-14 mb-6 border-t border-[#1a1a1a] pt-6 flex items-center gap-6 flex-wrap">
+            <span className="text-[10px] font-bold text-zinc-700 uppercase tracking-[0.2em]">Go deeper</span>
+            <a href="/en/kol" className="text-[12px] font-semibold text-zinc-500 hover:text-[#FF6B00] transition-colors no-underline">KOL Registry &rarr;</a>
+            <a href="/en/explorer" className="text-[12px] font-semibold text-zinc-500 hover:text-[#FF6B00] transition-colors no-underline">Case Explorer &rarr;</a>
+            <a href="/en/methodology" className="text-[12px] font-semibold text-zinc-500 hover:text-[#FF6B00] transition-colors no-underline">Methodology &rarr;</a>
+          </div>
+        )}
+
         <div className="text-center pt-10">
           <p className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.6em]">Interligens Intelligence © 2026</p>
         </div>
       </main>
+      </div>
     </div>
   );
 }

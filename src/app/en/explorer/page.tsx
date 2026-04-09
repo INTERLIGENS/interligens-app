@@ -1,4 +1,5 @@
 'use client'
+import BetaNav from "@/components/beta/BetaNav";
 import React, { useState, useEffect, useCallback } from 'react'
 
 type Kind = '' | 'case' | 'launch'
@@ -86,14 +87,8 @@ export default function ExplorerEN() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
-      <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <a href="/en/demo" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>{'\u2190'} INTERLIGENS</a>
-        <span style={{ color: '#1f2937' }}>{'\u00b7'}</span>
-        <a href="/en/kol" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>KOL LEADERBOARD</a>
-        <span style={{ color: '#1f2937' }}>{'\u00b7'}</span>
-        <span style={{ color: '#F85B05', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>EXPLORER</span>
-      </div>
+    <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
+      <BetaNav />
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px' }}>
         <div style={{ marginBottom: 32 }}>
@@ -233,13 +228,15 @@ export default function ExplorerEN() {
           </div>
         )}
 
-        {/* FOOTER */}
-        <div style={{ marginTop: 48, borderTop: '1px solid #1e2330', paddingTop: 20, color: '#374151', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.1em', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <span>Not financial advice {'\u2014'} INTERLIGENS Intelligence {'\u00a9'} 2026</span>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <a href="/en/kol" style={{ color: '#4b5563', textDecoration: 'none' }}>LEADERBOARD {'\u2192'}</a>
-            <a href="/en/methodology" style={{ color: '#4b5563', textDecoration: 'none' }}>METHODOLOGY {'\u2192'}</a>
-          </div>
+        {/* CROSS-NAV */}
+        <div style={{ marginTop: 48, borderTop: '1px solid #1a1a1a', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' as const }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#27272a', letterSpacing: '0.15em', textTransform: 'uppercase' as const }}>See also</span>
+          <a href="/scan" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Scan &rarr;</a>
+          <a href="/en/kol" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>KOL Registry &rarr;</a>
+          <a href="/en/methodology" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Methodology &rarr;</a>
+        </div>
+        <div style={{ marginTop: 16, color: '#1c1c1c', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
+          Not financial advice — INTERLIGENS Intelligence © 2026
         </div>
       </div>
     </div>

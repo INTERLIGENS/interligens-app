@@ -20,6 +20,7 @@ import { computeTigerScore, type TigerInput } from "@/lib/tigerscore/engine";
 import { rpcCall } from "@/lib/rpc";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
+import { isKnownBad } from "@/lib/entities/knownBad";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -180,22 +181,67 @@ async function computeSolViaAdapter(
 }
 
 async function computeEthViaAdapter(address: string) {
+  // knownBad → instant RED
+  const badHit = isKnownBad("ETH", address);
+  if (badHit) {
+    return {
+      score: 100,
+      tier: "RED" as const,
+      drivers: [{
+        id: "known_bad_address",
+        label: badHit.label,
+        severity: "critical" as const,
+        delta: 100,
+        why: `Address flagged as ${badHit.category} (confidence: ${badHit.confidence})`,
+      }],
+      confidence: "High" as const,
+    };
+  }
+
   let rpcFallbackUsed = false;
   let rpcDown = false;
   let rpcError: string | null = null;
   let rpcDataSource: "rpc_primary" | "rpc_fallback" | "unknown" = "unknown";
+  let isContract = false;
 
   try {
     const res = await rpcCall("ETH", "eth_getCode", [address, "latest"]);
     rpcFallbackUsed = res.didFallback;
     rpcDataSource = res.didFallback ? "rpc_fallback" : "rpc_primary";
+    // EOA returns "0x", contracts return bytecode
+    const code = res.result?.result ?? res.result ?? "0x";
+    isContract = typeof code === "string" && code.length > 2;
   } catch (e: any) {
     rpcDown = true;
     rpcError = String(e?.message || "ETH RPC unavailable").slice(0, 120);
   }
 
+  // EOA wallet — skip market data, boost signals from case registry
+  if (!isContract) {
+    const caseFile = loadCaseByMint(address);
+    const rawClaims = caseFile?.claims ?? [];
+
+    return computeTigerScoreFromScan({
+      chain: "ETH",
+      rpc_fallback_used: rpcFallbackUsed,
+      rpc_down: rpcDown,
+      rpc_error: rpcError,
+      data_source: rpcDataSource,
+      signals: {
+        confirmedCriticalClaims: rawClaims.filter(
+          (cl) =>
+            cl.severity === "CRITICAL" &&
+            (cl.status === "CONFIRMED" || (cl.status as string) === "REFERENCED"),
+        ).length,
+        knownBadAddresses: 0,
+      },
+    });
+  }
+
+  // Contract — full scan
   return computeTigerScoreFromScan({
     chain: "ETH",
+    is_contract: true,
     rpc_fallback_used: rpcFallbackUsed,
     rpc_down: rpcDown,
     rpc_error: rpcError,

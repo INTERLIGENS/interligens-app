@@ -1,4 +1,5 @@
 'use client'
+import BetaNav from "@/components/beta/BetaNav";
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
@@ -50,18 +51,14 @@ export default function CaseDossierPage() {
   }, [caseId])
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#374151', fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.15em' }}>LOADING DOSSIER...</div>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
-      <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <a href="/en/explorer" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>{'\u2190'} EXPLORER</a>
-        <span style={{ color: '#1f2937' }}>{'\u00b7'}</span>
-        <span style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>CASE DOSSIER</span>
-      </div>
+    <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
+      <BetaNav />
 
       <div style={{ maxWidth: 780, margin: '0 auto', padding: '40px 24px' }}>
         {/* TITLE */}

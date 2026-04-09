@@ -1,4 +1,5 @@
 'use client'
+import BetaNav from "@/components/beta/BetaNav";
 import React, { useState } from 'react'
 
 interface TraceResult {
@@ -39,7 +40,8 @@ export default function VictimPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif' }}>
+      <BetaNav />
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '60px 24px' }}>
 
         {/* Header */}

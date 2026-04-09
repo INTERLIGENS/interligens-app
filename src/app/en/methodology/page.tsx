@@ -1,24 +1,16 @@
+import BetaNav from "@/components/beta/BetaNav";
+
 export default function MethodologyPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
-      <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <a href="/en/demo" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← INTERLIGENS</a>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <span style={{ color: '#F85B05', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>METHODOLOGY</span>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <a href="/en/kol" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>LEADERBOARD</a>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <a href="/en/explorer" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>EXPLORER</a>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <a href="/en/correction" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>CORRECTIONS</a>
-      </div>
+    <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
+      <BetaNav />
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '60px 24px' }}>
 
         <div style={{ marginBottom: 40 }}>
           <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>EVIDENCE METHODOLOGY</div>
           <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 16, margin: 0 }}>How INTERLIGENS Calculates Financial Estimates</h1>
-          <div style={{ marginTop: 12, fontSize: 13, color: '#6b7280', lineHeight: 1.7 }}>
+          <div style={{ marginTop: 12, fontSize: 13, color: '#9ca3af', lineHeight: 1.7 }}>
             INTERLIGENS publishes estimated financial figures derived from publicly available blockchain data. These figures are analytical estimates — not established facts, not legal conclusions.
           </div>
         </div>
@@ -53,9 +45,9 @@ export default function MethodologyPage() {
             body: 'All methodology-based estimates carry inherent uncertainty. INTERLIGENS reviews published figures when new on-chain evidence emerges or when a correction request provides supporting data. Revised figures are logged with version notes. The methodology is reviewed quarterly.'
           },
         ].map(s => (
-          <div key={s.title} style={{ marginBottom: 32, borderLeft: '3px solid #1f2937', paddingLeft: 20 }}>
+          <div key={s.title} style={{ marginBottom: 12, background: '#0f0f0f', border: '1px solid #1a1a1a', borderRadius: 8, padding: '20px 24px' }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: '#f9fafb', letterSpacing: '0.05em', marginBottom: 8 }}>{s.title}</div>
-            <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.75 }}>{s.body}</div>
+            <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.75 }}>{s.body}</div>
           </div>
         ))}
 
@@ -95,14 +87,14 @@ export default function MethodologyPage() {
             body: 'Some actors choose to voluntarily submit their wallet addresses for public monitoring. These wallets are labeled "self-submitted" and are reviewed before public display. Voluntary disclosure does not constitute endorsement, certification, or an assessment of risk by INTERLIGENS. Submit wallets at /en/transparency.',
           },
         ].map(s => (
-          <div key={s.title} style={{ marginBottom: 32, borderLeft: '3px solid #1f2937', paddingLeft: 20 }}>
+          <div key={s.title} style={{ marginBottom: 12, background: '#0f0f0f', border: '1px solid #1a1a1a', borderRadius: 8, padding: '20px 24px' }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: '#f9fafb', letterSpacing: '0.05em', marginBottom: 8 }}>{s.title}</div>
-            <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.75 }}>{s.body}</div>
+            <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.75 }}>{s.body}</div>
           </div>
         ))}
 
         {/* Evidence Standard */}
-        <div style={{ background: '#0a0a0a', border: '1px solid #1f293788', borderRadius: 10, padding: '18px 22px', marginBottom: 32 }}>
+        <div style={{ background: '#0f0f0f', border: '1px solid #1a1a1a', borderRadius: 8, padding: '20px 24px', marginBottom: 32 }}>
           <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 12 }}>EVIDENCE STANDARD</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
             {[

@@ -3,23 +3,10 @@
  * WatcherV2 — X API Native KOL scan (daily cron)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
-
-function verifyCronSecret(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const provided = req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("secret") ?? "";
-  try {
-    const a = Buffer.from(secret, "utf8");
-    const b = Buffer.from(provided, "utf8");
-    if (a.length !== b.length) return false;
-    return timingSafeEqual(a, b);
-  } catch { return false; }
-}
 
 const prisma = new PrismaClient();
 
@@ -113,7 +100,8 @@ async function scanAll() {
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyCronSecret(req)) {
+  const authHeader = req.headers.get("authorization") ?? "";
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!hasToken()) {

@@ -21,16 +21,38 @@ function checkBasicAuth(req: NextRequest): boolean {
   return u === user && rest.join(":") === pass;
 }
 
+// ── Beta session check ─────────────────────────────────────────────────────
+// All public-facing demo pages require a valid beta session (fail-closed).
+// The session cookie is the same used by the investigator system.
+
+const BETA_COOKIE = "investigator_session";
+
+/** Routes that are NEVER gated (access flow, API, static, health). */
+function isBetaExempt(pathname: string): boolean {
+  // Access / auth flow
+  if (pathname.startsWith("/access")) return true;
+  // API routes have their own per-route guards
+  if (pathname.startsWith("/api/")) return true;
+  // Admin has its own basic auth
+  if (pathname.startsWith("/admin")) return true;
+  // Next.js internals & static assets
+  if (pathname.startsWith("/_next")) return true;
+  if (pathname.startsWith("/favicon")) return true;
+  // Health check
+  if (pathname === "/health") return true;
+  return false;
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Admin routes — basic auth in prod
+  // ── Admin routes — basic auth in prod ──────────────────────────────────
   const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
   if (isProd && isAdminRoute) {
     if (!checkBasicAuth(req)) return basicAuthFail();
   }
 
-  // Investigator routes — session cookie presence check (UX gate).
+  // ── Investigator routes — session cookie presence check (UX gate) ──────
   // Full DB session validation happens in API route handlers.
   const isInvestigatorPage =
     pathname.startsWith("/en/investigator") &&
@@ -40,14 +62,25 @@ export function middleware(req: NextRequest) {
     !pathname.startsWith("/api/investigator/auth");
 
   if (isInvestigatorPage || isInvestigatorApi) {
-    const hasSession = !!req.cookies.get("investigator_session")?.value;
+    const hasSession = !!req.cookies.get(BETA_COOKIE)?.value;
     if (!hasSession) {
       if (isInvestigatorApi) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       const loginUrl = req.nextUrl.clone();
-      loginUrl.pathname = "/en/investigator/login";
+      loginUrl.pathname = "/access";
       return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // ── Beta gating — all public demo pages ────────────────────────────────
+  // Fail-closed: if not exempt, must have a session cookie.
+  if (!isBetaExempt(pathname)) {
+    const hasSession = !!req.cookies.get(BETA_COOKIE)?.value;
+    if (!hasSession) {
+      const accessUrl = req.nextUrl.clone();
+      accessUrl.pathname = "/access";
+      return NextResponse.redirect(accessUrl);
     }
   }
 
@@ -56,9 +89,17 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // Admin
     "/admin/:path*",
     "/api/admin/:path*",
+    // Investigator
     "/en/investigator/:path*",
     "/api/investigator/:path*",
+    // Beta gating — all locale pages + root
+    "/",
+    "/en/:path*",
+    "/fr/:path*",
+    // Dynamic locale
+    "/((?!_next|favicon|access|api|admin|health).*)",
   ],
 };

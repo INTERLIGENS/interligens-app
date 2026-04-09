@@ -24,7 +24,7 @@ export default function TimelinePage() {
   }, [address])
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif' }}>
 
       {/* TOP NAV */}
       <div style={{ borderBottom: '1px solid #1f2937', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
