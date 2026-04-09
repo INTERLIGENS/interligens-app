@@ -6,6 +6,7 @@ const O = "#FF6B00";
 
 const NAV_ITEMS = [
   { href: "/en/demo", label: "Home", match: ["/home", "/en/demo", "/fr/demo", "/scan"] },
+  { href: "/en/watchlist", label: "Watchlist", match: ["/en/watchlist", "/fr/watchlist"] },
   { href: "/en/kol", label: "KOL Registry", match: ["/en/kol", "/fr/kol"] },
   { href: "/en/explorer", label: "Explorer", match: ["/en/explorer", "/fr/explorer"] },
   { href: "/en/methodology", label: "Methodology", match: ["/en/methodology", "/fr/methodology"] },

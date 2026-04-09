@@ -6,6 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model SourceRegistry {
@@ -382,9 +383,31 @@ model KolProfile {
   totalDocumented Float?        @default(0)
   last_reviewed_at DateTime?
   version_note     String?
+  publishable     Boolean       @default(false)
+  publishStatus           String  @default("draft")
+  internalNote            String?
+  walletAttributionStatus String  @default("none")
+  evidenceStatus          String  @default("none")
+  proceedsStatus          String  @default("none")
+  editorialStatus         String  @default("pending")
+  summary                     String?
+  observedBehaviorSummary     String?
+  documentedFacts             String?
+  partialFacts                String?
+  behaviorFlags               String  @default("[]")
+  evidenceDepth               String  @default("none")
+  completenessLevel           String  @default("incomplete")
+  proceedsCoverage            String  @default("none")
+  walletAttributionStrength   String  @default("none")
+  profileStrength             String  @default("minimal")
+  lastEnrichedAt              DateTime?
+  aliases    KolAlias[]
+  tokenLinks KolTokenLink[]
+  cashoutCache    Json?
   kolCases        KolCase[]
   evidences       KolEvidence[]
   kolWallets      KolWallet[]
+  laundryTrails   LaundryTrail[]
 
   @@map("KolProfile")
 }
@@ -400,6 +423,12 @@ model KolWallet {
   claimType   String?    @default("source_attributed")
   sourceLabel String?
   sourceUrl   String?
+  confidence        String  @default("medium")
+  attributionSource String?
+  attributionNote   String?
+  isPubliclyUsable  Boolean  @default(false)
+  attributionStatus String   @default("review")
+  discoveredAt      DateTime?
   kol         KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
@@ -440,6 +469,7 @@ model KolEvidence {
   postTimestamp DateTime?
   deltaMinutes  Int?
   rawJson       String?
+  dedupKey      String?
   kol           KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
@@ -504,6 +534,12 @@ model SocialPostCandidate {
   lastAttemptAtUtc   DateTime?
   errorMessage       String?
   linkedSocialPostId String?
+  detectedTokens     String     @default("[]")
+  detectedAddresses  String     @default("[]")
+  signalTypes        String     @default("[]")
+  signalScore        Int        @default(0)
+  dedupKey           String?    @unique
+  profileSnapshot    String?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   influencer         Influencer @relation(fields: [influencerId], references: [id])
@@ -615,12 +651,27 @@ enum CaptureStatus {
 }
 
 model XApiUsage {
+  id           String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  month        String    @unique
+  callCount    Int       @default(0)
+  estimatedUsd Decimal   @default(0) @db.Decimal(8, 2)
+  lastCall     DateTime? @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
+model WatchScan {
   id            String   @id @default(cuid())
-  monthStart    DateTime
-  totalCostUsd  Float    @default(0)
-  tweetsFetched Int      @default(0)
-  userLookups   Int      @default(0)
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  handle        String
+  status        String   @default("pending")
+  postsFound    Int      @default(0)
+  postsArchived Int      @default(0)
+  errorMessage  String?
+  durationMs    Int?
+  triggeredBy   String   @default("cron")
+
+  @@index([handle])
+  @@index([createdAt])
 }
 
 // ─── INVESTIGATOR DASHBOARD ─────────────────────────────────────────────────
@@ -674,4 +725,451 @@ model InvestigatorAuditLog {
   @@index([investigatorAccessId])
   @@index([eventType])
   @@index([timestamp])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CASE INTELLIGENCE — BETA MODULE
+// Appended to existing schema. One migration. ep-square-band only.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum IntelEntityType {
+  ADDRESS     // EOA / wallet (EVM or Solana)
+  CONTRACT    // Smart contract address
+  TOKEN_CA    // Token contract (launch / mint address)
+  DOMAIN      // Web domain or subdomain (lowercased)
+  PROJECT     // Named project — admin-seeded only
+  PERSON      // INTERNAL_ONLY — never retail-visible, never scores
+}
+
+enum IntelRiskClass {
+  SANCTION    // Statutory action: OFAC / AMF / FCA — hard caps apply
+  HIGH        // Confirmed threat: multi-source or strong technical signal
+  MEDIUM      // Flagged: single source, not corroborated
+  LOW         // Informational only
+  UNKNOWN     // Ingested, awaiting classification
+}
+
+enum MatchBasis {
+  EXACT_ADDRESS     // Checksummed address exact match
+  EXACT_CONTRACT    // Contract address exact match
+  EXACT_DOMAIN      // Lowercased domain exact match
+  EXACT_TOKEN_CA    // Token contract address exact match
+  INFERRED_LINKAGE  // Phase 3+ only. Never scores at beta.
+  FUZZY_ALIAS       // Internal only. Never scores at beta.
+}
+
+enum IntelDisplaySafety {
+  INTERNAL_ONLY     // Admin / analyst only. API suppresses for public routes.
+  ANALYST_REVIEWED  // Human-reviewed. Not yet cleared for scanner.
+  RETAIL_SAFE       // Cleared. Required for scanner display.
+}
+
+enum IntelCaseType {
+  SCAM
+  SANCTION
+  ENFORCEMENT
+  WARNING
+  INVESTIGATION
+}
+
+enum IntelCaseStatus {
+  ACTIVE
+  MONITORING
+  CLOSED
+  DISPUTED
+}
+
+enum ArchivePlatform {
+  X_TWITTER
+  TELEGRAM
+  YOUTUBE
+  WEB_PAGE
+  DAPP_SITE
+  OTHER
+}
+
+enum CaptureType {
+  WAYBACK_MACHINE
+  SCREENSHOT
+  VIDEO_CLIP
+  PDF_EXPORT
+  MANUAL_NOTE
+}
+
+enum EvidenceType {
+  DELETED_POST
+  PROMOTION
+  DISCLAIMER
+  CONTRACT_CLAIM
+  IDENTITY_CLAIM     // INTERNAL_ONLY always
+  PRICE_CHART
+  WALLET_MOVEMENT
+  GENERAL
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CanonicalEntity {
+  id              String             @id @default(cuid())
+  type            IntelEntityType
+  // Normalized canonical value:
+  // ADDRESS / CONTRACT / TOKEN_CA → lowercase hex (EVM) or raw base58 (Solana)
+  // DOMAIN → stripped lowercase, no trailing slash, no protocol
+  value           String
+
+  chain           String?            // "ethereum" | "solana" | "bsc" | null
+
+  // Risk summary — derived from strongest active SourceObservation
+  // Updated on every ingest pass. Never manually set.
+  riskClass      IntelRiskClass     @default(UNKNOWN)
+  strongestSource String?           // sourceSlug driving current riskClass
+  sourceCount     Int               @default(1)
+  firstSeenAt    DateTime
+  lastSeenAt     DateTime
+
+  // Dedup index: sha256(type + ":" + normalizedValue) — hex string
+  dedupKey       String             @unique
+
+  // Display gate — enforced at API level, not just UI
+  displaySafety IntelDisplaySafety @default(INTERNAL_ONLY)
+  reviewedBy    String?
+  reviewedAt    DateTime?
+
+  // Active flag — OFAC removals set isActive=false + deactivatedAt
+  isActive       Boolean            @default(true)
+  deactivatedAt DateTime?
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  observations  SourceObservation[]
+  cases          EntityCase[]
+  evidence       ArchivedEvidence[]
+
+  @@unique([type, value])
+  @@index([value])
+  @@index([dedupKey])
+  @@index([riskClass, isActive])
+  @@index([type, isActive])
+  @@map("intel_canonical_entities")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SourceObservation {
+  id               String             @id @default(cuid())
+  entityId         String
+  entity           CanonicalEntity    @relation(fields: [entityId], references: [id])
+
+  // Source identity
+  sourceSlug      String             // "ofac"|"amf"|"fca"|"scamsniffer"|"forta"|"goplus"
+  sourceTier      Int               // 1 = regulatory, 2 = technical
+  externalId      String?           // Source system record ID
+  externalUrl     String?           // Linkable public record — shown in drawer
+
+  // Classification
+  riskClass       IntelRiskClass
+  label           String?           // Source's own label: "phishing"|"honeypot"|"rug_pull"
+  matchBasis      MatchBasis
+
+  // Regulatory fields (Tier 1 only)
+  jurisdiction   String?           // "US"|"FR"|"UK"
+  listType        String?           // "SDN"|"AMF_BLACKLIST"|"FCA_WARNING"
+  listIsActive   Boolean           @default(true)
+  removedAt       DateTime?         // Set when removed from official list
+  lastVerifiedAt DateTime?         // Last successful ingest confirming still active
+
+  // Community fields (Tier 3 — Chainabuse, post-beta only)
+  reportCount    Int?
+
+  // Timestamps
+  ingestedAt     DateTime          @default(now())
+  observedAt     DateTime?         // Date of original event/listing (not our ingest)
+
+  // Raw payload — keep for audit + debugging
+  meta            Json?
+
+  // Beta constraint: one active observation per (entity, source)
+  // On re-ingest: UPDATE in place. Historical versioning deferred post-beta.
+  @@unique([entityId, sourceSlug])
+  @@index([entityId, sourceTier])
+  @@index([sourceSlug, ingestedAt])
+  @@index([riskClass, listIsActive])
+  @@map("intel_source_observations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CaseRecord {
+  id            String              @id @default(cuid())
+  title         String
+  caseType     IntelCaseType
+  status        IntelCaseStatus     @default(ACTIVE)
+  // Max 280 chars. Plain language. No legal determinations.
+  summary       String?
+  sourceSlug   String              // Primary source driving this case
+  externalRef  String?            // DOJ/SEC case number, FCA action ref, etc.
+  externalUrl  String?
+  reportedAt   DateTime?
+  resolvedAt   DateTime?
+  displaySafety IntelDisplaySafety @default(INTERNAL_ONLY)
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  meta          Json?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  entities     EntityCase[]
+  evidence     ArchivedEvidence[]
+
+  @@index([caseType, status])
+  @@index([displaySafety])
+  @@map("intel_case_records")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+model EntityCase {
+  entityId   String
+  caseId     String
+  // "defendant"|"wallet"|"domain"|"co-operator"|"victim"
+  role       String?
+  matchBasis MatchBasis
+  entity     CanonicalEntity @relation(fields: [entityId], references: [id])
+  case       CaseRecord     @relation(fields: [caseId], references: [id])
+
+  @@id([entityId, caseId])
+  @@map("intel_entity_cases")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+model IntelIngestionBatch {
+  id              String    @id @default(cuid())
+  sourceSlug      String
+  startedAt       DateTime
+  completedAt    DateTime?
+  // "running"|"success"|"partial"|"failed"
+  status          String
+  recordsFetched Int?
+  recordsNew     Int?
+  recordsUpdated Int?
+  recordsRemoved Int?      // Critical: track OFAC removals explicitly
+  errorMessage   String?
+  // "cron"|"manual"|"admin:{handle}"
+  triggeredBy    String?
+  createdAt       DateTime @default(now())
+
+  @@index([sourceSlug, startedAt])
+  @@map("intel_ingestion_batches")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+model IntelAuditLog {
+  id          String    @id @default(cuid())
+  // "system"|"cron:{slug}"|"admin:{handle}"
+  actor       String
+  // "entity.created"|"entity.deactivated"|"entity.reviewed"
+  // "case.created"|"case.published"|"evidence.added"
+  // "dispute.filed"|"match.queried"|"ingest.completed"
+  action      String
+  // "CanonicalEntity"|"CaseRecord"|"ArchivedEvidence"|"IntelIngestionBatch"
+  targetType String?
+  targetId   String?
+  detail      Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([actor, createdAt])
+  @@index([action, createdAt])
+  @@map("intel_audit_log")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAYER 3 — ANALYST ARCHIVE. Zero scoring path at beta.
+// Schema present from day one so capture work can start immediately.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ArchivedEvidence {
+  id               String              @id @default(cuid())
+  originalUrl     String?
+  archiveUrl      String?
+  archiveTimestamp DateTime?
+  platform         ArchivePlatform
+  captureType     CaptureType
+  evidenceType    EvidenceType
+  // @handle or username — stored but never shown to retail
+  authorHandle    String?
+  // Analyst note on what this evidence demonstrates
+  description      String?
+  // SHA-256 of captured file content for integrity
+  sha256Hash      String?
+  entityId         String?
+  entity           CanonicalEntity?   @relation(fields: [entityId], references: [id])
+  caseId          String?
+  case            CaseRecord?        @relation(fields: [caseId], references: [id])
+  // displaySafety NEVER auto-set to RETAIL_SAFE — evidence is analyst-only
+  displaySafety   IntelDisplaySafety @default(INTERNAL_ONLY)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  // Admin handle who seeded this row
+  addedBy         String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([caseId])
+  @@index([entityId])
+  @@map("intel_archived_evidence")
+}
+
+// ── LAUNDRY TRAIL MODULE ──
+
+enum LaundryRisk {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+enum RecoveryDifficulty {
+  LOW
+  PARTIAL
+  SEVERE
+}
+
+enum SignalFamily {
+  FRAG
+  BRIDGE
+  MIXER
+  PRIV
+  DEG
+  CASH
+}
+
+enum SignalSeverity {
+  WEAK
+  MODERATE
+  STRONG
+}
+
+model LaundryTrail {
+  id                 String             @id @default(cuid())
+  kolHandle          String?
+  walletAddress      String
+  chain              String
+  trailType          String
+  laundryRisk        LaundryRisk
+  recoveryDifficulty RecoveryDifficulty
+  trailBreakHop      Int?
+  fundsUnresolved    Float?
+  narrativeText      String?
+  narrativeTextFr    String?
+  evidenceNote       String             @default("Pattern detected via on-chain analysis. INTERLIGENS does not assert intent.")
+  evidenceNoteFr     String?            @default("Schéma détecté via une analyse on-chain. INTERLIGENS ne se prononce pas sur l'intention.")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  signals            LaundrySignal[]
+  kolProfile         KolProfile?        @relation(fields: [kolHandle], references: [handle])
+}
+
+model LaundrySignal {
+  id        String         @id @default(cuid())
+  trailId   String
+  family    SignalFamily
+  confirmed Boolean
+  severity  SignalSeverity
+  detail    String
+  rawData   Json?
+  trail     LaundryTrail   @relation(fields: [trailId], references: [id], onDelete: Cascade)
+}
+
+
+model KolAlias {
+  id        String     @id @default(cuid())
+  kolHandle String
+  alias     String
+  type      String     @default("secondary")
+  createdAt DateTime   @default(now())
+  kol       KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+
+  @@unique([kolHandle, alias])
+  @@index([alias])
+}
+
+model KolTokenLink {
+  id              String     @id @default(cuid())
+  kolHandle       String
+  contractAddress String
+  chain           String
+  tokenSymbol     String?
+  role            String     @default("promoter")
+  note            String?
+  caseId              String?
+  documentationStatus String   @default("partial")
+  attributionNote     String?
+  createdAt       DateTime   @default(now())
+  kol             KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+
+  @@unique([kolHandle, contractAddress, chain])
+  @@index([kolHandle])
+}
+
+model EvidenceSnapshot {
+  id            String    @id @default(cuid())
+  relationType  String
+  relationKey   String
+  snapshotType  String
+  imageUrl      String?
+  title         String
+  caption       String
+  sourceLabel   String?
+  sourceUrl     String?
+  observedAt    DateTime?
+  displayOrder  Int       @default(0)
+  isPublic      Boolean   @default(false)
+  reviewStatus  String    @default("pending")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([relationType, relationKey])
+  @@index([isPublic, reviewStatus])
+}
+
+model TransparencySubmission {
+  id               String   @id @default(cuid())
+  submittedHandle  String?
+  projectName      String?
+  platform         String?  @default("X")
+  submitterContact String?
+  notes            String?
+  status           String   @default("submitted")
+  reviewStatus     String   @default("pending")
+  publicVisibility String   @default("internal_only")
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  decisionNote     String?
+  publicNote       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  wallets          TransparencyWallet[]
+
+  @@index([status])
+  @@index([publicVisibility])
+}
+
+model TransparencyWallet {
+  id               String   @id @default(cuid())
+  submissionId     String
+  chain            String
+  address          String
+  label            String?
+  ownershipClaim   String   @default("self_submitted")
+  note             String?
+  kolHandle        String?
+  isPublic         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  submission       TransparencySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([chain, address])
 }

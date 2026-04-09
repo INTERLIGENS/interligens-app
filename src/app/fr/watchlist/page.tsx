@@ -79,27 +79,27 @@ const fmtUsd = (n: number | null | undefined) => {
 const fmtF = (n: number) => n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + 'M' : n >= 1_000 ? (n / 1_000).toFixed(0) + 'K' : n > 0 ? String(n) : '\u2014'
 const timeAgo = (d: string | null) => {
   if (!d) return null; const diff = Date.now() - new Date(d).getTime(); const m = Math.floor(diff / 60_000)
-  if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`
-  const days = Math.floor(h / 24); if (days < 30) return `${days}d ago`; return `${Math.floor(days / 30)}mo ago`
+  if (m < 60) return `${m}m`; const h = Math.floor(m / 60); if (h < 24) return `${h}h`
+  const days = Math.floor(h / 24); if (days < 30) return `${days}j`; return `${Math.floor(days / 30)}mo`
 }
 const Badge = ({ label, color }: { label: string; color: string }) => (
   <span style={{ background: color + '15', color, fontSize: 8, fontWeight: 900, padding: '3px 8px', borderRadius: 3, letterSpacing: '0.1em', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{label}</span>
 )
 function severity(score: number) {
-  if (score >= 60) return { label: 'CRITICAL', color: '#ef4444' }
-  if (score >= 40) return { label: 'HIGH', color: '#f97316' }
-  if (score >= 25) return { label: 'MEDIUM', color: '#f59e0b' }
-  return { label: 'LOW', color: '#6b7280' }
+  if (score >= 60) return { label: 'CRITIQUE', color: '#ef4444' }
+  if (score >= 40) return { label: 'HAUT', color: '#f97316' }
+  if (score >= 25) return { label: 'MOYEN', color: '#f59e0b' }
+  return { label: 'BAS', color: '#6b7280' }
 }
 function depthScore(e: WatchEntry): number {
   let s = 0; if (e.hasProfile) s++; if (e.evidenceCount > 0) s++; if ((e.totalProceeds ?? 0) > 0) s++; if (e.walletsCount > 0) s++; return s
 }
 function depthLabel(s: number): { label: string; color: string } {
-  if (s >= 4) return { label: 'DEEP', color: '#10b981' }
-  if (s >= 3) return { label: 'STRONG', color: '#3b82f6' }
-  if (s >= 2) return { label: 'PARTIAL', color: '#f59e0b' }
-  if (s >= 1) return { label: 'THIN', color: '#6b7280' }
-  return { label: 'TRACKED', color: '#374151' }
+  if (s >= 4) return { label: 'PROFONDE', color: '#10b981' }
+  if (s >= 3) return { label: 'FORTE', color: '#3b82f6' }
+  if (s >= 2) return { label: 'PARTIELLE', color: '#f59e0b' }
+  if (s >= 1) return { label: 'MINCE', color: '#6b7280' }
+  return { label: 'SUIVI', color: '#374151' }
 }
 
 /* ── page ──────────────────────────────────────────────── */
@@ -155,12 +155,12 @@ export default function WatchlistPage() {
         {/* ═══ HERO ═══ */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace' }}>ACTIVE SURVEILLANCE</div>
+            <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace' }}>SURVEILLANCE ACTIVE</div>
             <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981', animation: 'pulse 2s ease-in-out infinite' }} />
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>Watchlist<span style={{ color: '#F85B05' }}>.</span></h1>
           <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4, maxWidth: 580 }}>
-            Who we&apos;re watching right now. Recent signals, active alerts, and accounts that need review.
+            Suivi actif des comptes a fort impact. Analyse des calls, lancements, wallets, profits et coordination.
           </p>
         </div>
 
@@ -168,12 +168,12 @@ export default function WatchlistPage() {
         {stats && (
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, padding: '12px 20px', background: '#0d1117', border: '1px solid #1e2330', borderRadius: 8, flexWrap: 'wrap' }}>
             {[
-              { v: stats.totalTracked, l: 'TRACKED', c: '#F85B05' },
-              { v: stats.highPriority, l: 'HIGH PRIORITY', c: '#ef4444' },
+              { v: stats.totalTracked, l: 'SUIVIS', c: '#F85B05' },
+              { v: stats.highPriority, l: 'HAUTE PRIORITE', c: '#ef4444' },
               { v: stats.withProfiles, l: 'DOSSIERS', c: '#8b5cf6' },
-              { v: fmtUsd(stats.totalProceeds), l: 'MIN. PROCEEDS', c: '#ef4444', raw: true },
-              { v: stats.totalEvidence, l: 'EVIDENCE', c: '#3b82f6' },
-              { v: stats.totalRecentSignals, l: 'SIGNALS 30D', c: '#10b981' },
+              { v: fmtUsd(stats.totalProceeds), l: 'PROFITS MIN.', c: '#ef4444', raw: true },
+              { v: stats.totalEvidence, l: 'PREUVES', c: '#3b82f6' },
+              { v: stats.totalRecentSignals, l: 'SIGNAUX 30J', c: '#10b981' },
             ].map(s => (
               <div key={s.l} style={{ flex: 1, minWidth: 80 }}>
                 <div style={{ color: s.c, fontSize: 18, fontWeight: 800, fontFamily: 'monospace' }}>{s.raw ? s.v : String(s.v)}</div>
@@ -188,8 +188,8 @@ export default function WatchlistPage() {
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981', animation: 'pulse 2s ease-in-out infinite' }} />
-              <div style={{ color: '#10b981', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace' }}>LIVE ACTIVITY</div>
-              {signalsMeta && signalsMeta.total > 0 && <span style={{ fontSize: 9, color: '#374151', fontFamily: 'monospace' }}>{signalsMeta.total} signals last 30d</span>}
+              <div style={{ color: '#10b981', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace' }}>ACTIVITE EN COURS</div>
+              {signalsMeta && signalsMeta.total > 0 && <span style={{ fontSize: 9, color: '#374151', fontFamily: 'monospace' }}>{signalsMeta.total} signaux sur 30j</span>}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -231,7 +231,7 @@ export default function WatchlistPage() {
                   {needsReview.map(e => (
                     <div key={e.handle} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: '#0d1117', border: '1px solid #1e2330', borderRadius: 4, borderLeft: '2px solid #f59e0b' }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: '#f9fafb' }}>@{e.handle}</span>
-                      <Badge label="NEEDS REVIEW" color="#f59e0b" />
+                      <Badge label="A EXAMINER" color="#f59e0b" />
                       {e.evidenceCount > 0 && <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#3b82f6' }}>{e.evidenceCount} ev.</span>}
                     </div>
                   ))}
@@ -244,7 +244,7 @@ export default function WatchlistPage() {
         {/* ═══ 2. HIGHEST CONCERN ═══ */}
         {!loading && highConcern.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ color: '#ef4444', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 10 }}>HIGHEST CONCERN</div>
+            <div style={{ color: '#ef4444', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 10 }}>PLUS HAUTE VIGILANCE</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 8 }}>
               {highConcern.map(e => {
                 const lastAct = timeAgo(e.lastSignalAt)
@@ -255,7 +255,7 @@ export default function WatchlistPage() {
                     borderLeft: `3px solid ${PC[e.priority]}`, transition: 'border-color 0.15s',
                     cursor: e.isPublished ? 'pointer' : 'default',
                   }}
-                    onClick={() => { if (e.isPublished) window.location.href = `/en/kol/${e.handle}` }}
+                    onClick={() => { if (e.isPublished) window.location.href = `/fr/kol/${e.handle}` }}
                     onMouseEnter={ev => (ev.currentTarget.style.borderColor = '#F85B05')}
                     onMouseLeave={ev => { ev.currentTarget.style.borderColor = '#1e2330'; ev.currentTarget.style.borderLeftColor = PC[e.priority] }}
                   >
@@ -288,7 +288,7 @@ export default function WatchlistPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Badge label={CAT_L[e.category] ?? e.category} color={CAT_C[e.category] ?? '#6b7280'} />
                       {e.isPublished ? <span style={{ color: '#F85B05', fontSize: 9, fontFamily: 'monospace', fontWeight: 700 }}>DOSSIER {'\u2192'}</span>
-                        : <span style={{ color: '#374151', fontSize: 9, fontFamily: 'monospace', fontWeight: 700 }}>UNDER REVIEW</span>}
+                        : <span style={{ color: '#374151', fontSize: 9, fontFamily: 'monospace', fontWeight: 700 }}>EN COURS D&apos;ANALYSE</span>}
                     </div>
                   </div>
                 )
@@ -300,27 +300,27 @@ export default function WatchlistPage() {
         {/* ═══ 3. FULL TABLE ═══ */}
         <div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace' }}>ALL TRACKED HANDLES</div>
+            <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace' }}>TOUS LES COMPTES SUIVIS</div>
             <div style={{ flex: 1 }} />
             {(['all', 'high', 'medium', 'low'] as Filter[]).map(f => (
               <button key={f} onClick={() => setFilter(f)} style={{
                 fontSize: 8, fontWeight: 900, letterSpacing: '0.15em', padding: '4px 10px', borderRadius: 3,
                 cursor: 'pointer', border: 'none', transition: 'all 0.12s', textTransform: 'uppercase',
                 background: filter === f ? '#F85B05' : '#111', color: filter === f ? '#fff' : '#4b5563',
-              }}>{f === 'all' ? 'ALL' : f.toUpperCase()}</button>
+              }}>{f === 'all' ? 'TOUS' : f.toUpperCase()}</button>
             ))}
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
               style={{ background: '#111', border: '1px solid #1e2330', borderRadius: 3, padding: '4px 8px', color: '#f9fafb', fontSize: 11, fontFamily: 'monospace', outline: 'none', width: 140 }} />
           </div>
 
           {loading ? (
-            <div style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', padding: '40px 0', textAlign: 'center' }}>LOADING...</div>
+            <div style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', padding: '40px 0', textAlign: 'center' }}>CHARGEMENT...</div>
           ) : filtered.length === 0 ? (
-            <div style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', padding: '40px 0', textAlign: 'center' }}>NO RESULTS</div>
+            <div style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', padding: '40px 0', textAlign: 'center' }}>AUCUN RESULTAT</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 70px 80px 70px 50px 50px 60px 60px', gap: 6, padding: '6px 14px', color: '#4b5563', fontSize: 8, fontFamily: 'monospace', letterSpacing: '0.1em', alignItems: 'center' }}>
-                <div>#</div><div>HANDLE</div><div>PRIORITY</div><div>CATEGORY</div><div>PROCEEDS</div><div>EV.</div><div>FLAGS</div><div>DEPTH</div><div style={{ textAlign: 'right' }}>STATUS</div>
+                <div>#</div><div>COMPTE</div><div>PRIORITE</div><div>CATEGORIE</div><div>PROFITS</div><div>EV.</div><div>FLAGS</div><div>DEPTH</div><div style={{ textAlign: 'right' }}>STATUT</div>
               </div>
               {filtered.map((e, i) => {
                 const dl = depthLabel(depthScore(e))
@@ -331,7 +331,7 @@ export default function WatchlistPage() {
                     borderRadius: 4, alignItems: 'center', transition: 'border-color 0.15s',
                     cursor: e.isPublished ? 'pointer' : 'default',
                   }}
-                    onClick={() => { if (e.isPublished) window.location.href = `/en/kol/${e.handle}` }}
+                    onClick={() => { if (e.isPublished) window.location.href = `/fr/kol/${e.handle}` }}
                     onMouseEnter={ev => (ev.currentTarget.style.borderColor = '#F85B05')}
                     onMouseLeave={ev => (ev.currentTarget.style.borderColor = '#1e2330')}
                   >
@@ -355,8 +355,8 @@ export default function WatchlistPage() {
                     <div style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: e.behaviorFlagsCount > 0 ? '#f97316' : '#272727' }}>{e.behaviorFlagsCount || '\u2014'}</div>
                     <div><Badge label={dl.label} color={dl.color} /></div>
                     <div style={{ textAlign: 'right' }}>
-                      {e.isPublished ? <span style={{ color: '#F85B05', fontSize: 9, fontFamily: 'monospace', fontWeight: 700 }}>VIEW {'\u2192'}</span>
-                        : e.hasProfile ? <Badge label="REVIEW" color="#f59e0b" />
+                      {e.isPublished ? <span style={{ color: '#F85B05', fontSize: 9, fontFamily: 'monospace', fontWeight: 700 }}>VOIR {'\u2192'}</span>
+                        : e.hasProfile ? <Badge label="A EXAMINER" color="#f59e0b" />
                         : <span style={{ color: '#272727', fontSize: 9, fontFamily: 'monospace' }}>{'\u2014'}</span>}
                     </div>
                   </div>
@@ -370,14 +370,14 @@ export default function WatchlistPage() {
         {!loading && entries.length > 0 && (
           <div style={{ display: 'flex', gap: 8, marginTop: 28, flexWrap: 'wrap' }}>
             <div style={{ flex: 2, minWidth: 280, background: '#0d1117', border: '1px solid #1e2330', borderRadius: 8, padding: '10px 16px' }}>
-              <div style={{ color: '#F85B05', fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', fontFamily: 'monospace', marginBottom: 6 }}>INTELLIGENCE DEPTH</div>
+              <div style={{ color: '#F85B05', fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', fontFamily: 'monospace', marginBottom: 6 }}>PROFONDEUR D&apos;INTELLIGENCE</div>
               <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 6 }}>
                 {[{ v: dc.deep, c: '#10b981' }, { v: dc.strong, c: '#3b82f6' }, { v: dc.partial, c: '#f59e0b' }, { v: dc.thin, c: '#6b7280' }, { v: dc.tracked, c: '#1e2330' }].map((d, i) => (
                   <div key={i} style={{ width: `${(d.v / (entries.length || 1)) * 100}%`, background: d.c }} />
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {[{ l: 'Deep', v: dc.deep, c: '#10b981' }, { l: 'Strong', v: dc.strong, c: '#3b82f6' }, { l: 'Partial', v: dc.partial, c: '#f59e0b' }, { l: 'Thin', v: dc.thin, c: '#6b7280' }, { l: 'Tracked', v: dc.tracked, c: '#374151' }].map(d => (
+                {[{ l: 'Profonde', v: dc.deep, c: '#10b981' }, { l: 'Forte', v: dc.strong, c: '#3b82f6' }, { l: 'Partielle', v: dc.partial, c: '#f59e0b' }, { l: 'Mince', v: dc.thin, c: '#6b7280' }, { l: 'Suivi', v: dc.tracked, c: '#374151' }].map(d => (
                   <span key={d.l} style={{ fontSize: 9, fontFamily: 'monospace' }}>
                     <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 1, background: d.c, marginRight: 3, verticalAlign: 'middle' }} />
                     <span style={{ color: '#4b5563' }}>{d.l} </span><span style={{ color: d.c, fontWeight: 700 }}>{d.v}</span>
@@ -386,9 +386,9 @@ export default function WatchlistPage() {
               </div>
             </div>
             <div style={{ flex: 1, minWidth: 200, background: '#0d1117', border: '1px solid #1e2330', borderRadius: 8, padding: '10px 16px' }}>
-              <div style={{ color: '#10b981', fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', fontFamily: 'monospace', marginBottom: 6 }}>MOST ACTIVE 30D</div>
+              <div style={{ color: '#10b981', fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', fontFamily: 'monospace', marginBottom: 6 }}>PLUS ACTIFS 30J</div>
               {mostActive.length === 0 ? (
-                <div style={{ fontSize: 9, color: '#272727', fontFamily: 'monospace' }}>No recent activity</div>
+                <div style={{ fontSize: 9, color: '#272727', fontFamily: 'monospace' }}>Pas d&apos;activite recente</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {mostActive.slice(0, 3).map((e, i) => (
@@ -413,12 +413,12 @@ export default function WatchlistPage() {
 
         {/* CROSS-NAV */}
         <div style={{ marginTop: 28, borderTop: '1px solid #1a1a1a', paddingTop: 16, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#27272a', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Go deeper</span>
-          <a href="/en/kol" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>View documented profiles &rarr;</a>
-          <a href="/en/explorer" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Open related cases &rarr;</a>
-          <a href="/en/methodology" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Methodology &rarr;</a>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#27272a', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Voir aussi</span>
+          <a href="/fr/kol" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Registre KOL &rarr;</a>
+          <a href="/fr/explorer" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Explorateur de cas &rarr;</a>
+          <a href="/fr/methodology" style={{ fontSize: 12, fontWeight: 600, color: '#52525b', textDecoration: 'none' }}>Methodologie &rarr;</a>
         </div>
-        <div style={{ marginTop: 12, color: '#1c1c1c', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>Observed patterns only &middot; INTERLIGENS Intelligence &copy; 2026</div>
+        <div style={{ marginTop: 12, color: '#1c1c1c', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>Observations uniquement &middot; INTERLIGENS Intelligence &copy; 2026</div>
       </div>
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>
