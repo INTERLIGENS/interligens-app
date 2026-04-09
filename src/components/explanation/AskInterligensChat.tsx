@@ -213,11 +213,11 @@ export function AskInterligensChat({ summary, locale }: Props) {
 
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 leading-none">
             {t('askMore', locale)}
           </span>
-          <span className="text-[8px] text-zinc-700 uppercase tracking-wider">
+          <span className="text-[8px] text-zinc-700 uppercase tracking-wider leading-none">
             · {t('scope', locale)}
           </span>
         </div>
@@ -297,12 +297,12 @@ export function AskInterligensChat({ summary, locale }: Props) {
           onKeyDown={handleKeyDown}
           placeholder={t('placeholder', locale)}
           disabled={isLoading}
-          className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-lg border border-[#F85B05]/30 bg-zinc-900/50 px-3 py-2.5 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-[#F85B05]/60 focus:shadow-[0_0_12px_rgba(248,91,5,0.12)] transition-all disabled:opacity-50"
         />
         <button
           onClick={() => handleSubmit()}
           disabled={isLoading || !input.trim()}
-          className="rounded-lg border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-150 border-[#F85B05]/40 text-[#F85B05] hover:bg-[#F85B05]/10 disabled:border-zinc-800 disabled:text-zinc-700 disabled:cursor-not-allowed"
+          className="bg-white text-black font-black uppercase text-[10px] tracking-widest px-5 py-2.5 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40"
         >
           {t('ask', locale)}
         </button>

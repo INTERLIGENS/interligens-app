@@ -23,10 +23,10 @@ function Chip({ text, level }: { text: string; level: string }) {
   );
 }
 
-const card  = "min-w-0 rounded-2xl border border-zinc-800 bg-black/30 px-3 py-2.5";
-const title = "text-[10px] font-extrabold uppercase tracking-[0.25em] text-slate-400 mb-1";
-const row   = "flex items-center justify-between gap-2 min-w-0";
-const val   = "min-w-0 truncate text-xs font-semibold text-zinc-300 flex-1";
+const card  = "min-w-0 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3";
+const title = "text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-1.5";
+const row   = "flex items-center justify-between gap-3 min-w-0";
+const val   = "min-w-0 truncate text-[11px] font-semibold text-zinc-300 flex-1 leading-snug";
 
 export default function MiniSignalRow({
   lang, tier, weather, show, rawSummary,

@@ -55,7 +55,7 @@ export default function AnimatedScoreRing({ score, tier, color, duration = 900 }
   const offset = circumference - (circumference * animatedScore) / 100;
 
   return (
-    <div className="relative w-56 h-56 mb-10 mt-4 group-hover:scale-105 transition-transform duration-500">
+    <div className="relative w-56 h-56 mb-4 mt-4 group-hover:scale-105 transition-transform duration-500">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 224 224">
         <circle cx="112" cy="112" r={r} stroke="#111" strokeWidth="12" fill="transparent" />
         <circle

@@ -7,9 +7,12 @@ export async function GET(req: NextRequest) {
   if (!mint) return NextResponse.json({ clusters: [], related_projects: [], overall_status: 'NONE' })
 
   try {
-    // Check our GraphCase DB first
+    // Check our GraphCase DB first (try exact match, then case-insensitive)
     const graphCase = await prisma.graphCase.findFirst({
-      where: { pivotAddress: mint.toLowerCase() },
+      where: { pivotAddress: mint },
+      include: { nodes: true, edges: true }
+    }) ?? await prisma.graphCase.findFirst({
+      where: { pivotAddress: { equals: mint, mode: 'insensitive' } },
       include: { nodes: true, edges: true }
     })
 

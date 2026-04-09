@@ -101,15 +101,14 @@ export default function ScamFamilyBlock({ mint, hops=1, days=30, locale="en", sh
       </div>
     </div>
   );
-  if (error || !report) return (
-    <div className="rounded-xl border border-zinc-700/30 bg-zinc-900/40 p-4">
-      <span className="text-zinc-600 text-sm">⚠ {t.error}</span>
-    </div>
-  );
+  if (error || !report) return null;
 
   const filteredRelated = report.related_projects.filter(p => !p.symbol || !UTILITY_SYMBOLS.has(p.symbol.toUpperCase()));
   const hasClusters = report.clusters.length > 0;
   const hasRelated = filteredRelated.length > 0;
+
+  // Hide entirely when no real data
+  if (!hasClusters && !hasRelated) return null;
 
   return (
     <div className="rounded-xl border border-zinc-700/40 bg-zinc-900/60 overflow-hidden">

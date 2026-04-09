@@ -4,12 +4,12 @@ export const CHIP_LABELS: Record<ChipIntent, Record<Locale, string>> = {
   why_score:            { en: "Why this score?",      fr: "Pourquoi ce score ?" },
   top_red_flags:        { en: "Main red flags",       fr: "Signaux principaux" },
   what_to_do:           { en: "What should I do?",    fr: "Que faire ?" },
-  deployer_risk:        { en: "Deployer risk",        fr: "Risque déployeur" },
-  holder_concentration: { en: "Holder concentration", fr: "Concentration wallets" },
-  liquidity_risk:       { en: "Liquidity risk",       fr: "Risque liquidité" },
+  deployer_risk:        { en: "Creator risk",          fr: "Risque créateur" },
+  holder_concentration: { en: "Who holds this?",      fr: "Qui détient ?" },
+  liquidity_risk:       { en: "Can I sell?",           fr: "Puis-je vendre ?" },
   recidivism:           { en: "Known repeat actor",   fr: "Acteur récidiviste" },
-  linked_projects:      { en: "Linked projects",      fr: "Projets liés" },
-  intel_vault:          { en: "Intel Vault matches",  fr: "Intel Vault" },
+  linked_projects:      { en: "Linked to scams?",     fr: "Lié à des scams ?" },
+  intel_vault:          { en: "Intel matches",         fr: "Dossiers Intel" },
 }
 
 export const ANSWER_TITLES: Record<ChipIntent, Record<Locale, string>> = {
@@ -30,8 +30,8 @@ export const INSUFFICIENT_DATA: Record<Locale, string> = {
 }
 
 export const EXPLANATION_SECTION_LABEL: Record<Locale, string> = {
-  en: "Ask INTERLIGENS",
-  fr: "Demander à INTERLIGENS",
+  en: "Ask INTERLIGENS AI",
+  fr: "Demander à INTERLIGENS AI",
 }
 
 export const EXPLANATION_DISCLAIMER: Record<Locale, string> = {
@@ -52,8 +52,8 @@ export const ASK_MORE_LABEL: Record<Locale, string> = {
 }
 
 export const INPUT_PLACEHOLDER: Record<Locale, string> = {
-  en: "e.g. What does the deployer risk mean?",
-  fr: "ex. Que signifie le risque déployeur ?",
+  en: "Ask anything about this scan…",
+  fr: "Pose une question sur ce scan…",
 }
 
 export const ASK_BUTTON: Record<Locale, string> = {

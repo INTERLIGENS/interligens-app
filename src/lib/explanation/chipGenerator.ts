@@ -39,20 +39,23 @@ export function generateChips(summary: AnalysisSummary, locale: Locale): Chip[] 
   // Slot 1 — always
   chips.push(makeChip('why_score', locale))
 
-  // Slot 2 — only if reasons exist
-  if (summary.topReasons.length > 0) {
-    chips.push(makeChip('top_red_flags', locale))
-  }
+  // Slot 2 — always
+  chips.push(makeChip('top_red_flags', locale))
 
   // Slot 3 — always
   chips.push(makeChip('what_to_do', locale))
 
-  // Slot 4 — first available signal
+  // Slot 4 — first available signal, fallback to linked_projects
+  let found = false
   for (const intent of SIGNAL_CHIP_PRIORITY) {
     if (hasSignal(summary, intent)) {
       chips.push(makeChip(intent, locale))
+      found = true
       break
     }
+  }
+  if (!found) {
+    chips.push(makeChip('linked_projects', locale))
   }
 
   return chips.slice(0, 4)

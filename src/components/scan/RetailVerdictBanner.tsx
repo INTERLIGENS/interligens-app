@@ -17,16 +17,18 @@ interface Props {
   address?: string
   chain?: string
   lang?: 'en' | 'fr'
+  actions?: string[]
+  disclaimer?: string
 }
 
 const VERDICTS = {
   en: {
-    RED:    { icon: '✕', title: 'DO NOT BUY', sub: 'Critical risk signals detected by INTERLIGENS', color: '#ef4444', border: '#ef4444' },
+    RED:    { icon: '✕', title: "DON'T BUY THIS", sub: 'Critical risk signals detected by INTERLIGENS', color: '#ef4444', border: '#ef4444' },
     ORANGE: { icon: '!', title: 'HIGH RISK', sub: 'Multiple warning signals identified', color: '#f59e0b', border: '#f59e0b' },
     GREEN:  { icon: '✓', title: 'CLEAN', sub: 'No major risk detected', color: '#10b981', border: '#10b981' },
   },
   fr: {
-    RED:    { icon: '✕', title: 'NE PAS ACHETER', sub: 'Signaux critiques détectés par INTERLIGENS', color: '#ef4444', border: '#ef4444' },
+    RED:    { icon: '✕', title: "N'ACHÈTE PAS", sub: 'Signaux critiques détectés par INTERLIGENS', color: '#ef4444', border: '#ef4444' },
     ORANGE: { icon: '!', title: 'RISQUE ÉLEVÉ', sub: "Plusieurs signaux d'alerte identifiés", color: '#f59e0b', border: '#f59e0b' },
     GREEN:  { icon: '✓', title: 'FIABLE', sub: 'Aucun risque majeur détecté', color: '#10b981', border: '#10b981' },
   }
@@ -72,7 +74,7 @@ function toPlainLanguage(proof: Proof, lang: 'en' | 'fr'): string | null {
   return null
 }
 
-export default function RetailVerdictBanner({ tier, score, proofs, address, chain, lang = 'en' }: Props) {
+export default function RetailVerdictBanner({ tier, score, proofs, address, chain, lang = 'en', actions, disclaimer }: Props) {
   const v = VERDICTS[lang][tier]
   const isSolana = chain === 'SOL' || chain === 'solana'
 
@@ -84,7 +86,7 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
 
   const generic = {
     en: { RED: ['Risk score critically high', 'Multiple red flags detected'], ORANGE: ['Risk score above safe threshold'], GREEN: ['No critical signals detected'] },
-    fr: { RED: ["🚨 Score de risque critique", "🔍 Plusieurs red flags détectés"], ORANGE: ["⚠️ Score au-dessus du seuil"], GREEN: ["✅ Aucun signal critique"] }
+    fr: { RED: ["Score de risque critique", "Plusieurs red flags détectés"], ORANGE: ["Score au-dessus du seuil"], GREEN: ["Aucun signal critique"] }
   }
   while (reasons.length < 2) {
     const next = generic[lang][tier][reasons.length]
@@ -95,13 +97,14 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
   const ctaLabel = lang === 'fr' ? "Voir comment le scam s'est déroulé →" : 'See how this scam unfolded →'
   const poweredBy = lang === 'fr' ? 'Analysé par' : 'Analyzed by'
   const scoreLabel = lang === 'fr' ? 'SCORE RISQUE' : 'RISK SCORE'
+  const actionLabel = lang === 'fr' ? 'À FAIRE MAINTENANT' : 'WHAT TO DO NOW'
+  const timelineBase = lang === 'fr' ? '/fr/scan/' : '/en/scan/'
 
   return (
     <div style={{ background: BG[tier], border: `1px solid ${v.border}`, borderRadius: 16, padding: '20px 24px', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${v.color}, transparent)` }} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-        <div style={{ width: 6, height: 52, borderRadius: 3, background: v.color, flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 28, fontWeight: 900, color: v.color, letterSpacing: '-0.02em', lineHeight: 1, fontFamily: "'Inter', 'Helvetica Neue', sans-serif", textTransform: 'uppercase' as const }}>
             {v.title}
@@ -117,16 +120,32 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
       {reasons.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
           {reasons.map((r, i) => (
-            <div key={i} style={{ fontSize: 13, color: '#e2e8f0', background: '#0f172a88', borderRadius: 8, padding: '8px 14px', borderLeft: `3px solid ${v.color}` }}>
+            <div key={i} style={{ fontSize: 13, color: '#e2e8f0', background: '#0f172a88', borderRadius: 8, padding: '8px 14px' }}>
               {r}
             </div>
           ))}
         </div>
       )}
 
+      {/* What to do now — integrated */}
+      {actions && actions.length > 0 && (
+        <div style={{ borderTop: `1px solid ${v.color}22`, paddingTop: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 8 }}>{actionLabel}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {actions.map((a, i) => (
+              <div key={i} style={{ fontSize: 12, color: '#d1d5db', fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ color: v.color, fontWeight: 900, fontSize: 11, marginTop: 1, flexShrink: 0 }}>{i + 1}.</span>
+                <span>{a}</span>
+              </div>
+            ))}
+          </div>
+          {disclaimer && <div style={{ fontSize: 10, color: '#4b5563', marginTop: 8, fontStyle: 'italic' }}>{disclaimer}</div>}
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
         {isSolana && address && (
-          <a href={'/en/scan/' + address + '/timeline'} style={{ background: v.color, color: '#fff', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'monospace', letterSpacing: '0.03em' }}>
+          <a href={timelineBase + address + '/timeline'} style={{ background: v.color, color: '#fff', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'monospace', letterSpacing: '0.03em' }}>
             {ctaLabel}
           </a>
         )}

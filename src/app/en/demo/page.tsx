@@ -310,14 +310,16 @@ export default function TigerScanPage() {
     const useMock = overrideMock ?? mockMode;
     if (useMock) {
       setLoading(true); setError(null); setResult(null);
+      setAnalysisStatus("running");
       await new Promise(r => setTimeout(r, 800));
       try {
         const res = await fetch(`/api/mock/scan?mode=${useMock}`, { cache: "no-store" });
         const data = await res.json();
         setResult(normalizeScanData(data, "SOL"));
         setWeather(null);
+        setAnalysisStatus("done");
         setTimeout(() => document.getElementById("result-anchor")?.scrollIntoView({ behavior: "smooth" }), 200);
-      } catch(e: any) { setError(`Scan mock failed: ${e?.message ?? String(e)}`); }
+      } catch(e: any) { setError(`Scan mock failed: ${e?.message ?? String(e)}`); setAnalysisStatus("error"); }
       setLoading(false);
       return;
     }
@@ -605,7 +607,7 @@ export default function TigerScanPage() {
               {/* ═══ ROW 1 — HERO: VERDICT + SIGNALS ═══ */}
               <div className="grid lg:grid-cols-12 gap-8">
 
-            {/* LEFT: SCORE + TIGER + VERDICT + ACTIONS */}
+            {/* ════ LEFT COLUMN ════ */}
             <div className="lg:col-span-5 bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-8 flex flex-col items-center text-center relative overflow-hidden">
               <div className="absolute top-6 right-6">
                 <span
@@ -616,39 +618,49 @@ export default function TigerScanPage() {
                 </span>
               </div>
 
+              {/* 1. TigerScore ring */}
               <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
-              {/* Tiger card — visual anchor */}
-              <TigerRevealCard tier={finalTier} proofs={result.proofs} />
+              {/* 2. AVOID — verdict collé au score */}
+              <h2
+                className="text-5xl font-black uppercase italic tracking-tighter mt-0 mb-1"
+                style={{ color: getTierColorFinal(finalTier), textShadow: `0 0 30px ${getTierColorFinal(finalTier)}44` }}
+              >
+                {finalVerdict}
+              </h2>
 
-              <a href="/en/demo/why" className="inline-flex items-center gap-2 mt-6 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white transition-all border border-[#F85B05]/40 hover:border-[#F85B05] bg-[#F85B05]/8 hover:bg-[#F85B05]/15 px-5 py-2.5 rounded-lg shadow-[0_0_12px_rgba(248,91,5,0.08)]">
+              {/* 3. Phrase courte */}
+              <p className="text-sm font-bold text-zinc-400 mb-6 px-4 leading-relaxed">
+                {finalSub}
+              </p>
+
+              {/* 4. WHY THIS SCORE */}
+              <a href="/en/demo/why" className="inline-flex items-center gap-2 mb-6 text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05] hover:text-white transition-all border border-[#F85B05]/40 hover:border-[#F85B05] bg-[#F85B05]/8 hover:bg-[#F85B05]/15 px-5 py-2.5 rounded-lg shadow-[0_0_12px_rgba(248,91,5,0.08)]">
                 Why this score?
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M2.5 6h7M6.5 2.5l3 3.5-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </a>
 
-              <h2 className="text-4xl font-black uppercase italic mb-2 tracking-tighter mt-2">{finalVerdict}</h2>
-              <p className="text-zinc-500 text-sm font-medium mb-8 px-4 leading-relaxed italic">
-                {finalSub}
-              </p>
-
-              <div className="w-full space-y-3 mb-4">
-                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-left ml-2 mb-2">What to do now</p>
-                {finalActions.map((a, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 text-left hover:border-zinc-600 transition-all">
-                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getTierColorFinal(finalTier) }} />
-                    <span className="text-xs font-bold uppercase tracking-tight">{a}</span>
+              {/* 5. ASK INTERLIGENS AI */}
+              {analysisSummary && (
+                <div className="w-full rounded-xl overflow-hidden" style={{ background: '#080808', border: '1px solid rgba(248,91,5,0.25)', boxShadow: '0 0 40px rgba(248,91,5,0.10)' }}>
+                  <div className="px-5 pt-4 pb-2 flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black" style={{ background: '#F85B05', color: '#000' }}>AI</div>
+                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[#F85B05]">Ask INTERLIGENS AI</span>
+                    <span className="text-[9px] text-zinc-600 ml-auto font-mono">AI-powered</span>
                   </div>
-                ))}
-                <p className="text-[10px] text-zinc-600 italic leading-snug mt-2 px-1">{finalDisclaimer}</p>
-              </div>
+                  <div className="px-5 pb-5">
+                    <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* RIGHT: VERDICT + RETAIL QUESTIONS + PROOF PACK + ASK AI */}
+            {/* ════ RIGHT COLUMN ════ */}
             <div className="lg:col-span-7 flex flex-col gap-5">
 
-              {/* ── RETAIL VERDICT BANNER ── */}
+              {/* 1. DO NOT BUY — with What to do now integrated */}
               <RetailVerdictBanner
                 tier={finalTier}
                 score={result.score}
@@ -656,6 +668,8 @@ export default function TigerScanPage() {
                 address={address.trim()}
                 chain={result.chain}
                 lang="en"
+                actions={[...finalActions]}
+                disclaimer={finalDisclaimer}
               />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
@@ -680,67 +694,13 @@ export default function TigerScanPage() {
                 />
               )}
 
-              {/* ── BEFORE YOU BUY — 3 retail questions ── */}
-              <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-5">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4">Before you buy</p>
-                <div className="space-y-3">
-                  {(() => {
-                    const _liquidity = result.rawSummary?.markets?.liquidity_usd;
-                    const _freeze = result.freezeAuthority;
-                    const _mint = result.mintAuthority;
-                    const _holders = result.rawSummary?.holder_concentration;
-                    const _related = graphData?.related_projects?.length ?? 0;
-                    return [
-                      {
-                        q: "Can you get your money out?",
-                        a: _liquidity && _liquidity < 5000
-                          ? "Liquidity is dangerously low. Selling may be impossible or cause massive slippage."
-                          : _liquidity && _liquidity < 50000
-                          ? "Limited liquidity. You may face difficulty selling large positions."
-                          : "Liquidity appears sufficient for small to mid-size exits.",
-                        level: _liquidity && _liquidity < 5000 ? "red" : _liquidity && _liquidity < 50000 ? "orange" : "green",
-                      },
-                      {
-                        q: "Who really controls this token?",
-                        a: _freeze || _mint
-                          ? "The deployer retains authority to freeze or mint tokens. Your holdings can be locked or diluted."
-                          : _holders && _holders > 60
-                          ? "Top wallets hold a concentrated share. Insider dumps are a real risk."
-                          : "No unusual authority flags detected. Standard token controls.",
-                        level: (_freeze || _mint) ? "red" : (_holders && _holders > 60) ? "orange" : "green",
-                      },
-                      {
-                        q: "Is this linked to other bad projects?",
-                        a: _related > 2
-                          ? `Linked to ${_related} related projects through shared wallets or deployer patterns. This is part of a larger operation.`
-                          : _related > 0
-                          ? `${_related} potential link${_related > 1 ? 's' : ''} found through on-chain patterns. Proceed with caution.`
-                          : "No known links to other flagged projects at this time.",
-                        level: _related > 2 ? "red" : _related > 0 ? "orange" : "green",
-                      },
-                    ];
-                  })().map((item) => {
-                    const dot = item.level === "red" ? "#ef4444" : item.level === "orange" ? "#F85B05" : "#22c55e";
-                    return (
-                      <div key={item.q} className="bg-black/40 border border-zinc-800/60 rounded-lg p-4">
-                        <div className="flex items-center gap-2.5 mb-1.5">
-                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} />
-                          <span className="text-[12px] font-bold text-white">{item.q}</span>
-                        </div>
-                        <p className="text-[11px] text-zinc-400 leading-relaxed ml-[18px]">{item.a}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ── PROOF PACK ── */}
+              {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
               <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05]">Proof Pack</span>
                   <span className="text-[9px] text-zinc-700 font-mono">{result.proofs?.length ?? 0} signals · {result.chain}</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={async () => {
                       if (!result) return;
@@ -773,23 +733,12 @@ export default function TigerScanPage() {
                     </a>
                   )}
                 </div>
+                <div className="mt-3">
+                  <CaseFileCTA id={address.trim() || null} lang="en" />
+                </div>
               </div>
 
-              {/* ── ASK TIGER ANALYST — prominent with tiger vignette ── */}
-              {analysisSummary && (
-                <div className="rounded-xl overflow-hidden" style={{ background: '#080808', border: '1px solid rgba(248,91,5,0.2)', boxShadow: '0 0 30px rgba(248,91,5,0.06)' }}>
-                  <div className="px-5 pt-4 pb-2 flex items-center gap-3">
-                    <img src="/tiger/analyst.png" alt="" className="w-7 h-7 rounded-full object-cover" style={{ border: '1.5px solid #F85B05' }} />
-                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[#F85B05]">Ask Tiger Analyst</span>
-                    <span className="text-[9px] text-zinc-600 ml-auto font-mono">AI-powered</span>
-                  </div>
-                  <div className="px-5 pb-5">
-                    <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
-                  </div>
-                </div>
-              )}
-
-              {/* ── 3 SIGNAL CARDS ── */}
+              {/* 3. MINI SIGNAL CARDS */}
               <MiniSignalRow
                 lang="en"
                 tier={finalTier.toLowerCase() as any}
@@ -797,6 +746,9 @@ export default function TigerScanPage() {
                 show={true}
                 rawSummary={result.rawSummary}
               />
+
+              {/* 4. TOP ON-CHAIN PROOFS + ASK TIGER ANALYST */}
+              <TigerRevealCard tier={finalTier} proofs={result.proofs} />
             </div>
           </div>
 
@@ -835,12 +787,12 @@ export default function TigerScanPage() {
               )}
 
               {/* ═══ ROW 3 — DEPTH (collapsible) ═══ */}
-              <div id="evidence-section" className="mt-6 bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-5">
+              <div id="evidence-section" className="mt-6 border border-zinc-800/60 rounded-xl px-4 py-3">
                 <button onClick={() => setShowEvidence(!showEvidence)} className="w-full flex justify-between items-center group">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-white transition-colors">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 group-hover:text-zinc-400 transition-colors">
                     Technical Evidence
                   </span>
-                  <span className="text-lg text-zinc-700 group-hover:text-[#F85B05]">{showEvidence ? "−" : "+"}</span>
+                  <span className="text-sm text-zinc-700 group-hover:text-[#F85B05]">{showEvidence ? "−" : "+"}</span>
                 </button>
 
                 {showEvidence && (
@@ -858,7 +810,6 @@ export default function TigerScanPage() {
                 )}
               </div>
 
-              <CaseFileCTA id={address.trim() || null} lang="en" />
           </>
             );
             })()}

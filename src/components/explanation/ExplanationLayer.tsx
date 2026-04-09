@@ -43,14 +43,14 @@ export function ExplanationLayer({ summary, locale }: Props) {
         {summaryText}
       </p>
 
-      {/* Phase 1A chips */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      {/* Phase 1A chips — 2x2 grid */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
         {chips.map((chip: Chip) => (
           <button
             key={chip.intent}
             onClick={() => handleChipClick(chip.intent)}
             className={[
-              'rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest',
+              'rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-widest text-center',
               'border transition-all duration-150',
               activeChip === chip.intent
                 ? 'border-[#F85B05] bg-[#F85B05]/10 text-[#F85B05]'
