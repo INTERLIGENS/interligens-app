@@ -209,7 +209,7 @@ export function writeAskLog(input: AskLogInput): void {
           sourceCount: sources.length,
           modelName: input.modelName ?? null,
           latencyMs: input.latencyMs ?? null,
-          metadata: (input.metadata ?? null) as unknown as object | null,
+          metadata: input.metadata ?? undefined,
         },
       })
     } catch (err) {
