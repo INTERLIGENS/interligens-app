@@ -7,7 +7,7 @@ const O = "#FF6B00";
 type Locale = "en" | "fr";
 
 interface NavItem {
-  slug: "demo" | "watchlist" | "kol" | "explorer" | "methodology" | "investors";
+  slug: "demo" | "charter" | "watchlist" | "kol" | "explorer" | "methodology" | "investors";
   label: { en: string; fr: string };
   fallbackLocale?: Locale; // for routes that exist only in one locale
   match: string[];
@@ -15,6 +15,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { slug: "demo",        label: { en: "Home", fr: "Accueil" },             match: ["/home", "/en/demo", "/fr/demo", "/scan"] },
+  { slug: "charter",     label: { en: "Charter", fr: "Charte" },           match: ["/en/charter", "/fr/charter"] },
   { slug: "watchlist",   label: { en: "Watchlist", fr: "Watchlist" },      match: ["/en/watchlist", "/fr/watchlist"] },
   { slug: "kol",         label: { en: "KOL Registry", fr: "Registre KOL" },match: ["/en/kol", "/fr/kol"] },
   { slug: "explorer",    label: { en: "Explorer", fr: "Explorer" },        match: ["/en/explorer", "/fr/explorer"] },
