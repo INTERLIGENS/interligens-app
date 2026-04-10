@@ -39,10 +39,10 @@ export function ExplanationLayer({ summary, locale }: Props) {
   const [primaryChip, ...secondaryChips] = chips
 
   return (
-    <div className="w-full rounded-2xl border border-zinc-800/80 bg-[#0A0A0A] px-5 py-6 sm:px-6 sm:py-7">
+    <section className="w-full mt-2 pt-6 border-t border-zinc-800/40 text-left">
 
       {/* ── Editorial title ── */}
-      <h3 className="text-[13px] sm:text-sm font-black uppercase tracking-[0.18em] text-white">
+      <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
         {EXPLANATION_SECTION_LABEL[locale]}
         <span className="text-[#F85B05]">.</span>
       </h3>
@@ -143,6 +143,6 @@ export function ExplanationLayer({ summary, locale }: Props) {
         {EXPLANATION_DISCLAIMER[locale]}
       </p>
 
-    </div>
+    </section>
   )
 }
