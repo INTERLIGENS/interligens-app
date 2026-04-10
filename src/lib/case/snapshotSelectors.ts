@@ -221,6 +221,58 @@ export function selectCoreEvidence(
   return ranked.slice(0, max)
 }
 
+// ── Core evidence fallback (pure copy selector) ───────────────────────────
+//
+// Rendered by CaseSnapshot only when selectCoreEvidence() returns an empty
+// array. We never invent archived evidence — each branch below maps to a
+// real field already present on the dossier, so the fallback is a truthful
+// restatement of what the dossier *does* contain, not a promise of proofs
+// that don't exist.
+//
+// Ordering = strongest truthful claim first.
+
+export function coreEvidenceFallback(
+  d: SnapshotDossier,
+  locale: "en" | "fr" = "en",
+): string {
+  const fr = locale === "fr"
+  const documented = d.documentationStatus === "documented"
+  const depth = DEPTH_RANK[d.evidenceDepth] ?? 0
+  const hasFlags = Array.isArray(d.strongestFlags) && d.strongestFlags.length > 0
+  const hasCoord = d.topCoordinationSignal != null
+  const hasActors = d.linkedActorsCount > 0
+  const hasSummary = !!(d.summary && d.summary.length > 0)
+
+  // CONFIRMED-equivalent: documented + strong/comprehensive depth
+  if (documented && depth >= 3) {
+    return fr
+      ? "Preuves documentées dans les dossiers liés"
+      : "Evidence documented in linked records"
+  }
+
+  // Documented OR published coordination/behavior signals
+  if (documented || hasCoord || hasFlags) {
+    return fr ? "Signaux publiés au dossier" : "Published signals on file"
+  }
+
+  // Moderate+ evidence depth with a source-backed record
+  if (depth >= 2) {
+    return fr
+      ? "Enregistrement de cas source disponible"
+      : "Source-backed case record available"
+  }
+
+  // Anything truly on file: actors or a written summary
+  if (hasActors || hasSummary) {
+    return fr
+      ? "Éléments de dossier documentés disponibles"
+      : "Documented case inputs available"
+  }
+
+  // Truly minimal — no docs, no signals, no actors, no summary
+  return fr ? "Archivage de preuves en attente" : "Evidence archival pending"
+}
+
 // ── Featured actor ────────────────────────────────────────────────────────
 
 const TIER_RANK: Record<string, number> = {

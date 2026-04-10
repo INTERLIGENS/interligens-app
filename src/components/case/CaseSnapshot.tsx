@@ -14,6 +14,7 @@ import React from "react"
 import { IntelligenceModeBadge } from "@/components/intelligence/IntelligenceModeBadge"
 import {
   buildSubline,
+  coreEvidenceFallback,
   deriveNextAction,
   deriveSolidity,
   selectCoreEvidence,
@@ -281,8 +282,29 @@ export default function CaseSnapshot({ dossier, snapshots, caseId, locale = "en"
               {evidence.length > 0 ? `(${evidence.length})` : ""}
             </Label>
             {evidence.length === 0 ? (
-              <div style={{ ...MONO, fontSize: 11, color: TEXT_LABEL }}>
-                {locale === "fr" ? "Aucune preuve archivée" : "No archived evidence"}
+              <div
+                style={{
+                  background: BG_RAISED,
+                  border: `1px dashed ${BORDER}`,
+                  borderRadius: 6,
+                  padding: "12px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    ...MONO,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.12em",
+                    color: TEXT_LABEL,
+                    marginBottom: 4,
+                  }}
+                >
+                  {locale === "fr" ? "ENREGISTREMENTS LIÉS" : "LINKED RECORDS"}
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: TEXT, lineHeight: 1.35 }}>
+                  {coreEvidenceFallback(dossier, locale)}
+                </div>
               </div>
             ) : (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -467,7 +489,7 @@ export default function CaseSnapshot({ dossier, snapshots, caseId, locale = "en"
           </div>
         </div>
         <a
-          href="#case-detail"
+          href={`/${locale}/explorer/${encodeURIComponent(caseId)}#case-detail`}
           style={{
             ...MONO,
             fontSize: 10,
