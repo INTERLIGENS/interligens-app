@@ -5,6 +5,7 @@ import type { AnalysisSummary, Locale } from '@/lib/explanation/types'
 import { classifyQuestion } from '@/lib/explanation/classifier'
 import { getAnswer } from '@/lib/explanation/answerHandlers'
 import { FALLBACK_RESPONSE, REFUSAL_RESPONSE } from '@/lib/explanation/localization'
+import { IntelligenceModeBadge } from '@/components/intelligence/IntelligenceModeBadge'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -220,6 +221,8 @@ export function AskInterligensChat({ summary, locale }: Props) {
           <span className="text-[8px] text-zinc-700 uppercase tracking-wider leading-none">
             · {t('scope', locale)}
           </span>
+          {/* Intelligence Mode — ASK is always exploratory (interpretive) */}
+          <IntelligenceModeBadge mode="exploratory" locale={locale} variant="pill" className="ml-1" />
         </div>
         {hasMessages && (
           <button

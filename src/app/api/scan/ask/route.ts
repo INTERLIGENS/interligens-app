@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import type { AnalysisSummary } from "@/lib/explanation/types"
 import { prisma } from "@/lib/prisma"
-import { buildGroundingContext } from "@/lib/ask/groundingContext"
+import { buildGroundingContext, type ScanGroundingContext } from "@/lib/ask/groundingContext"
 import { generateWhyBullets } from "@/lib/ask/whyBullets"
+import { writeAskLog } from "@/lib/ask/askLog"
+import { createHash } from "crypto"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -195,6 +197,7 @@ export async function POST(req: NextRequest) {
 
     // Try to find KOL grounding context from scanned address
     let kolContext: string | null = null
+    let groundingCtx: ScanGroundingContext | null = null
     try {
       const wallet = await prisma.kolWallet.findFirst({
         where: { address: summary.address },
@@ -203,6 +206,7 @@ export async function POST(req: NextRequest) {
       if (wallet) {
         const ctx = await buildGroundingContext(wallet.kolHandle, locale as 'en' | 'fr')
         if (ctx) {
+          groundingCtx = ctx
           const bullets = generateWhyBullets(ctx)
           kolContext = [
             `Handle: @${ctx.handle}`,
@@ -228,19 +232,44 @@ export async function POST(req: NextRequest) {
       kolContext,
     )
 
+    const startedAt = Date.now()
     const message = await client.messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 250,          // tighter — follow-ups should be short
       system: systemPrompt,
       messages: [{ role: "user", content: sanitized }],
     })
+    const latencyMs = Date.now() - startedAt
 
     const text = message.content
       .filter((b) => b.type === "text")
       .map((b) => (b as { type: "text"; text: string }).text)
       .join("")
 
-    return NextResponse.json({ answer: stripMarkdown(text) })
+    const finalAnswer = stripMarkdown(text)
+
+    // ── Audit trail (non-blocking, fire-and-forget) ─────────────────────────
+    writeAskLog({
+      sessionId: ip !== "unknown" ? createHash("sha256").update(ip).digest("hex").slice(0, 24) : null,
+      scanId: summary.address ?? null,
+      locale,
+      source: "web",
+      userQuestion: sanitized,
+      assistantAnswer: finalAnswer,
+      summary,
+      kolContext,
+      groundingContext: groundingCtx,
+      modelName: "claude-sonnet-4-5",
+      latencyMs,
+      metadata: {
+        historyLength: cleanHistory.length,
+        offeredBranch: offeredBranch ?? null,
+        activeTopic: activeTopic ?? null,
+        verdict: summary.verdict,
+      },
+    })
+
+    return NextResponse.json({ answer: finalAnswer })
 
   } catch (err: unknown) {
     const isAbort = err instanceof Error && err.name === "AbortError"

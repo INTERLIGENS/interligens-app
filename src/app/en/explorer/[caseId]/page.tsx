@@ -2,6 +2,8 @@
 import BetaNav from "@/components/beta/BetaNav";
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import CaseSnapshot from '@/components/case/CaseSnapshot'
+import type { SnapshotDossier } from '@/lib/case/snapshotSelectors'
 
 interface Actor { handle: string; displayName: string | null; role: string; tier: string | null }
 interface Signal { type: string; labelEn: string; strength: string; reasonSummary: string }
@@ -61,8 +63,18 @@ export default function CaseDossierPage() {
       <BetaNav />
 
       <div style={{ maxWidth: 780, margin: '0 auto', padding: '40px 24px' }}>
+        {/* CASE SNAPSHOT — premium 20-30s compression block */}
+        {dossier && (
+          <CaseSnapshot
+            dossier={dossier as SnapshotDossier}
+            snapshots={snapshots}
+            caseId={caseId}
+            locale="en"
+          />
+        )}
+
         {/* TITLE */}
-        <div style={{ marginBottom: 32 }}>
+        <div id="case-detail" style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <Badge label="CASE CLUSTER" color="#ef4444" />
             {dossier?.documentationStatus && <Badge label={dossier.documentationStatus.toUpperCase()} color={dossier.documentationStatus === 'documented' ? '#10b981' : '#f59e0b'} />}
