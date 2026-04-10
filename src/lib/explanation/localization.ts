@@ -30,8 +30,8 @@ export const INSUFFICIENT_DATA: Record<Locale, string> = {
 }
 
 export const EXPLANATION_SECTION_LABEL: Record<Locale, string> = {
-  en: "Ask INTERLIGENS",
-  fr: "Demander à INTERLIGENS",
+  en: "Ask INTERLIGENS AI",
+  fr: "Demander à INTERLIGENS AI",
 }
 
 export const EXPLANATION_DISCLAIMER: Record<Locale, string> = {

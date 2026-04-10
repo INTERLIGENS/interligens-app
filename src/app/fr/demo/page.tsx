@@ -584,7 +584,15 @@ export default function TigerScanPageFR() {
 
               {/* 5. ASK INTERLIGENS */}
               {analysisSummary && (
-                <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
+                <div className="w-full rounded-xl overflow-hidden" style={{ background: '#080808', border: '1px solid rgba(248,91,5,0.25)', boxShadow: '0 0 40px rgba(248,91,5,0.10)' }}>
+                  <div className="px-5 pt-4 pb-2 flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black" style={{ background: '#F85B05', color: '#000' }}>AI</div>
+                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[#F85B05]">Demander à INTERLIGENS</span>
+                  </div>
+                  <div className="px-5 pb-5">
+                    <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
+                  </div>
+                </div>
               )}
             </div>
 
