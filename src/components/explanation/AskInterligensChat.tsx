@@ -31,7 +31,7 @@ interface Props {
 
 const C = {
   askMore:     { en: 'Ask about this scan',                      fr: 'Poser une question sur ce scan' },
-  placeholder: { en: 'Ask anything about this scan…',       fr: 'Pose n’importe quelle question sur ce scan…' },
+  placeholder: { en: 'Ask anything about this scan…',       fr: 'Pose ta question sur ce scan…' },
   ask:         { en: 'Ask',                                      fr: 'Envoyer' },
   scope:       { en: 'Scan scope only.',                         fr: 'Ce scan uniquement.' },
   thinking:    { en: 'Analyzing…',                          fr: 'En cours…' },
@@ -213,27 +213,51 @@ export function AskInterligensChat({ summary, locale }: Props) {
     <div className="mt-4 border-t border-zinc-800/60 pt-4">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-baseline gap-2">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 leading-none">
-            {t('askMore', locale)}
-          </span>
-          <span className="text-[8px] text-zinc-700 uppercase tracking-wider leading-none">
-            · {t('scope', locale)}
-          </span>
-          {/* Intelligence Mode — ASK is always exploratory (interpretive) */}
-          <IntelligenceModeBadge mode="exploratory" locale={locale} variant="pill" className="ml-1" />
+      {locale === 'fr' ? (
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 leading-none truncate">
+              {t('askMore', locale)}
+            </span>
+            <span className="text-[8px] text-zinc-700 uppercase tracking-wider leading-none truncate">
+              {t('scope', locale)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <IntelligenceModeBadge mode="exploratory" locale={locale} variant="pill" />
+            {hasMessages && (
+              <button
+                onClick={handleReset}
+                title={t('resetTip', locale)}
+                className="font-mono text-[9px] uppercase tracking-wider text-zinc-700 hover:text-[#F85B05]/60 transition-colors"
+              >
+                {t('reset', locale)}
+              </button>
+            )}
+          </div>
         </div>
-        {hasMessages && (
-          <button
-            onClick={handleReset}
-            title={t('resetTip', locale)}
-            className="font-mono text-[9px] uppercase tracking-wider text-zinc-700 hover:text-[#F85B05]/60 transition-colors"
-          >
-            {t('reset', locale)}
-          </button>
-        )}
-      </div>
+      ) : (
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 leading-none">
+              {t('askMore', locale)}
+            </span>
+            <span className="text-[8px] text-zinc-700 uppercase tracking-wider leading-none">
+              · {t('scope', locale)}
+            </span>
+            <IntelligenceModeBadge mode="exploratory" locale={locale} variant="pill" className="ml-1" />
+          </div>
+          {hasMessages && (
+            <button
+              onClick={handleReset}
+              title={t('resetTip', locale)}
+              className="font-mono text-[9px] uppercase tracking-wider text-zinc-700 hover:text-[#F85B05]/60 transition-colors"
+            >
+              {t('reset', locale)}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Thread */}
       {hasMessages && (
@@ -291,7 +315,7 @@ export function AskInterligensChat({ summary, locale }: Props) {
       )}
 
       {/* Input */}
-      <div className="flex gap-2">
+      <div className="flex items-stretch gap-2">
         <input
           ref={inputRef}
           type="text"
@@ -300,12 +324,20 @@ export function AskInterligensChat({ summary, locale }: Props) {
           onKeyDown={handleKeyDown}
           placeholder={t('placeholder', locale)}
           disabled={isLoading}
-          className="flex-1 rounded-lg border border-[#F85B05]/30 bg-zinc-900/50 px-3 py-2.5 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-[#F85B05]/60 focus:shadow-[0_0_12px_rgba(248,91,5,0.12)] transition-all disabled:opacity-50"
+          className={
+            locale === 'fr'
+              ? 'flex-1 min-w-0 h-10 rounded-lg border border-[#F85B05]/30 bg-zinc-900/50 px-4 text-[12px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-[#F85B05]/60 focus:shadow-[0_0_12px_rgba(248,91,5,0.12)] transition-all disabled:opacity-50'
+              : 'flex-1 rounded-lg border border-[#F85B05]/30 bg-zinc-900/50 px-3 py-2.5 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-[#F85B05]/60 focus:shadow-[0_0_12px_rgba(248,91,5,0.12)] transition-all disabled:opacity-50'
+          }
         />
         <button
           onClick={() => handleSubmit()}
           disabled={isLoading || !input.trim()}
-          className="bg-white text-black font-black uppercase text-[10px] tracking-widest px-5 py-2.5 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40"
+          className={
+            locale === 'fr'
+              ? 'shrink-0 h-10 bg-white text-black font-black uppercase text-[10px] tracking-[0.15em] px-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40'
+              : 'bg-white text-black font-black uppercase text-[10px] tracking-widest px-5 py-2.5 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40'
+          }
         >
           {t('ask', locale)}
         </button>
