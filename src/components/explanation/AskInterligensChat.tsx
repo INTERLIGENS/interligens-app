@@ -210,14 +210,14 @@ export function AskInterligensChat({ summary, locale }: Props) {
   ]
 
   return (
-    <div className="mt-4 border-t border-zinc-800/60 pt-4">
+    <div className="mt-5 border-t border-zinc-800/60 pt-5">
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <span className="shrink-0 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500 leading-none">
+      {/* Row 1 — Label + mode badge */}
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <span className="shrink-0 whitespace-nowrap text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 leading-none">
           {t('askMore', locale)}
         </span>
-        <div className="flex items-center gap-2 shrink-0 min-w-0">
+        <div className="flex items-center gap-2 shrink-0">
           <IntelligenceModeBadge
             mode="exploratory"
             locale={locale}
@@ -291,8 +291,8 @@ export function AskInterligensChat({ summary, locale }: Props) {
         </div>
       )}
 
-      {/* Input */}
-      <div className="flex items-stretch gap-2">
+      {/* Row 2 — Unified search-bar: input + button share one bordered container */}
+      <div className="flex items-center gap-1.5 rounded-xl border border-[#F85B05]/30 bg-zinc-900/50 p-1.5 transition-all focus-within:border-[#F85B05]/60 focus-within:shadow-[0_0_16px_rgba(248,91,5,0.15)]">
         <input
           ref={inputRef}
           type="text"
@@ -301,19 +301,19 @@ export function AskInterligensChat({ summary, locale }: Props) {
           onKeyDown={handleKeyDown}
           placeholder={t('placeholder', locale)}
           disabled={isLoading}
-          className="flex-1 min-w-0 h-10 rounded-lg border border-[#F85B05]/30 bg-zinc-900/50 px-4 text-[12px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-[#F85B05]/60 focus:shadow-[0_0_12px_rgba(248,91,5,0.12)] transition-all disabled:opacity-50"
+          className="flex-1 min-w-0 h-9 bg-transparent px-3 text-[12px] text-zinc-200 placeholder-zinc-600 focus:outline-none disabled:opacity-50"
         />
         <button
           onClick={() => handleSubmit()}
           disabled={isLoading || !input.trim()}
-          className="shrink-0 h-10 bg-white text-black font-black uppercase text-[10px] tracking-[0.15em] px-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40"
+          className="shrink-0 h-9 bg-white text-black font-black uppercase text-[10px] tracking-[0.15em] px-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40"
         >
           {t('ask', locale)}
         </button>
       </div>
 
       {/* Disclaimer */}
-      <p className="mt-3 text-[8px] font-bold uppercase tracking-[0.1em] text-zinc-700">
+      <p className="mt-4 text-[8px] font-bold uppercase tracking-[0.1em] text-zinc-700">
         {t('disclaimer', locale)}
       </p>
     </div>
