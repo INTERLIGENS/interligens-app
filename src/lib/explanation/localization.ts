@@ -30,13 +30,13 @@ export const INSUFFICIENT_DATA: Record<Locale, string> = {
 }
 
 export const EXPLANATION_SECTION_LABEL: Record<Locale, string> = {
-  en: "Ask INTERLIGENS AI",
-  fr: "Demander à INTERLIGENS AI",
+  en: "Ask INTERLIGENS",
+  fr: "Demander à INTERLIGENS",
 }
 
 export const EXPLANATION_DISCLAIMER: Record<Locale, string> = {
-  en: "Explanations are generated deterministically from scan data. Not financial advice.",
-  fr: "Les explications sont générées de façon déterministe à partir des données de scan. Pas un conseil financier.",
+  en: "Evidence-based. Not financial advice.",
+  fr: "Basé sur les preuves. Pas un conseil financier.",
 }
 
 export const VERDICT_SUMMARY_INTRO: Record<Verdict, Record<Locale, string>> = {

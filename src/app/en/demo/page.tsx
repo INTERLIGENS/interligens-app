@@ -643,18 +643,9 @@ export default function TigerScanPage() {
                 </svg>
               </a>
 
-              {/* 5. ASK INTERLIGENS AI */}
+              {/* 5. ASK INTERLIGENS */}
               {analysisSummary && (
-                <div className="w-full rounded-xl overflow-hidden" style={{ background: '#080808', border: '1px solid rgba(248,91,5,0.25)', boxShadow: '0 0 40px rgba(248,91,5,0.10)' }}>
-                  <div className="px-5 pt-4 pb-2 flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black" style={{ background: '#F85B05', color: '#000' }}>AI</div>
-                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[#F85B05]">Ask INTERLIGENS AI</span>
-                    <span className="text-[9px] text-zinc-600 ml-auto font-mono">AI-powered</span>
-                  </div>
-                  <div className="px-5 pb-5">
-                    <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
-                  </div>
-                </div>
+                <ExplanationLayer summary={analysisSummary} locale={explanationLocale} />
               )}
             </div>
 

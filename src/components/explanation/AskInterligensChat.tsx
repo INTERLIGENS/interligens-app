@@ -5,7 +5,6 @@ import type { AnalysisSummary, Locale } from '@/lib/explanation/types'
 import { classifyQuestion } from '@/lib/explanation/classifier'
 import { getAnswer } from '@/lib/explanation/answerHandlers'
 import { FALLBACK_RESPONSE, REFUSAL_RESPONSE } from '@/lib/explanation/localization'
-import { IntelligenceModeBadge } from '@/components/intelligence/IntelligenceModeBadge'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -210,31 +209,20 @@ export function AskInterligensChat({ summary, locale }: Props) {
   ]
 
   return (
-    <div className="mt-5 border-t border-zinc-800/60 pt-5">
+    <div>
 
-      {/* Row 1 — Label + mode badge */}
-      <div className="flex items-center justify-between gap-3 mb-5">
-        <span className="shrink-0 whitespace-nowrap text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 leading-none">
-          {t('askMore', locale)}
-        </span>
-        <div className="flex items-center gap-2 shrink-0">
-          <IntelligenceModeBadge
-            mode="exploratory"
-            locale={locale}
-            variant="pill"
-            className="!px-1.5 !py-[2px] !tracking-[0.12em]"
-          />
-          {hasMessages && (
-            <button
-              onClick={handleReset}
-              title={t('resetTip', locale)}
-              className="font-mono text-[9px] uppercase tracking-wider text-zinc-700 hover:text-[#F85B05]/60 transition-colors"
-            >
-              {t('reset', locale)}
-            </button>
-          )}
+      {/* Reset button — only when there are messages, top-right */}
+      {hasMessages && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={handleReset}
+            title={t('resetTip', locale)}
+            className="font-mono text-[9px] uppercase tracking-wider text-zinc-700 hover:text-[#F85B05]/60 transition-colors"
+          >
+            {t('reset', locale)}
+          </button>
         </div>
-      </div>
+      )}
 
       {/* Thread */}
       {hasMessages && (
@@ -291,8 +279,8 @@ export function AskInterligensChat({ summary, locale }: Props) {
         </div>
       )}
 
-      {/* Row 2 — Unified search-bar: input + button share one bordered container */}
-      <div className="flex items-center gap-1.5 rounded-xl border border-[#F85B05]/30 bg-zinc-900/50 p-1.5 transition-all focus-within:border-[#F85B05]/60 focus-within:shadow-[0_0_16px_rgba(248,91,5,0.15)]">
+      {/* Hero search bar — input + button share one premium container */}
+      <div className="flex items-center gap-2 rounded-xl border border-[#F85B05]/40 bg-zinc-900/40 p-2 transition-all focus-within:border-[#F85B05] focus-within:shadow-[0_0_24px_rgba(248,91,5,0.18)]">
         <input
           ref={inputRef}
           type="text"
@@ -301,21 +289,16 @@ export function AskInterligensChat({ summary, locale }: Props) {
           onKeyDown={handleKeyDown}
           placeholder={t('placeholder', locale)}
           disabled={isLoading}
-          className="flex-1 min-w-0 h-9 bg-transparent px-3 text-[12px] text-zinc-200 placeholder-zinc-600 focus:outline-none disabled:opacity-50"
+          className="flex-1 min-w-0 h-11 bg-transparent px-3 text-[14px] text-zinc-100 placeholder-zinc-600 focus:outline-none disabled:opacity-50"
         />
         <button
           onClick={() => handleSubmit()}
           disabled={isLoading || !input.trim()}
-          className="shrink-0 h-9 bg-white text-black font-black uppercase text-[10px] tracking-[0.15em] px-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40"
+          className="shrink-0 h-11 bg-white text-black font-black uppercase text-[11px] tracking-[0.18em] px-5 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40"
         >
           {t('ask', locale)}
         </button>
       </div>
-
-      {/* Disclaimer */}
-      <p className="mt-4 text-[8px] font-bold uppercase tracking-[0.1em] text-zinc-700">
-        {t('disclaimer', locale)}
-      </p>
     </div>
   )
 }
