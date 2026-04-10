@@ -1,17 +1,9 @@
+import BetaNav from "@/components/beta/BetaNav";
+
 export default function MethodologyPageFR() {
   return (
     <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
-      <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <a href="/fr" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em', fontFamily: 'monospace' }}>← INTERLIGENS</a>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <span style={{ color: '#F85B05', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace' }}>METHODOLOGIE</span>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <a href="/fr/kol" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>CLASSEMENT</a>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <a href="/fr/explorer" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>EXPLORATEUR</a>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <a href="/fr/correction" style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em', fontFamily: 'monospace', textDecoration: 'none' }}>CORRECTIONS</a>
-      </div>
+      <BetaNav />
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '60px 24px' }}>
 

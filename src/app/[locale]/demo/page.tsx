@@ -13,6 +13,7 @@ import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 import CaseIntelBadge from "@/components/intelligence/CaseIntelBadge";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
+import BetaNav from "@/components/beta/BetaNav";
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 
@@ -285,25 +286,11 @@ function TigerScanPageInner() {
   const getTierColor = (t: Tier) => t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
 
   return (
-    <div className="min-h-screen bg-black text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased p-6 md:p-12" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+    <div className="min-h-screen bg-black text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
 
-      {/* HEADER */}
-      <nav className="max-w-7xl mx-auto flex justify-between items-center mb-20">
-        <div className="flex items-center gap-3 group cursor-default">
-          <div className="w-10 h-10 bg-[#F85B05] flex items-center justify-center font-black text-black text-xl italic shadow-[0_0_20px_rgba(248,91,5,0.4)] transition-transform group-hover:scale-110">
-            I
-          </div>
-          <span className="font-black text-2xl tracking-tighter italic uppercase">
-            Interligens<span className="text-[#F85B05]">.</span>
-          </span>
-        </div>
-        <div className="hidden md:flex gap-8 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">
-          <span>Security Protocol</span>
-          <span className="text-zinc-800">|</span>
-          <span>V2.6-Beta</span>
-        </div>
-      </nav>
+      <BetaNav />
 
+      <div className="p-6 md:p-12">
       <main className="max-w-5xl mx-auto">
         <div className="flex justify-end mb-3"><LocaleSwitch /></div>
 
@@ -655,6 +642,7 @@ function TigerScanPageInner() {
           <p className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.6em]">Interligens Intelligence © 2026</p>
         </div>
       </main>
+      </div>
     </div>
   );
 }

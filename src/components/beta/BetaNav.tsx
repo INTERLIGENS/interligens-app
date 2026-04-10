@@ -4,17 +4,32 @@ import { useEffect, useState } from "react";
 
 const O = "#FF6B00";
 
-const NAV_ITEMS = [
-  { href: "/en/demo", label: "Home", match: ["/home", "/en/demo", "/fr/demo", "/scan"] },
-  { href: "/en/watchlist", label: "Watchlist", match: ["/en/watchlist", "/fr/watchlist"] },
-  { href: "/en/kol", label: "KOL Registry", match: ["/en/kol", "/fr/kol"] },
-  { href: "/en/explorer", label: "Explorer", match: ["/en/explorer", "/fr/explorer"] },
-  { href: "/en/methodology", label: "Methodology", match: ["/en/methodology", "/fr/methodology"] },
-  { href: "/en/investors", label: "Investors", match: ["/en/investors"] },
+type Locale = "en" | "fr";
+
+interface NavItem {
+  slug: "demo" | "watchlist" | "kol" | "explorer" | "methodology" | "investors";
+  label: { en: string; fr: string };
+  fallbackLocale?: Locale; // for routes that exist only in one locale
+  match: string[];
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { slug: "demo",        label: { en: "Home", fr: "Accueil" },             match: ["/home", "/en/demo", "/fr/demo", "/scan"] },
+  { slug: "watchlist",   label: { en: "Watchlist", fr: "Watchlist" },      match: ["/en/watchlist", "/fr/watchlist"] },
+  { slug: "kol",         label: { en: "KOL Registry", fr: "Registre KOL" },match: ["/en/kol", "/fr/kol"] },
+  { slug: "explorer",    label: { en: "Explorer", fr: "Explorer" },        match: ["/en/explorer", "/fr/explorer"] },
+  { slug: "methodology", label: { en: "Methodology", fr: "Méthodologie" }, match: ["/en/methodology", "/fr/methodology"] },
+  { slug: "investors",   label: { en: "Investors", fr: "Investors" }, fallbackLocale: "en", match: ["/en/investors"] },
 ];
+
+function detectLocale(pathname: string): Locale {
+  if (pathname.startsWith("/fr")) return "fr";
+  return "en";
+}
 
 export default function BetaNav() {
   const pathname = usePathname();
+  const locale = detectLocale(pathname);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -61,7 +76,7 @@ export default function BetaNav() {
     >
       {/* Logo */}
       <a
-        href="/en/demo"
+        href={`/${locale}/demo`}
         style={{
           display: "flex",
           alignItems: "center",
@@ -107,10 +122,12 @@ export default function BetaNav() {
       <nav style={{ display: "flex", alignItems: "center", gap: 4, flex: 1 }}>
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
+          const targetLocale = item.fallbackLocale ?? locale;
+          const href = `/${targetLocale}/${item.slug}`;
           return (
             <a
-              key={item.label}
-              href={item.href}
+              key={item.slug}
+              href={href}
               style={{
                 padding: "4px 10px",
                 borderRadius: 6,
@@ -131,7 +148,7 @@ export default function BetaNav() {
                 if (!active) e.currentTarget.style.color = "#fff";
               }}
             >
-              {item.label}
+              {item.label[locale]}
             </a>
           );
         })}
