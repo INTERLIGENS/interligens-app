@@ -13,6 +13,7 @@
 
 import type { AnalysisSummary } from "@/lib/explanation/types"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import {
   deriveAskMode,
   isRefusalText,
@@ -209,7 +210,7 @@ export function writeAskLog(input: AskLogInput): void {
           sourceCount: sources.length,
           modelName: input.modelName ?? null,
           latencyMs: input.latencyMs ?? null,
-          metadata: input.metadata ?? undefined,
+          metadata: input.metadata ? (input.metadata as Prisma.InputJsonValue) : Prisma.DbNull,
         },
       })
     } catch (err) {
