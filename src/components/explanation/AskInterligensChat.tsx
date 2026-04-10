@@ -213,12 +213,17 @@ export function AskInterligensChat({ summary, locale }: Props) {
     <div className="mt-4 border-t border-zinc-800/60 pt-4">
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 leading-none truncate">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <span className="shrink-0 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500 leading-none">
           {t('askMore', locale)}
         </span>
-        <div className="flex items-center gap-2 shrink-0">
-          <IntelligenceModeBadge mode="exploratory" locale={locale} variant="pill" />
+        <div className="flex items-center gap-2 shrink-0 min-w-0">
+          <IntelligenceModeBadge
+            mode="exploratory"
+            locale={locale}
+            variant="pill"
+            className="!px-1.5 !py-[2px] !tracking-[0.12em]"
+          />
           {hasMessages && (
             <button
               onClick={handleReset}
