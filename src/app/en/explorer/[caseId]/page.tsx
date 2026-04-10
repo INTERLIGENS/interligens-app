@@ -35,14 +35,36 @@ export default function CaseDossierPage() {
 
   useEffect(() => {
     if (!caseId) return
-    // Fetch dossier from explorer
-    fetch('/api/explorer?kind=case&search=' + encodeURIComponent(caseId))
-      .then(r => r.json())
-      .then(d => {
-        const match = (d.items ?? []).find((i: any) => i.title === caseId)
+
+    // Some case IDs reaching this page are synthetic (e.g. CASE-2026-BOTIFY-001
+    // produced by /api/scan/solana which rewrites the year), while kolCase rows
+    // in DB use the short slug form ("BOTIFY-MAIN", "BOTIFY", "BOTIFY-C1").
+    // We try the exact caseId first, then fall back to the extracted slug.
+    const slugMatch = caseId.match(/^CASE-\d{4}-(.+?)-\d+$/)
+    const slug = slugMatch ? slugMatch[1] : null
+
+    async function loadDossier() {
+      try {
+        const r1 = await fetch('/api/explorer?kind=case&search=' + encodeURIComponent(caseId))
+        const d1 = await r1.json()
+        const items1: any[] = d1.items ?? []
+        let match = items1.find((i: any) => i.title === caseId)
+
+        if (!match && slug) {
+          const r2 = await fetch('/api/explorer?kind=case&search=' + encodeURIComponent(slug))
+          const d2 = await r2.json()
+          const items2: any[] = d2.items ?? []
+          const up = slug.toUpperCase()
+          match = items2.find((i: any) => i.title.toUpperCase() === up)
+            ?? items2.find((i: any) => i.title.toUpperCase().startsWith(up))
+            ?? items2[0]
+        }
+
         if (match) setDossier(match)
-      })
-      .catch(() => {})
+      } catch {}
+    }
+
+    loadDossier()
 
     // Fetch snapshots
     fetch('/api/evidence/snapshots?relationType=case&relationKey=' + encodeURIComponent(caseId))
