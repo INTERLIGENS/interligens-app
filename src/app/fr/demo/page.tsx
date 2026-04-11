@@ -15,6 +15,7 @@ import QuickDemoBar from "@/components/demo/QuickDemoBar";
 import { DEMO_PRESETS, type DemoScenario } from "@/lib/demo/presets";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
+import MarketContext from "@/components/market/MarketContext";
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
@@ -594,6 +595,9 @@ export default function TigerScanPageFR() {
                   </div>
                 </div>
               )}
+
+              {/* 6. CONTEXTE MARCHÉ */}
+              <MarketContext locale="fr" />
             </div>
 
             {/* ════ RIGHT COLUMN ════ */}
