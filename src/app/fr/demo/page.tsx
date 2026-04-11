@@ -20,7 +20,6 @@ import TokenPicker, { type TokenCandidate } from "@/components/scan/TokenPicker"
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
-import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
@@ -457,8 +456,6 @@ export default function TigerScanPageFR() {
 
       <div className="p-6 md:p-12">
       <main className="max-w-5xl mx-auto">
-        <div className="flex justify-end mb-3"><LocaleSwitch /></div>
-
         {/* HERO */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase">

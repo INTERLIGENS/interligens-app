@@ -7,7 +7,6 @@ import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
-import LocaleSwitch from "@/components/LocaleSwitch";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 import CaseIntelBadge from "@/components/intelligence/CaseIntelBadge";
@@ -292,8 +291,6 @@ function TigerScanPageInner() {
 
       <div className="p-6 md:p-12">
       <main className="max-w-5xl mx-auto">
-        <div className="flex justify-end mb-3"><LocaleSwitch /></div>
-
         {/* HERO */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase">
