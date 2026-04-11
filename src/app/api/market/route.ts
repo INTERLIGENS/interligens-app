@@ -5,11 +5,13 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const COINGECKO_URL =
-  'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true'
+  'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,pax-gold&vs_currencies=usd&include_24hr_change=true'
 const FNG_URL = 'https://api.alternative.me/fng/?limit=1'
 
+// XAU is sourced via PAX Gold (pax-gold) — a CoinGecko-listed token where
+// 1 PAXG = 1 troy ounce of LBMA gold, so its USD price tracks XAU spot.
 interface PriceEntry {
-  symbol: 'BTC' | 'ETH' | 'SOL'
+  symbol: 'BTC' | 'ETH' | 'SOL' | 'XAU'
   usd: number | null
   change24h: number | null
 }
@@ -27,10 +29,12 @@ async function fetchPrices(): Promise<PriceEntry[] | null> {
     })
     if (!r.ok) return null
     const data = (await r.json()) as Record<string, { usd?: number; usd_24h_change?: number }>
+    const gold = data['pax-gold']
     return [
       { symbol: 'BTC', usd: data.bitcoin?.usd ?? null, change24h: data.bitcoin?.usd_24h_change ?? null },
       { symbol: 'ETH', usd: data.ethereum?.usd ?? null, change24h: data.ethereum?.usd_24h_change ?? null },
       { symbol: 'SOL', usd: data.solana?.usd ?? null, change24h: data.solana?.usd_24h_change ?? null },
+      { symbol: 'XAU', usd: gold?.usd ?? null, change24h: gold?.usd_24h_change ?? null },
     ]
   } catch {
     return null

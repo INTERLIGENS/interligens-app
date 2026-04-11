@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 type Locale = 'en' | 'fr'
 
 interface PriceEntry {
-  symbol: 'BTC' | 'ETH' | 'SOL'
+  symbol: 'BTC' | 'ETH' | 'SOL' | 'XAU'
   usd: number | null
   change24h: number | null
 }
