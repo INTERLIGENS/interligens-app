@@ -597,7 +597,9 @@ export default function TigerScanPageFR() {
               )}
 
               {/* 6. CONTEXTE MARCHÉ */}
-              <MarketContext locale="fr" />
+              <div className="mt-4">
+                <MarketContext locale="fr" />
+              </div>
             </div>
 
             {/* ════ RIGHT COLUMN ════ */}
