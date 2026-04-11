@@ -1610,4 +1610,158 @@ Quand validé :
    - `SEED_METASLEUTH=1 pnpm tsx src/scripts/seed/metasleuthEnrich.ts`
      *(requiert `METASLEUTH_API_KEY` posée dans Vercel UI)*
 
+---
+
+## 18. Phase 6G — Seed wallets BHW+Dune+FriendTech (2026-04-11)
+
+### Objectif
+Seeder 69 wallets community-sourced en une seule passe unifiée, depuis
+3 sources distinctes :
+
+1. **Friend.tech 2023 leak** — 33 wallets ETH/Base (handles qui ont lié
+   leur wallet Base à leur Twitter via friend.tech)
+2. **BlackHatWorld 2025** — 20 wallets SOL (thread community Solana
+   memecoin KOLs)
+3. **Dune query 4838225** — 16 wallets SOL (mapping hardcodé de la query
+   community Dune)
+
+### Fichier livré
+`src/scripts/seed/phase6gWallets.ts` — script unifié 3-en-1, dry-run par
+défaut, `SEED_6G=1` pour écrire.
+
+**Design clés** :
+- **Idempotent** : dédup manuelle `findFirst({ kolHandle, address,
+  chain })` avant `create()` (KolWallet n'a pas de contrainte
+  `@@unique`).
+- **Case-insensitive profile lookup** : un seul `findMany` par source
+  avec `mode: "insensitive"` puis `Map<handleLc, canonicalHandle>` côté
+  JS pour matcher `cheatcoiner` ↔ `Cheatcoiner`.
+- **Asymétrie profil par source** :
+  - FriendTech → `createProfileIfMissing: false` (skip les handles
+    absents, pas de faux profil vide)
+  - BHW / Dune → `createProfileIfMissing: true`
+    (`platform="x"`, `publishable=false`, `publishStatus="draft"`,
+    `displayName=handle`, tous les autres champs par defaults Prisma)
+- **Fail soft** : une erreur par entry est catchée et comptée, la
+  boucle continue.
+- **Aucun champ KolProfile enrichi** : pas de bio, pas de tier, pas de
+  followerCount — le watcher v2 et les phases d'enrichissement
+  prendront le relais.
+- **Tous les wallets sont en `attributionStatus="review"` et
+  `isPubliclyUsable=false`** — signal communautaire non vérifié, un
+  humain doit approuver avant promotion.
+
+### Attribution par source
+
+| Source | `attributionSource` | `attributionNote` |
+|---|---|---|
+| Friend.tech | `friendtech_2023` | `Friend.tech 2023 leak — Base wallet linked voluntarily to Twitter handle` |
+| BHW | `bhw_2025` | `BlackHatWorld thread — community verified Solana memecoin KOL wallets` |
+| Dune | `dune_4838225` | `Dune Analytics query 4838225 — community hardcoded KOL wallet mapping` |
+
+### Résultat — dry-run → WRITE
+
+**Dry-run** (anticipe les overlaps inter-sources en-mémoire dans une
+même passe) :
+```
+friendtech_2023: inputEntries=33, profilesCreated=0, profilesSkippedAbsent=0,
+                 walletsCreated=33, walletsSkippedExisting=0, errors=0
+bhw_2025:        inputEntries=20, profilesCreated=20, walletsCreated=20
+dune_4838225:    inputEntries=16, profilesCreated=16, walletsCreated=16
+TOTAL:           inputEntries=69, profilesCreated=36, walletsCreated=69
+```
+
+**WRITE** (les overlaps inter-sources s'appliquent réellement : BHW
+commit en DB avant que Dune ne scanne) :
+```
+friendtech_2023: inputEntries=33, profilesCreated=0, profilesSkippedAbsent=0,
+                 walletsCreated=33, walletsSkippedExisting=0, errors=0
+bhw_2025:        inputEntries=20, profilesCreated=20, walletsCreated=20
+dune_4838225:    inputEntries=16, profilesCreated=10, walletsCreated=13,
+                 walletsSkippedExisting=3
+TOTAL:           inputEntries=69, profilesCreated=30, walletsCreated=66,
+                 walletsSkippedExisting=3, errors=0
+```
+
+### Overlaps BHW ↔ Dune détectés (6 profils, 3 wallets strictement identiques)
+
+| Handle | BHW → address | Dune → address | Verdict |
+|---|---|---|---|
+| `CookerFlips` | `8deJ9x…EXhU6` | `8deJ9x…EXhU6` | **même wallet** → BHW commit, Dune skip wallet (profile existe déjà) |
+| `Ga__ke` | `DNfuF1…TyeBHm` | `DNfuF1…TyeBHm` | **même wallet** → idem |
+| `insentos` | `7SDs3P…BseHS` | `7SDs3P…BseHS` | **même wallet** → idem |
+| `traderpow` | `2tgaER…DAoxw` | `8zFZHu…c7Zd` | **2 wallets distincts** → BHW + Dune tous deux créés |
+| `NachSOL` | `9jyqFi…yAVVz` | `ATKi3Z…ms56k` | **2 wallets distincts** → idem |
+| `ShockedJS` | `4Bq5yv…5PeM` | `6m5sW6…84X9rAF` | **2 wallets distincts** → idem |
+
+Les 3 "walletsSkippedExisting" de Dune sont exactement les 3 premiers
+cas (même address). Les 3 autres overlaps sont 2 wallets distincts
+attachés au même handle — attendu et correct (un KOL peut avoir
+plusieurs wallets, et les 2 sources community peuvent avoir identifié
+des wallets différents du même KOL).
+
+### Finding inattendu — 0 match sur la source BHW
+
+Aucun des 20 handles BHW n'existait en DB avant cette passe (tous
+créés comme draft). Handles pourtant populaires (`frankdegods`,
+`orangie`, `Cupseyy`). Ces handles n'étaient pas dans les 5 tiers de
+Phase 6A (194 handles). Signal à intégrer dans la curation de la
+prochaine vague — il faut un cross-check BHW/Dune/Twitter-trending
+pour élargir la base KOL.
+
+### État DB avant/après
+
+| Métrique | Avant 6G | Après 6G | Δ |
+|---|---|---|---|
+| `KolProfile` total | 215 | **245** | +30 |
+| `KolWallet` total | 123 | **189** | +66 |
+| `KolWallet` ETH | 41 | **74** | +33 |
+| `KolWallet` SOL | 82 | **115** | +33 |
+| `attributionSource="friendtech_2023"` | 0 | **33** | — |
+| `attributionSource="bhw_2025"` | 0 | **20** | — |
+| `attributionSource="dune_4838225"` | 0 | **13** | — |
+
+### Décisions conservatrices
+- **Pas de cross-validation on-chain** en Phase 6G. Les wallets BHW et
+  Dune sont ingérés sur foi community, sans vérification que les
+  addresses sont actives ou tiennent des tokens promus. La Phase 7
+  (cross-check wallet ↔ promotion) fera ce travail.
+- **Pas de merge FriendTech ↔ ENS** : les handles comme `shmoonft`
+  avaient déjà un wallet ETH via Phase 6B (ENS). Les addresses
+  friend.tech sont **différentes** des addresses ENS (vérifié sur
+  `shmoonft`, `wisdommatic`, `cheatcoiner`). Les 2 wallets coexistent
+  pour le même handle — un KOL peut parfaitement avoir un wallet ENS
+  public et un wallet Base distinct, et c'est précisément le genre de
+  finding qui intéresse le produit.
+- **Pas de nouveau champ schéma Prisma** — `attributionSource` et
+  `attributionNote` existaient déjà depuis Phase 6B.
+- **Pas de code routé modifié** — Phase 6G est 100% seed.
+
+### Validation
+- `pnpm tsc --noEmit` : ✅ clean
+- `pnpm vitest run` : ✅ **502/519 passed** (= baseline Phase 6F, aucune
+  régression ; les 17 failures sont env S3 / IntelVaultBadge
+  pré-existants sans lien avec le seed)
+- Audit DB post-seed : 245 profiles / 189 wallets / counts par source
+  OK
+
+### Fichiers livrés
+- **Nouveau** : `src/scripts/seed/phase6gWallets.ts` (script unifié 3
+  sources, 66 KolWallet + 30 KolProfile écrits)
+- **Modifié** : `MIGRATION_RETAILVISION.md` (§18)
+- **Inchangé** : schéma Prisma, vercel.json, code routé
+
+### Gate déploiement 6G
+
+**Pas de `npx vercel --prod` lancé.** Phase 6G est purement seed/data —
+aucun code routé ne change. Le seed est déjà commit en DB (`ep-square-band`,
+via `SEED_6G=1`). Le watcher v2 et les phases d'enrichissement
+(promotionMentions / tokenInvolvements) prendront automatiquement en
+charge les 30 nouveaux handles à leur prochain run.
+
+Quand validé pour deploy : rien à déployer côté Vercel pour 6G — mais
+un prochain cycle UI (Phase 7+) pourra bénéficier du fait que
+`/api/watchlist` expose maintenant 30 profils supplémentaires avec
+wallets ⇒ les cards Watchlist `frankdegods`, `blknoiz06`, `orangie`,
+etc. apparaîtront si le watcher v2 les passe en `handlesV2`.
 
