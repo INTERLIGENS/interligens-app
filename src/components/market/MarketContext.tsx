@@ -158,26 +158,24 @@ export default function MarketContext({ locale }: { locale: Locale }) {
         <>
           {/* Prices row */}
           {prices.length > 0 && (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-4">
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mb-4 font-mono">
               {prices.map(p => {
                 const up = (p.change24h ?? 0) >= 0
                 const changeColor =
-                  p.change24h == null ? '#6b7280' : up ? '#10b981' : '#ef4444'
+                  p.change24h == null ? '#6b7280' : up ? '#22c55e' : '#ef4444'
                 return (
-                  <div key={p.symbol} className="flex items-baseline gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500 font-mono">
-                      {p.symbol}
-                    </span>
-                    <span className="text-sm font-black text-white font-mono">
+                  <span key={p.symbol} className="inline-flex items-baseline gap-1.5">
+                    <span className="text-[12px] font-black text-white">{p.symbol}</span>
+                    <span className="text-[13px] font-black text-white">
                       {fmtUsd(p.usd)}
                     </span>
                     <span
-                      className="text-[11px] font-bold font-mono"
+                      className="text-[11px] font-bold"
                       style={{ color: changeColor }}
                     >
                       {fmtChange(p.change24h)}
                     </span>
-                  </div>
+                  </span>
                 )
               })}
             </div>
