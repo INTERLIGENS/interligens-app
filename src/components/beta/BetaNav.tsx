@@ -157,6 +157,60 @@ export default function BetaNav() {
 
       {/* Right */}
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+        {/* Lang switcher */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+          }}
+        >
+          <a
+            href={
+              locale === "en"
+                ? pathname
+                : pathname.replace(/^\/fr(\/|$)/, "/en$1")
+            }
+            style={{
+              color: locale === "en" ? O : "#555",
+              fontWeight: locale === "en" ? 600 : 500,
+              textDecoration: "none",
+              transition: "color 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              if (locale !== "en") e.currentTarget.style.color = "#999";
+            }}
+            onMouseLeave={(e) => {
+              if (locale !== "en") e.currentTarget.style.color = "#555";
+            }}
+          >
+            EN
+          </a>
+          <span style={{ color: "#333", margin: "0 4px" }}>|</span>
+          <a
+            href={
+              locale === "fr"
+                ? pathname
+                : pathname.replace(/^\/en(\/|$)/, "/fr$1")
+            }
+            style={{
+              color: locale === "fr" ? O : "#555",
+              fontWeight: locale === "fr" ? 600 : 500,
+              textDecoration: "none",
+              transition: "color 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              if (locale !== "fr") e.currentTarget.style.color = "#999";
+            }}
+            onMouseLeave={(e) => {
+              if (locale !== "fr") e.currentTarget.style.color = "#555";
+            }}
+          >
+            FR
+          </a>
+        </div>
         <span
           style={{
             fontSize: 11,
