@@ -3,6 +3,7 @@ import BetaNav from "@/components/beta/BetaNav";
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
 import ProceedsCard from '@/components/kol/ProceedsCard'
+import RetailCounter from '@/components/kol/RetailCounter'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
@@ -386,6 +387,9 @@ export default function KOLPage() {
 
         {/* ── PATTERN SUMMARY (KolNarrative) ── */}
         <KolNarrative kol={{ ...kol, followerCount: followers }} />
+
+        {/* ── RETAIL COUNTER (rolling cash-out) ── */}
+        <RetailCounter handle={kol.handle} />
 
         {/* ── DOCUMENTED CASE HISTORY ── */}
         <ProceedsCard handle={kol.handle} lang="en" />

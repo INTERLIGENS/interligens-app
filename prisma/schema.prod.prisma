@@ -408,6 +408,8 @@ model KolProfile {
   evidences       KolEvidence[]
   kolWallets      KolWallet[]
   laundryTrails   LaundryTrail[]
+  promotionMentions   KolPromotionMention[]
+  tokenInvolvements   KolTokenInvolvement[]
 
   @@map("KolProfile")
 }
@@ -430,6 +432,10 @@ model KolWallet {
   attributionStatus String   @default("review")
   discoveredAt      DateTime?
   kol         KolProfile @relation(fields: [kolHandle], references: [handle])
+  fundingEdgesFrom    WalletFundingEdge[]    @relation("FundingEdgeFrom")
+  fundingEdgesTo      WalletFundingEdge[]    @relation("FundingEdgeTo")
+  promotionMentions   KolPromotionMention[]
+  tokenInvolvements   KolTokenInvolvement[]
 }
 
 model KolCase {
@@ -1209,4 +1215,111 @@ model AskLog {
   @@index([sessionId])
   @@index([answerType])
   @@map("ask_logs")
+}
+
+// =========================================================================
+// Retail Vision — additive models (feat/retail-vision)
+// See MIGRATION_RETAILVISION.md for raw SQL and decisions.
+// =========================================================================
+
+model WalletFundingEdge {
+  id               String   @id @default(cuid())
+  chain            String
+  fromWalletId     String?
+  toWalletId       String
+  fromAddress      String
+  toAddress        String
+  source           String
+  observedAt       DateTime
+  confidence       Int      @default(60)
+  projectTokenMint String?
+  isProjectLinked  Boolean  @default(false)
+  raw              Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  fromWallet KolWallet? @relation("FundingEdgeFrom", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWallet   KolWallet  @relation("FundingEdgeTo",   fields: [toWalletId],   references: [id], onDelete: Cascade)
+  tokenInvolvements KolTokenInvolvement[]
+
+  @@index([toWalletId, observedAt])
+  @@index([chain, toAddress])
+  @@index([projectTokenMint, chain])
+}
+
+model KolPromotionMention {
+  id             String   @id @default(cuid())
+  kolHandle      String
+  walletId       String?
+  chain          String
+  tokenMint      String
+  tokenSymbol    String?
+  sourcePlatform String
+  sourcePostId   String
+  sourceUrl      String?
+  postedAt       DateTime
+  contentSnippet String?
+  watcherRunId   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  kol    KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+  wallet KolWallet? @relation(fields: [walletId],  references: [id],     onDelete: SetNull)
+
+  @@unique([sourcePlatform, sourcePostId])
+  @@index([kolHandle, postedAt])
+  @@index([chain, tokenMint, postedAt])
+}
+
+model TokenLaunchMetric {
+  id                 String   @id @default(cuid())
+  chain              String
+  tokenMint          String
+  launchAt           DateTime?
+  totalSupply        Decimal? @db.Decimal(38, 0)
+  top3Pct            Decimal? @db.Decimal(7, 4)
+  top10Pct           Decimal? @db.Decimal(7, 4)
+  holderCount        Int?
+  concentrationScore Int?
+  source             String
+  computedAt         DateTime @default(now())
+  raw                Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tokenInvolvements KolTokenInvolvement[]
+
+  @@unique([chain, tokenMint])
+  @@index([chain, concentrationScore])
+}
+
+model KolTokenInvolvement {
+  id                    String   @id @default(cuid())
+  kolHandle             String
+  walletId              String?
+  chain                 String
+  tokenMint             String
+  firstPromotionAt      DateTime?
+  firstBuyAt            DateTime?
+  firstSellAt           DateTime?
+  avgDumpDelayMinutes   Int?
+  soldPct               Decimal? @db.Decimal(7, 4)
+  proceedsUsd           Decimal? @db.Decimal(20, 2)
+  retailLossEstimateUsd Decimal? @db.Decimal(20, 2)
+  isPromoted            Boolean  @default(false)
+  isFundedByProject     Boolean  @default(false)
+  projectFundingEdgeId  String?
+  launchMetricId        String?
+  lastComputedAt        DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  kol                KolProfile         @relation(fields: [kolHandle],            references: [handle], onDelete: Cascade)
+  wallet             KolWallet?         @relation(fields: [walletId],             references: [id],     onDelete: SetNull)
+  projectFundingEdge WalletFundingEdge? @relation(fields: [projectFundingEdgeId], references: [id],     onDelete: SetNull)
+  launchMetric       TokenLaunchMetric? @relation(fields: [launchMetricId],       references: [id],     onDelete: SetNull)
+
+  @@unique([kolHandle, chain, tokenMint])
+  @@index([chain, tokenMint])
+  @@index([kolHandle, lastComputedAt])
 }
