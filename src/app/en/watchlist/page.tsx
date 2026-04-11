@@ -4,6 +4,14 @@ import React, { useState, useEffect } from 'react'
 
 /* ── types ─────────────────────────────────────────────── */
 
+interface Cashout {
+  d1: number
+  d7: number
+  d30: number
+  ytd: number
+  total: number
+}
+
 interface WatchEntry {
   handle: string
   displayName: string
@@ -17,7 +25,6 @@ interface WatchEntry {
   totalProceeds: number | null
   behaviorFlags: string[]
   behaviorFlagsCount: number
-  rugCount: number | null
   evidenceCount: number
   walletsCount: number
   casesCount: number
@@ -25,44 +32,44 @@ interface WatchEntry {
   isPublished: boolean
   recentSignals: number
   lastSignalAt: string | null
+  tickers: string[]
+  cashout: Cashout
 }
 
-/* ── retail vocabulary ─────────────────────────────────── */
+/* ── retail wording (EN) ───────────────────────────────── */
 
-// Per-category retail-friendly surveillance line.
-// Plain English. No jargon. What this person actually does, in one sentence.
-const SURVEILLANCE_LINE: Record<string, string> = {
-  paid_undisclosed: "Paid promo without disclosing it. Sells while followers buy.",
-  pump_fun_caller: "Pumps fresh tokens, sells before the dump.",
-  legendary_meme_caller: "Pushes meme tokens — exits before the crash.",
+const WHY_LINE: Record<string, string> = {
+  paid_undisclosed: "Paid promo. Doesn't say it. Sells while followers buy.",
+  pump_fun_caller: "Pumps fresh tokens. Sells before the dump.",
+  legendary_meme_caller: "Pushes meme tokens. Exits before the crash.",
   high_risk_memes: "Pushes high-risk memes. The exit is for him, not you.",
-  historic_calls: "Repeat caller across multiple failed launches.",
+  historic_calls: "Repeat caller. Same script across failed launches.",
   package_deal_caller: "Sells calls as a package — paid by the project.",
-  tier2_caller: "Pushes tokens, vague disclosures, common dumps.",
+  tier2_caller: "Pushes tokens. Vague disclosures. Common dumps.",
   paid_multi_post: "Multiple paid posts on the same coin in a short window.",
   interligens_case: "Documented in an INTERLIGENS investigation.",
   community_callout: "Community has flagged repeated harmful behavior.",
   memescope_monday: "Recurring memescope caller. Watch the timing.",
-  video_promo_undisclosed: "Video promotion without sponsorship disclosure.",
+  video_promo_undisclosed: "Video promotion. No sponsorship disclosed.",
   zachxbt_leak: "Named in a ZachXBT investigation.",
-  zachxbt_context: "Mentioned in ZachXBT context — pattern under review.",
-  kolscan_caller: "Active caller tracked on KOLscan.",
+  zachxbt_context: "Mentioned in ZachXBT context. Pattern under review.",
+  kolscan_caller: "Active caller across multiple launches.",
   pump_fun_cofounder: "Tied to pump.fun founding wallets.",
 }
-const DEFAULT_SURVEILLANCE_LINE = "Pushes tokens and sells before the crash."
+const DEFAULT_WHY = "Pushes tokens, sells before the crash."
 
 const FLAG_LINE: Record<string, string> = {
-  REPEATED_CASHOUT: "Repeated cash-out pattern",
-  MULTI_HOP_TRANSFER: "Hides money trail through multi-hop transfers",
-  CROSS_CASE_RECURRENCE: "Reappears across several cases",
+  REPEATED_CASHOUT: "Same cash-out pattern, again and again",
+  MULTI_HOP_TRANSFER: "Hides the money trail through multi-hop transfers",
+  CROSS_CASE_RECURRENCE: "Reappears across several investigations",
   MULTI_LAUNCH_LINKED: "Linked to several token launches",
-  LAUNDERING_INDICATORS: "Laundering indicators detected",
-  KNOWN_LINKED_WALLETS: "Known linked wallets",
+  LAUNDERING_INDICATORS: "Laundering indicators on file",
+  KNOWN_LINKED_WALLETS: "Known linked wallets identified",
   COORDINATED_PROMOTION: "Coordinated promotion activity",
 }
 
-function surveillanceLine(e: WatchEntry): string {
-  return SURVEILLANCE_LINE[e.category] ?? DEFAULT_SURVEILLANCE_LINE
+function whyLine(e: WatchEntry): string {
+  return WHY_LINE[e.category] ?? DEFAULT_WHY
 }
 
 /* ── helpers ───────────────────────────────────────────── */
@@ -87,8 +94,8 @@ function timeAgo(d: string | null) {
   const h = Math.floor(m / 60)
   if (h < 24) return `${h}h ago`
   const days = Math.floor(h / 24)
-  if (days < 30) return `${days} days ago`
-  return `${Math.floor(days / 30)} months ago`
+  if (days < 30) return `${days}d ago`
+  return `${Math.floor(days / 30)}mo ago`
 }
 
 /* ── page ──────────────────────────────────────────────── */
@@ -111,10 +118,11 @@ export default function WatchlistPage() {
   const filtered = entries.filter(e => {
     if (filter !== 'all' && e.priority !== filter) return false
     if (search) {
-      const q = search.toLowerCase()
+      const q = search.toLowerCase().replace(/^\$+/, '')
       return (
         e.handle.toLowerCase().includes(q) ||
-        e.displayName.toLowerCase().includes(q)
+        e.displayName.toLowerCase().includes(q) ||
+        e.tickers.some(t => t.toLowerCase().includes(q))
       )
     }
     return true
@@ -123,13 +131,13 @@ export default function WatchlistPage() {
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans antialiased pb-20">
       <BetaNav />
-      <main className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
+      <main className="max-w-5xl xl:max-w-6xl mx-auto px-6 py-12 sm:py-16">
 
         {/* ═══ HERO ═══ */}
         <header className="mb-10">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#F85B05] font-mono">
-              ACTIVE SURVEILLANCE
+              UNDER ACTIVE SURVEILLANCE
             </span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
           </div>
@@ -139,9 +147,9 @@ export default function WatchlistPage() {
           <p className="mt-4 text-[11px] font-black uppercase tracking-[0.18em] text-[#F85B05] font-mono">
             They&apos;re selling. You&apos;re buying.
           </p>
-          <p className="mt-5 text-base text-zinc-400 max-w-xl leading-relaxed">
-            The accounts we&apos;re watching right now. Plain language.
-            Tap a card to see the details.
+          <p className="mt-5 text-base text-zinc-400 max-w-2xl leading-relaxed">
+            The accounts INTERLIGENS is watching. Who they are, why they&apos;re here,
+            how much they&apos;ve taken, and which tickers they&apos;re pushing right now.
           </p>
         </header>
 
@@ -164,8 +172,8 @@ export default function WatchlistPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search handle…"
-            className="bg-zinc-900/60 border border-zinc-800 rounded-md px-3 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 font-mono outline-none focus:border-[#F85B05]/50 w-40"
+            placeholder="Search handle or $TICKER…"
+            className="bg-zinc-900/60 border border-zinc-800 rounded-md px-3 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 font-mono outline-none focus:border-[#F85B05]/50 w-56"
           />
         </div>
 
@@ -196,7 +204,7 @@ export default function WatchlistPage() {
         {/* ═══ FOOTER ═══ */}
         <footer className="mt-16 pt-6 border-t border-zinc-900 text-center">
           <p className="text-[9px] font-mono tracking-wider text-zinc-700 uppercase">
-            Observed patterns only · INTERLIGENS Intelligence © 2026
+            INTERLIGENS Intelligence © 2026
           </p>
         </footer>
       </main>
@@ -216,12 +224,12 @@ function WatchCard({
   onToggle: () => void
 }) {
   const e = entry
-  const proceeds = fmtUsd(e.totalProceeds)
+  const headlineMin = fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)
   const followers = fmtFollowers(e.followerCount)
   const lastSig = timeAgo(e.lastSignalAt)
   const initial = (e.displayName || e.handle).slice(0, 1).toUpperCase()
   const priorityColor =
-    e.priority === 'high' ? '#ef4444' : e.priority === 'medium' ? '#f59e0b' : '#6b7280'
+    e.priority === 'high' ? '#ef4444' : e.priority === 'medium' ? '#f59e0b' : '#52525b'
 
   return (
     <li
@@ -229,85 +237,150 @@ function WatchCard({
       style={{ borderLeft: `3px solid ${priorityColor}` }}
     >
       {/* ─── LEVEL 1 ───────────────────────────── */}
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full text-left p-4 sm:p-5 flex items-start gap-4"
-      >
-        <div className="shrink-0 w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-[#F85B05] font-black text-base">
-          {initial}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-            <span className="text-sm sm:text-base font-black text-white">@{e.handle}</span>
-            {followers && (
-              <span className="text-[10px] font-mono text-zinc-600">{followers} followers</span>
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-4">
+          <div className="shrink-0 w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-[#F85B05] font-black text-base">
+            {initial}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Handle row */}
+            <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+              <span className="text-base sm:text-lg font-black text-white">@{e.handle}</span>
+              {followers && (
+                <span className="text-[10px] font-mono text-zinc-600">
+                  {followers} followers
+                </span>
+              )}
+              <span className="text-[10px] font-mono text-zinc-600 hidden sm:inline">
+                · Under INTERLIGENS surveillance
+              </span>
+            </div>
+
+            {/* Why line */}
+            <p className="text-sm text-zinc-300 leading-snug mb-2.5">{whyLine(e)}</p>
+
+            {/* Metrics row */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] text-zinc-500">
+              {headlineMin ? (
+                <span>
+                  <span className="text-zinc-600">At least </span>
+                  <span className="text-red-400 font-black font-mono">{headlineMin}</span>
+                  <span className="text-zinc-600"> taken</span>
+                </span>
+              ) : null}
+              {lastSig && (
+                <span>
+                  <span className="text-zinc-600">Last signal · </span>
+                  <span className="text-zinc-300 font-medium">{lastSig}</span>
+                </span>
+              )}
+              {!headlineMin && !lastSig && (
+                <span className="text-zinc-700">Under surveillance, no recent signal</span>
+              )}
+            </div>
+
+            {/* Tickers row */}
+            {e.tickers.length > 0 && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-600 font-mono">
+                  Tickers pushed
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {e.tickers.slice(0, 5).map(t => (
+                    <span
+                      key={t}
+                      className="text-[11px] font-black font-mono px-2 py-0.5 rounded"
+                      style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.10)' }}
+                    >
+                      ${t}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-          <p className="text-sm text-zinc-300 leading-snug mb-2">
-            {surveillanceLine(e)}
-          </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
-            {proceeds && (
-              <span>
-                <span className="text-zinc-600">Min. </span>
-                <span className="text-red-400 font-black">{proceeds}</span>
-                <span className="text-zinc-600"> observed</span>
-              </span>
-            )}
-            {lastSig && (
-              <span>
-                <span className="text-zinc-600">Last signal · </span>
-                <span className="text-emerald-400">{lastSig}</span>
-              </span>
-            )}
-            {!proceeds && !lastSig && (
-              <span className="text-zinc-700">Tracked, no public signal yet</span>
-            )}
+
+          {/* Right CTA */}
+          <div className="shrink-0 flex flex-col items-end gap-1.5">
+            <button
+              type="button"
+              onClick={onToggle}
+              className="text-[10px] font-black uppercase tracking-[0.15em] text-[#F85B05] font-mono whitespace-nowrap hover:underline"
+            >
+              {isOpen ? 'Close ▲' : 'Details ▾'}
+            </button>
+            <a
+              href={`https://x.com/${e.handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-zinc-600 hover:text-zinc-300 font-mono no-underline"
+            >
+              Open on X →
+            </a>
           </div>
         </div>
-        <div className="shrink-0 self-center">
-          {e.isPublished ? (
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-[#F85B05] font-mono whitespace-nowrap">
-              {isOpen ? 'CLOSE ▲' : 'DETAILS ▾'}
-            </span>
-          ) : (
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 font-mono whitespace-nowrap">
-              {isOpen ? 'CLOSE ▲' : 'DETAILS ▾'}
-            </span>
-          )}
-        </div>
-      </button>
+      </div>
 
       {/* ─── LEVEL 2 ───────────────────────────── */}
       {isOpen && (
-        <div className="px-4 sm:px-5 pb-5 pt-2 border-t border-zinc-800/60">
-          {/* Cash-out counter */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-            <Stat label="Total observed" value={proceeds ?? '—'} accent="#ef4444" />
-            <Stat label="Signals 30d" value={e.recentSignals > 0 ? String(e.recentSignals) : '—'} accent="#10b981" />
-            <Stat label="Wallets" value={e.walletsCount > 0 ? String(e.walletsCount) : '—'} accent="#f59e0b" />
-            <Stat label="Linked tokens" value={e.linkedTokensCount > 0 ? String(e.linkedTokensCount) : '—'} accent="#8b5cf6" />
+        <div className="px-4 sm:px-5 pb-5 pt-4 border-t border-zinc-800/60 bg-black/30">
+          {/* Cash-out grid */}
+          <div className="mb-5">
+            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-2">
+              Money taken
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <Bucket label="Last 24h" value={fmtUsd(e.cashout.d1)} />
+              <Bucket label="7 days" value={fmtUsd(e.cashout.d7)} />
+              <Bucket label="30 days" value={fmtUsd(e.cashout.d30)} />
+              <Bucket label="This year" value={fmtUsd(e.cashout.ytd)} />
+              <Bucket
+                label="Total"
+                value={fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)}
+                strong
+              />
+            </div>
           </div>
 
-          {/* Pattern in one sentence */}
-          <div className="mb-4">
-            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-1">
-              Pattern
+          {/* Pattern */}
+          <div className="mb-5">
+            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-1.5">
+              Same pattern
             </div>
             <p className="text-[13px] text-zinc-300 leading-relaxed">
-              {surveillanceLine(e)}
+              {whyLine(e)}
               {e.behaviorFlagsCount > 0 && (
                 <>
                   {' '}
                   {e.behaviorFlags
                     .map(f => FLAG_LINE[f] ?? f.replace(/_/g, ' ').toLowerCase())
-                    .join(' · ')}
+                    .join('. ')}
                   .
                 </>
               )}
             </p>
           </div>
+
+          {/* Tickers full list */}
+          {e.tickers.length > 0 && (
+            <div className="mb-5">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-1.5">
+                Tickers linked
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {e.tickers.map(t => (
+                  <span
+                    key={t}
+                    className="text-[11px] font-black font-mono px-2 py-0.5 rounded"
+                    style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.10)' }}
+                  >
+                    ${t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Links row */}
           <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
@@ -316,11 +389,11 @@ function WatchCard({
                 href={`/en/kol/${e.handle}`}
                 className="px-3 py-1.5 rounded-md border border-[#F85B05]/40 bg-[#F85B05]/10 text-[#F85B05] font-black uppercase tracking-[0.12em] hover:bg-[#F85B05]/20 transition-colors no-underline"
               >
-                View case file →
+                Open case file →
               </a>
             ) : (
               <span className="px-3 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/40 text-zinc-600 font-black uppercase tracking-[0.12em]">
-                Under review
+                Case file under review
               </span>
             )}
             <a
@@ -329,11 +402,16 @@ function WatchCard({
               rel="noopener noreferrer"
               className="text-zinc-500 hover:text-zinc-200 no-underline"
             >
-              Open X →
+              Open on X →
             </a>
             {e.casesCount > 0 && (
               <span className="text-zinc-600">
-                {e.casesCount} case{e.casesCount > 1 ? 's' : ''} on file
+                {e.casesCount} linked case{e.casesCount > 1 ? 's' : ''}
+              </span>
+            )}
+            {e.walletsCount > 0 && (
+              <span className="text-zinc-600">
+                {e.walletsCount} linked wallet{e.walletsCount > 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -343,14 +421,18 @@ function WatchCard({
   )
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
+function Bucket({ label, value, strong = false }: { label: string; value: string | null; strong?: boolean }) {
+  const empty = !value
   return (
     <div className="rounded-md border border-zinc-800/60 bg-black/40 px-3 py-2">
       <div className="text-[8px] font-black uppercase tracking-[0.15em] text-zinc-600 font-mono mb-0.5">
         {label}
       </div>
-      <div className="text-sm font-black font-mono" style={{ color: value === '—' ? '#3f3f46' : accent }}>
-        {value}
+      <div
+        className={`text-sm font-black font-mono ${strong ? '' : ''}`}
+        style={{ color: empty ? '#3f3f46' : strong ? '#ef4444' : '#f4f4f5' }}
+      >
+        {value ?? '—'}
       </div>
     </div>
   )

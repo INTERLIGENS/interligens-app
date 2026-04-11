@@ -57,6 +57,78 @@ export async function GET() {
       kolMap.set(kp.handle.toLowerCase(), kp)
     }
 
+    // 2b. Tickers — primary source: curated KolTokenLink (editorial),
+    // fallback: KolPromotionMention (raw signals from posts).
+    const handlesForTokenLookup = kolProfiles.map(k => k.handle)
+
+    const [curatedLinks, mentionLinks, involvements] = handlesForTokenLookup.length
+      ? await Promise.all([
+          prisma.kolTokenLink.findMany({
+            where: { kolHandle: { in: handlesForTokenLookup, mode: 'insensitive' }, tokenSymbol: { not: null } },
+            select: { kolHandle: true, tokenSymbol: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+          }),
+          prisma.kolPromotionMention.findMany({
+            where: { kolHandle: { in: handlesForTokenLookup, mode: 'insensitive' }, tokenSymbol: { not: null } },
+            select: { kolHandle: true, tokenSymbol: true, postedAt: true },
+            orderBy: { postedAt: 'desc' },
+          }),
+          prisma.kolTokenInvolvement.findMany({
+            where: {
+              kolHandle: { in: handlesForTokenLookup, mode: 'insensitive' },
+              proceedsUsd: { not: null },
+            },
+            select: { kolHandle: true, proceedsUsd: true, firstSellAt: true },
+          }),
+        ])
+      : [[], [], []]
+
+    // Build tickers per handle (curated first, mentions filling)
+    const tickersByHandle = new Map<string, string[]>()
+    const TICKERS_LIMIT = 6
+    function pushTicker(handleLc: string, raw: string | null) {
+      if (!raw) return
+      const sym = raw.replace(/^\$+/, '').toUpperCase().trim()
+      if (!sym || sym.length > 12) return
+      const arr = tickersByHandle.get(handleLc) ?? []
+      if (arr.includes(sym) || arr.length >= TICKERS_LIMIT) return
+      arr.push(sym)
+      tickersByHandle.set(handleLc, arr)
+    }
+    for (const r of curatedLinks) pushTicker(r.kolHandle.toLowerCase(), r.tokenSymbol)
+    for (const r of mentionLinks) pushTicker(r.kolHandle.toLowerCase(), r.tokenSymbol)
+
+    // Cashout buckets per handle from KolTokenInvolvement
+    const now = Date.now()
+    const D1 = now - 24 * 60 * 60 * 1000
+    const D7 = now - 7 * 24 * 60 * 60 * 1000
+    const D30 = now - 30 * 24 * 60 * 60 * 1000
+    const YTD_START = new Date(new Date().getFullYear(), 0, 1).getTime()
+
+    interface Bucket {
+      d1: number
+      d7: number
+      d30: number
+      ytd: number
+      total: number
+    }
+    const cashoutByHandle = new Map<string, Bucket>()
+    for (const inv of involvements) {
+      const key = inv.kolHandle.toLowerCase()
+      const usd = inv.proceedsUsd ? Number(inv.proceedsUsd) : 0
+      if (!usd) continue
+      const b = cashoutByHandle.get(key) ?? { d1: 0, d7: 0, d30: 0, ytd: 0, total: 0 }
+      b.total += usd
+      const sellTs = inv.firstSellAt ? new Date(inv.firstSellAt).getTime() : null
+      if (sellTs != null) {
+        if (sellTs >= D1) b.d1 += usd
+        if (sellTs >= D7) b.d7 += usd
+        if (sellTs >= D30) b.d30 += usd
+        if (sellTs >= YTD_START) b.ytd += usd
+      }
+      cashoutByHandle.set(key, b)
+    }
+
     // 3. Fetch recent signal activity (last 30 days, SocialPostCandidates)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const recentCandidates = await prisma.socialPostCandidate.groupBy({
@@ -88,11 +160,16 @@ export async function GET() {
 
     // 4. Merge and build response
     const entries = uniqueHandles.map(wh => {
-      const kol = kolMap.get(wh.handle.toLowerCase())
-      const signals = signalsByHandle.get(wh.handle.toLowerCase())
+      const handleLc = wh.handle.toLowerCase()
+      const kol = kolMap.get(handleLc)
+      const signals = signalsByHandle.get(handleLc)
       const flags = kol?.behaviorFlags ? parseBehaviorFlags(kol.behaviorFlags) : []
+      const tickers = tickersByHandle.get(handleLc) ?? []
+      const cashout = cashoutByHandle.get(handleLc) ?? { d1: 0, d7: 0, d30: 0, ytd: 0, total: 0 }
 
       return {
+        tickers,
+        cashout,
         // Watcher data
         handle: wh.handle,
         displayName: kol?.displayName ?? wh.handle,

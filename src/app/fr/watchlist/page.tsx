@@ -4,6 +4,14 @@ import React, { useState, useEffect } from 'react'
 
 /* ── types ─────────────────────────────────────────────── */
 
+interface Cashout {
+  d1: number
+  d7: number
+  d30: number
+  ytd: number
+  total: number
+}
+
 interface WatchEntry {
   handle: string
   displayName: string
@@ -17,7 +25,6 @@ interface WatchEntry {
   totalProceeds: number | null
   behaviorFlags: string[]
   behaviorFlagsCount: number
-  rugCount: number | null
   evidenceCount: number
   walletsCount: number
   casesCount: number
@@ -25,42 +32,44 @@ interface WatchEntry {
   isPublished: boolean
   recentSignals: number
   lastSignalAt: string | null
+  tickers: string[]
+  cashout: Cashout
 }
 
-/* ── vocabulaire retail FR ─────────────────────────────── */
+/* ── wording retail FR ─────────────────────────────────── */
 
-const SURVEILLANCE_LINE: Record<string, string> = {
-  paid_undisclosed: "Promo payée non déclarée. Vend pendant que ses abonnés achètent.",
-  pump_fun_caller: "Pousse des tokens frais, vend avant le crash.",
-  legendary_meme_caller: "Pousse des memecoins — sort avant la chute.",
+const WHY_LINE: Record<string, string> = {
+  paid_undisclosed: "Promo payée. Le dit pas. Vend pendant que ses abonnés achètent.",
+  pump_fun_caller: "Pousse des tokens frais. Vend avant le crash.",
+  legendary_meme_caller: "Pousse des memecoins. Sort avant la chute.",
   high_risk_memes: "Pousse des memes à haut risque. La sortie est pour lui, pas pour toi.",
-  historic_calls: "Caller récidiviste sur plusieurs lancements ratés.",
+  historic_calls: "Caller récidiviste. Même script sur plusieurs lancements ratés.",
   package_deal_caller: "Vend ses calls en package — payé par le projet.",
-  tier2_caller: "Pousse des tokens, disclosures floues, dumps fréquents.",
+  tier2_caller: "Pousse des tokens. Disclosures floues. Dumps fréquents.",
   paid_multi_post: "Plusieurs posts payés sur la même coin en peu de temps.",
   interligens_case: "Documenté dans une enquête INTERLIGENS.",
   community_callout: "La communauté a flaggé un comportement nuisible récurrent.",
   memescope_monday: "Caller memescope récurrent. Surveille le timing.",
-  video_promo_undisclosed: "Promo vidéo sans mention de sponsorisation.",
+  video_promo_undisclosed: "Promo vidéo. Aucune mention de sponsorisation.",
   zachxbt_leak: "Cité dans une enquête ZachXBT.",
-  zachxbt_context: "Mentionné dans le contexte ZachXBT — pattern sous revue.",
-  kolscan_caller: "Caller actif suivi sur KOLscan.",
+  zachxbt_context: "Mentionné dans le contexte ZachXBT. Pattern sous revue.",
+  kolscan_caller: "Caller actif sur plusieurs lancements.",
   pump_fun_cofounder: "Lié aux wallets fondateurs de pump.fun.",
 }
-const DEFAULT_SURVEILLANCE_LINE = "Pousse des tokens et vend avant le crash."
+const DEFAULT_WHY = "Pousse des tokens, vend avant la chute."
 
 const FLAG_LINE: Record<string, string> = {
-  REPEATED_CASHOUT: "schéma de cashout répété",
-  MULTI_HOP_TRANSFER: "transferts multi-sauts pour cacher la trace",
-  CROSS_CASE_RECURRENCE: "réapparaît sur plusieurs affaires",
-  MULTI_LAUNCH_LINKED: "lié à plusieurs lancements",
-  LAUNDERING_INDICATORS: "indicateurs de blanchiment",
-  KNOWN_LINKED_WALLETS: "wallets liés identifiés",
-  COORDINATED_PROMOTION: "promotion coordonnée",
+  REPEATED_CASHOUT: "Même schéma de cash-out, encore et encore",
+  MULTI_HOP_TRANSFER: "Cache la trace de l'argent par transferts multi-sauts",
+  CROSS_CASE_RECURRENCE: "Réapparaît sur plusieurs enquêtes",
+  MULTI_LAUNCH_LINKED: "Lié à plusieurs lancements",
+  LAUNDERING_INDICATORS: "Indicateurs de blanchiment au dossier",
+  KNOWN_LINKED_WALLETS: "Wallets liés identifiés",
+  COORDINATED_PROMOTION: "Promotion coordonnée",
 }
 
-function surveillanceLine(e: WatchEntry): string {
-  return SURVEILLANCE_LINE[e.category] ?? DEFAULT_SURVEILLANCE_LINE
+function whyLine(e: WatchEntry): string {
+  return WHY_LINE[e.category] ?? DEFAULT_WHY
 }
 
 /* ── helpers ───────────────────────────────────────────── */
@@ -109,10 +118,11 @@ export default function WatchlistPage() {
   const filtered = entries.filter(e => {
     if (filter !== 'all' && e.priority !== filter) return false
     if (search) {
-      const q = search.toLowerCase()
+      const q = search.toLowerCase().replace(/^\$+/, '')
       return (
         e.handle.toLowerCase().includes(q) ||
-        e.displayName.toLowerCase().includes(q)
+        e.displayName.toLowerCase().includes(q) ||
+        e.tickers.some(t => t.toLowerCase().includes(q))
       )
     }
     return true
@@ -121,7 +131,7 @@ export default function WatchlistPage() {
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans antialiased pb-20">
       <BetaNav />
-      <main className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
+      <main className="max-w-5xl xl:max-w-6xl mx-auto px-6 py-12 sm:py-16">
 
         {/* ═══ HERO ═══ */}
         <header className="mb-10">
@@ -137,9 +147,9 @@ export default function WatchlistPage() {
           <p className="mt-4 text-[11px] font-black uppercase tracking-[0.18em] text-[#F85B05] font-mono">
             Ils vendent. Vous achetez.
           </p>
-          <p className="mt-5 text-base text-zinc-400 max-w-xl leading-relaxed">
-            Les comptes que nous surveillons en ce moment. Langage clair.
-            Tape sur une carte pour voir les détails.
+          <p className="mt-5 text-base text-zinc-400 max-w-2xl leading-relaxed">
+            Les comptes que INTERLIGENS surveille. Qui ils sont, pourquoi ils sont là,
+            combien ils ont pris, et sur quels tickers ils poussent en ce moment.
           </p>
         </header>
 
@@ -162,8 +172,8 @@ export default function WatchlistPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Chercher un handle…"
-            className="bg-zinc-900/60 border border-zinc-800 rounded-md px-3 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 font-mono outline-none focus:border-[#F85B05]/50 w-44"
+            placeholder="Chercher un handle ou $TICKER…"
+            className="bg-zinc-900/60 border border-zinc-800 rounded-md px-3 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 font-mono outline-none focus:border-[#F85B05]/50 w-64"
           />
         </div>
 
@@ -194,7 +204,7 @@ export default function WatchlistPage() {
         {/* ═══ FOOTER ═══ */}
         <footer className="mt-16 pt-6 border-t border-zinc-900 text-center">
           <p className="text-[9px] font-mono tracking-wider text-zinc-700 uppercase">
-            Patterns observés uniquement · INTERLIGENS Intelligence © 2026
+            INTERLIGENS Intelligence © 2026
           </p>
         </footer>
       </main>
@@ -214,12 +224,12 @@ function WatchCard({
   onToggle: () => void
 }) {
   const e = entry
-  const proceeds = fmtUsd(e.totalProceeds)
+  const headlineMin = fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)
   const followers = fmtFollowers(e.followerCount)
   const lastSig = timeAgo(e.lastSignalAt)
   const initial = (e.displayName || e.handle).slice(0, 1).toUpperCase()
   const priorityColor =
-    e.priority === 'high' ? '#ef4444' : e.priority === 'medium' ? '#f59e0b' : '#6b7280'
+    e.priority === 'high' ? '#ef4444' : e.priority === 'medium' ? '#f59e0b' : '#52525b'
 
   return (
     <li
@@ -227,85 +237,148 @@ function WatchCard({
       style={{ borderLeft: `3px solid ${priorityColor}` }}
     >
       {/* ─── NIVEAU 1 ──────────────────────────── */}
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full text-left p-4 sm:p-5 flex items-start gap-4"
-      >
-        <div className="shrink-0 w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-[#F85B05] font-black text-base">
-          {initial}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-            <span className="text-sm sm:text-base font-black text-white">@{e.handle}</span>
-            {followers && (
-              <span className="text-[10px] font-mono text-zinc-600">{followers} followers</span>
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-4">
+          <div className="shrink-0 w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-[#F85B05] font-black text-base">
+            {initial}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Handle row */}
+            <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+              <span className="text-base sm:text-lg font-black text-white">@{e.handle}</span>
+              {followers && (
+                <span className="text-[10px] font-mono text-zinc-600">{followers} followers</span>
+              )}
+              <span className="text-[10px] font-mono text-zinc-600 hidden sm:inline">
+                · Sous surveillance INTERLIGENS
+              </span>
+            </div>
+
+            {/* Phrase de surveillance */}
+            <p className="text-sm text-zinc-300 leading-snug mb-2.5">{whyLine(e)}</p>
+
+            {/* Métriques */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] text-zinc-500">
+              {headlineMin ? (
+                <span>
+                  <span className="text-zinc-600">Au moins </span>
+                  <span className="text-red-400 font-black font-mono">{headlineMin}</span>
+                  <span className="text-zinc-600"> sortis</span>
+                </span>
+              ) : null}
+              {lastSig && (
+                <span>
+                  <span className="text-zinc-600">Dernier signal · </span>
+                  <span className="text-zinc-300 font-medium">{lastSig}</span>
+                </span>
+              )}
+              {!headlineMin && !lastSig && (
+                <span className="text-zinc-700">Sous surveillance, pas de signal récent</span>
+              )}
+            </div>
+
+            {/* Tickers row */}
+            {e.tickers.length > 0 && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-600 font-mono">
+                  Tickers poussés
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {e.tickers.slice(0, 5).map(t => (
+                    <span
+                      key={t}
+                      className="text-[11px] font-black font-mono px-2 py-0.5 rounded"
+                      style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.10)' }}
+                    >
+                      ${t}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-          <p className="text-sm text-zinc-300 leading-snug mb-2">
-            {surveillanceLine(e)}
-          </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
-            {proceeds && (
-              <span>
-                <span className="text-zinc-600">Min. </span>
-                <span className="text-red-400 font-black">{proceeds}</span>
-                <span className="text-zinc-600"> observés</span>
-              </span>
-            )}
-            {lastSig && (
-              <span>
-                <span className="text-zinc-600">Dernier signal · </span>
-                <span className="text-emerald-400">{lastSig}</span>
-              </span>
-            )}
-            {!proceeds && !lastSig && (
-              <span className="text-zinc-700">Suivi, pas encore de signal public</span>
-            )}
+
+          {/* CTA droite */}
+          <div className="shrink-0 flex flex-col items-end gap-1.5">
+            <button
+              type="button"
+              onClick={onToggle}
+              className="text-[10px] font-black uppercase tracking-[0.15em] text-[#F85B05] font-mono whitespace-nowrap hover:underline"
+            >
+              {isOpen ? 'Fermer ▲' : 'Détails ▾'}
+            </button>
+            <a
+              href={`https://x.com/${e.handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-zinc-600 hover:text-zinc-300 font-mono no-underline"
+            >
+              Voir sur X →
+            </a>
           </div>
         </div>
-        <div className="shrink-0 self-center">
-          {e.isPublished ? (
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-[#F85B05] font-mono whitespace-nowrap">
-              {isOpen ? 'FERMER ▲' : 'DÉTAILS ▾'}
-            </span>
-          ) : (
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 font-mono whitespace-nowrap">
-              {isOpen ? 'FERMER ▲' : 'DÉTAILS ▾'}
-            </span>
-          )}
-        </div>
-      </button>
+      </div>
 
       {/* ─── NIVEAU 2 ──────────────────────────── */}
       {isOpen && (
-        <div className="px-4 sm:px-5 pb-5 pt-2 border-t border-zinc-800/60">
+        <div className="px-4 sm:px-5 pb-5 pt-4 border-t border-zinc-800/60 bg-black/30">
           {/* Compteur cash-out */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-            <Stat label="Total observé" value={proceeds ?? '—'} accent="#ef4444" />
-            <Stat label="Signaux 30j" value={e.recentSignals > 0 ? String(e.recentSignals) : '—'} accent="#10b981" />
-            <Stat label="Wallets" value={e.walletsCount > 0 ? String(e.walletsCount) : '—'} accent="#f59e0b" />
-            <Stat label="Tokens liés" value={e.linkedTokensCount > 0 ? String(e.linkedTokensCount) : '—'} accent="#8b5cf6" />
+          <div className="mb-5">
+            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-2">
+              Argent sorti
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <Bucket label="24 dernières h" value={fmtUsd(e.cashout.d1)} />
+              <Bucket label="7 jours" value={fmtUsd(e.cashout.d7)} />
+              <Bucket label="30 jours" value={fmtUsd(e.cashout.d30)} />
+              <Bucket label="Cette année" value={fmtUsd(e.cashout.ytd)} />
+              <Bucket
+                label="Total"
+                value={fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)}
+                strong
+              />
+            </div>
           </div>
 
-          {/* Pattern en une phrase */}
-          <div className="mb-4">
-            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-1">
-              Pattern
+          {/* Pattern */}
+          <div className="mb-5">
+            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-1.5">
+              Même schéma
             </div>
             <p className="text-[13px] text-zinc-300 leading-relaxed">
-              {surveillanceLine(e)}
+              {whyLine(e)}
               {e.behaviorFlagsCount > 0 && (
                 <>
                   {' '}
                   {e.behaviorFlags
                     .map(f => FLAG_LINE[f] ?? f.replace(/_/g, ' ').toLowerCase())
-                    .join(' · ')}
+                    .join('. ')}
                   .
                 </>
               )}
             </p>
           </div>
+
+          {/* Tickers liste complète */}
+          {e.tickers.length > 0 && (
+            <div className="mb-5">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 font-mono mb-1.5">
+                Tickers liés
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {e.tickers.map(t => (
+                  <span
+                    key={t}
+                    className="text-[11px] font-black font-mono px-2 py-0.5 rounded"
+                    style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.10)' }}
+                  >
+                    ${t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Liens */}
           <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
@@ -314,11 +387,11 @@ function WatchCard({
                 href={`/fr/kol/${e.handle}`}
                 className="px-3 py-1.5 rounded-md border border-[#F85B05]/40 bg-[#F85B05]/10 text-[#F85B05] font-black uppercase tracking-[0.12em] hover:bg-[#F85B05]/20 transition-colors no-underline"
               >
-                Voir le dossier →
+                Ouvrir le dossier →
               </a>
             ) : (
               <span className="px-3 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/40 text-zinc-600 font-black uppercase tracking-[0.12em]">
-                Sous revue
+                Dossier sous revue
               </span>
             )}
             <a
@@ -334,6 +407,11 @@ function WatchCard({
                 {e.casesCount} dossier{e.casesCount > 1 ? 's' : ''} lié{e.casesCount > 1 ? 's' : ''}
               </span>
             )}
+            {e.walletsCount > 0 && (
+              <span className="text-zinc-600">
+                {e.walletsCount} wallet{e.walletsCount > 1 ? 's' : ''} lié{e.walletsCount > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -341,14 +419,18 @@ function WatchCard({
   )
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
+function Bucket({ label, value, strong = false }: { label: string; value: string | null; strong?: boolean }) {
+  const empty = !value
   return (
     <div className="rounded-md border border-zinc-800/60 bg-black/40 px-3 py-2">
       <div className="text-[8px] font-black uppercase tracking-[0.15em] text-zinc-600 font-mono mb-0.5">
         {label}
       </div>
-      <div className="text-sm font-black font-mono" style={{ color: value === '—' ? '#3f3f46' : accent }}>
-        {value}
+      <div
+        className="text-sm font-black font-mono"
+        style={{ color: empty ? '#3f3f46' : strong ? '#ef4444' : '#f4f4f5' }}
+      >
+        {value ?? '—'}
       </div>
     </div>
   )
