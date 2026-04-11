@@ -1765,3 +1765,69 @@ un prochain cycle UI (Phase 7+) pourra bénéficier du fait que
 wallets ⇒ les cards Watchlist `frankdegods`, `blknoiz06`, `orangie`,
 etc. apparaîtront si le watcher v2 les passe en `handlesV2`.
 
+### Phase 6G-bis — GMGN Apify KOL wallets (2026-04-11)
+
+**Source** : GMGN KOL Monitor, export Apify April 2026. 38 handles
+Twitter taggués `kol` sur GMGN avec leur wallet Solana principal.
+
+**Fichier livré** : `src/scripts/seed/gmgnApifyWallets.ts`
+- Même pattern que `phase6gWallets.ts` (3 sources) mais simplifié sur
+  une seule source SOL.
+- Dédup sur `(kolHandle, address)` uniquement (pas sur `chain`) pour
+  attraper les cas où un même wallet serait déjà en DB via une autre
+  source SOL.
+- `attributionSource="gmgn_apify_2026"`,
+  `attributionNote="GMGN KOL Monitor — tag kol confirmé, April 2026"`,
+  `label="gmgn:kol"`.
+- Création draft de profil si absent, idempotent, fail-soft.
+- Dry-run par défaut, `SEED_GMGN=1` pour écrire.
+
+**Exécution initiale** (one-shot via script `/tmp/gmgn_seed.mts`
+temporaire, reproduit à l'identique par le script committé) :
+```
+Done: 35 créés, 3 skippés
+```
+Les 3 skips sont des handles qui avaient **déjà un wallet identique**
+en DB depuis Phase 6G :
+- `CookerFlips` → `8deJ9xe…` (seedé via `bhw_2025`)
+- `Cupseyy` → `suqh5sHt…` (seedé via `bhw_2025`)
+- `igndex` → `mW4PZB45…` (seedé via `dune_4838225`)
+
+**Cross-source overlap** — signal intéressant : 3 wallets sur 38 sont
+présents dans **au moins 2 sources community indépendantes**
+(BHW/Dune + GMGN). C'est le meilleur signal de confiance "multi-source"
+disponible aujourd'hui, à exploiter en Phase 7 pour promouvoir
+automatiquement `attributionStatus` de `review` → `confirmed` quand
+un même `(kolHandle, address)` apparaît dans ≥ 2 sources distinctes.
+
+**Validation idempotence** : ré-exécution dry-run après le seed
+one-shot renvoie :
+```
+{ inputEntries: 38, profilesCreated: 0, walletsCreated: 0,
+  walletsSkippedExisting: 38, errors: 0 }
+```
+Le script committé est donc safe à lancer à tout moment.
+
+**État DB après 6G + 6G-bis** :
+
+| Métrique | Avant 6G | Après 6G | Après 6G-bis | Δ total |
+|---|---|---|---|---|
+| `KolProfile` | 215 | 245 | **278** | +63 |
+| `KolWallet` total | 123 | 189 | **224** | +101 |
+| `KolWallet` SOL | 82 | 115 | **150** | +68 |
+| `attributionSource="gmgn_apify_2026"` | — | — | **35** | — |
+
+**Validation 6G-bis** :
+- `pnpm tsc --noEmit` : ✅ clean
+- Dry-run post-seed : ✅ 38/38 skipped (idempotent)
+- Audit DB : 278 profiles / 224 wallets / 35 GMGN-sourced
+
+**Fichiers livrés 6G-bis** :
+- **Nouveau** : `src/scripts/seed/gmgnApifyWallets.ts`
+- **Modifié** : `MIGRATION_RETAILVISION.md` (§18 — sous-section 6G-bis)
+
+**Gate déploiement 6G-bis** : aucun — 6G-bis est purement seed/data,
+aucun code routé ne change. Production déjà déployée au commit
+`1631db4` (6G) ; le seed GMGN vit en DB prod (`ep-square-band`) depuis
+son exécution one-shot.
+
