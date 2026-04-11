@@ -13,14 +13,14 @@ const COPY = {
   en: {
     GREEN:  { badge: "LOW RISK",    actions: ["Safe to interact.", "Double-check the dApp URL.", "Stay alert to future changes."] },
     ORANGE: { badge: "MEDIUM RISK", actions: ["DO NOT INTERACT (swap / sign / approve)", "AVOID BUYING OR CONNECTING", "VERIFY SOURCES (case file + explorer links)"] },
-    RED:    { badge: "HIGH RISK",   actions: ["Do NOT interact.", "Do NOT sign anything.", "Revoke all approvals now."] },
+    RED:    { badge: "DON'T BUY THIS.", actions: ["Do NOT interact.", "Do NOT sign anything.", "Revoke all approvals now."] },
     confidence: "Confidence", high: "High", medium: "Medium",
     proofs: "Top Signals", todo: "What to do now", noProof: "Awaiting evidence",
   },
   fr: {
     GREEN:  { badge: "RISQUE FAIBLE",  actions: ["Sûr à utiliser.", "Vérifie l'URL du dApp.", "Surveille les changements futurs."] },
     ORANGE: { badge: "RISQUE MOYEN",   actions: ["Utilise un wallet jetable.", "Teste avec un petit montant.", "Révoque les approvals après."] },
-    RED:    { badge: "RISQUE ÉLEVÉ",   actions: ["N'interagis PAS.", "Ne signe RIEN.", "Révoque tout immédiatement."] },
+    RED:    { badge: "N'ACHETEZ PAS.",  actions: ["N'interagis PAS.", "Ne signe RIEN.", "Révoque tout immédiatement."] },
     confidence: "Confiance", high: "Élevée", medium: "Moyenne",
     proofs: "Signaux principaux", todo: "À faire maintenant", noProof: "En attente de preuves",
   },

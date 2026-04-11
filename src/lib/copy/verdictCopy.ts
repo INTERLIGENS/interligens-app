@@ -56,9 +56,9 @@ const COPY: Record<VerdictTier, Record<VerdictLang, VerdictCopy>> = {
   RED: {
     fr: {
       label: "ÉVITER",
-      subtitle: "Schémas à haut risque détectés. Évite toute interaction.",
+      subtitle: "N'ACHETEZ PAS. Schémas à haut risque détectés. Évite toute interaction.",
       actions: [
-        "N'achète pas. Ne connecte pas ton wallet.",
+        "STOP. N'achète pas. Ne connecte pas ton wallet.",
         "Si tu as déjà interagi, arrête-toi et consulte le dossier.",
         "Sauvegarde le rapport — tu pourrais en avoir besoin comme preuve.",
       ],
@@ -66,9 +66,9 @@ const COPY: Record<VerdictTier, Record<VerdictLang, VerdictCopy>> = {
     },
     en: {
       label: "AVOID",
-      subtitle: "High-risk patterns detected. Avoid interaction.",
+      subtitle: "DON'T BUY THIS. High-risk patterns detected. Avoid interaction.",
       actions: [
-        "Do not buy. Do not connect your wallet.",
+        "STOP. Do not buy. Do not connect your wallet.",
         "If you already interacted, stop and review the case file.",
         "Save the report — you may need proof later.",
       ],

@@ -146,8 +146,66 @@ export default function CharterEN() {
           </div>
         </Section>
 
-        {/* ═══ 4. BEFORE YOU BUY ═══ */}
-        <Section eyebrow="04 — Discipline" title="What to do before you buy">
+        {/* ═══ 4. HOW THEY TALK ═══ */}
+        <Section eyebrow="04 — Callers" title="How they talk. What it really means.">
+          <p className="text-sm text-zinc-400 leading-relaxed mb-8">
+            Coordinated influencers don&apos;t say <em>buy</em>. They make you feel
+            you&apos;re missing something. The vocabulary changes every two years —
+            the goal stays the same: get you to act before you think.
+          </p>
+
+          <div className="mb-8">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 mb-3 font-mono">
+              A. The old language (2020 — 2023)
+            </div>
+            <ul className="space-y-2.5">
+              <Phrase quote="NFA but this is going to 10x" mean="Covers them legally. Pushes you anyway." />
+              <Phrase quote="Aping in" mean="Group FOMO. Switches off the part of your brain that thinks." />
+              <Phrase quote="This is the play" mean="Manufactures certainty where there is none." />
+              <Phrase quote="Ser this is early" mean="Urgency plus fake complicity. You&apos;re late, hurry up." />
+              <Phrase quote="Gonna be huge, trust" mean="No proof. Pure manipulation." />
+            </ul>
+          </div>
+
+          <div className="mb-8">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 mb-3 font-mono">
+              B. The 2026 language (more implicit, more coded)
+            </div>
+            <ul className="space-y-2.5">
+              <Phrase quote="🐯🚀" mean="Emoji only, no text. Their followers already know what to do — they don&apos;t need to convince you." />
+              <Phrase quote="Community vibes are immaculate rn" mean="Atmosphere over substance." />
+              <Phrase quote="I&apos;m not saying buy but..." mean="Plausible deniability plus hype." />
+              <Phrase quote="[chart screenshot]" mean="No context. Manufactured visual proof." />
+              <Phrase quote="Paying attention to [TOKEN] 👀" mean="Implies without saying." />
+              <Phrase quote="[mass coordinated replies]" mean="Fake organic. Same window, same words." />
+              <Phrase quote="The narrative is shifting" mean="Urgency without proof." />
+              <Phrase quote="GM $TOKEN" mean="Pump dressed up as a greeting." />
+              <Phrase quote='Thread: "alpha leak"' mean="Plays on exclusivity and secrecy." />
+              <Phrase quote="I got in early, not financial advice" mean="Hype plus legal cover." />
+            </ul>
+          </div>
+
+          <div className="mb-2">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 mb-3 font-mono">
+              C. What it triggers in you
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FlagCard title="FOMO" body="Fear of missing out. The single most expensive feeling in retail crypto." />
+              <FlagCard title="Belonging" body='Feeling you&apos;re "in the circle." You&apos;re not. You&apos;re the exit.' />
+              <FlagCard title="Urgency" body="Act now, think later. The whole point of the script." />
+              <FlagCard title="Critical override" body='"Everyone is doing it, so it must be safe." This is how scams scale.' />
+            </div>
+          </div>
+
+          <Callout>
+            They&apos;re not saying <em>buy</em> anymore. They&apos;re making you feel
+            you&apos;re missing something. One emoji, no text — their followers
+            already know. You&apos;re not in the circle. You&apos;re the exit.
+          </Callout>
+        </Section>
+
+        {/* ═══ 5. BEFORE YOU BUY ═══ */}
+        <Section eyebrow="05 — Discipline" title="What to do before you buy">
           <p className="text-sm text-zinc-400 leading-relaxed mb-8">
             A short discipline that prevents most retail losses. Five steps. Memorize them.
           </p>
@@ -171,8 +229,8 @@ export default function CharterEN() {
           </ol>
         </Section>
 
-        {/* ═══ 5. IF YOU ALREADY BOUGHT ═══ */}
-        <Section eyebrow="05 — Damage control" title="If you already bought">
+        {/* ═══ 6. IF YOU ALREADY BOUGHT ═══ */}
+        <Section eyebrow="06 — Damage control" title="If you already bought">
           <p className="text-sm text-zinc-400 leading-relaxed mb-8">
             A lot of people arrive here too late. That&apos;s OK. Calm steps work better than panic.
             This isn&apos;t financial advice — it&apos;s damage control.
@@ -195,10 +253,16 @@ export default function CharterEN() {
               If you already gave approvals to a sketchy contract, revoke them and migrate your remaining funds to a fresh wallet.
             </Step>
           </ol>
+
+          <div className="mt-6 px-4 py-4 border-l-2 border-red-500/70 bg-red-500/[0.06]">
+            <p className="text-sm font-black uppercase tracking-[0.08em] text-red-400 leading-snug">
+              You&apos;re exit liquidity if you buy here.
+            </p>
+          </div>
         </Section>
 
-        {/* ═══ 6. RETAIL LEXICON ═══ */}
-        <Section eyebrow="06 — Lexicon" title="Words you'll see, in plain English">
+        {/* ═══ 7. RETAIL LEXICON ═══ */}
+        <Section eyebrow="07 — Lexicon" title="Words you'll see, in plain English">
           <p className="text-sm text-zinc-400 leading-relaxed mb-8">
             The crypto vocabulary is dense. Here&apos;s what the words actually mean.
           </p>
@@ -320,6 +384,17 @@ function Term({ word, children }: { word: string; children: React.ReactNode }) {
       <dt className="text-[12px] font-black uppercase tracking-wider text-[#F85B05]">{word}</dt>
       <dd className="text-sm text-zinc-400 leading-relaxed">{children}</dd>
     </div>
+  );
+}
+
+function Phrase({ quote, mean }: { quote: string; mean: string }) {
+  return (
+    <li className="rounded-lg border border-zinc-800/80 bg-zinc-900/30 px-4 py-3">
+      <div className="text-[13px] font-bold text-zinc-100 italic mb-1">&ldquo;{quote}&rdquo;</div>
+      <div className="text-xs text-zinc-500 leading-relaxed">
+        <span className="text-[#F85B05] font-black mr-1.5">→</span>{mean}
+      </div>
+    </li>
   );
 }
 
