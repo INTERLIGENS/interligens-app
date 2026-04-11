@@ -16,6 +16,7 @@ import { DEMO_PRESETS, type DemoScenario } from "@/lib/demo/presets";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
 import MarketContext from "@/components/market/MarketContext";
+import TokenPicker, { type TokenCandidate } from "@/components/scan/TokenPicker";
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
@@ -202,6 +203,11 @@ export default function TigerScanPageFR() {
   const [showEvidence, setShowEvidence] = useState(false);
   const [corrobData, setCorrobData] = useState<any>(null);
   const [addressLabel, setAddressLabel] = useState<any>(null);
+  const [tickerState, setTickerState] = useState<{
+    query: string
+    candidates: TokenCandidate[]
+    loading: boolean
+  } | null>(null);
   const [error, setError]               = useState<string | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
@@ -296,6 +302,56 @@ export default function TigerScanPageFR() {
   }, [mockMode]);
 
 
+
+  const looksLikeTicker = (raw: string): string | null => {
+    const v = raw.trim()
+    if (!v) return null
+    if (detectChain(v)) return null
+    const m = v.match(/^\$?([A-Za-z0-9]{2,12})$/)
+    if (!m) return null
+    return m[1].toUpperCase()
+  }
+
+  const formatAddressForChain = (addr: string, c: TokenCandidate['chain']): string => {
+    if (c === 'BSC') return 'bsc:' + addr
+    if (c === 'HYPER') return 'hyper:' + addr
+    return addr
+  }
+
+  const handleScanSubmit = async () => {
+    const raw = address.trim()
+    const ticker = looksLikeTicker(raw)
+    if (!ticker) {
+      setTickerState(null)
+      runScan()
+      return
+    }
+    setTickerState({ query: ticker, candidates: [], loading: true })
+    setError(null)
+    try {
+      const r = await fetch('/api/scan/resolve?ticker=' + encodeURIComponent(ticker), { cache: 'no-store' })
+      const data = await r.json()
+      const results: TokenCandidate[] = Array.isArray(data?.results) ? data.results : []
+      if (results.length === 1) {
+        setTickerState(null)
+        const c = results[0]
+        const formatted = formatAddressForChain(c.address, c.chain)
+        setAddress(formatted)
+        runScan(formatted)
+        return
+      }
+      setTickerState({ query: ticker, candidates: results, loading: false })
+    } catch {
+      setTickerState({ query: ticker, candidates: [], loading: false })
+    }
+  }
+
+  const handleTickerPick = (c: TokenCandidate) => {
+    const formatted = formatAddressForChain(c.address, c.chain)
+    setAddress(formatted)
+    setTickerState(null)
+    runScan(formatted)
+  }
 
   const runScan = async (overrideAddr?: string, overrideMock?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
@@ -466,7 +522,7 @@ export default function TigerScanPageFR() {
           <div className="absolute -inset-1 bg-gradient-to-r from-[#F85B05] to-orange-900 rounded-2xl blur-lg opacity-20 animate-pulse" />
 
           <form
-            onSubmit={(e) => { e.preventDefault(); runScan(); }}
+            onSubmit={(e) => { e.preventDefault(); handleScanSubmit(); }}
             className="relative bg-[#0A0A0A] border border-zinc-800 rounded-xl p-2 flex flex-col md:flex-row gap-2 shadow-2xl"
           >
             <div className="flex-1 flex items-center px-4 gap-3 overflow-hidden">
@@ -474,8 +530,8 @@ export default function TigerScanPageFR() {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Paste wallet address (SOL / ETH / TRON)..."
-                onKeyDown={(e) => { if (e.key === "Enter") runScan(); }}
+                placeholder="Colle une adresse ou tape un $TICKER (SOL, ETH, BSC, TRON, HYPER)"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScanSubmit(); } }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
               />
               {/* ── Single badge, only when chain is detected ── */}
@@ -515,6 +571,17 @@ export default function TigerScanPageFR() {
               <span className="text-xs font-bold text-red-400">{error.length > 120 ? 'Analyse échouée — réessayez.' : error}</span>
               <button onClick={() => runScan()} className="text-[10px] font-black text-white uppercase hover:underline underline-offset-4">Réessayer</button>
             </div>
+          )}
+
+          {tickerState && (
+            <TokenPicker
+              query={tickerState.query}
+              candidates={tickerState.candidates}
+              loading={tickerState.loading}
+              locale="fr"
+              onPick={handleTickerPick}
+              onClose={() => setTickerState(null)}
+            />
           )}
         </div>
 
