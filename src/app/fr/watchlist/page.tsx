@@ -237,7 +237,10 @@ function WatchCard({
       style={{ borderLeft: `3px solid ${priorityColor}` }}
     >
       {/* ─── NIVEAU 1 ──────────────────────────── */}
-      <div className="p-4 sm:p-5">
+      <div
+        className={`p-4 sm:p-5 ${!isOpen ? 'cursor-pointer' : ''}`}
+        onClick={!isOpen ? onToggle : undefined}
+      >
         <div className="flex items-start gap-4">
           <div className="shrink-0 w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-[#F85B05] font-black text-base">
             {initial}
@@ -312,6 +315,7 @@ function WatchCard({
               href={`https://x.com/${e.handle}`}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(ev) => ev.stopPropagation()}
               className="text-[10px] text-zinc-600 hover:text-zinc-300 font-mono no-underline"
             >
               Voir sur X →
