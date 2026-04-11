@@ -47,7 +47,7 @@ const WHY_LINE: Record<string, string> = {
   package_deal_caller: "Sells calls as a package — paid by the project.",
   tier2_caller: "Pushes tokens. Vague disclosures. Common dumps.",
   paid_multi_post: "Multiple paid posts on the same coin in a short window.",
-  interligens_case: "Documented in an INTERLIGENS investigation.",
+  interligens_case: "INTERLIGENS investigators have a case open on this one.",
   community_callout: "Community has flagged repeated harmful behavior.",
   memescope_monday: "Recurring memescope caller. Watch the timing.",
   video_promo_undisclosed: "Video promotion. No sponsorship disclosed.",
@@ -59,7 +59,7 @@ const WHY_LINE: Record<string, string> = {
 const DEFAULT_WHY = "Pushes tokens, sells before the crash."
 
 const FLAG_LINE: Record<string, string> = {
-  REPEATED_CASHOUT: "Same cash-out pattern, again and again",
+  REPEATED_CASHOUT: "Cashes out the same way every cycle",
   MULTI_HOP_TRANSFER: "Hides the money trail through multi-hop transfers",
   CROSS_CASE_RECURRENCE: "Reappears across several investigations",
   MULTI_LAUNCH_LINKED: "Linked to several token launches",
@@ -169,12 +169,27 @@ export default function WatchlistPage() {
             </button>
           ))}
           <div className="flex-1" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search handle or $TICKER…"
-            className="bg-zinc-900/60 border border-zinc-800 rounded-md px-3 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 font-mono outline-none focus:border-[#F85B05]/50 w-56"
-          />
+          <div className="relative w-64">
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search handle or $TICKER…"
+              className="w-full bg-zinc-900/80 border border-zinc-700/80 rounded-md pl-8 pr-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-500 font-mono outline-none focus:border-[#F85B05]/60 focus:bg-zinc-900 transition-colors"
+            />
+          </div>
         </div>
 
         {/* ═══ LIST ═══ */}
@@ -253,7 +268,7 @@ function WatchCard({
                 </span>
               )}
               <span className="text-[10px] font-mono text-zinc-600 hidden sm:inline">
-                · Under INTERLIGENS surveillance
+                · INTERLIGENS is watching
               </span>
             </div>
 
@@ -302,19 +317,23 @@ function WatchCard({
           </div>
 
           {/* Right CTA */}
-          <div className="shrink-0 flex flex-col items-end gap-1.5">
+          <div className="shrink-0 flex flex-col items-end gap-2 self-center">
             <button
               type="button"
               onClick={onToggle}
-              className="text-[10px] font-black uppercase tracking-[0.15em] text-[#F85B05] font-mono whitespace-nowrap hover:underline"
+              className={`text-[10px] font-black uppercase tracking-[0.15em] font-mono whitespace-nowrap px-2.5 py-1.5 rounded-md border transition-colors ${
+                isOpen
+                  ? 'border-[#F85B05]/60 bg-[#F85B05]/10 text-[#F85B05]'
+                  : 'border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-[#F85B05]/50 hover:text-[#F85B05]'
+              }`}
             >
-              {isOpen ? 'Close ▲' : 'Details ▾'}
+              {isOpen ? 'Close ▴' : 'Details ▾'}
             </button>
             <a
               href={`https://x.com/${e.handle}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[10px] text-zinc-600 hover:text-zinc-300 font-mono no-underline"
+              className="text-[10px] text-zinc-600 hover:text-zinc-300 font-mono no-underline px-2.5"
             >
               Open on X →
             </a>
