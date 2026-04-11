@@ -384,6 +384,10 @@ function WatchCard({
             </div>
           )}
 
+          {/* Historique wallet */}
+          <WalletHistorySection handle={e.handle} isOpen={isOpen} labelText="Tous les tokens touchés" emptyText="Pas d'historique on-chain disponible" />
+
+
           {/* Liens */}
           <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
             {e.isPublished ? (
@@ -420,6 +424,94 @@ function WatchCard({
         </div>
       )}
     </li>
+  )
+}
+
+/* ── historique wallet ─────────────────────────────────── */
+
+interface WalletToken {
+  mint: string
+  symbol: string | null
+  name: string | null
+  lastSeen: number
+  txCount: number
+}
+
+function relTime(ts: number): string {
+  const diff = Date.now() - ts
+  const m = Math.floor(diff / 60_000)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h`
+  const d = Math.floor(h / 24)
+  if (d < 30) return `${d}j`
+  const mo = Math.floor(d / 30)
+  if (mo < 12) return `${mo}mo`
+  return `${Math.floor(mo / 12)}a`
+}
+
+function WalletHistorySection({
+  handle,
+  isOpen,
+  labelText,
+  emptyText,
+}: {
+  handle: string
+  isOpen: boolean
+  labelText: string
+  emptyText: string
+}) {
+  const [loading, setLoading] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [tokens, setTokens] = useState<WalletToken[]>([])
+  const [errored, setErrored] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen || loaded || loading) return
+    setLoading(true)
+    fetch(`/api/kol/${encodeURIComponent(handle)}/wallet-history`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.error) setErrored(true)
+        setTokens(Array.isArray(d?.tokens) ? d.tokens : [])
+      })
+      .catch(() => setErrored(true))
+      .finally(() => {
+        setLoading(false)
+        setLoaded(true)
+      })
+  }, [isOpen, loaded, loading, handle])
+
+  return (
+    <div className="mb-5">
+      <div className="text-[9px] font-black uppercase tracking-[0.18em] text-[#666] font-mono mb-2">
+        {labelText}
+      </div>
+      {loading ? (
+        <div className="space-y-1.5">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-4 rounded bg-[#1A1A1A] animate-pulse" />
+          ))}
+        </div>
+      ) : tokens.length === 0 || errored ? (
+        <div className="text-[11px] font-mono text-[#555]">{emptyText}</div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {tokens.slice(0, 20).map(t => (
+            <span
+              key={t.mint}
+              className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded"
+              style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.10)' }}
+              title={t.name ?? t.mint}
+            >
+              <span className="font-black">${t.symbol ?? t.mint.slice(0, 4)}</span>
+              <span className="text-[9px] text-zinc-500">{relTime(t.lastSeen)}</span>
+              <span className="text-[9px] text-zinc-600">·{t.txCount}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
