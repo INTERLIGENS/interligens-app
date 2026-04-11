@@ -12,6 +12,9 @@ interface WalletOutflow {
   when: Date;
 }
 
+const MS_DAY = 24 * 3600 * 1000;
+const WINDOW_DAYS_MAX = 365;
+
 interface WalletResult {
   walletId: string;
   handle: string;
@@ -51,17 +54,26 @@ export async function GET(req: NextRequest) {
       continue;
     }
     try {
-      const outflows = await fetchOutflows24h(chain, w.address);
-      const sumUsd = outflows.reduce((s, o) => s + o.amountUsd, 0);
+      const outflows = await fetchOutflowsWindow(chain, w.address, WINDOW_DAYS_MAX);
+      const now = Date.now();
+      let sum24h = 0, sum7d = 0, sum30d = 0, sum365d = 0;
+      for (const o of outflows) {
+        const ageMs = now - o.when.getTime();
+        if (ageMs < 0) continue;
+        if (ageMs <= 1 * MS_DAY)   sum24h += o.amountUsd;
+        if (ageMs <= 7 * MS_DAY)   sum7d  += o.amountUsd;
+        if (ageMs <= 30 * MS_DAY)  sum30d += o.amountUsd;
+        if (ageMs <= 365 * MS_DAY) sum365d += o.amountUsd;
+      }
       const bucket = perHandle.get(w.kolHandle) ?? { amount24h: 0, amount7d: 0, amount30d: 0, amount365d: 0 };
-      bucket.amount24h += sumUsd;
-      bucket.amount7d  += sumUsd;
-      bucket.amount30d += sumUsd;
-      bucket.amount365d += sumUsd;
+      bucket.amount24h  += sum24h;
+      bucket.amount7d   += sum7d;
+      bucket.amount30d  += sum30d;
+      bucket.amount365d += sum365d;
       perHandle.set(w.kolHandle, bucket);
       results.push({
         walletId: w.id, handle: w.kolHandle, chain, address: w.address,
-        outflows: outflows.length, outflowUsd24h: sumUsd,
+        outflows: outflows.length, outflowUsd24h: sum24h,
       });
     } catch (err) {
       results.push({
@@ -101,8 +113,8 @@ function normalizeChain(raw: string): Chain | null {
   return null;
 }
 
-async function fetchOutflows24h(chain: Chain, address: string): Promise<WalletOutflow[]> {
-  const since = Date.now() - 24 * 3600 * 1000;
+async function fetchOutflowsWindow(chain: Chain, address: string, days: number): Promise<WalletOutflow[]> {
+  const since = Date.now() - days * MS_DAY;
   if (chain === "SOL") return fetchSolanaOutflows(address, since);
   if (chain === "ETH") return fetchEtherscanOutflows(address, since, "ETH");
   if (chain === "BSC") return fetchEtherscanOutflows(address, since, "BSC");

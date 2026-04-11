@@ -54,8 +54,16 @@ async function scanAll() {
       const detection = detectSignals(tweet.text);
       if (!shouldKeep(detection, 20)) continue;
 
+      // Dedup via the real composite unique key (postId, influencerId).
+      // Legacy rows have dedupKey=NULL so a dedupKey-only lookup misses them
+      // and the subsequent create() would collide on (postId, influencerId).
+      // Select only `id` to bypass any field-level decode quirks on legacy
+      // rows (e.g. `detectedTokens` jsonb→String coercion in pooled prod).
       const dedupKey = `${tweet.id}:${handle}`;
-      const existing = await prisma.socialPostCandidate.findUnique({ where: { dedupKey } });
+      const existing = await prisma.socialPostCandidate.findUnique({
+        where: { postId_influencerId: { postId: tweet.id, influencerId } },
+        select: { id: true },
+      });
       if (existing) { stats.skipped++; continue; }
 
       await prisma.socialPostCandidate.create({

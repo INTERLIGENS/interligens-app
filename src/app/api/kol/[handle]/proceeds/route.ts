@@ -18,7 +18,9 @@ export async function GET(
         "largestEventUsd", "largestEventDate",
         "walletCount", "caseCount", "eventCount",
         confidence, "methodologyVersion", "computedAt",
-        "coverageStatus", "coverageNote", "pricingQuality"
+        "coverageStatus", "coverageNote", "pricingQuality",
+        "rolling24hUsd", "rolling7dUsd", "rolling30dUsd", "rolling365dUsd",
+        "lastFlowComputedAt"
       FROM "KolProceedsSummary"
       WHERE "kolHandle" = ${handle}
       AND "reviewStatus" = 'published'
@@ -30,6 +32,7 @@ export async function GET(
     }
 
     const s = summary[0];
+    const toNum = (v: any) => (v == null ? 0 : Number(v));
     return NextResponse.json({
       found: true,
       handle,
@@ -50,6 +53,13 @@ export async function GET(
       coverageStatus: s.coverageStatus,
       coverageNote: s.coverageNote ?? null,
       pricingQuality: s.pricingQuality ?? null,
+      summary: {
+        rolling24hUsd: toNum(s.rolling24hUsd),
+        rolling7dUsd: toNum(s.rolling7dUsd),
+        rolling30dUsd: toNum(s.rolling30dUsd),
+        rolling365dUsd: toNum(s.rolling365dUsd),
+        lastFlowComputedAt: s.lastFlowComputedAt ?? null,
+      },
     });
   } catch (err: any) {
     console.error("[proceeds/public]", err);

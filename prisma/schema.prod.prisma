@@ -1308,6 +1308,7 @@ model KolTokenInvolvement {
   retailLossEstimateUsd Decimal? @db.Decimal(20, 2)
   isPromoted            Boolean  @default(false)
   isFundedByProject     Boolean  @default(false)
+  isFrontRun            Boolean  @default(false)
   projectFundingEdgeId  String?
   launchMetricId        String?
   lastComputedAt        DateTime?

@@ -48,6 +48,30 @@ export function tigerScoreToLabel(score: number): TierLabel {
   };
 }
 
+/**
+ * Front-running aware sell-delay label.
+ * - isFrontRun=true wins over any delay (KOL sold before publishing the promo)
+ * - delay < 360 minutes (6h) → hours phrasing
+ * - delay >= 360 minutes → days phrasing
+ */
+export function frontRunToLabel(
+  isFrontRun: boolean,
+  avgDumpDelayMinutes: number | null | undefined
+): string {
+  if (isFrontRun) {
+    return "🚨 A vendu AVANT son tweet de promotion — front-running détecté";
+  }
+  if (!avgDumpDelayMinutes || avgDumpDelayMinutes <= 0) {
+    return "délai de vente inconnu";
+  }
+  if (avgDumpDelayMinutes < 360) {
+    const hours = Math.max(1, Math.round(avgDumpDelayMinutes / 60));
+    return `⚠️ A vendu ${hours}h après son tweet`;
+  }
+  const days = Math.max(1, Math.round(avgDumpDelayMinutes / (60 * 24)));
+  return `Il a vendu ${days} jours après sa promotion`;
+}
+
 export function dumpDelayToLabel(minutes: number): string {
   if (!minutes || minutes <= 0) return "délai de vente inconnu";
   if (minutes < 60) {
@@ -66,10 +90,63 @@ export function proceedsToLabel(usd: number): string {
   return `il s'est fait ${formatUsd(usd)} sur des projets douteux`;
 }
 
-export function concentrationToLabel(pct: number): string {
-  if (pct == null || Number.isNaN(pct)) return "";
-  const rounded = Math.round(pct * 10) / 10;
-  return `${rounded}% du token dans 3 wallets au lancement`;
+export function concentrationToLabel(
+  score: number | null | undefined,
+  top3Pct?: number | null
+): string {
+  if (score == null || Number.isNaN(score)) return "";
+  if (score >= 80) {
+    const pct = top3Pct != null && !Number.isNaN(top3Pct)
+      ? `${Math.round(top3Pct * 10) / 10}%`
+      : "la majorité";
+    return `⚠️ 3 wallets contrôlaient ${pct} du token au lancement`;
+  }
+  if (score >= 50) {
+    return "Distribution moyenne au lancement";
+  }
+  return "Distribution correcte au lancement";
+}
+
+/**
+ * Coordination label — fires when Bubblemaps detects that KOL wallets
+ * and/or linked wallets controlled a significant slice of the token at
+ * launch. `linkedPct` is the aggregated top-10 supply share (0-100).
+ * Under 20% we consider the signal too weak for retail display.
+ */
+export function coordinationToLabel(
+  linkedPct: number | null | undefined
+): string {
+  if (linkedPct == null || Number.isNaN(linkedPct) || linkedPct < 20) return "";
+  const pct = Math.round(linkedPct);
+  return `⚠️ Des wallets liés contrôlaient ${pct}% du token au lancement`;
+}
+
+/**
+ * RugCheck-derived label for a token's launch setup. Produces a single
+ * short sentence. Priority (strongest signal wins):
+ *   1. isSerialRugger  → creator has a rug history
+ *   2. hasInsiders     → insider wallets detected at launch
+ *   3. score >= 80     → toxic setup
+ *   4. score 50..79    → suspect
+ *   5. score < 50      → acceptable
+ *
+ * Null/undefined score with no other signal → empty string.
+ */
+export function rugcheckToLabel(
+  score: number | null | undefined,
+  hasInsiders: boolean,
+  isSerialRugger: boolean
+): string {
+  if (isSerialRugger) {
+    return "🚨 Créateur déjà impliqué dans d'autres arnaques";
+  }
+  if (hasInsiders) {
+    return "⚠️ Wallets insiders détectés au lancement";
+  }
+  if (score == null || Number.isNaN(score)) return "";
+  if (score >= 80) return "Token dangereux — setup de lancement toxique";
+  if (score >= 50) return "Token suspect — vérification recommandée";
+  return "Setup de lancement acceptable";
 }
 
 export function rollingProceedsLabel(

@@ -21,6 +21,7 @@ import { rpcCall } from "@/lib/rpc";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBad } from "@/lib/entities/knownBad";
+import { buildKolAlertSafe } from "@/lib/kol/alert";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,10 @@ export async function POST(request: NextRequest) {
         ? await computeFromAdapter(chain, address, request)
         : await computeFromEngine(chain, address);
 
+    // KOL alert — additive, always present, fail-soft to { hasAlert: false }.
+    // Direct module call (no HTTP self-fetch) — see src/lib/kol/alert.ts.
+    const kolAlert = await buildKolAlertSafe(chain, address);
+
     return NextResponse.json({
       address,
       chain,
@@ -95,6 +100,7 @@ export async function POST(request: NextRequest) {
       drivers: tiger.drivers,
       confidence: tiger.confidence,
       scannedAt: new Date().toISOString(),
+      kolAlert,
     });
   } catch (err: any) {
     console.error(`[mobile/scan] chain=${chain} address=${address} error=`, err?.message);
