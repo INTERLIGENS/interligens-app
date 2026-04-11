@@ -24,6 +24,7 @@ import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
+import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -586,10 +587,9 @@ export default function TigerScanPageFR() {
         <div className="relative">
           <div style={{ opacity: loading ? 1 : 0, transition: "opacity 250ms ease-out", pointerEvents: loading ? "auto" : "none" }}>
             {loading && (
-              <>
-                <p className="text-center text-[11px] font-black uppercase tracking-[0.3em] text-[#F85B05] mb-4 animate-pulse">{SCAN_STEPS[loadStep] ?? 'Analyse…'}</p>
-                <ScanSkeleton />
-              </>
+              <div className="mb-4">
+                <ScanLoadingSteps locale="fr" />
+              </div>
             )}
           </div>
 

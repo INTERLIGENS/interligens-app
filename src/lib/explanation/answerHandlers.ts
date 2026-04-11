@@ -11,35 +11,210 @@ function noData(intent: ChipIntent, locale: Locale): AnswerBlock {
   return { title: title(intent, locale), body: INSUFFICIENT_DATA[locale] }
 }
 
+// ── Data-driven WHY bullet builder ────────────────────────────────────────────
+// Reads typed fields from the summary AND scans topReasons strings for known
+// driver keywords. Emits at most 3 unique, data-specific bullets. Each bullet
+// key (`kind`) can only fire once so we never repeat "liquidity" twice.
+
+type BulletKind =
+  | 'intel_vault'
+  | 'recidivism'
+  | 'deployer'
+  | 'concentration'
+  | 'liquidity'
+  | 'exit_security'
+  | 'pump_like'
+  | 'known_bad'
+  | 'launderer'
+  | 'cluster'
+  | 'reason_generic'
+
+interface Bullet {
+  kind: BulletKind
+  text: string
+}
+
+function fmtPct(n: number): string {
+  return (Math.round(n * 10) / 10).toString() + '%'
+}
+
+function reasonsBlob(summary: AnalysisSummary): string {
+  // Concat topReasons + proofSnippets to run cheap keyword checks.
+  const parts: string[] = []
+  for (const r of summary.topReasons ?? []) parts.push(r)
+  for (const p of summary.proofSnippets ?? []) parts.push(p)
+  return parts.join(' \u00b7 ').toLowerCase()
+}
+
+function buildWhyBullets(summary: AnalysisSummary, locale: Locale): string[] {
+  const blob = reasonsBlob(summary)
+  const bullets: Bullet[] = []
+  const seen = new Set<BulletKind>()
+
+  const push = (kind: BulletKind, en: string, fr: string) => {
+    if (seen.has(kind) || bullets.length >= 3) return
+    seen.add(kind)
+    bullets.push({ kind, text: locale === 'fr' ? fr : en })
+  }
+
+  // 1. Intel Vault match — strongest signal
+  if (summary.intelVaultMatches && summary.intelVaultMatches > 0) {
+    const n = summary.intelVaultMatches
+    push(
+      'intel_vault',
+      `Appears in ${n} INTERLIGENS investigation source${n > 1 ? 's' : ''}.`,
+      `Présent dans ${n} source${n > 1 ? 's' : ''} d'enquête INTERLIGENS.`
+    )
+  }
+
+  // 2. Known-bad actor keyword in drivers
+  if (/known.?bad|black.?list|flagged.?actor|acteur.?connu|liste.?noire/.test(blob)) {
+    push(
+      'known_bad',
+      'Linked to an actor already documented in our case files.',
+      'Lié à un acteur déjà documenté dans nos dossiers.'
+    )
+  }
+
+  // 3. Recidivism flag — same actors, multiple projects
+  if (summary.recidivismFlag) {
+    push(
+      'recidivism',
+      'Same actors tied to other flagged projects — repeating pattern.',
+      'Mêmes acteurs liés à d\u0027autres projets signalés — pattern récurrent.'
+    )
+  }
+
+  // 4. Deployer risk
+  if (summary.deployerRisk === 'HIGH') {
+    push(
+      'deployer',
+      'The wallet that launched this token has a flagged history.',
+      'Le wallet qui a lancé ce token a un historique signalé.'
+    )
+  } else if (summary.deployerRisk === 'MEDIUM') {
+    push(
+      'deployer',
+      'The launching wallet has questionable history — not clean.',
+      'Le wallet de lancement a un historique douteux — pas propre.'
+    )
+  }
+
+  // 5. Laundry trail / cluster risk from keywords
+  if (/laundry|laundering|mix(er|ed)|tornado|peel.?chain|blanchiment/.test(blob)) {
+    push(
+      'launderer',
+      'Funds routed through laundering patterns (mixer or peel chains).',
+      'Fonds routés via des patterns de blanchiment (mixer ou peel chain).'
+    )
+  }
+  if (/cluster|co.?funded|shared.?wallet|wallet.?farm|cluster.?risque/.test(blob)) {
+    push(
+      'cluster',
+      'This wallet is clustered with others we already track.',
+      'Ce wallet est regroupé avec d\u0027autres wallets déjà sous surveillance.'
+    )
+  }
+
+  // 6. Holder concentration
+  if (typeof summary.holderConcentration === 'number' && summary.holderConcentration >= 60) {
+    const pct = fmtPct(summary.holderConcentration)
+    push(
+      'concentration',
+      `${pct} of supply sits in very few wallets — dump risk is high.`,
+      `${pct} de l\u0027offre est dans très peu de wallets — gros risque de dump.`
+    )
+  }
+
+  // 7. Liquidity risk
+  if (summary.liquidityRisk === 'HIGH' || /no.?liquid|low.?liquid|pas.?de.?liquid|liquidité.?faible/.test(blob)) {
+    push(
+      'liquidity',
+      'Liquidity is too thin — selling at a fair price may be impossible.',
+      'Liquidité trop faible — vendre à un prix correct peut être impossible.'
+    )
+  } else if (summary.liquidityRisk === 'MEDIUM') {
+    push(
+      'liquidity',
+      'Liquidity is thin — expect slippage on larger trades.',
+      'Liquidité faible — attendez-vous à du slippage sur les gros trades.'
+    )
+  }
+
+  // 8. Pump.fun / pump-like token
+  if (/pump\.?fun|pump.?like|launch.?pad|fresh.?launch/.test(blob)) {
+    push(
+      'pump_like',
+      'Fresh pump-style launch — the pattern we see before coordinated exits.',
+      'Lancement pump-style récent — pattern typique d\u0027une sortie coordonnée.'
+    )
+  }
+
+  // 9. Exit security flags (honeypot, mintable, tax, blacklist)
+  if (summary.exitSecurityFlags && summary.exitSecurityFlags.length > 0) {
+    const flags = summary.exitSecurityFlags.slice(0, 2).join(', ')
+    push(
+      'exit_security',
+      `Exit security red flags: ${flags}.`,
+      `Alertes de sortie : ${flags}.`
+    )
+  }
+
+  // 10. Fallback — pick remaining topReasons until we have 3
+  if (bullets.length < 3 && summary.topReasons && summary.topReasons.length > 0) {
+    for (const r of summary.topReasons) {
+      if (bullets.length >= 3) break
+      const txt = r.trim()
+      if (!txt) continue
+      // Skip if we already covered the same topic via a structured bullet
+      const lc = txt.toLowerCase()
+      if (
+        (seen.has('liquidity') && /liquid/.test(lc)) ||
+        (seen.has('concentration') && /holder|concentration/.test(lc)) ||
+        (seen.has('deployer') && /deploy|creator|launch.?wall/.test(lc)) ||
+        (seen.has('recidivism') && /repeat|recid|again/.test(lc)) ||
+        (seen.has('intel_vault') && /vault|investig/.test(lc))
+      ) {
+        continue
+      }
+      bullets.push({ kind: 'reason_generic', text: txt })
+    }
+  }
+
+  return bullets.map(b => b.text)
+}
+
 const handlers: Record<ChipIntent, Handler> = {
 
   why_score(summary, locale) {
-    const reasons = summary.topReasons.length > 0
-      ? summary.topReasons.slice(0, 3).map((r, i) => (i + 1) + ". " + r).join("\n")
-      : null
+    const bullets = buildWhyBullets(summary, locale)
 
-    if (locale === "fr") {
-      const intro = `Ce score de ${summary.tigerScore}/100 vient de signaux détectés directement dans les données du scan.`
-      const body = reasons ? `${intro}
-${reasons}` : `${intro} Plusieurs branches d'analyse ont contribué au résultat.`
-      return { title: title("why_score", locale), body }
+    if (bullets.length === 0) {
+      // Absolute fallback — never empty, never crash
+      const fallback = locale === 'fr'
+        ? `Score ${summary.tigerScore}/100 basé sur l\u0027analyse on-chain.`
+        : `Score ${summary.tigerScore}/100 based on on-chain analysis.`
+      return { title: title('why_score', locale), body: fallback }
     }
 
-    const intro = `This score of ${summary.tigerScore}/100 comes from signals found directly in the scan data.`
-    const body = reasons ? `${intro}
-${reasons}` : `${intro} Multiple analysis branches contributed to the result.`
-    return { title: title("why_score", locale), body }
+    const numbered = bullets.map((b, i) => (i + 1) + '. ' + b).join('\n')
+
+    if (locale === 'fr') {
+      const intro = `Score ${summary.tigerScore}/100. Voici les signaux concrets derrière ce chiffre :`
+      return { title: title('why_score', locale), body: `${intro}\n${numbered}` }
+    }
+    const intro = `Score ${summary.tigerScore}/100. Here are the specific signals behind it:`
+    return { title: title('why_score', locale), body: `${intro}\n${numbered}` }
   },
 
   top_red_flags(summary, locale) {
-    if (summary.topReasons.length === 0) return noData("top_red_flags", locale)
-    const list = summary.topReasons.slice(0, 3).map((r, i) => (i + 1) + ". " + r).join("\n")
-    if (locale === "fr") {
-      return { title: title("top_red_flags", locale), body: `Voici ce que le scan a trouvé :
-${list}` }
+    const bullets = buildWhyBullets(summary, locale)
+    if (bullets.length === 0) return noData('top_red_flags', locale)
+    const list = bullets.map((b, i) => (i + 1) + '. ' + b).join('\n')
+    if (locale === 'fr') {
+      return { title: title('top_red_flags', locale), body: `Voici ce que le scan a trouvé :\n${list}` }
     }
-    return { title: title("top_red_flags", locale), body: `Here is what the scan found:
-${list}` }
+    return { title: title('top_red_flags', locale), body: `Here is what the scan found:\n${list}` }
   },
 
   what_to_do(summary, locale) {

@@ -1,5 +1,6 @@
 'use client'
 import BetaNav from "@/components/beta/BetaNav";
+import IntelligenceOverview from "@/components/explorer/IntelligenceOverview";
 import React, { useState, useEffect, useCallback } from 'react'
 
 type Kind = '' | 'case' | 'launch'
@@ -92,12 +93,14 @@ export default function ExplorerEN() {
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px' }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>CASES &amp; LAUNCHES</div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Explorer<span style={{ color: '#F85B05' }}>.</span></h1>
+          <div style={{ color: '#FF6B00', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>SCAM INTELLIGENCE EXPLORER</div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Explorer<span style={{ color: '#FF6B00' }}>.</span></h1>
           <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8 }}>
             Documented scam cases, token launches, and connected patterns. Browse by case, not by person.
           </p>
         </div>
+
+        <IntelligenceOverview locale="en" />
 
         {/* STATS */}
         {stats && (

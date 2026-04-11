@@ -172,7 +172,7 @@ export default function KolLeaderboardEN() {
               <div>#</div>
               <div>HANDLE</div>
               <div>TIER</div>
-              <div>PROCEEDS</div>
+              <div>OBSERVED PROCEEDS</div>
               <div>EVIDENCE</div>
               <div>COMPLETE</div>
               <div>FLAGS</div>

@@ -22,6 +22,7 @@ import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
 import AnalyzingCard from "@/components/scan/AnalyzingCard";
+import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
@@ -647,7 +648,7 @@ export default function TigerScanPage() {
           {analysisStatus === "running" && (
             <div className="grid lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">
-                <AnalyzingCard locale="en" step={loadStep} />
+                <ScanLoadingSteps locale="en" />
               </div>
               <div className="lg:col-span-7">
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 h-40 animate-pulse" />

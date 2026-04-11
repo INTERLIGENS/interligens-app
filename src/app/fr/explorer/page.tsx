@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import BetaNav from '@/components/beta/BetaNav'
+import IntelligenceOverview from '@/components/explorer/IntelligenceOverview'
 
 type Kind = '' | 'case' | 'launch'
 
@@ -96,12 +97,14 @@ export default function ExplorerFR() {
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px' }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>INTELLIGENCE PUBLIQUE</div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Explorateur d'Intelligence</h1>
+          <div style={{ color: '#FF6B00', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>EXPLORATEUR DE L'INTELLIGENCE SCAM</div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Explorateur<span style={{ color: '#FF6B00' }}>.</span></h1>
           <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8 }}>
             Lancements documentes, clusters de cas et reseaux d'acteurs dans l'espace d'influence crypto.
           </p>
         </div>
+
+        <IntelligenceOverview locale="fr" />
 
         {/* STATS */}
         {stats && (
