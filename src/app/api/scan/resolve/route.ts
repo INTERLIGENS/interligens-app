@@ -56,6 +56,19 @@ function dedupeKey(c: Pick<Candidate, 'address' | 'chain'>): string {
   return c.chain + ':' + c.address.toLowerCase()
 }
 
+// Editorial seed rows sometimes use placeholder strings like "PENDING_OSINT_*"
+// when the contract address is not yet on file. These must never be returned —
+// scanning them would 500 the user. Real on-chain addresses are always
+// hex-or-base58 alphanumerics of a meaningful length.
+function isScanableAddress(addr: string, chain: ScanChain): boolean {
+  if (!addr) return false
+  if (/^PENDING/i.test(addr) || /^TBD/i.test(addr) || /^TODO/i.test(addr)) return false
+  if (chain === 'ETH' || chain === 'BSC' || chain === 'HYPER') return /^0x[a-fA-F0-9]{40}$/.test(addr)
+  if (chain === 'TRON') return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr)
+  if (chain === 'SOL') return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)
+  return false
+}
+
 function cleanTicker(raw: string | null | undefined): string {
   if (!raw) return ''
   return raw.replace(/^\$+/, '').toUpperCase().trim()
@@ -78,6 +91,7 @@ async function fetchCuratedHits(symbol: string): Promise<Candidate[]> {
     const chain = normalizeChain(r.chain)
     if (!chain) continue
     const addr = normalizeAddressForChain(r.contractAddress, chain)
+    if (!isScanableAddress(addr, chain)) continue
     const key = chain + ':' + addr.toLowerCase()
     const existing = grouped.get(key)
     if (existing) {
@@ -118,6 +132,7 @@ async function fetchMentionHits(symbol: string): Promise<Candidate[]> {
     const chain = normalizeChain(r.chain)
     if (!chain) continue
     const addr = normalizeAddressForChain(r.tokenMint, chain)
+    if (!isScanableAddress(addr, chain)) continue
     const key = chain + ':' + addr.toLowerCase()
     const existing = grouped.get(key)
     if (existing) {
@@ -186,9 +201,11 @@ async function fetchCoinGeckoHits(symbol: string): Promise<Candidate[]> {
       for (const [platform, addr] of Object.entries(detail.platforms)) {
         const chain = PLATFORM_TO_CHAIN[platform]
         if (!chain || !addr) continue
+        const normalized = normalizeAddressForChain(addr, chain)
+        if (!isScanableAddress(normalized, chain)) continue
         out.push({
           symbol: detail.symbol.toUpperCase(),
-          address: normalizeAddressForChain(addr, chain),
+          address: normalized,
           chain,
           source: 'coingecko',
           kolCount: 0,
