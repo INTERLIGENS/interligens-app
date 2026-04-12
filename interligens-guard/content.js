@@ -1,3 +1,4 @@
+console.log('INTERLIGENS Guard loaded');
 // INTERLIGENS Guard — Content Script
 // Detects DEX pages, extracts Solana mint addresses, injects score badge.
 
