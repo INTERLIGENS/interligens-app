@@ -23,6 +23,7 @@ import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
+import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
@@ -208,6 +209,7 @@ export default function TigerScanPage() {
   const [showEvidence, setShowEvidence] = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
+  const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -394,6 +396,15 @@ export default function TigerScanPage() {
     setError(null);
     setResult(null);
     setClusterResult(null);
+    setIntelSignal(null);
+
+    // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
+    fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIntelSignal(d) })
+      .catch(() => {})
 
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
     if (chain === "SOL") {
@@ -782,6 +793,7 @@ export default function TigerScanPage() {
 
               {/* ── CLUSTER RISK ── */}
               {clusterResult && <ClusterRiskBadge result={clusterResult} locale="en" />}
+              <IntelligenceBadge signal={intelSignal} locale="en" />
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
               <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>

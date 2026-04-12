@@ -274,7 +274,7 @@ function EntitiesTab() {
     if (filterType) params.set("type", filterType);
     if (filterRisk) params.set("risk", filterRisk);
     if (search) params.set("q", search);
-    const res = await fetch(`/api/intelligence/admin/entities?${params}`, {
+    const res = await fetch(`/api/admin/intelligence/entities?${params}`, {
       credentials: "include",
     });
     const json = await res.json();
@@ -641,7 +641,7 @@ function IngestionTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/intelligence/admin/batches?page=${page}`, {
+    const res = await fetch(`/api/admin/intelligence/batches?page=${page}`, {
       credentials: "include",
     });
     const json = await res.json();
@@ -770,7 +770,7 @@ function CasesTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/intelligence/admin/cases?page=${page}`, {
+    const res = await fetch(`/api/admin/intelligence/cases?page=${page}`, {
       credentials: "include",
     });
     const json = await res.json();
@@ -905,7 +905,7 @@ function AuditTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/intelligence/admin/audit?page=${page}`, {
+    const res = await fetch(`/api/admin/intelligence/audit?page=${page}`, {
       credentials: "include",
     });
     const json = await res.json();
@@ -1020,7 +1020,7 @@ export default function IntelligencePage() {
   const [ingestResult, setIngestResult] = useState<any>(null);
 
   const loadStats = useCallback(async () => {
-    const res = await fetch("/api/intelligence/admin", { credentials: "include" });
+    const res = await fetch("/api/admin/intelligence/stats", { credentials: "include" });
     if (res.ok) setStats(await res.json());
   }, []);
 
@@ -1032,7 +1032,7 @@ export default function IntelligencePage() {
     setIngesting(slug);
     setIngestResult(null);
     try {
-      const res = await fetch("/api/intelligence/admin", {
+      const res = await fetch("/api/admin/intelligence/stats", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

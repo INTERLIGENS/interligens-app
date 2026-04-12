@@ -15,6 +15,7 @@ import { fetchOfac } from "./sources/ofac";
 import { fetchFca } from "./sources/fca";
 import { fetchScamSniffer } from "./sources/scamsniffer";
 import { fetchForta } from "./sources/forta";
+import { fetchAmf } from "./sources/amf";
 
 // ── Risk priority (lower index = stronger) ──────────────────────────────────
 const RISK_ORDER: IntelRiskClass[] = [
@@ -33,6 +34,7 @@ function strongerRisk(a: IntelRiskClass, b: IntelRiskClass): IntelRiskClass {
 
 const FETCHERS: Record<string, () => Promise<SourceRaw[]>> = {
   ofac: fetchOfac,
+  amf: fetchAmf,
   fca: fetchFca,
   scamsniffer: fetchScamSniffer,
   forta: fetchForta,

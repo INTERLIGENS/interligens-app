@@ -26,6 +26,7 @@ import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
+import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -211,6 +212,7 @@ export default function TigerScanPageFR() {
   } | null>(null);
   const [error, setError]               = useState<string | null>(null);
   const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
+  const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -381,6 +383,15 @@ export default function TigerScanPageFR() {
     setError(null);
     setResult(null);
     setClusterResult(null);
+    setIntelSignal(null);
+
+    // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
+    fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIntelSignal(d) })
+      .catch(() => {})
 
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
     if (chain === "SOL") {
@@ -737,6 +748,7 @@ export default function TigerScanPageFR() {
 
               {/* ── CLUSTER RISK ── */}
               {clusterResult && <ClusterRiskBadge result={clusterResult} locale="fr" />}
+              <IntelligenceBadge signal={intelSignal} locale="fr" />
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
               <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>

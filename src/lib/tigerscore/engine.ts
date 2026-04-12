@@ -138,3 +138,100 @@ export function computeTigerScore(input: TigerInput): TigerResult {
 
   return { score: clampedScore, tier, drivers, confidence };
 }
+
+// ── Intelligence-enhanced TigerScore ──────────────────────────────────────
+// Async wrapper: computes base TigerScore, then applies intelligence overlay.
+// Non-breaking: callers that don't need intelligence keep using computeTigerScore.
+
+import { lookupValue } from "@/lib/intelligence";
+import { computeFromSignal, type IntelligenceResult } from "@/lib/intelligence/scorer";
+
+export interface TigerResultWithIntel extends TigerResult {
+  intelligence: IntelligenceResult | null;
+  /** Final score after intelligence overlay (may differ from base score) */
+  finalScore: number;
+  finalTier: TigerTier;
+}
+
+/**
+ * Compute TigerScore with intelligence overlay.
+ * - Runs base scoring (sync)
+ * - Looks up address in intelligence DB
+ * - Applies floor/ceiling rules from scorer
+ * - GoPlus cache miss → scoring continues unchanged
+ */
+export async function computeTigerScoreWithIntel(
+  input: TigerInput,
+  address?: string
+): Promise<TigerResultWithIntel> {
+  const base = computeTigerScore(input);
+
+  if (!address) {
+    return {
+      ...base,
+      intelligence: null,
+      finalScore: base.score,
+      finalTier: base.tier,
+    };
+  }
+
+  try {
+    const chain = input.chain === "SOL" ? "solana"
+      : input.chain === "ETH" ? "ethereum"
+      : input.chain === "BSC" ? "bsc"
+      : input.chain === "TRON" ? "tron"
+      : input.chain === "HYPER" ? "hyper"
+      : undefined;
+
+    const signal = await lookupValue(address, chain);
+
+    if (signal.matchCount === 0) {
+      return {
+        ...base,
+        intelligence: null,
+        finalScore: base.score,
+        finalTier: base.tier,
+      };
+    }
+
+    const intel = computeFromSignal(signal, base.score);
+
+    const finalScore = intel.adjustedScore;
+    const finalTier: TigerTier =
+      finalScore >= 70 ? "RED" : finalScore >= 35 ? "ORANGE" : "GREEN";
+
+    // Add intelligence driver if it changed the score
+    if (finalScore !== base.score) {
+      base.drivers.push({
+        id: "intelligence_overlay",
+        label: intel.hasSanction
+          ? "Sanctions match (OFAC/AMF/FCA)"
+          : `Intelligence signal (${intel.contributingSources.join(", ")})`,
+        severity: intel.hasSanction ? "critical" : "high",
+        delta: finalScore - base.score,
+        why: intel.hasSanction
+          ? "Address matched in regulatory sanctions list — floor 15 applied"
+          : intel.ceilingApplied
+          ? "Multiple intelligence sources corroborate risk — ceiling 72 applied"
+          : `Intelligence delta from ${intel.contributingSources.length} source(s)`,
+      });
+    }
+
+    return {
+      ...base,
+      score: base.score,
+      intelligence: intel,
+      finalScore,
+      finalTier,
+    };
+  } catch (err) {
+    // Intelligence lookup failure → continue with base score
+    console.warn("[tigerscore] Intelligence lookup failed, using base score:", err);
+    return {
+      ...base,
+      intelligence: null,
+      finalScore: base.score,
+      finalTier: base.tier,
+    };
+  }
+}
