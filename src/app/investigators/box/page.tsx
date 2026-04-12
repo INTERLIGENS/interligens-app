@@ -29,6 +29,54 @@ type DecryptedCase = CaseRow & {
   tags: string[];
 };
 
+const INPUT_STYLE: React.CSSProperties = {
+  width: "100%",
+  backgroundColor: "#0d0d0d",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 6,
+  padding: "12px 14px",
+  color: "#FFFFFF",
+  fontSize: 14,
+  outline: "none",
+};
+
+const LABEL_STYLE: React.CSSProperties = {
+  textTransform: "uppercase",
+  fontSize: 11,
+  letterSpacing: "0.08em",
+  color: "rgba(255,255,255,0.4)",
+  display: "block",
+  marginBottom: 8,
+};
+
+const HELPER_STYLE: React.CSSProperties = {
+  fontSize: 12,
+  color: "rgba(255,255,255,0.3)",
+  marginTop: 6,
+};
+
+const PRIMARY_BTN: React.CSSProperties = {
+  backgroundColor: "#FF6B00",
+  color: "#FFFFFF",
+  height: 44,
+  borderRadius: 6,
+  fontWeight: 500,
+  fontSize: 14,
+  paddingLeft: 20,
+  paddingRight: 20,
+};
+
+const SECONDARY_BTN: React.CSSProperties = {
+  backgroundColor: "transparent",
+  border: "1px solid rgba(255,255,255,0.12)",
+  color: "rgba(255,255,255,0.5)",
+  height: 44,
+  borderRadius: 6,
+  fontSize: 14,
+  paddingLeft: 20,
+  paddingRight: 20,
+};
+
 function DashboardInner() {
   const router = useRouter();
   const { keys, lock } = useVaultSession();
@@ -133,63 +181,177 @@ function DashboardInner() {
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start justify-between">
           <div>
-            <div className="text-xs tracking-[0.3em] text-white/50">
-              INTERLIGENS INVESTIGATORS
+            <div
+              style={{
+                textTransform: "uppercase",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                color: "rgba(255,255,255,0.4)",
+              }}
+            >
+              INVESTIGATORS
             </div>
-            <h1 className="text-3xl font-semibold mt-1">My Cases</h1>
+            <h1
+              style={{
+                fontSize: 30,
+                fontWeight: 700,
+                color: "#FFFFFF",
+                marginTop: 8,
+              }}
+            >
+              My Cases
+            </h1>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowNew((v) => !v)}
-              className="bg-[#FF6B00] text-white px-4 py-2 rounded font-medium text-sm"
+              style={{ ...PRIMARY_BTN, height: 38 }}
             >
               + New case
             </button>
             <button
               onClick={lock}
-              className="border border-white/20 px-4 py-2 rounded text-sm text-white/70"
+              style={{ ...SECONDARY_BTN, height: 38 }}
             >
               Lock
             </button>
           </div>
         </div>
 
-        <div className="border border-white/10 rounded p-3 mb-6 text-xs text-white/60">
-          Client-side encrypted · Titles, filenames, tags, notes, and files
-          never reach our servers in readable form.
+        <div
+          style={{
+            fontSize: 12,
+            color: "rgba(255,255,255,0.25)",
+            letterSpacing: "0.04em",
+            marginTop: 20,
+            marginBottom: 32,
+          }}
+        >
+          Client-side encrypted&nbsp;&nbsp;·&nbsp;&nbsp;Your key never
+          reaches our servers&nbsp;&nbsp;·&nbsp;&nbsp;Nothing is readable
+          without your passphrase
         </div>
 
         {showNew && (
-          <div className="border border-white/10 rounded p-4 mb-6">
-            <input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Case title"
-              className="w-full bg-black border border-white/20 rounded px-3 py-2 mb-3"
-            />
-            <input
-              value={newTags}
-              onChange={(e) => setNewTags(e.target.value)}
-              placeholder="Tags (comma-separated)"
-              className="w-full bg-black border border-white/20 rounded px-3 py-2 mb-3"
-            />
-            <button
-              onClick={createCase}
-              disabled={creating || !newTitle.trim()}
-              className="bg-[#FF6B00] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
-            >
-              {creating ? "Encrypting…" : "Create case"}
-            </button>
+          <div
+            style={{
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              padding: "24px 0",
+              marginBottom: 32,
+            }}
+          >
+            <div style={{ marginBottom: 20 }}>
+              <label style={LABEL_STYLE}>Investigation title</label>
+              <input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                style={INPUT_STYLE}
+                onFocus={(e) =>
+                  (e.currentTarget.style.border =
+                    "1px solid rgba(255,107,0,0.6)")
+                }
+                onBlur={(e) =>
+                  (e.currentTarget.style.border =
+                    "1px solid rgba(255,255,255,0.08)")
+                }
+              />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={LABEL_STYLE}>Tags</label>
+              <input
+                value={newTags}
+                onChange={(e) => setNewTags(e.target.value)}
+                style={INPUT_STYLE}
+                onFocus={(e) =>
+                  (e.currentTarget.style.border =
+                    "1px solid rgba(255,107,0,0.6)")
+                }
+                onBlur={(e) =>
+                  (e.currentTarget.style.border =
+                    "1px solid rgba(255,255,255,0.08)")
+                }
+              />
+              <div style={HELPER_STYLE}>
+                Comma-separated. Encrypted before storage.
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={createCase}
+                disabled={creating || !newTitle.trim()}
+                className="disabled:opacity-50"
+                style={PRIMARY_BTN}
+              >
+                {creating ? "Encrypting…" : "Create case"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowNew(false);
+                  setNewTitle("");
+                  setNewTags("");
+                }}
+                style={{
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.4)",
+                  background: "none",
+                  border: "none",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
         {loading ? (
-          <div className="text-white/50 text-sm">Loading cases…</div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.3)",
+            }}
+          >
+            Loading cases…
+          </div>
         ) : cases.length === 0 ? (
-          <div className="text-white/50 text-sm">
-            No cases yet. Click “+ New case” to create your first one.
+          <div
+            className="mx-auto text-center"
+            style={{ marginTop: 80, maxWidth: 480 }}
+          >
+            <div
+              style={{
+                fontSize: 18,
+                color: "rgba(255,255,255,0.4)",
+              }}
+            >
+              No active cases.
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                color: "rgba(255,255,255,0.25)",
+                marginTop: 12,
+                maxWidth: 400,
+                marginLeft: "auto",
+                marginRight: "auto",
+                lineHeight: 1.6,
+              }}
+            >
+              This is where your investigations live. Create your first case
+              to start depositing evidence, wallets, transactions, and
+              notes. Everything you add is encrypted before it reaches our
+              servers.
+            </div>
+            <button
+              onClick={() => setShowNew(true)}
+              style={{ ...PRIMARY_BTN, marginTop: 24 }}
+            >
+              + Create your first case
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -197,23 +359,52 @@ function DashboardInner() {
               <Link
                 key={c.id}
                 href={`/investigators/box/cases/${c.id}`}
-                className="block border border-white/10 rounded p-4 hover:border-[#FF6B00]/60 transition-colors"
+                className="block transition-colors"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 6,
+                  padding: 20,
+                  backgroundColor: "#0a0a0a",
+                }}
               >
-                <div className="text-white font-semibold">{c.title}</div>
+                <div
+                  style={{
+                    color: "#FFFFFF",
+                    fontWeight: 600,
+                    fontSize: 15,
+                  }}
+                >
+                  {c.title}
+                </div>
                 {c.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {c.tags.map((t) => (
                       <span
                         key={t}
-                        className="text-[10px] uppercase tracking-wide text-white/60 border border-white/20 rounded px-2 py-0.5"
+                        style={{
+                          fontSize: 10,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          color: "rgba(255,255,255,0.5)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          borderRadius: 4,
+                          padding: "2px 8px",
+                        }}
                       >
                         {t}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="text-xs text-white/40 mt-3">
-                  {c.entityCount} entities · {c.fileCount} files · {c.status}
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.3)",
+                    marginTop: 12,
+                  }}
+                >
+                  {c.entityCount} entities · {c.fileCount} files ·{" "}
+                  {c.status}
                 </div>
               </Link>
             ))}
