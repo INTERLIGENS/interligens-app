@@ -25,9 +25,9 @@ console.log('INTERLIGENS Guard loaded');
       injectTarget: "[class*=\"swap\"], [class*=\"token\"]"
     },
     "birdeye.so": {
-      urlPattern: /birdeye\.so\/token\/([A-Za-z0-9]{32,44})/,
+      urlPattern: /birdeye\.so\/(?:solana\/)?token\/([A-Za-z0-9]{32,44})/,
       mintFromUrl: function (url) {
-        var m = url.match(/birdeye\.so\/token\/([A-Za-z0-9]{32,44})/);
+        var m = url.match(/birdeye\.so\/(?:solana\/)?token\/([A-Za-z0-9]{32,44})/);
         return m ? m[1] : null;
       },
       injectTarget: "[class*=\"header\"], [class*=\"token-detail\"]"
@@ -262,6 +262,7 @@ console.log('INTERLIGENS Guard loaded');
 
   function scanCurrentPage() {
     var mint = detectMint();
+    console.log("[INTERLIGENS Guard] hostname:", window.location.hostname, "url:", window.location.href, "mint:", mint);
 
     if (!mint) {
       // No mint found — no badge needed
@@ -287,7 +288,9 @@ console.log('INTERLIGENS Guard loaded');
     } catch {}
 
     // Show loading badge
+    console.log("[INTERLIGENS Guard] createLoadingBadge() for mint:", mint);
     createLoadingBadge();
+    console.log("[INTERLIGENS Guard] badge in DOM:", !!document.getElementById(BADGE_ID));
 
     // Request score from background service worker
     chrome.runtime.sendMessage(
