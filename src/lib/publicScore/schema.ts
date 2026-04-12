@@ -9,18 +9,45 @@ export type PublicSignal = {
 
 export type PublicVerdict = "GREEN" | "ORANGE" | "RED";
 
+export type PhantomWarningLevel = "BLOCK" | "WARN" | "ALLOW";
+
 export type PublicScoreResponse = {
   mint: string;
   symbol?: string;
   name?: string;
   score: number;
   verdict: PublicVerdict;
+  phantom_warning_level: PhantomWarningLevel;
+  phantom_disclaimer: string;
   signals: PublicSignal[];
   sources: string[];
   cached: boolean;
   timestamp: string;
   api_version: "v1";
 };
+
+export function derivePhantomWarning(verdict: PublicVerdict): {
+  level: PhantomWarningLevel;
+  disclaimer: string;
+} {
+  switch (verdict) {
+    case "RED":
+      return {
+        level: "BLOCK",
+        disclaimer: "This token has critical risk signals. Swapping is strongly discouraged.",
+      };
+    case "ORANGE":
+      return {
+        level: "WARN",
+        disclaimer: "This token shows elevated risk. Proceed with caution.",
+      };
+    case "GREEN":
+      return {
+        level: "ALLOW",
+        disclaimer: "No major risk signals detected.",
+      };
+  }
+}
 
 export type PublicErrorResponse = {
   error: "invalid_mint" | "token_not_found" | "rate_limit_exceeded" | "internal_error";

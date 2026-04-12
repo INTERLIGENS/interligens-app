@@ -3,6 +3,7 @@ import { checkRateLimit } from "@/lib/publicScore/rateLimit";
 import {
   isValidMint,
   mapSeverity,
+  derivePhantomWarning,
   type PublicScoreResponse,
   type PublicSignal,
 } from "@/lib/publicScore/schema";
@@ -149,12 +150,16 @@ export async function GET(request: NextRequest) {
     }
     if (scamLineage !== "NONE") sources.push("Lineage Graph");
 
+    const phantom = derivePhantomWarning(finalVerdict);
+
     const response: PublicScoreResponse = {
       mint,
       symbol: caseFile?.case_meta.ticker,
       name: caseFile?.case_meta.token_name,
       score: finalScore,
       verdict: finalVerdict,
+      phantom_warning_level: phantom.level,
+      phantom_disclaimer: phantom.disclaimer,
       signals,
       sources,
       cached: market.cache_hit,

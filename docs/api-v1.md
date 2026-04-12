@@ -35,6 +35,8 @@ curl https://app.interligens.com/api/v1/score?mint=EPjFWdd5AufqSSqeM2qN1xzybapC8
   "name": "USD Coin",
   "score": 8,
   "verdict": "GREEN",
+  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No major risk signals detected.",
   "signals": [
     {
       "id": "mutable_metadata",
@@ -59,6 +61,8 @@ curl https://app.interligens.com/api/v1/score?mint=EPjFWdd5AufqSSqeM2qN1xzybapC8
 | name        | string?  | Token name (if known from CaseDB)                  |
 | score       | number   | TigerScore risk score, 0 (safe) to 100 (critical)  |
 | verdict     | string   | `"GREEN"` (0-34), `"ORANGE"` (35-69), `"RED"` (70-100) |
+| phantom_warning_level | string | `"ALLOW"` (GREEN), `"WARN"` (ORANGE), `"BLOCK"` (RED) |
+| phantom_disclaimer | string | Short EN disclaimer for wallet UI display          |
 | signals     | array    | Risk signals detected (see below)                  |
 | sources     | string[] | Data sources used for this score                   |
 | cached      | boolean  | Whether market data was served from cache          |
