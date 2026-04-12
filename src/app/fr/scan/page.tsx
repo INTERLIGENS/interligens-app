@@ -4,7 +4,7 @@ import React, { useState, useCallback } from "react";
 import ScoreCard from "@/components/scan/ScoreCard";
 import type { PublicScoreResponse } from "@/lib/publicScore/schema";
 
-export default function ScanPage() {
+export default function ScanPageFR() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PublicScoreResponse | null>(null);
@@ -23,13 +23,13 @@ export default function ScanPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message ?? data.error ?? "Unknown error");
+        setError(data.message ?? data.error ?? "Erreur inconnue");
         return;
       }
 
       setResult(data as PublicScoreResponse);
     } catch {
-      setError("Network error. Please try again.");
+      setError("Erreur reseau. Veuillez reessayer.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export default function ScanPage() {
           INTERLIGENS
         </div>
         <div style={{ fontSize: 14, color: "#888", marginTop: 8 }}>
-          Scan before you swap
+          Scannez avant de swapper
         </div>
       </header>
 
@@ -78,7 +78,7 @@ export default function ScanPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Paste a Solana token address or name"
+          placeholder="Collez une adresse de token Solana"
           disabled={loading}
           style={{
             flex: 1,
@@ -109,7 +109,7 @@ export default function ScanPage() {
             whiteSpace: "nowrap",
           }}
         >
-          {loading ? "SCANNING..." : "SCAN"}
+          {loading ? "ANALYSE..." : "SCANNER"}
         </button>
       </div>
 
@@ -149,7 +149,7 @@ export default function ScanPage() {
       {/* Result */}
       {result && (
         <div style={{ width: "100%", maxWidth: 520, marginBottom: 32 }}>
-          <ScoreCard data={result} locale="en" />
+          <ScoreCard data={result} locale="fr" />
 
           {/* B3 — Swap anyway CTA */}
           <div
@@ -161,14 +161,14 @@ export default function ScanPage() {
             }}
           >
             <span style={{ color: "#FF6B00" }}>!</span>{" "}
-            Proceeding at your own risk?{" "}
+            Vous continuez a vos risques ?{" "}
             <a
               href="https://jup.ag"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "#666", textDecoration: "underline" }}
             >
-              Swap on Jupiter
+              Swapper sur Jupiter
             </a>
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function ScanPage() {
           color: "#333",
         }}
       >
-        Powered by INTERLIGENS | app.interligens.com
+        Propulse par INTERLIGENS | app.interligens.com
       </footer>
     </div>
   );
