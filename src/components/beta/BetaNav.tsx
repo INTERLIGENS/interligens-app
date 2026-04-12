@@ -7,7 +7,7 @@ const O = "#FF6B00";
 type Locale = "en" | "fr";
 
 interface NavItem {
-  slug: "demo" | "charter" | "watchlist" | "kol" | "explorer" | "methodology" | "investors";
+  slug: "demo" | "charter" | "watchlist" | "kol" | "explorer" | "methodology" | "investors" | "investigators";
   label: { en: string; fr: string };
   fallbackLocale?: Locale; // for routes that exist only in one locale
   match: string[];
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { slug: "watchlist",   label: { en: "Watchlist", fr: "Watchlist" },      match: ["/en/watchlist", "/fr/watchlist"] },
   { slug: "kol",         label: { en: "KOL Registry", fr: "Registre KOL" },match: ["/en/kol", "/fr/kol"] },
   { slug: "explorer",    label: { en: "Explorer", fr: "Explorer" },        match: ["/en/explorer", "/fr/explorer"] },
+  { slug: "investigators", label: { en: "Investigators", fr: "Enquêteurs" }, match: ["/investigators"] },
   { slug: "methodology", label: { en: "Methodology", fr: "Méthodologie" }, match: ["/en/methodology", "/fr/methodology"] },
   { slug: "investors",   label: { en: "Investors", fr: "Investors" }, fallbackLocale: "en", match: ["/en/investors"] },
 ];
@@ -124,7 +125,7 @@ export default function BetaNav() {
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
           const targetLocale = item.fallbackLocale ?? locale;
-          const href = `/${targetLocale}/${item.slug}`;
+          const href = item.slug === "investigators" ? "/investigators/box" : `/${targetLocale}/${item.slug}`;
           return (
             <a
               key={item.slug}
