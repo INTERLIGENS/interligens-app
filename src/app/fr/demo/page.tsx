@@ -26,6 +26,7 @@ import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
+import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -140,8 +141,13 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     }
   } else {
     // TRON
+    const tronSignals: any[] = Array.isArray(data?.signals) ? data.signals : [];
     const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
-    if (apiProofs.length > 0) {
+    if (tronSignals.length > 0) {
+      tronSignals.slice(0, 3).forEach((s: any) =>
+        proofs.push({ label: String(s.kind ?? "Signal").replace(/_/g, " "), value: s.label ?? "—", level: s.severity === "CRITICAL" ? "high" : s.severity === "HIGH" ? "medium" : "low", riskDescription: s.label ?? "" })
+      );
+    } else if (apiProofs.length > 0) {
       apiProofs.slice(0, 3).forEach((p: any) =>
         proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.value ?? "" })
       );
@@ -748,6 +754,7 @@ export default function TigerScanPageFR() {
 
               {/* ── CLUSTER RISK ── */}
               {clusterResult && <ClusterRiskBadge result={clusterResult} locale="fr" />}
+              <USDTBlacklistBadge visible={!!(result?.rawSummary?.usdt_blacklisted)} locale="fr" />
               <IntelligenceBadge signal={intelSignal} locale="fr" />
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
