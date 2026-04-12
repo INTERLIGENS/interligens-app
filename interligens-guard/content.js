@@ -24,9 +24,9 @@
       injectTarget: "[class*=\"swap\"], [class*=\"token\"]"
     },
     "birdeye.so": {
-      urlPattern: /birdeye\.so\/token\/([A-Za-z0-9]{32,44})/,
+      urlPattern: /birdeye\.so\/solana\/token\/([A-Za-z0-9]{32,44})/,
       mintFromUrl: function (url) {
-        var m = url.match(/birdeye\.so\/token\/([A-Za-z0-9]{32,44})/);
+        var m = url.match(/birdeye\.so\/solana\/token\/([A-Za-z0-9]{32,44})/);
         return m ? m[1] : null;
       },
       injectTarget: "[class*=\"header\"], [class*=\"token-detail\"]"
