@@ -25,6 +25,7 @@ import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
+import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -209,6 +210,7 @@ export default function TigerScanPageFR() {
     loading: boolean
   } | null>(null);
   const [error, setError]               = useState<string | null>(null);
+  const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -378,6 +380,17 @@ export default function TigerScanPageFR() {
     setRecidivismConfidence("LOW");
     setError(null);
     setResult(null);
+    setClusterResult(null);
+
+    // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
+    if (chain === "SOL") {
+      fetch(`/api/scan/cluster?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+        signal: AbortSignal.timeout(4000),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setClusterResult(d) })
+        .catch(() => {})
+    }
 
     for (let i = 0; i < 3; i++) {
       setLoadStep(i);
@@ -721,6 +734,9 @@ export default function TigerScanPageFR() {
                   graphData={graphData}
                 />
               )}
+
+              {/* ── CLUSTER RISK ── */}
+              {clusterResult && <ClusterRiskBadge result={clusterResult} locale="fr" />}
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
               <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>

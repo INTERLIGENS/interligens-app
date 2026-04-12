@@ -21,8 +21,8 @@ import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
-import AnalyzingCard from "@/components/scan/AnalyzingCard";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
+import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
@@ -207,6 +207,7 @@ export default function TigerScanPage() {
   const [isDeep, setIsDeep]             = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
   const [error, setError]               = useState<string | null>(null);
+  const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -392,6 +393,17 @@ export default function TigerScanPage() {
     setRecidivismConfidence("LOW");
     setError(null);
     setResult(null);
+    setClusterResult(null);
+
+    // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
+    if (chain === "SOL") {
+      fetch(`/api/scan/cluster?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+        signal: AbortSignal.timeout(4000),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setClusterResult(d) })
+        .catch(() => {})
+    }
 
     for (let i = 0; i < 3; i++) {
       setLoadStep(i);
@@ -644,7 +656,7 @@ export default function TigerScanPage() {
         <div className="relative">
           <div id="result-anchor" />
 
-          {/* RUNNING: AnalyzingCard — masque le score */}
+          {/* RUNNING: scan loading steps */}
           {analysisStatus === "running" && (
             <div className="grid lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">
@@ -767,6 +779,9 @@ export default function TigerScanPage() {
                   graphData={graphData}
                 />
               )}
+
+              {/* ── CLUSTER RISK ── */}
+              {clusterResult && <ClusterRiskBadge result={clusterResult} locale="en" />}
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
               <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>
