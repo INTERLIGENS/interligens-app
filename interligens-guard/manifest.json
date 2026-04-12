@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "INTERLIGENS Guard",
+  "version": "1.0.0",
+  "description": "Scan Solana tokens for scam signals before you swap.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://pump.fun/*",
+    "https://jup.ag/*",
+    "https://raydium.io/*",
+    "https://birdeye.so/*",
+    "https://dexscreener.com/*",
+    "https://app.interligens.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://pump.fun/*",
+        "https://jup.ag/*",
+        "https://raydium.io/*",
+        "https://birdeye.so/*",
+        "https://dexscreener.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
