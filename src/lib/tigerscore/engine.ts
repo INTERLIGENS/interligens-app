@@ -9,7 +9,7 @@ export type TigerDriver = {
 };
 
 export type TigerInput = {
-  chain: "SOL" | "ETH" | "TRON" | "BSC" | "HYPER";
+  chain: "SOL" | "ETH" | "TRON" | "BSC" | "HYPER" | "BASE" | "ARBITRUM";
   deep?: boolean;
   unlimitedApprovals?: number;
   approvalsTotal?: number;
@@ -181,6 +181,8 @@ export async function computeTigerScoreWithIntel(
       : input.chain === "BSC" ? "bsc"
       : input.chain === "TRON" ? "tron"
       : input.chain === "HYPER" ? "hyper"
+      : input.chain === "BASE" ? "base"
+      : input.chain === "ARBITRUM" ? "arbitrum"
       : undefined;
 
     const signal = await lookupValue(address, chain);

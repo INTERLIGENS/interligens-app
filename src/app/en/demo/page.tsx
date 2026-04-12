@@ -12,7 +12,7 @@ import AnimatedScoreRing from "@/components/AnimatedScoreRing";
 import CaseFileCTA from "@/components/CaseFileCTA";
 import LegalFooter from "@/components/legal/LegalFooter";
 import QuickDemoBar from "@/components/demo/QuickDemoBar";
-import { DEMO_PRESETS, type DemoScenario } from "@/lib/demo/presets";
+import { DEMO_PRESETS, parseMockParam, type DemoScenario } from "@/lib/demo/presets";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
 import MarketContext from "@/components/market/MarketContext";
@@ -34,7 +34,7 @@ import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/Recid
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-type Chain = "SOL" | "ETH" | "TRON" | "BSC" | "HYPER" | "HYPER_TOKEN_ID";
+type Chain = "SOL" | "ETH" | "TRON" | "BSC" | "HYPER" | "HYPER_TOKEN_ID" | "BASE" | "ARBITRUM";
 type RiskLevel = "low" | "medium" | "high";
 type Tier = "GREEN" | "ORANGE" | "RED";
 
@@ -80,6 +80,8 @@ function detectChain(address: string): Chain | null {
   if (!a) return null;
   if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a)) return "TRON";
   if (/^bsc:0x[a-fA-F0-9]{40}$/i.test(a)) return "BSC";
+  if (/^base:0x[a-fA-F0-9]{40}$/i.test(a)) return "BASE";
+  if (/^arb:0x[a-fA-F0-9]{40}$/i.test(a)) return "ARBITRUM";
   if (/^hyper:0x[a-fA-F0-9]{40}$/i.test(a)) return "HYPER";
   if (/^0x[a-fA-F0-9]{32}$/i.test(a)) return "HYPER_TOKEN_ID";
   if (/^0x[a-fA-F0-9]{40}$/i.test(a)) return "ETH";
@@ -94,6 +96,8 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
   const d = String(deep);
   switch (chain) {
     case "BSC":  return `/api/scan/bsc?address=${encodeURIComponent(address.trim().replace(/^bsc:/i,""))}&deep=${d}`;
+    case "BASE": return `/api/scan/base?address=${encodeURIComponent(address.trim().replace(/^base:/i,""))}&deep=${d}`;
+    case "ARBITRUM": return `/api/scan/arbitrum?address=${encodeURIComponent(address.trim().replace(/^arb:/i,""))}&deep=${d}`;
     case "HYPER": return `/api/scan/hyper?address=${encodeURIComponent(address.trim().replace(/^hyper:/i,""))}&deep=${d}`;
     case "TRON": return `/api/scan/tron?address=${a}&deep=${d}`;
     case "ETH":  return `/api/scan/eth?address=${a}&deep=${d}`;
@@ -153,6 +157,38 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       proofs.push({ label: "Contract",  value: "Not checked",      level: "medium", riskDescription: "Add HYPER_API_KEY for live data" });
       proofs.push({ label: "Score",     value: score + "/100",     level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
     }
+  } else if (chain === "BASE") {
+    const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
+    const baseSignals: any[] = Array.isArray(data?.signals) ? data.signals : [];
+    if (baseSignals.length > 0) {
+      baseSignals.slice(0, 3).forEach((s: any) =>
+        proofs.push({ label: String(s.kind ?? "Signal").replace(/_/g, " "), value: s.label ?? "—", level: s.severity === "CRITICAL" ? "high" : s.severity === "HIGH" ? "medium" : "low", riskDescription: s.label ?? "" })
+      );
+    } else if (apiProofs.length > 0) {
+      apiProofs.slice(0, 3).forEach((p: any) =>
+        proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.riskDescription ?? "" })
+      );
+    } else {
+      proofs.push({ label: "Network",  value: "Base (Coinbase L2)", level: "low",    riskDescription: "Official Base mainnet" });
+      proofs.push({ label: "Score",    value: `${score}/100`,       level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: "Source",   value: "Etherscan v2",       level: "low",    riskDescription: "Basescan via Etherscan v2 API" });
+    }
+  } else if (chain === "ARBITRUM") {
+    const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
+    const arbSignals: any[] = Array.isArray(data?.signals) ? data.signals : [];
+    if (arbSignals.length > 0) {
+      arbSignals.slice(0, 3).forEach((s: any) =>
+        proofs.push({ label: String(s.kind ?? "Signal").replace(/_/g, " "), value: s.label ?? "—", level: s.severity === "CRITICAL" ? "high" : s.severity === "HIGH" ? "medium" : "low", riskDescription: s.label ?? "" })
+      );
+    } else if (apiProofs.length > 0) {
+      apiProofs.slice(0, 3).forEach((p: any) =>
+        proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.riskDescription ?? "" })
+      );
+    } else {
+      proofs.push({ label: "Network",  value: "Arbitrum One",  level: "low",    riskDescription: "Official Arbitrum L2 mainnet" });
+      proofs.push({ label: "Score",    value: `${score}/100`,  level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: "Source",   value: "Etherscan v2",  level: "low",    riskDescription: "Arbiscan via Etherscan v2 API" });
+    }
   } else {
     // TRON
     const tronSignals: any[] = Array.isArray(data?.signals) ? data.signals : [];
@@ -179,7 +215,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
 
   return {
     score, tier,
-    confidence: (chain === "ETH" || chain === "BSC" || chain === "HYPER") ? (data?.deep ? "High" : "Medium") : "Medium",
+    confidence: (chain === "ETH" || chain === "BSC" || chain === "HYPER" || chain === "BASE" || chain === "ARBITRUM") ? (data?.deep ? "High" : "Medium") : "Medium",
     verdict, recommendations,
     proofs: proofs.slice(0, 3),
     rawSummary: data?.rawSummary ?? data?.programsSummary ?? data?.approvalsSummary ?? data,
@@ -224,10 +260,24 @@ export default function TigerScanPage() {
   const [debug] = React.useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1");
 
   // Mock mode + scenario state
+  const [mockChain, setMockChain] = React.useState<keyof typeof DEMO_PRESETS>("SOL");
   const [selectedScenario, setSelectedScenario] = React.useState<DemoScenario | null>(() => {
     if (typeof window === "undefined") return null;
-    return (new URLSearchParams(window.location.search).get("mock") as DemoScenario | null);
+    const raw = new URLSearchParams(window.location.search).get("mock");
+    if (!raw) return null;
+    const parsed = parseMockParam(raw);
+    if (!parsed) return null;
+    return parsed.scenario;
   });
+  // sync mockChain on mount
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = new URLSearchParams(window.location.search).get("mock");
+    if (raw) {
+      const parsed = parseMockParam(raw);
+      if (parsed) setMockChain(parsed.chain);
+    }
+  }, []);
   const mockMode = selectedScenario;
   const hasAutoRun = useRef(false);
 
@@ -282,17 +332,17 @@ export default function TigerScanPage() {
   // Auto-trigger on mount if ?mock= param present
   React.useEffect(() => {
     if (selectedScenario) {
-      const preset = DEMO_PRESETS.SOL[selectedScenario];
+      const preset = DEMO_PRESETS[mockChain][selectedScenario];
       setAddress(preset.addr);
       setTimeout(() => runScan(preset.addr, selectedScenario), 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const storyline = selectedScenario ? DEMO_PRESETS.SOL[selectedScenario].storyline.en : null;
+  const storyline = selectedScenario ? DEMO_PRESETS[mockChain][selectedScenario].storyline.en : null;
 
   const handleSelectScenario = (scenario: DemoScenario) => {
-    const preset = DEMO_PRESETS.SOL[scenario];
+    const preset = DEMO_PRESETS[mockChain][scenario];
     setSelectedScenario(scenario);
     setAddress(preset.addr);
     // Update URL without reload
@@ -364,6 +414,8 @@ export default function TigerScanPage() {
 
   const formatAddressForChain = (addr: string, chain: TokenCandidate['chain']): string => {
     if (chain === 'BSC') return 'bsc:' + addr
+    if (chain === 'BASE') return 'base:' + addr
+    if (chain === 'ARBITRUM') return 'arb:' + addr
     if (chain === 'HYPER') return 'hyper:' + addr
     return addr
   }
@@ -516,7 +568,7 @@ export default function TigerScanPage() {
             Check your <span className="text-[#F85B05] not-italic">Exposure.</span>
           </h1>
           <p className="text-zinc-500 max-w-2xl mx-auto text-sm md:text-base font-medium">
-            Advanced forensic analysis for Solana, Ethereum & TRON wallets. No signatures required. Pure intelligence.
+            Advanced forensic analysis for Solana, Ethereum, Base, Arbitrum, BSC & TRON wallets. No signatures required. Pure intelligence.
           </p>
         </div>
 
@@ -571,7 +623,7 @@ export default function TigerScanPage() {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Paste address or type $TICKER (BTC, ETH, SOL, BSC, TRON, HYPER)"
+                placeholder="Paste address or type $TICKER (SOL, ETH, BSC, Base, Arbitrum, TRON)"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScanSubmit(); } }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
               />
@@ -597,7 +649,7 @@ export default function TigerScanPage() {
             )}
             {address.startsWith("0x") && chain === "ETH" && (
               <p className="px-4 pb-1 text-[10px] text-zinc-600">
-                Tip: use <code className="text-[#F85B05]">hyper:0x…</code> to force Hyperliquid &nbsp;|&nbsp; <code className="text-[#F85B05]">bsc:0x…</code> for BSC.
+                Tip: <code className="text-[#F85B05]">base:0x…</code> for Base &nbsp;|&nbsp; <code className="text-[#F85B05]">arb:0x…</code> for Arbitrum &nbsp;|&nbsp; <code className="text-[#F85B05]">bsc:0x…</code> for BSC &nbsp;|&nbsp; <code className="text-[#F85B05]">hyper:0x…</code> for Hyperliquid.
               </p>
             )}
 

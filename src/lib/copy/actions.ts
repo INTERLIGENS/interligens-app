@@ -3,7 +3,7 @@ export type ScanType = "token" | "wallet";
 export interface ActionInput {
   scan_type: ScanType;
   tier: "GREEN" | "ORANGE" | "RED";
-  chain: "SOL" | "ETH" | "TRON" | "BSC";
+  chain: "SOL" | "ETH" | "TRON" | "BSC" | "BASE" | "ARBITRUM";
   hasUnlimitedApprovals?: boolean;
   knownBadHit?: boolean;
 }

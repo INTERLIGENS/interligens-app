@@ -2,7 +2,7 @@
 import React from 'react'
 
 export type TokenPickerSource = 'curated' | 'mentions' | 'coingecko'
-export type TokenPickerChain = 'SOL' | 'ETH' | 'BSC' | 'TRON' | 'HYPER'
+export type TokenPickerChain = 'SOL' | 'ETH' | 'BSC' | 'TRON' | 'HYPER' | 'BASE' | 'ARBITRUM'
 
 export interface TokenCandidate {
   symbol: string
@@ -69,6 +69,8 @@ const CHAIN_LABEL: Record<TokenPickerChain, string> = {
   BSC: 'BNB Chain',
   TRON: 'TRON',
   HYPER: 'Hyperliquid',
+  BASE: 'Base',
+  ARBITRUM: 'Arbitrum',
 }
 
 const SOURCE_COLOR: Record<TokenPickerSource, string> = {

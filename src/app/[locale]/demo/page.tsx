@@ -18,7 +18,7 @@ import type { Locale } from "@/lib/explanation/types";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-type Chain = "SOL" | "ETH" | "TRON" | "BSC" | "HYPER" | "HYPER_TOKEN_ID";
+type Chain = "SOL" | "ETH" | "TRON" | "BSC" | "HYPER" | "HYPER_TOKEN_ID" | "BASE" | "ARBITRUM";
 type RiskLevel = "low" | "medium" | "high";
 type Tier = "GREEN" | "ORANGE" | "RED";
 
@@ -50,6 +50,8 @@ function detectChain(address: string): Chain | null {
   if (!a) return null;
   if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a)) return "TRON";
   if (/^bsc:0x[a-fA-F0-9]{40}$/i.test(a)) return "BSC";
+  if (/^base:0x[a-fA-F0-9]{40}$/i.test(a)) return "BASE";
+  if (/^arb:0x[a-fA-F0-9]{40}$/i.test(a)) return "ARBITRUM";
   if (/^hyper:0x[a-fA-F0-9]{40}$/i.test(a)) return "HYPER";
   if (/^0x[a-fA-F0-9]{32}$/i.test(a)) return "HYPER_TOKEN_ID";
   if (/^0x[a-fA-F0-9]{40}$/i.test(a)) return "ETH";
@@ -64,6 +66,8 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
   const d = String(deep);
   switch (chain) {
     case "BSC":  return `/api/scan/bsc?address=${encodeURIComponent(address.trim().replace(/^bsc:/i,""))}&deep=${d}`;
+    case "BASE": return `/api/scan/base?address=${encodeURIComponent(address.trim().replace(/^base:/i,""))}&deep=${d}`;
+    case "ARBITRUM": return `/api/scan/arbitrum?address=${encodeURIComponent(address.trim().replace(/^arb:/i,""))}&deep=${d}`;
     case "HYPER": return `/api/scan/hyper?address=${encodeURIComponent(address.trim().replace(/^hyper:/i,""))}&deep=${d}`;
     case "TRON": return `/api/scan/tron?address=${a}&deep=${d}`;
     case "ETH":  return `/api/scan/eth?address=${a}&deep=${d}`;
@@ -111,6 +115,38 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       proofs.push({ label: "Contract", value: "Not checked",     level: "medium", riskDescription: "Add BSCSCAN_API_KEY for live data" });
       proofs.push({ label: "Score",    value: `${score}/100`,    level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
     }
+  } else if (chain === "BASE") {
+    const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
+    const baseSignals: any[] = Array.isArray(data?.signals) ? data.signals : [];
+    if (baseSignals.length > 0) {
+      baseSignals.slice(0, 3).forEach((s: any) =>
+        proofs.push({ label: String(s.kind ?? "Signal").replace(/_/g, " "), value: s.label ?? "—", level: s.severity === "CRITICAL" ? "high" : s.severity === "HIGH" ? "medium" : "low", riskDescription: s.label ?? "" })
+      );
+    } else if (apiProofs.length > 0) {
+      apiProofs.slice(0, 3).forEach((p: any) =>
+        proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.riskDescription ?? "" })
+      );
+    } else {
+      proofs.push({ label: "Network",  value: "Base (Coinbase L2)", level: "low",    riskDescription: "Official Base mainnet" });
+      proofs.push({ label: "Score",    value: `${score}/100`,       level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: "Source",   value: "Etherscan v2",       level: "low",    riskDescription: "Basescan via Etherscan v2 API" });
+    }
+  } else if (chain === "ARBITRUM") {
+    const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
+    const arbSignals: any[] = Array.isArray(data?.signals) ? data.signals : [];
+    if (arbSignals.length > 0) {
+      arbSignals.slice(0, 3).forEach((s: any) =>
+        proofs.push({ label: String(s.kind ?? "Signal").replace(/_/g, " "), value: s.label ?? "—", level: s.severity === "CRITICAL" ? "high" : s.severity === "HIGH" ? "medium" : "low", riskDescription: s.label ?? "" })
+      );
+    } else if (apiProofs.length > 0) {
+      apiProofs.slice(0, 3).forEach((p: any) =>
+        proofs.push({ label: p.label ?? "Signal", value: p.value ?? "—", level: p.level === "red" ? "high" : p.level === "orange" ? "medium" : "low", riskDescription: p.riskDescription ?? "" })
+      );
+    } else {
+      proofs.push({ label: "Network",  value: "Arbitrum One",  level: "low",    riskDescription: "Official Arbitrum L2 mainnet" });
+      proofs.push({ label: "Score",    value: `${score}/100`,  level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: "Source",   value: "Etherscan v2",  level: "low",    riskDescription: "Arbiscan via Etherscan v2 API" });
+    }
   } else {
     // TRON
     const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
@@ -131,7 +167,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
 
   return {
     score, tier,
-    confidence: (chain === "ETH" || chain === "BSC" || chain === "HYPER") ? (data?.deep ? "High" : "Medium") : "Medium",
+    confidence: (chain === "ETH" || chain === "BSC" || chain === "HYPER" || chain === "BASE" || chain === "ARBITRUM") ? (data?.deep ? "High" : "Medium") : "Medium",
     verdict, recommendations,
     proofs: proofs.slice(0, 3),
     rawSummary: data?.rawSummary ?? data?.programsSummary ?? data?.approvalsSummary ?? data,
@@ -297,7 +333,7 @@ function TigerScanPageInner() {
             Check your <span className="text-[#F85B05] not-italic">Exposure.</span>
           </h1>
           <p className="text-zinc-500 max-w-2xl mx-auto text-sm md:text-base font-medium">
-            Advanced forensic analysis for Solana, Ethereum & TRON wallets. No signatures required. Pure intelligence.
+            Advanced forensic analysis for Solana, Ethereum, Base, Arbitrum, BSC & TRON wallets. No signatures required. Pure intelligence.
           </p>
         </div>
 
@@ -358,7 +394,7 @@ function TigerScanPageInner() {
                 type="text"
                 value={address}
                 onChange={(e) => { setAddress(e.target.value); setLoading(false); setError(null); }}
-                placeholder="Paste address (SOL / ETH / TRON / bsc:0x… / hyper:0x…)"
+                placeholder="Paste address (SOL / ETH / TRON / base:0x… / arb:0x… / bsc:0x… / hyper:0x…)"
                 onKeyDown={(e) => { if (e.key === "Enter") runScan(); }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
               />
@@ -384,7 +420,7 @@ function TigerScanPageInner() {
             )}
             {address.startsWith("0x") && chain === "ETH" && (
               <p className="px-4 pb-1 text-[10px] text-zinc-600">
-                Tip: use <code className="text-[#F85B05]">hyper:0x…</code> to force Hyperliquid &nbsp;|&nbsp; <code className="text-[#F85B05]">bsc:0x…</code> for BSC.
+                Tip: <code className="text-[#F85B05]">base:0x…</code> for Base &nbsp;|&nbsp; <code className="text-[#F85B05]">arb:0x…</code> for Arbitrum &nbsp;|&nbsp; <code className="text-[#F85B05]">bsc:0x…</code> for BSC &nbsp;|&nbsp; <code className="text-[#F85B05]">hyper:0x…</code> for Hyperliquid.
               </p>
             )}
 

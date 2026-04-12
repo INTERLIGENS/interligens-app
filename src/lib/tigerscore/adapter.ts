@@ -2,7 +2,7 @@ import { computeTigerScore, type TigerInput, type TigerResult } from "./engine";
 import { buildOnChainEvidence, type EvidenceItem } from "../evidence/builder";
 
 export type ScanNormalized = {
-  chain: "ETH" | "SOL";
+  chain: "ETH" | "SOL" | "BASE" | "ARBITRUM";
   is_contract?: boolean;
   rpc_fallback_used?: boolean;
   rpc_down?: boolean;
