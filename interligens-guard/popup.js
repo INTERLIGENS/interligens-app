@@ -142,35 +142,84 @@
     emptyState.textContent = "No score available";
   }
 
-  // ── Init ───────────────────────────────────────────────────────────────────
+  // ── Onboarding ─────────────────────────────────────────────────────────────
 
-  // Try to get score from active tab
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (!tabs || !tabs[0] || !tabs[0].url) {
-      emptyState.textContent = "Navigate to a DEX to auto-scan";
-      return;
+  var onboardingEl = document.getElementById("onboarding");
+  var mainUiEl = document.getElementById("main-ui");
+  var obBtn = document.getElementById("ob-btn");
+  var obStep = 1;
+
+  function showStep(n) {
+    for (var i = 1; i <= 3; i++) {
+      document.getElementById("ob-step-" + i).style.display = i === n ? "block" : "none";
+      document.getElementById("ob-dot-" + i).className = "ob-dot" + (i === n ? " active" : "");
     }
+    obBtn.textContent = n === 3 ? "Get started" : "Next";
+  }
 
-    var mint = extractMintFromUrl(tabs[0].url);
-    if (mint) {
-      manualInput.value = mint;
-      scoreMint(mint);
+  function finishOnboarding() {
+    chrome.storage.local.set({ onboarding_done: true });
+    onboardingEl.className = "onboarding";
+    mainUiEl.className = "main-ui";
+    initMainUI();
+  }
+
+  obBtn.addEventListener("click", function () {
+    if (obStep < 3) {
+      obStep++;
+      showStep(obStep);
     } else {
-      emptyState.textContent = "No Solana token detected on this page";
+      finishOnboarding();
     }
   });
 
-  // Manual scan
-  scanBtn.addEventListener("click", function () {
-    var mint = manualInput.value.trim();
-    if (!mint) return;
-    scoreMint(mint);
-  });
+  // ── Main UI init ──────────────────────────────────────────────────────────
 
-  manualInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
+  function initMainUI() {
+    // Try to get score from active tab
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (!tabs || !tabs[0] || !tabs[0].url) {
+        emptyState.textContent = "Navigate to a DEX to auto-scan";
+        return;
+      }
+
+      var mint = extractMintFromUrl(tabs[0].url);
+      if (mint) {
+        manualInput.value = mint;
+        scoreMint(mint);
+      } else {
+        emptyState.textContent = "No Solana token detected on this page";
+      }
+    });
+
+    // Manual scan
+    scanBtn.addEventListener("click", function () {
       var mint = manualInput.value.trim();
-      if (mint) scoreMint(mint);
+      if (!mint) return;
+      scoreMint(mint);
+    });
+
+    manualInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        var mint = manualInput.value.trim();
+        if (mint) scoreMint(mint);
+      }
+    });
+  }
+
+  // ── Boot: check onboarding state ─────────────────────────────────────────
+
+  chrome.storage.local.get("onboarding_done", function (result) {
+    if (result.onboarding_done) {
+      // Already onboarded — show main UI directly
+      onboardingEl.className = "onboarding";
+      mainUiEl.className = "main-ui";
+      initMainUI();
+    } else {
+      // Show onboarding
+      onboardingEl.className = "onboarding active";
+      mainUiEl.className = "main-ui hidden";
+      showStep(1);
     }
   });
 })();

@@ -138,33 +138,117 @@
     .footer a:hover { color: #888; }
 
     .error-msg { color: #FF3B5C; font-size: 11px; text-align: center; margin-bottom: 8px; }
+
+    /* Onboarding */
+    .onboarding { display: none; }
+    .onboarding.active { display: block; }
+    .ob-step {
+      text-align: center;
+      padding: 12px 0;
+    }
+    .ob-step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 1px solid #FF6B00;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #FF6B00;
+      margin-bottom: 8px;
+    }
+    .ob-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .ob-desc { font-size: 11px; color: #888; line-height: 1.4; }
+    .ob-dots {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin: 14px 0;
+    }
+    .ob-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #333;
+    }
+    .ob-dot.active { background: #FF6B00; }
+    .ob-btn {
+      width: 100%;
+      background: #FF6B00;
+      color: #000;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: monospace;
+      margin-top: 4px;
+    }
+    .main-ui { display: block; }
+    .main-ui.hidden { display: none; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <span class="logo">INTERLIGENS</span>
-    <span class="guard">GUARD</span>
-  </div>
-
-  <div id="content">
-    <div class="empty-state" id="empty-state">
-      Checking active tab...
+  <!-- Onboarding -->
+  <div id="onboarding" class="onboarding">
+    <div class="header">
+      <span class="logo">INTERLIGENS</span>
+      <span class="guard">GUARD</span>
     </div>
+
+    <div id="ob-step-1" class="ob-step">
+      <div class="ob-step-num">1</div>
+      <div class="ob-title">Navigate to a DEX</div>
+      <div class="ob-desc">Visit pump.fun, Jupiter, Raydium, Birdeye, or DexScreener with any Solana token.</div>
+    </div>
+    <div id="ob-step-2" class="ob-step" style="display:none">
+      <div class="ob-step-num">2</div>
+      <div class="ob-title">Badge appears automatically</div>
+      <div class="ob-desc">INTERLIGENS Guard detects the token and injects a TigerScore badge into the page.</div>
+    </div>
+    <div id="ob-step-3" class="ob-step" style="display:none">
+      <div class="ob-step-num">3</div>
+      <div class="ob-title">Click for details</div>
+      <div class="ob-desc">See risk signals, data sources, and a link to the full investigation. Stay safe.</div>
+    </div>
+
+    <div class="ob-dots">
+      <div class="ob-dot active" id="ob-dot-1"></div>
+      <div class="ob-dot" id="ob-dot-2"></div>
+      <div class="ob-dot" id="ob-dot-3"></div>
+    </div>
+
+    <button id="ob-btn" class="ob-btn">Next</button>
   </div>
 
-  <div class="manual-section">
-    <input
-      type="text"
-      id="manual-input"
-      class="manual-input"
-      placeholder="Paste a Solana mint address"
-    />
-    <button id="scan-btn" class="scan-btn">SCAN</button>
-    <div id="error-msg" class="error-msg" style="display:none"></div>
-  </div>
+  <!-- Main UI -->
+  <div id="main-ui" class="main-ui hidden">
+    <div class="header">
+      <span class="logo">INTERLIGENS</span>
+      <span class="guard">GUARD</span>
+    </div>
 
-  <div class="footer">
-    Powered by <a href="https://app.interligens.com" target="_blank" rel="noopener noreferrer">INTERLIGENS</a>
+    <div id="content">
+      <div class="empty-state" id="empty-state">
+        Checking active tab...
+      </div>
+    </div>
+
+    <div class="manual-section">
+      <input
+        type="text"
+        id="manual-input"
+        class="manual-input"
+        placeholder="Paste a Solana mint address"
+      />
+      <button id="scan-btn" class="scan-btn">SCAN</button>
+      <div id="error-msg" class="error-msg" style="display:none"></div>
+    </div>
+
+    <div class="footer">
+      Powered by <a href="https://app.interligens.com" target="_blank" rel="noopener noreferrer">INTERLIGENS</a>
+    </div>
   </div>
 
   <script src="popup.js"></script>
