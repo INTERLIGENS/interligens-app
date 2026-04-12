@@ -178,8 +178,8 @@ export default function OnboardingPage() {
             <label className="block text-sm text-white/60 mb-1">Handle</label>
             <input
               value={handle}
-              onChange={(e) => setHandle(e.target.value.toLowerCase())}
-              placeholder="e.g. gordon-gekko"
+              onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[@\s]/g, ""))}
+              placeholder="e.g. analyst-01"
               className="w-full bg-black border border-white/20 rounded px-3 py-2 mb-4"
             />
             <label className="block text-sm text-white/60 mb-1">Display name</label>
