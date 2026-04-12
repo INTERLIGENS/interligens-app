@@ -70,9 +70,15 @@ console.log('INTERLIGENS Guard loaded');
 
   // Layer 1: extract mint from URL
   function mintFromUrl() {
+    console.log("[INTERLIGENS Guard] Trying mint from URL:", window.location.href);
     var config = getActiveDexConfig();
-    if (!config) return null;
-    return config.mintFromUrl(window.location.href);
+    if (!config) {
+      console.log("[INTERLIGENS Guard] No DEX config match for hostname:", window.location.hostname);
+      return null;
+    }
+    var mint = config.mintFromUrl(window.location.href);
+    console.log("[INTERLIGENS Guard] mintFromUrl result:", mint);
+    return mint;
   }
 
   // Layer 2: extract mint from DOM (fallback)
@@ -343,6 +349,13 @@ console.log('INTERLIGENS Guard loaded');
 
   // ── Initial scan ───────────────────────────────────────────────────────────
 
-  // Delay initial scan to let the page fully render
-  setTimeout(scanCurrentPage, 1500);
+  // Immediate scan — SPAs like Birdeye already have the token mounted on load
+  console.log("[INTERLIGENS Guard] Running immediate scan");
+  scanCurrentPage();
+
+  // Fallback scan after 2s in case SPA hydration was still pending
+  setTimeout(function () {
+    console.log("[INTERLIGENS Guard] Running 2s fallback scan");
+    scanCurrentPage();
+  }, 2000);
 })();
