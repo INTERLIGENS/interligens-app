@@ -8,6 +8,12 @@ import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
 
+// Vercel cron route config — force dynamic execution and extend the default
+// 10s serverless timeout to accommodate the per-handle sleep(1000) loop.
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 const prisma = new PrismaClient();
 
 function sleep(ms: number) {
@@ -108,8 +114,17 @@ async function scanAll() {
 }
 
 export async function GET(req: NextRequest) {
+  // Fail-closed auth: reject if CRON_SECRET is not configured at all,
+  // otherwise the string "Bearer undefined" could be used to bypass the check.
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return NextResponse.json(
+      { error: "Server misconfigured: CRON_SECRET not set" },
+      { status: 500 }
+    );
+  }
   const authHeader = req.headers.get("authorization") ?? "";
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!hasToken()) {
