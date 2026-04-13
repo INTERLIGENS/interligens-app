@@ -1,3 +1,5 @@
+import type { GovernedStatusPayload } from "@/lib/tigerscore/governedStatus";
+
 export type KnownBadEntry = {
   address: string;
   chain: string;
@@ -45,4 +47,31 @@ export function isKnownBad(chain: string, address: string): KnownBadEntry | null
     e => e.chain.toUpperCase() === chain.toUpperCase() &&
          e.address.toLowerCase() === normalized
   ) ?? null;
+}
+
+/**
+ * Manual governed-status overlay for addresses the core team has personally
+ * confirmed. Returning non-null represents an editorial decision that lives
+ * *alongside* the numeric TigerScore — it never overrides the ceiling.
+ *
+ * Only addresses with explicit entries return a payload; everything else
+ * returns null and falls back to the engine's suggested status.
+ */
+const MANUAL_GOVERNED_STATUS: Record<string, GovernedStatusPayload> = {
+  "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41": {
+    governedStatus: "confirmed_known_bad",
+    governedStatusBasis: "manual_internal_confirmation",
+    governedStatusReason:
+      "Confirmed EVM scam actor — multiple rug pulls documented",
+    governedStatusSetBy: "interligens_core_team",
+    governedStatusSetAt: "2026-04-13T00:00:00Z",
+    governedStatusReviewState: "approved",
+    governedStatusEvidenceRefs: ["BOTIFY-C1", "GordonGekko-EVM-001"],
+  },
+};
+
+export function getKnownBadGovernedStatus(
+  address: string
+): GovernedStatusPayload | null {
+  return MANUAL_GOVERNED_STATUS[address.toLowerCase()] ?? null;
 }
