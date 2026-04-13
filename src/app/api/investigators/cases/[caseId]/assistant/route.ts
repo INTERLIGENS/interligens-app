@@ -6,80 +6,41 @@ import {
   assertCaseOwnership,
   logAudit,
 } from "@/lib/vault/auth.server";
+import {
+  buildCaseIntelligencePack,
+  type CaseIntelligencePack,
+} from "@/lib/vault/buildCaseIntelligencePack";
 
 type RouteCtx = { params: Promise<{ caseId: string }> };
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
-type CaseContext = {
-  title?: string;
-  template?: string | null;
-  entities?: Array<{
-    type: string;
-    value: string;
-    label: string | null;
-    tigerScore: number | null;
-  }>;
-  hypotheses?: Array<{
-    title: string;
-    status: string;
-    confidence: number;
-  }>;
-  enrichment?: Record<
-    string,
-    {
-      inKolRegistry?: boolean;
-      isKnownBad?: boolean;
-      kolName?: string | null;
-    }
-  >;
-};
+function buildSystemPrompt(pack: CaseIntelligencePack): string {
+  return `You are an investigative intelligence co-pilot for INTERLIGENS, a crypto anti-scam platform. You assist investigators analyzing on-chain fraud, KOL promotion schemes, and crypto scam networks.
 
-function buildSystemPrompt(ctx: CaseContext): string {
-  const entityLines = (ctx.entities ?? [])
-    .map(
-      (e) =>
-        `- ${e.type} | ${e.value}${e.label ? ` | ${e.label}` : ""}${e.tigerScore != null ? ` | TigerScore ${e.tigerScore}` : ""}`
-    )
-    .join("\n");
-  const hypoLines = (ctx.hypotheses ?? [])
-    .map((h) => `- ${h.title} (${h.status}, ${h.confidence}%)`)
-    .join("\n");
-  const enrichmentHits = Object.entries(ctx.enrichment ?? {})
-    .filter(([, v]) => v?.inKolRegistry || v?.isKnownBad)
-    .map(([id, v]) => {
-      const flags: string[] = [];
-      if (v?.isKnownBad) flags.push("KNOWN_BAD");
-      if (v?.inKolRegistry) flags.push(`KOL${v.kolName ? `:${v.kolName}` : ""}`);
-      return `- ${id}: ${flags.join(", ")}`;
-    })
-    .join("\n");
+You work exclusively from structured derived intelligence.
+You never have access to raw files or private investigator notes.
+You separate facts from inferences rigorously.
 
-  return `You are an investigative intelligence assistant for INTERLIGENS, a crypto anti-scam platform. You are helping an investigator working on a case.
+CASE INTELLIGENCE PACK:
+${JSON.stringify(pack, null, 2)}
 
-CASE CONTEXT:
-Title: ${ctx.title ?? "(untitled)"}
-Template: ${ctx.template ?? "blank"}
-
-ENTITIES IN THIS CASE:
-${entityLines || "(none yet)"}
-
-HYPOTHESES:
-${hypoLines || "(none yet)"}
-
-CROSS-INTELLIGENCE HITS:
-${enrichmentHits || "(none)"}
-
-YOUR ROLE:
-- Help analyze patterns in the entities
-- Suggest next investigation steps
-- Help formulate hypotheses
-- Help draft summaries or reports
-- Answer questions about crypto investigation methodology
-- You only see derived entities — never raw files or private notes
-- Always distinguish facts (from entities) vs inferences (your analysis)
-- Use investigator-grade language
-- Be direct and concrete, not verbose`;
+CRITICAL RULES:
+1. Treat entities and cross-intelligence hits as confirmed structured signals.
+2. Treat network inference and pattern analysis as analytical indicators, not hard facts.
+3. Never collapse inference into confirmed fact.
+4. When network intelligence exists, analyze the full network, not isolated entities.
+5. When proceeds data exists, correlate with promotion windows if timeline data is available.
+6. When laundry trail exists, explain the routing significance.
+7. Structure every substantive response as:
+   FACTS (from entities and cross-intelligence)
+   INFERENCES (your analysis)
+   GAPS (what is missing)
+   NEXT STEPS (concrete recommended actions)
+   PUBLICATION CAUTION (what cannot be stated publicly yet)
+8. Be direct and concrete. No filler. No generic crypto explanations.
+9. Prioritize investigator usefulness over comprehensiveness.
+10. Use investigator-grade language. The user is not a beginner.`;
 }
 
 function estimateTokens(text: string): number {
@@ -121,12 +82,8 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
     return NextResponse.json({ error: "no_messages" }, { status: 400 });
   }
 
-  const caseContext: CaseContext =
-    typeof body.caseContext === "object" && body.caseContext !== null
-      ? (body.caseContext as CaseContext)
-      : {};
-
-  const systemPrompt = buildSystemPrompt(caseContext);
+  const pack = await buildCaseIntelligencePack(caseId, ctx.workspace.id);
+  const systemPrompt = buildSystemPrompt(pack);
   const estimatedInputTokens =
     estimateTokens(systemPrompt) +
     messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);

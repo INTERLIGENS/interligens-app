@@ -909,13 +909,20 @@ function CaseInner({ caseId }: { caseId: string }) {
         )}
 
         {tab === "assistant" && (
-          <CaseAssistant
-            caseId={caseId}
-            caseTitle={title}
-            caseTemplate={detail.caseTemplate}
-            entities={entities}
-            enrichment={enrichment}
-          />
+          <div
+            style={{
+              height: "calc(100vh - 300px)",
+              minHeight: 480,
+            }}
+          >
+            <CaseAssistant
+              caseId={caseId}
+              caseTitle={title}
+              caseTemplate={detail.caseTemplate}
+              entities={entities}
+              enrichment={enrichment}
+            />
+          </div>
         )}
       </div>
       {walletJourneyId && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -12,18 +12,21 @@ type Entity = {
   tigerScore?: number | null;
 };
 
-type EntityEnrichment = {
-  inKolRegistry: boolean;
-  isKnownBad: boolean;
-  kolName: string | null;
-};
-
 type Props = {
   caseId: string;
   caseTitle: string;
   caseTemplate: string | null;
   entities: Entity[];
-  enrichment: Record<string, EntityEnrichment>;
+  enrichment: Record<string, unknown>;
+};
+
+type IntelSummary = {
+  entityCount: number;
+  kolMatches: number;
+  proceedsTotal: string;
+  networkActors: number;
+  laundryTrails: number;
+  intelVaultRefs: number;
 };
 
 type SR = {
@@ -52,6 +55,183 @@ function getRecognition(): SR | null {
   return r;
 }
 
+const QUICK_PROMPTS = [
+  "Analyze this network",
+  "Review cashout patterns",
+  "Generate working hypotheses",
+  "Find contradictions",
+  "Suggest next investigation steps",
+  "Draft Intel Vault summary",
+  "Draft retail-safe warning",
+  "What facts can we confirm publicly?",
+];
+
+// Inline markdown renderer — no external library.
+function renderInline(text: string): React.ReactNode {
+  // Handle **bold** spans
+  const parts: React.ReactNode[] = [];
+  const re = /\*\*([^*]+)\*\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <strong
+        key={`b-${key++}`}
+        style={{ color: "#FFFFFF", fontWeight: 600 }}
+      >
+        {match[1]}
+      </strong>
+    );
+    lastIndex = re.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts.length === 0 ? text : parts;
+}
+
+function renderMarkdown(content: string): React.ReactNode {
+  const lines = content.split("\n");
+  const blocks: React.ReactNode[] = [];
+  let listBuffer: { ordered: boolean; items: string[] } | null = null;
+  let key = 0;
+
+  function flushList() {
+    if (!listBuffer) return;
+    const ordered = listBuffer.ordered;
+    const items = listBuffer.items;
+    blocks.push(
+      <div
+        key={`list-${key++}`}
+        style={{
+          margin: "6px 0",
+          paddingLeft: 4,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        {items.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              fontSize: 13,
+              color: "rgba(255,255,255,0.85)",
+              lineHeight: 1.6,
+            }}
+          >
+            <span
+              style={{
+                color: "#FF6B00",
+                flexShrink: 0,
+                marginTop: ordered ? 0 : 2,
+                fontSize: ordered ? 13 : 14,
+                lineHeight: 1,
+                minWidth: 14,
+              }}
+            >
+              {ordered ? `${i + 1}.` : "•"}
+            </span>
+            <span style={{ flex: 1 }}>{renderInline(item)}</span>
+          </div>
+        ))}
+      </div>
+    );
+    listBuffer = null;
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+
+    if (line.trim() === "") {
+      flushList();
+      blocks.push(<div key={`sp-${key++}`} style={{ height: 8 }} />);
+      continue;
+    }
+
+    if (line.startsWith("## ")) {
+      flushList();
+      blocks.push(
+        <div
+          key={`h3-${key++}`}
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#FF6B00",
+            margin: "12px 0 6px",
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+          }}
+        >
+          {renderInline(line.slice(3))}
+        </div>
+      );
+      continue;
+    }
+    if (line.startsWith("### ")) {
+      flushList();
+      blocks.push(
+        <div
+          key={`h4-${key++}`}
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "rgba(255,255,255,0.7)",
+            margin: "8px 0 4px",
+          }}
+        >
+          {renderInline(line.slice(4))}
+        </div>
+      );
+      continue;
+    }
+
+    const ulMatch = /^[-*]\s+(.*)$/.exec(line);
+    if (ulMatch) {
+      if (!listBuffer || listBuffer.ordered) {
+        flushList();
+        listBuffer = { ordered: false, items: [] };
+      }
+      listBuffer.items.push(ulMatch[1]);
+      continue;
+    }
+
+    const olMatch = /^(\d+)\.\s+(.*)$/.exec(line);
+    if (olMatch) {
+      if (!listBuffer || !listBuffer.ordered) {
+        flushList();
+        listBuffer = { ordered: true, items: [] };
+      }
+      listBuffer.items.push(olMatch[2]);
+      continue;
+    }
+
+    flushList();
+    blocks.push(
+      <div
+        key={`p-${key++}`}
+        style={{
+          fontSize: 13,
+          color: "rgba(255,255,255,0.85)",
+          lineHeight: 1.6,
+          margin: "4px 0",
+        }}
+      >
+        {renderInline(line)}
+      </div>
+    );
+  }
+  flushList();
+  return <Fragment>{blocks}</Fragment>;
+}
+
 export default function CaseAssistant({
   caseId,
   caseTitle,
@@ -67,12 +247,21 @@ export default function CaseAssistant({
   const [tokensLimit, setTokensLimit] = useState<number>(0);
   const [recording, setRecording] = useState(false);
   const [supportsVoice, setSupportsVoice] = useState(false);
+  const [intelSummary, setIntelSummary] = useState<IntelSummary | null>(null);
   const recogRef = useRef<SR | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setSupportsVoice(getRecognition() !== null);
   }, []);
+
+  useEffect(() => {
+    fetch(`/api/investigators/cases/${caseId}/intelligence-summary`)
+      .then((r) => r.json())
+      .then((d: IntelSummary) => setIntelSummary(d))
+      .catch(() => setIntelSummary(null));
+  }, [caseId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -119,6 +308,8 @@ export default function CaseAssistant({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             messages: newMessages,
+            // Server now builds its own intelligence pack — these are kept
+            // as a hint but ignored by the route.
             caseContext: {
               title: caseTitle,
               template: caseTemplate,
@@ -158,6 +349,11 @@ export default function CaseAssistant({
     }
   }
 
+  function pickPrompt(p: string) {
+    setInput(p);
+    inputRef.current?.focus();
+  }
+
   const quotaPercent = tokensLimit > 0 ? (tokensUsed / tokensLimit) * 100 : 0;
   const quotaColor =
     quotaPercent < 80 ? "#4ADE80" : quotaPercent < 95 ? "#FF6B00" : "#FF3B5C";
@@ -167,8 +363,8 @@ export default function CaseAssistant({
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "70vh",
-        minHeight: 480,
+        height: "100%",
+        minHeight: 0,
         border: "1px solid rgba(255,255,255,0.06)",
         borderRadius: 8,
         backgroundColor: "#0a0a0a",
@@ -177,6 +373,26 @@ export default function CaseAssistant({
         zIndex: 1,
       }}
     >
+      {/* INTELLIGENCE INDICATOR */}
+      {intelSummary && (
+        <div
+          style={{
+            padding: "8px 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.04)",
+            fontSize: 11,
+            color: "rgba(255,255,255,0.3)",
+            flexShrink: 0,
+          }}
+        >
+          Analyzing: {intelSummary.entityCount} entities ·{" "}
+          {intelSummary.kolMatches} KOL matches · {intelSummary.proceedsTotal} in
+          observed proceeds · {intelSummary.networkActors} network actors
+          {intelSummary.laundryTrails > 0 &&
+            ` · ${intelSummary.laundryTrails} laundry trails`}
+        </div>
+      )}
+
+      {/* MESSAGES */}
       <div
         ref={scrollRef}
         style={{
@@ -198,8 +414,9 @@ export default function CaseAssistant({
               padding: 40,
             }}
           >
-            Ask the assistant anything about this case. It sees derived
-            entities and hypotheses only — never notes or raw files.
+            Ask the co-pilot anything about this case. It works from a
+            structured intelligence pack — KOL matches, laundry trails, network
+            actors — never from notes or raw files.
           </div>
         )}
         {messages.map((m, i) => (
@@ -212,7 +429,7 @@ export default function CaseAssistant({
           >
             <div
               style={{
-                maxWidth: "75%",
+                maxWidth: m.role === "user" ? "75%" : "92%",
                 padding: "10px 14px",
                 borderRadius: 12,
                 backgroundColor:
@@ -224,11 +441,14 @@ export default function CaseAssistant({
                 color: "#FFFFFF",
                 fontSize: 13,
                 lineHeight: 1.6,
-                whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
               }}
             >
-              {m.content}
+              {m.role === "user" ? (
+                <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
+              ) : (
+                renderMarkdown(m.content)
+              )}
             </div>
           </div>
         ))}
@@ -259,6 +479,41 @@ export default function CaseAssistant({
         </div>
       )}
 
+      {/* QUICK PROMPTS */}
+      <div
+        style={{
+          flexShrink: 0,
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          padding: "8px 12px",
+          display: "flex",
+          gap: 8,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+        }}
+      >
+        {QUICK_PROMPTS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => pickPrompt(p)}
+            style={{
+              backgroundColor: "rgba(255,107,0,0.1)",
+              border: "1px solid rgba(255,107,0,0.2)",
+              color: "rgba(255,255,255,0.6)",
+              fontSize: 12,
+              padding: "4px 10px",
+              borderRadius: 12,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      {/* INPUT BAR */}
       <div
         style={{
           borderTop: "1px solid rgba(255,255,255,0.06)",
@@ -272,6 +527,7 @@ export default function CaseAssistant({
         }}
       >
         <textarea
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
@@ -357,11 +613,12 @@ export default function CaseAssistant({
       {tokensLimit > 0 && (
         <div
           style={{
-            padding: "8px 16px",
+            padding: "6px 16px",
             borderTop: "1px solid rgba(255,255,255,0.06)",
             fontSize: 10,
             color: quotaColor,
             textAlign: "right",
+            flexShrink: 0,
           }}
         >
           AI quota: {tokensUsed.toLocaleString()} /{" "}

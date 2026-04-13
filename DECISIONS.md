@@ -160,6 +160,54 @@ CREATE INDEX IF NOT EXISTS "VaultCaseShare_caseId_idx"
 
 ---
 
+## V2D — Intelligence Co-pilot (session 4)
+
+Transformed the Case Assistant from a generic LLM into a structured intelligence co-pilot powered by `buildCaseIntelligencePack`.
+
+### What changed
+
+1. **`src/lib/vault/buildCaseIntelligencePack.ts`** — server-side helper that assembles a full `CaseIntelligencePack` from INTERLIGENS DB. Queries `VaultCase`, `VaultCaseEntity`, `VaultHypothesis`, `VaultTimelineEvent`, `KolWallet`, `KolProfile`, `LaundryTrail`, `KolCase`. Computes twin state (gaps, conflicts, readiness, next action) inline so the assistant route doesn't recompute it.
+
+2. **`/api/investigators/cases/[id]/assistant`** — now ignores client-supplied `caseContext` and builds its own pack server-side. The system prompt embeds `JSON.stringify(pack, null, 2)` and includes 10 critical reasoning rules (FACTS / INFERENCES / GAPS / NEXT STEPS / PUBLICATION CAUTION).
+
+3. **`/api/investigators/cases/[id]/intelligence-summary`** — new GET route. Returns a compact `{ entityCount, kolMatches, proceedsTotal, networkActors, laundryTrails, intelVaultRefs }` for the UI indicator. Also goes through `buildCaseIntelligencePack` for consistency.
+
+4. **`CaseAssistant.tsx`** — major rewrite:
+   - Intelligence indicator strip at top (analyzing N entities · K KOL matches · $X proceeds · …)
+   - Quick-prompt chip row above the input bar (8 chips, horizontal scroll, no visible scrollbar)
+   - **Markdown renderer** — inline `renderMarkdown(text)` handles `##` → orange uppercase H3, `###` → secondary H4, `**bold**`, `-`/`*` lists with orange bullets, numbered lists, paragraph breaks. No external library.
+   - Component now uses `height: 100%` so it fills its parent. Outer flex container has `minHeight: 0` everywhere needed; quick-prompts row, input bar, error, quota all `flexShrink: 0`.
+
+5. **Case detail page** — assistant tab is wrapped in `<div style={{ height: "calc(100vh - 300px)", minHeight: 480 }}>` so the assistant component has a real height to fill.
+
+### V2D autonomous decisions
+
+**1. `KolProceedsEvent` does not exist in this schema.** Spec referenced it. Fallback: derive `proceedsSummary.totalUSD` from `KolProfile.totalDocumented ?? totalScammed` and `eventCount` from `rugCount`. `topRoutes` is left empty `[]` and `alignsWithPromoWindows` is `false`. Fields stay in the type contract so the prompt structure is honored.
+
+**2. `WatchScan` has no `address` column** (already documented in V2A). `inWatchlist` is always `false`. Field kept in the type for future extension.
+
+**3. `PublishedCase` does not exist.** Used `KolCase` instead — its `caseId` field references published intel-vault cases. `intelVaultRefs` returns `KolCase` titles formatted as `"KOL Case <id> (<role>)"` with `evidence` as the optional summary.
+
+**4. Network actors discovery via shared wallet addresses.** For each matched KolProfile, fetch all their KolWallet rows, then find other KolProfiles that share any of those addresses (excluding the originals). Capped at 20 actors.
+
+**5. `safeQuery` wrapper.** Every Prisma call inside `buildCaseIntelligencePack` is wrapped in `safeQuery(fn, fallback)` so any DB error returns the empty default instead of throwing. The pack always returns something usable.
+
+**6. Conflict detection lifted from CaseTwin.** Same rule (same value, multiple types). Hypothesis-CONFIRMED-without-evidence rule lives in CaseTwin client only; server pack reports a simpler conflict set.
+
+**7. Server ignores client `caseContext` payload.** The client still sends it (backwards-compatible body shape), but the server builds its own pack from the DB. The client payload is now redundant — left in place to avoid touching the request shape.
+
+**8. Markdown renderer is a single-pass line-based parser.** No tables, no code blocks, no nested lists. Bold within text via `**…**`. Sufficient for the structured FACTS/INFERENCES/GAPS/NEXT STEPS/PUBLICATION CAUTION format the prompt asks for. If the model produces fenced code blocks or tables, they render as plain text.
+
+**9. Quick prompt chip row uses `scrollbarWidth: "none"`** to hide the scrollbar in Firefox. WebKit will show a thin scrollbar — acceptable.
+
+**10. Assistant tab height = `calc(100vh - 300px)` with `minHeight: 480`.** 300px accounts for header + tabs + back link + tags row. Conservative estimate; if the case header grows, the assistant just gets shorter — but always ≥ 480px.
+
+**11. The assistant pack is sent to Claude on every turn.** No caching. Each request rebuilds the pack from the DB. This is intentional — entities/hypotheses/timeline change between turns. Costs ~1k extra input tokens per turn for a case with ~50 entities. Quota gate accounts for it via the same `chars/4` estimate.
+
+**12. Token quota gate is unchanged.** Pre-flight estimate now includes the full pack JSON, so the gate may fail-closed earlier than before. Acceptable — investigators get a clear error and can request a quota bump.
+
+---
+
 ## Out of scope (V2D and beyond)
 
 - Quota auto-reset cron
