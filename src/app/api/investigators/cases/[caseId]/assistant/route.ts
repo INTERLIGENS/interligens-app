@@ -94,6 +94,43 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
   }
 
   const pack = await buildCaseIntelligencePack(caseId, ctx.workspace.id);
+
+  // PRIVACY QA — dev-only key audit. Never logs values.
+  if (process.env.NODE_ENV !== "production") {
+    const packKeys = Object.keys(pack as unknown as Record<string, unknown>);
+    const entityKeys =
+      pack.entities.length > 0
+        ? Object.keys(pack.entities[0] as unknown as Record<string, unknown>)
+        : [];
+    const forbidden = [
+      "contentEnc",
+      "contentIv",
+      "r2Key",
+      "r2Bucket",
+      "titleEnc",
+      "titleIv",
+      "tagsEnc",
+      "tagsIv",
+      "filenameEnc",
+      "filenameIv",
+    ];
+    const violations = [...packKeys, ...entityKeys].filter((k) =>
+      forbidden.includes(k) || k.endsWith("Enc") || k.endsWith("Iv")
+    );
+    console.log("[assistant][privacy-audit] pack keys:", packKeys);
+    console.log("[assistant][privacy-audit] entity keys:", entityKeys);
+    console.log(
+      "[assistant][privacy-audit] entity count:",
+      pack.entities.length
+    );
+    if (violations.length > 0) {
+      console.error(
+        "[assistant][privacy-audit] FORBIDDEN KEYS LEAKED:",
+        violations
+      );
+    }
+  }
+
   const systemPrompt = buildSystemPrompt(pack);
   const estimatedInputTokens =
     estimateTokens(systemPrompt) +

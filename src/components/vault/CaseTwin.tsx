@@ -21,6 +21,22 @@ type EntityEnrichment = {
   kolName: string | null;
   kolScore: number | null;
   inIntelVault: boolean;
+  proceedsTotalUSD: number | null;
+};
+
+type ConfidenceClaim = {
+  claim: string;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  dependsOn: string[];
+  weakPoint: string;
+  whatWouldStrengthen: string;
+};
+
+type ContradictionSignal = {
+  description: string;
+  entityA: string;
+  entityB: string;
+  severity: "BLOCKING" | "NOTABLE" | "MINOR";
 };
 
 type Hypothesis = {
@@ -39,6 +55,9 @@ type Props = {
   caseTemplate: string | null;
   updatedAt: string;
   enrichment: Record<string, EntityEnrichment>;
+  onSwitchTab?: (tab: string) => void;
+  onInsertNote?: (text: string) => void;
+  onFocusEntityInput?: () => void;
 };
 
 const SECTION_TITLE: React.CSSProperties = {
@@ -73,10 +92,17 @@ export default function CaseTwin({
   caseTemplate,
   updatedAt,
   enrichment,
+  onSwitchTab,
+  onInsertNote,
+  onFocusEntityInput,
 }: Props) {
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
   const [timelineEvents, setTimelineEvents] = useState(0);
   const [collisionCount, setCollisionCount] = useState(0);
+  const [confidenceClaims, setConfidenceClaims] = useState<ConfidenceClaim[]>([]);
+  const [packContradictions, setPackContradictions] = useState<
+    ContradictionSignal[]
+  >([]);
   const [aiAnalysis, setAiAnalysis] = useState<{
     caseAssessment: string;
     keyPatterns: string[];
@@ -96,6 +122,13 @@ export default function CaseTwin({
     fetch(`/api/investigators/entities/collisions?caseId=${caseId}`)
       .then((r) => r.json())
       .then((d) => setCollisionCount(d.collisionCount ?? 0))
+      .catch(() => {});
+    fetch(`/api/investigators/cases/${caseId}/intelligence-summary`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.confidenceClaims)) setConfidenceClaims(d.confidenceClaims);
+        if (Array.isArray(d.contradictions)) setPackContradictions(d.contradictions);
+      })
       .catch(() => {});
   }, [caseId]);
 
@@ -357,18 +390,219 @@ export default function CaseTwin({
     return r?.isKnownBad;
   }).length;
 
+  // Entity breakdown for Section A
+  const entityBreakdown: Array<{ type: string; count: number }> = [];
+  const typeOrder = ["WALLET", "TX_HASH", "HANDLE", "URL", "DOMAIN", "CONTRACT", "EMAIL", "ALIAS", "IP", "OTHER"];
+  for (const t of typeOrder) {
+    const count = entities.filter((e) => e.type === t).length;
+    if (count > 0) entityBreakdown.push({ type: t, count });
+  }
+  const maxBreakdownCount = Math.max(1, ...entityBreakdown.map((b) => b.count));
+
+  // Risk distribution via enrichment (isKnownBad) + tigerScore if present
+  const riskHigh = entities.filter((e) => {
+    const enr = enrichment[e.id];
+    return enr?.isKnownBad;
+  }).length;
+  const unscored = entities.length - riskHigh;
+
+  // Intel Vault hits
+  const intelVaultHits = Object.values(enrichment).filter((e) => e.inIntelVault).length;
+
+  // Publication readiness checklist
+  const readinessItems = [
+    { label: "At least 3 entities", passed: entities.length >= 3 },
+    {
+      label: "At least 1 confirmed hypothesis",
+      passed: hypotheses.some((h) => h.status === "CONFIRMED"),
+    },
+    { label: "At least 1 analyst note", passed: notes.length >= 1 },
+    {
+      label: "At least 1 entity with confidence ≥ 80%",
+      passed: entities.some((e) => e.confidence != null && e.confidence >= 0.8),
+    },
+    {
+      label: "No blocking conflicts",
+      passed: !packContradictions.some((c) => c.severity === "BLOCKING"),
+    },
+  ];
+
+  // Next action CTA mapping
+  type NextCTA = { label: string; action: () => void };
+  let nextCTA: NextCTA | null = null;
+  if (entities.length === 0 && onFocusEntityInput) {
+    nextCTA = {
+      label: "Add entity",
+      action: () => {
+        onSwitchTab?.("entities");
+        onFocusEntityInput();
+      },
+    };
+  } else if (wallets.length > 0 && txs.length === 0 && onFocusEntityInput) {
+    nextCTA = {
+      label: "Add TX_HASH entity",
+      action: () => {
+        onSwitchTab?.("entities");
+        onFocusEntityInput();
+      },
+    };
+  } else if (hypotheses.length === 0) {
+    nextCTA = { label: "Add hypothesis", action: () => setShowAddForm(true) };
+  } else if (notes.length === 0 && onSwitchTab) {
+    nextCTA = { label: "Go to Notes", action: () => onSwitchTab("notes") };
+  } else if (timelineEvents === 0 && onSwitchTab) {
+    nextCTA = { label: "Go to Timeline", action: () => onSwitchTab("timeline") };
+  } else if (onSwitchTab) {
+    nextCTA = { label: "Go to Export", action: () => onSwitchTab("export") };
+  }
+
+  const TYPE_COLORS: Record<string, string> = {
+    WALLET: "#FF6B00",
+    TX_HASH: "rgba(255,107,0,0.6)",
+    HANDLE: "#FFFFFF",
+    URL: "rgba(255,255,255,0.4)",
+    DOMAIN: "rgba(255,255,255,0.4)",
+    CONTRACT: "#FF3B5C",
+    OTHER: "rgba(255,255,255,0.3)",
+  };
+
   return (
     <div>
       {/* SECTION A */}
       <div style={SECTION_TITLE}>What we know</div>
-      <div style={BODY}>
-        {wallets.length} wallets · {handles.length} handles · {txs.length} transactions · {domains.length} domains
-      </div>
-      {(scoredRed > 0 || kolHits > 0 || watchHits > 0) && (
-        <div style={{ ...BODY, marginTop: 6 }}>
-          {scoredRed > 0 && `${scoredRed} flagged known-bad · `}
-          {kolHits > 0 && `${kolHits} KOL Registry match · `}
-          {watchHits > 0 && `${watchHits} Watchlist match`}
+      {entityBreakdown.length === 0 ? (
+        <div style={BODY}>No entities yet.</div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {entityBreakdown.map((b) => (
+            <div
+              key={b.type}
+              className="flex items-center gap-3"
+              style={{ fontSize: 12 }}
+            >
+              <span
+                style={{
+                  width: 70,
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  color: TYPE_COLORS[b.type] ?? "rgba(255,255,255,0.4)",
+                  flexShrink: 0,
+                }}
+              >
+                {b.type}
+              </span>
+              <div
+                style={{
+                  flex: 1,
+                  height: 6,
+                  backgroundColor: "rgba(255,255,255,0.04)",
+                  borderRadius: 2,
+                  overflow: "hidden",
+                  maxWidth: 180,
+                }}
+              >
+                <div
+                  style={{
+                    width: `${(b.count / maxBreakdownCount) * 100}%`,
+                    height: "100%",
+                    backgroundColor: TYPE_COLORS[b.type] ?? "rgba(255,255,255,0.4)",
+                  }}
+                />
+              </div>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.7)",
+                  width: 24,
+                  textAlign: "right",
+                }}
+              >
+                {b.count}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {(riskHigh > 0 || unscored > 0) && entities.length > 0 && (
+        <div style={{ ...BODY, marginTop: 10, fontSize: 12 }}>
+          Risk distribution:{" "}
+          {riskHigh > 0 && (
+            <span style={{ color: "#FF3B5C" }}>{riskHigh} HIGH</span>
+          )}
+          {riskHigh > 0 && unscored > 0 && (
+            <span style={{ color: "rgba(255,255,255,0.3)" }}> · </span>
+          )}
+          {unscored > 0 && (
+            <span style={{ color: "rgba(255,255,255,0.4)" }}>
+              {unscored} unscored
+            </span>
+          )}
+        </div>
+      )}
+      {(kolHits > 0 || watchHits > 0 || intelVaultHits > 0) && (
+        <div style={{ marginTop: 12 }}>
+          <div
+            style={{
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "rgba(255,255,255,0.3)",
+              marginBottom: 6,
+            }}
+          >
+            Intelligence hits
+          </div>
+          <div className="flex flex-col gap-1">
+            {kolHits > 0 && (
+              <div
+                className="flex items-center gap-2"
+                style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 6,
+                    backgroundColor: "#FF6B00",
+                  }}
+                />
+                KOL Registry: {kolHits} matches
+              </div>
+            )}
+            {watchHits > 0 && (
+              <div
+                className="flex items-center gap-2"
+                style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 6,
+                    backgroundColor: "#FFB020",
+                  }}
+                />
+                Watchlist: {watchHits}
+              </div>
+            )}
+            {intelVaultHits > 0 && (
+              <div
+                className="flex items-center gap-2"
+                style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 6,
+                    backgroundColor: "rgba(255,255,255,0.6)",
+                  }}
+                />
+                Intel Vault: {intelVaultHits} refs
+              </div>
+            )}
+          </div>
         </div>
       )}
       {collisionCount > 0 && (
@@ -388,6 +622,77 @@ export default function CaseTwin({
           investigations. We cannot reveal which ones or by whom — this is by
           design.
         </div>
+      )}
+
+      {confidenceClaims.length > 0 && (
+        <>
+          <div style={SEPARATOR} />
+          <div style={SECTION_TITLE}>Confidence assessment</div>
+          <div className="flex flex-col gap-3">
+            {confidenceClaims.map((c, i) => {
+              const col =
+                c.confidence === "HIGH"
+                  ? "#4ADE80"
+                  : c.confidence === "MEDIUM"
+                    ? "#FF6B00"
+                    : "rgba(255,255,255,0.4)";
+              return (
+                <div
+                  key={i}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: 6,
+                    padding: "12px 14px",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      {c.claim}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        color: col,
+                        border: `1px solid ${col}`,
+                      }}
+                    >
+                      {c.confidence}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.4)",
+                      fontStyle: "italic",
+                      marginTop: 6,
+                    }}
+                  >
+                    Weak point: {c.weakPoint}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.4)",
+                      marginTop: 2,
+                    }}
+                  >
+                    Strengthen by: {c.whatWouldStrengthen}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <div style={SEPARATOR} />
@@ -707,21 +1012,61 @@ export default function CaseTwin({
 
       {/* SECTION D — Readiness */}
       <div style={SECTION_TITLE}>Publication readiness</div>
-      <div className="flex items-center gap-3">
-        <span
+      <div
+        style={{
+          height: 6,
+          backgroundColor: "rgba(255,255,255,0.06)",
+          borderRadius: 3,
+          overflow: "hidden",
+          marginBottom: 10,
+        }}
+      >
+        <div
           style={{
-            fontSize: 10,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            padding: "4px 10px",
-            borderRadius: 4,
-            color: readinessColor,
-            border: `1px solid ${readinessColor}`,
+            width: `${(readinessScore / 5) * 100}%`,
+            height: "100%",
+            backgroundColor: readinessColor,
+            transition: "width 300ms ease",
           }}
-        >
-          {readinessScore}/5
-        </span>
-        <span style={BODY}>{readinessText}</span>
+        />
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: readinessColor,
+          marginBottom: 12,
+        }}
+      >
+        {readinessScore}/5 · {readinessText}
+      </div>
+      <div className="flex flex-col gap-1">
+        {readinessItems.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center gap-2"
+            style={{ fontSize: 12 }}
+          >
+            <span
+              style={{
+                color: item.passed ? "#4ADE80" : "rgba(255,255,255,0.2)",
+                fontFamily: "ui-monospace, monospace",
+                fontWeight: 700,
+                width: 14,
+              }}
+            >
+              {item.passed ? "✓" : "×"}
+            </span>
+            <span
+              style={{
+                color: item.passed
+                  ? "rgba(255,255,255,0.8)"
+                  : "rgba(255,255,255,0.3)",
+              }}
+            >
+              {item.label}
+            </span>
+          </div>
+        ))}
       </div>
 
       <div style={SEPARATOR} />
@@ -730,21 +1075,64 @@ export default function CaseTwin({
       <div style={SECTION_TITLE}>Next suggested action</div>
       <div
         style={{
-          backgroundColor: "#0a0a0a",
-          border: "1px solid rgba(255,107,0,0.2)",
-          borderRadius: 6,
-          padding: 14,
-          fontSize: 14,
-          color: "#FFFFFF",
+          borderLeft: "3px solid #FF6B00",
+          paddingLeft: 16,
+          paddingTop: 4,
+          paddingBottom: 4,
         }}
       >
-        {nextAction}
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#FFFFFF",
+          }}
+        >
+          {nextAction}
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "rgba(255,255,255,0.4)",
+            marginTop: 4,
+            lineHeight: 1.6,
+          }}
+        >
+          Completing this step moves your case closer to publication-ready.
+        </div>
+        {nextCTA && (
+          <button
+            onClick={nextCTA.action}
+            style={{
+              marginTop: 10,
+              backgroundColor: "#FF6B00",
+              color: "#FFFFFF",
+              borderRadius: 6,
+              padding: "8px 16px",
+              fontSize: 13,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            {nextCTA.label}
+          </button>
+        )}
       </div>
 
       <div style={SEPARATOR} />
 
       {/* SECTION F — AI Analysis */}
       <div style={SECTION_TITLE}>AI analysis</div>
+      <div
+        style={{
+          fontSize: 11,
+          color: "rgba(255,255,255,0.3)",
+          marginTop: -4,
+          marginBottom: 10,
+        }}
+      >
+        Powered by INTERLIGENS Intelligence Pack · Derived data only
+      </div>
       {!aiAnalysis && !aiLoading && (
         <button
           onClick={generateAnalysis}
@@ -889,7 +1277,7 @@ export default function CaseTwin({
           >
             Based on derived entities only. Raw files not accessed.
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={generateAnalysis}
               style={{
@@ -918,6 +1306,54 @@ export default function CaseTwin({
             >
               Copy
             </button>
+            {onInsertNote && (
+              <button
+                onClick={() => {
+                  if (!aiAnalysis) return;
+                  const text = [
+                    `Case assessment: ${aiAnalysis.caseAssessment}`,
+                    "",
+                    "Key patterns:",
+                    ...aiAnalysis.keyPatterns.map((p) => `- ${p}`),
+                    "",
+                    "Next steps:",
+                    ...aiAnalysis.nextSteps.map((s) => `- ${s}`),
+                  ].join("\n");
+                  onInsertNote(text);
+                  onSwitchTab?.("notes");
+                }}
+                style={{
+                  backgroundColor: "transparent",
+                  color: "rgba(255,255,255,0.7)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  padding: "8px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                Insert as note draft
+              </button>
+            )}
+            {aiAnalysis.keyPatterns.length > 0 && (
+              <button
+                onClick={() => {
+                  setNewTitle(aiAnalysis.keyPatterns[0].slice(0, 280));
+                  setShowAddForm(true);
+                }}
+                style={{
+                  backgroundColor: "transparent",
+                  color: "rgba(255,255,255,0.7)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  padding: "8px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                Insert as hypothesis
+              </button>
+            )}
           </div>
         </div>
       )}

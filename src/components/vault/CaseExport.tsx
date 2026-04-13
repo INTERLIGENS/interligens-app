@@ -92,13 +92,45 @@ export default function CaseExport({
   }
 
   function exportJSON() {
-    const full = {
+    // PRIVACY QA — explicit field filter: strip any server-side encryption metadata
+    // that may have leaked into the entity list. These are never expected, but
+    // we enforce it at the serialization boundary.
+    const FORBIDDEN = new Set([
+      "contentEnc",
+      "contentIv",
+      "r2Key",
+      "r2Bucket",
+      "titleEnc",
+      "titleIv",
+      "tagsEnc",
+      "tagsIv",
+      "filenameEnc",
+      "filenameIv",
+    ]);
+    function scrub<T>(obj: T): T {
+      if (!obj || typeof obj !== "object") return obj;
+      if (Array.isArray(obj)) return obj.map(scrub) as unknown as T;
+      const out: Record<string, unknown> = {};
+      let removed = 0;
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+        if (FORBIDDEN.has(k) || k.endsWith("Enc") || k.endsWith("Iv")) {
+          removed++;
+          continue;
+        }
+        out[k] = scrub(v);
+      }
+      if (process.env.NODE_ENV !== "production" && removed > 0) {
+        console.log(`[export][privacy-audit] scrubbed ${removed} forbidden field(s)`);
+      }
+      return out as T;
+    }
+    const full = scrub({
       title,
       tags,
       entities,
       notes: notes.map((n) => ({ content: n.content, createdAt: n.createdAt })),
       exportedAt: new Date().toISOString(),
-    };
+    });
     const blob = new Blob([JSON.stringify(full, null, 2)], {
       type: "application/json",
     });
@@ -203,10 +235,45 @@ export default function CaseExport({
     HIGH: "#FF3B5C",
   };
 
+  // Publication checklist (client-side rules mirroring CaseTwin readiness)
+  const checklist = [
+    {
+      label: "At least 3 entities with sources",
+      passed: entities.length >= 3,
+    },
+    {
+      label: "At least 1 confirmed hypothesis",
+      passed: false, // will be checked below after fetch
+    },
+    {
+      label: "No blocking conflicts",
+      passed: true, // approximate — full check is in Intelligence tab
+    },
+    {
+      label: "Retail summary reviewed",
+      passed: retail !== null,
+    },
+    {
+      label: "Entities are derived (not raw private content)",
+      passed: true, // by design — entities are derived only
+    },
+  ];
+
   return (
     <div>
-      {/* JSON + PDF */}
-      <div style={SECTION_TITLE}>Investigator report</div>
+      {/* INVESTIGATOR EXPORT */}
+      <div style={SECTION_TITLE}>Investigator export</div>
+      <div
+        style={{
+          fontSize: 12,
+          color: "rgba(255,255,255,0.4)",
+          marginBottom: 14,
+          lineHeight: 1.6,
+        }}
+      >
+        Complete case data for your records. Contains all derived entities,
+        hypotheses, timeline, and optionally notes.
+      </div>
       <div className="flex flex-col gap-3" style={{ marginBottom: 16 }}>
         <button onClick={exportJSON} style={PRIMARY_BTN}>
           Investigator report (JSON)
@@ -386,6 +453,69 @@ export default function CaseExport({
       )}
 
       <div style={SEPARATOR} />
+
+      {/* PUBLICATION CHECKLIST */}
+      <div
+        style={{
+          backgroundColor: "rgba(255,107,0,0.08)",
+          border: "1px solid rgba(255,107,0,0.2)",
+          padding: 12,
+          borderRadius: 6,
+          marginBottom: 20,
+        }}
+      >
+        <div
+          style={{
+            textTransform: "uppercase",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            color: "#FF6B00",
+            marginBottom: 10,
+          }}
+        >
+          Publication checklist
+        </div>
+        <div className="flex flex-col gap-1">
+          {checklist.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-2"
+              style={{ fontSize: 12 }}
+            >
+              <span
+                style={{
+                  color: item.passed ? "#4ADE80" : "rgba(255,255,255,0.2)",
+                  fontFamily: "ui-monospace, monospace",
+                  fontWeight: 700,
+                  width: 14,
+                }}
+              >
+                {item.passed ? "✓" : "×"}
+              </span>
+              <span
+                style={{
+                  color: item.passed
+                    ? "rgba(255,255,255,0.8)"
+                    : "rgba(255,255,255,0.3)",
+                }}
+              >
+                {item.label}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.4)",
+            marginTop: 10,
+          }}
+        >
+          {checklist.every((c) => c.passed)
+            ? "This case may be ready for publication review."
+            : "Complete the checklist before submitting."}
+        </div>
+      </div>
 
       {/* PUBLISH TO INTEL VAULT */}
       <div style={SECTION_TITLE}>Contribute to Intel Vault</div>

@@ -69,7 +69,14 @@ type EntityEnrichment = {
   kolName: string | null;
   kolScore: number | null;
   inIntelVault: boolean;
+  proceedsTotalUSD: number | null;
 };
+
+function formatUSD(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+  return `$${Math.round(n)}`;
+}
 
 type FileRow = {
   id: string;
@@ -608,19 +615,41 @@ function CaseInner({ caseId }: { caseId: string }) {
             paddingRight: 24,
           }}
         >
-          {tabs.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-2 text-sm capitalize ${
-                tab === t
-                  ? "text-[#FF6B00] border-b-2 border-[#FF6B00]"
-                  : "text-white/60"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          {tabs.map((t) => {
+            const count =
+              t === "notes"
+                ? notes.length
+                : t === "entities"
+                  ? entities.length
+                  : null;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3 py-2 text-sm capitalize ${
+                  tab === t
+                    ? "text-[#FF6B00] border-b-2 border-[#FF6B00]"
+                    : "text-white/60"
+                }`}
+              >
+                {t}
+                {count != null && count > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 4,
+                      fontSize: 11,
+                      color:
+                        tab === t
+                          ? "rgba(255,107,0,0.6)"
+                          : "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    ({count})
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {tab === "entities" && (
@@ -822,6 +851,18 @@ function CaseInner({ caseId }: { caseId: string }) {
                             {enr.kolName ? ` · ${enr.kolName}` : ""}
                           </span>
                         )}
+                        {enr?.proceedsTotalUSD != null &&
+                          enr.proceedsTotalUSD > 0 && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: "rgba(255,107,0,0.8)",
+                                fontWeight: 600,
+                              }}
+                            >
+                              · {formatUSD(enr.proceedsTotalUSD)} observed
+                            </span>
+                          )}
                         {enr?.inIntelVault && (
                           <span
                             style={{
@@ -926,6 +967,10 @@ function CaseInner({ caseId }: { caseId: string }) {
             caseTemplate={detail.caseTemplate}
             updatedAt={detail.updatedAt}
             enrichment={enrichment}
+            onSwitchTab={(t) => setTab(t as Tab)}
+            onInsertNote={(text) => {
+              setNewNote((prev) => (prev ? prev + "\n\n" + text : text));
+            }}
           />
         )}
 
@@ -994,15 +1039,25 @@ function CaseInner({ caseId }: { caseId: string }) {
               onChange={(e) => setNewNote(e.target.value)}
               rows={4}
               placeholder="New note…"
-              className="w-full bg-black border border-white/20 rounded px-3 py-2 mb-3"
+              className="w-full bg-black border border-white/20 rounded px-3 py-2 mb-1"
             />
+            <div
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.3)",
+                textAlign: "right",
+                marginBottom: 10,
+              }}
+            >
+              {newNote.length} chars · Encrypted before storage
+            </div>
             <div className="flex items-center gap-3 mb-6">
               <button
                 onClick={saveNote}
                 disabled={!newNote.trim()}
                 className="bg-[#FF6B00] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
               >
-                Save note
+                Save & encrypt
               </button>
               {noteSpeechSupported && (
                 <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export type Suggestion = {
   type: string;
@@ -25,11 +25,6 @@ export default function EntitySuggestionPanel({
 }: Props) {
   const [adding, setAdding] = useState<Set<string>>(new Set());
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const t = setTimeout(() => onDismiss(), 10000);
-    return () => clearTimeout(t);
-  }, [onDismiss]);
 
   function key(s: Suggestion) {
     return `${s.type}|${s.value}`;

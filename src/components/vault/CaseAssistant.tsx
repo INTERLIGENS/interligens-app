@@ -772,8 +772,19 @@ export default function CaseAssistant({
           gap: 8,
           overflowX: "auto",
           scrollbarWidth: "none",
+          alignItems: "center",
         }}
       >
+        <span
+          style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.25)",
+            marginRight: 8,
+            flexShrink: 0,
+          }}
+        >
+          Quick analysis:
+        </span>
         {(mode ? MODE_PROMPTS[mode] : DEFAULT_QUICK_PROMPTS).map((p) => (
           <button
             key={p}
@@ -917,10 +928,42 @@ export default function CaseAssistant({
           Privacy policy →
         </a>
         {tokensLimit > 0 && (
-          <span style={{ color: quotaColor }}>
-            AI quota: {tokensUsed.toLocaleString()} /{" "}
-            {tokensLimit.toLocaleString()} tokens this month
-          </span>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: 4,
+              minWidth: 180,
+            }}
+          >
+            <span style={{ color: quotaColor }}>
+              {tokensUsed.toLocaleString()} / {tokensLimit.toLocaleString()}{" "}
+              tokens · {Math.round(quotaPercent)}% used this month
+            </span>
+            <div
+              style={{
+                width: 180,
+                height: 3,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                borderRadius: 2,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${Math.min(100, quotaPercent)}%`,
+                  height: "100%",
+                  backgroundColor:
+                    quotaPercent < 50
+                      ? "rgba(0,200,83,0.6)"
+                      : quotaPercent < 80
+                        ? "rgba(255,107,0,0.6)"
+                        : "rgba(255,59,92,0.6)",
+                }}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

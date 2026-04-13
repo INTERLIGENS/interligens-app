@@ -291,6 +291,42 @@ export default function CaseGraph({ entities }: Props) {
           style={{ width: "100%", height: 500, display: "block" }}
         />
       </div>
+      {/* GRAPH LEGEND */}
+      <div
+        style={{
+          marginTop: 10,
+          display: "flex",
+          gap: 16,
+          flexWrap: "wrap",
+          fontSize: 11,
+          color: "rgba(255,255,255,0.3)",
+        }}
+      >
+        {[
+          { label: "WALLET", color: COLORS.WALLET },
+          { label: "TX_HASH", color: COLORS.TX_HASH },
+          { label: "HANDLE", color: COLORS.HANDLE },
+          { label: "URL", color: COLORS.URL },
+          { label: "CONTRACT", color: COLORS.CONTRACT },
+        ].map((row) => (
+          <span
+            key={row.label}
+            className="flex items-center gap-1"
+            style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                width: 8,
+                height: 8,
+                borderRadius: 8,
+                backgroundColor: row.color,
+              }}
+            />
+            {row.label}
+          </span>
+        ))}
+      </div>
       {selected && (
         <div
           style={{

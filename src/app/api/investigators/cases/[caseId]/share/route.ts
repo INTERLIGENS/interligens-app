@@ -38,6 +38,43 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
     ? body.hypothesisSnapshot.slice(0, 100)
     : null;
 
+  // PRIVACY QA — assert snapshot does not contain sensitive fields
+  const FORBIDDEN_KEYS = [
+    "contentEnc",
+    "contentIv",
+    "r2Key",
+    "r2Bucket",
+    "kdfSalt",
+    "titleEnc",
+    "titleIv",
+    "tagsEnc",
+    "tagsIv",
+    "filenameEnc",
+    "filenameIv",
+  ];
+  function assertNoForbidden(obj: unknown, path = "snapshot") {
+    if (!obj || typeof obj !== "object") return;
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) assertNoForbidden(obj[i], `${path}[${i}]`);
+      return;
+    }
+    for (const k of Object.keys(obj as Record<string, unknown>)) {
+      if (FORBIDDEN_KEYS.includes(k) || k.endsWith("Enc") || k.endsWith("Iv")) {
+        throw new Error(`FORBIDDEN_KEY_IN_SNAPSHOT:${path}.${k}`);
+      }
+      assertNoForbidden((obj as Record<string, unknown>)[k], `${path}.${k}`);
+    }
+  }
+  try {
+    assertNoForbidden({ entitySnapshot, hypothesisSnapshot, titleSnapshot });
+  } catch (err) {
+    console.error("[share] snapshot forbidden key", err);
+    return NextResponse.json(
+      { error: "forbidden_key_in_snapshot" },
+      { status: 400 }
+    );
+  }
+
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + EXPIRY_MAP[expiresIn]);
 

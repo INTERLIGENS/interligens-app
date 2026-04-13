@@ -16,6 +16,7 @@ type EntityEnrichment = {
   kolName: string | null;
   kolScore: number | null;
   inIntelVault: boolean;
+  proceedsTotalUSD: number | null;
 };
 
 function emptyEnrichment(): EntityEnrichment {
@@ -27,6 +28,7 @@ function emptyEnrichment(): EntityEnrichment {
     kolName: null,
     kolScore: null,
     inIntelVault: false,
+    proceedsTotalUSD: null,
   };
 }
 
@@ -79,12 +81,29 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
         for (const m of matches) {
           matchSet.set(m.address.toLowerCase(), m.kolHandle);
         }
+
+        // Fetch proceeds data for matched KOL handles
+        const matchedKolHandles = Array.from(new Set(matches.map((m) => m.kolHandle)));
+        const kolProceedsByHandle = new Map<string, number>();
+        if (matchedKolHandles.length > 0) {
+          const profiles = await prisma.kolProfile.findMany({
+            where: { handle: { in: matchedKolHandles, mode: "insensitive" } },
+            select: { handle: true, totalDocumented: true, totalScammed: true },
+          });
+          for (const p of profiles) {
+            const usd = p.totalDocumented ?? p.totalScammed ?? 0;
+            if (usd > 0) kolProceedsByHandle.set(p.handle.toLowerCase(), usd);
+          }
+        }
+
         for (const e of entities) {
           if (e.type !== "WALLET" && e.type !== "CONTRACT") continue;
           const hit = matchSet.get(e.value.toLowerCase());
           if (hit) {
             result[e.id].isKnownBad = true;
             result[e.id].inIntelVault = true;
+            const proceeds = kolProceedsByHandle.get(hit.toLowerCase());
+            if (proceeds) result[e.id].proceedsTotalUSD = proceeds;
           }
         }
       } catch (err) {
@@ -107,6 +126,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             displayName: true,
             rugCount: true,
             totalDocumented: true,
+            totalScammed: true,
             publishable: true,
           },
         });
@@ -125,6 +145,8 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             if (hit.publishable) {
               result[e.id].inIntelVault = true;
             }
+            const proceeds = hit.totalDocumented ?? hit.totalScammed ?? 0;
+            if (proceeds > 0) result[e.id].proceedsTotalUSD = proceeds;
           }
         }
       } catch (err) {

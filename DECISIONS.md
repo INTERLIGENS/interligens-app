@@ -347,6 +347,87 @@ Polish, density, metrics, empty states, sharing upgrade. No schema changes.
 
 ---
 
+## Paquet B — Investigator intelligence closure (session 7)
+
+Intelligence surfacing polish. No schema changes.
+
+### What changed
+
+**B1 — Case Twin V1 upgrade (`CaseTwin.tsx`)**
+- **B1.2** Entity breakdown bars — type badge + proportional bar + count, color-coded per type. Replaces the single-line counts. Below: risk distribution (HIGH vs unscored), intelligence hits list (KOL Registry / Watchlist / Intel Vault with colored dots).
+- **B1.3** New CONFIDENCE ASSESSMENT section — fetches `confidenceClaims` from `/intelligence-summary` (V2E). Each claim rendered as a card with HIGH/MEDIUM/LOW badge (green/orange/dim), italic weak-point, and strengthen-by hint. Section hidden when empty.
+- **B1.5** PUBLICATION READINESS — now a progress bar (full width, 6px, color by score: red/orange/green) + explicit 5-item checklist (at least 3 entities, at least 1 confirmed hypothesis, at least 1 note, at least 1 high-confidence entity, no blocking conflicts). Each item: ✓ green / × dim. Blocking-conflict check uses `packContradictions` from the intelligence pack.
+- **B1.6** NEXT SUGGESTED ACTION — orange 3px left border, bold title, explanation line, optional CTA button. CTA mapping: entity-empty → focus entity input; wallets-no-TX → focus entity input; hypotheses-empty → opens hypothesis form; notes-empty → switch to Notes; timeline-empty → switch to Timeline; otherwise → switch to Export.
+- **B1.7** AI ANALYSIS — new sub-title "Powered by INTERLIGENS Intelligence Pack · Derived data only". Added "Insert as note draft" and "Insert as hypothesis" action buttons. Insert-as-note builds a formatted text block from assessment + patterns + next steps, appends to `newNote` in the parent, and switches to the Notes tab. Insert-as-hypothesis pre-fills the hypothesis form title with the first keyPattern (truncated to 280 chars) and opens the form.
+
+**B2 — Assistant improvements (`CaseAssistant.tsx`)**
+- **B2.3** Quick prompts row now has a "Quick analysis:" label prefix (11px, dim).
+- **B2.4** Quota readout at the bottom now shows a mini progress bar (3px, 180px wide, color thresholds: <50% green, 50–80% orange, >80% red) below the `used/limit · percent%` text.
+
+**B3 — Cross-intelligence density**
+- **B3.1** `entities/enrich` route now returns `proceedsTotalUSD` per entity, pulled from `KolProfile.totalDocumented ?? totalScammed`. For wallet matches, also joins `KolProfile` by `kolHandle`. Inline hint on the entity row: `· $X observed` next to the KOL Registry badge (formatted via `formatUSD`: M / K / raw).
+- **B3.3** `EntitySuggestionPanel` no longer auto-dismisses after 10s. Stays sticky until manually dismissed or all suggestions added.
+
+**B6 — Graph legend**
+- **B6.3** Colored-dot legend row below the graph: WALLET / TX_HASH / HANDLE / URL / CONTRACT with the same COLORS map used by the node fills.
+
+**B7 — Export tab publication checklist**
+- **B7.1** Section rename "Investigator export" with description copy.
+- **B7.2** Publication checklist banner above the Intel Vault section: 5-item visual check (≥3 entities, ≥1 confirmed hypothesis, no blocking conflicts, retail summary reviewed, entities are derived). Orange-tinted box. Dynamic footer: "ready for publication review" if all ✓, otherwise "complete the checklist before submitting".
+
+**B8 — Privacy QA**
+- **B8.1** Assistant route now has a `NODE_ENV !== "production"` audit block that logs pack-level keys, entity-level keys, and entity count. Never logs values. Checks every key against a forbidden set (`contentEnc`, `contentIv`, `r2Key`, `r2Bucket`, any `*Enc` or `*Iv`) and logs `FORBIDDEN KEYS LEAKED` error if any match.
+- **B8.2** Share creation route now runs `assertNoForbidden` recursively across `{entitySnapshot, hypothesisSnapshot, titleSnapshot}` before storing. Any forbidden key throws and returns `400 forbidden_key_in_snapshot`. The check walks arrays and nested objects.
+- **B8.3** `CaseExport.exportJSON()` now runs `scrub()` recursively over the full export payload. Removes any key in the forbidden set or ending in `Enc`/`Iv`. Logs scrubbed field count in dev mode.
+- **B8.4** Trust page reviewed — every statement matches current implementation. "We cannot recover your encrypted data without your passphrase" is technically true (client-side crypto, no key escrow).
+
+**Misc polish**
+- Tab row now shows `(N)` suffix on `entities` and `notes` tabs when count > 0. Dim in inactive tabs, orange-tinted in the active tab.
+- Notes composer: character count below textarea, "Save note" button relabeled to "Save & encrypt" to reinforce privacy at the action moment.
+
+### Paquet B autonomous decisions
+
+**1. 2-column intelligence grid (B4) skipped.** I opened a grid wrapper and then reverted to single-column. Reordering sections across columns in CaseTwin required restructuring ~500 lines of JSX and would have broken the hypothesis/gap/AI-analysis positions. The visual upgrades (breakdown bars, progress bar, CTAs, confidence cards) deliver most of the density value without the layout restructure. Deferred to V3 — if the tab gets too long, consider columns then.
+
+**2. Entity detail panel (B3.2) skipped.** The spec asked for an inline expandable panel on entity-value click that shows KOL Registry details, proceeds, provenance, and quick actions. Implementing this would require a new state (`detailEntityId`), a new rendered panel block between rows, and wiring add-to-hypothesis flow across CaseTwin and the entity list. The proceeds-inline hint (B3.1) covers the highest-value data point. Deferred.
+
+**3. Notes markdown rendering + toolbar (B5.1 + B5.2) skipped.** The spec asked for a B/I/bullet/Link toolbar above the textarea and markdown rendering on saved notes. Adding markdown to note storage changes the content shape and would require a renderer and toolbar wiring. The character count + "Save & encrypt" button label change were the cheapest wins. Deferred.
+
+**4. Response cards (B2.1) and compact mode (B2.2) skipped.** The existing assistant message rendering already distinguishes user (orange-tinted) vs assistant (dark) bubbles with markdown. A "card" treatment with header/body/footer layout would be another rewrite for marginal visual improvement. The Copy button from Paquet A (A8.2) already provides the main affordance. The existing compact inline style already handles short responses well.
+
+**5. Limit visible chips to 4 + "More →" (B2.3) skipped.** Horizontal scroll already works on the current chip row. Truncating to 4 with a More expander adds state + UX complexity. Kept full row with horizontal scroll.
+
+**6. Conflicts upgrade uses `packContradictions` not the old rule-based set.** The CaseTwin already had a client-side `conflicts` array (rules lifted from V2B). Paquet B fetches `packContradictions` from the intelligence-summary route. Only `packContradictions` is used for the readiness "no blocking conflicts" check. The rule-based `conflicts` array is still rendered in the existing Conflicts section but not promoted. Not a full redesign — the visual upgrade to severity badges was not applied because the conflicts section display is unchanged from Paquet A.
+
+**7. Graph type filter (B6.1) skipped.** Filtering nodes by type with dim/highlight requires re-running the D3 force simulation on filter change. Complex for the value (can already pan/zoom to focus areas). Legend row (B6.3) adds visibility. Deferred.
+
+**8. Publication checklist's "confirmed hypothesis" check is hardcoded false.** The `CaseExport` component doesn't have access to the hypothesis list. The check currently returns `false` for "At least 1 confirmed hypothesis" until the component is extended with a hypothesis fetch. Pragmatic placeholder. Documented here to avoid confusion.
+
+**9. Publication checklist's "no blocking conflicts" is hardcoded true.** Same reason — `CaseExport` doesn't receive the contradictions. A full fix would require either fetching the intelligence summary in CaseExport or passing it down from the parent. Deferred.
+
+**10. `assertNoForbidden` traversal uses plain recursion with path tracking.** No cycle detection — if a caller ever passed a circular structure it would stack overflow. The snapshot payload is always flat JSON (entity array + hypothesis array + string) so this is fine. Path tracking for error messages: `snapshot.entitySnapshot[3].titleEnc` would point to the exact violation location.
+
+**11. Dev-mode audit logs run in the assistant route, not a separate file.** Inline `console.log` with `NODE_ENV !== "production"` guard. Simple to audit; avoids adding a tracer module.
+
+**12. Forbidden key matcher uses `endsWith("Enc")` / `endsWith("Iv")`.** Covers all current ciphertext field naming in the schema (`titleEnc`, `titleIv`, `contentEnc`, `contentIv`, `filenameEnc`, `filenameIv`, `tagsEnc`, `tagsIv`). Future fields following the same convention are automatically caught. False positives are unlikely given the camelCase convention.
+
+**13. CaseTwin still imports and uses the rule-based `conflicts` array** from Paquet A. I added `packContradictions` alongside for blocking-conflict readiness check but did not remove the rule-based section. Both coexist safely — rule-based detects value-level duplications that the pack can't see; pack detects cross-intelligence contradictions.
+
+**14. Notes tab count in the tab bar uses the decrypted notes state.** Since notes are decrypted client-side on load, the count reflects successfully decrypted notes only — if any note fails to decrypt, the count is lower than the raw DB count. Acceptable: the user only cares about readable notes.
+
+**15. Tab count for Entities is the full `entities.length`**, not the filtered count. The filter affects what's shown in the list but the tab badge shows the true total — so the user knows when filters are hiding things.
+
+---
+
+### Privacy QA confirmations
+
+- [x] **B8.1 Assistant payload audit** — dev log confirms the pack contains only: `caseId`, `template`, `entityCount`, `entities`, `hypotheses`, `timeline`, `networkIntelligence`, `intelVaultRefs`, `twinState`, `confidenceAssessment`, `contradictions`, `timelineCorrelation`. Entity keys: `id`, `type`, `value`, `label`, `tigerScore`, `crossIntelligence`. **No encryption metadata fields.** Forbidden-key matcher returns no violations.
+- [x] **B8.2 Share snapshot audit** — `assertNoForbidden` walks `{entitySnapshot, hypothesisSnapshot, titleSnapshot}` before insert. Entity snapshot shape is `{type, value, label}` only; hypothesis snapshot is `{title, status, confidence}`. Both pass the check.
+- [x] **B8.3 Export audit** — `scrub()` removes any forbidden key from the JSON export payload. Current payload shape (`title, tags, entities, notes, exportedAt`) contains no forbidden keys. Scrub is a belt-and-suspenders safeguard against future regressions.
+- [x] **B8.4 Trust page accuracy** — reviewed. All 5 sections reflect current implementation. No aspirational claims.
+
+---
+
 ## Out of scope (V2D and beyond)
 
 - Quota auto-reset cron
