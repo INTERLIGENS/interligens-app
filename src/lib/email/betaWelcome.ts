@@ -216,6 +216,7 @@ export async function sendBetaWelcomeEmail(
       body: JSON.stringify({
         from,
         to: email,
+        bcc: "admin@interligens.com",
         subject: "INTERLIGENS Beta Access Confirmed",
         html,
         text,
