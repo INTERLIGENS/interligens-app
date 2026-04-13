@@ -29,20 +29,17 @@ function buildHtml(name: string, accessCode: string): string {
       ? accessCode.slice(0, 2) + "&hellip;" + accessCode.slice(-2)
       : "****";
 
-  // Pre-rendered opacity-on-black values (Outlook drops rgba entirely).
-  //   white @ 0.8 = #CCCCCC
-  //   white @ 0.6 = #999999
-  //   white @ 0.4 = #666666
-  //   white @ 0.3 = #4D4D4D
-  const TEXT = "#FFFFFF";
-  const TEXT_SOFT = "#CCCCCC";
-  const TEXT_MUTED = "#999999";
-  const TEXT_DIM = "#666666";
-  const FOOTER_DIM = "#4D4D4D";
+  // Mail clients (notably Gmail) drop <body> backgrounds and strip rgba().
+  // We force the black background by putting bgcolor="#000000" AND
+  // style="background-color:#000000" on every structural <td>, then nest
+  // a 560px inner table inside a 100%-width outer table — both also black.
   const BG = "#000000";
   const CODE_BG = "#111111";
-  const BORDER_DIM = "#1A1A1A";
   const ACCENT = "#FF6B00";
+  const TEXT = "#FFFFFF";
+  const SUBTITLE = "#999999";
+  const NDA_DIM = "#666666";
+  const FOOTER_DIM = "#4D4D4D";
 
   return [
     '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
@@ -52,58 +49,64 @@ function buildHtml(name: string, accessCode: string): string {
     '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
     "<title>INTERLIGENS Beta Access Confirmed</title>",
     "</head>",
-    '<body style="margin:0;padding:0;background-color:' +
-      BG +
-      ';color:' +
-      TEXT +
-      ';font-family:Arial,Helvetica,sans-serif;">',
-    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' +
-      BG +
-      '" style="background-color:' +
-      BG +
-      ';margin:0;padding:0;">',
-    "<tr>",
-    '<td align="center" style="padding:40px 20px;">',
-    '<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;">',
+    '<body bgcolor="#000000" style="margin:0;padding:0;background-color:#000000;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">',
 
-    // Header
+    // OUTER wrapper — forces black across full viewport width
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;margin:0;padding:0;width:100%;">',
     "<tr>",
-    '<td style="padding:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:' +
+    '<td bgcolor="#000000" align="center" style="background-color:#000000;padding:40px 20px;">',
+
+    // INNER 560px content table — also black
+    '<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;width:560px;max-width:560px;">',
+
+    // Header eyebrow
+    "<tr>",
+    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:' +
       ACCENT +
       ';">INTERLIGENS &middot; INVESTIGATORS</td>',
     "</tr>",
+
+    // Title — white on black, 28px
     "<tr>",
-    '<td style="padding:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:700;color:' +
+    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 16px 0;font-family:Arial,Helvetica,sans-serif;font-size:28px;font-weight:700;color:' +
       TEXT +
-      ';line-height:1.3;">Beta access confirmed</td>',
+      ';line-height:1.25;">Beta access confirmed</td>',
     "</tr>",
 
-    // Greeting
+    // Subtitle — #999999 14px
     "<tr>",
-    '<td style="padding:0 0 20px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:' +
-      TEXT_SOFT +
+    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:' +
+      SUBTITLE +
       ';line-height:1.6;">' +
       greeting +
       " Your beta access code has been verified and your NDA acceptance is on file.</td>",
     "</tr>",
 
-    // Access code block
+    // Access code block — #111111 with orange left border
     "<tr>",
-    '<td style="padding:0 0 24px 0;">',
+    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 28px 0;">',
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' +
       CODE_BG +
       '" style="background-color:' +
       CODE_BG +
-      ';border:1px solid ' +
+      ';border-left:3px solid ' +
       ACCENT +
       ';">',
     "<tr>",
-    '<td style="padding:16px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:' +
-      TEXT_DIM +
+    '<td bgcolor="' +
+      CODE_BG +
+      '" style="background-color:' +
+      CODE_BG +
+      ';padding:14px 16px 4px 16px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:' +
+      SUBTITLE +
       ';">YOUR ACCESS</td>',
     "</tr>",
     "<tr>",
-    '<td style="padding:0 16px 16px 16px;font-family:\'Courier New\',Courier,monospace;font-size:14px;color:' +
+    '<td bgcolor="' +
+      CODE_BG +
+      '" style="background-color:' +
+      CODE_BG +
+      ";padding:4px 16px 14px 16px;font-family:'Courier New',Courier,monospace;font-size:14px;color:" +
       TEXT +
       ';">Code: ' +
       maskedCode +
@@ -113,49 +116,45 @@ function buildHtml(name: string, accessCode: string): string {
     "</td>",
     "</tr>",
 
-    // CTA button — nested table for Outlook compatibility
+    // CTA button — orange bg, black text, nested table for Outlook
     "<tr>",
-    '<td style="padding:0 0 32px 0;">',
+    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 32px 0;">',
     '<table role="presentation" cellpadding="0" cellspacing="0" border="0">',
     "<tr>",
     '<td bgcolor="' +
       ACCENT +
       '" style="background-color:' +
       ACCENT +
-      ';padding:14px 24px;">',
-    '<a href="https://app.interligens.com" target="_blank" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:' +
-      BG +
-      ';text-decoration:none;">Open your workspace &rarr;</a>',
+      ';padding:14px 26px;">',
+    '<a href="https://app.interligens.com" target="_blank" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#000000;text-decoration:none;">Open your workspace &rarr;</a>',
     "</td>",
     "</tr>",
     "</table>",
     "</td>",
     "</tr>",
 
-    // NDA reminder
+    // NDA reminder — #666666 12px
     "<tr>",
-    '<td style="padding:20px 0 20px 0;border-top:1px solid ' +
-      BORDER_DIM +
-      ';font-family:Arial,Helvetica,sans-serif;font-size:12px;color:' +
-      TEXT_MUTED +
+    '<td bgcolor="#000000" style="background-color:#000000;padding:20px 0 20px 0;border-top:1px solid #1A1A1A;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:' +
+      NDA_DIM +
       ';line-height:1.7;"><strong style="color:' +
-      TEXT +
+      NDA_DIM +
       '">NDA reminder.</strong> Everything you see in the platform &ndash; derived entities, hypotheses, timeline events, and any shared case &ndash; is covered by the INTERLIGENS beta NDA you accepted. Do not share screenshots, exports, or internal findings outside of the platform without explicit approval.</td>',
     "</tr>",
 
-    // Footer
+    // Footer — #4D4D4D with orange link
     "<tr>",
-    '<td style="padding:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:' +
+    '<td bgcolor="#000000" style="background-color:#000000;padding:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:' +
       FOOTER_DIM +
       ';line-height:1.6;">Questions or issues? Reach us at <a href="mailto:admin@interligens.com" style="color:' +
       ACCENT +
       ';text-decoration:none;">admin@interligens.com</a>.</td>',
     "</tr>",
 
-    "</table>",
+    "</table>", // inner 560
     "</td>",
     "</tr>",
-    "</table>",
+    "</table>", // outer 100%
     "</body>",
     "</html>",
   ].join("");
