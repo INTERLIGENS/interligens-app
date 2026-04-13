@@ -51,25 +51,57 @@ export default async function SharedCasePage({ params }: RouteCtx) {
           padding: 60,
         }}
       >
-        <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
+        <div
+          style={{
+            maxWidth: 520,
+            margin: "120px auto 0",
+            textAlign: "center",
+          }}
+        >
           <div
             style={{
-              fontSize: 18,
-              color: "rgba(255,255,255,0.6)",
+              textTransform: "uppercase",
+              fontSize: 11,
+              letterSpacing: "0.12em",
+              color: "#FF6B00",
+              marginBottom: 12,
             }}
           >
-            This link is invalid.
+            INTERLIGENS · Shared case
+          </div>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#FFFFFF",
+            }}
+          >
+            This link is not valid.
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.4)",
+              marginTop: 10,
+              lineHeight: 1.7,
+            }}
+          >
+            The link may have been revoked or never existed.
           </div>
           <Link
             href="/"
             style={{
               fontSize: 12,
               color: "#FF6B00",
-              marginTop: 16,
+              marginTop: 24,
               display: "inline-block",
+              textDecoration: "none",
+              border: "1px solid rgba(255,107,0,0.3)",
+              padding: "10px 18px",
+              borderRadius: 6,
             }}
           >
-            ← Back to interligens.com
+            Learn about INTERLIGENS →
           </Link>
         </div>
       </main>
@@ -86,25 +118,57 @@ export default async function SharedCasePage({ params }: RouteCtx) {
           padding: 60,
         }}
       >
-        <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
+        <div
+          style={{
+            maxWidth: 520,
+            margin: "120px auto 0",
+            textAlign: "center",
+          }}
+        >
           <div
             style={{
-              fontSize: 18,
-              color: "rgba(255,255,255,0.6)",
+              textTransform: "uppercase",
+              fontSize: 11,
+              letterSpacing: "0.12em",
+              color: "#FF6B00",
+              marginBottom: 12,
+            }}
+          >
+            INTERLIGENS · Shared case
+          </div>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#FFFFFF",
             }}
           >
             This link has expired.
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.4)",
+              marginTop: 10,
+              lineHeight: 1.7,
+            }}
+          >
+            The investigator who shared this case has not renewed the link.
           </div>
           <Link
             href="/"
             style={{
               fontSize: 12,
               color: "#FF6B00",
-              marginTop: 16,
+              marginTop: 24,
               display: "inline-block",
+              textDecoration: "none",
+              border: "1px solid rgba(255,107,0,0.3)",
+              padding: "10px 18px",
+              borderRadius: 6,
             }}
           >
-            ← Back to interligens.com
+            Learn about INTERLIGENS →
           </Link>
         </div>
       </main>
@@ -345,20 +409,42 @@ export default async function SharedCasePage({ params }: RouteCtx) {
 
         <div
           style={{
-            marginTop: 60,
-            paddingTop: 16,
+            marginTop: 80,
+            paddingTop: 20,
             borderTop: "1px solid rgba(255,255,255,0.06)",
             fontSize: 11,
             color: "rgba(255,255,255,0.3)",
+            lineHeight: 1.8,
           }}
         >
-          Powered by{" "}
-          <a
-            href="https://interligens.com"
-            style={{ color: "#FF6B00", textDecoration: "none" }}
+          <div
+            style={{
+              textTransform: "uppercase",
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              color: "#FF6B00",
+              marginBottom: 4,
+            }}
           >
             INTERLIGENS
-          </a>
+          </div>
+          <div>
+            Shared via INTERLIGENS Investigators — encrypted workspace for
+            crypto fraud research.
+          </div>
+          <div>
+            View the full intelligence platform at{" "}
+            <a
+              href="https://app.interligens.com"
+              style={{ color: "#FF6B00", textDecoration: "none" }}
+            >
+              app.interligens.com
+            </a>
+          </div>
+          <div style={{ marginTop: 4 }}>
+            This link expires:{" "}
+            {new Date(share.expiresAt).toLocaleString()}
+          </div>
         </div>
       </div>
     </main>

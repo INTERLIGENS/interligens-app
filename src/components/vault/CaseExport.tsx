@@ -15,6 +15,10 @@ type Props = {
   tags: string[];
   entities: Entity[];
   notes: { id: string; content: string; createdAt: string }[];
+  hasConfirmedHypothesis?: boolean;
+  hasBlockingConflicts?: boolean;
+  noteCount?: number;
+  onSaveToNotes?: (content: string) => Promise<void> | void;
 };
 
 type RetailSummary = {
@@ -66,7 +70,12 @@ export default function CaseExport({
   tags,
   entities,
   notes,
+  hasConfirmedHypothesis = false,
+  hasBlockingConflicts = false,
+  noteCount,
+  onSaveToNotes,
 }: Props) {
+  const [savedToNotes, setSavedToNotes] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(false);
   const [retail, setRetail] = useState<RetailSummary | null>(null);
   const [retailLoading, setRetailLoading] = useState(false);
@@ -243,11 +252,11 @@ export default function CaseExport({
     },
     {
       label: "At least 1 confirmed hypothesis",
-      passed: false, // will be checked below after fetch
+      passed: hasConfirmedHypothesis,
     },
     {
       label: "No blocking conflicts",
-      passed: true, // approximate — full check is in Intelligence tab
+      passed: !hasBlockingConflicts,
     },
     {
       label: "Retail summary reviewed",
@@ -425,7 +434,7 @@ export default function CaseExport({
             This summary is based on derived entities only. Raw files were not
             accessed.
           </div>
-          <div className="flex gap-2" style={{ marginTop: 14 }}>
+          <div className="flex gap-2 flex-wrap" style={{ marginTop: 14 }}>
             <button
               onClick={copyRetail}
               style={{
@@ -437,6 +446,36 @@ export default function CaseExport({
             >
               Copy summary
             </button>
+            {onSaveToNotes && (
+              <button
+                onClick={async () => {
+                  if (!retail) return;
+                  const content = [
+                    "## AI Retail Summary",
+                    "",
+                    retail.summary,
+                    "",
+                    "Red flags:",
+                    ...retail.redFlags.map((f) => `- ${f}`),
+                    "",
+                    `Risk: ${retail.riskLevel} — ${retail.riskJustification}`,
+                  ].join("\n");
+                  try {
+                    await onSaveToNotes(content);
+                    setSavedToNotes(true);
+                    setTimeout(() => setSavedToNotes(false), 2000);
+                  } catch {}
+                }}
+                style={{
+                  ...SECONDARY_BTN,
+                  height: 36,
+                  fontSize: 12,
+                  padding: "0 14px",
+                }}
+              >
+                {savedToNotes ? "Saved to notes" : "Save as note"}
+              </button>
+            )}
             <button
               onClick={generateRetail}
               style={{
@@ -526,13 +565,42 @@ export default function CaseExport({
             backgroundColor: "rgba(74,222,128,0.06)",
             border: "1px solid rgba(74,222,128,0.3)",
             borderRadius: 6,
-            color: "#4ADE80",
+            color: "rgba(255,255,255,0.9)",
             fontSize: 13,
-            lineHeight: 1.6,
+            lineHeight: 1.7,
           }}
         >
-          Submitted for review. The INTERLIGENS team will review your
-          contribution and contact you via your profile.
+          <div
+            style={{
+              color: "#4ADE80",
+              fontSize: 14,
+              fontWeight: 600,
+              marginBottom: 8,
+            }}
+          >
+            Submitted for review.
+          </div>
+          <div>The INTERLIGENS team will review your contribution.</div>
+          <div style={{ marginTop: 4 }}>
+            You will be attributed via your investigator handle if published.
+          </div>
+          <button
+            onClick={() => {
+              setPublishSuccess(false);
+              setPublishSummary("");
+              setConfirmed(false);
+              setSelectedIds(new Set(entities.map((e) => e.id)));
+            }}
+            style={{
+              ...SECONDARY_BTN,
+              height: 36,
+              fontSize: 12,
+              padding: "0 14px",
+              marginTop: 14,
+            }}
+          >
+            Submit another
+          </button>
         </div>
       ) : (
         <>
@@ -551,15 +619,44 @@ export default function CaseExport({
 
           <div style={{ marginBottom: 16 }}>
             <div
-              style={{
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "rgba(255,255,255,0.4)",
-                marginBottom: 8,
-              }}
+              className="flex items-center justify-between"
+              style={{ marginBottom: 8 }}
             >
-              Step 1 — Select entities to share
+              <div
+                style={{
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "rgba(255,255,255,0.4)",
+                }}
+              >
+                Step 1 — Select entities to share ({selectedIds.size}/
+                {entities.length})
+              </div>
+              {entities.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedIds.size === entities.length) {
+                      setSelectedIds(new Set());
+                    } else {
+                      setSelectedIds(new Set(entities.map((e) => e.id)));
+                    }
+                  }}
+                  style={{
+                    fontSize: 11,
+                    color: "#FF6B00",
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                  }}
+                >
+                  {selectedIds.size === entities.length
+                    ? "Deselect all"
+                    : "Select all"}
+                </button>
+              )}
             </div>
             <div
               className="flex flex-col gap-1"
@@ -633,16 +730,30 @@ export default function CaseExport({
 
           <div style={{ marginBottom: 16 }}>
             <div
-              style={{
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "rgba(255,255,255,0.4)",
-                marginBottom: 8,
-              }}
+              className="flex items-center justify-between"
+              style={{ marginBottom: 8 }}
             >
-              Step 2 — Write a submission summary ({publishSummary.length}
-              /4000)
+              <div
+                style={{
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "rgba(255,255,255,0.4)",
+                }}
+              >
+                Step 2 — Write a submission summary
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color:
+                    publishSummary.length < 100
+                      ? "rgba(255,59,92,0.8)"
+                      : "rgba(255,255,255,0.4)",
+                }}
+              >
+                {publishSummary.length}/4000 chars
+              </div>
             </div>
             <textarea
               value={publishSummary}
@@ -652,7 +763,10 @@ export default function CaseExport({
               style={{
                 width: "100%",
                 backgroundColor: "#0d0d0d",
-                border: "1px solid rgba(255,255,255,0.08)",
+                border:
+                  publishSummary.length > 0 && publishSummary.length < 100
+                    ? "1px solid rgba(255,59,92,0.5)"
+                    : "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 6,
                 padding: "10px 12px",
                 color: "#FFFFFF",
@@ -663,14 +777,69 @@ export default function CaseExport({
             />
             <div
               style={{
-                fontSize: 10,
-                color: "rgba(255,255,255,0.3)",
-                marginTop: 4,
+                fontSize: 11,
+                color: "rgba(255,255,255,0.4)",
+                marginTop: 6,
+                lineHeight: 1.5,
               }}
             >
-              Minimum 100 characters.
+              Describe what this case documents, who is involved, and what
+              evidence supports your findings.
             </div>
+            {publishSummary.length > 0 && publishSummary.length < 100 && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "rgba(255,59,92,0.8)",
+                  marginTop: 4,
+                }}
+              >
+                Minimum 100 characters required.
+              </div>
+            )}
           </div>
+
+          {/* SUBMISSION PREVIEW */}
+          {selectedIds.size > 0 && publishSummary.trim().length >= 100 && (
+            <div
+              style={{
+                backgroundColor: "#0d0d0d",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: 6,
+                padding: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  textTransform: "uppercase",
+                  fontSize: 10,
+                  letterSpacing: "0.08em",
+                  color: "rgba(255,255,255,0.4)",
+                  marginBottom: 8,
+                }}
+              >
+                Submission preview
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.7)",
+                  lineHeight: 1.7,
+                }}
+              >
+                <div>Entities selected: {selectedIds.size}</div>
+                <div>
+                  Summary:{" "}
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>
+                    {publishSummary.slice(0, 100)}
+                    {publishSummary.length > 100 ? "…" : ""}
+                  </span>
+                </div>
+                <div>Attribution: your investigator handle</div>
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: 16 }}>
             <label

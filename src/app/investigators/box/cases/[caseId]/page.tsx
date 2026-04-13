@@ -150,6 +150,10 @@ function CaseInner({ caseId }: { caseId: string }) {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [toastStep, setToastStep] = useState<NextBestStep | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [hypothesesForExport, setHypothesesForExport] = useState<
+    { status: string }[]
+  >([]);
+  const [hasBlockingConflicts, setHasBlockingConflicts] = useState(false);
   const [walletJourneyId, setWalletJourneyId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("ALL");
@@ -313,6 +317,28 @@ function CaseInner({ caseId }: { caseId: string }) {
           setNotes(dec);
         });
     }
+  }, [caseId, keys, tab]);
+
+  // Load hypothesis + contradiction summary (for publication checklist).
+  useEffect(() => {
+    if (!keys) return;
+    fetch(`/api/investigators/cases/${caseId}/hypotheses`)
+      .then((r) => r.json())
+      .then((d) => setHypothesesForExport(d.hypotheses ?? []))
+      .catch(() => {});
+    fetch(`/api/investigators/cases/${caseId}/intelligence-summary`)
+      .then((r) => r.json())
+      .then((d) => {
+        const contradictions = Array.isArray(d.contradictions)
+          ? d.contradictions
+          : [];
+        setHasBlockingConflicts(
+          contradictions.some(
+            (c: { severity?: string }) => c.severity === "BLOCKING"
+          )
+        );
+      })
+      .catch(() => {});
   }, [caseId, keys, tab]);
 
   // Lazy load enrichment when entities tab opens and we have entities.
@@ -1142,6 +1168,37 @@ function CaseInner({ caseId }: { caseId: string }) {
               content: n.content,
               createdAt: n.createdAt,
             }))}
+            hasConfirmedHypothesis={hypothesesForExport.some(
+              (h) => h.status === "CONFIRMED"
+            )}
+            hasBlockingConflicts={hasBlockingConflicts}
+            noteCount={notes.length}
+            onSaveToNotes={async (content) => {
+              if (!keys) return;
+              const { enc, iv } = await encryptString(content, keys.noteKey);
+              const res = await fetch(
+                `/api/investigators/cases/${caseId}/notes`,
+                {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ contentEnc: enc, contentIv: iv }),
+                }
+              );
+              if (res.ok) {
+                const data = await res.json();
+                setNotes((prev) => [
+                  {
+                    id: data.id,
+                    contentEnc: enc,
+                    contentIv: iv,
+                    content,
+                    createdAt: data.createdAt,
+                    updatedAt: data.createdAt,
+                  },
+                  ...prev,
+                ]);
+              }
+            }}
           />
         )}
 
