@@ -145,6 +145,9 @@ function CaseInner({ caseId }: { caseId: string }) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [walletJourneyId, setWalletJourneyId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("ALL");
+  const [filterHasIntel, setFilterHasIntel] = useState(false);
+  const [filterHasScore, setFilterHasScore] = useState(false);
   const [noteRecording, setNoteRecording] = useState(false);
   const [noteSpeechSupported, setNoteSpeechSupported] = useState(false);
   const noteRecogRef = useRef<{ stop(): void } | null>(null);
@@ -589,7 +592,22 @@ function CaseInner({ caseId }: { caseId: string }) {
           </div>
         )}
 
-        <div className="flex gap-2 border-b border-white/10 mb-6">
+        <div
+          className="flex gap-2 mb-6"
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 30,
+            backgroundColor: "rgba(0,0,0,0.95)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            marginLeft: -24,
+            marginRight: -24,
+            paddingLeft: 24,
+            paddingRight: 24,
+          }}
+        >
           {tabs.map((t) => (
             <button
               key={t}
@@ -618,13 +636,139 @@ function CaseInner({ caseId }: { caseId: string }) {
                 }
               }}
             />
-            <div className="text-white/60 text-sm mb-4">
-              {entities.length} entities
-              {enrichLoading ? " · loading enrichment…" : ""}
+            {/* FILTER BAR */}
+            <div
+              className="flex flex-wrap gap-2 mb-3"
+              style={{ alignItems: "center" }}
+            >
+              {["ALL", "WALLET", "TX_HASH", "HANDLE", "URL", "DOMAIN", "OTHER"].map(
+                (t) => {
+                  const active = entityTypeFilter === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setEntityTypeFilter(t)}
+                      style={{
+                        fontSize: 11,
+                        padding: "4px 10px",
+                        borderRadius: 20,
+                        border: active
+                          ? "1px solid #FF6B00"
+                          : "1px solid rgba(255,255,255,0.12)",
+                        backgroundColor: active
+                          ? "rgba(255,107,0,0.15)"
+                          : "transparent",
+                        color: active ? "#FFFFFF" : "rgba(255,255,255,0.4)",
+                        cursor: "pointer",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      {t}
+                    </button>
+                  );
+                }
+              )}
+              <span
+                style={{
+                  color: "rgba(255,255,255,0.2)",
+                  fontSize: 10,
+                  margin: "0 4px",
+                }}
+              >
+                |
+              </span>
+              <button
+                type="button"
+                onClick={() => setFilterHasIntel((v) => !v)}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 20,
+                  border: filterHasIntel
+                    ? "1px solid #FF6B00"
+                    : "1px solid rgba(255,255,255,0.12)",
+                  backgroundColor: filterHasIntel
+                    ? "rgba(255,107,0,0.15)"
+                    : "transparent",
+                  color: filterHasIntel ? "#FFFFFF" : "rgba(255,255,255,0.4)",
+                  cursor: "pointer",
+                }}
+              >
+                Has intelligence
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterHasScore((v) => !v)}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 20,
+                  border: filterHasScore
+                    ? "1px solid #FF6B00"
+                    : "1px solid rgba(255,255,255,0.12)",
+                  backgroundColor: filterHasScore
+                    ? "rgba(255,107,0,0.15)"
+                    : "transparent",
+                  color: filterHasScore ? "#FFFFFF" : "rgba(255,255,255,0.4)",
+                  cursor: "pointer",
+                }}
+              >
+                Has score
+              </button>
             </div>
-            <div className="space-y-1">
-              {entities.map((e) => {
-                const enr = enrichment[e.id];
+            {(() => {
+              const filtered = entities.filter((e) => {
+                if (entityTypeFilter !== "ALL" && e.type !== entityTypeFilter)
+                  return false;
+                if (filterHasIntel) {
+                  const en = enrichment[e.id];
+                  if (
+                    !en ||
+                    !(
+                      en.inKolRegistry ||
+                      en.isKnownBad ||
+                      en.inWatchlist ||
+                      en.inIntelVault
+                    )
+                  )
+                    return false;
+                }
+                if (filterHasScore) {
+                  if (e.confidence == null) return false;
+                }
+                return true;
+              });
+              const isFiltered =
+                entityTypeFilter !== "ALL" || filterHasIntel || filterHasScore;
+              return (
+                <>
+                  <div className="text-white/60 text-sm mb-4">
+                    {entities.length} entities
+                    {isFiltered && ` (showing ${filtered.length})`}
+                    {enrichLoading ? " · loading enrichment…" : ""}
+                  </div>
+                  {entities.length === 0 && (
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "rgba(255,255,255,0.4)",
+                        padding: "40px 0",
+                        textAlign: "center",
+                        lineHeight: 1.7,
+                      }}
+                    >
+                      <div>No entities yet.</div>
+                      <div style={{ marginTop: 8 }}>
+                        Add a wallet, handle, or transaction above — or upload a
+                        file in the Files tab to extract them automatically.
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    {filtered.map((e) => {
+                      const enr = enrichment[e.id];
                 return (
                   <div key={e.id} style={{ position: "relative" }}>
                     <div
@@ -759,7 +903,10 @@ function CaseInner({ caseId }: { caseId: string }) {
                   </div>
                 );
               })}
-            </div>
+                  </div>
+                </>
+              );
+            })()}
             {suggestions.length > 0 && (
               <EntitySuggestionPanel
                 caseId={caseId}
@@ -796,6 +943,25 @@ function CaseInner({ caseId }: { caseId: string }) {
                 }}
               />
             </label>
+            {files.length === 0 && (
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.4)",
+                  padding: "40px 0",
+                  textAlign: "center",
+                  lineHeight: 1.7,
+                }}
+              >
+                <div>No files yet.</div>
+                <div style={{ marginTop: 8 }}>
+                  Upload evidence files — PDFs, CSVs, screenshots, JSON exports.
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  Everything is encrypted before it reaches our servers.
+                </div>
+              </div>
+            )}
             <div className="space-y-1">
               {files.map((f) => (
                 <div
@@ -872,6 +1038,22 @@ function CaseInner({ caseId }: { caseId: string }) {
                 </button>
               )}
             </div>
+            {notes.length === 0 && (
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.4)",
+                  padding: "20px 0",
+                  textAlign: "center",
+                  lineHeight: 1.7,
+                }}
+              >
+                <div>No notes yet.</div>
+                <div style={{ marginTop: 8 }}>
+                  Write your analysis here. Notes are encrypted before storage.
+                </div>
+              </div>
+            )}
             <div className="space-y-3">
               {notes.map((n) => (
                 <div

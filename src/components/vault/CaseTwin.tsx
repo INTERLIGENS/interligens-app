@@ -395,7 +395,12 @@ export default function CaseTwin({
       {/* SECTION B — Hypotheses */}
       <div style={SECTION_TITLE}>Working hypotheses</div>
       {hypotheses.length === 0 && !showAddForm && (
-        <div style={BODY}>No hypotheses yet. Add your first working theory.</div>
+        <div style={BODY}>
+          <div>No working hypotheses yet.</div>
+          <div style={{ fontSize: 12, marginTop: 4 }}>
+            What do you believe happened? Add your first theory.
+          </div>
+        </div>
       )}
       {hypotheses.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -540,30 +545,6 @@ export default function CaseTwin({
                 </button>
               );
             })}
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <div
-              style={{
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "rgba(255,255,255,0.4)",
-                marginBottom: 6,
-              }}
-            >
-              Confidence: {newConfidence}%
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={newConfidence}
-              onChange={(e) => setNewConfidence(Number(e.target.value))}
-              style={{
-                width: "100%",
-                accentColor: "#FF6B00",
-              }}
-            />
           </div>
           <textarea
             value={newNotes}

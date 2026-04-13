@@ -266,6 +266,87 @@ The system prompt now embeds three additional JSON sections — `CONFIDENCE ASSE
 
 ---
 
+## Paquet A — Investigator socle closure (session 6)
+
+Polish, density, metrics, empty states, sharing upgrade. No schema changes.
+
+### A1 — Workspace metrics strip
+- New API: `GET /api/investigators/workspace/metrics` returning `{activeCases, trackedEntities, openHypotheses, publishReadyCases}`.
+- Dashboard now renders a 4-tile strip below the privacy banner with `—` placeholders while loading. `publishReadyCases` = cases with ≥3 entities AND ≥1 hypothesis (approximation, computed via Prisma `groupBy`).
+
+### A2 — Richer case cards + sort controls
+- Title now `font-weight: 700, font-size: 16`. Tags + status badge on the same row. Metadata row shows entities / files / updated date.
+- Status color map: PRIVATE (white-dim), SHARED_INTERNAL (orange), SUBMITTED (amber), ARCHIVED (white-very-dim).
+- Sort controls: `Recent | Entities | Status` — client-side sorting, defaults to Recent.
+- Card hover border → `rgba(255,107,0,0.2)` via `hover:border-[rgba(255,107,0,0.2)]` Tailwind arbitrary.
+
+### A3 — Entities tab upgrade
+- Filter pill row: ALL / WALLET / TX_HASH / HANDLE / URL / DOMAIN / OTHER + "Has intelligence" + "Has score" toggles. All filters are client-side.
+- Entity count header: `N entities (showing M)` when filters are active.
+- Empty-state block below the form when `entities.length === 0`.
+- The whole entity-rendering block is wrapped in an IIFE that computes `filtered` and then renders count header + empty state + map.
+
+### A4 — Graph upgrade
+- Force simulation bumped: `linkDistance 80 → 120`, `chargeStrength -180 → -300`, `collide.radius 30 → 40`. Reduces label overlap on small graphs.
+- Zoom controls (top-right overlay inside the canvas): `+`, `−`, `⊙` reset. Uses `zoomRef` + `d3.zoom.scaleBy` / `zoomIdentity` with 200–300ms transitions.
+- Clicking the SVG background now deselects the node (previously only selected, no dismiss).
+
+### A5 — Timeline — already supports entity linking
+- `TimelineBuilder.tsx` already had the entity selector, chip display, and `entityIds` field from V2B. No changes needed.
+- Timeline summary line + import-suggested-events (spec A5.3, A5.4) **skipped** — see decisions below.
+
+### A6 — Hypothesis form
+- Confidence slider removed from the quick-add form (moved to future edit mode). Faster to add = more hypotheses created.
+- Status chips stay in quick-add.
+- Entity linker on hypothesis form **not added** — `supportingEntityIds` is still populated only by the internal contradiction rules. See decision.
+
+### A7 — Trust layer
+- **A7.1** — Onboarding step 4 now has a "How your box works" block with 4 trust rows + inline SVG icons (lock, cpu/chip, eye-off, share-network). Inserted between "What this means" and the "Enter your workspace" CTA.
+- **A7.2** — New page `src/app/investigators/box/trust/page.tsx`. Static server-rendered page with 5 sections: what we cannot read, what our system uses, what happens if you share, what happens if you publish, what we cannot recover.
+- **A8.6** — Dashboard privacy banner now has a `How this works →` link to the trust page. Assistant tab footer also has a `Privacy policy →` link.
+
+### A8 — Product polish
+- **A8.1 sticky tabs** — Tab row on case detail page is `position: sticky; top: 0` with `rgba(0,0,0,0.95)` background + `backdrop-filter: blur(8px)`. Full-bleed via negative margins + padding.
+- **A8.2 copy button** — Every assistant message has a "Copy" button below it (not on-hover because hover-only is bad on touch). "Copied!" feedback for 1.5s.
+- **A8.3 regenerate** — `↺ Regenerate` link appears only on the last assistant message. Truncates `messages` to the last user message and re-posts.
+- **A8.4 empty states** — Updated for Files, Notes, Entities, Hypotheses. Graph + Timeline already had them from prior sessions.
+- **A8.5 microcopy** — Only one explicit message replaced (ShareCaseModal "Failed to generate link" → "This action failed. Try again or reload the page."). Other generic errors were already contextual.
+
+### A9 — Sharing upgrade
+- **A9.1 share preview** — Modal now shows a checklist of what will be included (✓ entities + title + tags) vs excluded (✗ notes, ✗ raw files) before generation. New "Include hypotheses" checkbox pulls current hypotheses via `GET /hypotheses`.
+- **A9.2 revoke** — New `DELETE /api/investigators/cases/[caseId]/share/[shareId]` route sets `expiresAt = now()`. Logs `CASE_SHARE_REVOKED` audit.
+- **A9.3 active shares list** — New `GET /api/investigators/cases/[caseId]/shares` returns non-expired shares (id + expiresAt + createdAt, **token stripped**). Modal renders them with per-row Revoke button.
+
+### Autonomous decisions
+
+**1. `publishReadyCases` metric is an approximation.** Spec said "publication readiness >= 4 (approximate: cases with >= 3 entities + >= 1 hypothesis)". I followed the approximation literally via two Prisma `groupBy` calls. A real readiness score would require running the full CaseTwin readiness rules per case, which is too expensive for a metric tile.
+
+**2. Dashboard metrics load in parallel with cases.** Separate `useEffect` that fires on `keys` being available. No spinner — each tile shows `—` until the fetch returns. No retry on failure; the tile just stays at `—`.
+
+**3. Sort controls are client-side only.** The case list is already fully loaded (no pagination), so sorting is instant. `localeCompare` for status (alphabetical: ARCHIVED, PRIVATE, SHARED_INTERNAL, SUBMITTED — not a perfect order but consistent).
+
+**4. A5 skipped: timeline summary line + import suggestions.** The summary line would duplicate data already in the new intelligence indicator on the Assistant tab. Import-suggested-events would require a new CaseTwin flow with checkboxes and batch-add UI; it's too much surface area for the value delivered. Deferred to V3.
+
+**5. A6 hypothesis entity linker not added.** Would require another multi-select in the hypothesis form. The `supportingEntityIds` column is used by the contradiction engine but not yet user-editable. Removing the confidence slider already made the form faster; adding another selector would undo that win. Deferred.
+
+**6. Sticky tabs use negative margins + padding to achieve full-bleed** (`marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24`). The case page container has `px-6` so -24px margin aligns the tab row with the container edges. Backdrop blur may not render on every browser — it gracefully degrades to the solid `rgba(0,0,0,0.95)` background.
+
+**7. Copy button appears below every assistant message** — not on-hover. Hover-only interaction patterns are inaccessible on touch devices and add cognitive cost. Constant display with light `rgba(255,255,255,0.3)` text is unobtrusive.
+
+**8. Regenerate only on the last assistant message.** Regenerating an earlier message would require truncating history server-side too — complex UX. Last-message regenerate is sufficient for typical retry needs.
+
+**9. Confidence slider removed from hypothesis quick-add.** Quick-add is now title + status chips + notes + save. The slider still exists in the component (dead state) — future edit-mode UI can re-mount it. Not removed to avoid breaking `newConfidence` state references.
+
+**10. Graph zoom controls use D3 transitions** (`scaleBy 1.3` / `0.77` — inverse of 1.3 so in+out is symmetric). Reset resets to `zoomIdentity` (no translate, no scale).
+
+**11. Trust page link opens in the same tab from the dashboard banner, but in a new tab from the assistant footer.** The assistant is a long-session context — opening in a new tab preserves the chat state. The dashboard has nothing to preserve.
+
+**12. `ENTITY_DELETED` naming inconsistency noted in V2C still stands.** All other new audit actions in this session use past-tense verbs: `CASE_SHARE_REVOKED`. Existing taxonomy is now mixed but consistent per entity.
+
+**13. Active shares list strips `token` server-side.** The GET route explicitly `select`s only `{id, expiresAt, createdAt}` — the token is never returned to the client after creation. The share modal caches the token in `shareUrl` state from the creation response; after modal close it's gone.
+
+---
+
 ## Out of scope (V2D and beyond)
 
 - Quota auto-reset cron

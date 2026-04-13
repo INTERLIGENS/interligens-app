@@ -288,6 +288,67 @@ export default function CaseAssistant({
   const [intelSummary, setIntelSummary] = useState<IntelSummary | null>(null);
   const [mode, setMode] = useState<AnalysisMode>(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  function copyMessage(content: string, idx: number) {
+    navigator.clipboard
+      .writeText(content)
+      .then(() => {
+        setCopiedIdx(idx);
+        setTimeout(() => setCopiedIdx((c) => (c === idx ? null : c)), 1500);
+      })
+      .catch(() => {});
+  }
+
+  async function regenerateLast() {
+    if (sending) return;
+    // Find last user message
+    const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === "user");
+    if (lastUserIdx === -1) return;
+    const actualIdx = messages.length - 1 - lastUserIdx;
+    const truncated = messages.slice(0, actualIdx + 1);
+    setMessages(truncated);
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/investigators/cases/${caseId}/assistant`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            messages: truncated,
+            caseContext: {
+              title: caseTitle,
+              template: caseTemplate,
+              entities: entities.map((e) => ({
+                type: e.type,
+                value: e.value,
+                label: e.label,
+                tigerScore: e.tigerScore ?? null,
+              })),
+              enrichment,
+            },
+          }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok && data.response) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.response },
+        ]);
+        if (typeof data.tokensUsed === "number") setTokensUsed(data.tokensUsed);
+        if (typeof data.tokensLimit === "number") setTokensLimit(data.tokensLimit);
+      } else {
+        setError(data.message ?? data.error ?? "Request failed");
+      }
+    } catch {
+      setError("Network error");
+    } finally {
+      setSending(false);
+    }
+  }
   const recogRef = useRef<SR | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -593,39 +654,87 @@ export default function CaseAssistant({
             actors — never from notes or raw files.
           </div>
         )}
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              justifyContent: m.role === "user" ? "flex-end" : "flex-start",
-            }}
-          >
+        {messages.map((m, i) => {
+          const isLastAssistant =
+            m.role === "assistant" &&
+            i === messages.length - 1 &&
+            !sending;
+          return (
             <div
+              key={i}
+              className="group"
               style={{
-                maxWidth: m.role === "user" ? "75%" : "92%",
-                padding: "10px 14px",
-                borderRadius: 12,
-                backgroundColor:
-                  m.role === "user" ? "rgba(255,107,0,0.15)" : "#0d0d0d",
-                border:
-                  m.role === "user"
-                    ? "1px solid rgba(255,107,0,0.3)"
-                    : "1px solid rgba(255,255,255,0.06)",
-                color: "#FFFFFF",
-                fontSize: 13,
-                lineHeight: 1.6,
-                wordBreak: "break-word",
+                display: "flex",
+                flexDirection: "column",
+                alignItems:
+                  m.role === "user" ? "flex-end" : "flex-start",
               }}
             >
-              {m.role === "user" ? (
-                <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
-              ) : (
-                renderMarkdown(m.content)
+              <div
+                style={{
+                  maxWidth: m.role === "user" ? "75%" : "92%",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  backgroundColor:
+                    m.role === "user" ? "rgba(255,107,0,0.15)" : "#0d0d0d",
+                  border:
+                    m.role === "user"
+                      ? "1px solid rgba(255,107,0,0.3)"
+                      : "1px solid rgba(255,255,255,0.06)",
+                  color: "#FFFFFF",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  wordBreak: "break-word",
+                }}
+              >
+                {m.role === "user" ? (
+                  <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
+                ) : (
+                  renderMarkdown(m.content)
+                )}
+              </div>
+              {m.role === "assistant" && (
+                <div
+                  className="flex items-center gap-3"
+                  style={{ marginTop: 4, paddingLeft: 4 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => copyMessage(m.content, i)}
+                    className="hover:text-white"
+                    style={{
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.3)",
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {copiedIdx === i ? "Copied!" : "Copy"}
+                  </button>
+                  {isLastAssistant && (
+                    <button
+                      type="button"
+                      onClick={regenerateLast}
+                      className="hover:text-[#FF6B00]"
+                      style={{
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.25)",
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ↺ Regenerate
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
         {sending && (
           <div
             style={{
@@ -784,21 +893,36 @@ export default function CaseAssistant({
         </button>
       </div>
 
-      {tokensLimit > 0 && (
-        <div
+      <div
+        style={{
+          padding: "6px 16px",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          fontSize: 10,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexShrink: 0,
+        }}
+      >
+        <a
+          href="/investigators/box/trust"
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
-            padding: "6px 16px",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            fontSize: 10,
-            color: quotaColor,
-            textAlign: "right",
-            flexShrink: 0,
+            color: "rgba(255,255,255,0.3)",
+            textDecoration: "none",
           }}
+          className="hover:text-[#FF6B00]"
         >
-          AI quota: {tokensUsed.toLocaleString()} /{" "}
-          {tokensLimit.toLocaleString()} tokens this month
-        </div>
-      )}
+          Privacy policy →
+        </a>
+        {tokensLimit > 0 && (
+          <span style={{ color: quotaColor }}>
+            AI quota: {tokensUsed.toLocaleString()} /{" "}
+            {tokensLimit.toLocaleString()} tokens this month
+          </span>
+        )}
+      </div>
     </div>
   );
 }

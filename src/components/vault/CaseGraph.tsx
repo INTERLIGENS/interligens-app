@@ -46,7 +46,23 @@ function truncate(s: string, n: number): string {
 
 export default function CaseGraph({ entities }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [selected, setSelected] = useState<GraphNode | null>(null);
+
+  function zoomBy(factor: number) {
+    if (!svgRef.current || !zoomRef.current) return;
+    d3.select(svgRef.current)
+      .transition()
+      .duration(200)
+      .call(zoomRef.current.scaleBy, factor);
+  }
+  function resetView() {
+    if (!svgRef.current || !zoomRef.current) return;
+    d3.select(svgRef.current)
+      .transition()
+      .duration(300)
+      .call(zoomRef.current.transform, d3.zoomIdentity);
+  }
 
   useEffect(() => {
     if (entities.length < 2 || !svgRef.current) return;
@@ -120,6 +136,11 @@ export default function CaseGraph({ entities }: Props) {
         container.attr("transform", event.transform.toString());
       });
     svg.call(zoom);
+    zoomRef.current = zoom;
+
+    svg.on("click", (event) => {
+      if (event.target === svgRef.current) setSelected(null);
+    });
 
     const link = container
       .append("g")
@@ -161,11 +182,11 @@ export default function CaseGraph({ entities }: Props) {
         d3
           .forceLink<GraphNode, GraphLink>(links)
           .id((d) => d.id)
-          .distance(80)
+          .distance(120)
       )
-      .force("charge", d3.forceManyBody().strength(-180))
+      .force("charge", d3.forceManyBody().strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius(30));
+      .force("collide", d3.forceCollide().radius(40));
 
     simulation.on("tick", () => {
       link
@@ -225,8 +246,46 @@ export default function CaseGraph({ entities }: Props) {
           border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: 6,
           overflow: "hidden",
+          position: "relative",
         }}
       >
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 10,
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          {[
+            { label: "+", fn: () => zoomBy(1.3), title: "Zoom in" },
+            { label: "−", fn: () => zoomBy(0.77), title: "Zoom out" },
+            { label: "⊙", fn: resetView, title: "Reset view" },
+          ].map((btn) => (
+            <button
+              key={btn.title}
+              type="button"
+              onClick={btn.fn}
+              title={btn.title}
+              style={{
+                width: 28,
+                height: 28,
+                backgroundColor: "#111",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 4,
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 14,
+                cursor: "pointer",
+                lineHeight: 1,
+              }}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
         <svg
           ref={svgRef}
           style={{ width: "100%", height: 500, display: "block" }}

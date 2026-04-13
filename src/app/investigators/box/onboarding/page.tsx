@@ -843,7 +843,123 @@ export default function OnboardingPage() {
             <div
               style={{
                 borderTop: "1px solid rgba(255,255,255,0.06)",
-                margin: "40px 0",
+                margin: "40px 0 24px",
+              }}
+            />
+
+            <div
+              style={{
+                textTransform: "uppercase",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 16,
+              }}
+            >
+              How your box works
+            </div>
+            <div className="flex flex-col gap-3" style={{ marginBottom: 32 }}>
+              {[
+                {
+                  icon: (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FF6B00"
+                      strokeWidth="1.5"
+                    >
+                      <rect x="4" y="11" width="16" height="10" rx="2" />
+                      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                    </svg>
+                  ),
+                  text: "Your raw files and notes are encrypted in your browser. We receive only opaque ciphertext.",
+                },
+                {
+                  icon: (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FF6B00"
+                      strokeWidth="1.5"
+                    >
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                      <rect x="9" y="9" width="6" height="6" />
+                      <line x1="9" y1="1" x2="9" y2="4" />
+                      <line x1="15" y1="1" x2="15" y2="4" />
+                      <line x1="9" y1="20" x2="9" y2="23" />
+                      <line x1="15" y1="20" x2="15" y2="23" />
+                    </svg>
+                  ),
+                  text: "Our intelligence engine works from derived entities only — wallets, handles, hashes you choose to extract.",
+                },
+                {
+                  icon: (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FF6B00"
+                      strokeWidth="1.5"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ),
+                  text: "Your assistant sees derived data only. Never your notes. Never your files.",
+                },
+                {
+                  icon: (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FF6B00"
+                      strokeWidth="1.5"
+                    >
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                  ),
+                  text: "Sharing and publishing are always opt-in. Nothing leaves your box without your explicit action.",
+                },
+              ].map((row, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <span style={{ marginTop: 2, flexShrink: 0 }}>
+                    {row.icon}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "rgba(255,255,255,0.6)",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {row.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                margin: "0 0 24px",
               }}
             />
 

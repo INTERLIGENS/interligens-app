@@ -106,6 +106,28 @@ function DashboardInner() {
   );
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [metrics, setMetrics] = useState<{
+    activeCases: number | null;
+    trackedEntities: number | null;
+    openHypotheses: number | null;
+    publishReadyCases: number | null;
+  }>({
+    activeCases: null,
+    trackedEntities: null,
+    openHypotheses: null,
+    publishReadyCases: null,
+  });
+  const [sortBy, setSortBy] = useState<"recent" | "entities" | "status">(
+    "recent"
+  );
+
+  useEffect(() => {
+    if (!keys) return;
+    fetch("/api/investigators/workspace/metrics")
+      .then((r) => r.json())
+      .then((d) => setMetrics(d))
+      .catch(() => {});
+  }, [keys]);
 
   useEffect(() => {
     if (!keys) return;
@@ -309,7 +331,59 @@ function DashboardInner() {
         >
           Client-side encrypted&nbsp;&nbsp;·&nbsp;&nbsp;Your key never
           reaches our servers&nbsp;&nbsp;·&nbsp;&nbsp;Nothing is readable
-          without your passphrase
+          without your passphrase&nbsp;&nbsp;·&nbsp;&nbsp;
+          <Link
+            href="/investigators/box/trust"
+            style={{ color: "#FF6B00", textDecoration: "none" }}
+          >
+            How this works →
+          </Link>
+        </div>
+
+        {/* METRICS STRIP */}
+        <div
+          style={{
+            display: "flex",
+            gap: 40,
+            paddingBottom: 24,
+            marginBottom: 24,
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            flexWrap: "wrap",
+          }}
+        >
+          {[
+            { key: "activeCases", label: "Active cases" },
+            { key: "trackedEntities", label: "Tracked entities" },
+            { key: "openHypotheses", label: "Open hypotheses" },
+            { key: "publishReadyCases", label: "Publish ready" },
+          ].map((m) => {
+            const val = (metrics as Record<string, number | null>)[m.key];
+            return (
+              <div key={m.key}>
+                <div
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: "#FFFFFF",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {val ?? "—"}
+                </div>
+                <div
+                  style={{
+                    textTransform: "uppercase",
+                    fontSize: 11,
+                    letterSpacing: "0.08em",
+                    color: "rgba(255,255,255,0.3)",
+                    marginTop: 6,
+                  }}
+                >
+                  {m.label}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div
@@ -585,7 +659,45 @@ function DashboardInner() {
           >
             Loading cases…
           </div>
-        ) : cases.length === 0 ? (
+        ) : loading || cases.length === 0 ? null : (
+          <div
+            className="flex items-center justify-end gap-3"
+            style={{ marginBottom: 12, fontSize: 11 }}
+          >
+            <span
+              style={{
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "rgba(255,255,255,0.3)",
+              }}
+            >
+              Sort by
+            </span>
+            {(["recent", "entities", "status"] as const).map((s, i, arr) => (
+              <span key={s} style={{ display: "inline-flex", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setSortBy(s)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    fontSize: 11,
+                    color: sortBy === s ? "#FF6B00" : "rgba(255,255,255,0.5)",
+                    textTransform: "capitalize",
+                    cursor: "pointer",
+                  }}
+                >
+                  {s}
+                </button>
+                {i < arr.length - 1 && (
+                  <span style={{ color: "rgba(255,255,255,0.2)" }}>·</span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+        {loading ? null : cases.length === 0 ? (
           <div
             className="mx-auto text-center"
             style={{ marginTop: 80, maxWidth: 480 }}
@@ -623,59 +735,102 @@ function DashboardInner() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {cases.map((c) => (
-              <Link
-                key={c.id}
-                href={`/investigators/box/cases/${c.id}`}
-                className="block transition-colors"
-                style={{
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 6,
-                  padding: 20,
-                  backgroundColor: "#0a0a0a",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#FFFFFF",
-                    fontWeight: 600,
-                    fontSize: 15,
-                  }}
-                >
-                  {c.title}
-                </div>
-                {c.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {c.tags.map((t) => (
+            {[...cases]
+              .sort((a, b) => {
+                if (sortBy === "entities") return b.entityCount - a.entityCount;
+                if (sortBy === "status") return a.status.localeCompare(b.status);
+                return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+              })
+              .map((c) => {
+                const statusColors: Record<string, { bg: string; fg: string }> = {
+                  PRIVATE: {
+                    bg: "rgba(255,255,255,0.06)",
+                    fg: "rgba(255,255,255,0.4)",
+                  },
+                  SHARED_INTERNAL: {
+                    bg: "rgba(255,107,0,0.12)",
+                    fg: "#FF6B00",
+                  },
+                  SUBMITTED: { bg: "rgba(255,184,0,0.12)", fg: "#FFB800" },
+                  ARCHIVED: {
+                    bg: "rgba(255,255,255,0.03)",
+                    fg: "rgba(255,255,255,0.2)",
+                  },
+                };
+                const col = statusColors[c.status] ?? statusColors.PRIVATE;
+                return (
+                  <Link
+                    key={c.id}
+                    href={`/investigators/box/cases/${c.id}`}
+                    className="block transition-colors hover:border-[rgba(255,107,0,0.2)]"
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 6,
+                      padding: 20,
+                      backgroundColor: "#0a0a0a",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#FFFFFF",
+                        fontWeight: 700,
+                        fontSize: 16,
+                        marginBottom: 10,
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {c.title}
+                    </div>
+                    <div
+                      className="flex items-center justify-between gap-2"
+                      style={{ flexWrap: "wrap" }}
+                    >
+                      <div className="flex flex-wrap gap-1">
+                        {c.tags.map((t) => (
+                          <span
+                            key={t}
+                            style={{
+                              fontSize: 10,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.06em",
+                              color: "rgba(255,255,255,0.5)",
+                              border: "1px solid rgba(255,255,255,0.12)",
+                              borderRadius: 4,
+                              padding: "2px 8px",
+                            }}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
                       <span
-                        key={t}
                         style={{
                           fontSize: 10,
                           textTransform: "uppercase",
                           letterSpacing: "0.06em",
-                          color: "rgba(255,255,255,0.5)",
-                          border: "1px solid rgba(255,255,255,0.12)",
+                          padding: "3px 8px",
                           borderRadius: 4,
-                          padding: "2px 8px",
+                          backgroundColor: col.bg,
+                          color: col.fg,
                         }}
                       >
-                        {t}
+                        {c.status.replace("_", " ")}
                       </span>
-                    ))}
-                  </div>
-                )}
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "rgba(255,255,255,0.3)",
-                    marginTop: 12,
-                  }}
-                >
-                  {c.entityCount} entities · {c.fileCount} files ·{" "}
-                  {c.status}
-                </div>
-              </Link>
-            ))}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.3)",
+                        marginTop: 12,
+                      }}
+                    >
+                      {c.entityCount} entities · {c.fileCount} files ·{" "}
+                      {new Date(c.updatedAt).toLocaleDateString()}
+                    </div>
+                  </Link>
+                );
+              })}
           </div>
         )}
       </div>
