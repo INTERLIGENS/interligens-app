@@ -1425,6 +1425,8 @@ model VaultWorkspace {
   kdfAlgo       String       @default("PBKDF2-SHA256")
   kdfIterations Int          @default(310000)
   encMode       String       @default("CLIENT_SIDE_AES256GCM")
+  assistantTokensUsed  Int   @default(0)
+  assistantTokensLimit Int   @default(100000)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -1508,6 +1510,32 @@ model VaultPublishCandidate {
 
   @@index([caseId])
   @@index([status])
+}
+
+model VaultFeedback {
+  id          String   @id @default(cuid())
+  workspaceId String
+  caseId      String?
+  handle      String
+  message     String
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+}
+
+model VaultCaseShare {
+  id                 String   @id @default(cuid())
+  caseId             String
+  token              String   @unique
+  expiresAt          DateTime
+  workspaceId        String
+  entitySnapshot     Json
+  titleSnapshot      String
+  hypothesisSnapshot Json?
+  createdAt          DateTime @default(now())
+
+  @@index([token])
+  @@index([caseId])
 }
 
 model VaultCaseEntity {

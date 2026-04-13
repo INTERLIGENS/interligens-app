@@ -53,3 +53,16 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
+
+CREATE TABLE IF NOT EXISTS "VaultFeedback" (
+  "id" TEXT NOT NULL,
+  "workspaceId" TEXT NOT NULL,
+  "caseId" TEXT,
+  "handle" TEXT NOT NULL,
+  "message" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "VaultFeedback_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "VaultFeedback_workspaceId_idx"
+  ON "VaultFeedback"("workspaceId");

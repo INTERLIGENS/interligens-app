@@ -1,14 +1,20 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import VaultGate from "@/components/vault/VaultGate";
 import EntityLaunchpad from "@/components/vault/EntityLaunchpad";
 import EntityAddForm from "@/components/vault/EntityAddForm";
+import EntitySuggestionPanel, {
+  type Suggestion,
+} from "@/components/vault/EntitySuggestionPanel";
 import CaseGraph from "@/components/vault/CaseGraph";
 import CaseTwin from "@/components/vault/CaseTwin";
 import CaseExport from "@/components/vault/CaseExport";
+import CaseAssistant from "@/components/vault/CaseAssistant";
 import TimelineBuilder from "@/components/vault/TimelineBuilder";
+import WalletJourney from "@/components/vault/WalletJourney";
+import ShareCaseModal from "@/components/vault/ShareCaseModal";
 import NextBestStepToast, {
   buildNextBestStep,
   type NextBestStep,
@@ -30,7 +36,8 @@ type Tab =
   | "notes"
   | "graph"
   | "timeline"
-  | "export";
+  | "export"
+  | "assistant";
 
 type CaseDetail = {
   id: string;
@@ -135,6 +142,99 @@ function CaseInner({ caseId }: { caseId: string }) {
   const [newNote, setNewNote] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [toastStep, setToastStep] = useState<NextBestStep | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [walletJourneyId, setWalletJourneyId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [noteRecording, setNoteRecording] = useState(false);
+  const [noteSpeechSupported, setNoteSpeechSupported] = useState(false);
+  const noteRecogRef = useRef<{ stop(): void } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const w = window as unknown as {
+      SpeechRecognition?: unknown;
+      webkitSpeechRecognition?: unknown;
+    };
+    if (w.SpeechRecognition || w.webkitSpeechRecognition) {
+      setNoteSpeechSupported(true);
+    }
+  }, []);
+
+  function startNoteDictation() {
+    if (typeof window === "undefined") return;
+    const w = window as unknown as {
+      SpeechRecognition?: new () => unknown;
+      webkitSpeechRecognition?: new () => unknown;
+    };
+    const Cls = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Cls) return;
+    type SR = {
+      start(): void;
+      stop(): void;
+      onresult: ((e: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
+      onend: (() => void) | null;
+      onerror: (() => void) | null;
+      continuous: boolean;
+      interimResults: boolean;
+      lang: string;
+    };
+    const r = new (Cls as new () => SR)();
+    r.continuous = true;
+    r.interimResults = false;
+    r.lang = "en-US";
+    r.onresult = (e) => {
+      let transcript = "";
+      for (let i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript + " ";
+      }
+      setNewNote((prev) => (prev ? prev + " " : "") + transcript.trim());
+    };
+    r.onend = () => setNoteRecording(false);
+    r.onerror = () => setNoteRecording(false);
+    r.start();
+    noteRecogRef.current = r;
+    setNoteRecording(true);
+  }
+
+  function stopNoteDictation() {
+    noteRecogRef.current?.stop();
+    setNoteRecording(false);
+  }
+
+  function refreshEntities() {
+    fetch(`/api/investigators/cases/${caseId}/entities`)
+      .then((r) => r.json())
+      .then((d) => setEntities(d.entities ?? []));
+    setEnrichment({});
+  }
+
+  async function deleteEntity(entityId: string) {
+    if (!confirm("Delete this entity? This cannot be undone.")) return;
+    const res = await fetch(
+      `/api/investigators/cases/${caseId}/entities/${entityId}`,
+      { method: "DELETE" }
+    );
+    if (res.ok) refreshEntities();
+  }
+
+  async function fetchSuggestions(type: string, value: string) {
+    try {
+      const res = await fetch(
+        `/api/investigators/cases/${caseId}/entities/suggest`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type, value }),
+        }
+      );
+      if (res.ok) {
+        const d = await res.json();
+        if (Array.isArray(d.suggestions) && d.suggestions.length > 0) {
+          setSuggestions(d.suggestions);
+        }
+      }
+    } catch {}
+  }
 
   useEffect(() => {
     if (!keys) return;
@@ -382,6 +482,7 @@ function CaseInner({ caseId }: { caseId: string }) {
     "graph",
     "timeline",
     "export",
+    "assistant",
   ];
 
   return (
@@ -395,20 +496,37 @@ function CaseInner({ caseId }: { caseId: string }) {
         </Link>
         <div className="flex items-start justify-between mt-2">
           <h1 className="text-3xl font-semibold">{title}</h1>
-          <Link
-            href={`/investigators/box/redact?caseId=${caseId}`}
-            className="hover:text-white"
-            style={{
-              fontSize: 13,
-              color: "rgba(255,255,255,0.5)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 6,
-              padding: "8px 16px",
-              textDecoration: "none",
-            }}
-          >
-            Redact screenshot
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShareOpen(true)}
+              style={{
+                fontSize: 13,
+                color: "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 6,
+                padding: "8px 16px",
+                background: "none",
+                cursor: "pointer",
+              }}
+              className="hover:text-white"
+            >
+              Share
+            </button>
+            <Link
+              href={`/investigators/box/redact?caseId=${caseId}`}
+              className="hover:text-white"
+              style={{
+                fontSize: 13,
+                color: "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 6,
+                padding: "8px 16px",
+                textDecoration: "none",
+              }}
+            >
+              Redact screenshot
+            </Link>
+          </div>
         </div>
         <div className="flex flex-wrap gap-1 mt-2 mb-6">
           {tags.map((t) => (
@@ -492,13 +610,11 @@ function CaseInner({ caseId }: { caseId: string }) {
             <EntityAddForm
               caseId={caseId}
               onAdded={(added) => {
-                fetch(`/api/investigators/cases/${caseId}/entities`)
-                  .then((r) => r.json())
-                  .then((d) => setEntities(d.entities ?? []));
-                setEnrichment({});
+                refreshEntities();
                 if (added) {
                   const step = buildNextBestStep(added.type, added.value);
                   if (step) setToastStep(step);
+                  fetchSuggestions(added.type, added.value);
                 }
               }}
             />
@@ -580,6 +696,23 @@ function CaseInner({ caseId }: { caseId: string }) {
                             ? `${Math.round(e.confidence * 100)}%`
                             : ""}
                         </span>
+                        {e.type === "WALLET" && (
+                          <button
+                            aria-label="Wallet journey"
+                            onClick={() => setWalletJourneyId(e.id)}
+                            style={{
+                              fontSize: 12,
+                              color: "rgba(255,255,255,0.6)",
+                              background: "none",
+                              border: "1px solid rgba(255,255,255,0.12)",
+                              borderRadius: 4,
+                              padding: "2px 8px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Journey
+                          </button>
+                        )}
                         <button
                           aria-label="Open in"
                           onClick={() =>
@@ -599,6 +732,22 @@ function CaseInner({ caseId }: { caseId: string }) {
                         >
                           Open in →
                         </button>
+                        <button
+                          aria-label="Delete entity"
+                          onClick={() => deleteEntity(e.id)}
+                          className="hover:text-[#FF3B5C]"
+                          style={{
+                            fontSize: 14,
+                            color: "rgba(255,255,255,0.2)",
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
                       </div>
                     </div>
                     {launchpadEntityId === e.id && (
@@ -611,6 +760,14 @@ function CaseInner({ caseId }: { caseId: string }) {
                 );
               })}
             </div>
+            {suggestions.length > 0 && (
+              <EntitySuggestionPanel
+                caseId={caseId}
+                suggestions={suggestions}
+                onAdded={() => refreshEntities()}
+                onDismiss={() => setSuggestions([])}
+              />
+            )}
           </div>
         )}
 
@@ -673,13 +830,48 @@ function CaseInner({ caseId }: { caseId: string }) {
               placeholder="New note…"
               className="w-full bg-black border border-white/20 rounded px-3 py-2 mb-3"
             />
-            <button
-              onClick={saveNote}
-              disabled={!newNote.trim()}
-              className="bg-[#FF6B00] text-white px-4 py-2 rounded text-sm disabled:opacity-50 mb-6"
-            >
-              Save note
-            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <button
+                onClick={saveNote}
+                disabled={!newNote.trim()}
+                className="bg-[#FF6B00] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
+              >
+                Save note
+              </button>
+              {noteSpeechSupported && (
+                <button
+                  onClick={
+                    noteRecording ? stopNoteDictation : startNoteDictation
+                  }
+                  style={{
+                    backgroundColor: "transparent",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 6,
+                    padding: "8px 14px",
+                    color: noteRecording ? "#FF6B00" : "rgba(255,255,255,0.7)",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                  </svg>
+                  {noteRecording ? "Stop dictation" : "Dictate note"}
+                </button>
+              )}
+            </div>
             <div className="space-y-3">
               {notes.map((n) => (
                 <div
@@ -715,7 +907,36 @@ function CaseInner({ caseId }: { caseId: string }) {
             }))}
           />
         )}
+
+        {tab === "assistant" && (
+          <CaseAssistant
+            caseId={caseId}
+            caseTitle={title}
+            caseTemplate={detail.caseTemplate}
+            entities={entities}
+            enrichment={enrichment}
+          />
+        )}
       </div>
+      {walletJourneyId && (
+        <WalletJourney
+          rootEntityId={walletJourneyId}
+          entities={entities}
+          onClose={() => setWalletJourneyId(null)}
+          onOpenGraph={() => {
+            setWalletJourneyId(null);
+            setTab("graph");
+          }}
+        />
+      )}
+      {shareOpen && (
+        <ShareCaseModal
+          caseId={caseId}
+          title={title}
+          entities={entities}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
       <NextBestStepToast
         step={toastStep}
         onDismiss={() => setToastStep(null)}

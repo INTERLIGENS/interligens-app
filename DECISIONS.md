@@ -1,4 +1,4 @@
-# Investigators V2A + V2B — Autonomous Sessions Decisions
+# Investigators V2A + V2B + V2C — Autonomous Sessions Decisions
 
 Branch: `feat/investigators-v2a`
 
@@ -6,60 +6,63 @@ Branch: `feat/investigators-v2a`
 
 ## V2A — Initial feature bundle (session 1)
 
-Covered: Entity Launchpad · Cross-Intelligence Enrichment · Case Templates · Derived Graph (D3) · Redaction tool · Case Twin V0 · Next-Best-Step toast. See V2A section below for the full list of V2A-specific autonomous decisions.
+Entity Launchpad · Cross-Intelligence Enrichment · Case Templates · Derived Graph (D3) · Redaction tool · Case Twin V0 · Next-Best-Step toast.
 
 ## V2B — Fix + expansion (session 2)
 
-Blocs delivered:
-1. **Entity add form** — `EntityAddForm.tsx` with manual add + bulk paste (regex-parsed preview).
-2. **Timeline Builder** — `TimelineBuilder.tsx` replaces audit-log timeline tab. Full CRUD API routes.
-3. **Contradiction Finder** — rule-based, rendered in CaseTwin between Gaps and Readiness. Per-conflict dismiss.
-4. **Dual Export** — JSON (client-side), PDF via `/print` page (print-optimized, white bg), AI retail summary via Anthropic SDK.
-5. **Publish → Intel Vault** — `VaultPublishCandidate` model, `POST /publish-candidate`, 3-step form in Export tab.
-6. **Global entity search** — `GET /api/investigators/entities/search`, debounced dashboard search bar with client-side decryption.
-7. **Case Twin AI analysis** — Section F, reuses `/ai-summary` with `mode=investigator`.
-8. **Cross-case collision signal** — `GET /api/investigators/entities/collisions`, subtle notice in Section A. No reveal.
-9. **Redact page improvements** — `caseId` param, back-to-case link, `z` shortcut, `escape` clears all, "Add to case files" upload flow.
+Entity add form · Timeline Builder · Contradiction Finder · Dual Export (JSON + Print PDF + AI retail summary) · Publish → Intel Vault · Global entity search · Case Twin AI analysis · Cross-case collision signal · Redact page improvements.
 
-Hypothesis form upgrade (Bloc 1 part): status chips, confidence slider, notes textarea, delete per hypothesis, colored status badges + confidence bar.
+## V2C — UX polish + assistant + sharing (session 3)
 
-### V2B autonomous decisions
+1. **Delete entity** — `DELETE /entities/[entityId]` + `×` button per row with confirm.
+2. **Auto-suggest related entities** — `POST /entities/suggest`. After an entity is added, queries KolWallet/KolProfile + other workspace cases for related entries and pops a 10s panel.
+3. **Feedback button** — fixed bottom-right pill on every `/investigators/box/*` page (added via new `box/layout.tsx`). Modal with textarea + Web Speech API dictation. Posts to `/api/investigators/feedback` which uses Resend (existing infra) and falls back to `VaultFeedback` table on failure.
+4. **Claude Assistant tab** — new "assistant" tab on case detail page. Multi-turn chat backed by `/api/investigators/cases/[id]/assistant`. Per-workspace token quota enforced (`assistantTokensUsed` / `assistantTokensLimit` columns on `VaultWorkspace`). Web Speech voice input.
+5. **Voice notes** — "Dictate note" button next to "Save note" in the Notes tab. 100% client-side Web Speech.
+6. **Wallet Journey modal** — for WALLET entities, a "Journey" button opens a linear flow modal showing wallets and TXes interleaved.
+7. **Case sharing** — "Share" button in case header. Generates a 32-byte hex token + snapshot of derived data (title, entities, optional hypotheses) stored in `VaultCaseShare`. Public route `/shared/case/[token]/page.tsx` renders read-only with expiry enforcement.
 
-**1. Timeline tab fully replaced.** The old Timeline tab showed raw audit events (CASE_VIEWED etc.). V2B replaces it with manual `VaultTimelineEvent` data. Audit events still flow to `VaultAuditLog` unchanged. The prop `timelineEvents={timeline.length}` on CaseTwin was removed — CaseTwin now fetches its own timeline count from `VaultTimelineEvent`.
+### V2C autonomous decisions
 
-**2. Bulk paste regex uses a conservative ordering.** Order: ETH TX (64 hex) → EVM addr (40 hex) → URL → Telegram → Twitter → Solana base58. An EVM address that is a prefix of a TX hash is skipped to prevent double-counting. The Solana regex is 32–44 base58 which can false-positive on long alphanumeric strings — investigator can remove in preview before submission.
+**1. Layout-based feedback button.** Spec said "every /investigators/box/* page". Created `src/app/investigators/box/layout.tsx` (didn't exist) that wraps children with `<FeedbackButton />`. The button itself is client-side and uses `usePathname()` to extract `caseId` from the URL when applicable.
 
-**3. AI summary route uses `claude-sonnet-4-20250514` per spec.** Spec asked for this exact model. That model ID may not be currently available — the route falls back to mock if the API returns an error. If `ANTHROPIC_API_KEY` is missing, the route returns mock responses for both modes and logs `AI_SUMMARY_MOCK`. Human action: verify the model ID; swap to a current one if needed (e.g., `claude-sonnet-4-5-20250929`).
+**2. Feedback delivery: Resend first, DB fallback.** The existing infrastructure at `src/lib/surveillance/alerts/deliverAlerts.ts` uses `fetch("https://api.resend.com/emails", ...)` with `RESEND_API_KEY`. I copied this pattern. If `RESEND_API_KEY` is missing or Resend errors, the API silently writes to `VaultFeedback` instead. Audit log records `delivery: "email" | "db"`. Recipient defaults to `feedback@interligens.com` and is overridable via `FEEDBACK_EMAIL` env var.
 
-**4. PDF "export" is a print page, not a real PDF.** A dedicated `/investigators/box/cases/[caseId]/print/page.tsx` renders a print-optimized layout (white bg, black text, tables). User opens it in a new tab and uses browser Print / Save as PDF. No `html2canvas` / `jspdf` dependency added. Notes opt-in via `?includeNotes=true` query param. The print page is **client-rendered inside VaultGate** because notes need client-side decryption — this also means users must be unlocked in the new tab, which they will be since cookies + session are shared.
+**3. `VaultProfile.handle` field used directly.** Spec said "investigator handle". `VaultProfile.handle` is a unique non-null field (verified via Prisma schema). Falls back to `ctx.access.label` for paranoia.
 
-**5. Investigator handle display on print page.** Spec said "investigator handle". I query `/api/investigators/me` but that route likely doesn't exist. The `.catch()` returns `"—"` and the page gracefully continues. Not a blocker. Follow-up: add `/api/investigators/me` returning the vault profile handle.
+**4. Assistant API: token quota uses 4-chars-per-token estimate before call, then updates with actual `usage` post-call.** This is conservative — the pre-call check uses `estimateTokens(systemPrompt) + sum(estimateTokens(messages))` plus a fixed 1500-token output budget. After the call, the workspace counter is incremented by `input_tokens + output_tokens` from `response.usage`. This means the quota meter is accurate but the gate is slightly pessimistic (which is fine — it errs on the side of safety).
 
-**6. Contradiction Rule 4 skipped.** Rule 4 depends on `tigerVerdict` being populated on `VaultCaseEntity`. That field exists in schema but is never written by any code path. Rule 4 is skipped with no warning — would always be false. Documented here.
+**5. Assistant message history capped at 20.** `messages.slice(-20)` server-side. Client also keeps full local state (no truncation), so the user sees the whole conversation — only the API request is rolled.
 
-**7. Collision API: "other workspace" means `workspaceId: { not: ctx.workspace.id }`.** Spec said "cases NOT belonging to this workspace". Implemented literally. No caseId/workspaceId/investigator ever leaks back — only the unique count of matched values.
+**6. Case context payload to assistant is strictly derived data.** `{ type, value, label, tigerScore }` for entities; `{ title, status, confidence }` for hypotheses; enrichment summarized as KOL/known-bad flags only. **No notes, no filenames, no raw file content.** Spec security requirement maintained.
 
-**8. Global search API decrypts nothing server-side.** The API returns `caseTitleEnc` + `caseTitleIv` — decryption happens in the dashboard client using `keys.metaKey`. Search is on ciphertext-free columns only (`value`, `label`). This is correct: the `value` and `label` columns are stored in plaintext as derived-layer data (per existing schema design), so server-side `ILIKE` search is safe. Encrypted fields (title, tags, notes, filename) are never searched server-side.
+**7. Assistant model is `claude-sonnet-4-20250514` per spec.** Same model ID as the existing `/ai-summary` route. Verify availability and swap to a current Sonnet ID if the API rejects it.
 
-**9. Publish form min summary length = 100 chars, enforced client+server.** Spec said "min 100 chars". Both sides validate.
+**8. Quota reset is NOT automated.** "Monthly quota" is the spec language, but no cron/reset logic is built. Human action: add a monthly reset cron, OR manually reset `assistantTokensUsed` to 0 in Neon. Documented here.
 
-**10. `VaultHypothesis.supportingEntityIds`** — still not exposed in the UI form. Schema supports it. V2B hypothesis form only captures title, status, confidence, notes. Linking supporting entities is deferred.
+**9. Auto-suggest excludes entities already in the case.** After collecting candidates, the route filters out any `(type, value)` pair that already exists in `VaultCaseEntity` for this case, so the panel never proposes adding an entity that's already there.
 
-**11. Retail AI summary "Risk level"** — spec said LOW/MEDIUM/HIGH. Risk color mapping: LOW=green, MEDIUM=orange (reuses #FF6B00 accent), HIGH=red.
+**10. Auto-suggest panel auto-dismisses after 10s.** Per spec. Manual dismiss link also present. State is component-local (case page `useState`).
 
-**12. `/print` page is accessible to anyone who can authenticate against the vault for that case.** VaultGate check + authenticated API routes guarantee ownership. No new route-level ACL needed.
+**11. Wallet Journey is a naive linear interleave.** Spec said "linear flow" and "if relationships can be inferred from labels or notes: Use them. Otherwise: show all wallets and TX in a linear chain." I went with the simplest version: zip wallets and TX hashes positionally. This will be wrong for any non-trivial chain but is honest about its limitations and links to the full Graph tab. Future work: parse TX hash inputs from a real on-chain RPC.
 
-**13. `ai-summary` route is `POST` not `GET`** — spec said POST. Even though retail and investigator modes are "read-only", we use POST to keep the body `{ mode }` semantic and to prevent accidental caching of AI output.
+**12. Case share snapshot is built client-side and posted to the API.** The case title is encrypted at rest, so the server can't read it. The client decrypts it for the local view and passes the plaintext as `titleSnapshot` in the share-create body. Same for hypotheses (which are stored plaintext anyway). Entities are derived plaintext columns so they'd work either way — passed from client for consistency.
 
-**14. Content block text extraction (Anthropic SDK).** The Anthropic SDK 0.80 `ContentBlock` type is a union including `TextBlock` and `ThinkingBlock`. The strict type predicate failed TS because `TextBlock` requires `citations`. Fixed by narrowing with `"text" in textBlock && typeof textBlock.text === "string"`.
+**13. Share token is 32 bytes hex (`crypto.randomBytes(32).toString("hex")`)** = 64 hex chars. Cryptographically secure. Stored in `VaultCaseShare.token` with `@unique`. Public route does a single Prisma lookup by token.
 
-**15. Redact page keyboard shortcuts extended.** Spec said Delete / Z. I also wired Backspace (mac habit) and Escape (clear all) to match the UI text.
+**14. Public shared route is server-rendered with `force-dynamic`.** No caching. Expiry checked on every request. If expired or missing, returns a friendly "expired/invalid" message with a link back to interligens.com. No leakage of caseId or workspaceId.
 
-**16. "Add to case files" reuses existing draft → presign → R2 PUT → finalize flow.** parseStatus set to `MANUAL_REQUIRED`, parseMode `redacted_screenshot`. Filename is `redacted-{timestamp}.png`, encrypted with metaKey like all other filenames. Blob encrypted with fileKey.
+**15. Share URL base = `NEXT_PUBLIC_APP_URL` env var, defaulting to `https://app.interligens.com`.** This is consistent with the Vercel alias.
 
-**17. Suspense wrapper around RedactInner.** `useSearchParams` in Next 16 requires a Suspense boundary. Added `<Suspense fallback={null}>`.
+**16. Wallet Journey + Share modals share the same overlay pattern** as Feedback modal: fixed inset, click-outside-to-close, escape-to-close.
 
-**18. All new audit actions** — `AI_SUMMARY_GENERATED`, `AI_SUMMARY_MOCK`, `TIMELINE_EVENT_CREATED/UPDATED/DELETED`, `PUBLISH_SUBMITTED`, `ENTITIES_SEARCHED`. Follow existing naming.
+**17. Voice features hide their button if `SpeechRecognition` is unsupported.** This means Firefox users see no dictation button (Web Speech API is Chromium/Safari only). No fallback shown — silent degradation per spec.
+
+**18. Journey button only renders for `type === "WALLET"`.** Spec said "for WALLET type entities". Not shown on CONTRACT, TX_HASH, etc.
+
+**19. ENTITIES_DELETED audit action added.** Existing audit taxonomy uses `ENTITIES_ADDED` (plural). I used `ENTITY_DELETED` (singular) since deletes are one-at-a-time. Both audit actions coexist.
+
+**20. New audit actions:** `ENTITY_DELETED`, `FEEDBACK_SENT`, `ASSISTANT_QUERY` (logs token usage in metadata, never the message body), `CASE_SHARED`.
 
 ---
 
@@ -71,111 +74,97 @@ Hypothesis form upgrade (Bloc 1 part): status chips, confidence slider, notes te
 
 ## SQL migrations — human must apply via Neon SQL Editor
 
-### V2A migration (already documented in earlier session)
+Apply in order: V2A → V2B → V2C.
 
-File: `prisma/migrations/manual_investigators_v2a/migration.sql` — adds `VaultCase.caseTemplate` + `VaultHypothesis` + enum.
+### V2A (existing)
+File: `prisma/migrations/manual_investigators_v2a/migration.sql`
 
-### V2B migration (new)
-
+### V2B (existing, now extended with VaultFeedback)
 File: `prisma/migrations/manual_investigators_v2b/migration.sql`
+The `VaultFeedback` table has been **appended** to the existing V2B file. If V2B was already applied, run only the appended VaultFeedback section:
 
 ```sql
-CREATE TABLE IF NOT EXISTS "VaultTimelineEvent" (
+CREATE TABLE IF NOT EXISTS "VaultFeedback" (
   "id" TEXT NOT NULL,
-  "caseId" TEXT NOT NULL,
-  "title" TEXT NOT NULL,
-  "description" TEXT,
-  "eventDate" TIMESTAMP(3) NOT NULL,
-  "entityIds" TEXT[],
-  "eventType" TEXT NOT NULL DEFAULT 'MANUAL',
+  "workspaceId" TEXT NOT NULL,
+  "caseId" TEXT,
+  "handle" TEXT NOT NULL,
+  "message" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "VaultTimelineEvent_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "VaultFeedback_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX IF NOT EXISTS "VaultTimelineEvent_caseId_idx"
-  ON "VaultTimelineEvent"("caseId");
-CREATE INDEX IF NOT EXISTS "VaultTimelineEvent_eventDate_idx"
-  ON "VaultTimelineEvent"("eventDate");
-
-DO $$ BEGIN
-  ALTER TABLE "VaultTimelineEvent"
-    ADD CONSTRAINT "VaultTimelineEvent_caseId_fkey"
-    FOREIGN KEY ("caseId") REFERENCES "VaultCase"("id")
-    ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION
-  WHEN duplicate_object THEN null;
-END $$;
-
-CREATE TABLE IF NOT EXISTS "VaultPublishCandidate" (
-  "id" TEXT NOT NULL,
-  "caseId" TEXT NOT NULL,
-  "entityIds" TEXT[],
-  "summary" TEXT NOT NULL,
-  "status" TEXT NOT NULL DEFAULT 'PENDING',
-  "submittedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "reviewedAt" TIMESTAMP(3),
-  "reviewNote" TEXT,
-  CONSTRAINT "VaultPublishCandidate_pkey" PRIMARY KEY ("id")
-);
-
-CREATE INDEX IF NOT EXISTS "VaultPublishCandidate_caseId_idx"
-  ON "VaultPublishCandidate"("caseId");
-CREATE INDEX IF NOT EXISTS "VaultPublishCandidate_status_idx"
-  ON "VaultPublishCandidate"("status");
-
-DO $$ BEGIN
-  ALTER TABLE "VaultPublishCandidate"
-    ADD CONSTRAINT "VaultPublishCandidate_caseId_fkey"
-    FOREIGN KEY ("caseId") REFERENCES "VaultCase"("id")
-    ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION
-  WHEN duplicate_object THEN null;
-END $$;
+CREATE INDEX IF NOT EXISTS "VaultFeedback_workspaceId_idx"
+  ON "VaultFeedback"("workspaceId");
 ```
 
-**Apply both V2A and V2B migrations before using the features that depend on them.** Until then:
-- V2A: `VaultHypothesis` routes return empty or 500, `caseTemplate` writes silently use schema default.
-- V2B: Timeline Builder GET returns empty (safe), POST returns 500. Publish-candidate POST returns 500.
+### V2C (new)
+File: `prisma/migrations/manual_investigators_v2c/migration.sql`
+
+```sql
+ALTER TABLE "VaultWorkspace"
+  ADD COLUMN IF NOT EXISTS "assistantTokensUsed" INTEGER DEFAULT 0;
+
+ALTER TABLE "VaultWorkspace"
+  ADD COLUMN IF NOT EXISTS "assistantTokensLimit" INTEGER DEFAULT 100000;
+
+CREATE TABLE IF NOT EXISTS "VaultCaseShare" (
+  "id" TEXT NOT NULL,
+  "caseId" TEXT NOT NULL,
+  "token" TEXT NOT NULL,
+  "expiresAt" TIMESTAMP(3) NOT NULL,
+  "workspaceId" TEXT NOT NULL,
+  "entitySnapshot" JSONB NOT NULL,
+  "titleSnapshot" TEXT NOT NULL,
+  "hypothesisSnapshot" JSONB,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "VaultCaseShare_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "VaultCaseShare_token_key"
+  ON "VaultCaseShare"("token");
+CREATE INDEX IF NOT EXISTS "VaultCaseShare_caseId_idx"
+  ON "VaultCaseShare"("caseId");
+```
+
+**Until V2C is applied:** Assistant tab will return 500 (workspace lookup fails for the new columns). Share button will return 500. Feedback fallback to DB will fail. Email-delivery feedback path still works. Auto-suggest, delete entity, voice notes, wallet journey, all work without V2C — they don't depend on it.
 
 ---
 
 ## Needs human action
 
-1. **Apply V2A SQL** via Neon SQL Editor.
-2. **Apply V2B SQL** via Neon SQL Editor.
-3. **Set `ANTHROPIC_API_KEY`** in Vercel env vars. Without it, AI summary routes return a documented mock response. Set via Vercel UI (not `vercel env pull`).
-4. **Verify Claude model ID** — spec pins `claude-sonnet-4-20250514`. If unavailable, edit `src/app/api/investigators/cases/[caseId]/ai-summary/route.ts` to use `claude-sonnet-4-5-20250929` or similar current Sonnet.
-5. **Optional**: implement `/api/investigators/me` returning `{ handle }` for the print page header. Currently shows `—`.
+1. **Apply V2A SQL** (if not done).
+2. **Apply V2B SQL** (if not done) — including the **VaultFeedback** addition at the bottom.
+3. **Apply V2C SQL** — workspace columns + VaultCaseShare table.
+4. **Set `ANTHROPIC_API_KEY`** in Vercel env. Without it, Assistant returns 503 and AI summary routes return mocks.
+5. **Optional: set `FEEDBACK_EMAIL`** env var (defaults to `feedback@interligens.com`).
+6. **Optional: set `NEXT_PUBLIC_APP_URL`** env var if the share base URL needs to differ from `https://app.interligens.com`.
+7. **Verify Claude model ID** — both `/ai-summary` and `/assistant` pin `claude-sonnet-4-20250514`. Swap to current Sonnet ID if needed.
+8. **Add monthly cron to reset `assistantTokensUsed`** OR manually reset in Neon. Not automated.
 
 ---
 
-## Security checklist (V2A + V2B)
+## Security checklist (V2A + V2B + V2C)
 
-- [x] EntityLaunchpad: external links only, no server calls
-- [x] Cross-Intelligence: internal Prisma queries only (KolWallet, KolProfile)
-- [x] Redaction tool: client-side canvas, opt-in "Add to case files" uses existing encrypted file flow
-- [x] CaseTwin / Graph / TimelineBuilder: derived layer only
-- [x] AI Summary API: sends only `{ type, value, label, tigerScore }` for entities, `{ title, status, confidence }` for hypotheses, `{ date, title, description }` for timeline events. **Never notes, never file content, never raw filename.**
-- [x] Collision API: returns only `{ hasCollisions, collisionCount }` — never caseId, workspaceId, or investigator identity
-- [x] Publish candidate: only `entityIds` + `summary` stored. Entity IDs validated against case ownership before insert.
-- [x] Global search API: scoped to authenticated workspace via `case: { workspaceId: ctx.workspace.id }`. Returns encrypted case title for client-side decryption.
-- [x] Print page: wrapped in VaultGate, requires unlocked vault
-- [x] All new API routes: `getVaultWorkspace` + `assertCaseOwnership` + `logAudit`
-- [x] No cyan, no emoji, design tokens respected throughout
-
----
-
-## What is still out of scope (deferred to V2C)
-
-- Claim Discipline Engine
-- Investigator Reputation Graph
-- Live review dashboard for `VaultPublishCandidate`
-- Timeline PNG export (spec mentioned html2canvas fallback — skipped since lib not installed)
-- Entity drag-and-drop on graph→timeline
-- Supporting entity linker on hypotheses
+- [x] Assistant: only sends derived `{ type, value, label, tigerScore }` + hypotheses + enrichment flags. **Never notes, never file content, never raw filenames.**
+- [x] Assistant: workspace token quota enforced **before** the API call (pre-flight estimate) and reconciled after with real usage.
+- [x] Assistant: audit log records token counts only, **never message content**.
+- [x] Share: snapshot built at creation time. Public route never re-fetches live data (it can't — encrypted).
+- [x] Share: 32-byte hex token, server-side expiry check, no caseId/workspaceId leakage on expired links.
+- [x] Share: notes, files, raw content, audit log, hypothesis IDs — none included in snapshot. Optional hypothesis snapshot is opt-in via the create payload.
+- [x] Feedback: stored in DB or sent via existing Resend infra to internal email. Never publicly exposed.
+- [x] Auto-suggest: queries KolWallet, KolProfile, and `VaultCaseEntity` scoped to authenticated workspace only. No external calls.
+- [x] Delete entity: ownership verified before delete (`assertCaseOwnership` + `caseId` match check).
+- [x] All new routes use `getVaultWorkspace` + `assertCaseOwnership` + `logAudit`.
+- [x] No cyan, no emoji, design tokens preserved.
 
 ---
 
-## V2A — earlier decisions (session 1, preserved)
+## Out of scope (V2D and beyond)
 
-_(All 15 V2A-specific autonomous decisions from the prior session remain valid. Key ones restated: `getVaultWorkspace` not `getInvestigatorWorkspace`; WatchScan has no wallet address column — inWatchlist always false; KolProfile uses `handle` not `twitterHandle/telegramHandle`; D3 force simulation chosen over reactflow; caseTemplate values are slugs `blank|rug-pull|kol-promo|cex-cashout|infostealer`.)_
+- Quota auto-reset cron
+- Hypothesis snapshot opt-in UI on share modal (currently snapshot only includes title + entities)
+- Real on-chain wallet journey (currently positional interleave)
+- Resend webhook for delivery confirmation
+- Investigator-side share management dashboard (revoke, list active shares)
+- Multi-investigator collaboration on a single case
