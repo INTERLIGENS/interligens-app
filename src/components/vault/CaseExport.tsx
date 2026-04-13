@@ -81,6 +81,7 @@ export default function CaseExport({
   const [retailLoading, setRetailLoading] = useState(false);
   const [retailError, setRetailError] = useState<string | null>(null);
   const [retailMock, setRetailMock] = useState(false);
+  const [retailSummaryGenerated, setRetailSummaryGenerated] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(entities.map((e) => e.id))
@@ -90,6 +91,7 @@ export default function CaseExport({
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   function toggleEntity(id: string) {
     setSelectedIds((prev) => {
@@ -172,6 +174,7 @@ export default function CaseExport({
       if (data.summary) {
         setRetail(data.summary);
         setRetailMock(Boolean(data.mock));
+        setRetailSummaryGenerated(true);
       } else {
         setRetailError(data.error ?? "Generation failed");
       }
@@ -260,7 +263,7 @@ export default function CaseExport({
     },
     {
       label: "Retail summary reviewed",
-      passed: retail !== null,
+      passed: retailSummaryGenerated || retail !== null,
     },
     {
       label: "Entities are derived (not raw private content)",
@@ -757,7 +760,10 @@ export default function CaseExport({
             </div>
             <textarea
               value={publishSummary}
-              onChange={(e) => setPublishSummary(e.target.value)}
+              onChange={(e) => {
+                setPublishSummary(e.target.value);
+                if (!hasInteracted) setHasInteracted(true);
+              }}
               placeholder="This case documents a KOL paid promotion scheme involving..."
               rows={5}
               style={{
@@ -875,6 +881,30 @@ export default function CaseExport({
             </div>
           )}
 
+          {(() => {
+            const submitDisabled = publishing || !confirmed;
+            let helper: string | null = null;
+            if (hasInteracted && submitDisabled && !publishing) {
+              if (selectedIds.size === 0) {
+                helper = "Select at least one entity to submit.";
+              } else if (publishSummary.trim().length < 100) {
+                helper = "Your summary must be at least 100 characters.";
+              } else if (!confirmed) {
+                helper = "Check the confirmation box to submit.";
+              }
+            }
+            return helper ? (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,107,0,0.7)",
+                  marginBottom: 8,
+                }}
+              >
+                {helper}
+              </div>
+            ) : null;
+          })()}
           <button
             onClick={submitPublish}
             disabled={publishing || !confirmed}

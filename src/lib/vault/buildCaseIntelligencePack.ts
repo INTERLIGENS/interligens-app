@@ -1038,8 +1038,11 @@ export async function buildCaseIntelligenceSummary(
     0
   );
 
-  // Network actor discovery — shared wallet address overlap only.
-  let networkActors = 0;
+  // Network actor discovery — mirrors the full pack builder's logic so the
+  // lightweight summary route returns the same count the assistant sees.
+  // Signal A: shared wallet address overlap.
+  // Signal B: shared token involvement (KolTokenInvolvement raw table).
+  const actorSet = new Set<string>();
   if (handlesArray.length > 0) {
     const allLinkedWallets = await safeQuery(
       () =>
@@ -1066,11 +1069,43 @@ export async function buildCaseIntelligenceSummary(
           }),
         [] as Array<{ kolHandle: string }>
       );
-      networkActors = new Set(
-        counterparts.map((c) => c.kolHandle.toLowerCase())
-      ).size;
+      for (const c of counterparts) actorSet.add(c.kolHandle.toLowerCase());
+    }
+
+    const tokenMintRows = await safeQuery(
+      () =>
+        prisma.$queryRaw<Array<{ tokenMint: string }>>`
+          SELECT DISTINCT "tokenMint"
+          FROM "KolTokenInvolvement"
+          WHERE LOWER("kolHandle") = ANY(${handlesArray.map((h) => h.toLowerCase())})
+          LIMIT 200
+        `,
+      [] as Array<{ tokenMint: string }>
+    );
+    const sharedMints = Array.from(
+      new Set(tokenMintRows.map((r) => r.tokenMint).filter(Boolean))
+    );
+    if (sharedMints.length > 0) {
+      const tokenCounterparts = await safeQuery(
+        () =>
+          prisma.$queryRaw<Array<{ kolHandle: string }>>`
+            SELECT DISTINCT "kolHandle"
+            FROM "KolTokenInvolvement"
+            WHERE "tokenMint" = ANY(${sharedMints})
+            AND LOWER("kolHandle") <> ALL(${handlesArray.map((h) => h.toLowerCase())})
+            LIMIT 200
+          `,
+        [] as Array<{ kolHandle: string }>
+      );
+      for (const c of tokenCounterparts) actorSet.add(c.kolHandle.toLowerCase());
     }
   }
+  const networkActors = actorSet.size;
+  console.log(
+    "[intelligence-summary] relatedActors",
+    caseId,
+    Array.from(actorSet)
+  );
 
   const laundryTrails =
     handlesArray.length === 0

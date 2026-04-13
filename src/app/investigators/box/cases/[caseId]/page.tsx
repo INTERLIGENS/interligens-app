@@ -652,6 +652,7 @@ function CaseInner({ caseId }: { caseId: string }) {
           }
           .vault-tab-row { scrollbar-width: none; -ms-overflow-style: none; }
           .vault-tab-row::-webkit-scrollbar { display: none; }
+          .entity-scan-link:hover { color: #FF6B00 !important; }
         `}</style>
         <div
           className="flex gap-2 mb-6 vault-tab-row"
@@ -864,8 +865,18 @@ function CaseInner({ caseId }: { caseId: string }) {
                       className="flex items-center justify-between border border-white/10 rounded px-3 py-2 text-sm hover:bg-white/[0.02]"
                       style={{ gap: 8, transition: "background-color 100ms" }}
                     >
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-[10px] uppercase text-[#FF6B00] w-16">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          flexWrap: "nowrap",
+                          overflow: "hidden",
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
+                        <span className="text-[10px] uppercase text-[#FF6B00] w-16" style={{ flexShrink: 0 }}>
                           {e.type}
                         </span>
                         <button
@@ -875,7 +886,7 @@ function CaseInner({ caseId }: { caseId: string }) {
                               detailEntityId === e.id ? null : e.id
                             )
                           }
-                          className="font-mono text-white/90 break-all hover:text-[#FF6B00]"
+                          className="font-mono text-white/90 hover:text-[#FF6B00]"
                           style={{
                             background: "none",
                             border: "none",
@@ -885,73 +896,137 @@ function CaseInner({ caseId }: { caseId: string }) {
                             fontSize: "inherit",
                             fontFamily: "ui-monospace, monospace",
                             transition: "color 100ms",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            minWidth: 0,
+                            flexShrink: 1,
                           }}
                         >
                           {e.value}
                         </button>
-                        {enr?.isKnownBad && (
-                          <span
-                            style={{
-                              ...BADGE_BASE,
-                              color: "#FF3B5C",
-                              border: "1px solid rgba(255,59,92,0.4)",
-                              backgroundColor: "rgba(255,59,92,0.08)",
-                            }}
-                          >
-                            Known Bad
-                            {enr.knownBadScore != null
-                              ? ` ${enr.knownBadScore}`
-                              : ""}
-                          </span>
-                        )}
-                        {enr?.inWatchlist && (
-                          <span
-                            style={{
-                              ...BADGE_BASE,
-                              color: "#FFB020",
-                              border: "1px solid rgba(255,176,32,0.4)",
-                              backgroundColor: "rgba(255,176,32,0.08)",
-                            }}
-                          >
-                            Watchlist
-                          </span>
-                        )}
-                        {enr?.inKolRegistry && (
-                          <span
-                            style={{
-                              ...BADGE_BASE,
-                              color: "#FF6B00",
-                              border: "1px solid rgba(255,107,0,0.5)",
-                              backgroundColor: "rgba(255,107,0,0.08)",
-                            }}
-                          >
-                            KOL Registry
-                            {enr.kolName ? ` · ${enr.kolName}` : ""}
-                          </span>
-                        )}
-                        {enr?.proceedsTotalUSD != null &&
-                          enr.proceedsTotalUSD > 0 && (
-                            <span
-                              style={{
-                                fontSize: 10,
-                                color: "rgba(255,107,0,0.8)",
-                                fontWeight: 600,
-                              }}
-                            >
-                              · {formatUSD(enr.proceedsTotalUSD)} observed
-                            </span>
-                          )}
-                        {enr?.inIntelVault && (
-                          <span
-                            style={{
-                              ...BADGE_BASE,
-                              color: "rgba(255,255,255,0.8)",
-                              border: "1px solid rgba(255,255,255,0.3)",
-                            }}
-                          >
-                            Intel Vault
-                          </span>
-                        )}
+                        {(() => {
+                          type Badge = {
+                            key: string;
+                            label: string;
+                            style: React.CSSProperties;
+                          };
+                          const badges: Badge[] = [];
+                          if (enr?.isKnownBad) {
+                            badges.push({
+                              key: "bad",
+                              label:
+                                "Known Bad" +
+                                (enr.knownBadScore != null ? ` ${enr.knownBadScore}` : ""),
+                              style: {
+                                ...BADGE_BASE,
+                                color: "#FF3B5C",
+                                border: "1px solid rgba(255,59,92,0.4)",
+                                backgroundColor: "rgba(255,59,92,0.08)",
+                              },
+                            });
+                          }
+                          if (enr?.inWatchlist) {
+                            badges.push({
+                              key: "watch",
+                              label: "Watchlist",
+                              style: {
+                                ...BADGE_BASE,
+                                color: "#FFB020",
+                                border: "1px solid rgba(255,176,32,0.4)",
+                                backgroundColor: "rgba(255,176,32,0.08)",
+                              },
+                            });
+                          }
+                          if (enr?.inKolRegistry) {
+                            badges.push({
+                              key: "kol",
+                              label:
+                                "KOL Registry" +
+                                (enr.kolName ? ` · ${enr.kolName}` : ""),
+                              style: {
+                                ...BADGE_BASE,
+                                color: "#FF6B00",
+                                border: "1px solid rgba(255,107,0,0.5)",
+                                backgroundColor: "rgba(255,107,0,0.08)",
+                              },
+                            });
+                          }
+                          if (enr?.inIntelVault) {
+                            badges.push({
+                              key: "vault",
+                              label: "Intel Vault",
+                              style: {
+                                ...BADGE_BASE,
+                                color: "rgba(255,255,255,0.8)",
+                                border: "1px solid rgba(255,255,255,0.3)",
+                              },
+                            });
+                          }
+                          const visible = badges.slice(0, 2);
+                          const hidden = badges.slice(2);
+                          return (
+                            <>
+                              {visible.map((b) => (
+                                <span
+                                  key={b.key}
+                                  style={{ ...b.style, flexShrink: 0, whiteSpace: "nowrap" }}
+                                >
+                                  {b.label}
+                                </span>
+                              ))}
+                              {hidden.length > 0 && (
+                                <span
+                                  title={hidden.map((b) => b.label).join(" · ")}
+                                  style={{
+                                    backgroundColor: "rgba(255,255,255,0.06)",
+                                    color: "rgba(255,255,255,0.4)",
+                                    fontSize: 10,
+                                    padding: "2px 6px",
+                                    borderRadius: 4,
+                                    flexShrink: 0,
+                                    whiteSpace: "nowrap",
+                                    cursor: "help",
+                                  }}
+                                >
+                                  +{hidden.length} more
+                                </span>
+                              )}
+                              {enr?.proceedsTotalUSD != null &&
+                                enr.proceedsTotalUSD > 0 && (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      color: "rgba(255,107,0,0.8)",
+                                      fontWeight: 600,
+                                      flexShrink: 0,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    · {formatUSD(enr.proceedsTotalUSD)} observed
+                                  </span>
+                                )}
+                              {(e.type === "WALLET" || e.type === "CONTRACT") && (
+                                <a
+                                  href={`/en/demo?addr=${encodeURIComponent(e.value)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="entity-scan-link"
+                                  style={{
+                                    fontSize: 11,
+                                    color: "rgba(255,107,0,0.6)",
+                                    textDecoration: "none",
+                                    flexShrink: 0,
+                                    whiteSpace: "nowrap",
+                                    transition: "color 150ms",
+                                  }}
+                                >
+                                  Scan
+                                </a>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-white/40 text-xs">
@@ -1204,6 +1279,22 @@ function CaseInner({ caseId }: { caseId: string }) {
                           >
                             Copy value
                           </button>
+                          {(e.type === "WALLET" || e.type === "CONTRACT") && (
+                            <a
+                              href={`/en/demo?addr=${encodeURIComponent(e.value)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                fontSize: 12,
+                                color: "#FF6B00",
+                                textDecoration: "none",
+                                padding: "4px 10px",
+                                alignSelf: "center",
+                              }}
+                            >
+                              TigerScore scan &rarr;
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}
