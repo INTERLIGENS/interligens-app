@@ -762,3 +762,162 @@ export async function buildCaseIntelligencePack(
     timelineCorrelation,
   };
 }
+
+// ============================================================================
+// LIGHT SUMMARY — for /intelligence-summary route
+// ============================================================================
+// Returns only the counters shown in the assistant indicator strip. Does NOT
+// run timeline correlation, confidence rules, contradiction detection, or
+// twin state computation. Saves ~4 heavy DB queries per call compared to the
+// full buildCaseIntelligencePack().
+
+export type CaseIntelligenceSummary = {
+  entityCount: number;
+  kolMatches: number;
+  proceedsTotal: number;
+  networkActors: number;
+  laundryTrails: number;
+  intelVaultRefs: number;
+};
+
+export async function buildCaseIntelligenceSummary(
+  caseId: string,
+  _workspaceId: string
+): Promise<CaseIntelligenceSummary> {
+  const entities = await safeQuery(
+    () =>
+      prisma.vaultCaseEntity.findMany({
+        where: { caseId },
+        select: { type: true, value: true },
+        take: 500,
+      }),
+    [] as Array<{ type: string; value: string }>
+  );
+  const entityCount = entities.length;
+
+  const walletValues = entities
+    .filter((e) => e.type === "WALLET" || e.type === "CONTRACT")
+    .map((e) => e.value);
+  const handleValues = entities
+    .filter((e) => e.type === "HANDLE")
+    .map((e) => normalizeHandle(e.value));
+
+  const walletMatches = await safeQuery(
+    () =>
+      walletValues.length === 0
+        ? Promise.resolve([])
+        : prisma.kolWallet.findMany({
+            where: {
+              OR: [
+                { address: { in: walletValues } },
+                { address: { in: walletValues.map((v) => v.toLowerCase()) } },
+              ],
+            },
+            select: { kolHandle: true },
+          }),
+    [] as Array<{ kolHandle: string }>
+  );
+
+  const matchedHandlesFromWallets = new Set(
+    walletMatches.map((w) => w.kolHandle.toLowerCase())
+  );
+  const allMatchedHandles = new Set<string>([
+    ...matchedHandlesFromWallets,
+    ...handleValues,
+  ]);
+  const handlesArray = Array.from(allMatchedHandles);
+
+  const profiles = await safeQuery(
+    () =>
+      handlesArray.length === 0
+        ? Promise.resolve([])
+        : prisma.kolProfile.findMany({
+            where: { handle: { in: handlesArray, mode: "insensitive" } },
+            select: {
+              handle: true,
+              totalDocumented: true,
+              totalScammed: true,
+            },
+          }),
+    [] as Array<{
+      handle: string;
+      totalDocumented: number | null;
+      totalScammed: number | null;
+    }>
+  );
+
+  const kolMatches = profiles.length;
+  const proceedsTotal = profiles.reduce(
+    (sum, p) => sum + (p.totalDocumented ?? p.totalScammed ?? 0),
+    0
+  );
+
+  // Network actor discovery — shared wallet address overlap only.
+  let networkActors = 0;
+  if (handlesArray.length > 0) {
+    const allLinkedWallets = await safeQuery(
+      () =>
+        prisma.kolWallet.findMany({
+          where: {
+            kolHandle: { in: handlesArray, mode: "insensitive" },
+          },
+          select: { address: true },
+          take: 500,
+        }),
+      [] as Array<{ address: string }>
+    );
+    const sharedAddresses = allLinkedWallets.map((w) => w.address);
+    if (sharedAddresses.length > 0) {
+      const counterparts = await safeQuery(
+        () =>
+          prisma.kolWallet.findMany({
+            where: {
+              address: { in: sharedAddresses },
+              kolHandle: { notIn: handlesArray, mode: "insensitive" },
+            },
+            select: { kolHandle: true },
+            take: 200,
+          }),
+        [] as Array<{ kolHandle: string }>
+      );
+      networkActors = new Set(
+        counterparts.map((c) => c.kolHandle.toLowerCase())
+      ).size;
+    }
+  }
+
+  const laundryTrails =
+    handlesArray.length === 0
+      ? 0
+      : await safeQuery(
+          () =>
+            prisma.laundryTrail.count({
+              where: {
+                kolHandle: { in: handlesArray, mode: "insensitive" },
+              },
+            }),
+          0
+        );
+
+  const intelVaultRefs =
+    handlesArray.length === 0
+      ? 0
+      : await safeQuery(
+          () =>
+            prisma.kolCase.count({
+              where: {
+                kolHandle: { in: handlesArray, mode: "insensitive" },
+              },
+            }),
+          0
+        );
+
+  return {
+    entityCount,
+    kolMatches,
+    proceedsTotal,
+    networkActors,
+    laundryTrails,
+    intelVaultRefs,
+  };
+}
