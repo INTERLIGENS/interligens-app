@@ -1624,3 +1624,50 @@ model VaultAuditLog {
   @@index([caseId])
   @@index([action])
 }
+
+// ── User watch list (post-scan continuous tracking) ──────────────────────────
+// Users who scan an address and want to be notified of score/tier/status
+// changes can opt in via POST /api/watch. The daily cron re-scans active rows
+// and emits WatchAlert records when a material change is detected.
+//
+// NOTE: `ownerAccessId` stores the InvestigatorAccess.id (not an email) — the
+// beta auth system is code-based and has no email field on session.
+
+model WatchedAddress {
+  id                 String   @id @default(cuid())
+  address            String
+  chain              String   // "solana" | "ethereum" | "base" | "arbitrum"
+  label              String?
+  ownerAccessId      String
+  lastScore          Int?
+  lastTier           String?
+  lastGovernedStatus String?
+  lastScannedAt      DateTime?
+  alertOnChange      Boolean  @default(true)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  alerts WatchAlert[]
+
+  @@unique([address, chain, ownerAccessId])
+  @@index([ownerAccessId])
+  @@index([active, lastScannedAt])
+}
+
+model WatchAlert {
+  id               String         @id @default(cuid())
+  watchedAddressId String
+  watchedAddress   WatchedAddress @relation(fields: [watchedAddressId], references: [id], onDelete: Cascade)
+  previousScore    Int?
+  newScore         Int
+  previousTier     String?
+  newTier          String
+  changeType       String         // "tier_change" | "score_change" | "governed_status_change"
+  changeDetail     String?
+  notifiedAt       DateTime?
+  emailSent        Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+
+  @@index([watchedAddressId])
+}
