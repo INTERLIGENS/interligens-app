@@ -356,10 +356,11 @@ function CaseInner({ caseId }: { caseId: string }) {
       .catch(() => {});
   }, [caseId, keys, tab]);
 
-  // Lazy load enrichment when entities tab opens and we have entities.
+  // Pre-load enrichment as soon as entities are available, regardless of
+  // which tab is active. The graph tab needs enrichment to render cross-intel
+  // edges — if the fetch fires only on tab change, the D3 simulation
+  // initializes with empty enrichment and edges never appear.
   useEffect(() => {
-    if (tab !== "entities" && tab !== "intelligence" && tab !== "graph")
-      return;
     if (entities.length === 0) return;
     if (enrichLoading) return;
     if (Object.keys(enrichment).length > 0) return;
@@ -369,7 +370,7 @@ function CaseInner({ caseId }: { caseId: string }) {
       .then((d) => setEnrichment(d.enrichment ?? {}))
       .catch(() => setEnrichment({}))
       .finally(() => setEnrichLoading(false));
-  }, [tab, entities, caseId, enrichment, enrichLoading]);
+  }, [entities, caseId, enrichment, enrichLoading]);
 
   async function handleUpload(file: File) {
     if (!keys || uploadBusy) return;
