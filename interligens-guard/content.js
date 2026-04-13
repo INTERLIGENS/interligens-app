@@ -1,3 +1,4 @@
+console.log('INTERLIGENS Guard loaded');
 // INTERLIGENS Guard — Content Script
 // Detects DEX pages, extracts Solana mint addresses, injects score badge.
 
@@ -24,9 +25,9 @@
       injectTarget: "[class*=\"swap\"], [class*=\"token\"]"
     },
     "birdeye.so": {
-      urlPattern: /birdeye\.so\/solana\/token\/([A-Za-z0-9]{32,44})/,
+      urlPattern: /birdeye\.so\/(?:solana\/)?token\/([A-Za-z0-9]{32,44})/,
       mintFromUrl: function (url) {
-        var m = url.match(/birdeye\.so\/solana\/token\/([A-Za-z0-9]{32,44})/);
+        var m = url.match(/birdeye\.so\/(?:solana\/)?token\/([A-Za-z0-9]{32,44})/);
         return m ? m[1] : null;
       },
       injectTarget: "[class*=\"header\"], [class*=\"token-detail\"]"
@@ -69,9 +70,15 @@
 
   // Layer 1: extract mint from URL
   function mintFromUrl() {
+    console.log("[INTERLIGENS Guard] Trying mint from URL:", window.location.href);
     var config = getActiveDexConfig();
-    if (!config) return null;
-    return config.mintFromUrl(window.location.href);
+    if (!config) {
+      console.log("[INTERLIGENS Guard] No DEX config match for hostname:", window.location.hostname);
+      return null;
+    }
+    var mint = config.mintFromUrl(window.location.href);
+    console.log("[INTERLIGENS Guard] mintFromUrl result:", mint);
+    return mint;
   }
 
   // Layer 2: extract mint from DOM (fallback)
@@ -261,6 +268,7 @@
 
   function scanCurrentPage() {
     var mint = detectMint();
+    console.log("[INTERLIGENS Guard] hostname:", window.location.hostname, "url:", window.location.href, "mint:", mint);
 
     if (!mint) {
       // No mint found — no badge needed
@@ -286,7 +294,9 @@
     } catch {}
 
     // Show loading badge
+    console.log("[INTERLIGENS Guard] createLoadingBadge() for mint:", mint);
     createLoadingBadge();
+    console.log("[INTERLIGENS Guard] badge in DOM:", !!document.getElementById(BADGE_ID));
 
     // Request score from background service worker
     chrome.runtime.sendMessage(
@@ -339,6 +349,13 @@
 
   // ── Initial scan ───────────────────────────────────────────────────────────
 
-  // Delay initial scan to let the page fully render
-  setTimeout(scanCurrentPage, 1500);
+  // Immediate scan — SPAs like Birdeye already have the token mounted on load
+  console.log("[INTERLIGENS Guard] Running immediate scan");
+  scanCurrentPage();
+
+  // Fallback scan after 2s in case SPA hydration was still pending
+  setTimeout(function () {
+    console.log("[INTERLIGENS Guard] Running 2s fallback scan");
+    scanCurrentPage();
+  }, 2000);
 })();
