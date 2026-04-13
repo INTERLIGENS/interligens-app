@@ -1,0 +1,1237 @@
+=== 1. KOL-related tables ===
+[
+  {
+    "table_name": "KOLCaseLink"
+  },
+  {
+    "table_name": "KOLProfile"
+  },
+  {
+    "table_name": "KOLWallet"
+  },
+  {
+    "table_name": "KolAlias"
+  },
+  {
+    "table_name": "KolCase"
+  },
+  {
+    "table_name": "KolEvidence"
+  },
+  {
+    "table_name": "KolProceedsEvent"
+  },
+  {
+    "table_name": "KolProceedsSummary"
+  },
+  {
+    "table_name": "KolProfile"
+  },
+  {
+    "table_name": "KolPromotionMention"
+  },
+  {
+    "table_name": "KolTokenInvolvement"
+  },
+  {
+    "table_name": "KolTokenLink"
+  },
+  {
+    "table_name": "KolWallet"
+  },
+  {
+    "table_name": "TransparencyWallet"
+  },
+  {
+    "table_name": "WalletFundingEdge"
+  },
+  {
+    "table_name": "WalletLabel"
+  },
+  {
+    "table_name": "WatchScan"
+  },
+  {
+    "table_name": "WatchSource"
+  },
+  {
+    "table_name": "social_watchlist"
+  },
+  {
+    "table_name": "wallets"
+  }
+]
+
+=== 2. WatchScan columns ===
+[
+  {
+    "column_name": "id",
+    "data_type": "text"
+  },
+  {
+    "column_name": "sourceId",
+    "data_type": "text"
+  },
+  {
+    "column_name": "scannedAt",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "column_name": "newPosts",
+    "data_type": "integer"
+  },
+  {
+    "column_name": "errorMsg",
+    "data_type": "text"
+  },
+  {
+    "column_name": "createdAt",
+    "data_type": "timestamp without time zone"
+  }
+]
+
+=== 3. KolWallet columns ===
+[
+  {
+    "column_name": "id",
+    "data_type": "text"
+  },
+  {
+    "column_name": "createdAt",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "kolHandle",
+    "data_type": "text"
+  },
+  {
+    "column_name": "address",
+    "data_type": "text"
+  },
+  {
+    "column_name": "chain",
+    "data_type": "text"
+  },
+  {
+    "column_name": "label",
+    "data_type": "text"
+  },
+  {
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "column_name": "claimType",
+    "data_type": "text"
+  },
+  {
+    "column_name": "sourceLabel",
+    "data_type": "text"
+  },
+  {
+    "column_name": "sourceUrl",
+    "data_type": "text"
+  },
+  {
+    "column_name": "confidence",
+    "data_type": "text"
+  },
+  {
+    "column_name": "attributionSource",
+    "data_type": "text"
+  },
+  {
+    "column_name": "attributionNote",
+    "data_type": "text"
+  },
+  {
+    "column_name": "isPubliclyUsable",
+    "data_type": "boolean"
+  },
+  {
+    "column_name": "attributionStatus",
+    "data_type": "text"
+  },
+  {
+    "column_name": "discoveredAt",
+    "data_type": "timestamp with time zone"
+  }
+]
+
+=== 4. KolProfile columns ===
+[
+  {
+    "column_name": "id",
+    "data_type": "text"
+  },
+  {
+    "column_name": "createdAt",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "updatedAt",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "handle",
+    "data_type": "text"
+  },
+  {
+    "column_name": "platform",
+    "data_type": "text"
+  },
+  {
+    "column_name": "displayName",
+    "data_type": "text"
+  },
+  {
+    "column_name": "label",
+    "data_type": "text"
+  },
+  {
+    "column_name": "riskFlag",
+    "data_type": "text"
+  },
+  {
+    "column_name": "sourceIntakeIds",
+    "data_type": "text"
+  },
+  {
+    "column_name": "confidence",
+    "data_type": "text"
+  },
+  {
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "column_name": "bio",
+    "data_type": "text"
+  },
+  {
+    "column_name": "followerCount",
+    "data_type": "integer"
+  },
+  {
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "column_name": "pricePerPost",
+    "data_type": "double precision"
+  },
+  {
+    "column_name": "tags",
+    "data_type": "text"
+  },
+  {
+    "column_name": "tier",
+    "data_type": "text"
+  },
+  {
+    "column_name": "rugCount",
+    "data_type": "integer"
+  },
+  {
+    "column_name": "totalScammed",
+    "data_type": "double precision"
+  },
+  {
+    "column_name": "verified",
+    "data_type": "boolean"
+  },
+  {
+    "column_name": "evmAddress",
+    "data_type": "text"
+  },
+  {
+    "column_name": "exitDate",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "exitNarrative",
+    "data_type": "text"
+  },
+  {
+    "column_name": "exitPostUrl",
+    "data_type": "text"
+  },
+  {
+    "column_name": "totalDocumented",
+    "data_type": "double precision"
+  },
+  {
+    "column_name": "last_reviewed_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "version_note",
+    "data_type": "text"
+  },
+  {
+    "column_name": "publishable",
+    "data_type": "boolean"
+  },
+  {
+    "column_name": "cashoutCache",
+    "data_type": "jsonb"
+  },
+  {
+    "column_name": "publishStatus",
+    "data_type": "text"
+  },
+  {
+    "column_name": "internalNote",
+    "data_type": "text"
+  },
+  {
+    "column_name": "walletAttributionStatus",
+    "data_type": "text"
+  },
+  {
+    "column_name": "evidenceStatus",
+    "data_type": "text"
+  },
+  {
+    "column_name": "proceedsStatus",
+    "data_type": "text"
+  },
+  {
+    "column_name": "editorialStatus",
+    "data_type": "text"
+  },
+  {
+    "column_name": "summary",
+    "data_type": "text"
+  },
+  {
+    "column_name": "observedBehaviorSummary",
+    "data_type": "text"
+  },
+  {
+    "column_name": "documentedFacts",
+    "data_type": "text"
+  },
+  {
+    "column_name": "partialFacts",
+    "data_type": "text"
+  },
+  {
+    "column_name": "behaviorFlags",
+    "data_type": "text"
+  },
+  {
+    "column_name": "evidenceDepth",
+    "data_type": "text"
+  },
+  {
+    "column_name": "completenessLevel",
+    "data_type": "text"
+  },
+  {
+    "column_name": "proceedsCoverage",
+    "data_type": "text"
+  },
+  {
+    "column_name": "walletAttributionStrength",
+    "data_type": "text"
+  },
+  {
+    "column_name": "profileStrength",
+    "data_type": "text"
+  },
+  {
+    "column_name": "lastEnrichedAt",
+    "data_type": "timestamp with time zone"
+  }
+]
+
+=== 5. Proceeds-related tables ===
+[
+  {
+    "table_name": "KolProceedsEvent"
+  },
+  {
+    "table_name": "KolProceedsSummary"
+  },
+  {
+    "table_name": "VaultTimelineEvent"
+  },
+  {
+    "table_name": "onchain_events"
+  }
+]
+
+=== 6. Timeline/event tables ===
+[
+  {
+    "table_name": "KolPromotionMention"
+  },
+  {
+    "table_name": "LaundrySignal"
+  },
+  {
+    "table_name": "LaundryTrail"
+  },
+  {
+    "table_name": "VaultCaseTimeline"
+  },
+  {
+    "table_name": "VaultTimelineEvent"
+  }
+]
+
+=== 7. GordonGekko KolProfile (handle search) ===
+{
+  "id": "cmn0repf10005dv4ram71aa2q",
+  "createdAt": "2026-03-21T20:07:19.597Z",
+  "updatedAt": "2026-04-13T06:26:01.723Z",
+  "handle": "GordonGekko",
+  "platform": "x",
+  "displayName": "GordonGekko",
+  "label": "Unknown — under investigation",
+  "riskFlag": "high",
+  "sourceIntakeIds": "[]",
+  "confidence": "strong_linkage",
+  "status": "active",
+  "bio": "I don't predict the market. I AM the market.\nInvestor. Speculator. Follow or stay poor, your call.\n-Founder @crypto_crib_ \n-Co-Founder @_alphametrics",
+  "followerCount": 28000,
+  "notes": "Real identity under investigation. Meeting confirmed: @bkokoski + @planted — 30/04/2025. Coordinated KOL activity BOTIFY/GHOST.",
+  "pricePerPost": null,
+  "tags": "[\"network-bk\",\"botify\",\"ghost\",\"co-promoter\"]",
+  "tier": "HIGH",
+  "rugCount": 2,
+  "totalScammed": null,
+  "verified": false,
+  "evmAddress": null,
+  "exitDate": null,
+  "exitNarrative": null,
+  "exitPostUrl": null,
+  "totalDocumented": 40627,
+  "last_reviewed_at": null,
+  "version_note": null,
+  "publishable": true,
+  "publishStatus": "published",
+  "internalNote": "EVM/Hyperliquid confirmé: 0xa5B0eDF6B55128E0DdaE8e51aC538c3188401D41. Cashout 167 TX. Wallets 1+2 liés par transfert 55 SOL (même acteur prouvé). Identité réelle non confirmée publiquement.",
+  "walletAttributionStatus": "partial",
+  "evidenceStatus": "strong",
+  "proceedsStatus": "verified",
+  "editorialStatus": "pending",
+  "summary": "Linked to same-actor wallet proof (55 SOL pattern). BOTIFY leaked document references involvement.",
+  "observedBehaviorSummary": "Same-actor wallet proof identified. Promotion activity documented.",
+  "documentedFacts": "55 SOL same-actor wallet proof confirmed. BOTIFY leaked document references involvement.",
+  "partialFacts": "Full wallet cluster mapping incomplete. Proceeds not fully calculated.",
+  "behaviorFlags": "[\"KNOWN_LINKED_WALLETS\",\"COORDINATED_PROMOTION\"]",
+  "evidenceDepth": "strong",
+  "completenessLevel": "partial",
+  "proceedsCoverage": "partial",
+  "walletAttributionStrength": "confirmed",
+  "profileStrength": "standard",
+  "lastEnrichedAt": "2026-04-13T06:26:01.722Z",
+  "cashoutCache": null
+}
+
+=== 7b. Any handle containing 'gordon' or 'gekko' ===
+[
+  {
+    "handle": "GordonGekko",
+    "displayName": "GordonGekko",
+    "rugCount": 2,
+    "totalDocumented": 40627
+  }
+]
+
+=== 8. KolProfile top 10 sample ===
+[
+  {
+    "handle": "edurio",
+    "displayName": "Edu Rio",
+    "rugCount": 3,
+    "totalDocumented": 0,
+    "totalScammed": 1200000
+  },
+  {
+    "handle": "bkokoski",
+    "displayName": "Brandon Kokoski",
+    "rugCount": 12,
+    "totalDocumented": 1077,
+    "totalScammed": 4500000
+  },
+  {
+    "handle": "planted",
+    "displayName": "planted",
+    "rugCount": 2,
+    "totalDocumented": 0,
+    "totalScammed": null
+  },
+  {
+    "handle": "GordonGekko",
+    "displayName": "GordonGekko",
+    "rugCount": 2,
+    "totalDocumented": 40627,
+    "totalScammed": null
+  },
+  {
+    "handle": "DonWedge",
+    "displayName": "DonWedge",
+    "rugCount": 1,
+    "totalDocumented": 0,
+    "totalScammed": null
+  },
+  {
+    "handle": "deployer_pool",
+    "displayName": "Serial Deployer Pool",
+    "rugCount": 0,
+    "totalDocumented": 0,
+    "totalScammed": null
+  },
+  {
+    "handle": "loud_token_victims",
+    "displayName": "LOUD Token Victim Pool",
+    "rugCount": 0,
+    "totalDocumented": 0,
+    "totalScammed": null
+  },
+  {
+    "handle": "lynk0x",
+    "displayName": "lynk",
+    "rugCount": 0,
+    "totalDocumented": 0,
+    "totalScammed": null
+  },
+  {
+    "handle": "PaoloG",
+    "displayName": "PaoloG",
+    "rugCount": 0,
+    "totalDocumented": 0,
+    "totalScammed": null
+  },
+  {
+    "handle": "JamesBull",
+    "displayName": "James Bull",
+    "rugCount": 0,
+    "totalDocumented": 0,
+    "totalScammed": null
+  }
+]
+
+=== 9. KolWallet sample (5 rows) ===
+[
+  {
+    "id": "cmmxm475y0002c99gfs2n39qe",
+    "createdAt": "2026-03-19T15:15:52.774Z",
+    "kolHandle": "edurio",
+    "address": "EduRio111111111111111111111111111111111111",
+    "chain": "SOL",
+    "label": "Primary promotion wallet",
+    "status": "active",
+    "claimType": "source_attributed",
+    "sourceLabel": null,
+    "sourceUrl": null,
+    "confidence": "medium",
+    "attributionSource": null,
+    "attributionNote": null,
+    "isPubliclyUsable": false,
+    "attributionStatus": "review",
+    "discoveredAt": null
+  },
+  {
+    "id": "cmmxm477g0004c99gkvc62a0h",
+    "createdAt": "2026-03-19T15:15:52.828Z",
+    "kolHandle": "edurio",
+    "address": "0xEduRio2222222222222222222222222222222222",
+    "chain": "ETH",
+    "label": "ETH cashout wallet",
+    "status": "active",
+    "claimType": "source_attributed",
+    "sourceLabel": null,
+    "sourceUrl": null,
+    "confidence": "medium",
+    "attributionSource": null,
+    "attributionNote": null,
+    "isPubliclyUsable": false,
+    "attributionStatus": "review",
+    "discoveredAt": null
+  },
+  {
+    "id": "cmn27duhf0001y45pm7n989vj",
+    "createdAt": "2026-03-22T20:22:19.539Z",
+    "kolHandle": "GordonGekko",
+    "address": "Eu8i6rpMPXyg5NaEY23qEbFeMhrs953FdqxYxweXm24J",
+    "chain": "SOL",
+    "label": "Gordon 1 — SOL",
+    "status": "active",
+    "claimType": "source_attributed",
+    "sourceLabel": "@dethective Telegram — The Wallet Cave",
+    "sourceUrl": null,
+    "confidence": "high",
+    "attributionSource": "on-chain analysis",
+    "attributionNote": "Linked via same-actor proof to confirmed EVM wallet.",
+    "isPubliclyUsable": true,
+    "attributionStatus": "confirmed",
+    "discoveredAt": null
+  },
+  {
+    "id": "cmn27duj10003y45p4703dzsg",
+    "createdAt": "2026-03-22T20:22:19.597Z",
+    "kolHandle": "GordonGekko",
+    "address": "4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3",
+    "chain": "SOL",
+    "label": "Gordon 2 — SOL",
+    "status": "active",
+    "claimType": "source_attributed",
+    "sourceLabel": "@dethective Telegram — The Wallet Cave",
+    "sourceUrl": null,
+    "confidence": "high",
+    "attributionSource": "on-chain analysis",
+    "attributionNote": "Linked via same-actor proof to confirmed EVM wallet.",
+    "isPubliclyUsable": true,
+    "attributionStatus": "confirmed",
+    "discoveredAt": null
+  },
+  {
+    "id": "cmn27duk10005y45pb3tv7o3l",
+    "createdAt": "2026-03-22T20:22:19.633Z",
+    "kolHandle": "GordonGekko",
+    "address": "3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6",
+    "chain": "SOL",
+    "label": "Gordon 3 — SOL",
+    "status": "active",
+    "claimType": "source_attributed",
+    "sourceLabel": "@dethective Telegram — The Wallet Cave",
+    "sourceUrl": null,
+    "confidence": "high",
+    "attributionSource": "on-chain analysis",
+    "attributionNote": "Linked via same-actor proof to confirmed EVM wallet.",
+    "isPubliclyUsable": true,
+    "attributionStatus": "confirmed",
+    "discoveredAt": null
+  }
+]
+
+=== 10. KolWallet kolHandle distinct count ===
+=== 10. KolWallet kolHandle distinct count ===
+ERROR: Do not know how to serialize a BigInt
+
+=== 11. Wallets sharing addresses across KOLs ===
+=== 11. Wallets sharing addresses across KOLs ===
+ERROR: Do not know how to serialize a BigInt
+
+=== 12. KolProceedsEvent (Prisma) ===
+ERROR: Cannot read properties of undefined (reading 'findMany')
+
+=== 13. KolProceedsSummary (Prisma) ===
+ERROR: Cannot read properties of undefined (reading 'findMany')
+
+=== 14. Proceeds table raw check ===
+[
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "kolHandle",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "walletAddress",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "chain",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "txHash",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "eventDate",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "tokenSymbol",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "tokenAddress",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "amountTokens",
+    "data_type": "double precision"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "amountUsd",
+    "data_type": "double precision"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "priceUsdAtTime",
+    "data_type": "double precision"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "pricingSource",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "eventType",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "ambiguous",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "caseId",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "createdAt",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "KolProceedsEvent",
+    "column_name": "pricingDateUsed",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "kolHandle",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "computedAt",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "totalProceedsUsd",
+    "data_type": "double precision"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "proceedsByYear",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "topTokenSymbol",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "topTokenProceedsUsd",
+    "data_type": "double precision"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "topWalletAddress",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "topWalletLabel",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "topWalletProceedsUsd",
+    "data_type": "double precision"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "largestEventUsd",
+    "data_type": "double precision"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "largestEventTxHash",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "largestEventDate",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "walletCount",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "caseCount",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "eventCount",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "confidence",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "methodologyVersion",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "reviewStatus",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "reviewNote",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "createdAt",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "updatedAt",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "coverageStatus",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "coverageNote",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "pricingQuality",
+    "data_type": "text"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "rolling24hUsd",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "rolling7dUsd",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "rolling30dUsd",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "rolling365dUsd",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "avgDumpDelayMinutes",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "KolProceedsSummary",
+    "column_name": "lastFlowComputedAt",
+    "data_type": "timestamp without time zone"
+  }
+]
+
+=== 15. WatchScan sample ===
+ERROR: 
+Invalid `prisma.watchScan.findMany()` invocation:
+
+
+The column `WatchScan.handle` does not exist in the current database.
+
+=== 16. KolPromotionMention sample ===
+[
+  {
+    "id": "cmnu7rgbk000210ji6c0xl7lq",
+    "kolHandle": "GordonGekko",
+    "walletId": null,
+    "chain": "SOL",
+    "tokenMint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
+    "tokenSymbol": "BOTIFY",
+    "sourcePlatform": "twitter",
+    "sourcePostId": "gordongekko_botify_20250116",
+    "sourceUrl": "https://x.com/search?q=from%3AGordonGekko%20botify",
+    "postedAt": "2025-01-16T00:00:00.000Z",
+    "contentSnippet": "Congrats to $BOTIFY team. One step at a time 🤝",
+    "watcherRunId": null,
+    "createdAt": "2026-04-11T10:50:27.295Z",
+    "updatedAt": "2026-04-11T10:50:27.295Z"
+  },
+  {
+    "id": "cmnu7rgcn000410jimsj7jlzb",
+    "kolHandle": "GordonGekko",
+    "walletId": null,
+    "chain": "SOL",
+    "tokenMint": "DIONE_PENDING_OSINT",
+    "tokenSymbol": "DIONE",
+    "sourcePlatform": "twitter",
+    "sourcePostId": "gordongekko_dione_20250430",
+    "sourceUrl": "https://x.com/search?q=from%3AGordonGekko%20Dione",
+    "postedAt": "2025-04-30T00:00:00.000Z",
+    "contentSnippet": "Me and my friend Alex had a HUGE meeting with @kokoski and @planted from $DIONE. The game is about to be CHANGED.",
+    "watcherRunId": null,
+    "createdAt": "2026-04-11T10:50:27.335Z",
+    "updatedAt": "2026-04-11T10:50:27.335Z"
+  },
+  {
+    "id": "cmnu7rgd7000610jix0hewgrm",
+    "kolHandle": "GordonGekko",
+    "walletId": null,
+    "chain": "SOL",
+    "tokenMint": "BBKPiLM9KjdJW7oQSKt99RVWcZdhF6sEHRKnwqeBGHST",
+    "tokenSymbol": "GHOST",
+    "sourcePlatform": "twitter",
+    "sourcePostId": "gordongekko_ghost_20251028",
+    "sourceUrl": "https://x.com/search?q=from%3AGordonGekko%20ghost",
+    "postedAt": "2025-10-28T00:00:00.000Z",
+    "contentSnippet": "Very bullish on $GHOST. Privacy could be the next trillion-dollar meta. Every major voice is screaming the same thing: privacy = the next 1000x.",
+    "watcherRunId": null,
+    "createdAt": "2026-04-11T10:50:27.355Z",
+    "updatedAt": "2026-04-11T10:50:27.355Z"
+  }
+]
+
+=== 17. KolTokenInvolvement sample ===
+[
+  {
+    "id": "cmnu0rqty00012l6r1a4f2g76",
+    "kolHandle": "bkokoski",
+    "walletId": "kw1",
+    "chain": "SOL",
+    "tokenMint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
+    "firstPromotionAt": null,
+    "firstBuyAt": null,
+    "firstSellAt": "2025-01-09T03:40:49.000Z",
+    "avgDumpDelayMinutes": null,
+    "soldPct": null,
+    "proceedsUsd": "1076.62",
+    "retailLossEstimateUsd": null,
+    "isPromoted": false,
+    "isFundedByProject": false,
+    "isFrontRun": false,
+    "projectFundingEdgeId": null,
+    "launchMetricId": "cmnu6wqqs0000bzmlopvr0j0c",
+    "lastComputedAt": "2026-04-11T11:00:21.667Z",
+    "createdAt": "2026-04-11T07:34:43.606Z",
+    "updatedAt": "2026-04-11T11:00:21.668Z"
+  },
+  {
+    "id": "cmnu0rqv100032l6rg4wa22yg",
+    "kolHandle": "sxyz500",
+    "walletId": "sw2",
+    "chain": "SOL",
+    "tokenMint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
+    "firstPromotionAt": null,
+    "firstBuyAt": null,
+    "firstSellAt": "2025-01-21T05:25:25.000Z",
+    "avgDumpDelayMinutes": null,
+    "soldPct": null,
+    "proceedsUsd": "4356.49",
+    "retailLossEstimateUsd": null,
+    "isPromoted": false,
+    "isFundedByProject": false,
+    "isFrontRun": false,
+    "projectFundingEdgeId": null,
+    "launchMetricId": "cmnu6wqqs0000bzmlopvr0j0c",
+    "lastComputedAt": "2026-04-11T11:00:21.702Z",
+    "createdAt": "2026-04-11T07:34:43.645Z",
+    "updatedAt": "2026-04-11T11:00:21.703Z"
+  },
+  {
+    "id": "cmnu0rqvj00052l6ry4g2ahzw",
+    "kolHandle": "GordonGekko",
+    "walletId": "cmn27duj10003y45p4703dzsg",
+    "chain": "SOL",
+    "tokenMint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
+    "firstPromotionAt": "2025-01-16T00:00:00.000Z",
+    "firstBuyAt": null,
+    "firstSellAt": "2025-01-13T08:05:41.000Z",
+    "avgDumpDelayMinutes": null,
+    "soldPct": null,
+    "proceedsUsd": "40627.04",
+    "retailLossEstimateUsd": null,
+    "isPromoted": true,
+    "isFundedByProject": false,
+    "isFrontRun": true,
+    "projectFundingEdgeId": null,
+    "launchMetricId": "cmnu6wqqs0000bzmlopvr0j0c",
+    "lastComputedAt": "2026-04-11T11:00:21.719Z",
+    "createdAt": "2026-04-11T07:34:43.663Z",
+    "updatedAt": "2026-04-11T11:00:21.720Z"
+  }
+]
+
+=== 18. Investigated KOLs (bkokoski, sxyz500, lynk0x, planted, DonWedge) ===
+[
+  {
+    "handle": "GordonGekko",
+    "displayName": "GordonGekko",
+    "rugCount": 2,
+    "totalDocumented": 40627
+  },
+  {
+    "handle": "planted",
+    "displayName": "planted",
+    "rugCount": 2,
+    "totalDocumented": 0
+  },
+  {
+    "handle": "DonWedge",
+    "displayName": "DonWedge",
+    "rugCount": 1,
+    "totalDocumented": 0
+  },
+  {
+    "handle": "sxyz500",
+    "displayName": "Sxyz500",
+    "rugCount": 2,
+    "totalDocumented": 4356
+  },
+  {
+    "handle": "lynk0x",
+    "displayName": "lynk",
+    "rugCount": 0,
+    "totalDocumented": 0
+  },
+  {
+    "handle": "bkokoski",
+    "displayName": "Brandon Kokoski",
+    "rugCount": 12,
+    "totalDocumented": 1077
+  }
+]
+
+=== 19. KolWallet for investigated KOLs ===
+[
+  {
+    "kolHandle": "GordonGekko",
+    "address": "4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3",
+    "chain": "SOL",
+    "label": "Gordon 2 — SOL"
+  },
+  {
+    "kolHandle": "sxyz500",
+    "address": "9PQwizgbW2ruvypLQ9baVRZ0tiJdhDrEzD63m4oMqtxB",
+    "chain": "SOL",
+    "label": "Dad wallet — received supply on BOTIFY + GHOST, sold"
+  },
+  {
+    "kolHandle": "sxyz500",
+    "address": "EjKURS65kyjQdydjmcwQUX8twjxQHVJwez1E9DXU9fVQ",
+    "chain": "SOL",
+    "label": "Simon wallet — received and sold insider supply"
+  },
+  {
+    "kolHandle": "sxyz500",
+    "address": "D1W3zviRxGa3tzFUuwqj1uZPM79hJAx9cdidDcxhV96K",
+    "chain": "SOL",
+    "label": "Rut wallet — received and sold"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "EKvYizd7LqTmMj4QmKsHm8wdg7TxZfoHhG664FdnHCRh",
+    "chain": "SOL",
+    "label": "BOTIFY payment wallet shared Regrets10x"
+  },
+  {
+    "kolHandle": "bkokoski",
+    "address": "5ed7HUrYWS8h7EwM6wBpCvUHP4jc5McWYcL2yX4QimQj",
+    "chain": "SOL",
+    "label": "Mom wallet — received GHOST + BOTIFY insider supply, sold"
+  },
+  {
+    "kolHandle": "bkokoski",
+    "address": "HSueXrabQVABdHezbQ5Q4UbgLTx4Nc6VqyX5R88zzxmz",
+    "chain": "SOL",
+    "label": "Dad wallet — received insider supply, dumped"
+  },
+  {
+    "kolHandle": "bkokoski",
+    "address": "FzDXp1AqPhmwqkXjeFeTohbVcDEbJM9bjDcH9DPN4nEc",
+    "chain": "SOL",
+    "label": "Carter family — received GHOST + BOTIFY, sold"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "0xa5B0eDF6B55128E0DdaE8e51aC538c3188401D41",
+    "chain": "ETH",
+    "label": "Hyperliquid — confirmed"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "Eu8i6rpMPXyg5NaEY23qEbFeMhrs953FdqxYxweXm24J",
+    "chain": "SOL",
+    "label": "Gordon 1 — SOL"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6",
+    "chain": "SOL",
+    "label": "Gordon 3 — SOL"
+  },
+  {
+    "kolHandle": "DonWedge",
+    "address": "PENDING_OSINT_DonWedge",
+    "chain": "SOL",
+    "label": "Wallet OSINT pending"
+  },
+  {
+    "kolHandle": "planted",
+    "address": "PENDING_OSINT_planted",
+    "chain": "SOL",
+    "label": "Wallet OSINT pending"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "0x34a19a7fd3383e89c943b3e44073c4d21837695c",
+    "chain": "ETH",
+    "label": "ens:lynk0x.eth"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "A8L7hRc3qUbA9JXb4D4NcYtECx9qzpY7KCoz6kAwqqx5",
+    "chain": "SOL",
+    "label": "swif_insider_1"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "EqYGemqo1DeFkKoAvps8baQNqaLEHaTg1EBkXTxa431",
+    "chain": "SOL",
+    "label": "swif_insider_2"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "EshePcy1RMFQxLTju2wZhXkjUCFuvrHoFsqgoyEY2dtE",
+    "chain": "SOL",
+    "label": "arkham:EsheP"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "6LWfpKyK9TqYeH3JVh5S6UkvhVCwDh9xoy2Yksf8AobN",
+    "chain": "SOL",
+    "label": "arkham:6LWfp"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "4RGhiFfRM2X6jHX4FCd84XnHqiEizJVyCRB7K6kWwkTk",
+    "chain": "SOL",
+    "label": "arkham:4RGhi"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "92cbCAtS7P41RMM8a4mHnDxFf62LRjkXG6ijb3sZJD4k",
+    "chain": "SOL",
+    "label": "arkham:92cbC"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "5FqraQVN9h3KCm5MFZVUjyy9cxgtjjQhsG8d49SaDish",
+    "chain": "SOL",
+    "label": "arkham:5Fqra"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "5dFS77phioUb1sxzWiwb62qndihLLQgCrhNpBh9yq19v",
+    "chain": "SOL",
+    "label": "arkham:5dFS7"
+  },
+  {
+    "kolHandle": "GordonGekko",
+    "address": "4hTdXks2jzySX5Lk7J8Rs1grj5Sx5Wk3nL9HqxdtmQqa",
+    "chain": "SOL",
+    "label": "arkham:4hTdX"
+  },
+  {
+    "kolHandle": "bkokoski",
+    "address": "0xC71FC27bdD2Eb8B6aA676d2cB8BD2357fC94FB18",
+    "chain": "ETH",
+    "label": "arkham:friendtech"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "6DBFUngmz6BVQNF9dpBcavsgZreQK9jb2TeK4Q6sxbdJ",
+    "chain": "SOL",
+    "label": "arkham:kol"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "9tKeCiY99eh2UQDQFZgARAP7uY42FjGH27eJjqwKZKan",
+    "chain": "SOL",
+    "label": "arkham:kol"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "34VvuZe8Kb2orJuzKqkZ2Lc4di1FryLWWmtZSTiqTid3",
+    "chain": "SOL",
+    "label": "arkham:kol"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "ECJz2Q5kK7CEQc6efFs4iM5GQ9uS6neC4t25AwgFEPvx",
+    "chain": "SOL",
+    "label": "arkham:kol"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "CkPFGv2Wv1vwdWjtXioEgb8jhZQfs3eVZez3QCetu7xD",
+    "chain": "SOL",
+    "label": "arkham:kol"
+  },
+  {
+    "kolHandle": "lynk0x",
+    "address": "5EBv3dWXkwCEZCz63zhDpxdJTnpkzrxwhP4bL7GRz4iV",
+    "chain": "SOL",
+    "label": "arkham:kol"
+  },
+  {
+    "kolHandle": "sxyz500",
+    "address": "5XJduTqthJTprFQEGNAV9wizfvgJpkwxvAR9rMwmUDxS",
+    "chain": "SOL",
+    "label": null
+  }
+]
+

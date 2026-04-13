@@ -424,19 +424,23 @@ export async function buildCaseIntelligencePack(
     };
   });
 
-  // Network intelligence: find other KolProfiles sharing wallets with matched ones
+  // Network intelligence: find other KolProfiles sharing infrastructure with
+  // matched ones. Two signals:
+  //   A) Shared wallet addresses (exact address overlap)
+  //   B) Shared token involvement (same tokenMint via KolTokenInvolvement)
+  // Both contribute to the related-actors set. B is the stronger signal for
+  // coordinated campaigns (BOTIFY/GHOST example).
   let networkActors: string[] = [];
   let linkedWalletsCount = 0;
   let observedEventsCount = 0;
   if (allMatchedHandles.size > 0) {
+    const handlesArray = Array.from(allMatchedHandles);
+
     const allLinkedWallets = await safeQuery(
       () =>
         prisma.kolWallet.findMany({
           where: {
-            kolHandle: {
-              in: Array.from(allMatchedHandles),
-              mode: "insensitive",
-            },
+            kolHandle: { in: handlesArray, mode: "insensitive" },
           },
           select: { address: true, kolHandle: true },
           take: 500,
@@ -445,32 +449,73 @@ export async function buildCaseIntelligencePack(
     );
     linkedWalletsCount = allLinkedWallets.length;
 
-    const sharedAddresses = allLinkedWallets.map((w) => w.address);
-    const counterparts = await safeQuery(
-      () =>
-        sharedAddresses.length === 0
-          ? Promise.resolve([])
-          : prisma.kolWallet.findMany({
-              where: {
-                address: { in: sharedAddresses },
-                kolHandle: {
-                  notIn: Array.from(allMatchedHandles),
-                  mode: "insensitive",
-                },
-              },
-              select: { kolHandle: true },
-              take: 200,
-            }),
-      [] as Array<{ kolHandle: string }>
-    );
-    networkActors = Array.from(
-      new Set(counterparts.map((c) => c.kolHandle))
-    ).slice(0, 20);
+    const actorSet = new Set<string>();
 
-    observedEventsCount = kolProfiles.reduce(
-      (sum, p) => sum + (p.rugCount ?? 0),
-      0
+    // Signal A — wallet overlap
+    const sharedAddresses = allLinkedWallets.map((w) => w.address);
+    if (sharedAddresses.length > 0) {
+      const walletCounterparts = await safeQuery(
+        () =>
+          prisma.kolWallet.findMany({
+            where: {
+              address: { in: sharedAddresses },
+              kolHandle: {
+                notIn: handlesArray,
+                mode: "insensitive",
+              },
+            },
+            select: { kolHandle: true },
+            take: 200,
+          }),
+        [] as Array<{ kolHandle: string }>
+      );
+      for (const c of walletCounterparts) actorSet.add(c.kolHandle);
+    }
+
+    // Signal B — shared token involvement via KolTokenInvolvement.
+    // This table is not in the Prisma schema but exists in the DB.
+    const tokenMintRows = await safeQuery(
+      () =>
+        prisma.$queryRaw<Array<{ tokenMint: string }>>`
+          SELECT DISTINCT "tokenMint"
+          FROM "KolTokenInvolvement"
+          WHERE "kolHandle" = ANY(${handlesArray})
+          LIMIT 200
+        `,
+      [] as Array<{ tokenMint: string }>
     );
+    const sharedMints = Array.from(
+      new Set(tokenMintRows.map((r) => r.tokenMint).filter(Boolean))
+    );
+    if (sharedMints.length > 0) {
+      const tokenCounterparts = await safeQuery(
+        () =>
+          prisma.$queryRaw<Array<{ kolHandle: string }>>`
+            SELECT DISTINCT "kolHandle"
+            FROM "KolTokenInvolvement"
+            WHERE "tokenMint" = ANY(${sharedMints})
+            AND "kolHandle" <> ALL(${handlesArray})
+            LIMIT 200
+          `,
+        [] as Array<{ kolHandle: string }>
+      );
+      for (const c of tokenCounterparts) actorSet.add(c.kolHandle);
+    }
+
+    networkActors = Array.from(actorSet).slice(0, 20);
+
+    // Count observed events from KolProceedsEvent (authoritative).
+    const eventCountRow = await safeQuery(
+      () =>
+        prisma.$queryRaw<Array<{ count: bigint }>>`
+          SELECT COUNT(*)::bigint as count
+          FROM "KolProceedsEvent"
+          WHERE "kolHandle" = ANY(${handlesArray})
+        `,
+      [] as Array<{ count: bigint }>
+    );
+    observedEventsCount =
+      eventCountRow.length > 0 ? Number(eventCountRow[0].count) : 0;
   }
 
   // Intel vault refs from KolCase
@@ -661,6 +706,106 @@ export async function buildCaseIntelligencePack(
   }
 
   // ============================================================
+  // PROCEEDS EVENTS (from KolProceedsEvent — raw query)
+  // ============================================================
+  type ProceedsRow = {
+    eventDate: Date;
+    amountUsd: number | null;
+    tokenSymbol: string | null;
+    txHash: string | null;
+    kolHandle: string;
+  };
+  const proceedsRows = await safeQuery(
+    () =>
+      allMatchedHandles.size === 0
+        ? Promise.resolve([])
+        : prisma.$queryRaw<ProceedsRow[]>`
+            SELECT "eventDate", "amountUsd", "tokenSymbol", "txHash", "kolHandle"
+            FROM "KolProceedsEvent"
+            WHERE "kolHandle" = ANY(${Array.from(allMatchedHandles)})
+            ORDER BY "eventDate" DESC
+            LIMIT 100
+          `,
+      [] as ProceedsRow[]
+  );
+
+  // ============================================================
+  // PROMOTION MENTIONS (from KolPromotionMention — raw query)
+  // ============================================================
+  type PromoRow = {
+    postedAt: Date;
+    kolHandle: string;
+    tokenSymbol: string | null;
+  };
+  const promoRows = await safeQuery(
+    () =>
+      allMatchedHandles.size === 0
+        ? Promise.resolve([])
+        : prisma.$queryRaw<PromoRow[]>`
+            SELECT "postedAt", "kolHandle", "tokenSymbol"
+            FROM "KolPromotionMention"
+            WHERE "kolHandle" = ANY(${Array.from(allMatchedHandles)})
+            ORDER BY "postedAt" DESC
+            LIMIT 100
+          `,
+      [] as PromoRow[]
+  );
+
+  // Backfill proceeds totals from KolProceedsSummary (authoritative over
+  // KolProfile.totalDocumented which may be stale or approximate).
+  if (allMatchedHandles.size > 0) {
+    type SummaryRow = { kolHandle: string; totalProceedsUsd: number | null; eventCount: number | null };
+    const summaryRows = await safeQuery(
+      () =>
+        prisma.$queryRaw<SummaryRow[]>`
+          SELECT "kolHandle", "totalProceedsUsd", "eventCount"
+          FROM "KolProceedsSummary"
+          WHERE "kolHandle" = ANY(${Array.from(allMatchedHandles)})
+        `,
+      [] as SummaryRow[]
+    );
+    const summaryByHandle = new Map<string, SummaryRow>();
+    for (const s of summaryRows) {
+      summaryByHandle.set(s.kolHandle.toLowerCase(), s);
+    }
+    for (const e of enrichedEntities) {
+      const handleKey = e.crossIntelligence.kolHandle?.toLowerCase();
+      if (!handleKey) continue;
+      const summary = summaryByHandle.get(handleKey);
+      if (summary && summary.totalProceedsUsd) {
+        e.crossIntelligence.proceedsSummary = {
+          totalUSD: summary.totalProceedsUsd,
+          eventCount: summary.eventCount ?? 0,
+          topRoutes: [],
+          alignsWithPromoWindows: false,
+        };
+      }
+    }
+  }
+
+  // Compute topRoutes for proceeds summary — most frequent tokenSymbol per KOL.
+  const tokenCountsByHandle = new Map<string, Map<string, number>>();
+  for (const row of proceedsRows) {
+    if (!row.tokenSymbol) continue;
+    const k = row.kolHandle.toLowerCase();
+    const m = tokenCountsByHandle.get(k) ?? new Map<string, number>();
+    m.set(row.tokenSymbol, (m.get(row.tokenSymbol) ?? 0) + 1);
+    tokenCountsByHandle.set(k, m);
+  }
+  for (const e of enrichedEntities) {
+    const handleKey = e.crossIntelligence.kolHandle?.toLowerCase();
+    if (!handleKey) continue;
+    const counts = tokenCountsByHandle.get(handleKey);
+    if (counts && e.crossIntelligence.proceedsSummary) {
+      const top = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([sym]) => sym);
+      e.crossIntelligence.proceedsSummary.topRoutes = top;
+    }
+  }
+
+  // ============================================================
   // TIMELINE CORRELATION
   // ============================================================
   const timelineCorrelation: TimelineCorrelation = {
@@ -669,7 +814,9 @@ export async function buildCaseIntelligencePack(
     earliestEvent: null,
     latestEvent: null,
     timespan: null,
-    proceedsTimestamps: [],
+    proceedsTimestamps: proceedsRows.slice(0, 20).map((r) =>
+      r.eventDate.toISOString()
+    ),
     correlationSignals: [],
     largestGap: null,
     activityClusters: 0,
@@ -719,9 +866,48 @@ export async function buildCaseIntelligencePack(
     }
   }
 
-  // KolProceedsEvent does not exist in this schema. proceedsTimestamps stays
-  // empty. Surface this honestly via NO_ALIGNMENT.
-  if (timelineCorrelation.proceedsTimestamps.length === 0) {
+  // CASHOUT_AFTER_PROMO: proceeds event within 72h after a promotion mention.
+  if (proceedsRows.length > 0 && promoRows.length > 0) {
+    const WINDOW_MS = 72 * 60 * 60 * 1000;
+    let matchCount = 0;
+    const matches: Array<{ promo: PromoRow; proceeds: ProceedsRow }> = [];
+    for (const promo of promoRows) {
+      for (const pr of proceedsRows) {
+        const delta = pr.eventDate.getTime() - promo.postedAt.getTime();
+        if (delta >= 0 && delta <= WINDOW_MS) {
+          matchCount++;
+          if (matches.length < 3) matches.push({ promo, proceeds: pr });
+        }
+      }
+    }
+    if (matchCount > 0) {
+      const exampleTokens = matches
+        .map((m) => m.promo.tokenSymbol || m.proceeds.tokenSymbol)
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(", ");
+      timelineCorrelation.correlationSignals.push({
+        type: "CASHOUT_AFTER_PROMO",
+        description: `${matchCount} proceeds event(s) within 72h of a promotion${exampleTokens ? ` (${exampleTokens})` : ""}`,
+        confidence: matchCount >= 3 ? "HIGH" : "MEDIUM",
+      });
+      // Mark proceedsSummary.alignsWithPromoWindows true for entities with matches
+      const matchedKols = new Set(
+        matches.map((m) => m.promo.kolHandle.toLowerCase())
+      );
+      for (const e of enrichedEntities) {
+        const h = e.crossIntelligence.kolHandle?.toLowerCase();
+        if (h && matchedKols.has(h) && e.crossIntelligence.proceedsSummary) {
+          e.crossIntelligence.proceedsSummary.alignsWithPromoWindows = true;
+        }
+      }
+    }
+  }
+
+  if (
+    timelineCorrelation.proceedsTimestamps.length === 0 &&
+    timelineCorrelation.correlationSignals.length === 0
+  ) {
     timelineCorrelation.correlationSignals.push({
       type: "NO_ALIGNMENT",
       description: "No proceeds timestamp data available for correlation",

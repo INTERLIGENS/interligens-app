@@ -82,17 +82,54 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
           matchSet.set(m.address.toLowerCase(), m.kolHandle);
         }
 
-        // Fetch proceeds data for matched KOL handles
+        // Fetch proceeds data for matched KOL handles.
+        // Prefer KolProceedsSummary.totalProceedsUsd (authoritative) over
+        // KolProfile.totalDocumented (may be stale).
         const matchedKolHandles = Array.from(new Set(matches.map((m) => m.kolHandle)));
         const kolProceedsByHandle = new Map<string, number>();
+        const kolFlagsByHandle = new Map<
+          string,
+          { rugCount: number; riskFlag: string }
+        >();
         if (matchedKolHandles.length > 0) {
           const profiles = await prisma.kolProfile.findMany({
             where: { handle: { in: matchedKolHandles, mode: "insensitive" } },
-            select: { handle: true, totalDocumented: true, totalScammed: true },
+            select: {
+              handle: true,
+              totalDocumented: true,
+              totalScammed: true,
+              rugCount: true,
+              riskFlag: true,
+            },
           });
           for (const p of profiles) {
             const usd = p.totalDocumented ?? p.totalScammed ?? 0;
             if (usd > 0) kolProceedsByHandle.set(p.handle.toLowerCase(), usd);
+            kolFlagsByHandle.set(p.handle.toLowerCase(), {
+              rugCount: p.rugCount ?? 0,
+              riskFlag: p.riskFlag ?? "unverified",
+            });
+          }
+
+          // Override with KolProceedsSummary where available.
+          try {
+            const summaries = await prisma.$queryRaw<
+              Array<{ kolHandle: string; totalProceedsUsd: number | null }>
+            >`
+              SELECT "kolHandle", "totalProceedsUsd"
+              FROM "KolProceedsSummary"
+              WHERE "kolHandle" = ANY(${matchedKolHandles})
+            `;
+            for (const s of summaries) {
+              if (s.totalProceedsUsd && s.totalProceedsUsd > 0) {
+                kolProceedsByHandle.set(
+                  s.kolHandle.toLowerCase(),
+                  s.totalProceedsUsd
+                );
+              }
+            }
+          } catch (err) {
+            console.error("[enrich] proceeds summary lookup failed", err);
           }
         }
 
@@ -102,6 +139,13 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
           if (hit) {
             result[e.id].isKnownBad = true;
             result[e.id].inIntelVault = true;
+            const flags = kolFlagsByHandle.get(hit.toLowerCase());
+            if (
+              flags &&
+              (flags.rugCount > 0 || flags.riskFlag !== "unverified")
+            ) {
+              result[e.id].inWatchlist = true;
+            }
             const proceeds = kolProceedsByHandle.get(hit.toLowerCase());
             if (proceeds) result[e.id].proceedsTotalUSD = proceeds;
           }
@@ -127,6 +171,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             rugCount: true,
             totalDocumented: true,
             totalScammed: true,
+            riskFlag: true,
             publishable: true,
           },
         });
@@ -144,6 +189,14 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
               typeof hit.rugCount === "number" ? hit.rugCount : null;
             if (hit.publishable) {
               result[e.id].inIntelVault = true;
+            }
+            // Watchlist proxy — WatchScan has no address column, so we
+            // approximate "on our watchlist" as: rugCount > 0 OR risk flagged.
+            if (
+              (hit.rugCount ?? 0) > 0 ||
+              (hit.riskFlag && hit.riskFlag !== "unverified")
+            ) {
+              result[e.id].inWatchlist = true;
             }
             const proceeds = hit.totalDocumented ?? hit.totalScammed ?? 0;
             if (proceeds > 0) result[e.id].proceedsTotalUSD = proceeds;
