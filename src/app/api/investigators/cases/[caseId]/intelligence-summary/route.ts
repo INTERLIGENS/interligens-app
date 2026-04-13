@@ -3,7 +3,7 @@ import {
   getVaultWorkspace,
   assertCaseOwnership,
 } from "@/lib/vault/auth.server";
-import { buildCaseIntelligencePack } from "@/lib/vault/buildCaseIntelligencePack";
+import { buildCaseIntelligenceSummary } from "@/lib/vault/buildCaseIntelligencePack";
 
 type RouteCtx = { params: Promise<{ caseId: string }> };
 
@@ -21,28 +21,19 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
   if (owner instanceof NextResponse) return owner;
 
   try {
-    const pack = await buildCaseIntelligencePack(caseId, ctx.workspace.id);
-
-    const kolMatches = pack.entities.filter(
-      (e) => e.crossIntelligence.inKolRegistry
-    ).length;
-
-    const proceedsTotal = pack.entities.reduce((sum, e) => {
-      return sum + (e.crossIntelligence.proceedsSummary?.totalUSD ?? 0);
-    }, 0);
+    const summary = await buildCaseIntelligenceSummary(
+      caseId,
+      ctx.workspace.id
+    );
 
     return NextResponse.json({
-      entityCount: pack.entityCount,
-      kolMatches,
-      proceedsTotal: proceedsTotal > 0 ? formatUSD(proceedsTotal) : "$0",
-      networkActors: pack.networkIntelligence.relatedActors.length,
-      laundryTrails: pack.entities.filter(
-        (e) => e.crossIntelligence.laundryTrail?.detected
-      ).length,
-      intelVaultRefs: pack.intelVaultRefs.length,
-      confidenceClaims: pack.confidenceAssessment.length,
-      contradictions: pack.contradictions.length,
-      timelineSpan: pack.timelineCorrelation.timespan,
+      entityCount: summary.entityCount,
+      kolMatches: summary.kolMatches,
+      proceedsTotal:
+        summary.proceedsTotal > 0 ? formatUSD(summary.proceedsTotal) : "$0",
+      networkActors: summary.networkActors,
+      laundryTrails: summary.laundryTrails,
+      intelVaultRefs: summary.intelVaultRefs,
     });
   } catch (err) {
     console.error("[intelligence-summary] failed", err);
@@ -53,9 +44,6 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
       networkActors: 0,
       laundryTrails: 0,
       intelVaultRefs: 0,
-      confidenceClaims: 0,
-      contradictions: 0,
-      timelineSpan: null,
     });
   }
 }
