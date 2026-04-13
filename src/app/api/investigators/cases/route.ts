@@ -44,6 +44,18 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const { titleEnc, titleIv, tagsEnc, tagsIv } = body as Record<string, string>;
+  const rawTemplate = (body as { caseTemplate?: unknown }).caseTemplate;
+  const ALLOWED_TEMPLATES = [
+    "blank",
+    "rug-pull",
+    "kol-promo",
+    "cex-cashout",
+    "infostealer",
+  ];
+  const caseTemplate =
+    typeof rawTemplate === "string" && ALLOWED_TEMPLATES.includes(rawTemplate)
+      ? rawTemplate
+      : "blank";
   if (!titleEnc || !titleIv || !tagsEnc || !tagsIv) {
     return NextResponse.json({ error: "missing_ciphertext" }, { status: 400 });
   }
@@ -55,6 +67,7 @@ export async function POST(request: NextRequest) {
       titleIv,
       tagsEnc,
       tagsIv,
+      caseTemplate,
     },
   });
 

@@ -1441,17 +1441,41 @@ model VaultCase {
   tagsEnc     String
   tagsIv      String
   status      VaultCaseStatus @default(PRIVATE)
+  caseTemplate String?        @default("blank")
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   archivedAt  DateTime?
 
-  entities VaultCaseEntity[]
-  files    VaultCaseFile[]
-  notes    VaultCaseNote[]
-  timeline VaultCaseTimeline[]
+  entities   VaultCaseEntity[]
+  files      VaultCaseFile[]
+  notes      VaultCaseNote[]
+  timeline   VaultCaseTimeline[]
+  hypotheses VaultHypothesis[]
 
   @@index([workspaceId])
   @@index([status])
+}
+
+enum VaultHypothesisStatus {
+  OPEN
+  CONFIRMED
+  REFUTED
+  NEEDS_VERIFICATION
+}
+
+model VaultHypothesis {
+  id                  String                @id @default(cuid())
+  caseId              String
+  case                VaultCase             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title               String
+  status              VaultHypothesisStatus @default(OPEN)
+  confidence          Int                   @default(50)
+  supportingEntityIds String[]
+  notes               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([caseId])
 }
 
 model VaultCaseEntity {

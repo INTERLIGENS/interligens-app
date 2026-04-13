@@ -85,6 +85,7 @@ function DashboardInner() {
   const [showNew, setShowNew] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newTags, setNewTags] = useState("");
+  const [newTemplate, setNewTemplate] = useState<string>("blank");
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -149,6 +150,7 @@ function DashboardInner() {
           titleIv: titleCt.iv,
           tagsEnc: tagsCt.enc,
           tagsIv: tagsCt.iv,
+          caseTemplate: newTemplate,
         }),
       });
       const data = await res.json();
@@ -171,6 +173,7 @@ function DashboardInner() {
         ]);
         setNewTitle("");
         setNewTags("");
+        setNewTemplate("blank");
         setShowNew(false);
       }
     } finally {
@@ -243,6 +246,61 @@ function DashboardInner() {
               marginBottom: 32,
             }}
           >
+            <div style={{ marginBottom: 20 }}>
+              <label style={LABEL_STYLE}>Template</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "blank", label: "Blank", tags: [] },
+                  {
+                    id: "rug-pull",
+                    label: "Rug Pull",
+                    tags: ["rug-pull", "defi", "deployer"],
+                  },
+                  {
+                    id: "kol-promo",
+                    label: "KOL Promo Scheme",
+                    tags: ["kol", "promo", "paid-promotion"],
+                  },
+                  {
+                    id: "cex-cashout",
+                    label: "CEX Cashout Trail",
+                    tags: ["cex", "cashout", "withdrawal"],
+                  },
+                  {
+                    id: "infostealer",
+                    label: "Infostealer Compromise",
+                    tags: ["infostealer", "malware", "compromise"],
+                  },
+                ].map((tpl) => {
+                  const active = newTemplate === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => {
+                        setNewTemplate(tpl.id);
+                        setNewTags(tpl.tags.join(", "));
+                      }}
+                      style={{
+                        fontSize: 12,
+                        padding: "6px 12px",
+                        borderRadius: 20,
+                        border: active
+                          ? "1px solid #FF6B00"
+                          : "1px solid rgba(255,255,255,0.12)",
+                        backgroundColor: active
+                          ? "rgba(255,107,0,0.1)"
+                          : "transparent",
+                        color: active ? "#FF6B00" : "rgba(255,255,255,0.6)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {tpl.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div style={{ marginBottom: 20 }}>
               <label style={LABEL_STYLE}>Investigation title</label>
               <input
