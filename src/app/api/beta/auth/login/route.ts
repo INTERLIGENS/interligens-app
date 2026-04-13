@@ -9,6 +9,7 @@ import {
   getClientIp,
   rateLimitResponse,
 } from "@/lib/security/rateLimit";
+import { sendBetaWelcomeEmail } from "@/lib/email/betaWelcome";
 
 const LOGIN_RATE_LIMIT = {
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -33,14 +34,19 @@ export async function POST(req: NextRequest) {
   }
 
   // Parse body
-  let body: { code?: string; ndaAccepted?: boolean };
+  let body: {
+    code?: string;
+    ndaAccepted?: boolean;
+    email?: string;
+    name?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { code, ndaAccepted } = body;
+  const { code, ndaAccepted, email, name } = body;
 
   // Fail-closed: NDA must be explicitly accepted
   if (ndaAccepted !== true) {
@@ -69,6 +75,19 @@ export async function POST(req: NextRequest) {
     userAgent,
     metadata: { label: result.label ?? null, version: "beta-v1" },
   });
+
+  // Fire-and-forget welcome email. Never blocks the response, never crashes.
+  if (typeof email === "string" && email.includes("@")) {
+    sendBetaWelcomeEmail(email, code, typeof name === "string" ? name : null)
+      .then((r) => {
+        if (!r.delivered) {
+          console.warn("[beta/login] welcome email not delivered", r);
+        }
+      })
+      .catch((err) => {
+        console.error("[beta/login] welcome email crashed", err);
+      });
+  }
 
   return res;
 }

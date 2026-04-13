@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type ResolveSource = 'curated' | 'mentions' | 'coingecko'
-type ScanChain = 'SOL' | 'ETH' | 'BSC' | 'TRON' | 'HYPER'
+type ScanChain = 'SOL' | 'ETH' | 'BSC' | 'TRON' | 'HYPER' | 'BASE' | 'ARBITRUM'
 
 interface Candidate {
   symbol: string
@@ -27,6 +27,8 @@ const PLATFORM_TO_CHAIN: Record<string, ScanChain | undefined> = {
   'binance-smart-chain': 'BSC',
   solana: 'SOL',
   tron: 'TRON',
+  base: 'BASE',
+  'arbitrum-one': 'ARBITRUM',
 }
 
 const SOURCE_RANK: Record<ResolveSource, number> = {
@@ -43,12 +45,21 @@ function normalizeChain(raw: string | null | undefined): ScanChain | null {
   if (c === 'BSC' || c === 'BNB' || c === 'BINANCE') return 'BSC'
   if (c === 'TRON' || c === 'TRX') return 'TRON'
   if (c === 'HYPER' || c === 'HYPERLIQUID') return 'HYPER'
+  if (c === 'BASE') return 'BASE'
+  if (c === 'ARBITRUM' || c === 'ARB' || c === 'ARBITRUM-ONE') return 'ARBITRUM'
   return null
 }
 
 function normalizeAddressForChain(addr: string, chain: ScanChain): string {
   const trimmed = addr.trim()
-  if (chain === 'ETH' || chain === 'BSC' || chain === 'HYPER') return trimmed.toLowerCase()
+  if (
+    chain === 'ETH' ||
+    chain === 'BSC' ||
+    chain === 'HYPER' ||
+    chain === 'BASE' ||
+    chain === 'ARBITRUM'
+  )
+    return trimmed.toLowerCase()
   return trimmed
 }
 
@@ -63,7 +74,14 @@ function dedupeKey(c: Pick<Candidate, 'address' | 'chain'>): string {
 function isScanableAddress(addr: string, chain: ScanChain): boolean {
   if (!addr) return false
   if (/^PENDING/i.test(addr) || /^TBD/i.test(addr) || /^TODO/i.test(addr)) return false
-  if (chain === 'ETH' || chain === 'BSC' || chain === 'HYPER') return /^0x[a-fA-F0-9]{40}$/.test(addr)
+  if (
+    chain === 'ETH' ||
+    chain === 'BSC' ||
+    chain === 'HYPER' ||
+    chain === 'BASE' ||
+    chain === 'ARBITRUM'
+  )
+    return /^0x[a-fA-F0-9]{40}$/.test(addr)
   if (chain === 'TRON') return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr)
   if (chain === 'SOL') return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)
   return false

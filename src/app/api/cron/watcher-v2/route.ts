@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
+import { sendKolAlert } from "@/lib/alerts/kolAlert";
 
 // Vercel cron route config — force dynamic execution and extend the default
 // 10s serverless timeout to accommodate the per-handle sleep(1000) loop.
@@ -56,6 +57,10 @@ async function scanAll() {
 
     const influencerId = await ensureInfluencer(handle);
 
+    // Per-handle tracking for alert fan-out after the inner loop.
+    let handleNewCandidates = 0;
+    const handleSignalSamples: string[] = [];
+
     for (const tweet of tweets) {
       const detection = detectSignals(tweet.text);
       if (!shouldKeep(detection, 20)) continue;
@@ -89,6 +94,24 @@ async function scanAll() {
         },
       });
       stats.candidates++;
+      handleNewCandidates++;
+      if (handleSignalSamples.length < 3) {
+        const tokens = detection.detectedTokens?.slice(0, 2).join(", ");
+        const snippet = tweet.text.slice(0, 140);
+        handleSignalSamples.push(
+          tokens ? `${tokens} — ${snippet}` : snippet
+        );
+      }
+    }
+
+    // Fire-and-forget alert if this handle produced any new candidates in
+    // this run. Never blocks or crashes the scan.
+    if (handleNewCandidates > 0) {
+      const signalText =
+        handleSignalSamples.join(" · ") || `${handleNewCandidates} new signals`;
+      sendKolAlert(handle, handleNewCandidates, signalText).catch((err) => {
+        console.error("[watcher-v2] kol alert crashed", err);
+      });
     }
 
     // Enrich existing KolProfile
