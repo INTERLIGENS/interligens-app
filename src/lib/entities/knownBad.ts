@@ -21,9 +21,23 @@ export const KNOWN_BAD: KnownBadEntry[] = [
   { address: "0x3a6d8ca21d1cf76f653a67577fa0d27453350dd8", chain: "BSC", label: "PancakeSwap Fake Router", category: "phishing", confidence: "high" },
   // SOL (base58)
   { address: "7ZhB5PZrNFCvSSKA9VJotGGKiRgSncQAFgTnBNzmCgcz", chain: "SOL", label: "SOL Drainer v1", category: "drainer", confidence: "medium" },
-  // KOL scammers
+  // KOL scammers — same EVM address tracked across all EVM chains
   { address: "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41", chain: "ETH", label: "GordonGekko", category: "scam", confidence: "high" },
+  { address: "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41", chain: "BASE", label: "GordonGekko", category: "scam", confidence: "high" },
+  { address: "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41", chain: "ARBITRUM", label: "GordonGekko", category: "scam", confidence: "high" },
 ];
+
+/** Returns the known-bad entry for any EVM chain that matches the address. */
+export function isKnownBadEvm(address: string): KnownBadEntry | null {
+  const normalized = address.toLowerCase();
+  return (
+    KNOWN_BAD.find(
+      (e) =>
+        ["ETH", "BASE", "ARBITRUM", "BSC"].includes(e.chain.toUpperCase()) &&
+        e.address.toLowerCase() === normalized
+    ) ?? null
+  );
+}
 
 export function isKnownBad(chain: string, address: string): KnownBadEntry | null {
   const normalized = address.toLowerCase();

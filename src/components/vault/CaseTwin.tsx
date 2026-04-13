@@ -442,34 +442,43 @@ export default function CaseTwin({
     },
   ];
 
-  // Next action CTA mapping
+  // Next action CTA mapping — keyed on the exact nextAction string above so
+  // the button label always matches the action text shown to the user.
   type NextCTA = { label: string; action: () => void };
-  let nextCTA: NextCTA | null = null;
-  if (entities.length === 0 && onFocusEntityInput) {
-    nextCTA = {
+  const actionCTAMap: Record<string, NextCTA> = {
+    "Add your first entity — start with a wallet or handle": {
       label: "Add entity",
       action: () => {
         onSwitchTab?.("entities");
-        onFocusEntityInput();
+        onFocusEntityInput?.();
       },
-    };
-  } else if (wallets.length > 0 && txs.length === 0 && onFocusEntityInput) {
-    nextCTA = {
-      label: "Add TX_HASH entity",
-      action: () => {
-        onSwitchTab?.("entities");
-        onFocusEntityInput();
-      },
-    };
-  } else if (hypotheses.length === 0) {
-    nextCTA = { label: "Add hypothesis", action: () => setShowAddForm(true) };
-  } else if (notes.length === 0 && onSwitchTab) {
-    nextCTA = { label: "Go to Notes", action: () => onSwitchTab("notes") };
-  } else if (timelineEvents === 0 && onSwitchTab) {
-    nextCTA = { label: "Go to Timeline", action: () => onSwitchTab("timeline") };
-  } else if (onSwitchTab) {
-    nextCTA = { label: "Go to Export", action: () => onSwitchTab("export") };
-  }
+    },
+    "Look for transaction hashes linked to these wallets": {
+      label: "Add TX hash",
+      action: () => onSwitchTab?.("entities"),
+    },
+    "Check these handles against the KOL Registry": {
+      label: "Open entities",
+      action: () => onSwitchTab?.("entities"),
+    },
+    "Add your first working hypothesis": {
+      label: "Add hypothesis",
+      action: () => setShowAddForm(true),
+    },
+    "Write your first analyst note": {
+      label: "Go to Notes",
+      action: () => onSwitchTab?.("notes"),
+    },
+    "Build the case timeline": {
+      label: "Go to Timeline",
+      action: () => onSwitchTab?.("timeline"),
+    },
+    "Review publication readiness — this case may be ready": {
+      label: "Go to Export",
+      action: () => onSwitchTab?.("export"),
+    },
+  };
+  const nextCTA: NextCTA | null = actionCTAMap[nextAction] ?? null;
 
   const TYPE_COLORS: Record<string, string> = {
     WALLET: "#FF6B00",

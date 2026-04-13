@@ -374,6 +374,22 @@ export default function CaseAssistant({
           >
             i
           </button>
+          <a
+            href="/en/demo"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="case-assistant-scan-link"
+            style={{
+              fontSize: 11,
+              color: "rgba(255,107,0,0.5)",
+              textDecoration: "none",
+              flexShrink: 0,
+              transition: "color 150ms",
+            }}
+          >
+            Open Scan &rarr;
+          </a>
+          <style>{`.case-assistant-scan-link:hover{color:#FF6B00 !important;}`}</style>
           {showTooltip && (
             <div
               style={{

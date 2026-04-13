@@ -323,7 +323,7 @@ export default function CaseGraph({ entities, enrichment }: Props) {
     return () => {
       simulation.stop();
     };
-  }, [entities]);
+  }, [entities, enrichment]);
 
   if (entities.length < 2) {
     return (

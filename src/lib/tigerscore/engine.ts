@@ -32,6 +32,12 @@ export type TigerInput = {
   liquidity_usd?: number | null;
   fdv_usd?: number | null;
   volume_24h_usd?: number | null;
+  // ── EVM-specific signals (ETH / Base / Arbitrum) ──
+  evm_is_contract?: boolean;
+  evm_balance_eth?: number;
+  evm_active_chains?: string[];
+  evm_known_bad?: boolean;
+  evm_in_watchlist?: boolean;
 };
 
 // ── Pump-like detection ──────────────────────────────────────────────────────
@@ -92,6 +98,89 @@ export function computeTigerScore(input: TigerInput): TigerResult {
 
   if ((input.confirmedCriticalClaims ?? 0) >= 1)
     add({ id: "confirmed_critical_claims", label: "Confirmed critical claims on file", severity: "critical", delta: 70, why: "Detective-referenced critical evidence found" });
+
+  // ── EVM-specific signals (ETH / Base / Arbitrum) ─────────────────────────
+  const isEvmChain =
+    input.chain === "ETH" || input.chain === "BASE" || input.chain === "ARBITRUM";
+
+  if (isEvmChain) {
+    // evm_known_bad — CRITICAL floor: wins over any other signal
+    if (input.evm_known_bad === true) {
+      add({
+        id: "evm_known_bad",
+        label: "Known bad EVM address",
+        severity: "critical",
+        delta: 100,
+        why: "Address matches INTERLIGENS known-bad registry (GordonGekko, drainer, phishing, mixer, exploit)",
+      });
+    }
+
+    // evm_contract_interaction — neutral info, unless combined with known_bad
+    if (input.evm_is_contract === true && input.evm_known_bad !== true) {
+      add({
+        id: "evm_contract_interaction",
+        label: "Smart contract address",
+        severity: "low",
+        delta: 0,
+        why: "Address is a contract, not an EOA — verify source on explorer",
+      });
+    }
+    if (input.evm_is_contract === true && input.evm_known_bad === true) {
+      add({
+        id: "evm_contract_known_bad",
+        label: "Known bad contract",
+        severity: "critical",
+        delta: 0,
+        why: "Flagged contract address — do not interact",
+      });
+    }
+
+    // evm_high_tx_count — positive reputation signal (slight risk decrease)
+    if ((input.txCount ?? 0) > 10000) {
+      add({
+        id: "evm_high_tx_count",
+        label: "Established wallet",
+        severity: "low",
+        delta: -5,
+        why: "More than 10k transactions — long-lived active wallet",
+      });
+    }
+
+    // evm_dormant_wallet — fresh wallet with significant balance = attention
+    if (
+      (input.txCount ?? 0) < 5 &&
+      (input.evm_balance_eth ?? 0) > 1
+    ) {
+      add({
+        id: "evm_dormant_wallet",
+        label: "Dormant wallet with funds",
+        severity: "med",
+        delta: 10,
+        why: "Low tx history but >1 ETH balance — fresh wallet holding value",
+      });
+    }
+
+    // evm_multi_chain_active — informational by default; attention if also watchlisted
+    const activeCount = input.evm_active_chains?.length ?? 0;
+    if (activeCount >= 2 && input.evm_in_watchlist !== true) {
+      add({
+        id: "evm_multi_chain_active",
+        label: "Multi-chain active address",
+        severity: "low",
+        delta: 0,
+        why: `Active on ${activeCount} EVM chains simultaneously`,
+      });
+    }
+    if (activeCount >= 3 && input.evm_in_watchlist === true) {
+      add({
+        id: "evm_multi_chain_watchlist",
+        label: "Multi-chain watchlisted address",
+        severity: "high",
+        delta: 10,
+        why: "Active on 3 EVM chains and present in INTERLIGENS watchlist",
+      });
+    }
+  }
 
   // ── Market boosters (SOL token sans casefile uniquement) ──────────────────
   if (input.chain === "SOL" && input.scan_type === "token" && input.no_casefile) {
