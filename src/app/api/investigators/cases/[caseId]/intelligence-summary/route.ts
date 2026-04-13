@@ -40,6 +40,9 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
         (e) => e.crossIntelligence.laundryTrail?.detected
       ).length,
       intelVaultRefs: pack.intelVaultRefs.length,
+      confidenceClaims: pack.confidenceAssessment.length,
+      contradictions: pack.contradictions.length,
+      timelineSpan: pack.timelineCorrelation.timespan,
     });
   } catch (err) {
     console.error("[intelligence-summary] failed", err);
@@ -50,6 +53,9 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
       networkActors: 0,
       laundryTrails: 0,
       intelVaultRefs: 0,
+      confidenceClaims: 0,
+      contradictions: 0,
+      timelineSpan: null,
     });
   }
 }

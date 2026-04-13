@@ -28,6 +28,42 @@ export type EnrichedEntity = {
   };
 };
 
+export type ConfidenceClaim = {
+  claim: string;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  dependsOn: string[];
+  weakPoint: string;
+  whatWouldStrengthen: string;
+};
+
+export type ContradictionSignal = {
+  description: string;
+  entityA: string;
+  entityB: string;
+  severity: "BLOCKING" | "NOTABLE" | "MINOR";
+};
+
+export type TimelineCorrelation = {
+  hasTimeline: boolean;
+  eventCount: number;
+  earliestEvent: string | null;
+  latestEvent: string | null;
+  timespan: string | null;
+  proceedsTimestamps: string[];
+  correlationSignals: Array<{
+    type:
+      | "CASHOUT_AFTER_PROMO"
+      | "SIMULTANEOUS_ACTIVITY"
+      | "RAPID_EXIT"
+      | "DELAYED_EXIT"
+      | "NO_ALIGNMENT";
+    description: string;
+    confidence: "HIGH" | "MEDIUM" | "LOW";
+  }>;
+  largestGap: string | null;
+  activityClusters: number;
+};
+
 export type CaseIntelligencePack = {
   caseId: string;
   template: string;
@@ -56,6 +92,9 @@ export type CaseIntelligencePack = {
     publicationReadiness: number;
     nextSuggestedAction: string;
   };
+  confidenceAssessment: ConfidenceClaim[];
+  contradictions: ContradictionSignal[];
+  timelineCorrelation: TimelineCorrelation;
 };
 
 function normalizeHandle(v: string): string {
@@ -113,10 +152,20 @@ export async function buildCaseIntelligencePack(
     () =>
       prisma.vaultHypothesis.findMany({
         where: { caseId },
-        select: { title: true, status: true, confidence: true },
+        select: {
+          title: true,
+          status: true,
+          confidence: true,
+          supportingEntityIds: true,
+        },
         take: 100,
       }),
-    [] as Array<{ title: string; status: string; confidence: number }>
+    [] as Array<{
+      title: string;
+      status: string;
+      confidence: number;
+      supportingEntityIds: string[];
+    }>
   );
 
   const timelineRaw = await safeQuery(
@@ -486,12 +535,210 @@ export async function buildCaseIntelligencePack(
     nextSuggestedAction = "Review publication readiness — this case may be ready";
   }
 
+  // ============================================================
+  // CONFIDENCE ASSESSMENT (auto-generated from pack data)
+  // ============================================================
+  const confidenceAssessment: ConfidenceClaim[] = [];
+
+  const aggregateProceeds = enrichedEntities.reduce((sum, e) => {
+    return sum + (e.crossIntelligence.proceedsSummary?.totalUSD ?? 0);
+  }, 0);
+  const aggregateProceedsEvents = enrichedEntities.reduce((sum, e) => {
+    return sum + (e.crossIntelligence.proceedsSummary?.eventCount ?? 0);
+  }, 0);
+
+  if (aggregateProceeds > 0 && aggregateProceedsEvents >= 2) {
+    confidenceAssessment.push({
+      claim: "Proceeds attribution",
+      confidence: "HIGH",
+      dependsOn: ["KOL Registry match", "wallet linkage"],
+      weakPoint: "No tx-hash level verification",
+      whatWouldStrengthen: "DEX transaction hashes + timestamps",
+    });
+  }
+
+  const strongLaundryTrails = enrichedEntities.filter(
+    (e) =>
+      e.crossIntelligence.laundryTrail?.detected &&
+      (e.crossIntelligence.laundryTrail?.confidence ?? 0) >= 0.7
+  );
+  if (strongLaundryTrails.length > 0) {
+    confidenceAssessment.push({
+      claim: "Laundering pattern",
+      confidence: "MEDIUM",
+      dependsOn: ["hop count", "bridge usage", "relay structure"],
+      weakPoint: "Intent to conceal not formally demonstrated",
+      whatWouldStrengthen: "Multiple independent routing instances",
+    });
+  }
+
+  if (networkActors.length >= 3) {
+    confidenceAssessment.push({
+      claim: "Coordinated network",
+      confidence: "MEDIUM",
+      dependsOn: ["shared wallet infrastructure", "temporal alignment"],
+      weakPoint: "Co-occurrence is not coordination",
+      whatWouldStrengthen: "Shared payment routes + synchronized timing",
+    });
+  }
+
+  const highRiskTigerEntities = entitiesRaw.filter(
+    (e) => (e.tigerScore ?? 0) >= 70
+  );
+  if (highRiskTigerEntities.length > 0) {
+    confidenceAssessment.push({
+      claim: "High-risk entity confirmed",
+      confidence: "HIGH",
+      dependsOn: ["TigerScore methodology"],
+      weakPoint: "Score reflects past behavior, not current activity",
+      whatWouldStrengthen: "Recent on-chain activity corroboration",
+    });
+  }
+
+  // ============================================================
+  // CONTRADICTIONS (auto-detected)
+  // ============================================================
+  const contradictionSignals: ContradictionSignal[] = [];
+
+  // Rule 1: tigerScore <= 30 (GREEN) but linked to a CONFIRMED hypothesis
+  const confirmedHypotheses = hypothesesRaw.filter(
+    (h) => h.status === "CONFIRMED"
+  );
+  for (const h of confirmedHypotheses) {
+    for (const eid of h.supportingEntityIds) {
+      const entity = entitiesRaw.find((e) => e.id === eid);
+      if (entity && (entity.tigerScore ?? 100) <= 30) {
+        contradictionSignals.push({
+          description:
+            "Entity scores LOW risk but is linked to a CONFIRMED suspicious hypothesis",
+          entityA: entity.value,
+          entityB: h.title,
+          severity: "NOTABLE",
+        });
+      }
+    }
+  }
+
+  // Rule 2: large proceeds but no laundry trail
+  for (const e of enrichedEntities) {
+    const proceeds = e.crossIntelligence.proceedsSummary?.totalUSD ?? 0;
+    if (proceeds > 50000 && !e.crossIntelligence.laundryTrail?.detected) {
+      contradictionSignals.push({
+        description:
+          "Large proceeds observed but no laundering pattern detected — routing may be direct or untraced",
+        entityA: e.value,
+        entityB: "(no laundry trail)",
+        severity: "NOTABLE",
+      });
+    }
+  }
+
+  // Rule 3: network actors but no HANDLE entities
+  if (networkActors.length > 0) {
+    const handleEntities = entitiesRaw.filter((e) => e.type === "HANDLE");
+    if (handleEntities.length === 0) {
+      contradictionSignals.push({
+        description:
+          "Network actors identified but no handles added to case — attribution chain incomplete",
+        entityA: `${networkActors.length} actors`,
+        entityB: "(no HANDLE entities)",
+        severity: "MINOR",
+      });
+    }
+  }
+
+  // Rule 4: CONFIRMED hypothesis with empty supportingEntityIds
+  for (const h of hypothesesRaw) {
+    if (h.status === "CONFIRMED" && h.supportingEntityIds.length === 0) {
+      contradictionSignals.push({
+        description:
+          "Hypothesis marked CONFIRMED but no supporting entities linked",
+        entityA: h.title,
+        entityB: "(no supporting entities)",
+        severity: "BLOCKING",
+      });
+    }
+  }
+
+  // ============================================================
+  // TIMELINE CORRELATION
+  // ============================================================
+  const timelineCorrelation: TimelineCorrelation = {
+    hasTimeline: timelineRaw.length > 0,
+    eventCount: timelineRaw.length,
+    earliestEvent: null,
+    latestEvent: null,
+    timespan: null,
+    proceedsTimestamps: [],
+    correlationSignals: [],
+    largestGap: null,
+    activityClusters: 0,
+  };
+
+  if (timelineRaw.length >= 2) {
+    const sorted = [...timelineRaw].sort(
+      (a, b) => a.eventDate.getTime() - b.eventDate.getTime()
+    );
+    timelineCorrelation.earliestEvent = sorted[0].eventDate.toISOString();
+    timelineCorrelation.latestEvent =
+      sorted[sorted.length - 1].eventDate.toISOString();
+    const spanMs =
+      sorted[sorted.length - 1].eventDate.getTime() -
+      sorted[0].eventDate.getTime();
+    const spanDays = Math.round(spanMs / (1000 * 60 * 60 * 24));
+    timelineCorrelation.timespan = `${spanDays} days`;
+
+    let largestGapMs = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      const gap =
+        sorted[i].eventDate.getTime() - sorted[i - 1].eventDate.getTime();
+      if (gap > largestGapMs) largestGapMs = gap;
+    }
+    const largestGapDays = Math.round(largestGapMs / (1000 * 60 * 60 * 24));
+    timelineCorrelation.largestGap =
+      largestGapDays > 0 ? `${largestGapDays} days between events` : null;
+
+    // Cluster detection: events within 48h grouped
+    let clusters = 0;
+    let lastClusterTime: number | null = null;
+    for (const ev of sorted) {
+      const t = ev.eventDate.getTime();
+      if (lastClusterTime === null || t - lastClusterTime > 48 * 3600 * 1000) {
+        clusters++;
+      }
+      lastClusterTime = t;
+    }
+    timelineCorrelation.activityClusters = clusters;
+
+    if (clusters >= 2 && spanDays < 30) {
+      timelineCorrelation.correlationSignals.push({
+        type: "RAPID_EXIT",
+        description: `${clusters} activity clusters detected within ${spanDays} days — possible rapid exit pattern`,
+        confidence: "MEDIUM",
+      });
+    }
+  }
+
+  // KolProceedsEvent does not exist in this schema. proceedsTimestamps stays
+  // empty. Surface this honestly via NO_ALIGNMENT.
+  if (timelineCorrelation.proceedsTimestamps.length === 0) {
+    timelineCorrelation.correlationSignals.push({
+      type: "NO_ALIGNMENT",
+      description: "No proceeds timestamp data available for correlation",
+      confidence: "LOW",
+    });
+  }
+
   return {
     caseId,
     template: caseRow?.caseTemplate ?? "blank",
     entityCount: entitiesRaw.length,
     entities: enrichedEntities,
-    hypotheses: hypothesesRaw,
+    hypotheses: hypothesesRaw.map((h) => ({
+      title: h.title,
+      status: h.status,
+      confidence: h.confidence,
+    })),
     timeline: timelineRaw.map((t) => ({
       date: t.eventDate.toISOString(),
       title: t.title,
@@ -510,5 +757,8 @@ export async function buildCaseIntelligencePack(
       publicationReadiness: readiness,
       nextSuggestedAction,
     },
+    confidenceAssessment,
+    contradictions: contradictionSignals,
+    timelineCorrelation,
   };
 }

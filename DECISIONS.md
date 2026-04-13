@@ -208,6 +208,64 @@ Transformed the Case Assistant from a generic LLM into a structured intelligence
 
 ---
 
+## V2E — Co-pilot precision upgrades (session 5)
+
+Three precision upgrades to the Case Intelligence Co-pilot. No schema changes.
+
+### What changed
+
+1. **Confidence + Contradiction Engine** in `buildCaseIntelligencePack.ts`:
+   - New types `ConfidenceClaim` and `ContradictionSignal` exported from the pack.
+   - Auto-generated `confidenceAssessment[]` from 4 rules (proceeds attribution, laundering pattern, coordinated network, high-risk TigerScore).
+   - Auto-detected `contradictions[]` from 4 rules (low-risk-but-confirmed, big-proceeds-no-trail, network-no-handles, confirmed-no-evidence).
+   - Hypotheses query now selects `supportingEntityIds` to enable the rules.
+
+2. **Analysis Modes** in `CaseAssistant.tsx`:
+   - Mode selector row (Actor / Network / Publication) above the quick prompts. Click again to deselect.
+   - Each mode swaps the quick-prompt set for a 5–6 prompt list focused on that mode.
+   - When sending, an invisible hint prefix is prepended to the API request only (chat UI shows the bare user text).
+
+3. **Timeline Correlation Engine** in `buildCaseIntelligencePack.ts`:
+   - New `timelineCorrelation` field with timespan, largest gap, activity clusters, correlation signals.
+   - `RAPID_EXIT` signal when ≥2 clusters within 30 days.
+   - `NO_ALIGNMENT` always emitted (proceeds timestamps unavailable — see decision below).
+   - Cluster detection: events within 48h grouped.
+
+4. **Intelligence indicator + tooltip enhancement**:
+   - Strip now also shows confidence claims, contradictions, and timeline span when present.
+   - New `ⓘ` button (focus + hover) reveals an absolute-positioned tooltip with the full pack summary in 8 bullet points. Style: bg #111, orange-tinted border, z-index 50.
+
+### Assistant route (`/ai-summary`-companion route also unchanged) prompt update
+The system prompt now embeds three additional JSON sections — `CONFIDENCE ASSESSMENT`, `CONTRADICTIONS`, `TIMELINE CORRELATION` — and adds two new behavioral rules (rules 7 and 8) about referencing confidence levels and analyzing temporal patterns.
+
+### V2E autonomous decisions
+
+**1. `KolProceedsEvent` still does not exist in this schema.** Spec asked me to fetch proceeds timestamps from it. I emit `NO_ALIGNMENT` with `confidence: LOW` and a description explaining the data is unavailable. The type contract is preserved (`proceedsTimestamps: string[]` always returns `[]`). When this table is added in a future schema migration, the build function can be extended without touching the assistant route.
+
+**2. Cluster detection threshold = 48h.** Spec language: "events within 48h of each other = one cluster". Implemented as a single-pass walk: a new cluster starts when the current event is more than 48h after the previous one. Events tied (same timestamp) collapse into the same cluster.
+
+**3. Largest gap rendering.** Returns `null` when timespan is 0 days (single-day chronology). Otherwise `"N days between events"`. Computed only across consecutive events, not across cluster boundaries.
+
+**4. Mode hint is injected at the API layer only.** The displayed user message in the chat shows the bare text the user typed. The hint is prepended only on the request body sent to the assistant route. This keeps the chat history clean while still giving Claude the mode signal.
+
+**5. Mode is sticky across messages until manually deselected.** Click again on the same mode chip to deselect (returns to general mode and default quick prompts). No auto-deselect.
+
+**6. Indicator strip is now a flex row** with `flex: 1` on the analyzing text and the `ⓘ` button as a fixed-size sibling. The tooltip is `position: absolute; top: 100%; right: 12px` so it floats below the strip.
+
+**7. Tooltip width = 280px.** Wide enough for "X confidence-weighted claims" line without wrapping. Triggers on `mouseEnter`, `focus`, `mouseLeave`, `blur` — works for keyboard navigation too.
+
+**8. Contradiction Rule 1 uses `tigerScore <= 30`** as the GREEN threshold. The spec text said "GREEN" without specifying a number. 30 is the conventional low-risk band cutoff in TigerScore-style scoring (LOW: 0–30, MED: 31–69, HIGH: 70+). Documented here in case it needs adjustment.
+
+**9. Contradiction Rule 1 needs `supportingEntityIds`** populated on the hypothesis. Until investigators link entities to hypotheses (V2C UI doesn't expose this yet), this rule will rarely fire. It's still in place for forward-compat.
+
+**10. Confidence Rule "High-risk entity confirmed" uses `entitiesRaw.tigerScore >= 70`.** Same TigerScore convention. Rare in practice today (no code currently writes `tigerScore`), but the rule is honest about its threshold.
+
+**11. Hypothesis return shape is reduced** in the final pack object. The query now selects `supportingEntityIds` for contradiction detection, but the published `pack.hypotheses` still returns only `{title, status, confidence}` to keep the prompt JSON compact and prevent the model from inventing entity IDs.
+
+**12. Indicator timeline display = `intelSummary.timelineSpan`** (e.g. "47 days"). Surfaced from `pack.timelineCorrelation.timespan`. Falls back to nothing when `null`.
+
+---
+
 ## Out of scope (V2D and beyond)
 
 - Quota auto-reset cron
