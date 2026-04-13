@@ -10,8 +10,18 @@ import {
   detectAddressType,
   detectActiveEvmChains,
 } from "@/lib/evm/chainDetect";
-import { isKnownBadEvm } from "@/lib/entities/knownBad";
+import {
+  isKnownBadEvm,
+  getKnownBadGovernedStatus,
+} from "@/lib/entities/knownBad";
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
+import {
+  deriveMotorSuggestedStatus,
+  resolveGovernedStatus,
+  GOVERNED_STATUS_LABELS,
+  GOVERNED_STATUS_BASIS_LABELS,
+  GOVERNED_STATUS_DISCLAIMER,
+} from "@/lib/tigerscore/governedStatus";
 import type { EvmChainKey } from "@/lib/rpc";
 
 export const runtime = "nodejs";
@@ -121,6 +131,43 @@ export async function GET(req: NextRequest) {
         ? "ORANGE"
         : "GREEN";
 
+  // 7) Governed Status — editorial layer, always computed alongside the score.
+  //    - manual overlay (known-bad curated list) wins when present
+  //    - otherwise the engine suggestion (never above corroborated_high_risk)
+  //    The numeric TigerScore ceiling is untouched: evm_known_bad does NOT
+  //    push the score to 100 here; the confirmation is carried as payload.
+  const manualGoverned = getKnownBadGovernedStatus(address);
+  const suggestedGovernedStatus = deriveMotorSuggestedStatus(
+    tigerResult.finalScore,
+    !!knownBadHit,
+    signals.length
+  );
+  const governedStatus = resolveGovernedStatus(
+    manualGoverned,
+    suggestedGovernedStatus
+  );
+  const labelEntry = GOVERNED_STATUS_LABELS[governedStatus.governedStatus];
+  const governedStatusLabel = {
+    en: labelEntry.en,
+    fr: labelEntry.fr,
+    severity: labelEntry.severity,
+    disclaimer: GOVERNED_STATUS_DISCLAIMER,
+  };
+
+  // Governed-status explanation block — only populated when a non-empty
+  // status is attached. Consumed by the "why this score" UI panel.
+  let governedStatusExplanation: { en: string; fr: string } | null = null;
+  if (governedStatus.governedStatus !== "none") {
+    const basisKey = governedStatus.governedStatusBasis;
+    const basisLabels = basisKey ? GOVERNED_STATUS_BASIS_LABELS[basisKey] : null;
+    const basisEn = basisLabels?.en ?? "engine-derived signals";
+    const basisFr = basisLabels?.fr ?? "signaux moteur";
+    governedStatusExplanation = {
+      en: `Governed status\nThis address has been classified as ${labelEntry.en} based on ${basisEn}. This status is displayed separately from the numeric TigerScore.`,
+      fr: `Statut gouverné\nCette adresse a été classée ${labelEntry.fr} sur la base de ${basisFr}. Ce statut est affiché séparément du score numérique TigerScore.`,
+    };
+  }
+
   return NextResponse.json({
     address,
     addressType: "evm" as const,
@@ -134,6 +181,11 @@ export async function GET(req: NextRequest) {
     knownBadLabel: knownBadHit?.label ?? null,
     knownBadCategory: knownBadHit?.category ?? null,
     rpcDown: allRpcDown,
+    ceilingApplied: tigerResult.intelligence?.ceilingApplied ?? false,
     intelligence: tigerResult.intelligence,
+    governedStatus,
+    suggestedGovernedStatus,
+    governedStatusLabel,
+    governedStatusExplanation,
   });
 }
