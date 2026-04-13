@@ -168,16 +168,20 @@ export default function CaseAssistant({
         display: "flex",
         flexDirection: "column",
         height: "70vh",
+        minHeight: 480,
         border: "1px solid rgba(255,255,255,0.06)",
         borderRadius: 8,
         backgroundColor: "#0a0a0a",
         overflow: "hidden",
+        position: "relative",
+        zIndex: 1,
       }}
     >
       <div
         ref={scrollRef}
         style={{
-          flex: 1,
+          flex: "1 1 auto",
+          minHeight: 0,
           overflowY: "auto",
           padding: 20,
           display: "flex",
@@ -248,6 +252,7 @@ export default function CaseAssistant({
             color: "#FF3B5C",
             fontSize: 12,
             borderTop: "1px solid rgba(255,255,255,0.06)",
+            flexShrink: 0,
           }}
         >
           {error}
@@ -261,6 +266,9 @@ export default function CaseAssistant({
           display: "flex",
           gap: 8,
           alignItems: "flex-end",
+          flexShrink: 0,
+          backgroundColor: "#0a0a0a",
+          pointerEvents: "auto",
         }}
       >
         <textarea
@@ -268,9 +276,11 @@ export default function CaseAssistant({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Ask anything about this case…"
-          rows={1}
+          rows={2}
+          autoComplete="off"
           style={{
-            flex: 1,
+            flex: "1 1 auto",
+            minWidth: 0,
             backgroundColor: "#0d0d0d",
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 6,
@@ -281,6 +291,8 @@ export default function CaseAssistant({
             resize: "none",
             maxHeight: 120,
             fontFamily: "inherit",
+            pointerEvents: "auto",
+            cursor: "text",
           }}
         />
         {supportsVoice && (

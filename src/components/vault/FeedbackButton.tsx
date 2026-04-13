@@ -104,19 +104,23 @@ export default function FeedbackButton() {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         style={{
           position: "fixed",
           bottom: 20,
           right: 20,
-          zIndex: 80,
+          zIndex: 100,
           backgroundColor: "rgba(255,107,0,0.15)",
           border: "1px solid rgba(255,107,0,0.3)",
           color: "#FF6B00",
           fontSize: 12,
           padding: "8px 16px",
-          borderRadius: 999,
+          borderRadius: 20,
           cursor: "pointer",
+          pointerEvents: "auto",
+          fontFamily: "inherit",
+          lineHeight: 1.2,
         }}
       >
         Feedback
@@ -127,11 +131,12 @@ export default function FeedbackButton() {
             position: "fixed",
             inset: 0,
             backgroundColor: "rgba(0,0,0,0.7)",
-            zIndex: 90,
+            zIndex: 110,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: 20,
+            pointerEvents: "auto",
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setOpen(false);
@@ -186,6 +191,7 @@ export default function FeedbackButton() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="What's working? What's missing? What would make your work easier?"
+                  autoComplete="off"
                   style={{
                     width: "100%",
                     height: 150,
@@ -197,6 +203,9 @@ export default function FeedbackButton() {
                     fontSize: 13,
                     outline: "none",
                     resize: "vertical",
+                    fontFamily: "inherit",
+                    pointerEvents: "auto",
+                    cursor: "text",
                   }}
                 />
                 {supportsVoice && (
