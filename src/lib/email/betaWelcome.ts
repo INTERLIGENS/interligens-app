@@ -23,49 +23,167 @@ function escapeHtml(s: string): string {
 
 function buildHtml(name: string, accessCode: string): string {
   const safeName = escapeHtml(name);
+  const greeting = safeName ? "Welcome, " + safeName + "." : "Welcome.";
   const maskedCode =
     accessCode.length > 4
-      ? `${accessCode.slice(0, 2)}…${accessCode.slice(-2)}`
+      ? accessCode.slice(0, 2) + "&hellip;" + accessCode.slice(-2)
       : "****";
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>INTERLIGENS Beta Access Confirmed</title>
-</head>
-<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#FFFFFF;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#000000;">
-    <tr><td align="center" style="padding:40px 20px;">
-      <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
-        <tr><td style="padding-bottom:32px;">
-          <div style="text-transform:uppercase;font-size:11px;letter-spacing:0.14em;color:#FF6B00;">INTERLIGENS · Investigators</div>
-          <div style="font-size:24px;font-weight:700;color:#FFFFFF;margin-top:8px;">Beta access confirmed</div>
-        </td></tr>
-        <tr><td style="padding-bottom:24px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.6;">
-          Welcome${safeName ? ", " + safeName : ""}. Your beta access code has been verified and your NDA acceptance is on file.
-        </td></tr>
-        <tr><td style="padding-bottom:24px;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0a0a0a;border:1px solid rgba(255,107,0,0.2);border-radius:6px;">
-            <tr><td style="padding:16px;">
-              <div style="text-transform:uppercase;font-size:10px;letter-spacing:0.08em;color:rgba(255,255,255,0.4);margin-bottom:6px;">Your access</div>
-              <div style="font-family:ui-monospace,monospace;font-size:13px;color:#FFFFFF;">Code: ${maskedCode}</div>
-            </td></tr>
-          </table>
-        </td></tr>
-        <tr><td style="padding-bottom:24px;">
-          <a href="https://app.interligens.com" style="display:inline-block;background:#FF6B00;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:6px;font-size:14px;font-weight:600;">Open your workspace →</a>
-        </td></tr>
-        <tr><td style="padding-bottom:24px;border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;color:rgba(255,255,255,0.5);font-size:12px;line-height:1.7;">
-          <strong style="color:rgba(255,255,255,0.8);">NDA reminder.</strong> Everything you see in the platform — derived entities, hypotheses, timeline events, and any shared case — is covered by the INTERLIGENS beta NDA you accepted. Do not share screenshots, exports, or internal findings outside of the platform without explicit approval.
-        </td></tr>
-        <tr><td style="color:rgba(255,255,255,0.3);font-size:11px;line-height:1.6;">
-          Questions or issues? Reach us at <a href="mailto:admin@interligens.com" style="color:#FF6B00;text-decoration:none;">admin@interligens.com</a>.
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+
+  // Pre-rendered opacity-on-black values (Outlook drops rgba entirely).
+  //   white @ 0.8 = #CCCCCC
+  //   white @ 0.6 = #999999
+  //   white @ 0.4 = #666666
+  //   white @ 0.3 = #4D4D4D
+  const TEXT = "#FFFFFF";
+  const TEXT_SOFT = "#CCCCCC";
+  const TEXT_MUTED = "#999999";
+  const TEXT_DIM = "#666666";
+  const FOOTER_DIM = "#4D4D4D";
+  const BG = "#000000";
+  const CODE_BG = "#111111";
+  const BORDER_DIM = "#1A1A1A";
+  const ACCENT = "#FF6B00";
+
+  return [
+    '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
+    '<html xmlns="http://www.w3.org/1999/xhtml">',
+    "<head>",
+    '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />',
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+    "<title>INTERLIGENS Beta Access Confirmed</title>",
+    "</head>",
+    '<body style="margin:0;padding:0;background-color:' +
+      BG +
+      ';color:' +
+      TEXT +
+      ';font-family:Arial,Helvetica,sans-serif;">',
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' +
+      BG +
+      '" style="background-color:' +
+      BG +
+      ';margin:0;padding:0;">',
+    "<tr>",
+    '<td align="center" style="padding:40px 20px;">',
+    '<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;">',
+
+    // Header
+    "<tr>",
+    '<td style="padding:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:' +
+      ACCENT +
+      ';">INTERLIGENS &middot; INVESTIGATORS</td>',
+    "</tr>",
+    "<tr>",
+    '<td style="padding:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:700;color:' +
+      TEXT +
+      ';line-height:1.3;">Beta access confirmed</td>',
+    "</tr>",
+
+    // Greeting
+    "<tr>",
+    '<td style="padding:0 0 20px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:' +
+      TEXT_SOFT +
+      ';line-height:1.6;">' +
+      greeting +
+      " Your beta access code has been verified and your NDA acceptance is on file.</td>",
+    "</tr>",
+
+    // Access code block
+    "<tr>",
+    '<td style="padding:0 0 24px 0;">',
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' +
+      CODE_BG +
+      '" style="background-color:' +
+      CODE_BG +
+      ';border:1px solid ' +
+      ACCENT +
+      ';">',
+    "<tr>",
+    '<td style="padding:16px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:' +
+      TEXT_DIM +
+      ';">YOUR ACCESS</td>',
+    "</tr>",
+    "<tr>",
+    '<td style="padding:0 16px 16px 16px;font-family:\'Courier New\',Courier,monospace;font-size:14px;color:' +
+      TEXT +
+      ';">Code: ' +
+      maskedCode +
+      "</td>",
+    "</tr>",
+    "</table>",
+    "</td>",
+    "</tr>",
+
+    // CTA button — nested table for Outlook compatibility
+    "<tr>",
+    '<td style="padding:0 0 32px 0;">',
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0">',
+    "<tr>",
+    '<td bgcolor="' +
+      ACCENT +
+      '" style="background-color:' +
+      ACCENT +
+      ';padding:14px 24px;">',
+    '<a href="https://app.interligens.com" target="_blank" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:' +
+      BG +
+      ';text-decoration:none;">Open your workspace &rarr;</a>',
+    "</td>",
+    "</tr>",
+    "</table>",
+    "</td>",
+    "</tr>",
+
+    // NDA reminder
+    "<tr>",
+    '<td style="padding:20px 0 20px 0;border-top:1px solid ' +
+      BORDER_DIM +
+      ';font-family:Arial,Helvetica,sans-serif;font-size:12px;color:' +
+      TEXT_MUTED +
+      ';line-height:1.7;"><strong style="color:' +
+      TEXT +
+      '">NDA reminder.</strong> Everything you see in the platform &ndash; derived entities, hypotheses, timeline events, and any shared case &ndash; is covered by the INTERLIGENS beta NDA you accepted. Do not share screenshots, exports, or internal findings outside of the platform without explicit approval.</td>',
+    "</tr>",
+
+    // Footer
+    "<tr>",
+    '<td style="padding:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:' +
+      FOOTER_DIM +
+      ';line-height:1.6;">Questions or issues? Reach us at <a href="mailto:admin@interligens.com" style="color:' +
+      ACCENT +
+      ';text-decoration:none;">admin@interligens.com</a>.</td>',
+    "</tr>",
+
+    "</table>",
+    "</td>",
+    "</tr>",
+    "</table>",
+    "</body>",
+    "</html>",
+  ].join("");
+}
+
+function buildText(name: string, accessCode: string): string {
+  const greeting = name ? "Welcome, " + name + "." : "Welcome.";
+  const maskedCode =
+    accessCode.length > 4
+      ? accessCode.slice(0, 2) + "..." + accessCode.slice(-2)
+      : "****";
+  return [
+    "INTERLIGENS · INVESTIGATORS",
+    "",
+    "Beta access confirmed",
+    "",
+    greeting +
+      " Your beta access code has been verified and your NDA acceptance is on file.",
+    "",
+    "Your access code: " + maskedCode,
+    "",
+    "Open your workspace: https://app.interligens.com",
+    "",
+    "---",
+    "NDA reminder: Everything you see in the platform - derived entities, hypotheses, timeline events, and any shared case - is covered by the INTERLIGENS beta NDA you accepted. Do not share screenshots, exports, or internal findings outside of the platform without explicit approval.",
+    "",
+    "Questions or issues? Reach us at admin@interligens.com",
+  ].join("\n");
 }
 
 export async function sendBetaWelcomeEmail(
@@ -86,6 +204,7 @@ export async function sendBetaWelcomeEmail(
 
   const from = process.env.BETA_FROM_EMAIL ?? "investigators@interligens.com";
   const html = buildHtml(name ?? "", accessCode);
+  const text = buildText(name ?? "", accessCode);
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -99,6 +218,7 @@ export async function sendBetaWelcomeEmail(
         to: email,
         subject: "INTERLIGENS Beta Access Confirmed",
         html,
+        text,
       }),
     });
     if (!res.ok) {
