@@ -1,4 +1,5 @@
 import FeedbackButton from "@/components/vault/FeedbackButton";
+import { VaultToastProvider } from "@/components/vault/VaultToast";
 
 export default function InvestigatorsBoxLayout({
   children,
@@ -6,9 +7,9 @@ export default function InvestigatorsBoxLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <VaultToastProvider>
       {children}
       <FeedbackButton />
-    </>
+    </VaultToastProvider>
   );
 }

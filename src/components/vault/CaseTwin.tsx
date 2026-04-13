@@ -45,6 +45,7 @@ type Hypothesis = {
   status: "OPEN" | "CONFIRMED" | "REFUTED" | "NEEDS_VERIFICATION";
   confidence: number;
   notes: string | null;
+  supportingEntityIds?: string[];
   createdAt: string;
 };
 
@@ -97,6 +98,9 @@ export default function CaseTwin({
   onFocusEntityInput,
 }: Props) {
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
+  const [selectedEntityIds, setSelectedEntityIds] = useState<Set<string>>(
+    new Set()
+  );
   const [timelineEvents, setTimelineEvents] = useState(0);
   const [collisionCount, setCollisionCount] = useState(0);
   const [confidenceClaims, setConfidenceClaims] = useState<ConfidenceClaim[]>([]);
@@ -207,6 +211,7 @@ export default function CaseTwin({
             status: newStatus,
             confidence: newConfidence,
             notes: newNotes.trim() || undefined,
+            supportingEntityIds: Array.from(selectedEntityIds),
           }),
         }
       );
@@ -217,11 +222,21 @@ export default function CaseTwin({
         setNewStatus("OPEN");
         setNewConfidence(50);
         setNewNotes("");
+        setSelectedEntityIds(new Set());
         setShowAddForm(false);
       }
     } finally {
       setSaving(false);
     }
+  }
+
+  function toggleSupportingEntity(id: string) {
+    setSelectedEntityIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function deleteHypothesis(id: string) {
@@ -802,6 +817,34 @@ export default function CaseTwin({
                     {h.notes}
                   </div>
                 )}
+                {h.supportingEntityIds && h.supportingEntityIds.length > 0 && (
+                  <div
+                    className="flex flex-wrap gap-1"
+                    style={{ marginTop: 8 }}
+                  >
+                    {h.supportingEntityIds
+                      .map((id) => entities.find((e) => e.id === id))
+                      .filter((e): e is Entity => !!e)
+                      .map((e) => (
+                        <span
+                          key={e.id}
+                          style={{
+                            fontSize: 9,
+                            padding: "2px 6px",
+                            border: "1px solid rgba(255,107,0,0.25)",
+                            borderRadius: 4,
+                            color: "rgba(255,107,0,0.85)",
+                            fontFamily: "ui-monospace, monospace",
+                          }}
+                        >
+                          {e.type}:{" "}
+                          {e.value.length > 16
+                            ? e.value.slice(0, 16) + "…"
+                            : e.value}
+                        </span>
+                      ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -851,6 +894,65 @@ export default function CaseTwin({
               );
             })}
           </div>
+          {entities.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div
+                style={{
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "rgba(255,255,255,0.4)",
+                  marginBottom: 6,
+                }}
+              >
+                Supporting entities ({selectedEntityIds.size})
+              </div>
+              <div
+                className="flex flex-wrap gap-1"
+                style={{ maxHeight: 120, overflowY: "auto" }}
+              >
+                {entities.slice(0, 100).map((e) => {
+                  const active = selectedEntityIds.has(e.id);
+                  const truncated =
+                    e.value.length > 20
+                      ? e.value.slice(0, 20) + "…"
+                      : e.value;
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => toggleSupportingEntity(e.id)}
+                      style={{
+                        fontSize: 10,
+                        padding: "3px 8px",
+                        borderRadius: 20,
+                        border: active
+                          ? "1px solid #FF6B00"
+                          : "1px solid rgba(255,255,255,0.1)",
+                        backgroundColor: active
+                          ? "rgba(255,107,0,0.15)"
+                          : "transparent",
+                        color: active ? "#FFFFFF" : "rgba(255,255,255,0.4)",
+                        cursor: "pointer",
+                        fontFamily: "ui-monospace, monospace",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#FF6B00",
+                          marginRight: 4,
+                          fontSize: 9,
+                        }}
+                      >
+                        {e.type}
+                      </span>
+                      {truncated}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <textarea
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
@@ -1147,7 +1249,7 @@ export default function CaseTwin({
             cursor: "pointer",
           }}
         >
-          Generate case analysis
+          Analyze case
         </button>
       )}
       {aiLoading && (

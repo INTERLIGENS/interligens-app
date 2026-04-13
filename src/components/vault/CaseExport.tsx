@@ -320,7 +320,7 @@ export default function CaseExport({
       <div style={SECTION_TITLE}>Retail summary (AI)</div>
       {!retail && !retailLoading && (
         <button onClick={generateRetail} style={PRIMARY_BTN}>
-          Generate retail summary
+          Generate summary
         </button>
       )}
       {retailLoading && (

@@ -12,6 +12,9 @@ import CaseGraph from "@/components/vault/CaseGraph";
 import CaseTwin from "@/components/vault/CaseTwin";
 import CaseExport from "@/components/vault/CaseExport";
 import CaseAssistant from "@/components/vault/CaseAssistant";
+import NotesToolbar from "@/components/vault/NotesToolbar";
+import { renderMarkdown } from "@/lib/vault/renderMarkdown";
+import { useVaultToast } from "@/components/vault/VaultToast";
 import TimelineBuilder from "@/components/vault/TimelineBuilder";
 import WalletJourney from "@/components/vault/WalletJourney";
 import ShareCaseModal from "@/components/vault/ShareCaseModal";
@@ -131,6 +134,9 @@ const BADGE_BASE: React.CSSProperties = {
 function CaseInner({ caseId }: { caseId: string }) {
   const { keys } = useVaultSession();
   const { parseFile } = useParserWorker();
+  const toast = useVaultToast();
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [detailEntityId, setDetailEntityId] = useState<string | null>(null);
 
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [title, setTitle] = useState("");
@@ -224,11 +230,20 @@ function CaseInner({ caseId }: { caseId: string }) {
 
   async function deleteEntity(entityId: string) {
     if (!confirm("Delete this entity? This cannot be undone.")) return;
-    const res = await fetch(
-      `/api/investigators/cases/${caseId}/entities/${entityId}`,
-      { method: "DELETE" }
-    );
-    if (res.ok) refreshEntities();
+    try {
+      const res = await fetch(
+        `/api/investigators/cases/${caseId}/entities/${entityId}`,
+        { method: "DELETE" }
+      );
+      if (res.ok) {
+        refreshEntities();
+        toast.showSuccess("Entity deleted");
+      } else {
+        toast.showError("Delete failed. Try again.");
+      }
+    } catch {
+      toast.showError("Connection error. Try again.");
+    }
   }
 
   async function fetchSuggestions(type: string, value: string) {
@@ -625,8 +640,20 @@ function CaseInner({ caseId }: { caseId: string }) {
           </div>
         )}
 
+        <style>{`
+          @keyframes vaultTabFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes vaultDetailSlide {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .vault-tab-row { scrollbar-width: none; -ms-overflow-style: none; }
+          .vault-tab-row::-webkit-scrollbar { display: none; }
+        `}</style>
         <div
-          className="flex gap-2 mb-6"
+          className="flex gap-2 mb-6 vault-tab-row"
           style={{
             position: "sticky",
             top: 0,
@@ -639,6 +666,8 @@ function CaseInner({ caseId }: { caseId: string }) {
             marginRight: -24,
             paddingLeft: 24,
             paddingRight: 24,
+            overflowX: "auto",
+            whiteSpace: "nowrap",
           }}
         >
           {tabs.map((t) => {
@@ -678,6 +707,10 @@ function CaseInner({ caseId }: { caseId: string }) {
           })}
         </div>
 
+        <div
+          key={tab}
+          style={{ animation: "vaultTabFadeIn 120ms ease" }}
+        >
         {tab === "entities" && (
           <div>
             <EntityAddForm
@@ -827,16 +860,34 @@ function CaseInner({ caseId }: { caseId: string }) {
                 return (
                   <div key={e.id} style={{ position: "relative" }}>
                     <div
-                      className="flex items-center justify-between border border-white/10 rounded px-3 py-2 text-sm"
-                      style={{ gap: 8 }}
+                      className="flex items-center justify-between border border-white/10 rounded px-3 py-2 text-sm hover:bg-white/[0.02]"
+                      style={{ gap: 8, transition: "background-color 100ms" }}
                     >
                       <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-[10px] uppercase text-[#FF6B00] w-16">
                           {e.type}
                         </span>
-                        <span className="font-mono text-white/90 break-all">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDetailEntityId(
+                              detailEntityId === e.id ? null : e.id
+                            )
+                          }
+                          className="font-mono text-white/90 break-all hover:text-[#FF6B00]"
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontSize: "inherit",
+                            fontFamily: "ui-monospace, monospace",
+                            transition: "color 100ms",
+                          }}
+                        >
                           {e.value}
-                        </span>
+                        </button>
                         {enr?.isKnownBad && (
                           <span
                             style={{
@@ -967,6 +1018,194 @@ function CaseInner({ caseId }: { caseId: string }) {
                         onClose={() => setLaunchpadEntityId(null)}
                       />
                     )}
+                    {detailEntityId === e.id && (
+                      <div
+                        style={{
+                          backgroundColor: "#0a0a0a",
+                          borderTop: "1px solid rgba(255,107,0,0.15)",
+                          borderBottom: "1px solid rgba(255,107,0,0.15)",
+                          padding: 16,
+                          marginTop: 4,
+                          marginBottom: 4,
+                          animation: "vaultDetailSlide 150ms ease",
+                        }}
+                      >
+                        <div
+                          style={{
+                            textTransform: "uppercase",
+                            fontSize: 10,
+                            letterSpacing: "0.08em",
+                            color: "#FF6B00",
+                            marginBottom: 10,
+                          }}
+                        >
+                          Entity intelligence
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "ui-monospace, monospace",
+                            fontSize: 12,
+                            color: "#FFFFFF",
+                            wordBreak: "break-all",
+                            marginBottom: 10,
+                          }}
+                        >
+                          {e.value}
+                        </div>
+                        <div
+                          className="flex flex-col gap-1"
+                          style={{
+                            fontSize: 12,
+                            color: "rgba(255,255,255,0.6)",
+                            marginBottom: 12,
+                          }}
+                        >
+                          <div>Type: {e.type}</div>
+                          <div>
+                            Added:{" "}
+                            {new Date(e.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </div>
+                          <div>
+                            Source: {e.extractionMethod ?? "Manual entry"}
+                          </div>
+                          {e.confidence != null && (
+                            <div>
+                              Confidence: {Math.round(e.confidence * 100)}%
+                            </div>
+                          )}
+                        </div>
+                        {enr?.inKolRegistry && (
+                          <div
+                            style={{
+                              paddingTop: 10,
+                              marginTop: 10,
+                              borderTop: "1px solid rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            <div
+                              style={{
+                                textTransform: "uppercase",
+                                fontSize: 10,
+                                letterSpacing: "0.06em",
+                                color: "rgba(255,107,0,0.7)",
+                                marginBottom: 6,
+                              }}
+                            >
+                              KOL Registry
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "rgba(255,255,255,0.7)",
+                                lineHeight: 1.7,
+                              }}
+                            >
+                              {enr.kolName && <div>Handle: {enr.kolName}</div>}
+                              {enr.proceedsTotalUSD != null &&
+                                enr.proceedsTotalUSD > 0 && (
+                                  <div>
+                                    Observed proceeds:{" "}
+                                    {formatUSD(enr.proceedsTotalUSD)}
+                                  </div>
+                                )}
+                              {enr.kolScore != null && (
+                                <div>Rug count: {enr.kolScore}</div>
+                              )}
+                              {enr.inIntelVault && (
+                                <div>Intel Vault: referenced</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {(enr?.isKnownBad || enr?.inWatchlist) && (
+                          <div
+                            style={{
+                              paddingTop: 10,
+                              marginTop: 10,
+                              borderTop: "1px solid rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            <div
+                              style={{
+                                textTransform: "uppercase",
+                                fontSize: 10,
+                                letterSpacing: "0.06em",
+                                color: "#FF3B5C",
+                                marginBottom: 6,
+                              }}
+                            >
+                              Risk flags
+                            </div>
+                            {enr?.isKnownBad && (
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: "rgba(255,255,255,0.7)",
+                                }}
+                              >
+                                Known bad — high risk entity
+                              </div>
+                            )}
+                            {enr?.inWatchlist && (
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: "rgba(255,255,255,0.7)",
+                                }}
+                              >
+                                Watchlisted — under surveillance
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div
+                          className="flex flex-wrap gap-2"
+                          style={{
+                            marginTop: 14,
+                            paddingTop: 10,
+                            borderTop: "1px solid rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          <button
+                            onClick={() => setLaunchpadEntityId(e.id)}
+                            style={{
+                              fontSize: 11,
+                              color: "#FF6B00",
+                              background: "none",
+                              border: "1px solid rgba(255,107,0,0.3)",
+                              borderRadius: 4,
+                              padding: "4px 10px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Open in →
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard
+                                .writeText(e.value)
+                                .then(() => toast.showSuccess("Copied"))
+                                .catch(() => toast.showError("Copy failed"));
+                            }}
+                            style={{
+                              fontSize: 11,
+                              color: "rgba(255,255,255,0.7)",
+                              background: "none",
+                              border: "1px solid rgba(255,255,255,0.12)",
+                              borderRadius: 4,
+                              padding: "4px 10px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Copy value
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1060,7 +1299,13 @@ function CaseInner({ caseId }: { caseId: string }) {
 
         {tab === "notes" && (
           <div>
+            <NotesToolbar
+              textareaRef={noteTextareaRef}
+              value={newNote}
+              onChange={setNewNote}
+            />
             <textarea
+              ref={noteTextareaRef}
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
               rows={4}
@@ -1139,12 +1384,23 @@ function CaseInner({ caseId }: { caseId: string }) {
               {notes.map((n) => (
                 <div
                   key={n.id}
-                  className="border border-white/10 rounded p-3 text-sm whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: "#0a0a0a",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: 6,
+                    padding: "14px 16px",
+                  }}
                 >
-                  <div className="text-white/40 text-xs mb-1">
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.35)",
+                      marginBottom: 6,
+                    }}
+                  >
                     {new Date(n.createdAt).toLocaleString()}
                   </div>
-                  <div className="text-white/90">{n.content}</div>
+                  <div>{renderMarkdown(n.content)}</div>
                 </div>
               ))}
             </div>
@@ -1218,6 +1474,7 @@ function CaseInner({ caseId }: { caseId: string }) {
             />
           </div>
         )}
+        </div>
       </div>
       {walletJourneyId && (
         <WalletJourney

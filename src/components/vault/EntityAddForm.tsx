@@ -241,7 +241,7 @@ export default function EntityAddForm({ onAdded, caseId }: Props) {
           className="disabled:opacity-50"
           style={PRIMARY_BTN}
         >
-          {saving ? "Adding…" : "Add entity"}
+          {saving ? "Adding…" : "Add"}
         </button>
         <button
           type="button"
@@ -256,7 +256,7 @@ export default function EntityAddForm({ onAdded, caseId }: Props) {
             cursor: "pointer",
           }}
         >
-          {showBulk ? "Hide bulk paste" : "Paste in bulk"}
+          {showBulk ? "Hide bulk paste" : "Bulk paste"}
         </button>
       </div>
 

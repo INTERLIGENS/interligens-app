@@ -48,6 +48,32 @@ export default function CaseGraph({ entities }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [selected, setSelected] = useState<GraphNode | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+
+  // Apply filter to existing D3 selection without re-running the sim.
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg
+      .selectAll<SVGCircleElement, GraphNode>("g g circle")
+      .transition()
+      .duration(200)
+      .attr("opacity", (d) =>
+        typeFilter ? (d.type === typeFilter ? 1 : 0.15) : 1
+      )
+      .attr("r", (d) => {
+        const base = d.kind === "file" ? 6 : 8;
+        if (!typeFilter) return base;
+        return d.type === typeFilter ? base + 2 : base - 2;
+      });
+    svg
+      .selectAll<SVGTextElement, GraphNode>("g g text")
+      .transition()
+      .duration(200)
+      .attr("opacity", (d) =>
+        typeFilter ? (d.type === typeFilter ? 1 : 0.1) : 1
+      );
+  }, [typeFilter]);
 
   function zoomBy(factor: number) {
     if (!svgRef.current || !zoomRef.current) return;
@@ -240,6 +266,51 @@ export default function CaseGraph({ entities }: Props) {
 
   return (
     <div>
+      <div
+        className="flex flex-wrap gap-2"
+        style={{ marginBottom: 10, alignItems: "center" }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            color: "rgba(255,255,255,0.3)",
+            marginRight: 4,
+          }}
+        >
+          Filter
+        </span>
+        {["ALL", "WALLET", "TX_HASH", "HANDLE", "URL", "DOMAIN", "CONTRACT"].map(
+          (t) => {
+            const active = (typeFilter ?? "ALL") === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTypeFilter(t === "ALL" ? null : t)}
+                style={{
+                  fontSize: 10,
+                  padding: "3px 10px",
+                  borderRadius: 20,
+                  border: active
+                    ? "1px solid #FF6B00"
+                    : "1px solid rgba(255,255,255,0.1)",
+                  backgroundColor: active
+                    ? "rgba(255,107,0,0.15)"
+                    : "transparent",
+                  color: active ? "#FFFFFF" : "rgba(255,255,255,0.4)",
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {t}
+              </button>
+            );
+          }
+        )}
+      </div>
       <div
         style={{
           backgroundColor: "#000",
