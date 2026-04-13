@@ -41,6 +41,8 @@ By proceeding, you confirm that you have read, understood, and agree to be bound
 
 export default function BetaAccessNDA() {
   const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,13 +53,22 @@ export default function BetaAccessNDA() {
       setError("You must accept the NDA to continue.");
       return;
     }
+    if (!email.trim() || !email.includes("@")) {
+      setError("A valid email address is required.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
       const res = await fetch("/api/beta/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, ndaAccepted: true }),
+        body: JSON.stringify({
+          code,
+          ndaAccepted: true,
+          email: email.trim(),
+          name: name.trim() || undefined,
+        }),
       });
       if (res.status === 429) {
         setError("Too many attempts. Please wait a few minutes.");
@@ -180,6 +191,82 @@ export default function BetaAccessNDA() {
           }}
         />
 
+        {/* Identity fields — used to trigger welcome email */}
+        <label
+          style={{
+            display: "block",
+            color: DIMMED,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            marginBottom: 6,
+            fontFamily: "monospace",
+            textTransform: "uppercase",
+          }}
+        >
+          Email
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          required
+          placeholder="Your email address"
+          style={{
+            width: "100%",
+            padding: "12px 14px",
+            background: "#111111",
+            border: "1px solid #1A1A1A",
+            borderRadius: 4,
+            color: "#FFFFFF",
+            fontSize: 14,
+            outline: "none",
+            boxSizing: "border-box",
+            transition: "border-color 0.15s",
+            marginBottom: 14,
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = CYAN)}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "#1A1A1A")}
+        />
+
+        <label
+          style={{
+            display: "block",
+            color: DIMMED,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            marginBottom: 6,
+            fontFamily: "monospace",
+            textTransform: "uppercase",
+          }}
+        >
+          Name
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoComplete="name"
+          placeholder="Your name (optional)"
+          style={{
+            width: "100%",
+            padding: "12px 14px",
+            background: "#111111",
+            border: "1px solid #1A1A1A",
+            borderRadius: 4,
+            color: "#FFFFFF",
+            fontSize: 14,
+            outline: "none",
+            boxSizing: "border-box",
+            transition: "border-color 0.15s",
+            marginBottom: 18,
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = CYAN)}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "#1A1A1A")}
+        />
+
         {/* Access code input */}
         <label
           style={{
@@ -235,7 +322,7 @@ export default function BetaAccessNDA() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading || !code || !accepted}
+          disabled={loading || !code || !accepted || !email.trim()}
           style={{
             width: "100%",
             marginTop: 20,
@@ -249,7 +336,7 @@ export default function BetaAccessNDA() {
             letterSpacing: "0.12em",
             fontFamily: "monospace",
             cursor: loading ? "wait" : "pointer",
-            opacity: loading || !code || !accepted ? 0.4 : 1,
+            opacity: loading || !code || !accepted || !email.trim() ? 0.4 : 1,
             transition: "opacity 0.15s",
           }}
         >
