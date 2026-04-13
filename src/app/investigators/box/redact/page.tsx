@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import VaultGate from "@/components/vault/VaultGate";
+import { useVaultSession } from "@/hooks/useVaultSession";
+import { encryptBuffer, encryptString } from "@/lib/vault/crypto.client";
 
 type Tool = "black" | "blur";
 
@@ -57,6 +60,9 @@ const OPSEC_ITEMS = [
 
 function RedactInner() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { keys } = useVaultSession();
+  const searchParams = useSearchParams();
+  const caseId = searchParams.get("caseId");
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [rects, setRects] = useState<Rect[]>([]);
   const [tool, setTool] = useState<Tool>("black");
@@ -67,6 +73,8 @@ function RedactInner() {
     null
   );
   const [opsec, setOpsec] = useState<Record<string, boolean>>({});
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
 
   function handleFile(file: File) {
     const reader = new FileReader();
@@ -129,8 +137,11 @@ function RedactInner() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Delete" || e.key === "Backspace") {
+      if (e.key === "Delete" || e.key === "Backspace" || e.key === "z" || e.key === "Z") {
         setRects((prev) => prev.slice(0, -1));
+      }
+      if (e.key === "Escape") {
+        setRects([]);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -188,15 +199,88 @@ function RedactInner() {
     }, "image/png");
   }
 
+  async function addToCaseFiles() {
+    if (!canvasRef.current || !keys || !caseId || uploadBusy) return;
+    setUploadBusy(true);
+    setUploadMsg(null);
+    try {
+      const canvas = canvasRef.current;
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/png")
+      );
+      if (!blob) throw new Error("blob_failed");
+      const arrayBuffer = await blob.arrayBuffer();
+      const encryptedBlob = await encryptBuffer(arrayBuffer, keys.fileKey);
+      const filename = `redacted-${Date.now()}.png`;
+      const { enc: filenameEnc, iv: filenameIv } = await encryptString(
+        filename,
+        keys.metaKey
+      );
+      const draftRes = await fetch(
+        `/api/investigators/cases/${caseId}/files/draft`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            filenameEnc,
+            filenameIv,
+            mimeType: "image/png",
+            sizeBytes: encryptedBlob.byteLength,
+          }),
+        }
+      );
+      if (!draftRes.ok) throw new Error("draft_failed");
+      const { fileId } = await draftRes.json();
+      const presignRes = await fetch(
+        `/api/investigators/cases/${caseId}/files/${fileId}/presign`
+      );
+      if (!presignRes.ok) throw new Error("presign_failed");
+      const { presignedUrl } = await presignRes.json();
+      const putRes = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "content-type": "image/png" },
+        body: encryptedBlob,
+      });
+      if (!putRes.ok) throw new Error("r2_put_failed");
+      await fetch(
+        `/api/investigators/cases/${caseId}/files/${fileId}/finalize`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            parseStatus: "MANUAL_REQUIRED",
+            entitiesFound: 0,
+            parseMode: "redacted_screenshot",
+          }),
+        }
+      );
+      setUploadMsg("Added to case files.");
+    } catch (err) {
+      console.error(err);
+      setUploadMsg("Upload failed.");
+    } finally {
+      setUploadBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto px-6 py-10">
-        <Link
-          href="/investigators/box"
-          className="text-xs text-white/50 hover:text-white"
-        >
-          ← Back to cases
-        </Link>
+        {caseId ? (
+          <Link
+            href={`/investigators/box/cases/${caseId}`}
+            className="text-xs text-white/50 hover:text-white"
+          >
+            ← Back to case
+          </Link>
+        ) : (
+          <Link
+            href="/investigators/box"
+            className="text-xs text-white/50 hover:text-white"
+          >
+            ← Back to cases
+          </Link>
+        )}
         <h1
           style={{
             fontSize: 28,
@@ -310,6 +394,37 @@ function RedactInner() {
               >
                 Download redacted image
               </button>
+              {caseId && (
+                <button
+                  onClick={addToCaseFiles}
+                  style={{ ...SECONDARY_BTN, height: 44 }}
+                  disabled={!image || uploadBusy}
+                  className="disabled:opacity-50"
+                >
+                  {uploadBusy ? "Adding…" : "Add to case files"}
+                </button>
+              )}
+              {uploadMsg && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  {uploadMsg}
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                fontSize: 10,
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 16,
+                lineHeight: 1.6,
+              }}
+            >
+              Z / Delete / Backspace = undo last · Escape = clear all
             </div>
 
             <div
@@ -364,7 +479,9 @@ function RedactInner() {
 export default function RedactPage() {
   return (
     <VaultGate>
-      <RedactInner />
+      <Suspense fallback={null}>
+        <RedactInner />
+      </Suspense>
     </VaultGate>
   );
 }

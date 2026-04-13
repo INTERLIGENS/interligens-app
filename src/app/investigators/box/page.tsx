@@ -77,6 +77,19 @@ const SECONDARY_BTN: React.CSSProperties = {
   paddingRight: 20,
 };
 
+type SearchResult = {
+  entityId: string;
+  type: string;
+  value: string;
+  label: string | null;
+  tigerScore: number | null;
+  caseId: string;
+  caseTitleEnc: string;
+  caseTitleIv: string;
+};
+
+type DecryptedSearchResult = SearchResult & { caseTitle: string };
+
 function DashboardInner() {
   const router = useRouter();
   const { keys, lock } = useVaultSession();
@@ -87,6 +100,68 @@ function DashboardInner() {
   const [newTags, setNewTags] = useState("");
   const [newTemplate, setNewTemplate] = useState<string>("blank");
   const [creating, setCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<DecryptedSearchResult[]>(
+    []
+  );
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  useEffect(() => {
+    if (!keys) return;
+    const q = searchQuery.trim();
+    if (q.length < 3) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    setSearchLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/investigators/entities/search?q=${encodeURIComponent(q)}`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const raw: SearchResult[] = data.results ?? [];
+        const decrypted: DecryptedSearchResult[] = [];
+        for (const r of raw) {
+          let caseTitle = "[unreadable]";
+          try {
+            caseTitle = await decryptString(
+              r.caseTitleEnc,
+              r.caseTitleIv,
+              keys.metaKey
+            );
+          } catch {}
+          decrypted.push({ ...r, caseTitle });
+        }
+        setSearchResults(decrypted);
+        setShowSearchResults(true);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery, keys]);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest?.("[data-global-search]")) {
+        setShowSearchResults(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowSearchResults(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
   useEffect(() => {
     if (!keys) return;
@@ -229,12 +304,147 @@ function DashboardInner() {
             color: "rgba(255,255,255,0.25)",
             letterSpacing: "0.04em",
             marginTop: 20,
-            marginBottom: 32,
+            marginBottom: 24,
           }}
         >
           Client-side encrypted&nbsp;&nbsp;·&nbsp;&nbsp;Your key never
           reaches our servers&nbsp;&nbsp;·&nbsp;&nbsp;Nothing is readable
           without your passphrase
+        </div>
+
+        <div
+          data-global-search
+          style={{ position: "relative", marginBottom: 32 }}
+        >
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (searchResults.length > 0) setShowSearchResults(true);
+            }}
+            placeholder="Search wallets, handles, domains across all cases"
+            style={{
+              width: "100%",
+              backgroundColor: "#0d0d0d",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 6,
+              padding: "12px 14px",
+              color: "#FFFFFF",
+              fontSize: 13,
+              outline: "none",
+            }}
+          />
+          {showSearchResults && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: 6,
+                backgroundColor: "#0a0a0a",
+                border: "1px solid rgba(255,107,0,0.2)",
+                borderRadius: 6,
+                maxHeight: 400,
+                overflowY: "auto",
+                zIndex: 50,
+                boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
+              }}
+            >
+              {searchLoading && (
+                <div
+                  style={{
+                    padding: 14,
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  Searching…
+                </div>
+              )}
+              {!searchLoading && searchResults.length === 0 && (
+                <div
+                  style={{
+                    padding: 14,
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  No entities found matching &apos;{searchQuery}&apos;
+                </div>
+              )}
+              {!searchLoading &&
+                searchResults.map((r) => (
+                  <button
+                    key={r.entityId}
+                    onClick={() => {
+                      router.push(`/investigators/box/cases/${r.caseId}`);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      backgroundColor: "transparent",
+                      border: "none",
+                      color: "#FFFFFF",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#FF6B00",
+                        textTransform: "uppercase",
+                        width: 60,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {r.type}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "ui-monospace, monospace",
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.9)",
+                        flex: 1,
+                        wordBreak: "break-all",
+                      }}
+                    >
+                      {r.value.length > 28
+                        ? r.value.slice(0, 28) + "…"
+                        : r.value}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.4)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {r.caseTitle}
+                    </span>
+                    {r.tigerScore != null && (
+                      <span
+                        style={{
+                          fontSize: 9,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          color: "#FF6B00",
+                          border: "1px solid rgba(255,107,0,0.4)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {r.tigerScore}
+                      </span>
+                    )}
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
 
         {showNew && (

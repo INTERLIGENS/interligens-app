@@ -4,8 +4,11 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import VaultGate from "@/components/vault/VaultGate";
 import EntityLaunchpad from "@/components/vault/EntityLaunchpad";
+import EntityAddForm from "@/components/vault/EntityAddForm";
 import CaseGraph from "@/components/vault/CaseGraph";
 import CaseTwin from "@/components/vault/CaseTwin";
+import CaseExport from "@/components/vault/CaseExport";
+import TimelineBuilder from "@/components/vault/TimelineBuilder";
 import NextBestStepToast, {
   buildNextBestStep,
   type NextBestStep,
@@ -130,9 +133,6 @@ function CaseInner({ caseId }: { caseId: string }) {
   const [files, setFiles] = useState<DecryptedFile[]>([]);
   const [notes, setNotes] = useState<DecryptedNote[]>([]);
   const [newNote, setNewNote] = useState("");
-  const [timeline, setTimeline] = useState<
-    Array<{ id: string; eventType: string; createdAt: string }>
-  >([]);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [toastStep, setToastStep] = useState<NextBestStep | null>(null);
 
@@ -202,10 +202,6 @@ function CaseInner({ caseId }: { caseId: string }) {
           }
           setNotes(dec);
         });
-    } else if (tab === "timeline") {
-      fetch(`/api/investigators/cases/${caseId}/timeline`)
-        .then((r) => r.json())
-        .then((d) => setTimeline(d.events ?? []));
     }
   }, [caseId, keys, tab]);
 
@@ -363,37 +359,6 @@ function CaseInner({ caseId }: { caseId: string }) {
     }
   }
 
-  function exportEntities() {
-    const blob = new Blob([JSON.stringify(entities, null, 2)], {
-      type: "application/json",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${title || "case"}-entities.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  async function exportFull() {
-    const full = {
-      title,
-      tags,
-      entities,
-      notes: notes.map((n) => ({
-        content: n.content,
-        createdAt: n.createdAt,
-      })),
-    };
-    const blob = new Blob([JSON.stringify(full, null, 2)], {
-      type: "application/json",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${title || "case"}-full.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
   if (!detail) {
     return (
       <main className="min-h-screen bg-black text-white">
@@ -431,13 +396,14 @@ function CaseInner({ caseId }: { caseId: string }) {
         <div className="flex items-start justify-between mt-2">
           <h1 className="text-3xl font-semibold">{title}</h1>
           <Link
-            href="/investigators/box/redact"
+            href={`/investigators/box/redact?caseId=${caseId}`}
+            className="hover:text-white"
             style={{
-              fontSize: 12,
-              color: "rgba(255,255,255,0.6)",
+              fontSize: 13,
+              color: "rgba(255,255,255,0.5)",
               border: "1px solid rgba(255,255,255,0.12)",
               borderRadius: 6,
-              padding: "8px 14px",
+              padding: "8px 16px",
               textDecoration: "none",
             }}
           >
@@ -523,6 +489,19 @@ function CaseInner({ caseId }: { caseId: string }) {
 
         {tab === "entities" && (
           <div>
+            <EntityAddForm
+              caseId={caseId}
+              onAdded={(added) => {
+                fetch(`/api/investigators/cases/${caseId}/entities`)
+                  .then((r) => r.json())
+                  .then((d) => setEntities(d.entities ?? []));
+                setEnrichment({});
+                if (added) {
+                  const step = buildNextBestStep(added.type, added.value);
+                  if (step) setToastStep(step);
+                }
+              }}
+            />
             <div className="text-white/60 text-sm mb-4">
               {entities.length} entities
               {enrichLoading ? " · loading enrichment…" : ""}
@@ -640,7 +619,6 @@ function CaseInner({ caseId }: { caseId: string }) {
             caseId={caseId}
             entities={entities}
             notes={notes.map((n) => ({ id: n.id, content: n.content }))}
-            timelineEvents={timeline.length}
             caseTemplate={detail.caseTemplate}
             updatedAt={detail.updatedAt}
             enrichment={enrichment}
@@ -721,46 +699,21 @@ function CaseInner({ caseId }: { caseId: string }) {
         {tab === "graph" && <CaseGraph entities={entities} />}
 
         {tab === "timeline" && (
-          <div className="space-y-1">
-            {timeline.map((ev) => (
-              <div
-                key={ev.id}
-                className="border border-white/10 rounded px-3 py-2 text-sm flex justify-between"
-              >
-                <span className="text-white/80">{ev.eventType}</span>
-                <span className="text-white/40 text-xs">
-                  {new Date(ev.createdAt).toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
+          <TimelineBuilder caseId={caseId} entities={entities} />
         )}
 
         {tab === "export" && (
-          <div className="space-y-3">
-            <button
-              onClick={exportEntities}
-              className="block bg-[#FF6B00] text-white px-4 py-2 rounded text-sm"
-            >
-              Export entities (JSON)
-            </button>
-            <button
-              onClick={exportFull}
-              className="block border border-white/20 text-white px-4 py-2 rounded text-sm"
-            >
-              Export full case (JSON)
-            </button>
-            <button
-              disabled
-              title="PDF export — coming soon"
-              className="block border border-white/10 text-white/40 px-4 py-2 rounded text-sm cursor-not-allowed"
-            >
-              Export PDF — coming soon
-            </button>
-            <div className="text-white/40 text-xs mt-4">
-              Raw files not included. Download and decrypt them individually.
-            </div>
-          </div>
+          <CaseExport
+            caseId={caseId}
+            title={title}
+            tags={tags}
+            entities={entities}
+            notes={notes.map((n) => ({
+              id: n.id,
+              content: n.content,
+              createdAt: n.createdAt,
+            }))}
+          />
         )}
       </div>
       <NextBestStepToast

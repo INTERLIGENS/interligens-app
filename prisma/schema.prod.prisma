@@ -1446,11 +1446,13 @@ model VaultCase {
   updatedAt   DateTime        @updatedAt
   archivedAt  DateTime?
 
-  entities   VaultCaseEntity[]
-  files      VaultCaseFile[]
-  notes      VaultCaseNote[]
-  timeline   VaultCaseTimeline[]
-  hypotheses VaultHypothesis[]
+  entities          VaultCaseEntity[]
+  files             VaultCaseFile[]
+  notes             VaultCaseNote[]
+  timeline          VaultCaseTimeline[]
+  hypotheses        VaultHypothesis[]
+  timelineEvents    VaultTimelineEvent[]
+  publishCandidates VaultPublishCandidate[]
 
   @@index([workspaceId])
   @@index([status])
@@ -1476,6 +1478,36 @@ model VaultHypothesis {
   updatedAt           DateTime              @updatedAt
 
   @@index([caseId])
+}
+
+model VaultTimelineEvent {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  eventDate   DateTime
+  entityIds   String[]
+  eventType   String    @default("MANUAL")
+  createdAt   DateTime  @default(now())
+
+  @@index([caseId])
+  @@index([eventDate])
+}
+
+model VaultPublishCandidate {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entityIds   String[]
+  summary     String
+  status      String    @default("PENDING")
+  submittedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+  reviewNote  String?
+
+  @@index([caseId])
+  @@index([status])
 }
 
 model VaultCaseEntity {
