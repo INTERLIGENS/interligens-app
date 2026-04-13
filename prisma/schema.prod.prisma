@@ -4,8 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
@@ -356,86 +356,86 @@ model IntakeRecord {
 }
 
 model KolProfile {
-  id              String        @id @default(cuid())
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  handle          String        @unique
-  platform        String        @default("x")
-  displayName     String?
-  label           String        @default("unknown")
-  riskFlag        String        @default("unverified")
-  sourceIntakeIds String        @default("[]")
-  confidence      String        @default("low")
-  status          String        @default("active")
-  bio             String?
-  followerCount   Int?
-  notes           String?
-  pricePerPost    Float?
-  tags            String        @default("[]")
-  tier            String?
-  rugCount        Int           @default(0)
-  totalScammed    Float?
-  verified        Boolean       @default(false)
-  evmAddress      String?
-  exitDate        DateTime?
-  exitNarrative   String?
-  exitPostUrl     String?
-  totalDocumented Float?        @default(0)
-  last_reviewed_at DateTime?
-  version_note     String?
-  publishable     Boolean       @default(false)
-  publishStatus           String  @default("draft")
-  internalNote            String?
-  walletAttributionStatus String  @default("none")
-  evidenceStatus          String  @default("none")
-  proceedsStatus          String  @default("none")
-  editorialStatus         String  @default("pending")
-  summary                     String?
-  observedBehaviorSummary     String?
-  documentedFacts             String?
-  partialFacts                String?
-  behaviorFlags               String  @default("[]")
-  evidenceDepth               String  @default("none")
-  completenessLevel           String  @default("incomplete")
-  proceedsCoverage            String  @default("none")
-  walletAttributionStrength   String  @default("none")
-  profileStrength             String  @default("minimal")
-  lastEnrichedAt              DateTime?
-  aliases    KolAlias[]
-  tokenLinks KolTokenLink[]
-  cashoutCache    Json?
-  kolCases        KolCase[]
-  evidences       KolEvidence[]
-  kolWallets      KolWallet[]
-  laundryTrails   LaundryTrail[]
-  promotionMentions   KolPromotionMention[]
-  tokenInvolvements   KolTokenInvolvement[]
+  id                        String                @id @default(cuid())
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  handle                    String                @unique
+  platform                  String                @default("x")
+  displayName               String?
+  label                     String                @default("unknown")
+  riskFlag                  String                @default("unverified")
+  sourceIntakeIds           String                @default("[]")
+  confidence                String                @default("low")
+  status                    String                @default("active")
+  bio                       String?
+  followerCount             Int?
+  notes                     String?
+  pricePerPost              Float?
+  tags                      String                @default("[]")
+  tier                      String?
+  rugCount                  Int                   @default(0)
+  totalScammed              Float?
+  verified                  Boolean               @default(false)
+  evmAddress                String?
+  exitDate                  DateTime?
+  exitNarrative             String?
+  exitPostUrl               String?
+  totalDocumented           Float?                @default(0)
+  last_reviewed_at          DateTime?
+  version_note              String?
+  publishable               Boolean               @default(false)
+  publishStatus             String                @default("draft")
+  internalNote              String?
+  walletAttributionStatus   String                @default("none")
+  evidenceStatus            String                @default("none")
+  proceedsStatus            String                @default("none")
+  editorialStatus           String                @default("pending")
+  summary                   String?
+  observedBehaviorSummary   String?
+  documentedFacts           String?
+  partialFacts              String?
+  behaviorFlags             String                @default("[]")
+  evidenceDepth             String                @default("none")
+  completenessLevel         String                @default("incomplete")
+  proceedsCoverage          String                @default("none")
+  walletAttributionStrength String                @default("none")
+  profileStrength           String                @default("minimal")
+  lastEnrichedAt            DateTime?
+  aliases                   KolAlias[]
+  tokenLinks                KolTokenLink[]
+  cashoutCache              Json?
+  kolCases                  KolCase[]
+  evidences                 KolEvidence[]
+  kolWallets                KolWallet[]
+  laundryTrails             LaundryTrail[]
+  promotionMentions         KolPromotionMention[]
+  tokenInvolvements         KolTokenInvolvement[]
 
   @@map("KolProfile")
 }
 
 model KolWallet {
-  id          String     @id @default(cuid())
-  createdAt   DateTime   @default(now())
-  kolHandle   String
-  address     String
-  chain       String     @default("SOL")
-  label       String?
-  status      String     @default("active")
-  claimType   String?    @default("source_attributed")
-  sourceLabel String?
-  sourceUrl   String?
-  confidence        String  @default("medium")
+  id                String                @id @default(cuid())
+  createdAt         DateTime              @default(now())
+  kolHandle         String
+  address           String
+  chain             String                @default("SOL")
+  label             String?
+  status            String                @default("active")
+  claimType         String?               @default("source_attributed")
+  sourceLabel       String?
+  sourceUrl         String?
+  confidence        String                @default("medium")
   attributionSource String?
   attributionNote   String?
-  isPubliclyUsable  Boolean  @default(false)
-  attributionStatus String   @default("review")
+  isPubliclyUsable  Boolean               @default(false)
+  attributionStatus String                @default("review")
   discoveredAt      DateTime?
-  kol         KolProfile @relation(fields: [kolHandle], references: [handle])
-  fundingEdgesFrom    WalletFundingEdge[]    @relation("FundingEdgeFrom")
-  fundingEdgesTo      WalletFundingEdge[]    @relation("FundingEdgeTo")
-  promotionMentions   KolPromotionMention[]
-  tokenInvolvements   KolTokenInvolvement[]
+  kol               KolProfile            @relation(fields: [kolHandle], references: [handle])
+  fundingEdgesFrom  WalletFundingEdge[]   @relation("FundingEdgeFrom")
+  fundingEdgesTo    WalletFundingEdge[]   @relation("FundingEdgeTo")
+  promotionMentions KolPromotionMention[]
+  tokenInvolvements KolTokenInvolvement[]
 }
 
 model KolCase {
@@ -684,8 +684,8 @@ model WatchScan {
 
 model InvestigatorAccess {
   id             String    @id @default(cuid())
-  label          String                          // e.g. "BA-01", "advisor-gordon"
-  accessCodeHash String                          // SHA-256 hex
+  label          String // e.g. "BA-01", "advisor-gordon"
+  accessCodeHash String // SHA-256 hex
   isActive       Boolean   @default(true)
   expiresAt      DateTime?
   createdAt      DateTime  @default(now())
@@ -693,8 +693,11 @@ model InvestigatorAccess {
   lastUsedAt     DateTime?
   notes          String?
 
-  sessions  InvestigatorSession[]
-  auditLogs InvestigatorAuditLog[]
+  sessions     InvestigatorSession[]
+  auditLogs    InvestigatorAuditLog[]
+  vaultProfile VaultProfile?
+  vaultAudits  VaultAuditLog[]
+  vaultNda     VaultNdaAcceptance?
 
   @@index([accessCodeHash])
 }
@@ -702,7 +705,7 @@ model InvestigatorAccess {
 model InvestigatorSession {
   id                   String    @id @default(cuid())
   investigatorAccessId String
-  sessionTokenHash     String                    // SHA-256 of opaque session token
+  sessionTokenHash     String // SHA-256 of opaque session token
   createdAt            DateTime  @default(now())
   expiresAt            DateTime
   lastSeenAt           DateTime  @default(now())
@@ -717,11 +720,11 @@ model InvestigatorSession {
 }
 
 model InvestigatorAuditLog {
-  id                   String    @id @default(cuid())
+  id                   String   @id @default(cuid())
   investigatorAccessId String?
-  eventType            String                    // login_success, login_fail, logout, access_denied
+  eventType            String // login_success, login_fail, logout, access_denied
   route                String?
-  timestamp            DateTime  @default(now())
+  timestamp            DateTime @default(now())
   ipHash               String?
   userAgent            String?
   metadata             Json?
@@ -739,35 +742,35 @@ model InvestigatorAuditLog {
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum IntelEntityType {
-  ADDRESS     // EOA / wallet (EVM or Solana)
-  CONTRACT    // Smart contract address
-  TOKEN_CA    // Token contract (launch / mint address)
-  DOMAIN      // Web domain or subdomain (lowercased)
-  PROJECT     // Named project — admin-seeded only
-  PERSON      // INTERNAL_ONLY — never retail-visible, never scores
+  ADDRESS // EOA / wallet (EVM or Solana)
+  CONTRACT // Smart contract address
+  TOKEN_CA // Token contract (launch / mint address)
+  DOMAIN // Web domain or subdomain (lowercased)
+  PROJECT // Named project — admin-seeded only
+  PERSON // INTERNAL_ONLY — never retail-visible, never scores
 }
 
 enum IntelRiskClass {
-  SANCTION    // Statutory action: OFAC / AMF / FCA — hard caps apply
-  HIGH        // Confirmed threat: multi-source or strong technical signal
-  MEDIUM      // Flagged: single source, not corroborated
-  LOW         // Informational only
-  UNKNOWN     // Ingested, awaiting classification
+  SANCTION // Statutory action: OFAC / AMF / FCA — hard caps apply
+  HIGH // Confirmed threat: multi-source or strong technical signal
+  MEDIUM // Flagged: single source, not corroborated
+  LOW // Informational only
+  UNKNOWN // Ingested, awaiting classification
 }
 
 enum MatchBasis {
-  EXACT_ADDRESS     // Checksummed address exact match
-  EXACT_CONTRACT    // Contract address exact match
-  EXACT_DOMAIN      // Lowercased domain exact match
-  EXACT_TOKEN_CA    // Token contract address exact match
-  INFERRED_LINKAGE  // Phase 3+ only. Never scores at beta.
-  FUZZY_ALIAS       // Internal only. Never scores at beta.
+  EXACT_ADDRESS // Checksummed address exact match
+  EXACT_CONTRACT // Contract address exact match
+  EXACT_DOMAIN // Lowercased domain exact match
+  EXACT_TOKEN_CA // Token contract address exact match
+  INFERRED_LINKAGE // Phase 3+ only. Never scores at beta.
+  FUZZY_ALIAS // Internal only. Never scores at beta.
 }
 
 enum IntelDisplaySafety {
-  INTERNAL_ONLY     // Admin / analyst only. API suppresses for public routes.
-  ANALYST_REVIEWED  // Human-reviewed. Not yet cleared for scanner.
-  RETAIL_SAFE       // Cleared. Required for scanner display.
+  INTERNAL_ONLY // Admin / analyst only. API suppresses for public routes.
+  ANALYST_REVIEWED // Human-reviewed. Not yet cleared for scanner.
+  RETAIL_SAFE // Cleared. Required for scanner display.
 }
 
 enum IntelCaseType {
@@ -807,7 +810,7 @@ enum EvidenceType {
   PROMOTION
   DISCLAIMER
   CONTRACT_CLAIM
-  IDENTITY_CLAIM     // INTERNAL_ONLY always
+  IDENTITY_CLAIM // INTERNAL_ONLY always
   PRICE_CHART
   WALLET_MOVEMENT
   GENERAL
@@ -816,25 +819,25 @@ enum EvidenceType {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model CanonicalEntity {
-  id              String             @id @default(cuid())
-  type            IntelEntityType
+  id    String          @id @default(cuid())
+  type  IntelEntityType
   // Normalized canonical value:
   // ADDRESS / CONTRACT / TOKEN_CA → lowercase hex (EVM) or raw base58 (Solana)
   // DOMAIN → stripped lowercase, no trailing slash, no protocol
-  value           String
+  value String
 
-  chain           String?            // "ethereum" | "solana" | "bsc" | null
+  chain String? // "ethereum" | "solana" | "bsc" | null
 
   // Risk summary — derived from strongest active SourceObservation
   // Updated on every ingest pass. Never manually set.
-  riskClass      IntelRiskClass     @default(UNKNOWN)
-  strongestSource String?           // sourceSlug driving current riskClass
-  sourceCount     Int               @default(1)
-  firstSeenAt    DateTime
-  lastSeenAt     DateTime
+  riskClass       IntelRiskClass @default(UNKNOWN)
+  strongestSource String? // sourceSlug driving current riskClass
+  sourceCount     Int            @default(1)
+  firstSeenAt     DateTime
+  lastSeenAt      DateTime
 
   // Dedup index: sha256(type + ":" + normalizedValue) — hex string
-  dedupKey       String             @unique
+  dedupKey String @unique
 
   // Display gate — enforced at API level, not just UI
   displaySafety IntelDisplaySafety @default(INTERNAL_ONLY)
@@ -842,15 +845,15 @@ model CanonicalEntity {
   reviewedAt    DateTime?
 
   // Active flag — OFAC removals set isActive=false + deactivatedAt
-  isActive       Boolean            @default(true)
+  isActive      Boolean   @default(true)
   deactivatedAt DateTime?
 
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  observations  SourceObservation[]
-  cases          EntityCase[]
-  evidence       ArchivedEvidence[]
+  observations SourceObservation[]
+  cases        EntityCase[]
+  evidence     ArchivedEvidence[]
 
   @@unique([type, value])
   @@index([value])
@@ -863,37 +866,37 @@ model CanonicalEntity {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model SourceObservation {
-  id               String             @id @default(cuid())
-  entityId         String
-  entity           CanonicalEntity    @relation(fields: [entityId], references: [id])
+  id       String          @id @default(cuid())
+  entityId String
+  entity   CanonicalEntity @relation(fields: [entityId], references: [id])
 
   // Source identity
-  sourceSlug      String             // "ofac"|"amf"|"fca"|"scamsniffer"|"forta"|"goplus"
-  sourceTier      Int               // 1 = regulatory, 2 = technical
-  externalId      String?           // Source system record ID
-  externalUrl     String?           // Linkable public record — shown in drawer
+  sourceSlug  String // "ofac"|"amf"|"fca"|"scamsniffer"|"forta"|"goplus"
+  sourceTier  Int // 1 = regulatory, 2 = technical
+  externalId  String? // Source system record ID
+  externalUrl String? // Linkable public record — shown in drawer
 
   // Classification
-  riskClass       IntelRiskClass
-  label           String?           // Source's own label: "phishing"|"honeypot"|"rug_pull"
-  matchBasis      MatchBasis
+  riskClass  IntelRiskClass
+  label      String? // Source's own label: "phishing"|"honeypot"|"rug_pull"
+  matchBasis MatchBasis
 
   // Regulatory fields (Tier 1 only)
-  jurisdiction   String?           // "US"|"FR"|"UK"
-  listType        String?           // "SDN"|"AMF_BLACKLIST"|"FCA_WARNING"
-  listIsActive   Boolean           @default(true)
-  removedAt       DateTime?         // Set when removed from official list
-  lastVerifiedAt DateTime?         // Last successful ingest confirming still active
+  jurisdiction   String? // "US"|"FR"|"UK"
+  listType       String? // "SDN"|"AMF_BLACKLIST"|"FCA_WARNING"
+  listIsActive   Boolean   @default(true)
+  removedAt      DateTime? // Set when removed from official list
+  lastVerifiedAt DateTime? // Last successful ingest confirming still active
 
   // Community fields (Tier 3 — Chainabuse, post-beta only)
-  reportCount    Int?
+  reportCount Int?
 
   // Timestamps
-  ingestedAt     DateTime          @default(now())
-  observedAt     DateTime?         // Date of original event/listing (not our ingest)
+  ingestedAt DateTime  @default(now())
+  observedAt DateTime? // Date of original event/listing (not our ingest)
 
   // Raw payload — keep for audit + debugging
-  meta            Json?
+  meta Json?
 
   // Beta constraint: one active observation per (entity, source)
   // On re-ingest: UPDATE in place. Historical versioning deferred post-beta.
@@ -907,26 +910,26 @@ model SourceObservation {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model CaseRecord {
-  id            String              @id @default(cuid())
+  id            String             @id @default(cuid())
   title         String
-  caseType     IntelCaseType
-  status        IntelCaseStatus     @default(ACTIVE)
+  caseType      IntelCaseType
+  status        IntelCaseStatus    @default(ACTIVE)
   // Max 280 chars. Plain language. No legal determinations.
   summary       String?
-  sourceSlug   String              // Primary source driving this case
-  externalRef  String?            // DOJ/SEC case number, FCA action ref, etc.
-  externalUrl  String?
-  reportedAt   DateTime?
-  resolvedAt   DateTime?
+  sourceSlug    String // Primary source driving this case
+  externalRef   String? // DOJ/SEC case number, FCA action ref, etc.
+  externalUrl   String?
+  reportedAt    DateTime?
+  resolvedAt    DateTime?
   displaySafety IntelDisplaySafety @default(INTERNAL_ONLY)
-  reviewedBy   String?
-  reviewedAt   DateTime?
+  reviewedBy    String?
+  reviewedAt    DateTime?
   meta          Json?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
-  entities     EntityCase[]
-  evidence     ArchivedEvidence[]
+  entities EntityCase[]
+  evidence ArchivedEvidence[]
 
   @@index([caseType, status])
   @@index([displaySafety])
@@ -942,7 +945,7 @@ model EntityCase {
   role       String?
   matchBasis MatchBasis
   entity     CanonicalEntity @relation(fields: [entityId], references: [id])
-  case       CaseRecord     @relation(fields: [caseId], references: [id])
+  case       CaseRecord      @relation(fields: [caseId], references: [id])
 
   @@id([entityId, caseId])
   @@map("intel_entity_cases")
@@ -951,20 +954,20 @@ model EntityCase {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model IntelIngestionBatch {
-  id              String    @id @default(cuid())
-  sourceSlug      String
-  startedAt       DateTime
+  id             String    @id @default(cuid())
+  sourceSlug     String
+  startedAt      DateTime
   completedAt    DateTime?
   // "running"|"success"|"partial"|"failed"
-  status          String
+  status         String
   recordsFetched Int?
   recordsNew     Int?
   recordsUpdated Int?
-  recordsRemoved Int?      // Critical: track OFAC removals explicitly
+  recordsRemoved Int? // Critical: track OFAC removals explicitly
   errorMessage   String?
   // "cron"|"manual"|"admin:{handle}"
   triggeredBy    String?
-  createdAt       DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   @@index([sourceSlug, startedAt])
   @@map("intel_ingestion_batches")
@@ -973,18 +976,18 @@ model IntelIngestionBatch {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model IntelAuditLog {
-  id          String    @id @default(cuid())
+  id         String   @id @default(cuid())
   // "system"|"cron:{slug}"|"admin:{handle}"
-  actor       String
+  actor      String
   // "entity.created"|"entity.deactivated"|"entity.reviewed"
   // "case.created"|"case.published"|"evidence.added"
   // "dispute.filed"|"match.queried"|"ingest.completed"
-  action      String
+  action     String
   // "CanonicalEntity"|"CaseRecord"|"ArchivedEvidence"|"IntelIngestionBatch"
   targetType String?
   targetId   String?
-  detail      Json?
-  createdAt  DateTime  @default(now())
+  detail     Json?
+  createdAt  DateTime @default(now())
 
   @@index([actor, createdAt])
   @@index([action, createdAt])
@@ -997,31 +1000,31 @@ model IntelAuditLog {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model ArchivedEvidence {
-  id               String              @id @default(cuid())
-  originalUrl     String?
-  archiveUrl      String?
+  id               String             @id @default(cuid())
+  originalUrl      String?
+  archiveUrl       String?
   archiveTimestamp DateTime?
   platform         ArchivePlatform
-  captureType     CaptureType
-  evidenceType    EvidenceType
+  captureType      CaptureType
+  evidenceType     EvidenceType
   // @handle or username — stored but never shown to retail
-  authorHandle    String?
+  authorHandle     String?
   // Analyst note on what this evidence demonstrates
   description      String?
   // SHA-256 of captured file content for integrity
-  sha256Hash      String?
+  sha256Hash       String?
   entityId         String?
   entity           CanonicalEntity?   @relation(fields: [entityId], references: [id])
-  caseId          String?
-  case            CaseRecord?        @relation(fields: [caseId], references: [id])
+  caseId           String?
+  case             CaseRecord?        @relation(fields: [caseId], references: [id])
   // displaySafety NEVER auto-set to RETAIL_SAFE — evidence is analyst-only
-  displaySafety   IntelDisplaySafety @default(INTERNAL_ONLY)
-  reviewedBy      String?
-  reviewedAt      DateTime?
+  displaySafety    IntelDisplaySafety @default(INTERNAL_ONLY)
+  reviewedBy       String?
+  reviewedAt       DateTime?
   // Admin handle who seeded this row
-  addedBy         String
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  addedBy          String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   @@index([caseId])
   @@index([entityId])
@@ -1089,7 +1092,6 @@ model LaundrySignal {
   trail     LaundryTrail   @relation(fields: [trailId], references: [id], onDelete: Cascade)
 }
 
-
 model KolAlias {
   id        String     @id @default(cuid())
   kolHandle String
@@ -1103,60 +1105,60 @@ model KolAlias {
 }
 
 model KolTokenLink {
-  id              String     @id @default(cuid())
-  kolHandle       String
-  contractAddress String
-  chain           String
-  tokenSymbol     String?
-  role            String     @default("promoter")
-  note            String?
+  id                  String     @id @default(cuid())
+  kolHandle           String
+  contractAddress     String
+  chain               String
+  tokenSymbol         String?
+  role                String     @default("promoter")
+  note                String?
   caseId              String?
-  documentationStatus String   @default("partial")
+  documentationStatus String     @default("partial")
   attributionNote     String?
-  createdAt       DateTime   @default(now())
-  kol             KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+  createdAt           DateTime   @default(now())
+  kol                 KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
 
   @@unique([kolHandle, contractAddress, chain])
   @@index([kolHandle])
 }
 
 model EvidenceSnapshot {
-  id            String    @id @default(cuid())
-  relationType  String
-  relationKey   String
-  snapshotType  String
-  imageUrl      String?
-  title         String
-  caption       String
-  sourceLabel   String?
-  sourceUrl     String?
-  observedAt    DateTime?
-  displayOrder  Int       @default(0)
-  isPublic      Boolean   @default(false)
-  reviewStatus  String    @default("pending")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  relationType String
+  relationKey  String
+  snapshotType String
+  imageUrl     String?
+  title        String
+  caption      String
+  sourceLabel  String?
+  sourceUrl    String?
+  observedAt   DateTime?
+  displayOrder Int       @default(0)
+  isPublic     Boolean   @default(false)
+  reviewStatus String    @default("pending")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([relationType, relationKey])
   @@index([isPublic, reviewStatus])
 }
 
 model TransparencySubmission {
-  id               String   @id @default(cuid())
+  id               String               @id @default(cuid())
   submittedHandle  String?
   projectName      String?
-  platform         String?  @default("X")
+  platform         String?              @default("X")
   submitterContact String?
   notes            String?
-  status           String   @default("submitted")
-  reviewStatus     String   @default("pending")
-  publicVisibility String   @default("internal_only")
+  status           String               @default("submitted")
+  reviewStatus     String               @default("pending")
+  publicVisibility String               @default("internal_only")
   reviewedBy       String?
   reviewedAt       DateTime?
   decisionNote     String?
   publicNote       String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
   wallets          TransparencyWallet[]
 
   @@index([status])
@@ -1164,17 +1166,17 @@ model TransparencySubmission {
 }
 
 model TransparencyWallet {
-  id               String   @id @default(cuid())
-  submissionId     String
-  chain            String
-  address          String
-  label            String?
-  ownershipClaim   String   @default("self_submitted")
-  note             String?
-  kolHandle        String?
-  isPublic         Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  submission       TransparencySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  id             String                 @id @default(cuid())
+  submissionId   String
+  chain          String
+  address        String
+  label          String?
+  ownershipClaim String                 @default("self_submitted")
+  note           String?
+  kolHandle      String?
+  isPublic       Boolean                @default(false)
+  createdAt      DateTime               @default(now())
+  submission     TransparencySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submissionId])
   @@index([chain, address])
@@ -1183,32 +1185,32 @@ model TransparencyWallet {
 // ─── ASK INTERLIGENS — AUDIT TRAIL ─────────────────────────────────────────
 
 model AskLog {
-  id              String   @id @default(cuid())
-  createdAt       DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
   // Session / scan context
-  sessionId       String?            // IP hash or investigator session — nullable at beta
-  scanId          String?            // address being scanned
-  locale          String   @default("en")
-  source          String   @default("web") // "web" | "mobile"
+  sessionId String? // IP hash or investigator session — nullable at beta
+  scanId    String? // address being scanned
+  locale    String  @default("en")
+  source    String  @default("web") // "web" | "mobile"
 
   // Question / answer
   userQuestion    String
   assistantAnswer String
 
   // Classification
-  answerType      String   @default("constrained_generation") // deterministic | constrained_generation | refusal
-  mode            String   @default("deterministic")          // deterministic | exploratory
-  confidenceTier  String   @default("medium")                 // high | medium | low
+  answerType     String @default("constrained_generation") // deterministic | constrained_generation | refusal
+  mode           String @default("deterministic") // deterministic | exploratory
+  confidenceTier String @default("medium") // high | medium | low
 
   // Sources
-  sourcesUsed     Json     @default("[]")  // array of { type, key, present }
-  sourceCount     Int      @default(0)
+  sourcesUsed Json @default("[]") // array of { type, key, present }
+  sourceCount Int  @default(0)
 
   // Performance / debug
-  modelName       String?
-  latencyMs       Int?
-  metadata        Json?
+  modelName String?
+  latencyMs Int?
+  metadata  Json?
 
   @@index([createdAt])
   @@index([scanId])
@@ -1238,8 +1240,8 @@ model WalletFundingEdge {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  fromWallet KolWallet? @relation("FundingEdgeFrom", fields: [fromWalletId], references: [id], onDelete: SetNull)
-  toWallet   KolWallet  @relation("FundingEdgeTo",   fields: [toWalletId],   references: [id], onDelete: Cascade)
+  fromWallet        KolWallet?            @relation("FundingEdgeFrom", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWallet          KolWallet             @relation("FundingEdgeTo", fields: [toWalletId], references: [id], onDelete: Cascade)
   tokenInvolvements KolTokenInvolvement[]
 
   @@index([toWalletId, observedAt])
@@ -1264,7 +1266,7 @@ model KolPromotionMention {
   updatedAt      DateTime @updatedAt
 
   kol    KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
-  wallet KolWallet? @relation(fields: [walletId],  references: [id],     onDelete: SetNull)
+  wallet KolWallet? @relation(fields: [walletId], references: [id], onDelete: SetNull)
 
   @@unique([sourcePlatform, sourcePostId])
   @@index([kolHandle, postedAt])
@@ -1272,20 +1274,20 @@ model KolPromotionMention {
 }
 
 model TokenLaunchMetric {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   chain              String
   tokenMint          String
   launchAt           DateTime?
-  totalSupply        Decimal? @db.Decimal(38, 0)
-  top3Pct            Decimal? @db.Decimal(7, 4)
-  top10Pct           Decimal? @db.Decimal(7, 4)
+  totalSupply        Decimal?  @db.Decimal(38, 0)
+  top3Pct            Decimal?  @db.Decimal(7, 4)
+  top10Pct           Decimal?  @db.Decimal(7, 4)
   holderCount        Int?
   concentrationScore Int?
   source             String
-  computedAt         DateTime @default(now())
+  computedAt         DateTime  @default(now())
   raw                Json?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   tokenInvolvements KolTokenInvolvement[]
 
@@ -1294,7 +1296,7 @@ model TokenLaunchMetric {
 }
 
 model KolTokenInvolvement {
-  id                    String   @id @default(cuid())
+  id                    String    @id @default(cuid())
   kolHandle             String
   walletId              String?
   chain                 String
@@ -1303,24 +1305,322 @@ model KolTokenInvolvement {
   firstBuyAt            DateTime?
   firstSellAt           DateTime?
   avgDumpDelayMinutes   Int?
-  soldPct               Decimal? @db.Decimal(7, 4)
-  proceedsUsd           Decimal? @db.Decimal(20, 2)
-  retailLossEstimateUsd Decimal? @db.Decimal(20, 2)
-  isPromoted            Boolean  @default(false)
-  isFundedByProject     Boolean  @default(false)
-  isFrontRun            Boolean  @default(false)
+  soldPct               Decimal?  @db.Decimal(7, 4)
+  proceedsUsd           Decimal?  @db.Decimal(20, 2)
+  retailLossEstimateUsd Decimal?  @db.Decimal(20, 2)
+  isPromoted            Boolean   @default(false)
+  isFundedByProject     Boolean   @default(false)
+  isFrontRun            Boolean   @default(false)
   projectFundingEdgeId  String?
   launchMetricId        String?
   lastComputedAt        DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  kol                KolProfile         @relation(fields: [kolHandle],            references: [handle], onDelete: Cascade)
-  wallet             KolWallet?         @relation(fields: [walletId],             references: [id],     onDelete: SetNull)
-  projectFundingEdge WalletFundingEdge? @relation(fields: [projectFundingEdgeId], references: [id],     onDelete: SetNull)
-  launchMetric       TokenLaunchMetric? @relation(fields: [launchMetricId],       references: [id],     onDelete: SetNull)
+  kol                KolProfile         @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+  wallet             KolWallet?         @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  projectFundingEdge WalletFundingEdge? @relation(fields: [projectFundingEdgeId], references: [id], onDelete: SetNull)
+  launchMetric       TokenLaunchMetric? @relation(fields: [launchMetricId], references: [id], onDelete: SetNull)
 
   @@unique([kolHandle, chain, tokenMint])
   @@index([chain, tokenMint])
   @@index([kolHandle, lastComputedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INVESTIGATORS VAULT — Case Workspace (client-side encrypted)
+// Naming: Vault* prefix to avoid collisions with existing CaseFile /
+// InvestigatorAuditLog models. Auth pivots on InvestigatorAccess (existing).
+// All content fields are opaque ciphertext produced client-side.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum VaultVisibility {
+  PRIVATE
+  SEMI_PUBLIC
+  PUBLIC
+}
+
+enum VaultCaseStatus {
+  PRIVATE
+  SHARED_INTERNAL
+  SUBMITTED
+  ARCHIVED
+}
+
+enum VaultEntityType {
+  WALLET
+  TX_HASH
+  HANDLE
+  URL
+  DOMAIN
+  ALIAS
+  EMAIL
+  IP
+  CONTRACT
+  OTHER
+}
+
+enum VaultParseStatus {
+  PENDING
+  PARSED
+  PARTIAL
+  MANUAL_REQUIRED
+  FAILED
+}
+
+model VaultInvite {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  email     String
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+}
+
+model VaultProfile {
+  id                   String             @id @default(cuid())
+  investigatorAccessId String             @unique
+  access               InvestigatorAccess @relation(fields: [investigatorAccessId], references: [id])
+  handle               String             @unique
+  displayName          String?
+  bio                  String?
+  avatarUrl            String?
+  languages            String[]
+  specialties          String[]
+  coverageZones        String[]
+  websiteUrl           String?
+  twitterHandle        String?
+  telegramHandle       String?
+  contactEmail         String?
+  visibility           VaultVisibility    @default(PRIVATE)
+  isFeatured           Boolean            @default(false)
+  isVerified           Boolean            @default(false)
+  badges               String[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  nda       VaultNdaAcceptance?
+  workspace VaultWorkspace?
+  audits    VaultAuditLog[]
+}
+
+model VaultNdaAcceptance {
+  id                   String             @id @default(cuid())
+  investigatorAccessId String             @unique
+  access               InvestigatorAccess @relation(fields: [investigatorAccessId], references: [id])
+  profileId            String?            @unique
+  profile              VaultProfile?      @relation(fields: [profileId], references: [id])
+  ndaVersion           String
+  ndaDocHash           String // SHA-256 hex digest
+  signerName           String
+  signedAt             DateTime           @default(now())
+  ipAddress            String?
+}
+
+model VaultWorkspace {
+  id            String       @id @default(cuid())
+  profileId     String       @unique
+  profile       VaultProfile @relation(fields: [profileId], references: [id])
+  kdfSalt       String // hex 32 chars = 16 bytes
+  kdfAlgo       String       @default("PBKDF2-SHA256")
+  kdfIterations Int          @default(310000)
+  encMode       String       @default("CLIENT_SIDE_AES256GCM")
+  assistantTokensUsed  Int   @default(0)
+  assistantTokensLimit Int   @default(100000)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  cases  VaultCase[]
+  audits VaultAuditLog[]
+}
+
+model VaultCase {
+  id          String          @id @default(cuid())
+  workspaceId String
+  workspace   VaultWorkspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  titleEnc    String
+  titleIv     String
+  tagsEnc     String
+  tagsIv      String
+  status      VaultCaseStatus @default(PRIVATE)
+  caseTemplate String?        @default("blank")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  archivedAt  DateTime?
+
+  entities          VaultCaseEntity[]
+  files             VaultCaseFile[]
+  notes             VaultCaseNote[]
+  timeline          VaultCaseTimeline[]
+  hypotheses        VaultHypothesis[]
+  timelineEvents    VaultTimelineEvent[]
+  publishCandidates VaultPublishCandidate[]
+
+  @@index([workspaceId])
+  @@index([status])
+}
+
+enum VaultHypothesisStatus {
+  OPEN
+  CONFIRMED
+  REFUTED
+  NEEDS_VERIFICATION
+}
+
+model VaultHypothesis {
+  id                  String                @id @default(cuid())
+  caseId              String
+  case                VaultCase             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title               String
+  status              VaultHypothesisStatus @default(OPEN)
+  confidence          Int                   @default(50)
+  supportingEntityIds String[]
+  notes               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([caseId])
+}
+
+model VaultTimelineEvent {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  eventDate   DateTime
+  entityIds   String[]
+  eventType   String    @default("MANUAL")
+  createdAt   DateTime  @default(now())
+
+  @@index([caseId])
+  @@index([eventDate])
+}
+
+model VaultPublishCandidate {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entityIds   String[]
+  summary     String
+  status      String    @default("PENDING")
+  submittedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+  reviewNote  String?
+
+  @@index([caseId])
+  @@index([status])
+}
+
+model VaultFeedback {
+  id          String   @id @default(cuid())
+  workspaceId String
+  caseId      String?
+  handle      String
+  message     String
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+}
+
+model VaultCaseShare {
+  id                 String   @id @default(cuid())
+  caseId             String
+  token              String   @unique
+  expiresAt          DateTime
+  workspaceId        String
+  entitySnapshot     Json
+  titleSnapshot      String
+  hypothesisSnapshot Json?
+  createdAt          DateTime @default(now())
+
+  @@index([token])
+  @@index([caseId])
+}
+
+model VaultCaseEntity {
+  id               String          @id @default(cuid())
+  caseId           String
+  case             VaultCase       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  type             VaultEntityType
+  value            String
+  label            String?
+  confidence       Float?
+  extractionMethod String?
+  sourceFileId     String?
+  tigerScore       Int?
+  tigerVerdict     String?
+  enrichedAt       DateTime?
+  createdAt        DateTime        @default(now())
+
+  @@unique([caseId, type, value])
+  @@index([caseId])
+  @@index([type, value])
+}
+
+model VaultCaseFile {
+  id            String           @id @default(cuid())
+  caseId        String
+  case          VaultCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  filenameEnc   String
+  filenameIv    String
+  mimeType      String
+  sizeBytes     Int
+  uploadedAt    DateTime         @default(now())
+  r2Key         String           @unique // INTERNAL ONLY — never in API responses
+  r2Bucket      String           @default("interligens-vaults")
+  parseStatus   VaultParseStatus @default(PENDING)
+  parsedAt      DateTime?
+  entitiesFound Int              @default(0)
+  parseMode     String?
+  parseError    String?
+
+  @@index([caseId])
+}
+
+model VaultCaseNote {
+  id         String    @id @default(cuid())
+  caseId     String
+  case       VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  contentEnc String // opaque ciphertext — server never decrypts
+  contentIv  String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([caseId])
+}
+
+model VaultCaseTimeline {
+  id        String    @id @default(cuid())
+  caseId    String
+  case      VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  eventType String
+  payload   Json?
+  actor     String
+  createdAt DateTime  @default(now())
+
+  @@index([caseId])
+}
+
+model VaultAuditLog {
+  id                   String              @id @default(cuid())
+  investigatorAccessId String?
+  access               InvestigatorAccess? @relation(fields: [investigatorAccessId], references: [id])
+  profileId            String?
+  profile              VaultProfile?       @relation(fields: [profileId], references: [id])
+  workspaceId          String?
+  workspace            VaultWorkspace?     @relation(fields: [workspaceId], references: [id])
+  caseId               String?
+  action               String
+  actor                String
+  ipAddress            String?
+  userAgent            String?
+  metadata             Json?
+  createdAt            DateTime            @default(now())
+
+  @@index([investigatorAccessId])
+  @@index([profileId])
+  @@index([workspaceId])
+  @@index([caseId])
+  @@index([action])
 }

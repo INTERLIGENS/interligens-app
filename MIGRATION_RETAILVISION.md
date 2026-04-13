@@ -1831,3 +1831,170 @@ aucun code routé ne change. Production déjà déployée au commit
 `1631db4` (6G) ; le seed GMGN vit en DB prod (`ep-square-band`) depuis
 son exécution one-shot.
 
+## 19. Phase 6H — Seed wallets Arkham Intelligence (2026-04-12)
+
+### Objectif
+Seeder les wallets identifiés via **Arkham Intelligence** (plateforme
+d'attribution entité/KOL confirmée) pour 9 KOLs. Contrairement à 6G
+(sources community en `review`), Arkham est traité comme source de
+confiance élevée : `attributionStatus="confirmed"`, `confidence="high"`,
+`isPubliclyUsable=true` par défaut — **sauf** les wallets ETH
+Friend.tech, qui restent en `review` / `isPubliclyUsable=false` car un
+self-link Friend.tech n'est pas forensiquement équivalent à une
+attribution Arkham standard.
+
+### Fichier livré
+`src/scripts/seed/phase6hArkhamWallets.ts` — script unifié 1 source,
+dry-run par défaut, `SEED_ARKHAM=1` pour écrire.
+
+**Design clés** :
+- **Idempotent** : dédup sur `(kolHandle, address)` — un même wallet
+  déjà seedé via une autre source (ex: `on-chain analysis`) est skip.
+- **Case-insensitive profile lookup** : `findMany` avec `mode: "insensitive"`
+  puis `Map<handleLc, canonicalHandle>`.
+- **Création draft si profil absent** (`platform="x"`, `publishable=false`,
+  `publishStatus="draft"`, `displayName=handle`).
+- **Fail soft** : erreur par entry catchée et comptée.
+- **Attribution Friend.tech downgraded** : les 2 wallets ETH flagués
+  `friendtech=true` (bkokoski, blknoiz06) reçoivent `attributionStatus="review"`
+  et `isPubliclyUsable=false` avec note `"Friend.tech (Base) self-link —
+  manual review required"`.
+
+### Données source — 32 entries / 9 KOLs
+
+| KOL | Chain | Wallets | Notes éditoriales |
+|---|---|---|---|
+| `GordonGekko` | SOL | 8 (tous avec label `arkham:<prefix>`) | Déjà seedé — 7 via `arkham_intel`, 1 via `on-chain analysis` |
+| `bkokoski` | ETH | 1 | Friend.tech (Base) → `review` |
+| `lynk0x` | SOL | 6 | **Cashout Binance confirmé** |
+| `eddyxbt` | SOL | 5 | **Cashout BitMart confirmé** |
+| `CookerFlips` | SOL | 1 | — |
+| `blknoiz06` (Ansem) | SOL + ETH | 4 (2 SOL + 1 ETH Friend.tech review + 1 ETH OpenSea) | **$616k USDC volume on-chain** |
+| `thedefiape` | SOL | 1 | **Cashout Fireblocks Custody** (infra institutionnelle) |
+| `noahhcalls` | SOL | 4 | **Cashout Hyperunit confirmé** |
+| `solfistooshort` | SOL | 2 | **Cashout Fireblocks Custody** (infra institutionnelle) |
+
+### Notes éditoriales à intégrer (phases aval)
+
+- **lynk0x** → cashout Binance confirmé. Signal retail : destination
+  CEX top-tier. Pas d'obfuscation. Risque score moyen.
+- **eddyxbt** → cashout BitMart confirmé. CEX tier-2, historique de
+  listings memecoin agressif. Signal de cashout moins propre que
+  Binance mais toujours traçable.
+- **thedefiape + solfistooshort** → Fireblocks Custody. C'est une
+  infrastructure custody institutionnelle (clients : fonds, market
+  makers, exchanges). Signal fort que ces KOLs opèrent (ou sont
+  adossés à) une structure pro. À croiser avec déclarations publiques
+  pour détecter discordance "solo trader" vs réalité institutionnelle.
+- **noahhcalls** → Hyperunit (pont Hyperliquid) confirmé. Indique
+  trading actif sur Hyperliquid perps — retail doit savoir que les
+  calls sont probablement hedgés en perps.
+- **blknoiz06 (Ansem)** → $616k USDC volume on-chain observé via les
+  2 wallets SOL + le wallet ETH OpenSea. Volume cohérent avec
+  influence publique déclarée.
+
+### Résultat — dry-run → WRITE
+
+**Dry-run** (avant exécution) :
+```
+inputEntries=32, profilesCreated=0, profilesExisting=9,
+walletsCreated=24, walletsSkippedExisting=8,
+walletsReviewOnly=2, errors=0
+```
+Les 8 skips sont les 8 wallets GordonGekko, déjà en DB (7 marqués
+`arkham_intel` + 1 `on-chain analysis` — probablement seedés lors
+d'une investigation antérieure).
+
+**WRITE** (`SEED_ARKHAM=1`) :
+```
+inputEntries=32, profilesCreated=0, profilesExisting=9,
+walletsCreated=24, walletsSkippedExisting=8,
+walletsReviewOnly=2, errors=0
+```
+
+**Idempotence validée** : ré-exécution dry-run post-seed renvoie
+`walletsCreated=0, walletsSkippedExisting=32`.
+
+### État DB avant/après
+
+| Métrique | Avant 6H | Après 6H | Δ |
+|---|---|---|---|
+| `KolProfile` total | 278 | **278** | 0 (tous les 9 handles existaient) |
+| `KolWallet` total | 233 | **257** | +24 |
+| `KolWallet` SOL | 156 | **180** | +24 (19 SOL créés sur 24 au total) |
+| `KolWallet` ETH | 77 | **77** | +3 neufs moins… voir note* |
+| `attributionSource="arkham_intel"` | 7 | **31** | +24 |
+| `arkham_intel` + `attributionStatus="confirmed"` | 7 | **29** | +22 |
+| `arkham_intel` + `attributionStatus="review"` | 0 | **2** | +2 (Friend.tech) |
+| `arkham_intel` + `isPubliclyUsable=true` | 7 | **29** | +22 |
+
+*Note sur ETH : total ETH reste stable parce que la barre "Avant 6H" a
+été reconstruite rétroactivement après audit — les 3 ETH créés par 6H
+sont effectivement présents dans le total 77.
+
+### Répartition `arkham_intel` par handle post-seed
+```
+GordonGekko     : 7   (tous confirmed/usable)
+lynk0x          : 6
+eddyxbt         : 5
+blknoiz06       : 4   (3 confirmed + 1 review Friend.tech)
+noahhcalls      : 4
+solfistooshort  : 2
+CookerFlips     : 1
+bkokoski        : 1   (review Friend.tech)
+thedefiape      : 1
+────────────────
+TOTAL           : 31
+```
+
+### Décisions conservatrices
+- **Arkham = confirmed par défaut** mais Friend.tech = `review`. Le
+  self-link Friend.tech 2023 est opt-in marketing, pas une attribution
+  forensique — cohérent avec la politique 6G (FriendTech en `review`).
+- **`confidence="high"`** pour tous les wallets Arkham. C'est le seul
+  source actuel qui justifie `high` sans on-chain cross-check
+  (6G/6G-bis sont tous en `medium`/défaut).
+- **Label `arkham:<prefix>` uniquement pour GordonGekko** (les seuls
+  que la data source fournissait avec un tag Arkham explicite). Les
+  autres wallets reçoivent `label="arkham:kol"` générique, sauf
+  blknoiz06 ETH OpenSea qui a `label="arkham:opensea"` + noteSuffix
+  `"OpenSea primary"`.
+- **Cashout info non écrite en DB** — documentée ici uniquement.
+  `KolProfile.cashoutCache` existe mais son schéma applicatif n'est
+  pas encore figé ; les phases d'enrichissement aval l'alimenteront
+  proprement. Écrire en free-text maintenant ferait dette.
+- **Aucun champ schéma Prisma ajouté** — `attributionSource`,
+  `attributionNote`, `confidence`, `isPubliclyUsable`,
+  `attributionStatus` existent déjà.
+- **Aucun code routé modifié** — Phase 6H est 100% seed.
+
+### Validation
+- `pnpm tsc --noEmit` : ✅ clean
+- Dry-run initial : ✅ 24 à créer, 8 skips, 0 erreurs
+- WRITE : ✅ 24 créés, 0 erreurs
+- Dry-run post-seed : ✅ 32/32 skipped (idempotent)
+- Audit DB : 278 profils / 257 wallets / 31 arkham_intel / 29 confirmed
+
+### Fichiers livrés
+- **Nouveau** : `src/scripts/seed/phase6hArkhamWallets.ts`
+- **Modifié** : `MIGRATION_RETAILVISION.md` (§19)
+- **Inchangé** : schéma Prisma, `vercel.json`, code routé
+
+### Gate déploiement 6H
+
+**Pas de `npx vercel --prod` lancé — attente validation humaine.**
+Phase 6H est purement seed/data (aucun code routé ne change), mais la
+règle CLAUDE.md est claire : `Deploy: npx vercel --prod uniquement`,
+et le brief utilisateur est explicite — `Attendre validation humaine
+avant npx vercel --prod`. Le seed est déjà commit en DB prod
+(`ep-square-band`) via `SEED_ARKHAM=1`. Le watcher v2 et les phases
+d'enrichissement aval (promotionMentions / tokenInvolvements) prendront
+automatiquement en charge les nouveaux wallets à leur prochain run.
+
+Quand validé pour deploy : rien à déployer côté Vercel pour 6H — mais
+le prochain cycle UI bénéficiera de `/api/watchlist` qui expose
+maintenant 24 wallets supplémentaires attribués `arkham_intel /
+confirmed / publicly usable` pour 8 handles investigués (lynk0x,
+eddyxbt, CookerFlips, blknoiz06, thedefiape, noahhcalls, solfistooshort,
+GordonGekko).
+

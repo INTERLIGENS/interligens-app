@@ -7,11 +7,13 @@ const RPC_ENDPOINTS: Record<string, string[]> = {
   ETH: ["https://eth.llamarpc.com", "https://rpc.ankr.com/eth"],
   BSC: ["https://bsc-dataseed1.binance.org", "https://bsc-dataseed2.binance.org"],
   SOL: ["https://api.mainnet-beta.solana.com", "https://rpc.ankr.com/solana"],
+  BASE: ["https://mainnet.base.org", "https://rpc.ankr.com/base"],
+  ARBITRUM: ["https://arb1.arbitrum.io/rpc", "https://rpc.ankr.com/arbitrum"],
 };
 
 export type RpcResult = { result: any; provider_used: string; cached: boolean; didFallback: boolean };
 
-export async function rpcCall(chain: "ETH" | "BSC" | "SOL", method: string, params: any[]): Promise<RpcResult> {
+export async function rpcCall(chain: "ETH" | "BSC" | "SOL" | "BASE" | "ARBITRUM", method: string, params: any[]): Promise<RpcResult> {
   const cacheKey = `${chain}:${method}:${JSON.stringify(params)}`;
   const hit = RPC_CACHE.get(cacheKey);
   if (hit && Date.now() - hit.t < TTL) return { result: hit.v.result, provider_used: hit.v.provider, cached: true, didFallback: false };
