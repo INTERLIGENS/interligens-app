@@ -13,6 +13,7 @@ import CaseIntelBadge from "@/components/intelligence/CaseIntelBadge";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
 import BetaNav from "@/components/beta/BetaNav";
+import WatchButton from "@/components/watch/WatchButton";
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 
@@ -517,6 +518,12 @@ function TigerScanPageInner() {
               {analysisSummary && (
                 <ExplanationLayer summary={analysisSummary} locale={locale} />
               )}
+
+              <WatchButton
+                address={address.trim()}
+                chain={result.chain}
+                score={result.score}
+              />
 
               <button
                 onClick={async () => {
