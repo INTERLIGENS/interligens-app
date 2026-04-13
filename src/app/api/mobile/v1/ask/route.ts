@@ -8,13 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { llmComplete } from "@/lib/llm";
 import type { AnalysisSummary, Verdict } from "@/lib/explanation/types";
 import { prisma } from "@/lib/prisma";
 import { buildGroundingContext } from "@/lib/ask/groundingContext";
 import { generateWhyBullets } from "@/lib/ask/whyBullets";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ── Rate limiting ────────────────────────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -205,25 +203,21 @@ export async function POST(req: NextRequest) {
   try {
     const systemPrompt = buildSystemPrompt(summary, locale, cleanHistory, kolContext);
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 250,
-      system: systemPrompt,
+    const llmRes = await llmComplete({
+      useCase: "ask_interligens",
+      systemPrompt,
+      maxTokens: 250,
       messages: [{ role: "user", content: sanitized }],
     });
 
-    const text = message.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { type: "text"; text: string }).text)
-      .join("");
+    if (llmRes.fallbackUsed) {
+      console.error("[mobile/ask] llm fallback", llmRes.error);
+      return NextResponse.json({ error: "unavailable" }, { status: 503 });
+    }
 
-    return NextResponse.json({ answer: stripMarkdown(text) });
+    return NextResponse.json({ answer: stripMarkdown(llmRes.content) });
   } catch (err: unknown) {
-    const isAbort = err instanceof Error && err.name === "AbortError";
-    console.error("[mobile/ask] error:", isAbort ? "timeout" : err);
-    return NextResponse.json(
-      { error: isAbort ? "timeout" : "unavailable" },
-      { status: 503 },
-    );
+    console.error("[mobile/ask] error:", err);
+    return NextResponse.json({ error: "unavailable" }, { status: 503 });
   }
 }

@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import Anthropic from "@anthropic-ai/sdk"
+import { llmComplete } from "@/lib/llm"
 import type { AnalysisSummary } from "@/lib/explanation/types"
 import { prisma } from "@/lib/prisma"
 import { buildGroundingContext, type ScanGroundingContext } from "@/lib/ask/groundingContext"
 import { generateWhyBullets } from "@/lib/ask/whyBullets"
 import { writeAskLog } from "@/lib/ask/askLog"
 import { createHash } from "crypto"
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 // Simple in-memory store — resets on cold start, good enough for beta
@@ -232,21 +230,19 @@ export async function POST(req: NextRequest) {
       kolContext,
     )
 
-    const startedAt = Date.now()
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 250,          // tighter — follow-ups should be short
-      system: systemPrompt,
+    const llmRes = await llmComplete({
+      useCase: "ask_interligens",
+      systemPrompt,
+      maxTokens: 250,          // tighter — follow-ups should be short
       messages: [{ role: "user", content: sanitized }],
     })
-    const latencyMs = Date.now() - startedAt
 
-    const text = message.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { type: "text"; text: string }).text)
-      .join("")
+    if (llmRes.fallbackUsed) {
+      return NextResponse.json({ error: "unavailable" }, { status: 503 })
+    }
 
-    const finalAnswer = stripMarkdown(text)
+    const latencyMs = llmRes.latencyMs
+    const finalAnswer = stripMarkdown(llmRes.content)
 
     // ── Audit trail (non-blocking, fire-and-forget) ─────────────────────────
     writeAskLog({
@@ -259,7 +255,7 @@ export async function POST(req: NextRequest) {
       summary,
       kolContext,
       groundingContext: groundingCtx,
-      modelName: "claude-sonnet-4-5",
+      modelName: "claude-sonnet-4-20250514",
       latencyMs,
       metadata: {
         historyLength: cleanHistory.length,
