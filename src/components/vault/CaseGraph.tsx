@@ -13,7 +13,18 @@ type Entity = {
   sourceFileId: string | null;
 };
 
-type Props = { entities: Entity[] };
+type EntityEnrichment = {
+  inKolRegistry: boolean;
+  kolName: string | null;
+  isKnownBad: boolean;
+  inWatchlist: boolean;
+  inIntelVault: boolean;
+};
+
+type Props = {
+  entities: Entity[];
+  enrichment?: Record<string, EntityEnrichment>;
+};
 
 type GraphNode = d3.SimulationNodeDatum & {
   id: string;
@@ -27,6 +38,7 @@ type GraphLink = d3.SimulationLinkDatum<GraphNode> & {
   source: string | GraphNode;
   target: string | GraphNode;
   label: string;
+  kind: "file" | "method" | "cross-intel";
 };
 
 const COLORS: Record<string, string> = {
@@ -44,7 +56,7 @@ function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 
-export default function CaseGraph({ entities }: Props) {
+export default function CaseGraph({ entities, enrichment }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [selected, setSelected] = useState<GraphNode | null>(null);
@@ -119,16 +131,21 @@ export default function CaseGraph({ entities }: Props) {
 
     const links: GraphLink[] = [];
     const seen = new Set<string>();
-    function addLink(a: string, b: string, label: string) {
+    function addLink(
+      a: string,
+      b: string,
+      label: string,
+      kind: GraphLink["kind"]
+    ) {
       const key = a < b ? `${a}|${b}|${label}` : `${b}|${a}|${label}`;
       if (seen.has(key)) return;
       seen.add(key);
-      links.push({ source: a, target: b, label });
+      links.push({ source: a, target: b, label, kind });
     }
 
     for (const e of entities) {
       if (e.sourceFileId) {
-        addLink(e.id, `file:${e.sourceFileId}`, "from file");
+        addLink(e.id, `file:${e.sourceFileId}`, "from file", "file");
       }
     }
 
@@ -137,14 +154,38 @@ export default function CaseGraph({ entities }: Props) {
         const a = entities[i];
         const b = entities[j];
         if (a.sourceFileId && a.sourceFileId === b.sourceFileId) {
-          addLink(a.id, b.id, "same file");
+          addLink(a.id, b.id, "same file", "file");
         }
         if (
           a.extractionMethod &&
           a.extractionMethod === b.extractionMethod &&
           a.type === b.type
         ) {
-          addLink(a.id, b.id, "same method");
+          addLink(a.id, b.id, "same method", "method");
+        }
+      }
+    }
+
+    // Cross-intelligence edges: entities sharing the same KOL handle
+    // (from enrichment) get connected with orange dashed lines.
+    if (enrichment) {
+      const kolGroups: Record<string, string[]> = {};
+      for (const entity of entities) {
+        const enr = enrichment[entity.id];
+        if (enr?.inKolRegistry && enr.kolName) {
+          const key = enr.kolName.toLowerCase();
+          (kolGroups[key] ??= []).push(entity.id);
+        }
+      }
+      for (const entityIds of Object.values(kolGroups)) {
+        if (entityIds.length < 2) continue;
+        for (let i = 0; i < entityIds.length - 1; i++) {
+          addLink(
+            entityIds[i],
+            entityIds[i + 1],
+            "Same KOL",
+            "cross-intel"
+          );
         }
       }
     }
@@ -168,13 +209,32 @@ export default function CaseGraph({ entities }: Props) {
       if (event.target === svgRef.current) setSelected(null);
     });
 
-    const link = container
-      .append("g")
-      .attr("stroke", "rgba(255,255,255,0.1)")
-      .attr("stroke-width", 1)
-      .selectAll("line")
+    const linkGroup = container.append("g");
+    const link = linkGroup
+      .selectAll<SVGLineElement, GraphLink>("line")
       .data(links)
-      .join("line");
+      .join("line")
+      .attr("stroke", (d) =>
+        d.kind === "cross-intel" ? "#FF6B00" : "rgba(255,255,255,0.15)"
+      )
+      .attr("stroke-width", (d) => (d.kind === "cross-intel" ? 1.5 : 1))
+      .attr("stroke-dasharray", (d) =>
+        d.kind === "cross-intel" ? "5,4" : null
+      )
+      .attr("opacity", (d) => (d.kind === "cross-intel" ? 0.7 : 1));
+
+    const crossIntelLinks = links.filter((l) => l.kind === "cross-intel");
+    const linkLabel = container
+      .append("g")
+      .selectAll<SVGTextElement, GraphLink>("text")
+      .data(crossIntelLinks)
+      .join("text")
+      .text((d) => d.label)
+      .attr("font-size", 9)
+      .attr("fill", "rgba(255,107,0,0.7)")
+      .attr("text-anchor", "middle")
+      .attr("pointer-events", "none")
+      .attr("font-family", "ui-sans-serif, system-ui, sans-serif");
 
     const node = container
       .append("g")
@@ -220,6 +280,23 @@ export default function CaseGraph({ entities }: Props) {
         .attr("y1", (d) => (d.source as GraphNode).y ?? 0)
         .attr("x2", (d) => (d.target as GraphNode).x ?? 0)
         .attr("y2", (d) => (d.target as GraphNode).y ?? 0);
+
+      linkLabel
+        .attr(
+          "x",
+          (d) =>
+            (((d.source as GraphNode).x ?? 0) +
+              ((d.target as GraphNode).x ?? 0)) /
+            2
+        )
+        .attr(
+          "y",
+          (d) =>
+            (((d.source as GraphNode).y ?? 0) +
+              ((d.target as GraphNode).y ?? 0)) /
+              2 -
+            4
+        );
 
       node.attr("transform", (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`);
     });
@@ -397,6 +474,24 @@ export default function CaseGraph({ entities }: Props) {
             {row.label}
           </span>
         ))}
+        <span
+          className="flex items-center gap-1"
+          style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
+        >
+          <svg width="18" height="3" style={{ display: "inline-block" }}>
+            <line
+              x1="0"
+              y1="1.5"
+              x2="18"
+              y2="1.5"
+              stroke="#FF6B00"
+              strokeWidth="1.5"
+              strokeDasharray="3,2"
+              opacity="0.7"
+            />
+          </svg>
+          Same KOL
+        </span>
       </div>
       {selected && (
         <div

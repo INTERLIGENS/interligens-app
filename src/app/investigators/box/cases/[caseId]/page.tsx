@@ -358,7 +358,8 @@ function CaseInner({ caseId }: { caseId: string }) {
 
   // Lazy load enrichment when entities tab opens and we have entities.
   useEffect(() => {
-    if (tab !== "entities" && tab !== "intelligence") return;
+    if (tab !== "entities" && tab !== "intelligence" && tab !== "graph")
+      return;
     if (entities.length === 0) return;
     if (enrichLoading) return;
     if (Object.keys(enrichment).length > 0) return;
@@ -1407,7 +1408,9 @@ function CaseInner({ caseId }: { caseId: string }) {
           </div>
         )}
 
-        {tab === "graph" && <CaseGraph entities={entities} />}
+        {tab === "graph" && (
+          <CaseGraph entities={entities} enrichment={enrichment} />
+        )}
 
         {tab === "timeline" && (
           <TimelineBuilder caseId={caseId} entities={entities} />
