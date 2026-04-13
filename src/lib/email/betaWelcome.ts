@@ -29,17 +29,21 @@ function buildHtml(name: string, accessCode: string): string {
       ? accessCode.slice(0, 2) + "&hellip;" + accessCode.slice(-2)
       : "****";
 
-  // Mail clients (notably Gmail) drop <body> backgrounds and strip rgba().
-  // We force the black background by putting bgcolor="#000000" AND
-  // style="background-color:#000000" on every structural <td>, then nest
-  // a 560px inner table inside a 100%-width outer table — both also black.
-  const BG = "#000000";
-  const CODE_BG = "#111111";
+  // Pro white-background layout (LinkedIn/Stripe style). The rule still applies:
+  // every structural <td> carries BOTH bgcolor="…" AND style="background-color:…"
+  // so Gmail/Outlook cannot strip the fill. Outer is light grey, inner card is
+  // pure white, and a full-width black header band carries the brand eyebrow.
+  const PAGE_BG = "#F4F4F4";
+  const CARD_BG = "#FFFFFF";
+  const HEADER_BG = "#000000";
+  const CODE_BG = "#F8F8F8";
   const ACCENT = "#FF6B00";
-  const TEXT = "#FFFFFF";
-  const SUBTITLE = "#999999";
-  const NDA_DIM = "#666666";
-  const FOOTER_DIM = "#4D4D4D";
+  const TITLE = "#111111";
+  const BODY_TEXT = "#333333";
+  const SUBTITLE = "#666666";
+  const LABEL_DIM = "#999999";
+  const FOOTER_DIM = "#CCCCCC";
+  const SEP = "#EEEEEE";
 
   return [
     '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
@@ -49,42 +53,78 @@ function buildHtml(name: string, accessCode: string): string {
     '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
     "<title>INTERLIGENS Beta Access Confirmed</title>",
     "</head>",
-    '<body bgcolor="#000000" style="margin:0;padding:0;background-color:#000000;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">',
+    '<body bgcolor="' +
+      PAGE_BG +
+      '" style="margin:0;padding:0;background-color:' +
+      PAGE_BG +
+      ';color:' +
+      BODY_TEXT +
+      ';font-family:Arial,Helvetica,sans-serif;">',
 
-    // OUTER wrapper — forces black across full viewport width
-    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;margin:0;padding:0;width:100%;">',
+    // OUTER wrapper — full-width light grey page background
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' +
+      PAGE_BG +
+      '" style="background-color:' +
+      PAGE_BG +
+      ';margin:0;padding:0;width:100%;">',
     "<tr>",
-    '<td bgcolor="#000000" align="center" style="background-color:#000000;padding:40px 20px;">',
+    '<td bgcolor="' +
+      PAGE_BG +
+      '" align="center" style="background-color:' +
+      PAGE_BG +
+      ';padding:40px 20px;">',
 
-    // INNER 560px content table — also black
-    '<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;width:560px;max-width:560px;">',
+    // INNER 560px white card
+    '<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="' +
+      CARD_BG +
+      '" style="background-color:' +
+      CARD_BG +
+      ';width:560px;max-width:560px;border:1px solid ' +
+      SEP +
+      ';">',
 
-    // Header eyebrow
+    // Header band — full-width black strip with orange eyebrow
     "<tr>",
-    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:' +
+    '<td bgcolor="' +
+      HEADER_BG +
+      '" align="center" style="background-color:' +
+      HEADER_BG +
+      ';padding:20px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:' +
       ACCENT +
       ';">INTERLIGENS &middot; INVESTIGATORS</td>',
     "</tr>",
 
-    // Title — white on black, 28px
+    // Title — dark on white, 28px, centered
     "<tr>",
-    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 16px 0;font-family:Arial,Helvetica,sans-serif;font-size:28px;font-weight:700;color:' +
-      TEXT +
+    '<td bgcolor="' +
+      CARD_BG +
+      '" align="center" style="background-color:' +
+      CARD_BG +
+      ';padding:40px 40px 12px 40px;font-family:Arial,Helvetica,sans-serif;font-size:28px;font-weight:700;color:' +
+      TITLE +
       ';line-height:1.25;">Beta access confirmed</td>',
     "</tr>",
 
-    // Subtitle — #999999 14px
+    // Subtitle — #666666 14px centered
     "<tr>",
-    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:' +
+    '<td bgcolor="' +
+      CARD_BG +
+      '" align="center" style="background-color:' +
+      CARD_BG +
+      ';padding:0 40px 28px 40px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:' +
       SUBTITLE +
       ';line-height:1.6;">' +
       greeting +
       " Your beta access code has been verified and your NDA acceptance is on file.</td>",
     "</tr>",
 
-    // Access code block — #111111 with orange left border
+    // Access code block — light grey bg with orange left border
     "<tr>",
-    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 28px 0;">',
+    '<td bgcolor="' +
+      CARD_BG +
+      '" style="background-color:' +
+      CARD_BG +
+      ';padding:0 40px 28px 40px;">',
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' +
       CODE_BG +
       '" style="background-color:' +
@@ -98,7 +138,7 @@ function buildHtml(name: string, accessCode: string): string {
       '" style="background-color:' +
       CODE_BG +
       ';padding:14px 16px 4px 16px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:' +
-      SUBTITLE +
+      LABEL_DIM +
       ';">YOUR ACCESS</td>',
     "</tr>",
     "<tr>",
@@ -107,7 +147,7 @@ function buildHtml(name: string, accessCode: string): string {
       '" style="background-color:' +
       CODE_BG +
       ";padding:4px 16px 14px 16px;font-family:'Courier New',Courier,monospace;font-size:14px;color:" +
-      TEXT +
+      TITLE +
       ';">Code: ' +
       maskedCode +
       "</td>",
@@ -118,8 +158,12 @@ function buildHtml(name: string, accessCode: string): string {
 
     // CTA button — orange bg, black text, nested table for Outlook
     "<tr>",
-    '<td bgcolor="#000000" style="background-color:#000000;padding:0 0 32px 0;">',
-    '<table role="presentation" cellpadding="0" cellspacing="0" border="0">',
+    '<td bgcolor="' +
+      CARD_BG +
+      '" align="center" style="background-color:' +
+      CARD_BG +
+      ';padding:0 40px 36px 40px;">',
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">',
     "<tr>",
     '<td bgcolor="' +
       ACCENT +
@@ -133,18 +177,28 @@ function buildHtml(name: string, accessCode: string): string {
     "</td>",
     "</tr>",
 
-    // NDA reminder — #666666 12px
+    // NDA reminder — #999999 12px, separator above
     "<tr>",
-    '<td bgcolor="#000000" style="background-color:#000000;padding:20px 0 20px 0;border-top:1px solid #1A1A1A;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:' +
-      NDA_DIM +
+    '<td bgcolor="' +
+      CARD_BG +
+      '" style="background-color:' +
+      CARD_BG +
+      ';padding:20px 40px 20px 40px;border-top:1px solid ' +
+      SEP +
+      ';font-family:Arial,Helvetica,sans-serif;font-size:12px;color:' +
+      LABEL_DIM +
       ';line-height:1.7;"><strong style="color:' +
-      NDA_DIM +
+      SUBTITLE +
       '">NDA reminder.</strong> Everything you see in the platform &ndash; derived entities, hypotheses, timeline events, and any shared case &ndash; is covered by the INTERLIGENS beta NDA you accepted. Do not share screenshots, exports, or internal findings outside of the platform without explicit approval.</td>',
     "</tr>",
 
-    // Footer — #4D4D4D with orange link
+    // Footer — #CCCCCC with orange link
     "<tr>",
-    '<td bgcolor="#000000" style="background-color:#000000;padding:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:' +
+    '<td bgcolor="' +
+      CARD_BG +
+      '" style="background-color:' +
+      CARD_BG +
+      ';padding:0 40px 28px 40px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:' +
       FOOTER_DIM +
       ';line-height:1.6;">Questions or issues? Reach us at <a href="mailto:admin@interligens.com" style="color:' +
       ACCENT +
