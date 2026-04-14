@@ -76,7 +76,7 @@ export default function InvestigatorIdentityPage() {
         setSubmitting(false);
         return;
       }
-      router.push("/investigators/onboarding/welcome");
+      router.push("/investigators/onboarding/pending");
     } catch {
       setError("Network error. Try again.");
       setSubmitting(false);
