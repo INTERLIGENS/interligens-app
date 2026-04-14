@@ -111,19 +111,21 @@ export default function FeedbackButton() {
           bottom: 20,
           right: 20,
           zIndex: 100,
-          backgroundColor: "rgba(255,107,0,0.15)",
-          border: "1px solid rgba(255,107,0,0.3)",
-          color: "#FF6B00",
+          backgroundColor: "#FF6B00",
+          border: "none",
+          color: "#000000",
           fontSize: 12,
-          padding: "8px 16px",
+          fontWeight: 700,
+          padding: "10px 18px",
           borderRadius: 20,
           cursor: "pointer",
           pointerEvents: "auto",
           fontFamily: "inherit",
           lineHeight: 1.2,
+          boxShadow: "0 4px 12px rgba(255,107,0,0.25)",
         }}
       >
-        Feedback
+        Send feedback
       </button>
       {open && (
         <div
