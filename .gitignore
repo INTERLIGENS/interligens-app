@@ -56,3 +56,4 @@ backups/
 # Wrangler local state
 .wrangler/
 /tmp/
+.claude/
