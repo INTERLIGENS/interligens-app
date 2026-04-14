@@ -29,14 +29,6 @@ function verifySecret(req: NextRequest): boolean {
   return timingSafeEqual(a, b);
 }
 
-function getBaseUrl(req: NextRequest): string {
-  // Honor an explicit env var first, fall back to the request origin.
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  const host = req.headers.get("host") ?? "app.interligens.com";
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  return `${proto}://${host}`;
-}
-
 export async function POST(req: NextRequest) {
   // 1. Defensive config check — if TELEGRAM_BOT_TOKEN is missing, the bot is
   // a no-op stub. Still return 200 so Telegram doesn't retry.
@@ -62,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   // 4. Route + reply
   try {
-    const routed = await route(update, getBaseUrl(req));
+    const routed = await route(update);
     if (routed) {
       await sendReply(routed.chatId, routed.reply);
     }

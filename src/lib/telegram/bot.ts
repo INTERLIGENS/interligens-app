@@ -2,7 +2,7 @@
  * Telegram Bot v0 — INTERLIGENS scan bot.
  *
  * Commands:
- *   /scan <address>   → TigerScore summary via /api/v1/score
+ *   /scan <address>   → TigerScore summary computed in-process
  *   /help             → list of commands
  *   anything else     → gentle nudge to use /scan
  *
@@ -11,9 +11,17 @@
  * the `text` field instead. The webhook route is responsible for making the
  * Telegram sendMessage call.
  *
+ * Scoring path: computeTigerScoreWithIntel() is imported and called directly,
+ * never via HTTP. Going through fetch('/api/v1/score') would loop back through
+ * the public edge (Cloudflare), which blocks the bot's server-to-self POSTs
+ * with a managed challenge → 403.
+ *
  * Demo-safe: if TELEGRAM_BOT_TOKEN is missing, the webhook still returns 200
  * OK and logs "Telegram not configured". Nothing crashes.
  */
+
+import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
+import { isKnownBadEvm } from "@/lib/entities/knownBad";
 
 export interface TelegramMessage {
   message_id: number;
@@ -131,10 +139,7 @@ function formatScoreReply(
   };
 }
 
-export async function handleScanCommand(
-  arg: string,
-  scoreApiBaseUrl: string,
-): Promise<TelegramReply> {
+export async function handleScanCommand(arg: string): Promise<TelegramReply> {
   const address = arg.trim();
   if (!address) {
     return {
@@ -149,21 +154,35 @@ export async function handleScanCommand(
   }
 
   try {
-    const url = `${scoreApiBaseUrl.replace(/\/$/, "")}/api/v1/score?mint=${encodeURIComponent(address)}`;
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { accept: "application/json" },
-      cache: "no-store",
+    const isEvm = isEvmAddress(address);
+
+    // In-process TigerScore compute. No HTTP, no edge, no Cloudflare.
+    const result = isEvm
+      ? await computeTigerScoreWithIntel(
+          {
+            chain: "ETH",
+            evm_known_bad: isKnownBadEvm(address.toLowerCase()) !== null,
+            evm_is_contract: false,
+          },
+          address.toLowerCase(),
+        )
+      : await computeTigerScoreWithIntel(
+          {
+            chain: "SOL",
+            scan_type: "token",
+            no_casefile: true,
+            mint_address: address,
+          },
+          address,
+        );
+
+    return formatScoreReply(address, {
+      score: result.finalScore,
+      verdict: result.finalTier,
+      signals: result.drivers.map((d) => ({ label: d.label, severity: d.severity })),
     });
-    if (!res.ok) {
-      return {
-        text: `Couldn't score that address right now (HTTP ${res.status}). Try again later.`,
-      };
-    }
-    const data = await res.json();
-    return formatScoreReply(address, data);
   } catch (err) {
-    console.error("[telegram-bot] scan fetch failed", err);
+    console.error("[telegram-bot] scan compute failed", err);
     return {
       text: "Scoring service unreachable. Please try again in a minute.",
     };
@@ -185,7 +204,6 @@ export function handleUnknown(): TelegramReply {
  */
 export async function route(
   update: TelegramUpdate,
-  scoreApiBaseUrl: string,
 ): Promise<{ chatId: number; reply: TelegramReply } | null> {
   const msg = update.message ?? update.edited_message;
   if (!msg || !msg.text) return null;
@@ -195,7 +213,7 @@ export async function route(
 
   if (text.startsWith("/scan")) {
     const arg = text.replace(/^\/scan(@\w+)?\s*/i, "");
-    const reply = await handleScanCommand(arg, scoreApiBaseUrl);
+    const reply = await handleScanCommand(arg);
     return { chatId, reply };
   }
 
