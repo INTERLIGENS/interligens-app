@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { enforceInvestigatorAccess } from "@/lib/investigators/accessGate";
 
 const BG = "#000000";
 const ACCENT = "#FF6B00";
@@ -39,7 +40,8 @@ function Section({
   );
 }
 
-export default function WelcomePage() {
+export default async function WelcomePage() {
+  await enforceInvestigatorAccess();
   return (
     <main
       style={{

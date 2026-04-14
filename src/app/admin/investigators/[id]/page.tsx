@@ -131,7 +131,7 @@ export default function InvestigatorDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [actionModal, setActionModal] = useState<
     | { kind: "suspend" | "revoke"; reason: string }
-    | { kind: "restore" | "upgrade"; reason?: undefined }
+    | { kind: "restore" | "upgrade" | "activate"; reason?: undefined }
     | null
   >(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -164,6 +164,7 @@ export default function InvestigatorDetailPage({
         revoke: "revoke",
         restore: "restore",
         upgrade: "upgrade-trusted",
+        activate: "activate-workspace",
       };
       const endpoint = `/api/admin/investigators/${id}/${pathMap[actionModal.kind]}`;
       const body =
@@ -425,6 +426,25 @@ export default function InvestigatorDetailPage({
         {/* Trust actions */}
         <SectionHeader>Trust Actions</SectionHeader>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {!p.workspaceActivatedAt && (
+            <button
+              onClick={() => setActionModal({ kind: "activate" })}
+              style={{
+                padding: "10px 18px",
+                background: ACCENT,
+                color: BG,
+                border: "none",
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: "0.15em",
+                fontFamily: "monospace",
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              Activate Workspace
+            </button>
+          )}
           <button
             onClick={() => setActionModal({ kind: "suspend", reason: "" })}
             style={actionBtn("#FFC800")}

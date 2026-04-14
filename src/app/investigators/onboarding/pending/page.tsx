@@ -1,10 +1,13 @@
+import { enforcePendingScreen } from "@/lib/investigators/accessGate";
+
 const BG = "#000000";
 const ACCENT = "#FF6B00";
 const TEXT = "#FFFFFF";
 const DIM = "rgba(255,255,255,0.6)";
 const LINE = "rgba(255,255,255,0.08)";
 
-export default function PendingReviewPage() {
+export default async function PendingReviewPage() {
+  await enforcePendingScreen();
   return (
     <main
       style={{

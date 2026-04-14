@@ -27,16 +27,16 @@ const COOKIE_NAME = "investigator_session";
  * pre-existing beta tester, who has a valid session cookie but no profile
  * row in DB, putting them in a loop to /onboarding/legal.
  *
- * New rule (beta):
- *   - no cookie / invalid session  → /access
- *   - session valid, NO profile    → LET THROUGH (legacy beta testers)
- *   - profile + SUSPENDED          → block
- *   - profile + REVOKED            → block
- *   - anything else                → LET THROUGH (even partial onboarding)
+ * Rules:
+ *   - no cookie / invalid session                 → /access
+ *   - session valid, NO profile                   → LET THROUGH (legacy)
+ *   - profile + SUSPENDED                         → /investigators/suspended
+ *   - profile + REVOKED                           → /investigators/revoked
+ *   - profile + workspaceActivatedAt == null      → /onboarding/pending
+ *   - profile + workspaceActivatedAt != null      → LET THROUGH
  *
- * Return type is now nullable: `{ profileId: string | null }`. Callers today
- * discard it (see src/app/investigators/box/layout.tsx:42), so this is a
- * compatible widening.
+ * Return type is nullable: `{ profileId: string | null }`. Legacy testers
+ * without a profile row get `null` and flow through unchanged.
  */
 export async function enforceInvestigatorAccess(): Promise<{
   profileId: string | null;
@@ -53,15 +53,14 @@ export async function enforceInvestigatorAccess(): Promise<{
     redirect("/access");
   }
 
-  // Look up the InvestigatorProfile linked to this access (1:1 via accessId).
   const profile = await prisma.investigatorProfile.findUnique({
     where: { accessId: session.accessId },
-    select: { id: true, accessState: true },
+    select: { id: true, accessState: true, workspaceActivatedAt: true },
   });
 
   // Legacy beta tester: valid session, no profile row yet → let through.
-  // Future onboarding flows will create the profile on the client side the
-  // first time a workspace mutation happens.
+  // Future onboarding flows will create the profile when identity is
+  // submitted; from that point the workspaceActivatedAt gate applies.
   if (!profile) {
     return { profileId: null };
   }
@@ -73,5 +72,56 @@ export async function enforceInvestigatorAccess(): Promise<{
     redirect("/investigators/revoked");
   }
 
+  // Hard gate: a profile exists but admin has not activated the workspace.
+  // Send the user to the pending-review screen until admin flips the flag.
+  if (!profile.workspaceActivatedAt) {
+    redirect("/investigators/onboarding/pending");
+  }
+
   return { profileId: profile.id };
+}
+
+/**
+ * Gate for the pending-review screen itself.
+ *
+ * Prevents the main gate's redirect loop (pending would otherwise bounce to
+ * itself) AND kicks activated users forward into the workspace instead of
+ * letting them sit on the holding page.
+ *
+ *   - no cookie / invalid session                 → /access
+ *   - no profile                                  → LET THROUGH (legacy)
+ *   - profile + SUSPENDED / REVOKED               → appropriate terminal
+ *   - profile + workspaceActivatedAt != null      → /investigators/box
+ *   - profile + workspaceActivatedAt == null      → LET THROUGH (render)
+ */
+export async function enforcePendingScreen(): Promise<void> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+
+  if (!token) {
+    redirect("/access");
+  }
+
+  const session = await validateSession(token);
+  if (!session) {
+    redirect("/access");
+  }
+
+  const profile = await prisma.investigatorProfile.findUnique({
+    where: { accessId: session.accessId },
+    select: { accessState: true, workspaceActivatedAt: true },
+  });
+
+  if (!profile) return;
+
+  if (profile.accessState === "SUSPENDED") {
+    redirect("/investigators/suspended");
+  }
+  if (profile.accessState === "REVOKED") {
+    redirect("/investigators/revoked");
+  }
+
+  if (profile.workspaceActivatedAt) {
+    redirect("/investigators/box");
+  }
 }
