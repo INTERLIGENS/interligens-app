@@ -19,7 +19,28 @@ import { validateSession } from "@/lib/security/investigatorAuth";
 
 const COOKIE_NAME = "investigator_session";
 
-export async function enforceInvestigatorAccess(): Promise<{ profileId: string }> {
+/**
+ * BETA MODE — soft gate.
+ *
+ * History: the gate previously assumed every session MUST have a fully
+ * onboarded InvestigatorProfile and redirected otherwise. This broke every
+ * pre-existing beta tester, who has a valid session cookie but no profile
+ * row in DB, putting them in a loop to /onboarding/legal.
+ *
+ * New rule (beta):
+ *   - no cookie / invalid session  → /access
+ *   - session valid, NO profile    → LET THROUGH (legacy beta testers)
+ *   - profile + SUSPENDED          → block
+ *   - profile + REVOKED            → block
+ *   - anything else                → LET THROUGH (even partial onboarding)
+ *
+ * Return type is now nullable: `{ profileId: string | null }`. Callers today
+ * discard it (see src/app/investigators/box/layout.tsx:42), so this is a
+ * compatible widening.
+ */
+export async function enforceInvestigatorAccess(): Promise<{
+  profileId: string | null;
+}> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
@@ -35,15 +56,14 @@ export async function enforceInvestigatorAccess(): Promise<{ profileId: string }
   // Look up the InvestigatorProfile linked to this access (1:1 via accessId).
   const profile = await prisma.investigatorProfile.findUnique({
     where: { accessId: session.accessId },
-    include: {
-      ndaAcceptance: { select: { id: true } },
-      betaTermsAcceptance: { select: { id: true } },
-    },
+    select: { id: true, accessState: true },
   });
 
-  // No profile yet → still in onboarding, must sign legal docs first
+  // Legacy beta tester: valid session, no profile row yet → let through.
+  // Future onboarding flows will create the profile on the client side the
+  // first time a workspace mutation happens.
   if (!profile) {
-    redirect("/investigators/onboarding/legal");
+    return { profileId: null };
   }
 
   if (profile.accessState === "SUSPENDED") {
@@ -51,18 +71,6 @@ export async function enforceInvestigatorAccess(): Promise<{ profileId: string }
   }
   if (profile.accessState === "REVOKED") {
     redirect("/investigators/revoked");
-  }
-  if (!profile.ndaAcceptance) {
-    redirect("/investigators/onboarding/legal");
-  }
-  if (!profile.betaTermsAcceptance) {
-    redirect("/investigators/onboarding/legal");
-  }
-  if (!profile.legalFirstName || !profile.legalLastName) {
-    redirect("/investigators/onboarding/identity");
-  }
-  if (profile.accessLevel === "APPLICANT") {
-    redirect("/investigators/onboarding/legal");
   }
 
   return { profileId: profile.id };
