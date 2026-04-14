@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { llmComplete } from "@/lib/llm";
 import { prisma } from "@/lib/prisma";
 import {
   getVaultWorkspace,
@@ -125,23 +125,20 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
   }
 
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1500,
-      system: systemPrompt,
+    const llmRes = await llmComplete({
+      useCase: "case_assistant",
+      systemPrompt,
+      maxTokens: 1500,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    const responseText =
-      textBlock && "text" in textBlock && typeof textBlock.text === "string"
-        ? textBlock.text
-        : "";
+    if (llmRes.fallbackUsed) {
+      console.error("[assistant] llm fallback", llmRes.error);
+      return NextResponse.json({ error: "ai_call_failed" }, { status: 500 });
+    }
 
-    const actualTokens =
-      (response.usage?.input_tokens ?? 0) +
-      (response.usage?.output_tokens ?? 0);
+    const responseText = llmRes.content;
+    const actualTokens = llmRes.tokensUsed ?? 0;
 
     await prisma.vaultWorkspace.update({
       where: { id: ctx.workspace.id },
@@ -157,8 +154,8 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
       actor: ctx.access.label,
       request,
       metadata: {
-        inputTokens: response.usage?.input_tokens,
-        outputTokens: response.usage?.output_tokens,
+        inputTokens: llmRes.inputTokens,
+        outputTokens: llmRes.outputTokens,
       },
     });
 
