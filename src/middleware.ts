@@ -40,6 +40,9 @@ function isBetaExempt(pathname: string): boolean {
   if (pathname.startsWith("/favicon")) return true;
   // Health check
   if (pathname === "/health") return true;
+  // SEO: sitemap + robots must be crawler-accessible (P1)
+  if (pathname === "/sitemap.xml") return true;
+  if (pathname === "/robots.txt") return true;
   return false;
 }
 
@@ -111,6 +114,6 @@ export const config = {
     "/en/:path*",
     "/fr/:path*",
     // Dynamic locale
-    "/((?!_next|favicon|access|api|admin|health).*)",
+    "/((?!_next|favicon|access|api|admin|health|sitemap.xml|robots.txt).*)",
   ],
 };

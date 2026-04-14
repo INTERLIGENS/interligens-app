@@ -112,7 +112,7 @@ export default function WelcomePage() {
         </Section>
 
         <Link
-          href="/investigators/workspace"
+          href="/investigators/box"
           style={{
             display: "block",
             width: "100%",
