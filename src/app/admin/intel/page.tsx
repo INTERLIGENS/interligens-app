@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+function redirectToLogin() {
+  if (typeof window === "undefined") return;
+  window.location.href = "/admin/login?redirect=/admin/intel";
+}
+
 const BG = "#000000";
 const ACCENT = "#FF6B00";
 const TEXT = "#FFFFFF";
@@ -119,6 +124,10 @@ export default function FounderIntelPage() {
         const res = await fetch(`/api/admin/intel?${p.toString()}`, {
           credentials: "include",
         });
+        if (res.status === 401 || res.status === 403) {
+          redirectToLogin();
+          return;
+        }
         if (!res.ok) {
           const body = await res.json().catch(() => null);
           setError(
@@ -152,6 +161,10 @@ export default function FounderIntelPage() {
         method: "POST",
         credentials: "include",
       });
+      if (res.status === 401 || res.status === 403) {
+        redirectToLogin();
+        return;
+      }
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         setError(
