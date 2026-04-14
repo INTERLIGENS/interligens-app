@@ -56,9 +56,19 @@ export type PublicErrorResponse = {
 };
 
 const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const EVM_RE = /^0x[a-fA-F0-9]{40}$/;
 
 export function isValidMint(mint: string): boolean {
   return BASE58_RE.test(mint);
+}
+
+export function isValidEvmAddress(addr: string): boolean {
+  return EVM_RE.test(addr);
+}
+
+/** Accept either a SOL base58 mint or an EVM 0x address. */
+export function isValidScoreTarget(s: string): boolean {
+  return isValidMint(s) || isValidEvmAddress(s);
 }
 
 /** Map TigerDriver severity (lowercase) to public API severity (uppercase) */

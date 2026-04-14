@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/publicScore/rateLimit";
 import {
   isValidMint,
+  isValidEvmAddress,
   mapSeverity,
   derivePhantomWarning,
   type PublicScoreResponse,
@@ -11,6 +12,7 @@ import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
+import { isKnownBadEvm } from "@/lib/entities/knownBad";
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -55,15 +57,87 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const mintRaw = searchParams.get("mint");
+  const target = mintRaw?.trim() ?? "";
 
-  if (!mintRaw || !isValidMint(mintRaw.trim())) {
+  if (!target || (!isValidMint(target) && !isValidEvmAddress(target))) {
     return NextResponse.json(
-      { error: "invalid_mint", message: "Expected a valid Solana base58 address (32-44 characters)" },
+      {
+        error: "invalid_mint",
+        message:
+          "Expected a valid Solana base58 address (32-44 chars) or an EVM 0x address (42 chars)",
+      },
       { status: 400, headers: corsHeaders(rl) }
     );
   }
 
-  const mint = mintRaw.trim();
+  const isEvm = isValidEvmAddress(target);
+
+  // ── EVM path (ETH / Base / Arbitrum — single TigerScore, no market/graph) ──
+  if (isEvm) {
+    try {
+      const normalized = target.toLowerCase();
+      const knownBad = isKnownBadEvm(normalized);
+
+      const intel = await computeTigerScoreWithIntel(
+        {
+          chain: "ETH",
+          evm_known_bad: knownBad !== null,
+          evm_is_contract: false,
+        },
+        normalized
+      );
+
+      const finalScore = intel.finalScore;
+      const finalVerdict = finalScore >= 70 ? "RED" : finalScore >= 35 ? "ORANGE" : "GREEN";
+
+      const signals: PublicSignal[] = intel.drivers.map((d) => ({
+        id: d.id,
+        label: d.label,
+        severity: mapSeverity(d.severity),
+        value: d.delta,
+      }));
+
+      const sources: string[] = [];
+      if (knownBad) sources.push("INTERLIGENS KnownBad");
+      if (intel.intelligence) {
+        for (const s of intel.intelligence.contributingSources) {
+          if (!sources.includes(s)) sources.push(s);
+        }
+      }
+
+      const phantom = derivePhantomWarning(finalVerdict);
+
+      const response: PublicScoreResponse = {
+        mint: normalized,
+        symbol: knownBad?.label,
+        score: finalScore,
+        verdict: finalVerdict,
+        phantom_warning_level: phantom.level,
+        phantom_disclaimer: phantom.disclaimer,
+        signals,
+        sources,
+        cached: false,
+        timestamp: new Date().toISOString(),
+        api_version: "v1",
+      };
+
+      console.log(
+        `[api/v1/score] evm=${normalized} score=${finalScore} verdict=${finalVerdict} ` +
+          `signals=${signals.length} sources=${sources.join(",")}`
+      );
+
+      return NextResponse.json(response, { status: 200, headers: corsHeaders(rl) });
+    } catch (err) {
+      console.error("[api/v1/score] EVM path error:", err);
+      return NextResponse.json(
+        { error: "internal_error", message: "An unexpected error occurred" },
+        { status: 500, headers: corsHeaders(rl) }
+      );
+    }
+  }
+
+  // ── SOL path (unchanged) ──────────────────────────────────────────────
+  const mint = target;
 
   try {
     // 1. Check case DB for existing off-chain data

@@ -83,13 +83,14 @@ function formatScoreReply(
     tigerScore?: number;
     score?: number;
     tier?: string;
+    verdict?: string;
     color?: string;
     topReasons?: Array<{ label?: string } | string>;
     signals?: Array<{ label?: string; severity?: string }>;
   };
 
   const score = d.tigerScore ?? d.score;
-  const tier = d.tier ?? d.color ?? "UNKNOWN";
+  const tier = d.tier ?? d.verdict ?? d.color ?? "UNKNOWN";
   const emoji =
     tier === "RED" || tier === "CRITICAL"
       ? "🔴"
