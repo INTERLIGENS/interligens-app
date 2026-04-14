@@ -1871,3 +1871,93 @@ model InvestigatorActivityLog {
   @@index([event])
   @@index([createdAt])
 }
+
+// ─── FOUNDER INTEL FEED ─────────────────────────────────────────────────────
+// Private intelligence feed under /admin/intel. Founder-only, never public.
+
+enum IntelCategory {
+  SCAM
+  COMPETITOR
+  AI
+  REGULATORY
+  ECOSYSTEM
+}
+
+enum IntelPriority {
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum IntelSourceType {
+  RSS
+  X_HANDLE
+  WEBHOOK
+}
+
+enum IntelRunStatus {
+  RUNNING
+  DONE
+  FAILED
+}
+
+model FounderIntelSource {
+  id         String             @id @default(cuid())
+  name       String
+  type       IntelSourceType
+  url        String?            @unique
+  handle     String?            @unique
+  category   IntelCategory
+  trustScore Int                @default(3)
+  enabled    Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  items      FounderIntelItem[]
+}
+
+model FounderIntelItem {
+  id               String        @id @default(cuid())
+  dedupKey         String        @unique
+  title            String
+  excerpt          String?
+  summary          String?
+  summaryDone      Boolean       @default(false)
+  summaryAttempts  Int           @default(0)
+  lastSummaryError String?
+  url              String
+  canonicalUrl     String?
+  sourceItemId     String?
+  contentHash      String?
+  author           String?
+  imageUrl         String?
+  lang             String?
+  chain            String?
+  source           String
+  sourceId         String?
+  category         IntelCategory
+  priority         IntelPriority @default(NORMAL)
+  tags             String[]      @default([])
+  starRating       Int           @default(0)
+  starOverride     Int?
+  read             Boolean       @default(false)
+  starred          Boolean       @default(false)
+  publishedAt      DateTime
+  fetchedAt        DateTime      @default(now())
+
+  intelSource FounderIntelSource? @relation(fields: [sourceId], references: [id])
+
+  @@index([contentHash])
+  @@index([category, publishedAt])
+  @@index([starRating, publishedAt])
+  @@index([read, publishedAt])
+  @@index([summaryDone, summaryAttempts])
+}
+
+model FounderIntelIngestRun {
+  id            String         @id @default(cuid())
+  startedAt     DateTime       @default(now())
+  completedAt   DateTime?
+  sourceCount   Int            @default(0)
+  itemsIngested Int            @default(0)
+  errors        String[]
+  status        IntelRunStatus @default(RUNNING)
+}
