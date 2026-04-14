@@ -1,6 +1,7 @@
 import Link from "next/link";
 import FeedbackButton from "@/components/vault/FeedbackButton";
 import { VaultToastProvider } from "@/components/vault/VaultToast";
+import { enforceInvestigatorAccess } from "@/lib/investigators/accessGate";
 
 const BAR_STYLE: React.CSSProperties = {
   height: 36,
@@ -33,11 +34,12 @@ const SEPARATOR: React.CSSProperties = {
   color: "rgba(255,255,255,0.1)",
 };
 
-export default function InvestigatorsBoxLayout({
+export default async function InvestigatorsBoxLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await enforceInvestigatorAccess();
   return (
     <VaultToastProvider>
       <nav style={BAR_STYLE}>

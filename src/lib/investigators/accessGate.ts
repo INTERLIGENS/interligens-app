@@ -1,34 +1,35 @@
 /**
- * Server-side access gate for /investigators/workspace pages.
+ * Server-side access gate for /investigators/box (workspace) pages.
  *
- * CC-DECISION: Next.js edge middleware can't use Prisma directly, so the gate
- * is implemented as an async server-side helper. Server components and
- * layouts call `enforceInvestigatorAccess(req)` and get either `null`
- * (allowed) or a redirect target path. The existing edge middleware keeps
- * handling simple cookie presence; this gate handles Prisma state checks.
+ * Call as the first line of a server component or layout body. Uses
+ * next/navigation redirect() which throws internally — the caller never
+ * needs to inspect a return value. If the caller is reached with a valid
+ * session + profile, returns `{ profileId }` for optional use downstream.
+ *
+ * CC-DECISION: Next.js edge middleware can't use Prisma directly, so the
+ * gate runs as an async server-side helper called from page/layout server
+ * components. The existing edge middleware keeps handling simple cookie
+ * presence; this gate handles Prisma state checks.
  */
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { validateSession } from "@/lib/security/investigatorAuth";
 
 const COOKIE_NAME = "investigator_session";
 
-export type AccessGateResult =
-  | { allowed: true; profileId: string }
-  | { allowed: false; redirect: string };
-
-export async function enforceInvestigatorAccess(): Promise<AccessGateResult> {
+export async function enforceInvestigatorAccess(): Promise<{ profileId: string }> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
   if (!token) {
-    return { allowed: false, redirect: "/access" };
+    redirect("/access");
   }
 
   const session = await validateSession(token);
   if (!session) {
-    return { allowed: false, redirect: "/access" };
+    redirect("/access");
   }
 
   // Look up the InvestigatorProfile linked to this access (1:1 via accessId).
@@ -42,27 +43,27 @@ export async function enforceInvestigatorAccess(): Promise<AccessGateResult> {
 
   // No profile yet → still in onboarding, must sign legal docs first
   if (!profile) {
-    return { allowed: false, redirect: "/investigators/onboarding/legal" };
+    redirect("/investigators/onboarding/legal");
   }
 
   if (profile.accessState === "SUSPENDED") {
-    return { allowed: false, redirect: "/investigators/suspended" };
+    redirect("/investigators/suspended");
   }
   if (profile.accessState === "REVOKED") {
-    return { allowed: false, redirect: "/investigators/revoked" };
+    redirect("/investigators/revoked");
   }
   if (!profile.ndaAcceptance) {
-    return { allowed: false, redirect: "/investigators/onboarding/legal" };
+    redirect("/investigators/onboarding/legal");
   }
   if (!profile.betaTermsAcceptance) {
-    return { allowed: false, redirect: "/investigators/onboarding/legal" };
+    redirect("/investigators/onboarding/legal");
   }
   if (!profile.legalFirstName || !profile.legalLastName) {
-    return { allowed: false, redirect: "/investigators/onboarding/identity" };
+    redirect("/investigators/onboarding/identity");
   }
   if (profile.accessLevel === "APPLICANT") {
-    return { allowed: false, redirect: "/investigators/onboarding/legal" };
+    redirect("/investigators/onboarding/legal");
   }
 
-  return { allowed: true, profileId: profile.id };
+  return { profileId: profile.id };
 }
