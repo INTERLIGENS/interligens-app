@@ -120,7 +120,10 @@ export default function FounderIntelPage() {
           credentials: "include",
         });
         if (!res.ok) {
-          setError("Failed to load feed.");
+          const body = await res.json().catch(() => null);
+          setError(
+            `Feed load failed (${res.status}): ${body?.message ?? body?.error ?? "unknown"}`,
+          );
           return;
         }
         const data = (await res.json()) as FeedResponse;
@@ -149,9 +152,19 @@ export default function FounderIntelPage() {
         method: "POST",
         credentials: "include",
       });
+      const body = await res.json().catch(() => null);
       if (!res.ok) {
-        setError("Sync failed.");
+        setError(
+          `Sync failed (${res.status}): ${body?.message ?? body?.error ?? "unknown"}`,
+        );
         return;
+      }
+      if (body?.skipped === "lock") {
+        setError("Sync skipped: another run is in progress (lock window 10min).");
+      } else if (body?.errors && body.errors.length > 0) {
+        setError(
+          `Sync OK — ingested ${body.itemsIngested} items, ${body.errors.length} source error(s): ${body.errors.slice(0, 2).join(" | ")}`,
+        );
       }
       await loadPage({ reset: true, cursor: null });
     } catch {

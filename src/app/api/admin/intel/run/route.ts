@@ -19,7 +19,12 @@ export async function POST(req: NextRequest) {
     const result = await runRssIngest();
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
+    const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    const code = (err as { code?: string } | null)?.code ?? null;
     console.error("[admin/intel/run] failed", err);
-    return NextResponse.json({ ok: false, error: "ingest_failed" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "ingest_failed", message, code },
+      { status: 500 },
+    );
   }
 }

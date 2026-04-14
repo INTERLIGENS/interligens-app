@@ -53,20 +53,30 @@ export async function GET(req: NextRequest) {
     where.priority = priorityParam as IntelPriority;
   }
 
-  const items = await prisma.founderIntelItem.findMany({
-    where,
-    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-    take: limit + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-  });
+  try {
+    const items = await prisma.founderIntelItem.findMany({
+      where,
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
 
-  let nextCursor: string | null = null;
-  if (items.length > limit) {
-    const last = items.pop();
-    nextCursor = last?.id ?? null;
+    let nextCursor: string | null = null;
+    if (items.length > limit) {
+      const last = items.pop();
+      nextCursor = last?.id ?? null;
+    }
+
+    const unreadCount = await prisma.founderIntelItem.count({ where: { read: false } });
+
+    return NextResponse.json({ items, nextCursor, unreadCount });
+  } catch (err) {
+    const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    const code = (err as { code?: string } | null)?.code ?? null;
+    console.error("[admin/intel GET] failed", err);
+    return NextResponse.json(
+      { error: "feed_query_failed", message, code },
+      { status: 500 },
+    );
   }
-
-  const unreadCount = await prisma.founderIntelItem.count({ where: { read: false } });
-
-  return NextResponse.json({ items, nextCursor, unreadCount });
 }
