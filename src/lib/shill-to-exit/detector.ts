@@ -45,11 +45,31 @@ export interface ShillToExitSignal {
   hoursToExit: number;
   amountUsd: number;
   severity: "CRITICAL" | "HIGH" | "MEDIUM";
+  /** V1 — HIGH: direct proof (shill post + sell tx + matching laundry trail).
+   *        MEDIUM: time-correlated (shill + sell on same handle, no trail).
+   *        LOW: inferred via symbol-only match, no CA. */
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  /** V1 — when the seller wallet is present in a LaundryTrail for the same handle. */
+  laundryEnrichment: {
+    walletAddress: string;
+    chain: string;
+    trailType: string;
+    laundryRisk: string;
+    recoveryDifficulty: string;
+  } | null;
   evidence: string[];
   postUrl?: string;
   txHash: string;
   walletAddress: string;
 }
+
+type LaundryTrailHit = {
+  walletAddress: string;
+  chain: string;
+  trailType: string;
+  laundryRisk: string;
+  recoveryDifficulty: string;
+};
 
 type ProceedsRow = {
   eventDate: Date;
@@ -80,13 +100,37 @@ function severityFromHours(hours: number): ShillToExitSignal["severity"] | null 
 }
 
 /**
+ * Decide confidence from the available proof artifacts.
+ *
+ *   HIGH   — matched by token contract AND the seller wallet is in a
+ *            LaundryTrail for the same handle (direct proof the exit
+ *            funds fed a known laundering pattern).
+ *   MEDIUM — matched by token contract, no laundry trail (plain
+ *            shill-to-exit correlation on the same handle).
+ *   LOW    — matched by symbol only, no contract address (weakest link).
+ */
+function decideConfidence(
+  matchedByCa: boolean,
+  laundryHit: LaundryTrailHit | null,
+): "HIGH" | "MEDIUM" | "LOW" {
+  if (matchedByCa && laundryHit) return "HIGH";
+  if (matchedByCa) return "MEDIUM";
+  return "LOW";
+}
+
+/**
  * Pure function used by the tests and by detectShillToExit. Separating it
  * lets us unit-test the correlation logic without spinning up Prisma.
+ *
+ * V1: accepts an optional laundry-trail map keyed by seller wallet. When a
+ * signal's seller wallet hits the map, the trail is attached verbatim and
+ * confidence climbs to HIGH.
  */
 export function correlate(
   handle: string,
   shills: ShillEvent[],
   exits: ExitEvent[],
+  laundryByWallet?: Map<string, LaundryTrailHit>,
 ): ShillToExitSignal[] {
   if (shills.length === 0 || exits.length === 0) return [];
 
@@ -113,9 +157,13 @@ export function correlate(
 
   for (const exit of exits) {
     const candidates: ShillEvent[] = [];
+    let matchedByCa = false;
     if (exit.tokenCA) {
       const byCa = shillByCa.get(normalizeToken(exit.tokenCA));
-      if (byCa) candidates.push(...byCa);
+      if (byCa) {
+        candidates.push(...byCa);
+        matchedByCa = true;
+      }
     }
     if (candidates.length === 0 && exit.tokenSymbol) {
       const bySym = shillBySymbol.get(exit.tokenSymbol.toUpperCase());
@@ -150,6 +198,14 @@ export function correlate(
       `Delay: ${hoursToExit < 24 ? `${Math.round(hoursToExit)} h` : `${(hoursToExit / 24).toFixed(1)} days`}`,
     );
 
+    const laundryHit = laundryByWallet?.get(exit.walletAddress.toLowerCase()) ?? null;
+    const confidence = decideConfidence(matchedByCa, laundryHit);
+    if (laundryHit) {
+      evidence.push(
+        `Laundry trail detected: ${laundryHit.trailType} · risk=${laundryHit.laundryRisk}`,
+      );
+    }
+
     signals.push({
       handle,
       tokenCA: shill.tokenCA,
@@ -159,6 +215,8 @@ export function correlate(
       hoursToExit,
       amountUsd: exit.amountUsd,
       severity,
+      confidence,
+      laundryEnrichment: laundryHit,
       evidence,
       postUrl: shill.postUrl,
       txHash: exit.txHash,
@@ -267,6 +325,36 @@ async function loadExitEvents(handle: string): Promise<ExitEvent[]> {
   }
 }
 
+async function loadLaundryByWallet(handle: string): Promise<Map<string, LaundryTrailHit>> {
+  try {
+    const trails = await prisma.laundryTrail.findMany({
+      where: { kolHandle: handle },
+      select: {
+        walletAddress: true,
+        chain: true,
+        trailType: true,
+        laundryRisk: true,
+        recoveryDifficulty: true,
+      },
+      take: 200,
+    });
+    const m = new Map<string, LaundryTrailHit>();
+    for (const t of trails) {
+      m.set(t.walletAddress.toLowerCase(), {
+        walletAddress: t.walletAddress,
+        chain: t.chain,
+        trailType: t.trailType,
+        laundryRisk: String(t.laundryRisk),
+        recoveryDifficulty: String(t.recoveryDifficulty),
+      });
+    }
+    return m;
+  } catch (err) {
+    console.error("[shill-to-exit] loadLaundryByWallet failed", err);
+    return new Map();
+  }
+}
+
 /**
  * Public API — returns an array of shill-to-exit signals for the given KOL.
  * Always resolves; never throws.
@@ -279,11 +367,12 @@ export async function detectShillToExit(
   if (!normalized) return [];
 
   try {
-    const [shills, exits] = await Promise.all([
+    const [shills, exits, laundryByWallet] = await Promise.all([
       loadShillEvents(normalized),
       loadExitEvents(normalized),
+      loadLaundryByWallet(normalized),
     ]);
-    return correlate(normalized, shills, exits);
+    return correlate(normalized, shills, exits, laundryByWallet);
   } catch (err) {
     console.error("[shill-to-exit] detectShillToExit failed", err);
     return [];
