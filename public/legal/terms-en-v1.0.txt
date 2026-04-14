@@ -1,0 +1,72 @@
+INTERLIGENS — Beta Investigator Program Terms
+Version: 1.0 | Language: EN
+
+These Beta Investigator Program Terms ("Terms") govern participation in the
+INTERLIGENS Trusted Investigator Program ("Program") and are accepted alongside
+the INTERLIGENS Non-Disclosure Agreement at onboarding.
+
+1. BETA ACCESS
+As part of the Program, INTERLIGENS grants the participant free, personal,
+limited, and revocable access to a private investigator workspace and related
+tools ("Workspace"). Such access is provided solely within the scope of the
+Program.
+
+2. NATURE OF ACCESS — NO IMPLIED OBLIGATION OR COMPENSATION
+Participation in the Program and access to the Workspace does not, by default:
+- create any employment relationship of any kind
+- create any contractor, service, or consulting agreement
+- imply any obligation to produce work, contribute materials, or participate
+  in any investigation
+- create any right to compensation, payment, or remuneration of any kind
+- constitute a commissioned service or ordered deliverable
+
+Access to the Workspace and its tools is a benefit of the beta program.
+It is not a work contract, not a mission, and not a debt of production.
+
+Any paid collaboration, compensated mission, or service relationship between
+the participant and INTERLIGENS requires a separate written agreement expressly
+setting out the scope, deliverables, and compensation. No such relationship
+arises from Program participation alone, regardless of the quantity or quality
+of work produced within the Workspace.
+
+3. ACCESS CONDITIONS
+Access to the Workspace is:
+- Free of charge
+- Personal and non-transferable
+- Limited to the scope of the Program
+- Revocable at any time by INTERLIGENS, with or without cause, with no
+  compensation owed
+
+4. TOOLS PROVIDED AS-IS
+The Workspace and all tools are offered in beta condition. INTERLIGENS makes
+no warranty of availability, accuracy, or fitness for any particular purpose.
+The participant uses these tools at their own discretion.
+
+5. ACCESS LEVELS
+Access within the Program is progressive:
+- Beta Investigator: private workspace, cases, tools, private export
+- Verified Investigator: same, with higher internal trust designation
+- Trusted Contributor: eligible for Intel Vault submissions, public attribution,
+  Trusted Contributor badge
+
+Upgrade to Trusted Contributor requires satisfying objective criteria reviewed
+and approved by INTERLIGENS.
+
+6. SUSPENSION AND REVOCATION
+INTERLIGENS reserves the right to suspend or permanently revoke access in the
+event of NDA breach, trust concern, security concern, publication abuse, or
+behavior inconsistent with Program rules. No compensation is owed upon
+suspension or revocation.
+
+7. PUBLICATION
+Publication of any output to INTERLIGENS's Intel Vault or any public surface
+requires explicit eligibility, editorial review, and approval by INTERLIGENS.
+Publication eligibility is not granted by default.
+
+8. GOVERNING LAW
+These Terms are governed by the laws of the State of Delaware, United States,
+on the same terms and with the same carve-outs as the accompanying
+Non-Disclosure Agreement.
+
+INTERLIGENS
+interligens.com

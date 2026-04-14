@@ -1,0 +1,100 @@
+INTERLIGENS — Accord de Non-Divulgation
+Version : 1.0 | Langue : FR
+
+Le présent Accord de Non-Divulgation (« Accord ») est conclu entre INTERLIGENS,
+société de droit Delaware (« INTERLIGENS »), et la personne identifiée à la
+signature (« Signataire »), dans le cadre du programme INTERLIGENS Trusted
+Investigator (« Programme »).
+
+Dans le cadre du Programme, INTERLIGENS peut accorder au Signataire un accès
+gratuit à un espace de travail privé et à certains outils associés. Cet accès
+est fourni exclusivement dans le cadre du Programme et ne crée aucune relation
+de travail, aucune obligation de prestation, ni aucun droit à rémunération,
+sauf accord écrit séparé.
+
+1. CONFIDENTIALITÉ
+Le Signataire s'engage à maintenir strictement confidentielles toutes les
+Informations Confidentielles reçues dans le cadre du Programme. Les
+« Informations Confidentielles » comprennent notamment : les méthodes
+d'investigation d'INTERLIGENS, les workflows analytiques, la logique de
+cartographie des entités, les systèmes de scoring, les structures de dossiers,
+les labels internes, les corrélations, les datasets compilés, l'intelligence
+propriétaire, les documents internes, les matériaux, et toute information
+non publique partagée dans le cadre du Programme.
+
+INTERLIGENS ne revendique pas la propriété des faits publics disponibles sur
+la blockchain, tels que les adresses wallet publiques, les transactions
+on-chain publiques ou les URLs publiques. Ce qu'INTERLIGENS protège est la
+couche dérivée, analytique, méthodologique et structurée construite sur ces
+données publiques : méthodes, workflows, mappings, labels, corrélations,
+scores, structures de dossiers, exports, matériaux internes, datasets compilés
+et systèmes d'intelligence propriétaires.
+
+2. NON-DIVULGATION
+Le Signataire s'engage à ne pas divulguer, partager, publier, communiquer ou
+rendre accessibles à des tiers les Informations Confidentielles, sans
+autorisation écrite préalable d'INTERLIGENS.
+
+3. CLOISONNEMENT HORIZONTAL
+Le Signataire s'engage à ne pas chercher à identifier, divulguer ou exposer
+l'identité, les dossiers, les données ou les activités d'autres investigators
+participant au Programme, sauf autorisation explicite d'INTERLIGENS.
+
+4. USAGE NON AUTORISÉ
+Le Signataire s'engage à ne pas utiliser les Informations Confidentielles,
+méthodes, matériaux, outputs, processus ou intelligence propriétaire
+d'INTERLIGENS à des fins autres que celles du Programme, sans autorisation
+écrite préalable d'INTERLIGENS.
+
+5. NON-CIRCUMVENTION
+Le Signataire s'engage à ne pas utiliser sa participation au Programme pour
+extraire de la valeur confidentielle, reproduire les systèmes propriétaires
+d'INTERLIGENS ou contourner les règles et l'objet du Programme.
+
+6. LIMITES D'APPLICATION
+Le présent Accord ne s'applique pas aux informations qui deviennent publiques
+sans violation de la part du Signataire, ni aux informations que le Signataire
+peut démontrer avoir développées de manière indépendante.
+
+7. DURÉE
+Les obligations de confidentialité prévues par le présent Accord restent en
+vigueur pendant une période de trois (3) ans à compter de la date de signature,
+sauf durée plus longue requise par la loi applicable ou convenue par écrit.
+
+8. LOI APPLICABLE ET JURIDICTION
+Le présent Accord, ainsi que tout litige, toute réclamation ou toute obligation
+non contractuelle en découlant ou s'y rapportant, est régi et interprété
+conformément aux lois de l'État du Delaware, États-Unis, à l'exclusion de ses
+règles de conflit de lois.
+
+Les juridictions étatiques et fédérales situées à Wilmington, Delaware, sont
+seules compétentes pour connaître de tout litige découlant du présent Accord,
+et chaque Partie accepte irrévocablement leur compétence et renonce à toute
+contestation fondée sur le lieu de juridiction.
+
+Nonobstant ce qui précède, INTERLIGENS pourra solliciter toute mesure
+provisoire, conservatoire ou injonctive devant toute juridiction compétente
+afin de prévenir ou limiter toute violation effective ou imminente de la
+confidentialité, tout usage abusif d'informations confidentielles ou toute
+divulgation non autorisée.
+
+Pour les signataires ayant leur résidence habituelle dans l'Union européenne,
+la présente clause s'applique dans toute la mesure permise par le Règlement
+(CE) n° 593/2008 et par toute autre règle impérative applicable. Aucune
+stipulation du présent Accord n'a pour objet de priver ces signataires d'une
+protection impérative à laquelle il ne peut être contractuellement renoncé.
+
+Les Parties reconnaissent que le présent Accord est conclu dans un cadre
+professionnel, de type B2B ou de contribution indépendante, et qu'il n'a pas
+pour objet de créer une relation de consommation ou d'emploi.
+
+9. LANGUE
+Le présent Accord est disponible en anglais et en français. Le signataire
+choisit la version linguistique affichée au moment de la signature. La version
+acceptée est identifiée par son ndaVersion, son ndaLanguage et son ndaDocHash.
+En cas de divergence entre les versions linguistiques, la version anglaise
+prévaut, sauf dans la mesure où une règle impérative applicable au signataire
+en dispose autrement.
+
+INTERLIGENS
+interligens.com

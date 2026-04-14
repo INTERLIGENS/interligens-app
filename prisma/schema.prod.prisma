@@ -1671,3 +1671,203 @@ model WatchAlert {
 
   @@index([watchedAddressId])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRUSTED INVESTIGATOR PROGRAM — additive models
+// CC-DECISION: InvestigatorAuditLog already exists for login/session events
+// (investigatorAccessId + eventType string). To avoid breaking that use, the
+// program audit trail lives in InvestigatorProgramAuditLog with a typed enum.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum InvestigatorVerificationStatus {
+  PENDING
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  VERIFIED
+  TRUSTED
+  SUSPENDED
+  REVOKED
+}
+
+enum InvestigatorAccessLevel {
+  APPLICANT
+  BETA
+  VERIFIED
+  TRUSTED_CONTRIBUTOR
+}
+
+enum InvestigatorAccessState {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum InvestigatorApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVIEW
+}
+
+enum InvestigatorAuditEvent {
+  INVESTIGATOR_APPLICATION_SUBMITTED
+  INVESTIGATOR_APPLICATION_APPROVED
+  INVESTIGATOR_APPLICATION_REJECTED
+  INVESTIGATOR_APPLICATION_NEEDS_REVIEW
+  NDA_SIGNED
+  BETA_TERMS_ACCEPTED
+  INVESTIGATOR_IDENTITY_COMPLETED
+  WORKSPACE_ACTIVATED
+  ACCESS_SUSPENDED
+  ACCESS_REVOKED
+  ACCESS_RESTORED
+  TRUSTED_CONTRIBUTOR_GRANTED
+  TRUSTED_CONTRIBUTOR_REVOKED
+}
+
+enum InvestigatorActivityEvent {
+  LOGIN
+  WORKSPACE_OPENED
+  CASE_CREATED
+  CASE_OPENED
+  CASE_UPDATED
+  ENTITY_ADDED
+  ENTITY_COUNT_SNAPSHOT
+  EXPORT_TRIGGERED
+  SHARE_ACTIVATED
+  SHARE_DEACTIVATED
+  PUBLISH_SUBMITTED
+  ASSISTANT_QUERIED
+  IDENTITY_UPDATED
+  SETTINGS_UPDATED
+}
+
+model InvestigatorProfile {
+  id        String @id @default(cuid())
+  handle    String @unique
+  accessId  String? @unique
+
+  // Identity (filled after onboarding)
+  legalFirstName   String?
+  legalLastName    String?
+  primaryEmail     String?
+  country          String?
+  organizationName String?
+
+  // State machine
+  verificationStatus InvestigatorVerificationStatus @default(PENDING)
+  accessLevel        InvestigatorAccessLevel        @default(APPLICANT)
+  accessState        InvestigatorAccessState        @default(ACTIVE)
+
+  // Eligibility flags
+  isEligibleForPublishing Boolean @default(false)
+  isEligibleForSharing    Boolean @default(false)
+  substantiveContribution Boolean @default(false)
+
+  // Admin trust operations
+  internalReviewNote String?
+  approvedAt         DateTime?
+  approvedBy         String?
+  suspendedAt        DateTime?
+  revokedAt          DateTime?
+  suspensionReason   String?
+  revokedReason      String?
+
+  workspaceActivatedAt DateTime?
+  lastActiveAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  ndaAcceptance       InvestigatorNdaAcceptance?
+  betaTermsAcceptance InvestigatorBetaTermsAcceptance?
+  programAuditLogs    InvestigatorProgramAuditLog[]
+  activityLogs        InvestigatorActivityLog[]
+
+  @@index([accessState])
+  @@index([accessLevel])
+  @@index([verificationStatus])
+}
+
+model InvestigatorApplication {
+  id           String                        @id @default(cuid())
+  handle       String
+  displayName  String?
+  email        String
+  country      String
+  languages    String[]
+  specialties  String[]
+  publicLinks  Json
+  background   String
+  motivation   String
+  status       InvestigatorApplicationStatus @default(PENDING)
+  submittedAt  DateTime                      @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  internalNote String?
+
+  @@index([status])
+  @@index([email])
+}
+
+model InvestigatorNdaAcceptance {
+  id          String               @id @default(cuid())
+  profileId   String?              @unique
+  profile     InvestigatorProfile? @relation(fields: [profileId], references: [id])
+  betaCodeId  String?              // free ref, no FK
+  signerName  String
+  ndaVersion  String
+  ndaLanguage String
+  ndaDocHash  String
+  accepted    Boolean              @default(true)
+  signedAt    DateTime             @default(now())
+  ipAddress   String?
+
+  @@index([betaCodeId])
+}
+
+model InvestigatorBetaTermsAcceptance {
+  id            String               @id @default(cuid())
+  profileId     String?              @unique
+  profile       InvestigatorProfile? @relation(fields: [profileId], references: [id])
+  betaCodeId    String?              // free ref, no FK
+  signerName    String
+  termsVersion  String
+  termsLanguage String
+  termsDocHash  String
+  accepted      Boolean              @default(true)
+  acceptedAt    DateTime             @default(now())
+  ipAddress     String?
+
+  @@index([betaCodeId])
+}
+
+model InvestigatorProgramAuditLog {
+  id        String                 @id @default(cuid())
+  profileId String?
+  profile   InvestigatorProfile?   @relation(fields: [profileId], references: [id])
+  event     InvestigatorAuditEvent
+  actorId   String?
+  metadata  Json?
+  createdAt DateTime               @default(now())
+
+  @@index([profileId])
+  @@index([event])
+  @@index([createdAt])
+}
+
+model InvestigatorActivityLog {
+  id        String                    @id @default(cuid())
+  profileId String
+  profile   InvestigatorProfile       @relation(fields: [profileId], references: [id])
+  event     InvestigatorActivityEvent
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime                  @default(now())
+
+  @@index([profileId])
+  @@index([event])
+  @@index([createdAt])
+}

@@ -1,0 +1,79 @@
+INTERLIGENS — Conditions du Programme Beta Investigators
+Version : 1.0 | Langue : FR
+
+Les présentes Conditions du Programme Beta Investigators (« Conditions »)
+régissent la participation au programme INTERLIGENS Trusted Investigator
+(« Programme ») et sont acceptées conjointement avec l'Accord de
+Non-Divulgation INTERLIGENS lors de l'onboarding.
+
+1. ACCÈS BETA
+Dans le cadre du Programme, INTERLIGENS accorde au participant un accès
+gratuit, personnel, limité et révocable à un espace de travail privé et à
+certains outils associés (« Espace de travail »). Cet accès est fourni
+exclusivement dans le cadre du Programme.
+
+2. NATURE DE L'ACCÈS — AUCUNE OBLIGATION NI RÉMUNÉRATION IMPLICITE
+La participation au Programme et l'accès à l'Espace de travail ne crée pas,
+par défaut :
+- aucune relation de travail, d'emploi ou de salariat d'aucune nature
+- aucun contrat de prestation de services, de consulting ou de sous-traitance
+- aucune obligation de produire du travail, de contribuer des matériaux ou
+  de participer à quelque investigation que ce soit
+- aucun droit à rémunération, paiement ou compensation d'aucune nature
+- aucune prestation commandée ni livrable exigible
+
+L'accès à l'Espace de travail et à ses outils constitue un bénéfice du
+programme beta. Il ne s'agit ni d'un contrat de travail, ni d'une mission,
+ni d'une dette de production.
+
+Toute collaboration rémunérée, mission payée ou relation de prestation entre
+le participant et INTERLIGENS requiert un accord écrit séparé définissant
+expressément le périmètre, les livrables et la rémunération. Aucune telle
+relation ne découle de la seule participation au Programme, quelle que soit
+la quantité ou la qualité du travail produit dans l'Espace de travail.
+
+3. CONDITIONS D'ACCÈS
+L'accès à l'Espace de travail est :
+- Gratuit
+- Personnel et non transférable
+- Limité au périmètre du Programme
+- Révocable à tout moment par INTERLIGENS, avec ou sans motif, sans
+  indemnité due
+
+4. OUTILS FOURNIS EN L'ÉTAT
+L'Espace de travail et tous les outils sont fournis en version beta.
+INTERLIGENS ne garantit ni leur disponibilité, ni leur exactitude, ni leur
+adéquation à un usage particulier. Le participant utilise ces outils sous
+sa seule responsabilité.
+
+5. NIVEAUX D'ACCÈS
+L'accès au sein du Programme est progressif :
+- Beta Investigator : espace de travail privé, dossiers, outils, export privé
+- Verified Investigator : même périmètre, avec un niveau de confiance interne
+  supérieur
+- Trusted Contributor : éligible aux soumissions Intel Vault, attribution
+  publique, badge Trusted Contributor
+
+Le passage au statut Trusted Contributor requiert la satisfaction de critères
+objectifs et une validation humaine par INTERLIGENS.
+
+6. SUSPENSION ET RÉVOCATION
+INTERLIGENS se réserve le droit de suspendre ou de révoquer définitivement
+l'accès en cas de violation de l'Accord de Non-Divulgation, d'incident trust,
+de préoccupation de sécurité, d'abus de publication ou de comportement
+incompatible avec les règles du Programme. Aucune indemnité n'est due en cas
+de suspension ou de révocation.
+
+7. PUBLICATION
+La publication de tout output dans l'Intel Vault d'INTERLIGENS ou sur toute
+surface publique requiert une éligibilité explicite, une revue éditoriale et
+une approbation d'INTERLIGENS. L'éligibilité à la publication n'est pas
+accordée par défaut.
+
+8. LOI APPLICABLE
+Les présentes Conditions sont régies par les lois de l'État du Delaware,
+États-Unis, dans les mêmes termes et avec les mêmes réserves que l'Accord
+de Non-Divulgation associé.
+
+INTERLIGENS
+interligens.com

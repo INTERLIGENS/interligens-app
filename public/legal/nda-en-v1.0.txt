@@ -1,0 +1,94 @@
+INTERLIGENS — Non-Disclosure Agreement
+Version: 1.0 | Language: EN
+
+This Non-Disclosure Agreement ("Agreement") is entered into between INTERLIGENS,
+a Delaware corporation ("INTERLIGENS"), and the individual identified at signature
+("Signatory"), in connection with the INTERLIGENS Trusted Investigator Program
+("Program").
+
+INTERLIGENS may provide the Signatory with free beta access to a private
+investigator workspace and related tools in connection with the Program. Such
+access is granted solely within the scope of the Program and does not create any
+employment relationship, service obligation, or right to compensation unless
+expressly agreed in a separate written agreement.
+
+1. CONFIDENTIALITY
+The Signatory agrees to hold in strict confidence all Confidential Information
+received in connection with the Program. "Confidential Information" includes but
+is not limited to: INTERLIGENS's investigative methods, analytical workflows,
+entity mapping logic, scoring systems, case structures, internal labels,
+correlations, compiled datasets, proprietary intelligence, internal documents,
+materials, and any non-public information shared within the Program.
+
+INTERLIGENS does not claim ownership of publicly available blockchain facts such
+as public wallet addresses, public on-chain transactions, or public URLs. What
+INTERLIGENS protects is the derived, analytical, methodological and structured
+layer built on top of public data: methods, workflows, mappings, labels,
+correlations, scores, case structures, exports, internal materials, compiled
+datasets, and proprietary intelligence systems.
+
+2. NON-DISCLOSURE
+The Signatory shall not disclose, share, publish, communicate or otherwise make
+available any Confidential Information to any third party without prior written
+consent from INTERLIGENS.
+
+3. HORIZONTAL COMPARTMENTALIZATION
+The Signatory shall not seek to identify, disclose, or expose the identity,
+cases, data, or activities of any other investigator participating in the Program,
+except with the explicit authorization of INTERLIGENS.
+
+4. NON-AUTHORIZED USE
+The Signatory shall not use INTERLIGENS's Confidential Information, methods,
+materials, outputs, processes, or proprietary intelligence for any purpose outside
+the Program without prior written consent from INTERLIGENS.
+
+5. NON-CIRCUMVENTION
+The Signatory shall not use their participation in the Program to extract
+confidential value, replicate INTERLIGENS's proprietary systems, or circumvent
+the Program's rules and purpose.
+
+6. SCOPE LIMITATION
+This Agreement does not apply to information that is or becomes publicly known
+through no breach by the Signatory, or that the Signatory can demonstrate was
+independently developed without use of Confidential Information.
+
+7. DURATION
+The obligations of confidentiality set out in this Agreement shall remain in
+force for a period of three (3) years from the date of signature, unless a longer
+period is required by applicable law or separately agreed in writing.
+
+8. GOVERNING LAW AND JURISDICTION
+This Agreement, and any dispute, claim, or non-contractual obligation arising out
+of or in connection with it, shall be governed by and construed in accordance
+with the laws of the State of Delaware, United States, without regard to its
+conflict-of-laws principles.
+
+The state and federal courts located in Wilmington, Delaware shall have exclusive
+jurisdiction over any dispute arising out of or relating to this Agreement, and
+each Party irrevocably submits to the jurisdiction of such courts and waives any
+objection based on venue or forum non conveniens.
+
+Notwithstanding the foregoing, INTERLIGENS may seek temporary, preliminary,
+conservatory, or injunctive relief in any court of competent jurisdiction to
+prevent or limit any actual or threatened breach of confidentiality, misuse of
+confidential information, or unauthorized disclosure of protected materials.
+
+For signatories habitually resident in the European Union, this clause shall
+apply to the fullest extent permitted by Regulation (EC) No 593/2008 and any
+other mandatory applicable law. Nothing in this Agreement is intended to deprive
+such signatories of any mandatory protection that cannot be waived by contract
+under the law applicable to them.
+
+The Parties acknowledge that this Agreement is entered into in a professional,
+business-to-business or independent-contributor context and is not intended to
+create a consumer or employment relationship.
+
+9. LANGUAGE
+This Agreement is available in English and French. The signatory selects the
+language version displayed at signature. The accepted version is identified by
+its ndaVersion, ndaLanguage, and ndaDocHash. In the event of discrepancy between
+language versions, the English version shall prevail, except to the extent
+mandatory law applicable to the signatory requires otherwise.
+
+INTERLIGENS
+interligens.com
