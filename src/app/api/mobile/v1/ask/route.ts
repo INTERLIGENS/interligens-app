@@ -13,24 +13,29 @@ import type { AnalysisSummary, Verdict } from "@/lib/explanation/types";
 import { prisma } from "@/lib/prisma";
 import { buildGroundingContext } from "@/lib/ask/groundingContext";
 import { generateWhyBullets } from "@/lib/ask/whyBullets";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  getClientIp,
+  detectLocale,
+  RATE_LIMIT_PRESETS,
+} from "@/lib/security/rateLimit";
+import { timingSafeEqual } from "crypto";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ── Rate limiting ────────────────────────────────────────────────────────────
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 30;
-const RATE_WINDOW = 60_000;
-
-function checkRL(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW });
-    return true;
+// SEC-006 — timing-safe compare on the mobile API token.
+function mobileTokenMatches(provided: string | null): boolean {
+  const expected = process.env.MOBILE_API_TOKEN;
+  if (!provided || !expected) return false;
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) {
+    // still consume timing to equalize
+    timingSafeEqual(a, Buffer.alloc(a.length));
+    return false;
   }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count++;
-  return true;
+  return timingSafeEqual(a, b);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -113,20 +118,15 @@ VOCABULARY RULE:
 // ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // 1. Auth
-  const mobileToken = req.headers.get("X-Mobile-Api-Token");
-  if (!mobileToken || mobileToken !== process.env.MOBILE_API_TOKEN) {
+  // 1. Auth — timing-safe token compare (SEC-006).
+  if (!mobileTokenMatches(req.headers.get("X-Mobile-Api-Token"))) {
     return NextResponse.json({ error: "Unauthorized. A valid API token is required." }, { status: 401 });
   }
 
-  // 2. Rate limit
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!checkRL(ip)) {
-    return NextResponse.json(
-      { error: "rate_limited" },
-      { status: 429, headers: { "Retry-After": "60" } },
-    );
-  }
+  // 2. Rate limit — shared Upstash-backed helper (SEC-004).
+  const ip = getClientIp(req);
+  const rl = await checkRateLimit(ip, RATE_LIMIT_PRESETS.osint);
+  if (!rl.allowed) return rateLimitResponse(rl, detectLocale(req));
 
   // 3. Parse body
   let body: {

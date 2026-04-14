@@ -7,6 +7,7 @@ import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMI
 import { checkAuth } from "@/lib/security/auth";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function getBaseUrl(req: NextRequest) {
   const host = req.headers.get("host");
@@ -15,13 +16,15 @@ function getBaseUrl(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  // ── Auth bypass : dev mode ou mock=1 ──────────────────────────────────────
-  const _isDev = process.env.NODE_ENV === "development";
-  const _isMock = new URL(req.url).searchParams.get("mock") === "1";
-  if (!_isDev && !_isMock) {
-    const _auth = await checkAuth(req);
-    if (!_auth.authorized) return _auth.response!;
-  }
+  // SEC-001 — auth is ALWAYS required. The previous `?mock=1` query bypass
+  // was a P0 and has been removed. If you need a fixture for E2E, use a
+  // dedicated test endpoint, not this one.
+  const _auth = await checkAuth(req);
+  if (!_auth.authorized) return _auth.response!;
+
+  // Rate limit BEFORE spinning up Puppeteer (expensive).
+  const _rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.pdf);
+  if (!_rl.allowed) return rateLimitResponse(_rl, detectLocale(req));
   const { searchParams } = new URL(req.url);
   const mint = (searchParams.get("mint") || "").trim();
   const lang = searchParams.get("lang") ?? "en";

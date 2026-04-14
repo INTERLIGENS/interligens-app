@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const ADMIN_TOKEN = process.env.NEXT_PUBLIC_ADMIN_TOKEN ?? "";
+// SEC-007 — previously read `process.env.NEXT_PUBLIC_ADMIN_TOKEN`. The constant
+// was never actually used and the pattern was a booby trap (any future misname
+// would ship the admin token into the client bundle). Removed.
 
 const STATUS_COLOR: Record<string,string> = {
   pending:      "#f59e0b",

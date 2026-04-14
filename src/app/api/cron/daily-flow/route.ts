@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { findExchange, type Chain } from "@/lib/chains/exchanges";
 import { getPriceAtDate } from "@/lib/kol/pricing";
 
+export const maxDuration = 300; // SEC-010
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

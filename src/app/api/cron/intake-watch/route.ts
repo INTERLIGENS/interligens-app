@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkSource } from "@/lib/intake/watcher";
 
+export const runtime = "nodejs";
+export const maxDuration = 300; // SEC-010
+export const dynamic = "force-dynamic";
+
+
 // Vercel Cron: runs every 6 hours
 // vercel.json: { "crons": [{ "path": "/api/cron/intake-watch", "schedule": "0 */6 * * *" }] }
 

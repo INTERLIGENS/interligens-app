@@ -6,6 +6,11 @@ import { timingSafeEqual } from "crypto";
 import { detectAllInfluencers } from "@/lib/surveillance/signals/detectSellWhileShilling";
 import { updateAllScores } from "@/lib/surveillance/signals/recidivismScore";
 
+export const runtime = "nodejs";
+export const maxDuration = 300; // SEC-010
+export const dynamic = "force-dynamic";
+
+
 function verifyCronSecret(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;

@@ -1,6 +1,18 @@
 // @generated:pr1-admin-cookie-auth
 import { NextRequest, NextResponse } from 'next/server'
 import { setAdminCookie } from '@/lib/security/adminAuth'
+import { timingSafeEqual } from 'crypto'
+
+// SEC-006 — timing-safe compare for the admin login token.
+function adminTokenMatches(token: string, expected: string): boolean {
+  const a = Buffer.from(token, 'utf8')
+  const b = Buffer.from(expected, 'utf8')
+  if (a.length !== b.length) {
+    timingSafeEqual(a, Buffer.alloc(a.length))
+    return false
+  }
+  return timingSafeEqual(a, b)
+}
 
 /**
  * POST /api/admin/auth/login
@@ -27,11 +39,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Configuration serveur incorrecte' }, { status: 500 })
   }
 
-  if (token !== expected) {
+  if (!adminTokenMatches(token, expected)) {
     console.warn('[admin/auth/login] token invalide', {
       ip: req.headers.get('x-forwarded-for') ?? 'unknown',
     })
-    // Délai constant pour éviter timing attack
+    // Délai constant (belt-and-suspenders, la compare est déjà timing-safe)
     await new Promise(r => setTimeout(r, 200))
     return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
   }

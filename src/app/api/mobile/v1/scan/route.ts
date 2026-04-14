@@ -22,6 +22,20 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBad } from "@/lib/entities/knownBad";
 import { buildKolAlertSafe } from "@/lib/kol/alert";
+import { timingSafeEqual } from "crypto";
+
+// SEC-006 — timing-safe compare on the mobile API token.
+function mobileTokenMatches(provided: string | null): boolean {
+  const expected = process.env.MOBILE_API_TOKEN;
+  if (!provided || !expected) return false;
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) {
+    timingSafeEqual(a, Buffer.alloc(a.length));
+    return false;
+  }
+  return timingSafeEqual(a, b);
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -43,9 +57,8 @@ function detectChain(address: string): Chain | null {
 // ── Route handler ───────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  // 1. Auth
-  const mobileToken = request.headers.get("X-Mobile-Api-Token");
-  if (!mobileToken || mobileToken !== process.env.MOBILE_API_TOKEN) {
+  // 1. Auth — timing-safe (SEC-006)
+  if (!mobileTokenMatches(request.headers.get("X-Mobile-Api-Token"))) {
     return NextResponse.json({ error: "Unauthorized. A valid API token is required." }, { status: 401 });
   }
 

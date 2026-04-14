@@ -5,27 +5,20 @@ import { prisma } from "@/lib/prisma"
 import { buildGroundingContext, type ScanGroundingContext } from "@/lib/ask/groundingContext"
 import { generateWhyBullets } from "@/lib/ask/whyBullets"
 import { writeAskLog } from "@/lib/ask/askLog"
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  getClientIp,
+  detectLocale,
+  RATE_LIMIT_PRESETS,
+} from "@/lib/security/rateLimit"
 import { createHash } from "crypto"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// ── Rate limiting ─────────────────────────────────────────────────────────────
-// Simple in-memory store — resets on cold start, good enough for beta
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT = 30        // max requests per window
-const RATE_WINDOW = 60_000   // 1 minute window
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT) return false
-  entry.count++
-  return true
-}
+// SEC-004 — rate limit now comes from the shared Upstash-backed helper.
+// The previous module-local Map reset on every Vercel lambda cold start
+// and left the Anthropic-backed endpoint effectively unmetered.
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
@@ -154,14 +147,10 @@ function stripMarkdown(text: string): string {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // Rate limit by IP
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-  if (!checkRateLimit(ip)) {
-    return NextResponse.json(
-      { error: "rate_limited" },
-      { status: 429, headers: { "Retry-After": "60" } }
-    )
-  }
+  // Rate limit by IP — Upstash-backed in prod, in-memory in dev.
+  const ip = getClientIp(req)
+  const rl = await checkRateLimit(ip, RATE_LIMIT_PRESETS.osint)
+  if (!rl.allowed) return rateLimitResponse(rl, detectLocale(req))
 
   try {
     const body = await req.json()

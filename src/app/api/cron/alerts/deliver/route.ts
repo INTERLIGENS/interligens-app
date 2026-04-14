@@ -5,6 +5,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { deliverPendingAlerts } from "@/lib/surveillance/alerts/deliverAlerts";
 
+export const runtime = "nodejs";
+export const maxDuration = 300; // SEC-010
+export const dynamic = "force-dynamic";
+
+
 function verifyCronSecret(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;

@@ -43,11 +43,22 @@ function isBetaExempt(pathname: string): boolean {
   return false;
 }
 
+/**
+ * SEC-003 — matches /admin, /api/admin, AND /en/admin, /fr/admin, /[locale]/admin.
+ * Previously only /admin/* was checked, leaving /en/admin/graph unprotected.
+ */
+function isLocalizedAdminRoute(pathname: string): boolean {
+  return /^\/[a-z]{2}\/admin(\/|$)/.test(pathname);
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ── Admin routes — basic auth in prod ──────────────────────────────────
-  const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
+  const isAdminRoute =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/admin") ||
+    isLocalizedAdminRoute(pathname);
   if (isProd && isAdminRoute) {
     if (!checkBasicAuth(req)) return basicAuthFail();
   }
