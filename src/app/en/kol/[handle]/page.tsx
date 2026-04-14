@@ -2,6 +2,7 @@
 import BetaNav from "@/components/beta/BetaNav";
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
+import ShillToExitCard from '@/components/kol/ShillToExitCard'
 import ProceedsCard from '@/components/kol/ProceedsCard'
 import RetailCounter from '@/components/kol/RetailCounter'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
@@ -438,6 +439,9 @@ export default function KOLPage() {
             </div>
           </div>
         )}
+
+        {/* ── SHILL-TO-EXIT SIGNAL ── */}
+        <ShillToExitCard handle={kol.handle} lang="en" />
 
         {/* ── ASSOCIATED WALLETS ── */}
         {(kol?.wallets?.length ?? 0) > 0 && (

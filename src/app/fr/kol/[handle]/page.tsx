@@ -1,6 +1,7 @@
 'use client'
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
+import ShillToExitCard from '@/components/kol/ShillToExitCard'
 import ProceedsCard from '@/components/kol/ProceedsCard'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
@@ -449,6 +450,9 @@ export default function KOLPageFR() {
             </div>
           </div>
         )}
+
+        {/* ── SHILL-TO-EXIT SIGNAL ── */}
+        <ShillToExitCard handle={kol.handle} lang="fr" />
 
         {/* PORTEFEUILLES ASSOCIES */}
         {(kol?.wallets?.length ?? 0) > 0 && (
