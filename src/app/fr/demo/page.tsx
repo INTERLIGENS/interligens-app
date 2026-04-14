@@ -26,6 +26,7 @@ import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
+import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 
@@ -252,6 +253,7 @@ export default function TigerScanPageFR() {
   } | null>(null);
   const [error, setError]               = useState<string | null>(null);
   const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
+  const [mmResult, setMmResult] = useState<MMScanResult | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
@@ -439,6 +441,7 @@ export default function TigerScanPageFR() {
     setError(null);
     setResult(null);
     setClusterResult(null);
+    setMmResult(null);
     setIntelSignal(null);
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
@@ -456,6 +459,14 @@ export default function TigerScanPageFR() {
       })
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setClusterResult(d) })
+        .catch(() => {})
+
+      // Fire MM score fetch in parallel (non-blocking, 4.5s timeout)
+      fetch(`/api/scan/mm?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+        signal: AbortSignal.timeout(4500),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setMmResult(d) })
         .catch(() => {})
     }
 
@@ -804,6 +815,7 @@ export default function TigerScanPageFR() {
 
               {/* ── CLUSTER RISK ── */}
               {clusterResult && <ClusterRiskBadge result={clusterResult} locale="fr" />}
+              {mmResult && <MMScoreBadge result={mmResult} locale="fr" />}
               <USDTBlacklistBadge visible={!!(result?.rawSummary?.usdt_blacklisted)} locale="fr" />
               <IntelligenceBadge signal={intelSignal} locale="fr" />
 

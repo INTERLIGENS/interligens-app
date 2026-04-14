@@ -23,6 +23,7 @@ import TechnicalEvidence from "@/components/TechnicalEvidence";
 import ScanSkeleton from "@/components/ScanSkeleton";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
+import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -251,6 +252,7 @@ export default function TigerScanPage() {
   const [showEvidence, setShowEvidence] = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
+  const [mmResult, setMmResult] = useState<MMScanResult | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
@@ -454,6 +456,7 @@ export default function TigerScanPage() {
     setError(null);
     setResult(null);
     setClusterResult(null);
+    setMmResult(null);
     setIntelSignal(null);
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
@@ -471,6 +474,14 @@ export default function TigerScanPage() {
       })
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setClusterResult(d) })
+        .catch(() => {})
+
+      // Fire MM score fetch in parallel (non-blocking, 4.5s timeout)
+      fetch(`/api/scan/mm?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+        signal: AbortSignal.timeout(4500),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setMmResult(d) })
         .catch(() => {})
     }
 
@@ -851,6 +862,8 @@ export default function TigerScanPage() {
 
               {/* ── CLUSTER RISK ── */}
               {clusterResult && <ClusterRiskBadge result={clusterResult} locale="en" />}
+              {/* ── MM SCORE (market maker / wash) ── */}
+              {mmResult && <MMScoreBadge result={mmResult} locale="en" />}
               <USDTBlacklistBadge visible={!!(result?.rawSummary?.usdt_blacklisted)} locale="en" />
               <IntelligenceBadge signal={intelSignal} locale="en" />
 
