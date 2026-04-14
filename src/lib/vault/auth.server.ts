@@ -112,6 +112,8 @@ export async function logAudit(params: {
   actor: string;
   request: NextRequest;
   metadata?: Record<string, unknown>;
+  /** Optional opaque session fingerprint — merged into metadata.fingerprint. */
+  fingerprint?: string;
 }): Promise<void> {
   if (
     !params.investigatorAccessId &&
@@ -129,6 +131,10 @@ export async function logAudit(params: {
   const ipAddress = rawIp ? hashIP(rawIp) : null;
   const userAgent =
     params.request.headers.get("user-agent")?.slice(0, 256) ?? null;
+  const mergedMetadata =
+    params.fingerprint !== undefined
+      ? { ...(params.metadata ?? {}), fingerprint: params.fingerprint }
+      : (params.metadata ?? undefined);
   try {
     await prisma.vaultAuditLog.create({
       data: {
@@ -140,7 +146,7 @@ export async function logAudit(params: {
         actor: params.actor,
         ipAddress,
         userAgent,
-        metadata: (params.metadata as object) ?? undefined,
+        metadata: (mergedMetadata as object) ?? undefined,
       },
     });
   } catch (err) {

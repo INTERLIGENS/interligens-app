@@ -3,6 +3,10 @@ import {
   getVaultWorkspace,
   assertCaseOwnership,
 } from "@/lib/vault/auth.server";
+import {
+  checkRateLimit,
+  rateLimitExceededBody,
+} from "@/lib/vault/rateLimit.server";
 import { buildCaseIntelligenceSummary } from "@/lib/vault/buildCaseIntelligencePack";
 
 type RouteCtx = { params: Promise<{ caseId: string }> };
@@ -19,6 +23,19 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const owner = await assertCaseOwnership(ctx.workspace.id, caseId);
   if (owner instanceof NextResponse) return owner;
+
+  const rl = checkRateLimit(
+    ctx.workspace.id,
+    "intelligence_summary_read",
+    100,
+    3600_000,
+  );
+  if (!rl.allowed) {
+    return NextResponse.json(
+      rateLimitExceededBody(rl, "Intelligence summary"),
+      { status: 429 },
+    );
+  }
 
   try {
     const summary = await buildCaseIntelligenceSummary(

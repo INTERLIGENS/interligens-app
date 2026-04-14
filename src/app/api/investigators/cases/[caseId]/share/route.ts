@@ -6,6 +6,11 @@ import {
   assertCaseOwnership,
   logAudit,
 } from "@/lib/vault/auth.server";
+import { buildFingerprint } from "@/lib/vault/fingerprint.server";
+import {
+  checkRateLimit,
+  rateLimitExceededBody,
+} from "@/lib/vault/rateLimit.server";
 
 type RouteCtx = { params: Promise<{ caseId: string }> };
 
@@ -21,6 +26,13 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const owner = await assertCaseOwnership(ctx.workspace.id, caseId);
   if (owner instanceof NextResponse) return owner;
+
+  const rl = checkRateLimit(ctx.workspace.id, "share_create", 20, 3600_000);
+  if (!rl.allowed) {
+    return NextResponse.json(rateLimitExceededBody(rl, "Share link creation"), {
+      status: 429,
+    });
+  }
 
   const body = await request.json().catch(() => ({}));
   const expiresIn =
@@ -99,6 +111,7 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
       action: "CASE_SHARED",
       actor: ctx.access.label,
       request,
+      fingerprint: buildFingerprint(request),
       metadata: { shareId: share.id, expiresIn, expiresAt },
     });
 

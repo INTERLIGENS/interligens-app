@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getVaultWorkspace, logAudit } from "@/lib/vault/auth.server";
+import { buildFingerprint } from "@/lib/vault/fingerprint.server";
 
 export async function GET(request: NextRequest) {
   const ctx = await getVaultWorkspace(request);
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
     action: "CASE_CREATED",
     actor: ctx.access.label,
     request,
+    fingerprint: buildFingerprint(request),
   });
 
   return NextResponse.json({

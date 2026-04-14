@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getVaultWorkspace } from "@/lib/vault/auth.server";
+import { getVaultWorkspace, logAudit } from "@/lib/vault/auth.server";
+import { buildFingerprint } from "@/lib/vault/fingerprint.server";
 
 export async function GET(request: NextRequest) {
   const ctx = await getVaultWorkspace(request);
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  // Fire-and-forget — metrics endpoint is read-only but carries session intent.
+  void logAudit({
+    investigatorAccessId: ctx.access.id,
+    profileId: ctx.profile.id,
+    workspaceId: ctx.workspace.id,
+    action: "WORKSPACE_METRICS_VIEWED",
+    actor: ctx.access.label,
+    request,
+    fingerprint: buildFingerprint(request),
+  });
 
   try {
     const workspaceId = ctx.workspace.id;

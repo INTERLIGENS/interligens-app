@@ -6,6 +6,7 @@ import {
   assertCaseOwnership,
   logAudit,
 } from "@/lib/vault/auth.server";
+import { buildFingerprint } from "@/lib/vault/fingerprint.server";
 
 type RouteCtx = { params: Promise<{ caseId: string }> };
 
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
     action: "CASE_VIEWED",
     actor: ctx.access.label,
     request,
+    fingerprint: buildFingerprint(request),
   });
 
   return NextResponse.json({

@@ -4,6 +4,7 @@ import {
   assertFileOwnership,
   logAudit,
 } from "@/lib/vault/auth.server";
+import { buildFingerprint } from "@/lib/vault/fingerprint.server";
 import { generatePresignedGetUrl } from "@/lib/vault/r2-vault";
 
 type RouteCtx = { params: Promise<{ caseId: string; fileId: string }> };
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
     action: "FILE_ACCESSED",
     actor: ctx.access.label,
     request,
+    fingerprint: buildFingerprint(request),
   });
 
   // r2Key intentionally NOT in the response

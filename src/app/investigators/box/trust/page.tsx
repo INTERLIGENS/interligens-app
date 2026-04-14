@@ -205,6 +205,40 @@ export default function TrustPage() {
           </div>
         </div>
 
+        <div style={SECTION_TITLE}>Confidentiality protection</div>
+        <div style={BODY}>
+          <div style={ITEM}>
+            <span style={DOT}>→</span>
+            <span>
+              <strong style={{ color: "#FFFFFF" }}>Workspace watermark.</strong>{" "}
+              Every page in your workspace carries a confidential watermark
+              with your investigator handle and the current date. It appears on
+              screenshots and on printed documents, so the source of any
+              unauthorized disclosure can be traced back.
+            </span>
+          </div>
+          <div style={ITEM}>
+            <span style={DOT}>→</span>
+            <span>
+              <strong style={{ color: "#FFFFFF" }}>Session fingerprint.</strong>{" "}
+              Sensitive actions — case access, AI queries, file URL generation,
+              share link creation — record an audit line containing your IP and
+              a truncated browser signature. This trail is server-side only,
+              never surfaced back to the client, and can be used in legal
+              proceedings if needed.
+            </span>
+          </div>
+          <div style={ITEM}>
+            <span style={DOT}>→</span>
+            <span>
+              <strong style={{ color: "#FFFFFF" }}>Rate limits.</strong> Export
+              and sharing actions are rate-limited per workspace to prevent
+              bulk data extraction. If you hit a limit during normal use, give
+              it a few minutes — the window resets hourly.
+            </span>
+          </div>
+        </div>
+
         <div style={SECTION_TITLE}>What we cannot recover</div>
         <div style={BODY}>
           <div style={ITEM}>

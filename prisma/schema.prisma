@@ -401,6 +401,7 @@ model KolProfile {
   walletAttributionStrength   String  @default("none")
   profileStrength             String  @default("minimal")
   lastEnrichedAt              DateTime?
+  botifyDeal                  Json?
   aliases    KolAlias[]
   tokenLinks KolTokenLink[]
   cashoutCache    Json?

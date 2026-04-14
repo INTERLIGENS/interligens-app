@@ -1,7 +1,33 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import FeedbackButton from "@/components/vault/FeedbackButton";
 import { VaultToastProvider } from "@/components/vault/VaultToast";
+import WatermarkOverlay from "@/components/vault/WatermarkOverlay";
 import { enforceInvestigatorAccess } from "@/lib/investigators/accessGate";
+import { prisma } from "@/lib/prisma";
+import { validateSession } from "@/lib/security/investigatorAuth";
+
+async function getCurrentInvestigatorHandle(): Promise<string> {
+  try {
+    const store = await cookies();
+    const token = store.get("investigator_session")?.value ?? null;
+    if (!token) return "investigator";
+    const session = await validateSession(token);
+    if (!session) return "investigator";
+    const vp = await prisma.vaultProfile.findUnique({
+      where: { investigatorAccessId: session.accessId },
+      select: { handle: true },
+    });
+    if (vp?.handle) return vp.handle;
+    const ip = await prisma.investigatorProfile.findUnique({
+      where: { accessId: session.accessId },
+      select: { handle: true },
+    });
+    return ip?.handle ?? "investigator";
+  } catch {
+    return "investigator";
+  }
+}
 
 const BAR_STYLE: React.CSSProperties = {
   height: 36,
@@ -40,6 +66,7 @@ export default async function InvestigatorsBoxLayout({
   children: React.ReactNode;
 }) {
   await enforceInvestigatorAccess();
+  const watermarkHandle = await getCurrentInvestigatorHandle();
   return (
     <VaultToastProvider>
       <nav style={BAR_STYLE}>
@@ -65,6 +92,7 @@ export default async function InvestigatorsBoxLayout({
         .investigators-quick-link:hover { color: #FFFFFF !important; }
       `}</style>
       {children}
+      <WatermarkOverlay handle={watermarkHandle} />
       <FeedbackButton />
     </VaultToastProvider>
   );

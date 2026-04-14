@@ -158,13 +158,29 @@ function PrintInner({ caseId }: { caseId: string }) {
     >
       <style>{`
         @media print {
-          @page { margin: 18mm; }
+          @page { margin: 18mm 18mm 24mm 18mm; }
           body { background: white; }
           .no-print { display: none !important; }
+          .vault-watermark-overlay { display: none !important; }
           h2, h3, .print-label { page-break-after: avoid; }
           tr { page-break-inside: avoid; }
           body { font-size: 12pt; }
           td, th { font-size: 10pt; }
+          .print-watermark { display: block !important; }
+        }
+        .print-watermark {
+          display: none;
+          position: fixed;
+          bottom: 6mm;
+          left: 0;
+          right: 0;
+          text-align: center;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          font-size: 9pt;
+          color: rgba(0, 0, 0, 0.15);
+          letter-spacing: 0.08em;
+          pointer-events: none;
+          user-select: none;
         }
         .print-section { margin-bottom: 24px; }
         .print-label { text-transform: uppercase; font-size: 9px; letter-spacing: 0.12em; color: #666; margin-bottom: 6px; font-weight: 600; }
@@ -176,6 +192,13 @@ function PrintInner({ caseId }: { caseId: string }) {
         tbody tr:nth-child(even) td { background: #f9f9f9; }
         .badge { display: inline-block; padding: 2px 6px; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid #000; border-radius: 2px; }
       `}</style>
+
+      <div
+        className="print-watermark"
+        aria-hidden
+      >
+        {`@${investigator} · CONFIDENTIEL · INTERLIGENS · ${generatedAt}`}
+      </div>
 
       <div
         style={{

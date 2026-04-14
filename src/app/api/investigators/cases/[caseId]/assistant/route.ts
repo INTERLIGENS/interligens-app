@@ -6,6 +6,7 @@ import {
   assertCaseOwnership,
   logAudit,
 } from "@/lib/vault/auth.server";
+import { buildFingerprint } from "@/lib/vault/fingerprint.server";
 import {
   buildCaseIntelligencePack,
   type CaseIntelligencePack,
@@ -153,6 +154,7 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
       action: "ASSISTANT_QUERY",
       actor: ctx.access.label,
       request,
+      fingerprint: buildFingerprint(request),
       metadata: {
         inputTokens: llmRes.inputTokens,
         outputTokens: llmRes.outputTokens,

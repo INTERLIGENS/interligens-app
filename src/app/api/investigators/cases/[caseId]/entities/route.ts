@@ -6,6 +6,10 @@ import {
   assertCaseOwnership,
   logAudit,
 } from "@/lib/vault/auth.server";
+import {
+  checkRateLimit,
+  rateLimitExceededBody,
+} from "@/lib/vault/rateLimit.server";
 
 type RouteCtx = { params: Promise<{ caseId: string }> };
 
@@ -28,6 +32,13 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const owner = await assertCaseOwnership(ctx.workspace.id, caseId);
   if (owner instanceof NextResponse) return owner;
+
+  const rl = checkRateLimit(ctx.workspace.id, "entities_read", 100, 3600_000);
+  if (!rl.allowed) {
+    return NextResponse.json(rateLimitExceededBody(rl, "Entities read"), {
+      status: 429,
+    });
+  }
 
   const url = new URL(request.url);
   const typeParam = url.searchParams.get("type");
