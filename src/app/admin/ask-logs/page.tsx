@@ -47,14 +47,23 @@ function tierColorCls(tier: string): string {
   return "text-gray-400"
 }
 
-function typeColorCls(type: string): string {
-  if (type === "deterministic") return "text-orange-400"
-  if (type === "refusal") return "text-red-400"
-  return "text-gray-300"
+function typeBadgeCls(type: string): string {
+  if (type === "constrained_generation")
+    return "bg-orange-500/15 text-orange-400 border border-orange-500/40"
+  if (type === "refusal")
+    return "bg-red-500/15 text-red-400 border border-red-500/40"
+  return "bg-white/5 text-white border border-white/20"
 }
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 function fmtDate(d: Date): string {
-  return new Date(d).toISOString().replace("T", " ").slice(0, 19)
+  const dt = new Date(d)
+  const day = dt.getDate()
+  const mon = MONTHS[dt.getMonth()]
+  const yr = dt.getFullYear()
+  const hh = String(dt.getHours()).padStart(2, "0")
+  const mm = String(dt.getMinutes()).padStart(2, "0")
+  return `${day} ${mon} ${yr} · ${hh}:${mm}`
 }
 
 function truncate(s: string, n: number): string {
@@ -81,14 +90,14 @@ export default async function AskLogsPage() {
             migration was applied, or the migration hasn&apos;t run. See <code>MIGRATION_ASKLOG.md</code>.
           </div>
         ) : (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 overflow-auto max-h-[calc(100vh-180px)]">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 overflow-x-auto max-h-[calc(100vh-180px)]">
             <table className="w-full text-sm font-mono">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                  <th className="text-left py-2 px-3 font-semibold">Time</th>
+                  <th className="text-left py-2 px-3 font-semibold whitespace-nowrap">Time</th>
                   <th className="text-left py-2 px-3 font-semibold">Scan</th>
                   <th className="text-left py-2 px-3 font-semibold">Question</th>
-                  <th className="text-left py-2 px-3 font-semibold">Answer</th>
+                  <th className="text-left py-2 px-3 font-semibold min-w-[300px]">Answer</th>
                   <th className="text-left py-2 px-3 font-semibold">Type</th>
                   <th className="text-left py-2 px-3 font-semibold">Mode</th>
                   <th className="text-left py-2 px-3 font-semibold">Conf.</th>
@@ -99,21 +108,27 @@ export default async function AskLogsPage() {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                  <tr key={r.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition align-top">
                     <td className="py-2 px-3 whitespace-nowrap text-gray-400">
                       {fmtDate(r.createdAt)}
                     </td>
-                    <td className="py-2 px-3 text-gray-500">
-                      {r.scanId ? truncate(r.scanId, 10) : "—"}
+                    <td className="py-2 px-3 text-gray-500 whitespace-nowrap" title={r.scanId ?? ""}>
+                      {r.scanId ? truncate(r.scanId, 20) : "—"}
                     </td>
-                    <td className="py-2 px-3 max-w-[220px]">
-                      {truncate(r.userQuestion, 120)}
+                    <td className="py-2 px-3 text-gray-300 whitespace-nowrap" title={r.userQuestion}>
+                      {truncate(r.userQuestion, 20)}
                     </td>
-                    <td className="py-2 px-3 max-w-[320px] text-gray-300">
-                      {truncate(r.assistantAnswer, 200)}
+                    <td className="py-2 px-3 text-gray-300">
+                      <div
+                        className="whitespace-normal break-words text-[12px] leading-relaxed min-w-[300px] max-w-[420px] max-h-[120px] overflow-y-auto pr-1"
+                      >
+                        {r.assistantAnswer}
+                      </div>
                     </td>
-                    <td className="py-2 px-3">
-                      <span className={`text-xs font-semibold uppercase ${typeColorCls(r.answerType)}`}>
+                    <td className="py-2 px-3 whitespace-nowrap">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${typeBadgeCls(r.answerType)}`}
+                      >
                         {r.answerType.replace("_", " ")}
                       </span>
                     </td>

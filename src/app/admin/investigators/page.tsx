@@ -43,6 +43,14 @@ function Badge({ value }: { value: string }) {
 
 export default function AdminInvestigatorsPage() {
   const [tab, setTab] = useState<"apps" | "profiles">("apps");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "applications") setTab("apps");
+    else if (t === "profiles") setTab("profiles");
+  }, []);
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);

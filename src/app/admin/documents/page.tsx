@@ -289,7 +289,11 @@ export default function AdminDocumentsPage() {
             marginTop: 24,
           }}
         >
-          <QuickLink href="https://data.interligens.com" label="Data Room" external />
+          <QuickLink
+            href="#"
+            label="Data Room"
+            note="data.interligens.com — à configurer"
+          />
           <QuickLink
             href="/investigators/box"
             label="Espace Investigators"
@@ -322,10 +326,12 @@ function QuickLink({
   href,
   label,
   external,
+  note,
 }: {
   href: string;
   label: string;
   external?: boolean;
+  note?: string;
 }) {
   const style: React.CSSProperties = {
     display: "block",
@@ -341,16 +347,35 @@ function QuickLink({
     textDecoration: "none",
     textAlign: "center" as const,
   };
+  const inner = (
+    <>
+      <div>{label} →</div>
+      {note && (
+        <div
+          style={{
+            fontSize: 9,
+            fontWeight: 500,
+            color: "rgba(255,255,255,0.4)",
+            marginTop: 4,
+            textTransform: "none",
+            letterSpacing: 0,
+          }}
+        >
+          {note}
+        </div>
+      )}
+    </>
+  );
   if (external) {
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" style={style}>
-        {label} →
+        {inner}
       </a>
     );
   }
   return (
     <a href={href} style={style}>
-      {label} →
+      {inner}
     </a>
   );
 }
