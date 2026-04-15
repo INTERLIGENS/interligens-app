@@ -314,6 +314,35 @@
       ],
       "thread_url": "",
       "description_fr": "La trace hop-1/2/3 sur les 6 wallets consolidateurs révèle qu'environ 63 125 SOL (~12,6M$ au cours au moment du lancement) ont été distribués post-dump sur 30 wallets layer-3 distincts. L'analyse hop-3 sur les 15 plus grosses destinations layer-3 (~13M$ cumulés) a retourné 0 correspondance contre une table de labels de 15 hot wallets CEX connus (Binance, Coinbase, Kraken, OKX, Bybit, MEXC, Gate.io, KuCoin, Bitget). Au lieu de cela, les wallets layer-3 renvoient les SOL VERS (a) les wallets consolidateurs eux-mêmes (au moins 2 boucles fermées de ~1,2M$ chacune vers le consolidateur 6FdGjxkyr8...) et (b) des wallets précédemment identifiés comme l'infrastructure de financement d'origine de Wi11em en mai 2024 (2AQdpHJ2... et D89hHJT5...). Cette topologie de recyclage interne est incompatible avec un simple cashout insider et caractéristique d'un opérateur professionnel gérant le capital on-chain en interne — conservant les fonds pour des opérations futures, masquant la provenance des flux et évitant l'empreinte KYC que des dépôts CEX créeraient. Ajouté le 2026-04-15."
+    },
+    {
+      "claim_id": "C14",
+      "title": "Rylan Gade (Special Projects Lead, xAI) named by Rus Yusupov as direct collaborator — xAI↔VINE conflict-of-interest triangle",
+      "severity": "CRITICAL",
+      "status": "PUBLICLY_SOURCED",
+      "description": "During an X Space on 18 February 2025, Rus Yusupov publicly confirmed a direct working relationship with Rylan Gade, stating 'He is working directly with Rylan'. The X Space was documented by @PeterGirr and @WiseAdmiral. Rylan Gade (@rylangade) is Special Projects Lead at xAI (Elon Musk's AI company). Gade has publicly recommended Rus Yusupov and has himself posted about the $VINE token. Combined with two other X/xAI-adjacent actors previously reported to the SEC — @chrisparkX and @Nate_Esparza — this establishes a triangle of material conflicts of interest between: (1) xAI (via Rylan Gade's senior role and public VINE posts), (2) Rus Yusupov (VINE deployer), and (3) the VINE token promotion and trading itself. This claim directly corroborates and specifies C10 (@aixbt_agent's 'x team members loading up on $VINE' post of Feb 8 2025) — the 'x team members' were not a vague marketing claim, they were identifiable individuals with operational roles at xAI who had public VINE exposure and confirmed working relationships with the token's creator. The SEC reporting of @chrisparkX and @Nate_Esparza establishes that the regulator already has cause to investigate the xAI-VINE overlap; C14 extends that scope to include Rylan Gade based on Rus's own public confirmation of the working relationship. Added 2026-04-15.",
+      "category": "insider_identity_xai",
+      "actors": [
+        "Rylan Gade (@rylangade) — Special Projects Lead, xAI",
+        "Rus Yusupov — VINE deployer, Vine co-founder",
+        "@chrisparkX — also reported to SEC",
+        "@Nate_Esparza — also reported to SEC",
+        "@PeterGirr — source documenter of the X Space",
+        "@WiseAdmiral — source documenter of the X Space"
+      ],
+      "date": "2025-02-18",
+      "evidence_refs": [
+        "X Space hosted by Rus Yusupov, 2025-02-18 (Rus statement: 'He is working directly with Rylan')",
+        "X Space documentation by @PeterGirr and @WiseAdmiral",
+        "@rylangade public post history on $VINE token",
+        "Rylan Gade public recommendation of Rus Yusupov",
+        "SEC reports already filed against @chrisparkX and @Nate_Esparza",
+        "src/data/vine-osint.json claim C10 (@aixbt_agent 'x team members loading up on $VINE')"
+      ],
+      "thread_url": "https://x.com/rylangade",
+      "xai_role": "Special Projects Lead",
+      "related_claims": ["C10"],
+      "description_fr": "Lors d'un X Space le 18 février 2025, Rus Yusupov a publiquement confirmé une relation de travail directe avec Rylan Gade, déclarant 'He is working directly with Rylan' ('Il travaille directement avec Rylan'). Ce X Space a été documenté par @PeterGirr et @WiseAdmiral. Rylan Gade (@rylangade) est Special Projects Lead chez xAI (la société d'IA d'Elon Musk). Gade a publiquement recommandé Rus Yusupov et a lui-même posté au sujet du token $VINE. Combiné avec deux autres acteurs affiliés à X/xAI déjà reportés à la SEC — @chrisparkX et @Nate_Esparza — ceci établit un triangle de conflits d'intérêts matériels entre : (1) xAI (via le rôle senior de Rylan Gade et ses posts publics sur VINE), (2) Rus Yusupov (déployeur VINE), et (3) la promotion et le trading du token VINE lui-même. Ce claim corrobore et précise directement le C10 (post de @aixbt_agent du 8 fév 2025 : 'x team members loading up on $VINE') — les 'membres de l'équipe X' n'étaient pas une affirmation marketing vague, c'étaient des individus identifiables ayant des rôles opérationnels chez xAI, avec une exposition publique à VINE et des relations de travail confirmées avec le créateur du token. Le signalement à la SEC de @chrisparkX et @Nate_Esparza établit que le régulateur a déjà des motifs d'enquêter sur le chevauchement xAI-VINE ; le C14 étend ce périmètre à Rylan Gade sur la base de la confirmation publique par Rus lui-même de la relation de travail. Ajouté le 2026-04-15."
     }
   ]
 }
