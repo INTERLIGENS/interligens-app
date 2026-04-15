@@ -1,0 +1,303 @@
+{
+  "generated_at": "2026-04-15T21:34:24.392949+00:00",
+  "wi11em_first_vine": {
+    "ata": "BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t",
+    "signatures_total": 17,
+    "first_signature": "5YfiVf5N5uMpupo1KHoyr5kLiYnDJ7zUXd8JFYmQY5MD6L5jCYjHD8LtULhEabf1eTHNadVADi3vfTDurE1Vp6sp",
+    "first_block_time": 1737592267,
+    "first_date_utc": "2025-01-23 00:31:07 UTC",
+    "first_tx_accounts": [
+      "2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ",
+      "Go64eEoAxy9Y3sBsyWf2kAwEP9KdzFJC1xbroqFZGTNp",
+      "BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t",
+      "25mYnjJ2MXHZH6NvTTdA63JvjgRVcuiaj6MRiEQNs1Dq",
+      "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump",
+      "11111111111111111111111111111111",
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "ComputeBudget111111111111111111111111111111",
+      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+      "6m2CDdhRgxpH4WjvdzxAYbGxwdGUz5MziiL5jek2kBma",
+      "7bpb6bK3asNrSAfiRq1LZTKD1pfxnhYZugaWEXpE4H99",
+      "CisoCH5aAVgxY6UsLH9oanGskpRTUXZN85Sh6NwSHNo9",
+      "58fzJMbX5PatnfJPqWWsqkVFPRKptkbb5r2vCw4Qq3z9",
+      "GwMmb9azXQPtJt2jgst67uqzEUF3cvh4jfEgr52khbST",
+      "QcN96fjobzhR2PdBNbUKZX4e9DDk6g8KgYYbYRACP99",
+      "4JnEAJb3yVTi1PNWf3jPsX9Brrrkk8RFUGH5jVzHGE8M",
+      "DGWLf3mnqGtPWuMb9bPwyRqAhnnCY8DC8HJrUDqpuF5o",
+      "9fqz6NDPpkCzE8SHeQT4WKKfRRVvoLvQcqtDtHhxFewZ",
+      "HX1z1oGBUtuFsk2ibeNjA68CVdPrHQHDvaMuh2B68UH3",
+      "CwM2qYM3g6etj2NmYf7eWQJb9QE48jBQgVBz2jETPd3d",
+      "pRmrzYHJQn2QEeoN2Ky7jvQaZ2ZgvAEuwJTWsDJ2jWk",
+      "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+      "SysvarRent111111111111111111111111111111111",
+      "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX",
+      "So11111111111111111111111111111111111111112",
+      "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1"
+    ]
+  },
+  "layer3_shared_destinations": {
+    "FM85o7AA97S217yzgZRAGFfehhkXXgy6FzktRsgg1pps": {
+      "consolidators": [
+        "BrgFzbQdGQxvt58jzPcV4o1nXSBu2eS8XbpUxsTfhAV1",
+        "HmoxNEqXFcN5TtVdFtrEQCbN3yi81PpVfSDFz7eTreyE"
+      ],
+      "total_sol": 5429.13
+    }
+  },
+  "hop3_traces": [
+    {
+      "address": "7x3SbWRddAoFW8ySDcuxNH2wLRpkHXuM3p52tBNoGHR7",
+      "source_sol_received": 7320.0872,
+      "tx_parsed": 76,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "3eTm9DSxucEQjfhUkuTsEHKd2TdtVg2U7vGQZo5mDMFhpWtUAPrTsbHvUhT6uzYunyBA2yLh6iHZPGAezYJXsV3L",
+          "date": "2025-01-24 18:54:27 UTC",
+          "sol_sent": 3024.0001,
+          "destination": "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm",
+          "destination_label": null
+        },
+        {
+          "tx": "jTb4CYkTRg9FPa5Fx3U1apAZKGacUBcjxvS6mNBkPzpiuYB2MyGui4uCwy2mmRLgXu3sEmEVzYJnmERsZo3iwvd",
+          "date": "2025-03-29 05:14:46 UTC",
+          "sol_sent": 2335.6821,
+          "destination": "FpwQQhQQoEaVu3WU2qZMfF1hx48YyfwsLoRgXG83E99Q",
+          "destination_label": null
+        },
+        {
+          "tx": "kvKn5yS4i6sUr4fyq91qryaZrkTQaxNdnQ3bSiT7SS8JxepZqb1fxAeVCgw9pvD8mjNARk7NxvaVeNyHZi1J3x1",
+          "date": "2025-01-22 22:50:42 UTC",
+          "sol_sent": 342.0,
+          "destination": "D89hHJT5Aqyx1trP6EnGY9jJUB3whgnq3aUvvCqedvzf",
+          "destination_label": null
+        },
+        {
+          "tx": "pdKu1Q2XDQJS4PfBRv7x5u8bhzHLKypwbxxVBiuZZBwhXcciUuNULLB1dcJ1NpNdgBRxFNHuneTaVPV7KY6QBfy",
+          "date": "2025-02-07 20:39:55 UTC",
+          "sol_sent": 99.9991,
+          "destination": "D89hHJT5Aqyx1trP6EnGY9jJUB3whgnq3aUvvCqedvzf",
+          "destination_label": null
+        },
+        {
+          "tx": "626mRQ2fgWpvserhVwDoDetFa79AMfZcLbFQJuqPpnrGXFaun7NeaabFi4Dnnvw5UM9649v4c1CG5pphmv7y3Vdc",
+          "date": "2025-03-19 14:14:06 UTC",
+          "sol_sent": 29.9999,
+          "destination": "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "2kB5NWYVPeyGoK3ihqnw7vs2ocwgCJguNAoY2gddUHD1",
+      "source_sol_received": 6000.0023,
+      "tx_parsed": 10,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "4LfDwuW77cfEpMx7A9wgSfzmKo7Vy4sqAbzPFiUVknh6sCLaMgw4MvyHZM8Z7Fat6FfgPNjVbYcitWZtREHfbrn8",
+          "date": "2025-03-05 04:40:42 UTC",
+          "sol_sent": 6019.0669,
+          "destination": "6FdGjxkyr8JEkaRLerNrAjsScBzdqng3cTFW6AjqEoov",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "DPr2imvHQuCYL7u3aVcKYV9hpe6PPNRECSQ95Zt1igY7",
+      "source_sol_received": 5750.0023,
+      "tx_parsed": 73,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "5ai9e3r5KjJhKLdoDFiZ54Xqo4QcKzcfuvpZEv3nFZJQKaakXQvwuKNfVWaAz3KTe4qkpfHevdXFgvKihTVWMjUL",
+          "date": "2025-09-19 03:26:27 UTC",
+          "sol_sent": 5915.5191,
+          "destination": "6FdGjxkyr8JEkaRLerNrAjsScBzdqng3cTFW6AjqEoov",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "F61MqCek4NFhRpEj6jNH1ohatdibzaNxyj8GFkqjht4o",
+      "source_sol_received": 5570.02,
+      "tx_parsed": 5,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "31sE7yEuD9SKa4ECMFDzoKs3NJMVxCujJ85hvxgPQg2Ewyj7dQkkYe9AUkfpmFHvz68ttNWm3xZoxHtoB9WA2EiH",
+          "date": "2025-02-14 23:23:47 UTC",
+          "sol_sent": 5570.02,
+          "destination": "FATXX9pxpLWMWnn7m44Q2dYBfQaZAhAGkPoLEgUjSumf",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "FM85o7AA97S217yzgZRAGFfehhkXXgy6FzktRsgg1pps",
+      "source_sol_received": 5429.13,
+      "tx_parsed": 10,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "3hSVHohvgeFx7136vLfFPAay9xgcxM2PZc2V9gj2eoTcwTFCWENwUVVu3Cp56UGmJfRHYR3ueMDgpfSTU6Vzc3Lb",
+          "date": "2025-01-29 06:21:21 UTC",
+          "sol_sent": 5429.0,
+          "destination": "2syi5XNSW5Ab6E8qjMCe9feF2fXmVKZHizRfBEc4b4K3",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "2X7q6sU2yRp1KopiKmkuNsgQYAQs1Siv6dWcmdfvMdgh",
+      "source_sol_received": 5028.0,
+      "tx_parsed": 3,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "HPzoBsx8PMD331cQhdAewCVRiDcudTwS9qhXH2PrXjHPne62NnVvi8dasrzxRp52PE2NZ1kCcFAUDw85H5jQVV7",
+          "date": "2025-03-05 06:39:04 UTC",
+          "sol_sent": 5028.0,
+          "destination": "EdwjtxPNnTJqrMtEg7Rd4AtPAptpTTto8kuFboi2eAjv",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "6QNwxHppC3YRiTbNeozSnSqQhvSZMzza64QBVHjqmhPk",
+      "source_sol_received": 4170.38,
+      "tx_parsed": 5,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "3WVB3dLhmdz8nqsXojMZcyGmbzF12FxfnTNYXJNqLQUqzpyxgjzc6cePcKSRjU7ypgwKHQ7mphRLUD5d1oQk4HU",
+          "date": "2025-02-14 23:19:35 UTC",
+          "sol_sent": 4170.38,
+          "destination": "Evfd2t6he7sQWtj335i2nfqYqtaFBxnnm2ZTGrxxXYny",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "EHsekMuZSDd7eSFYD8DYZWyBWbjFcNzmNYCy1k7efyZ9",
+      "source_sol_received": 3740.24,
+      "tx_parsed": 5,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "2qxutcCzPWqPFKVSxYwDJMuR1HgLNk1pXPoeXETzDWSAiTWjzbTtQfDesoYpRWnW2ZTj69q5P8CLfq2ztD4u3mNZ",
+          "date": "2025-02-14 23:17:22 UTC",
+          "sol_sent": 3740.24,
+          "destination": "DWSMiTUvkXnFmLrvbhMCveWSbuBTjm3ayNFz3y6i1pFz",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "5iYznoT2NCmWHnTyAnjEGqFao8J3VnX1jM9EgnUHRn9g",
+      "source_sol_received": 3603.0,
+      "tx_parsed": 6,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "55qASeaYXyQoVkTNoBsR1YNycCv2tYrxbSrP2ewZWa1Xfj3Qt3q4ZoYnRGzC1EZNWWZEfbjWASGeFhknqygj4Wsf",
+          "date": "2025-03-18 22:23:36 UTC",
+          "sol_sent": 3603.0,
+          "destination": "EdwjtxPNnTJqrMtEg7Rd4AtPAptpTTto8kuFboi2eAjv",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "FcF1mpuEThfvAScZJP1LXRXtx6HyXSixon6vgS5S2NJ8",
+      "source_sol_received": 3590.0023,
+      "tx_parsed": 10,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "2DvTFreLBPL1AysyoVPMYKUiR5Q3zPkmyWkUoP5ZjJheWkBNpkQCbXb7Vdb9Nb2egrurBHnHsiLy2ccPzdvQwCky",
+          "date": "2025-03-18 16:14:16 UTC",
+          "sol_sent": 3601.4093,
+          "destination": "7BN2DPUasPFr4dsET7Gaisf8sy9w6eUTwaUw233wQ4Ae",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "595ti54XhCGX268GSBmxztV83WKye6TFZuqKiGMC6Cjw",
+      "source_sol_received": 3418.0,
+      "tx_parsed": 2,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "5NZshFYGrzFE7LqhsLKQua3c8G93gMNLC4iCwpmGgGZKL7tUuqaN7GxaVX14g6eH26QQSxv2JziZUPges7KC5LQK",
+          "date": "2025-04-14 15:22:44 UTC",
+          "sol_sent": 3418.0,
+          "destination": "4GHmLYYQmVNmw9V2ajuF62ZEWehpruuyNW4wcrXfbvx4",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "Bwvu3W2wmZ5KYYFM89ieKWHtfcF6zj2kYgYztuXfLysY",
+      "source_sol_received": 3400.0023,
+      "tx_parsed": 10,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "piTvxeZJSJ5cqpzWxek63Mbw7FXFGApDrcsbgKs2mt4wXcAdmAYm9U4YdEKZnnrNpFJbxYmB1UsYBsKerK2ZSZx",
+          "date": "2025-04-10 14:12:31 UTC",
+          "sol_sent": 3410.8056,
+          "destination": "BrgFzbQdGQxvt58jzPcV4o1nXSBu2eS8XbpUxsTfhAV1",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "3Gvt24mqH6hwDSyhGjb5VJYKp9r6w4e9LqWMXUp74QFt",
+      "source_sol_received": 3083.64,
+      "tx_parsed": 5,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "5nMwzqTWZ86hUZCHFjAgj8iCT985Kbr7kqc8qYaa7aY8hpti6dK7TKVWa54SCjYBqfoAzTHkJrNouDP3YqQw737m",
+          "date": "2025-02-14 23:11:14 UTC",
+          "sol_sent": 3083.64,
+          "destination": "8bh2oS9o5XNEaL7fz5uN8ivEwgxM6RHZfrhF2EJHjHNL",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "2e5urK739MeLEPf52mWDyppRufh9pzAcWcN8L7xmw3jW",
+      "source_sol_received": 2630.0,
+      "tx_parsed": 3,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "5hTyccNiFbKYGmfeNZXfKWXryncaFsrSMTtLWG1YkRMHq9RztWjJfq2EPJUkz4yidaA7WGTbaBfVHBrMSYVuytcq",
+          "date": "2025-02-07 05:43:51 UTC",
+          "sol_sent": 2630.0,
+          "destination": "AkSC7Lsk9rGVV9CaEACjKhs6S1UQVEp4fbHwoyT3Atu2",
+          "destination_label": null
+        }
+      ]
+    },
+    {
+      "address": "Bdzm4MCGDfSib7TDm3sHvWxn3q176xpWcVNtn2MqAaNL",
+      "source_sol_received": 2086.0,
+      "tx_parsed": 2,
+      "cex_hits": [],
+      "top_outflows": [
+        {
+          "tx": "3CtiQZiLwjaPSBj5mP4Te2jpCSPnCGggRyLu22Ds2b3WehMy7CNc7QrQ5vnKRkdgntHcArWLvHKk5fMQRBzKvyfB",
+          "date": "2025-04-14 20:22:44 UTC",
+          "sol_sent": 2086.0,
+          "destination": "4GHmLYYQmVNmw9V2ajuF62ZEWehpruuyNW4wcrXfbvx4",
+          "destination_label": null
+        }
+      ]
+    }
+  ],
+  "cex_hits_final": []
+}

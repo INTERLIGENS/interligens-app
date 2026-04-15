@@ -1,0 +1,316 @@
+{
+  "generated_at": "2026-04-15T21:29:25.957331+00:00",
+  "mint": "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump",
+  "phase1_rus_wi11em": {
+    "wi11em_parties_count": 126,
+    "rus_parties_count": 0,
+    "common_parties_count": 0,
+    "common_parties": [],
+    "direct_link": false,
+    "direct_evidence": null
+  },
+  "phase2_genesis": {
+    "signature": "3TnZDidnmPaumn4gH8YM7EGhMfz17269kMfLyhrPnbmzaC4TXCidQUHezg86ShWqtm6BzdAqj2hsWSHkeSKwbnV",
+    "slot": 413428388,
+    "block_time": 1776274160,
+    "block_time_utc": "2026-04-15 17:29:20 UTC",
+    "accounts_count": 47,
+    "accounts": [
+      "4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4",
+      "26dJt43C7m6jtDU1P1bG6B94BeU9wvaPDdjxMpUmMWMj",
+      "6biARFh2WJZVEAHMggQtoJF1utEmCUzoHVvjen3Kn1iq",
+      "E5EdbG9M54mWVvWycBFiMuPSYdiSmpj6SRKxEhAnNCpk",
+      "ComputeBudget111111111111111111111111111111",
+      "MEViZt7uNtZs47XkjujUuMSAxxxVtQQ25SwToLcEckt",
+      "5GqDp9reZtTHCKdPKPrNZXLF43QhFCktvPfYTpvHDwYo",
+      "8BCaZSVJHKCMHouwdt6EriQYQBABEXUZC6ZNvRQuemvu",
+      "94qWNrtmfn42h3ZjUZwWvK1MEo9uVmmrBPd2hpNjYDjb",
+      "C2aFPdENg4A2HQsmrd5rTw5TaYBX5Ku887cWjbFKtZpw",
+      "2TMkEsupJaZhKSwKLrYzogyabeTebkobqzvoE7wTvYo7",
+      "CJBhjypz1UyhUJATDobrpobpwkt5dVtZaN55XZpa3Vw6",
+      "DeJ3X8Sd5hbnWjrMFzdfQj8NKL8cTBuHDDWaq6ePAMpu",
+      "6eBx4MP9f9VbjrZrDYJitR6QfYhZ1NVg3c7wkZiwCowS",
+      "8yUbvifd2jrCzGmjzfk5VVmdoMaFyN4fU5V9VsfPyubf",
+      "AwuUuubfLqW4EhrvtXfF6zcDP4ckt7DkAbQ9MPkKmYtX",
+      "C4vzqxN5CFi2RHa35duJsywHWayJAw3vWfLpcPdwZg4g",
+      "CsxMDXxCg8khG9LKsDXtQwwdEA8fjgwqpurtLRov4z43",
+      "4CPVihvjKUUsXq3HFrS8wniUKffbpDqz2h6jHKjeXoYD",
+      "5rLT4UjGhV85LcEQ9dft3JDJwELF6tQgH8tcpjbky5ac",
+      "6XbufKJ1oijXmr4uR96ana4dPLnasSb2XdyYcuFTd1n6",
+      "GSGhkpgYx4NMTyQ8nM2zZZ2ye9Z5QnTkgPEwkDp27g4T",
+      "pj16ptqweZu6naWNXPzFcAzgeeC22wuw4cdSX1tjHRN",
+      "6q2tPcNHYZQjq8Vbdfinxg2RnGmiHfqxr9fcSj93ScVR",
+      "CcAkgb9p1uHGr9cAubdYKRnFNnKjpCUphvZqvPiixJf9",
+      "11111111111111111111111111111111",
+      "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
+      "So11111111111111111111111111111111111111112",
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+      "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+      "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
+      "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ",
+      "3rmHSu74h1ZcmAisVcWerTCiRDQbUrBKmcwptYGjHfet",
+      "5PHirr8joyTMp9JMm6nW7hNDVyEYdkzDqazxPD7RaTjx",
+      "62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV",
+      "ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw",
+      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+      "D1ZN9Wj1fRSUQfCjhvnu1hqDMT7hzjzBBpi12nVniYD6",
+      "GS4CU59F31iL7aR2Q8zVS8DRrcRnXX1yjQ66TqNVQnaR",
+      "HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC",
+      "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump",
+      "EN2nnxrg8uUi6x2sJkzNPd2eT6rB9rdSoQNNaENA4RZA",
+      "4K5JAXocks7KFdz7VawPYVJakX3Zfcq3Tv8m1EjPDkZe",
+      "8kpfGMPy5vpQis5fMkxveHiRThDk23qC11nEJdGdMFXN",
+      "Sysvar1nstructions1111111111111111111111111"
+    ],
+    "network_wallets_present": [],
+    "sol_deltas_summary": {
+      "4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4": -0.0
+    },
+    "wi11em_first_vine_buy": null
+  },
+  "phase3_pool": {
+    "pool_address": "6eBx4MP9f9VbjrZrDYJitR6QfYhZ1NVg3c7wkZiwCowS",
+    "total_signatures": 2000,
+    "first_tx": {
+      "signature": "2cCAjBd6WvCdSrKLaSATw9qqri5WMyZX8j28JodvGJeMV5wGVmTu76sYhj3ppcLPnegqrM3yupVX4UTLZNMuB5qA",
+      "block_time_utc": "2026-03-17 18:02:22 UTC",
+      "accounts": [
+        "4ywa3NKfWRX3jpMxWydiWzELuSbdDUhTV5QnoGexjV3e",
+        "7T9SgvSoGiUEVuUXfmCaq4A8ouShGioCnsUfN4HEFwZv",
+        "Bm8iF3zKgHNh8jMY1v8obiuasW94MR4vn5MmGq1Cuirk",
+        "C4vzqxN5CFi2RHa35duJsywHWayJAw3vWfLpcPdwZg4g",
+        "FS1tDFZgRbWRbRQSw9FJEdT26HMmYYizk3U6Xeq18ZAc",
+        "Gdrh7nAbzZxqdwoqJoekxF2oAYPFUJ6YmR7WNkzToo2Q",
+        "ComputeBudget111111111111111111111111111111",
+        "81mQ6YVuuppW7LLnd1q4tzkJzyyRMwnkCSCeRVxHpnko",
+        "DDsnwb7dxKSjzTYDFjU8F6rpYNZa1sp7Fmfb2nGDAMEo",
+        "uXWniAVnEnEgCKjWVhFGkjCxTpkWobcuFU6VryBKXX7"
+      ],
+      "sol_deltas_top": {
+        "4ywa3NKfWRX3jpMxWydiWzELuSbdDUhTV5QnoGexjV3e": -0.0
+      }
+    },
+    "rus_appearances_in_sampled_pool_tx": 0,
+    "rus_post_ath_tx_sample": []
+  },
+  "phase4_hop2": {
+    "C_Brg": {
+      "address": "BrgFzbQdGQxvt58jzPcV4o1nXSBu2eS8XbpUxsTfhAV1",
+      "outflows_count": 4,
+      "distinct_destinations": 4,
+      "destinations": [
+        {
+          "address": "FM85o7AA97S217yzgZRAGFfehhkXXgy6FzktRsgg1pps",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 5427.13
+        },
+        {
+          "address": "595ti54XhCGX268GSBmxztV83WKye6TFZuqKiGMC6Cjw",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 3418.0
+        },
+        {
+          "address": "Bwvu3W2wmZ5KYYFM89ieKWHtfcF6zj2kYgYztuXfLysY",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 3400.0023
+        },
+        {
+          "address": "3Gvt24mqH6hwDSyhGjb5VJYKp9r6w4e9LqWMXUp74QFt",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 3083.64
+        }
+      ],
+      "cex_hits": []
+    },
+    "C_7BN": {
+      "address": "7BN2DPUasPFr4dsET7Gaisf8sy9w6eUTwaUw233wQ4Ae",
+      "outflows_count": 4,
+      "distinct_destinations": 4,
+      "destinations": [
+        {
+          "address": "5iYznoT2NCmWHnTyAnjEGqFao8J3VnX1jM9EgnUHRn9g",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 3603.0
+        },
+        {
+          "address": "FcF1mpuEThfvAScZJP1LXRXtx6HyXSixon6vgS5S2NJ8",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 3590.0023
+        },
+        {
+          "address": "2e5urK739MeLEPf52mWDyppRufh9pzAcWcN8L7xmw3jW",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 2630.0
+        },
+        {
+          "address": "7FAM7Uyqoc9CTiJ26yZ67CSgCZmc1mEbQEw6GZBRwBZ9",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 10.0
+        }
+      ],
+      "cex_hits": []
+    },
+    "C_CLF": {
+      "address": "CLFBVFLnF9DiEfBntndVCudZmrtrtfVm1Bec1SWKAx3x",
+      "outflows_count": 4,
+      "distinct_destinations": 4,
+      "destinations": [
+        {
+          "address": "F61MqCek4NFhRpEj6jNH1ohatdibzaNxyj8GFkqjht4o",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 5570.02
+        },
+        {
+          "address": "DMKATKA6PxTocW5oCs8RxnU41j6Nxyjk4XvgMziNA1J3",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 1296.0
+        },
+        {
+          "address": "8pTzizKkoKX6evc8yBS3QBP9tbqKduTsDxFWJGDGmd6N",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 1274.0023
+        },
+        {
+          "address": "4nnV2ApeSirHig64jtpcZpgTYujMJAgRs7JeuC5y1ZAt",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 20.5
+        }
+      ],
+      "cex_hits": []
+    },
+    "C_Hmo": {
+      "address": "HmoxNEqXFcN5TtVdFtrEQCbN3yi81PpVfSDFz7eTreyE",
+      "outflows_count": 6,
+      "distinct_destinations": 6,
+      "destinations": [
+        {
+          "address": "6QNwxHppC3YRiTbNeozSnSqQhvSZMzza64QBVHjqmhPk",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 4170.38
+        },
+        {
+          "address": "EHsekMuZSDd7eSFYD8DYZWyBWbjFcNzmNYCy1k7efyZ9",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 3740.24
+        },
+        {
+          "address": "Bdzm4MCGDfSib7TDm3sHvWxn3q176xpWcVNtn2MqAaNL",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 2086.0
+        },
+        {
+          "address": "FM85o7AA97S217yzgZRAGFfehhkXXgy6FzktRsgg1pps",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 2.0
+        },
+        {
+          "address": "GosLoMAmvzs4h33xkoN3FEPxmvDpUkRrLFN35yKvJbiR",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 0.002
+        },
+        {
+          "address": "F16g7tGXtR8e17wpSC6nuT6CUH4mKKM45gRMpowjTHDa",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 0.002
+        }
+      ],
+      "cex_hits": []
+    },
+    "C_6Fd": {
+      "address": "6FdGjxkyr8JEkaRLerNrAjsScBzdqng3cTFW6AjqEoov",
+      "outflows_count": 9,
+      "distinct_destinations": 9,
+      "destinations": [
+        {
+          "address": "2kB5NWYVPeyGoK3ihqnw7vs2ocwgCJguNAoY2gddUHD1",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 6000.0023
+        },
+        {
+          "address": "DPr2imvHQuCYL7u3aVcKYV9hpe6PPNRECSQ95Zt1igY7",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 5750.0023
+        },
+        {
+          "address": "2X7q6sU2yRp1KopiKmkuNsgQYAQs1Siv6dWcmdfvMdgh",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 5028.0
+        },
+        {
+          "address": "GipawE2vsRKRCTs3z2jEVqwS8Qxeo3KhHfBEkNRWHKct",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 1577.0023
+        },
+        {
+          "address": "982DSBrHD6qnytB2St5uCR644wJAh7U1LpYvhF4pqWSC",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 1000.0
+        },
+        {
+          "address": "BKXjSPU9HpKqRMSq98H9uLdNWq1qAzX4DAqqeRfSG16m",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 1.0
+        },
+        {
+          "address": "2AKRFvegeA2ve2FJAEq5P5djDUC1JNfnvR2ekuUZzECq",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 0.002
+        },
+        {
+          "address": "EaxYFA8a6amjRMqQcX8r1Z2PJ73bdijTT4hoeXaMfbev",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 0.002
+        },
+        {
+          "address": "3Cgf4d6Y4RSc5A9JyskzTiDQ6p89zk9vBiWApRnqkRiw",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 0.002
+        }
+      ],
+      "cex_hits": []
+    },
+    "C_3Dd": {
+      "address": "3DdoDEHrujJ5ooJ2hnrt8tuwoXDXihyD96fUVfoWYy4V",
+      "outflows_count": 1,
+      "distinct_destinations": 1,
+      "destinations": [
+        {
+          "address": "FJnJ1yVSYw1ystWHqSwmsoh711msFguCqrrrifMYwjsq",
+          "label": null,
+          "tx_count": 1,
+          "total_sol": 449.0
+        }
+      ],
+      "cex_hits": []
+    }
+  }
+}

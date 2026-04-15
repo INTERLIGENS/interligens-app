@@ -2,6 +2,7 @@
 
 import vineData from "@/data/vine-osint.json";
 import networkData from "@/data/vine-insider-network.json";
+import smokingGunsData from "@/data/vine-smoking-guns.json";
 
 const ACCENT = "#FF6B00";
 const BG = "#000000";
@@ -431,6 +432,326 @@ export default function VineOsintPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* SMOKING GUNS */}
+        <SectionTitle>
+          🔴 Smoking Guns — {smokingGunsData.tier_1_criminal_insider_trading.length + smokingGunsData.tier_2_coordination_evidence.length + smokingGunsData.tier_3_contextual_supporting.length} preuves classées par poids juridique
+        </SectionTitle>
+        <div style={{ marginTop: 16, display: "grid", gap: 16 }}>
+          <div
+            style={{
+              ...CARD,
+              background: "#140707",
+              borderLeft: `4px solid #FF6B6B`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                color: "#FF6B6B",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                fontWeight: 700,
+                marginBottom: 8,
+              }}
+            >
+              Verdict global
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "rgba(255,255,255,0.85)",
+                lineHeight: 1.65,
+              }}
+            >
+              {smokingGunsData.overall_assessment.verdict_fr}
+            </div>
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 10,
+                color: "rgba(255,255,255,0.4)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Seuils juridiques atteints :{" "}
+              {smokingGunsData.overall_assessment.legal_threshold_met_for.join(" · ")}
+            </div>
+          </div>
+
+          <div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "#FF6B6B",
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                fontWeight: 700,
+                marginBottom: 8,
+              }}
+            >
+              Tier 1 — Criminal insider trading ({smokingGunsData.tier_1_criminal_insider_trading.length})
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {smokingGunsData.tier_1_criminal_insider_trading.map((sg: {
+                id: string;
+                title: string;
+                legal_weight: string;
+                description: string;
+                implication_fr?: string;
+                first_tx_signature?: string;
+              }) => (
+                <div key={sg.id} style={{ ...CARD, borderLeft: "3px solid #FF6B6B" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 10,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>
+                      <span style={{ color: "#FF6B6B" }}>{sg.id}</span> — {sg.title}
+                    </div>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "3px 8px",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: "#FF6B6B",
+                        background: "rgba(255,107,107,0.15)",
+                        border: "1px solid rgba(255,107,107,0.4)",
+                        borderRadius: 4,
+                        flexShrink: 0,
+                      }}
+                    >
+                      CRITICAL
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.5)",
+                      marginBottom: 8,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Poids juridique : {sg.legal_weight}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.75)",
+                      lineHeight: 1.6,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {sg.description}
+                  </div>
+                  {sg.implication_fr && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.55)",
+                        fontStyle: "italic",
+                        borderTop: "1px solid rgba(255,255,255,0.05)",
+                        paddingTop: 8,
+                      }}
+                    >
+                      → {sg.implication_fr}
+                    </div>
+                  )}
+                  {sg.first_tx_signature && (
+                    <div style={{ marginTop: 8 }}>
+                      <a
+                        href={`https://solscan.io/tx/${sg.first_tx_signature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: 10,
+                          color: ACCENT,
+                          textDecoration: "none",
+                          fontFamily: "Menlo, monospace",
+                        }}
+                      >
+                        → Solscan TX: {sg.first_tx_signature.slice(0, 14)}…{sg.first_tx_signature.slice(-6)}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div
+              style={{
+                fontSize: 10,
+                color: ACCENT,
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                fontWeight: 700,
+                marginBottom: 8,
+              }}
+            >
+              Tier 2 — Coordination evidence ({smokingGunsData.tier_2_coordination_evidence.length})
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {smokingGunsData.tier_2_coordination_evidence.map((sg: {
+                id: string;
+                title: string;
+                description: string;
+                implication_fr?: string;
+              }) => (
+                <div key={sg.id} style={{ ...CARD, borderLeft: `3px solid ${ACCENT}` }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#FFFFFF",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span style={{ color: ACCENT }}>{sg.id}</span> — {sg.title}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.7)",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {sg.description}
+                  </div>
+                  {sg.implication_fr && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.5)",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      → {sg.implication_fr}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "rgba(255,255,255,0.5)",
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                fontWeight: 700,
+                marginBottom: 8,
+              }}
+            >
+              Tier 3 — Contextual ({smokingGunsData.tier_3_contextual_supporting.length})
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {smokingGunsData.tier_3_contextual_supporting.map((sg: {
+                id: string;
+                title: string;
+                description?: string;
+              }) => (
+                <div key={sg.id} style={{ ...CARD, padding: 14 }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#FFFFFF",
+                      marginBottom: sg.description ? 4 : 0,
+                    }}
+                  >
+                    <span style={{ color: "rgba(255,255,255,0.4)" }}>{sg.id}</span> — {sg.title}
+                  </div>
+                  {sg.description && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.5)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {sg.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={CARD}>
+            <div
+              style={{
+                fontSize: 10,
+                color: ACCENT,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                fontWeight: 700,
+                marginBottom: 10,
+              }}
+            >
+              Réquisitions recommandées
+            </div>
+            {smokingGunsData.recommended_requisitions.map((req: {
+              priority: number;
+              target: string;
+              object: string;
+              justification: string;
+            }, i: number) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  padding: "10px 0",
+                  borderBottom:
+                    i < smokingGunsData.recommended_requisitions.length - 1
+                      ? "1px solid rgba(255,255,255,0.04)"
+                      : "none",
+                  fontSize: 11,
+                }}
+              >
+                <div
+                  style={{
+                    minWidth: 30,
+                    color: req.priority === 1 ? "#FF6B6B" : req.priority === 2 ? ACCENT : "rgba(255,255,255,0.5)",
+                    fontWeight: 700,
+                    fontSize: 12,
+                  }}
+                >
+                  P{req.priority}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, color: "#FFFFFF", marginBottom: 3 }}>
+                    {req.target}
+                  </div>
+                  <div style={{ color: "rgba(255,255,255,0.7)", marginBottom: 3 }}>
+                    {req.object}
+                  </div>
+                  <div
+                    style={{
+                      color: "rgba(255,255,255,0.45)",
+                      fontStyle: "italic",
+                      fontSize: 10,
+                    }}
+                  >
+                    {req.justification}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* INSIDER NETWORK */}

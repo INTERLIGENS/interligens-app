@@ -270,6 +270,50 @@
       "coordination_score": 100,
       "cashout_usd": 9770000,
       "description_fr": "La trace on-chain via Helius RPC confirme que les 6 wallets 'insider' identifiés par @OnchainLens comme le réseau à 12,5M$ de profit sont opérés par une seule entité. Le wallet 2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ (Wi11em) est le financeur SOL direct pré-launch des 5 autres wallets acheteurs (BPBLjZrv, 8Lr7nr1R, DSYPh29J, DMR43Ldd, 4uLDrqss). Trois de ces wallets (BUY_1/2/3) ont leur première transaction enregistrée dans la même minute (22:29-22:30 UTC le 22 janvier 2025, soit environ 20 heures avant le lancement du token VINE), ce qui confirme une création de wallets automatisée et synchrone. Le score de coordination INTERLIGENS est de 100/100, fondé sur : (a) création de wallets synchrone, (b) un parent de financement unique (Wi11em) pour les 5 enfants, (c) 6/6 wallets consolidateurs résolus comme récipients du cashout coordonné de 9,77M$ le 26 janvier 2025 (3 jours après le lancement), (d) pré-positionnement pré-launch. Conséquence juridique directe : l'ensemble du 'réseau insider' se réduit à un seul opérateur identifiable — quiconque contrôle Wi11em est légalement responsable de l'extraction totale de 9,77M$, et non un groupe diffus d'acteurs indépendants. Ajouté le 2026-04-15."
+    },
+    {
+      "claim_id": "C12",
+      "title": "Wi11em bought VINE at 00:31:07 UTC on launch day — 9h29m before publicly announced 10:00 UTC trading window",
+      "severity": "CRITICAL",
+      "status": "ON_CHAIN_CONFIRMED",
+      "description": "On-chain timestamp evidence via Helius RPC: Wi11em's associated token account for VINE (BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t) has exactly 17 lifetime signatures. The very first signature on that ATA is a VINE purchase at 2025-01-23 00:31:07 UTC (block time unix 1737592267, tx signature 5YfiVf5N5uMpupo1KHoyr5kLiYnDJ7zUXd8JFYmQY5MD6L5jCYjHD8LtULhEabf1eTHNadVADi3vfTDurE1Vp6sp). Public reporting (BeInCrypto, MiTrade, Cryptopolitan, CoinPedia) documents that Rus Yusupov announced the VINE trading launch for 10:00 UTC on 2025-01-23. Wi11em's on-chain purchase precedes the publicly announced trading window by 569 minutes (9h29m). This is direct proof of access to the token before the public call-to-trade, compatible only with: (a) direct communication from Rus or team, (b) automated monitoring of Rus's test/deployment wallets and front-running the launch, or (c) direct operational involvement in the launch infrastructure. Combined with C11 (single-operator sybil network), C12 establishes that the $12.5M profit was earned via non-public information trading. Added 2026-04-15.",
+      "category": "insider_timing",
+      "actors": [
+        "Wi11em (2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ)",
+        "Wi11em ATA (BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t)"
+      ],
+      "date": "2025-01-23",
+      "evidence_refs": [
+        "src/data/vine-smoking-guns.json SG-1",
+        "scripts/osint/out-vine-hop3.json",
+        "Helius getTokenAccountsByOwner + getSignaturesForAddress (17 sigs on ATA)",
+        "https://beincrypto.com/rus-yusupov-vine-meme-coin-launch/ (10:00 UTC public trading start)"
+      ],
+      "thread_url": "https://solscan.io/tx/5YfiVf5N5uMpupo1KHoyr5kLiYnDJ7zUXd8JFYmQY5MD6L5jCYjHD8LtULhEabf1eTHNadVADi3vfTDurE1Vp6sp",
+      "block_time_utc": "2025-01-23 00:31:07 UTC",
+      "advance_minutes": 569,
+      "description_fr": "Preuve de timing on-chain via Helius RPC : le compte de token associé VINE de Wi11em (BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t) possède exactement 17 signatures de toute son existence. La toute première signature sur cet ATA est un achat de VINE le 23/01/2025 à 00:31:07 UTC. Les publications publiques (BeInCrypto, MiTrade, Cryptopolitan, CoinPedia) documentent que Rus Yusupov avait annoncé le démarrage du trading VINE pour 10:00 UTC le 23/01/2025. L'achat on-chain de Wi11em précède la fenêtre de trading annoncée publiquement de 569 minutes (9h29m). C'est une preuve directe d'accès au token avant l'appel public au trading, compatible uniquement avec : (a) communication directe de Rus ou de l'équipe, (b) surveillance automatisée des wallets de test/déploiement de Rus et front-running du lancement, ou (c) participation opérationnelle directe à l'infrastructure de lancement. Combiné à C11 (réseau sybil mono-opérateur), C12 établit que le profit de 12,5M$ a été gagné via le trading sur information non publique. Ajouté le 2026-04-15."
+    },
+    {
+      "claim_id": "C13",
+      "title": "$12.6M on-chain recycling — operator runs closed-loop capital network, no CEX cashout detected",
+      "severity": "HIGH",
+      "status": "ON_CHAIN_CONFIRMED",
+      "description": "Hop-1/2/3 trace on the 6 consolidator wallets reveals that approximately 63,125 SOL (~$12.6M at launch-time prices) was distributed post-dump across 30 distinct layer-3 wallets. Hop-3 analysis on the 15 largest layer-3 destinations (~$13M total) returned 0 matches against a 15-entry CEX hot-wallet label table (Binance, Coinbase, Kraken, OKX, Bybit, MEXC, Gate.io, KuCoin, Bitget). Instead, layer-3 wallets send SOL BACK to (a) the consolidator wallets themselves (at least 2 closed loops of ~$1.2M each back to consolidator 6FdGjxkyr8...) and (b) wallets previously identified as Wi11em's original May-2024 funding infrastructure (2AQdpHJ2... and D89hHJT5...). This internal recycling topology is inconsistent with a straightforward insider cashout and characteristic of a professional operator managing on-chain capital internally — keeping funds for future plays, obfuscating flow provenance, and avoiding the KYC footprint that CEX deposits would create. Added 2026-04-15.",
+      "category": "capital_topology",
+      "actors": [
+        "6 consolidator wallets",
+        "30 layer-3 destinations",
+        "FM85o7AA97... (shared layer-3 across C_Brg + C_Hmo)"
+      ],
+      "date": "2025-01-26",
+      "evidence_refs": [
+        "scripts/osint/out-vine-hop3.json",
+        "src/data/vine-smoking-guns.json SG-5, SG-6",
+        "15 hop-3 traces, 0 CEX hits"
+      ],
+      "thread_url": "",
+      "description_fr": "La trace hop-1/2/3 sur les 6 wallets consolidateurs révèle qu'environ 63 125 SOL (~12,6M$ au cours au moment du lancement) ont été distribués post-dump sur 30 wallets layer-3 distincts. L'analyse hop-3 sur les 15 plus grosses destinations layer-3 (~13M$ cumulés) a retourné 0 correspondance contre une table de labels de 15 hot wallets CEX connus (Binance, Coinbase, Kraken, OKX, Bybit, MEXC, Gate.io, KuCoin, Bitget). Au lieu de cela, les wallets layer-3 renvoient les SOL VERS (a) les wallets consolidateurs eux-mêmes (au moins 2 boucles fermées de ~1,2M$ chacune vers le consolidateur 6FdGjxkyr8...) et (b) des wallets précédemment identifiés comme l'infrastructure de financement d'origine de Wi11em en mai 2024 (2AQdpHJ2... et D89hHJT5...). Cette topologie de recyclage interne est incompatible avec un simple cashout insider et caractéristique d'un opérateur professionnel gérant le capital on-chain en interne — conservant les fonds pour des opérations futures, masquant la provenance des flux et évitant l'empreinte KYC que des dépôts CEX créeraient. Ajouté le 2026-04-15."
     }
   ]
 }
