@@ -243,6 +243,33 @@
       "evidence_refs": ["X post by @aixbt_agent (Feb 8 2025)"],
       "thread_url": "https://x.com/aixbt_agent",
       "description_fr": "Le 8 février 2025, le compte @aixbt_agent (465k abonnés, marqué IA) a publié un message affirmant 'x team members loading up on $VINE' — impliquant que des employés de X (ex-Twitter) ou xAI accumulaient activement le token. Les deux interprétations ont un poids juridique : (1) si véridique, il s'agit d'une fuite narrative insider provenant d'une société affiliée à Elon Musk qui envisageait publiquement une relance de la plateforme Vine, soulevant potentiellement des enjeux de droit des valeurs mobilières ; (2) si fabriqué, il s'agit d'une manipulation narrative délibérée utilisant l'association Elon-halo pour relancer le pump pendant la phase de walkback. Dans les deux cas, le message a généré une réponse d'achat retail mesurable en seconde vague. Nouveau constat ajouté au dossier VINE (2026-04-15)."
+    },
+    {
+      "claim_id": "C11",
+      "title": "Single-operator 6-wallet sybil network — Wi11em parent of all 5 buyer wallets",
+      "severity": "CRITICAL",
+      "status": "ON_CHAIN_CONFIRMED",
+      "description": "On-chain trace via Helius RPC confirms that the 6  'insider' buyer wallets identified by @OnchainLens as the $12.5M profit network are operated by a single entity. Wallet 2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ (Wi11em) is the direct pre-launch SOL funder of all 5 other buyer wallets (BPBLjZrv, 8Lr7nr1R, DSYPh29J, DMR43Ldd, 4uLDrqss). Three of these buyers (BUY_1/2/3) have their first recorded transaction within the same minute (22:29-22:30 UTC on 2025-01-22, ~20 hours before the $VINE launch), confirming synchronous automated wallet creation. The full INTERLIGENS coordination score is 100/100 based on: (a) synchronous wallet creation, (b) single common funding parent (Wi11em) across all 5 children, (c) 6/6 consolidator wallets resolved as receiving the coordinated $9.77M cashout on 2025-01-26 (3 days post-launch), (d) pre-launch pre-positioning timing. The direct legal consequence is that the entire 'insider network' collapses to a single identifiable operator — whoever controls Wi11em is legally responsible for the full $9.77M extraction, not a diffuse group of independent actors. Added 2026-04-15.",
+      "category": "sybil_attack",
+      "actors": [
+        "Wi11em (2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ)",
+        "BUY_1 (BPBLjZrvn6ZCKMS2BiDwoLdCH5tF36pZJWgHV9KSqqNS)",
+        "BUY_2 (8Lr7nr1RCQ2PUsKEG5D7djwgvFazsRXVqyhRAi5DMbc7)",
+        "BUY_3 (DSYPh29JTLhpjq4LzGcep4BK6pqUzoRi2o5Mqve71STU)",
+        "BUY_4 (DMR43Ldd7T7KWPSiFajKPgTSF4UPkVXyZAAB5dEyYsDH)",
+        "BUY_5 (4uLDrqss4mcVjJKrqcr4PfyCQmFhNkBLu5Aqb8Sy3yeP)"
+      ],
+      "date": "2025-01-22",
+      "evidence_refs": [
+        "src/data/vine-insider-network.json",
+        "scripts/osint/traceVineConsolidators.py",
+        "Helius getSignaturesForAddress + getTransaction (200 pre-launch TX parsed per wallet)",
+        "@OnchainLens $12.5M profit claim (2025-01-23)"
+      ],
+      "thread_url": "https://solscan.io/account/2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ",
+      "coordination_score": 100,
+      "cashout_usd": 9770000,
+      "description_fr": "La trace on-chain via Helius RPC confirme que les 6 wallets 'insider' identifiés par @OnchainLens comme le réseau à 12,5M$ de profit sont opérés par une seule entité. Le wallet 2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ (Wi11em) est le financeur SOL direct pré-launch des 5 autres wallets acheteurs (BPBLjZrv, 8Lr7nr1R, DSYPh29J, DMR43Ldd, 4uLDrqss). Trois de ces wallets (BUY_1/2/3) ont leur première transaction enregistrée dans la même minute (22:29-22:30 UTC le 22 janvier 2025, soit environ 20 heures avant le lancement du token VINE), ce qui confirme une création de wallets automatisée et synchrone. Le score de coordination INTERLIGENS est de 100/100, fondé sur : (a) création de wallets synchrone, (b) un parent de financement unique (Wi11em) pour les 5 enfants, (c) 6/6 wallets consolidateurs résolus comme récipients du cashout coordonné de 9,77M$ le 26 janvier 2025 (3 jours après le lancement), (d) pré-positionnement pré-launch. Conséquence juridique directe : l'ensemble du 'réseau insider' se réduit à un seul opérateur identifiable — quiconque contrôle Wi11em est légalement responsable de l'extraction totale de 9,77M$, et non un groupe diffus d'acteurs indépendants. Ajouté le 2026-04-15."
     }
   ]
 }
