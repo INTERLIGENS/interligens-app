@@ -48,6 +48,25 @@
       "description": "Trace on 200 pre-launch TX per buyer wallet identified Wi11em (2yw4H33...) as the direct SOL funder of all 5 other buyer wallets before the VINE launch. Combined with SG-3 (synchronous wallet creation), this proves the 6 'independent' buyer wallets identified by OnchainLens as the $12.5M insider network are in fact 6 wallets operated by a single entity.",
       "implication_en": "Legal responsibility attaches to the operator of Wi11em, not to 6 separate actors. Any prosecution or civil action for insider trading, market manipulation or fraud converges on a single identifiable party.",
       "implication_fr": "La responsabilité juridique s'attache à l'opérateur de Wi11em, et non à 6 acteurs distincts. Toute action pénale ou civile pour délit d'initié, manipulation de marché ou fraude converge sur une seule personne identifiable."
+    },
+    {
+      "id": "SG-12",
+      "title": "Rylan Gade (xAI Special Projects Lead) publicly named by Rus Yusupov as direct collaborator — identified xAI insider with VINE public exposure and on-chain interaction",
+      "legal_weight": "CRITICAL — named xAI employee with direct operational link to VINE deployer",
+      "evidence_type": "public statement + on-chain transfer + organized promotion",
+      "actor": "Rylan Gade (@rylangade)",
+      "xai_role": "Special Projects Lead",
+      "rus_public_statement": "He is working directly with Rylan",
+      "rus_statement_venue": "X Space hosted by Rus Yusupov, 2025-02-18",
+      "statement_witnesses": ["@PeterGirr", "@WiseAdmiral"],
+      "rylan_key_quote": "The only official Vine coming is from the @X team and @rus",
+      "onchain_evidence": "10 VINE sent from Rylan Gade to @rus (Rus Yusupov) on 2025-07-22 — direct wallet-to-wallet interaction",
+      "promotion_activity": "Organized $VINE promotion raids on X; publicly recommended Rus Yusupov; posted about $VINE multiple times",
+      "sec_status": "Reported to SEC (alongside @chrisparkX and @Nate_Esparza, already separately reported)",
+      "description": "During an X Space on 2025-02-18, Rus Yusupov publicly stated 'He is working directly with Rylan', confirming an active working relationship with Rylan Gade. Rylan Gade (@rylangade) holds the title of Special Projects Lead at xAI (Elon Musk's AI company). The relationship is substantiated by four independent evidence streams: (1) Rus's own public verbal acknowledgement in a recorded X Space witnessed by @PeterGirr and @WiseAdmiral, (2) Rylan Gade's own public post stating 'The only official Vine coming is from the @X team and @rus' — an unambiguous endorsement of Rus's VINE product using his xAI-employee credibility, (3) Rylan Gade's organized $VINE promotion raid activity on X, and (4) an on-chain direct wallet interaction: Rylan sent 10 VINE to Rus's wallet on 2025-07-22. The combination of these four streams establishes Rylan Gade as a named xAI insider with operational, promotional, and on-chain links to the VINE launch and post-launch narrative. Combined with @chrisparkX and @Nate_Esparza (both already reported to the SEC), this upgrades the @aixbt_agent 'x team members loading up on $VINE' claim (SG-9 / C10) from an anonymous allegation to a named-individual charge sheet covering at least 3 xAI/X-adjacent employees.",
+      "implication_en": "The xAI↔VINE conflict-of-interest triangle is no longer hypothetical. A senior xAI employee (Special Projects Lead) had a publicly confirmed working relationship with the VINE deployer, promoted the token using his employer's reputation, organized pump raids, and executed an on-chain transaction with the deployer. This exposes: (1) Rylan Gade personally to insider trading and market-manipulation liability, (2) xAI corporately to failure-to-supervise or permissive-culture claims, and (3) Rus Yusupov to additional conspiracy liability by naming his own collaborator on a public recording. Under both French criminal law (Code pénal art. 313-1) and US securities regulation, this is material evidence for a coordinated insider promotion operation.",
+      "implication_fr": "Le triangle de conflits d'intérêts xAI↔VINE n'est plus hypothétique. Un employé senior de xAI (Special Projects Lead) avait une relation de travail publiquement confirmée avec le déployeur de VINE, a fait la promotion du token en utilisant la réputation de son employeur, a organisé des raids de pump, et a exécuté une transaction on-chain directe avec le déployeur. Ceci expose : (1) Rylan Gade personnellement à une responsabilité pour délit d'initié et manipulation de marché, (2) xAI corporate à des allégations de défaut de supervision ou de culture permissive, et (3) Rus Yusupov à une responsabilité supplémentaire pour complicité en ayant nommé son propre collaborateur sur un enregistrement public. Au titre du droit pénal français (art. 313-1) et du droit boursier américain, ceci constitue une preuve matérielle d'une opération de promotion insider coordonnée.",
+      "related_claims": ["C10", "C14"]
     }
   ],
 
@@ -202,6 +221,12 @@
       "target": "X Corp / Twitter",
       "object": "Civil identity + account history of @Wi11em (if a public X handle exists) + identity resolution of @aixbt_agent (ref C10)",
       "justification": "Match the on-chain wallet 2yw4H33... to a human identity via any linked X account. Cross-reference with @aixbt_agent's Feb 8 2025 'x team members loading up' post for potential insider-source identification."
+    },
+    {
+      "priority": 1,
+      "target": "xAI (Elon Musk's AI company) — HR and compliance",
+      "object": "Employment records for Rylan Gade (@rylangade), Special Projects Lead, including start date, role description, access to non-public product roadmaps concerning Vine platform revival, and any internal communications, Slack/Teams/email referencing $VINE, Rus Yusupov, or the VINE token contract 6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump between 2025-01-01 and 2025-07-31. Also: any wallet addresses held or controlled by Rylan Gade, including the wallet that sent 10 VINE to @rus on 2025-07-22.",
+      "justification": "SG-12 and C14 establish that Rylan Gade, a senior xAI employee, had a publicly confirmed working relationship with Rus Yusupov (VINE deployer), organized $VINE promotion raids, made public promotional statements using his xAI-employee credibility ('The only official Vine coming is from the @X team and @rus'), and executed a direct on-chain transfer to Rus on 2025-07-22. This triggers xAI's duty to disclose employment, wallet, and communications records to the investigation. The xAI response will also clarify whether Rylan acted with xAI's knowledge or in breach of internal policy — either outcome is actionable (corporate supervision failure vs. individual insider liability). Together with @chrisparkX and @Nate_Esparza (already reported to the SEC), this establishes a minimum 3-person xAI-insider group with VINE exposure."
     },
     {
       "priority": 1,
