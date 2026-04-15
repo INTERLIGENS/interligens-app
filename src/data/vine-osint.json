@@ -156,6 +156,29 @@
       "tweet_url": "https://x.com/rylangade",
       "hotspot": true,
       "notes": "Employé xAI nommé par Rus dans X Space comme collaborateur direct. A organisé des raids de promotion $VINE. A envoyé 10 VINE à @rus on-chain Jul 22 2025. Reporté à la SEC."
+    },
+    {
+      "handle": "chrisparkX",
+      "real_name": "Chris Park",
+      "role": "X (Twitter) employee",
+      "followers": 0,
+      "severity": "CRITICAL",
+      "timing": "2025-01-25 — 2 jours après le launch, pendant la phase pump",
+      "key_quote": "Internally we are excited but it's non trivial",
+      "tweet_url": "https://x.com/chrisparkX",
+      "hotspot": true,
+      "notes": "Employé X (Twitter) — le post 'Internally we are excited but it's non trivial' du 25 jan 2025 est un signal d'insider narrative : il confirme publiquement qu'il y a une discussion interne chez X au sujet de Vine/VINE, renforçant la légitimité du token via sa propre crédibilité d'employé X. Reporté à la SEC conjointement avec Rus Yusupov et @Nate_Esparza. Partie du triangle de conflits d'intérêts xAI/X↔VINE (cf. SG-12 et C14)."
+    },
+    {
+      "handle": "Nate_Esparza",
+      "real_name": "Nate Esparza",
+      "role": "X (Twitter) employee",
+      "followers": 0,
+      "severity": "CRITICAL",
+      "timing": "Phase pump et walkback",
+      "tweet_url": "https://x.com/Nate_Esparza",
+      "hotspot": true,
+      "notes": "Employé X (Twitter). A activement fait la promotion de $VINE en utilisant sa position d'employé X. Reporté à la SEC conjointement avec Rus Yusupov et @chrisparkX. Troisième membre identifié du groupe d'employés X/xAI ayant eu une exposition publique et promotionnelle au token $VINE, aux côtés de Rylan Gade (xAI) et @chrisparkX (X). Ensemble, ces 3 personnes constituent le charge sheet nommé pour la claim C10/@aixbt_agent 'x team members loading up on $VINE'."
     }
   ],
   "wallets_onchain": [
