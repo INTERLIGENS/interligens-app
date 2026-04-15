@@ -67,7 +67,7 @@ const SECTIONS: Section[] = [
     title: "Systeme",
     links: [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
-      { label: "Transparency", href: "/admin/intelligence" },
+      { label: "Documents", href: "/admin/documents" },
     ],
   },
 ];
