@@ -11,7 +11,7 @@ import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import { generateCasePdf } from "@/lib/pdf/engine";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 type ScanRow = {
   handle: string;
