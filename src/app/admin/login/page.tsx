@@ -3,8 +3,15 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+const BG = "#000000";
+const ACCENT = "#FF6B00";
+const TEXT = "#FFFFFF";
+const DIM = "rgba(255,255,255,0.55)";
+const LINE = "rgba(255,255,255,0.1)";
+const SURFACE = "#0a0a0a";
+
 function AdminLoginInner() {
-  const [token, setToken] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -12,7 +19,7 @@ function AdminLoginInner() {
   const redirect = searchParams.get("redirect") ?? "/admin/intel-vault";
 
   async function handleSubmit() {
-    if (!token.trim()) return;
+    if (!password.trim()) return;
     setLoading(true);
     setError("");
     try {
@@ -20,10 +27,10 @@ function AdminLoginInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ token: token.trim() }),
+        body: JSON.stringify({ password: password.trim() }),
       });
       if (!res.ok) {
-        setError("Token invalide.");
+        setError("Password invalide.");
         return;
       }
       router.push(redirect);
@@ -35,31 +42,138 @@ function AdminLoginInner() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 w-full max-w-sm space-y-4">
-        <h1 className="text-white font-bold text-xl">INTERLIGENS Admin</h1>
-        <p className="text-gray-400 text-sm">Token requis pour accéder à cette zone.</p>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: BG,
+        color: TEXT,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          background: SURFACE,
+          border: `1px solid ${LINE}`,
+          padding: "36px 32px",
+          width: "100%",
+          maxWidth: 380,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.25em",
+            fontFamily: "monospace",
+            color: ACCENT,
+            marginBottom: 10,
+          }}
+        >
+          INTERLIGENS · ADMIN
+        </div>
+        <h1
+          style={{
+            fontSize: 26,
+            fontWeight: 900,
+            fontStyle: "italic",
+            textTransform: "uppercase",
+            letterSpacing: "-0.01em",
+            marginBottom: 8,
+          }}
+        >
+          Admin Access
+        </h1>
+        <p
+          style={{
+            fontSize: 12,
+            color: DIM,
+            lineHeight: 1.6,
+            marginBottom: 24,
+          }}
+        >
+          Enter the admin password to unlock this zone. Your session stays
+          active for 8 hours.
+        </p>
+
+        <label
+          style={{
+            display: "block",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.45)",
+            fontFamily: "monospace",
+            marginBottom: 8,
+          }}
+        >
+          Password
+        </label>
         <input
           type="password"
-          value={token}
-          onChange={e => setToken(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleSubmit()}
-          placeholder="ADMIN_TOKEN"
-          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-orange-500"
+          value={password}
+          autoFocus
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          placeholder="••••••••"
+          style={{
+            width: "100%",
+            background: "#0d0d0d",
+            border: `1px solid ${LINE}`,
+            color: TEXT,
+            padding: "12px 14px",
+            fontSize: 14,
+            fontFamily: "monospace",
+            outline: "none",
+            borderRadius: 2,
+            marginBottom: 16,
+          }}
         />
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {error && (
+          <div
+            style={{
+              color: "#FF3B5C",
+              fontSize: 12,
+              fontFamily: "monospace",
+              marginBottom: 12,
+            }}
+          >
+            {error}
+          </div>
+        )}
         <button
           onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-semibold py-2 rounded-lg text-sm transition"
+          disabled={loading || !password.trim()}
+          style={{
+            width: "100%",
+            padding: "14px 0",
+            background: ACCENT,
+            color: BG,
+            border: "none",
+            fontSize: 11,
+            fontWeight: 900,
+            letterSpacing: "0.18em",
+            fontFamily: "monospace",
+            textTransform: "uppercase",
+            cursor: loading || !password.trim() ? "not-allowed" : "pointer",
+            opacity: loading || !password.trim() ? 0.5 : 1,
+          }}
         >
-          {loading ? "Vérification…" : "Accéder"}
+          {loading ? "Verifying…" : "Sign In"}
         </button>
       </div>
-    </div>
+    </main>
   );
 }
 
 export default function AdminLogin() {
-  return <Suspense><AdminLoginInner /></Suspense>
+  return (
+    <Suspense>
+      <AdminLoginInner />
+    </Suspense>
+  );
 }

@@ -41,6 +41,12 @@ const CASES = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname();
 
+  // Login screen must render without the admin chrome — it is reachable
+  // before any session cookie exists, and the sidebar would be a dead end.
+  if (path === "/admin/login") {
+    return <>{children}</>;
+  }
+
   const linkStyle = (href: string) => {
     const active = path === href || path.startsWith(href + "/");
     return {
@@ -90,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </div>
 
-        <div style={{ marginTop: "auto", padding: "16px 20px", borderTop: "1px solid #1e293b" }}>
+        <div style={{ marginTop: "auto", padding: "16px 20px", borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 10 }}>
           <Link href="/admin/intake/new" style={{
             display: "block", background: "#4f46e5", color: "#fff",
             padding: "9px 0", borderRadius: 8, textAlign: "center",
@@ -98,6 +104,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }}>
             + New Intake
           </Link>
+          <a href="/api/admin/auth/logout" style={{
+            display: "block", background: "transparent", color: "#94a3b8",
+            padding: "8px 0", borderRadius: 8, textAlign: "center",
+            textDecoration: "none", fontSize: 11, fontWeight: 600,
+            border: "1px solid #1e293b",
+          }}>
+            Logout
+          </a>
         </div>
 
       </div>

@@ -11,12 +11,16 @@
  * - Compat: also accepts x-interligens-api-token for 7-day grace period (logs warning)
  */
 
-import { timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 // @pr1:cookie-support
 const ADMIN_COOKIE_NAME = "admin_token";
 const ADMIN_COOKIE_MAX_AGE = 60 * 60 * 8; // 8h
+
+/** Session cookie — HMAC-signed proof-of-knowledge of ADMIN_BASIC_PASS. */
+const ADMIN_SESSION_COOKIE_NAME = "admin_session";
+const ADMIN_SESSION_MAX_AGE = 60 * 60 * 8; // 8h
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -166,4 +170,93 @@ export function clearAdminCookie(res: NextResponse): void {
     maxAge: 0,
     path: "/",
   });
+}
+
+// ── Admin session cookie — HMAC-signed proof-of-knowledge ───────────────────
+//
+// Replaces the HTTP Basic Auth prompt for browser-facing /admin/* routes.
+// The cookie value is HMAC-SHA256(ADMIN_BASIC_PASS, ADMIN_TOKEN) — so anyone
+// in possession of the Basic Auth password can mint the cookie, and the
+// server can verify it deterministically without storing session state.
+// ADMIN_TOKEN is used as the signing key so the cookie can't be forged
+// without knowing both secrets.
+
+/**
+ * Compute the admin session token for the current environment. Returns null
+ * if either ADMIN_BASIC_PASS or ADMIN_TOKEN is missing — callers must treat
+ * this as "admin session impossible, deny".
+ */
+export function computeAdminSessionToken(): string | null {
+  const pass = process.env.ADMIN_BASIC_PASS;
+  const secret = process.env.ADMIN_TOKEN;
+  if (!pass || !secret) return null;
+  return createHmac("sha256", secret).update(pass).digest("hex");
+}
+
+/** Constant-time hex string compare. */
+function safeCompareHex(a: string, b: string): boolean {
+  try {
+    const ba = Buffer.from(a, "utf8");
+    const bb = Buffer.from(b, "utf8");
+    if (ba.length !== bb.length) {
+      timingSafeEqual(ba, Buffer.alloc(ba.length));
+      return false;
+    }
+    return timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
+/** Read the admin session cookie and verify its HMAC against the env. */
+export function verifyAdminSession(req: NextRequest): boolean {
+  const provided = req.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value ?? null;
+  if (!provided) return false;
+  const expected = computeAdminSessionToken();
+  if (!expected) return false;
+  return safeCompareHex(provided, expected);
+}
+
+/**
+ * Set the admin session cookie on an existing response. Caller must have
+ * verified the user's password already. Does nothing if env is misconfigured.
+ */
+export function setAdminSessionCookie(res: NextResponse): boolean {
+  const token = computeAdminSessionToken();
+  if (!token) return false;
+  res.cookies.set({
+    name: ADMIN_SESSION_COOKIE_NAME,
+    value: token,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: ADMIN_SESSION_MAX_AGE,
+    path: "/",
+  });
+  return true;
+}
+
+/** Clear the admin session cookie. Used by logout. */
+export function clearAdminSessionCookie(res: NextResponse): void {
+  res.cookies.set({
+    name: ADMIN_SESSION_COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 0,
+    path: "/",
+  });
+}
+
+/**
+ * Gate helper for admin PAGE server components. Returns a redirect response
+ * to /admin/login when no valid admin_session cookie is present; returns
+ * null when the session is valid and the page should render.
+ */
+export function requireAdminCookie(req: NextRequest): NextResponse | null {
+  if (verifyAdminSession(req)) return null;
+  const loginUrl = new URL("/admin/login", req.url);
+  loginUrl.searchParams.set("redirect", req.nextUrl.pathname);
+  return NextResponse.redirect(loginUrl);
 }

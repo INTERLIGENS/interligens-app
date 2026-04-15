@@ -1,5 +1,8 @@
 // src/middleware.ts
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminSession } from "@/lib/security/adminAuth";
+
+export const runtime = "nodejs";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -21,6 +24,13 @@ function checkBasicAuth(req: NextRequest): boolean {
   return u === user && rest.join(":") === pass;
 }
 
+function redirectToAdminLogin(req: NextRequest) {
+  const loginUrl = req.nextUrl.clone();
+  loginUrl.pathname = "/admin/login";
+  loginUrl.search = `?redirect=${encodeURIComponent(req.nextUrl.pathname)}`;
+  return NextResponse.redirect(loginUrl);
+}
+
 // ── Beta session check ─────────────────────────────────────────────────────
 // All public-facing demo pages require a valid beta session (fail-closed).
 // The session cookie is the same used by the investigator system.
@@ -31,6 +41,8 @@ const BETA_COOKIE = "investigator_session";
 function isBetaExempt(pathname: string): boolean {
   // Access / auth flow
   if (pathname.startsWith("/access")) return true;
+  // Simulator (educational prototype — no backend, no data)
+  if (pathname === "/simulator" || pathname.startsWith("/simulator/")) return true;
   // API routes have their own per-route guards
   if (pathname.startsWith("/api/")) return true;
   // Admin has its own basic auth
@@ -57,13 +69,37 @@ function isLocalizedAdminRoute(pathname: string): boolean {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // ── Admin routes — basic auth in prod ──────────────────────────────────
-  const isAdminRoute =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/api/admin") ||
-    isLocalizedAdminRoute(pathname);
-  if (isProd && isAdminRoute) {
-    if (!checkBasicAuth(req)) return basicAuthFail();
+  // ── Admin routes — cookie session (pages) / basic-or-cookie (APIs) ─────
+  // Exempt: the login page itself + the login/logout API endpoints must be
+  // reachable without auth, otherwise the user can never obtain a cookie.
+  const isAdminLoginSurface =
+    pathname === "/admin/login" ||
+    pathname.startsWith("/api/admin/auth/login") ||
+    pathname.startsWith("/api/admin/auth/logout");
+
+  const isAdminPageRoute =
+    !isAdminLoginSurface &&
+    (pathname.startsWith("/admin") || isLocalizedAdminRoute(pathname)) &&
+    !pathname.startsWith("/api/");
+
+  const isAdminApiRoute =
+    !isAdminLoginSurface && pathname.startsWith("/api/admin");
+
+  if (isProd && isAdminPageRoute) {
+    // Browser pages: ONLY accept the admin_session cookie. No more Basic
+    // Auth prompt — the user signs in at /admin/login and gets a cookie.
+    if (!verifyAdminSession(req)) {
+      return redirectToAdminLogin(req);
+    }
+  }
+
+  if (isProd && isAdminApiRoute) {
+    // API routes: accept either the admin_session cookie (so internal
+    // fetches from the admin UI keep working) or Basic Auth (legacy curl
+    // scripts still work). Route handlers then layer requireAdminApi on
+    // top to validate the x-admin-token header when present.
+    const ok = verifyAdminSession(req) || checkBasicAuth(req);
+    if (!ok) return basicAuthFail();
   }
 
   // ── Investigator routes — session cookie presence check (UX gate) ──────
