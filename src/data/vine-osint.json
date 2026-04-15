@@ -1,0 +1,248 @@
+{
+  "case_meta": {
+    "case_id": "CASE-2025-VINE-001",
+    "token_name": "VINE",
+    "ticker": "$VINE",
+    "mint": "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump",
+    "chain": "solana",
+    "deployer": "Rus Yusupov",
+    "launched_at": "2025-01-23",
+    "ath_market_cap_usd": 500000000,
+    "current_market_cap_usd": 17000000,
+    "drawdown_pct": -96.5,
+    "status": "Investigating",
+    "severity": "HIGH",
+    "opened_at": "2026-04-15T00:00:00Z",
+    "updated_at": "2026-04-15T00:00:00Z",
+    "investigator": "INTERLIGENS-OSINT-v1",
+    "summary": "VINE token launched by Vine co-founder Rus Yusupov on 23 Jan 2025. Pumped to ~$500M market cap after coordinated shilling from high-reach X accounts during launch week, then collapsed 96.5% to ~$17M. OSINT evidence points to coordination between Telegram official mods (@paperthynn/Joshua, @itsSol_Goodman/Sol Goodman) and high-reach X influencers, with an additional signal from @aixbt_agent (465k) mentioning 'x team members loading up on $VINE' — potential insider disclosure or coordinated narrative push.",
+    "summary_fr": "Token VINE lancé par le co-fondateur de Vine, Rus Yusupov, le 23 janvier 2025. Pompé jusqu'à environ 500M$ de market cap après une campagne de promotion coordonnée de comptes X à forte audience pendant la semaine du lancement, puis effondrement de 96,5% à environ 17M$. Les preuves OSINT pointent vers une coordination entre des mods Telegram officiels (@paperthynn/Joshua, @itsSol_Goodman/Sol Goodman) et des influenceurs X à forte audience, avec un signal additionnel de @aixbt_agent (465k) mentionnant 'x team members loading up on $VINE' — divulgation insider possible ou narrative push coordonné."
+  },
+  "timeline": [
+    {
+      "date": "2025-01-22",
+      "title": "Elon Musk tweets nostalgia for Vine app",
+      "description": "Elon Musk posts a tweet referencing Vine revival, generating speculation about X/xAI bringing back the platform. This creates the cultural context that will be exploited 24h later.",
+      "category": "catalyst",
+      "actor": "Elon Musk"
+    },
+    {
+      "date": "2025-01-23",
+      "title": "$VINE token launched on Solana",
+      "description": "Rus Yusupov (Vine co-founder) launches the $VINE token on Solana via pump.fun. Contract address 6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump. Genesis sniper bought 2742 SOL within minutes.",
+      "category": "launch",
+      "actor": "Rus Yusupov"
+    },
+    {
+      "date": "2025-01-23",
+      "title": "@barkmeta (286k) shills $VINE during pump",
+      "description": "High-reach X account @barkmeta promotes $VINE during the launch-day pump phase. No prior interest in memecoins documented on the account.",
+      "category": "shill",
+      "actor": "@barkmeta"
+    },
+    {
+      "date": "2025-01-25",
+      "title": "@kkashi_yt (179k) begins shill campaign",
+      "description": "@kkashi_yt starts promoting $VINE across multiple threads on 25-26 Jan during peak pump window.",
+      "category": "shill",
+      "actor": "@kkashi_yt"
+    },
+    {
+      "date": "2025-01-26",
+      "title": "@0xSweep (240k) joins the shill wave",
+      "description": "@0xSweep promotes $VINE during the pump. Account has moderate track record of memecoin calls.",
+      "category": "shill",
+      "actor": "@0xSweep"
+    },
+    {
+      "date": "2025-01-28",
+      "title": "ATH reached ~$500M market cap",
+      "description": "$VINE hits all-time high market cap around $500M approximately 5 days after launch, driven by the coordinated social push and Elon/Vine revival speculation.",
+      "category": "peak",
+      "actor": "market"
+    },
+    {
+      "date": "2025-02-08",
+      "title": "@aixbt_agent (465k): 'x team members loading up on $VINE'",
+      "description": "AI-branded account @aixbt_agent posts a message claiming 'x team members loading up on $VINE' — implying employees of X/Twitter or xAI are accumulating the token. Either an insider disclosure (legally sensitive) or a coordinated narrative push to reignite the pump.",
+      "category": "hotspot",
+      "actor": "@aixbt_agent"
+    },
+    {
+      "date": "2025-02-14",
+      "title": "Telegram mods start shilling on X",
+      "description": "@paperthynn (Joshua, official $VINE Telegram moderator, 15.6k) and @itsSol_Goodman (Sol Goodman, $VINE Telegram moderator, 1k) launch massive shill campaigns on X simultaneously. Coordination between official project mods and paid influencers is the signature of a secondary-pump attempt.",
+      "category": "hotspot",
+      "actor": "@paperthynn, @itsSol_Goodman"
+    },
+    {
+      "date": "2025-02-15",
+      "title": "Dev wallet 49.7M suspicious TX pattern (forwarded)",
+      "description": "Wallet ESvvMoeA9ns4qReroyRQJ9jeMaudk3Kkyi16B8GMN2jQ (holds 49.7M VINE) shows suspicious transaction pattern — reviewed Feb 2026 as part of this OSINT.",
+      "category": "onchain",
+      "actor": "dev wallet"
+    },
+    {
+      "date": "2026-04-15",
+      "title": "Current state: -96.5% vs ATH",
+      "description": "Market cap now ~$17M, down 96.5% from $500M ATH. Walkback phase complete. No protocol utility delivered. Classic pump-and-dump footprint.",
+      "category": "collapse",
+      "actor": "market"
+    }
+  ],
+  "shillers": [
+    {
+      "handle": "@barkmeta",
+      "followers": 286000,
+      "timing": "Jan 23 2025 — PENDANT pump (launch day)",
+      "tweet_url": "https://x.com/barkmeta",
+      "role": "High-reach influencer — launch-day amplification",
+      "severity": "HIGH"
+    },
+    {
+      "handle": "@0xSweep",
+      "followers": 240000,
+      "timing": "Jan 26 2025 — PENDANT pump",
+      "tweet_url": "https://x.com/0xSweep",
+      "role": "High-reach memecoin influencer",
+      "severity": "HIGH"
+    },
+    {
+      "handle": "@kkashi_yt",
+      "followers": 179000,
+      "timing": "Jan 25-26 2025 — PENDANT pump",
+      "tweet_url": "https://x.com/kkashi_yt",
+      "role": "YouTube crypto influencer cross-promoting on X",
+      "severity": "HIGH"
+    },
+    {
+      "handle": "@aixbt_agent",
+      "followers": 465000,
+      "timing": "Feb 8 2025 — APRÈS pump (walkback phase)",
+      "tweet_url": "https://x.com/aixbt_agent",
+      "role": "AI-branded account — wrote 'x team members loading up on $VINE' (insider-sounding narrative)",
+      "severity": "CRITICAL",
+      "hotspot": true,
+      "quote": "x team members loading up on $VINE"
+    },
+    {
+      "handle": "@paperthynn",
+      "real_name": "Joshua",
+      "followers": 15600,
+      "timing": "Feb 14-15 2025 — secondary pump attempt",
+      "tweet_url": "https://x.com/paperthynn",
+      "role": "Official $VINE Telegram moderator (MOD) — coordinated X shill",
+      "severity": "CRITICAL",
+      "hotspot": true
+    },
+    {
+      "handle": "@itsSol_Goodman",
+      "real_name": "Sol Goodman",
+      "followers": 1000,
+      "timing": "Feb 14 2025 — secondary pump attempt",
+      "tweet_url": "https://x.com/itsSol_Goodman",
+      "role": "Official $VINE Telegram moderator (MOD) — coordinated X shill",
+      "severity": "CRITICAL",
+      "hotspot": true
+    }
+  ],
+  "wallets_onchain": [
+    {
+      "label": "Deployer — Rus Yusupov",
+      "address": "4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4",
+      "role": "Token deployer (pump.fun). Vine co-founder.",
+      "chain": "solana",
+      "solscan_url": "https://solscan.io/account/4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4",
+      "severity": "CRITICAL"
+    },
+    {
+      "label": "Dev wallet — 49.7M VINE",
+      "address": "ESvvMoeA9ns4qReroyRQJ9jeMaudk3Kkyi16B8GMN2jQ",
+      "role": "Dev-linked wallet holding 49.7M VINE. Suspicious TX pattern observed Feb 2026.",
+      "chain": "solana",
+      "balance_vine": 49700000,
+      "solscan_url": "https://solscan.io/account/ESvvMoeA9ns4qReroyRQJ9jeMaudk3Kkyi16B8GMN2jQ",
+      "severity": "CRITICAL"
+    },
+    {
+      "label": "Top holder #1 — 126M VINE",
+      "address": "C68a6RCGLiPskbPYtAcsCjhG8tfTWYcoB4JjCrXFdqyo",
+      "role": "Largest non-burn holder. 12.6% of supply.",
+      "chain": "solana",
+      "balance_vine": 126000000,
+      "solscan_url": "https://solscan.io/account/C68a6RCGLiPskbPYtAcsCjhG8tfTWYcoB4JjCrXFdqyo",
+      "severity": "HIGH"
+    },
+    {
+      "label": "Genesis sniper — 2742 SOL",
+      "address": "94qWNrtmfn42h3ZjUZwWvK1MEo9uVmmrBPd2hpNjYDjb",
+      "role": "Sniped the launch for 2742 SOL (~$550k at the time). Bot-like buying pattern within seconds of pool creation.",
+      "chain": "solana",
+      "solscan_url": "https://solscan.io/account/94qWNrtmfn42h3ZjUZwWvK1MEo9uVmmrBPd2hpNjYDjb",
+      "severity": "HIGH"
+    }
+  ],
+  "hotspots": [
+    {
+      "id": "H1",
+      "title": "@aixbt_agent: 'x team members loading up on $VINE'",
+      "context": "High-reach AI-branded account (465k followers) posts a direct claim that employees of X (Twitter) or xAI are accumulating $VINE. If truthful, this constitutes potential insider-style narrative leakage from a company (Elon Musk's X) that was publicly considering bringing back the Vine platform. If fabricated, it is narrative manipulation designed to reignite the pump using association with Elon's companies.",
+      "implications": [
+        "Possible insider coordination from X/xAI employees",
+        "Potential securities law issues if 'team' claim is truthful",
+        "Narrative manipulation using Elon-halo if fabricated",
+        "Either way: significant retail harm from the induced trust signal"
+      ],
+      "action": "Subpoena X/xAI HR + @aixbt_agent identity. Correlate wallet activity of X employees (if identifiable) with $VINE purchases between Feb 6-10."
+    },
+    {
+      "id": "H2",
+      "title": "Telegram mods shilling on X = coordination",
+      "context": "Two official $VINE Telegram moderators (Joshua/@paperthynn and Sol Goodman/@itsSol_Goodman) simultaneously launched X shill campaigns on Feb 14-15, 2025. Running the official community channel while publicly amplifying on X without disclosure is a classic indicator of an organized pump-dump team.",
+      "implications": [
+        "Non-disclosed material interest (they were MODs, i.e., official team)",
+        "Coordination between channel operators and X narrative = pump team structure",
+        "Timing (Feb 14-15) suggests a secondary pump attempt after the first collapse wave"
+      ],
+      "action": "Preserve Telegram chat logs showing Joshua and Sol Goodman as official mods. Cross-reference with wallet activity linked to these identities via X KYC / Telegram phone lookups."
+    },
+    {
+      "id": "H3",
+      "title": "Genesis sniper 2742 SOL — bot or insider?",
+      "context": "Wallet 94qWNrtmfn42h3ZjUZwWvK1MEo9uVmmrBPd2hpNjYDjb sniped 2742 SOL (~$550k at time) of $VINE in the first seconds after pool creation. This requires either (a) an MEV/jito bot monitoring pump.fun for new deployments or (b) insider tipoff of the exact launch block.",
+      "implications": [
+        "If (a) bot: typical sophisticated sniping — legal but extractive",
+        "If (b) insider: material non-public information trading"
+      ],
+      "action": "Trace the funding path of 94qWNrtm...NjYDjb to identify whether it links back to Rus Yusupov's deployer wallet or known MEV operators."
+    }
+  ],
+  "new_claims": [
+    {
+      "claim_id": "C9",
+      "title": "Coordination Telegram mods + X shillers — organized pump team",
+      "severity": "CRITICAL",
+      "status": "REFERENCED",
+      "description": "Official $VINE Telegram moderators Joshua (@paperthynn, 15.6k) and Sol Goodman (@itsSol_Goodman, 1k) simultaneously launched massive X shill campaigns on Feb 14-15, 2025. As official team-side moderators, their promotion without disclosure constitutes non-disclosed material interest and is a structural signature of a coordinated pump-dump operation. This is a new finding added to the VINE casefile (2026-04-15) extending C1-C8 from the original PDF dossier.",
+      "category": "coordination",
+      "actors": ["@paperthynn (Joshua)", "@itsSol_Goodman (Sol Goodman)"],
+      "date": "2025-02-14",
+      "evidence_refs": ["X posts Feb 14-15 2025", "Telegram mod roles (screenshots TBC)"],
+      "thread_url": "https://x.com/paperthynn",
+      "description_fr": "Les modérateurs Telegram officiels de $VINE, Joshua (@paperthynn, 15,6k) et Sol Goodman (@itsSol_Goodman, 1k) ont lancé simultanément des campagnes massives de promotion sur X les 14-15 février 2025. En tant que modérateurs officiels côté équipe, leur promotion sans divulgation constitue un intérêt matériel non déclaré et est une signature structurelle d'une opération de pump-dump coordonnée. Nouveau constat ajouté au dossier VINE (2026-04-15) étendant C1-C8 du dossier PDF original."
+    },
+    {
+      "claim_id": "C10",
+      "title": "@aixbt_agent claim: 'x team members loading up on $VINE' — insider disclosure or narrative manipulation",
+      "severity": "CRITICAL",
+      "status": "REFERENCED",
+      "description": "On Feb 8, 2025, the high-reach AI-branded account @aixbt_agent (465k followers) posted a message claiming 'x team members loading up on $VINE' — implying that employees of X (formerly Twitter) or xAI were actively accumulating the token. Either interpretation carries legal weight: (1) if truthful, it is an insider narrative leak from an Elon Musk-affiliated company that was publicly considering a Vine platform revival, potentially raising securities-law concerns; (2) if fabricated, it is deliberate narrative manipulation using Elon-halo association to reignite the pump during the walkback phase. In both cases, the statement generated a measurable second-wave buying response from retail holders. This is a new finding added to the VINE casefile (2026-04-15).",
+      "category": "insider_narrative",
+      "actors": ["@aixbt_agent"],
+      "date": "2025-02-08",
+      "evidence_refs": ["X post by @aixbt_agent (Feb 8 2025)"],
+      "thread_url": "https://x.com/aixbt_agent",
+      "description_fr": "Le 8 février 2025, le compte @aixbt_agent (465k abonnés, marqué IA) a publié un message affirmant 'x team members loading up on $VINE' — impliquant que des employés de X (ex-Twitter) ou xAI accumulaient activement le token. Les deux interprétations ont un poids juridique : (1) si véridique, il s'agit d'une fuite narrative insider provenant d'une société affiliée à Elon Musk qui envisageait publiquement une relance de la plateforme Vine, soulevant potentiellement des enjeux de droit des valeurs mobilières ; (2) si fabriqué, il s'agit d'une manipulation narrative délibérée utilisant l'association Elon-halo pour relancer le pump pendant la phase de walkback. Dans les deux cas, le message a généré une réponse d'achat retail mesurable en seconde vague. Nouveau constat ajouté au dossier VINE (2026-04-15)."
+    }
+  ]
+}
