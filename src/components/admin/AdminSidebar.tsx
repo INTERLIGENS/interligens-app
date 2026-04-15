@@ -60,7 +60,7 @@ const SECTIONS: Section[] = [
     title: "Donnees",
     links: [
       { label: "Export", href: "/admin/export" },
-      { label: "Stats plateforme", href: "/admin/export" },
+      { label: "Stats plateforme", href: "/admin/stats" },
     ],
   },
   {
