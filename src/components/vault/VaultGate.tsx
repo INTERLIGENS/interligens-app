@@ -15,10 +15,28 @@ export default function VaultGate({ children }: Props) {
 
   useEffect(() => {
     if (keys || isLoading) return;
-    fetch("/api/investigators/workspace/salt")
-      .then((r) => r.json())
-      .then((d) => setSalt(d.kdfSalt ?? null))
-      .catch(() => setError("salt_fetch_failed"));
+    (async () => {
+      try {
+        const res = await fetch("/api/investigators/workspace/salt");
+        if (res.status === 401) {
+          // No VaultWorkspace yet — send the user to the onboarding flow
+          // so they can mint their passphrase and KDF salt. Stays in-session.
+          if (typeof window !== "undefined") {
+            window.location.replace("/investigators/box/onboarding");
+          }
+          return;
+        }
+        if (!res.ok) {
+          setError("salt_fetch_failed");
+          return;
+        }
+        const d = await res.json();
+        setSalt(d.kdfSalt ?? null);
+        if (!d.kdfSalt) setError("salt_fetch_failed");
+      } catch {
+        setError("salt_fetch_failed");
+      }
+    })();
   }, [keys, isLoading]);
 
   useEffect(() => {

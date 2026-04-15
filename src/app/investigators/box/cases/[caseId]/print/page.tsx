@@ -114,12 +114,12 @@ function PrintInner({ caseId }: { caseId: string }) {
           setNotes(dec);
         }
 
-        const profileRes = await fetch("/api/investigators/me").catch(
+        const profileRes = await fetch("/api/investigators/profile").catch(
           () => null
         );
         if (profileRes?.ok) {
           const p = await profileRes.json();
-          setInvestigator(p.profile?.handle ?? p.handle ?? "—");
+          setInvestigator(p.profile?.handle ?? "—");
         }
       } finally {
         setReady(true);
