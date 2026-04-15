@@ -2,14 +2,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const TIER_COLOR: Record<string,string> = {
-  caller: "#8b5cf6", influencer: "#3b82f6",
-  research: "#22c55e", unknown: "#6b7280",
-};
-const RISK_COLOR: Record<string,string> = {
-  unverified: "#f59e0b", flagged: "#ef4444", verified: "#22c55e",
-};
-
 export default function KolDirectory() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [total, setTotal]       = useState(0);
@@ -31,75 +23,76 @@ export default function KolDirectory() {
   useEffect(() => { load(); }, [page, search]);
 
   return (
-    <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#f1f5f9", padding: "32px", fontFamily: "monospace" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 11, color: "#8b5cf6", fontWeight: 700, letterSpacing: "0.2em", marginBottom: 4 }}>INTEL VAULT</div>
-          <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>KOL DIRECTORY</h1>
-          <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>{total} profiles</div>
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-orange-400">KOL Directory</h1>
+            <p className="text-gray-400 text-sm">{total} profiles</p>
+          </div>
+          <Link href="/admin/intake/new" className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 text-black transition">
+            + New Intake
+          </Link>
         </div>
-        <Link href="/admin/intake/new" style={{ background: "#1e293b", color: "#8b5cf6", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontSize: 13, fontWeight: 700, border: "1px solid #8b5cf622" }}>
-          + New Intake
-        </Link>
-      </div>
 
-      <input
-        value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-        placeholder="Search @handle..."
-        style={{ width: "100%", maxWidth: 400, background: "#111827", border: "1px solid #334155", borderRadius: 8, padding: "10px 16px", color: "#f1f5f9", fontSize: 13, marginBottom: 20, boxSizing: "border-box" }}
-      />
+        <input
+          value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search @handle..."
+          className="w-full max-w-md bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+        />
 
-      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1e293b", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
-              {["Handle","Tier","Price/Post","Platform","Label","Risk","Wallets","Source","Created"].map(h => (
-                <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 11, letterSpacing: "0.05em" }}>{h.toUpperCase()}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#475569" }}>Loading...</td></tr>
-            ) : profiles.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#475569" }}>No profiles</td></tr>
-            ) : profiles.map((p: any) => {
-              const wallets = JSON.parse(p.wallets || "[]");
-              const intakeIds = JSON.parse(p.sourceIntakeIds || "[]");
-              return (
-                <tr key={p.id} style={{ borderBottom: "1px solid #0f172a" }}>
-                  <td style={{ padding: "10px 14px", color: "#c4b5fd", fontWeight: 700 }}>{p.handle}</td>
-                  <td style={{ padding: "10px 14px" }}>
-                    {p.tier ? <span style={{ background: "#1e1b4b", color: "#a5b4fc", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700 }}>{p.tier}</span> : <span style={{ color: "#475569" }}>—</span>}
-                  </td>
-                  <td style={{ padding: "10px 14px", color: "#22c55e", fontWeight: 700 }}>{p.pricePerPost ? `$${p.pricePerPost.toLocaleString()}` : "—"}</td>
-                  <td style={{ padding: "10px 14px", color: "#94a3b8" }}>{p.platform}</td>
-                  <td style={{ padding: "10px 14px" }}>
-                    <span style={{ color: TIER_COLOR[p.label] ?? "#6b7280", fontWeight: 700 }}>{p.label}</span>
-                  </td>
-                  <td style={{ padding: "10px 14px" }}>
-                    <span style={{ color: RISK_COLOR[p.riskFlag] ?? "#6b7280", fontWeight: 600 }}>{p.riskFlag}</span>
-                  </td>
-                  <td style={{ padding: "10px 14px", color: "#94a3b8" }}>{wallets.length || "—"}</td>
-                  <td style={{ padding: "10px 14px" }}>
-                    {intakeIds[0] ? (
-                      <Link href={`/admin/intake/${intakeIds[0]}`} style={{ color: "#4f46e5", textDecoration: "none" }}>→ intake</Link>
-                    ) : "—"}
-                  </td>
-                  <td style={{ padding: "10px 14px", color: "#475569" }}>{new Date(p.createdAt).toLocaleDateString()}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+          <table className="w-full text-sm table-fixed">
+            <thead>
+              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                {["Handle","Tier","Price/Post","Platform","Label","Risk","Wallets","Source","Created"].map(h => (
+                  <th key={h} className="text-left py-2 px-3 font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={9} className="py-8 text-center text-gray-500">Loading...</td></tr>
+              ) : profiles.length === 0 ? (
+                <tr><td colSpan={9} className="py-8 text-center text-gray-500">No profiles</td></tr>
+              ) : profiles.map((p: any) => {
+                const wallets = JSON.parse(p.wallets || "[]");
+                const intakeIds = JSON.parse(p.sourceIntakeIds || "[]");
+                return (
+                  <tr key={p.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                    <td className="py-2 px-3 text-orange-400 font-semibold">{p.handle}</td>
+                    <td className="py-2 px-3">
+                      {p.tier ? <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-300 font-semibold">{p.tier}</span> : <span className="text-gray-500">—</span>}
+                    </td>
+                    <td className="py-2 px-3 text-green-400 font-semibold">{p.pricePerPost ? `$${p.pricePerPost.toLocaleString()}` : "—"}</td>
+                    <td className="py-2 px-3 text-gray-400">{p.platform}</td>
+                    <td className="py-2 px-3">
+                      <span className="text-gray-300 font-semibold">{p.label}</span>
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className="text-gray-400">{p.riskFlag}</span>
+                    </td>
+                    <td className="py-2 px-3 text-gray-400">{wallets.length || "—"}</td>
+                    <td className="py-2 px-3">
+                      {intakeIds[0] ? (
+                        <Link href={`/admin/intake/${intakeIds[0]}`} className="text-orange-400 hover:text-orange-300 transition">→ intake</Link>
+                      ) : "—"}
+                    </td>
+                    <td className="py-2 px-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-        <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
-          style={{ background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }}>← Prev</button>
-        <span style={{ color: "#6b7280", padding: "6px 0" }}>Page {page}</span>
-        <button onClick={() => setPage(p => p+1)} disabled={profiles.length < 25}
-          style={{ background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }}>Next →</button>
+        <div className="flex gap-2 justify-end">
+          <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">← Prev</button>
+          <span className="text-gray-500 text-sm py-1.5">Page {page}</span>
+          <button onClick={() => setPage(p => p+1)} disabled={profiles.length < 25}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">Next →</button>
+        </div>
       </div>
     </div>
   );

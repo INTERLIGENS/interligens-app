@@ -3,13 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const BG = "#000000";
-const ACCENT = "#FF6B00";
-const TEXT = "#FFFFFF";
-const DIM = "rgba(255,255,255,0.5)";
-const LINE = "rgba(255,255,255,0.08)";
-const SURFACE = "#0a0a0a";
-
 type Application = {
   id: string;
   handle: string;
@@ -40,39 +33,9 @@ type Profile = {
   betaTermsAcceptance: { termsVersion: string; termsLanguage: string; acceptedAt: string } | null;
 };
 
-const statusColors: Record<string, { bg: string; fg: string; border: string }> = {
-  PENDING: { bg: "rgba(255,107,0,0.08)", fg: "#FF6B00", border: "rgba(255,107,0,0.4)" },
-  APPROVED: { bg: "rgba(74,222,128,0.08)", fg: "#4ADE80", border: "rgba(74,222,128,0.4)" },
-  REJECTED: { bg: "rgba(255,59,92,0.08)", fg: "#FF3B5C", border: "rgba(255,59,92,0.4)" },
-  NEEDS_REVIEW: { bg: "rgba(255,200,0,0.08)", fg: "#FFC800", border: "rgba(255,200,0,0.4)" },
-  VERIFIED: { bg: "rgba(74,222,128,0.08)", fg: "#4ADE80", border: "rgba(74,222,128,0.4)" },
-  TRUSTED: { bg: "rgba(255,107,0,0.12)", fg: "#FF6B00", border: "rgba(255,107,0,0.5)" },
-  SUSPENDED: { bg: "rgba(255,200,0,0.08)", fg: "#FFC800", border: "rgba(255,200,0,0.4)" },
-  REVOKED: { bg: "rgba(255,59,92,0.08)", fg: "#FF3B5C", border: "rgba(255,59,92,0.4)" },
-  ACTIVE: { bg: "rgba(74,222,128,0.06)", fg: "#4ADE80", border: "rgba(74,222,128,0.3)" },
-  APPLICANT: { bg: "rgba(255,255,255,0.04)", fg: "rgba(255,255,255,0.6)", border: LINE },
-  BETA: { bg: "rgba(255,107,0,0.08)", fg: "#FF6B00", border: "rgba(255,107,0,0.3)" },
-  TRUSTED_CONTRIBUTOR: { bg: "rgba(255,107,0,0.14)", fg: "#FF6B00", border: "rgba(255,107,0,0.6)" },
-};
-
 function Badge({ value }: { value: string }) {
-  const c = statusColors[value] ?? { bg: "rgba(255,255,255,0.04)", fg: "#888", border: LINE };
   return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "3px 10px",
-        fontSize: 9,
-        fontWeight: 900,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        fontFamily: "monospace",
-        backgroundColor: c.bg,
-        color: c.fg,
-        border: `1px solid ${c.border}`,
-        borderRadius: 2,
-      }}
-    >
+    <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-300 font-mono uppercase">
       {value.replace(/_/g, " ")}
     </span>
   );
@@ -130,145 +93,72 @@ export default function AdminInvestigatorsPage() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: BG,
-        color: TEXT,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "40px 24px" }}>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 900,
-            letterSpacing: "0.25em",
-            fontFamily: "monospace",
-            color: ACCENT,
-            marginBottom: 8,
-          }}
-        >
-          INTERLIGENS · ADMIN
+    <main className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-orange-400">Trusted Investigator Program</h1>
+          <p className="text-gray-400 text-sm">Applications & active investigators</p>
         </div>
-        <h1
-          style={{
-            fontSize: 32,
-            fontWeight: 900,
-            fontStyle: "italic",
-            textTransform: "uppercase",
-            letterSpacing: "-0.01em",
-            marginBottom: 32,
-          }}
-        >
-          Trusted Investigator Program
-        </h1>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: `1px solid ${LINE}` }}>
-          {(["apps", "profiles"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                padding: "12px 20px",
-                background: "none",
-                border: "none",
-                borderBottom: tab === t ? `2px solid ${ACCENT}` : "2px solid transparent",
-                color: tab === t ? ACCENT : DIM,
-                fontSize: 11,
-                fontWeight: 900,
-                letterSpacing: "0.12em",
-                fontFamily: "monospace",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              {t === "apps" ? `Applications (${applications.length})` : `Investigators (${profiles.length})`}
-            </button>
-          ))}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+          <div className="flex gap-2 flex-wrap">
+            {(["apps", "profiles"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${tab === t ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
+              >
+                {t === "apps" ? `Applications (${applications.length})` : `Investigators (${profiles.length})`}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (
-          <div
-            style={{
-              color: "#FF3B5C",
-              fontSize: 12,
-              fontFamily: "monospace",
-              padding: 12,
-              border: "1px solid rgba(255,59,92,0.4)",
-              marginBottom: 16,
-            }}
-          >
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-400 text-sm">
             {error}
           </div>
         )}
 
-        {loading && !error && <div style={{ color: DIM, fontSize: 12 }}>Loading...</div>}
+        {loading && !error && <div className="text-gray-500 text-sm">Loading...</div>}
 
         {/* Applications tab */}
         {tab === "apps" && !loading && (
           <div>
             {applications.length === 0 ? (
-              <div style={{ color: DIM, fontSize: 13, padding: 40, textAlign: "center" }}>
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
                 No applications yet.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="flex flex-col gap-3">
                 {applications.map((app) => (
                   <div
                     key={app.id}
-                    style={{
-                      background: SURFACE,
-                      border: `1px solid ${LINE}`,
-                      padding: 20,
-                    }}
+                    className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3"
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 16,
-                        marginBottom: 12,
-                        flexWrap: "wrap",
-                      }}
-                    >
+                    <div className="flex justify-between items-start gap-4 flex-wrap">
                       <div>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: TEXT,
-                            marginBottom: 4,
-                          }}
-                        >
+                        <div className="text-sm font-bold text-white mb-1">
                           @{app.handle}
                           {app.displayName && (
-                            <span style={{ color: DIM, fontWeight: 400, marginLeft: 8 }}>
+                            <span className="text-gray-400 font-normal ml-2">
                               · {app.displayName}
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: 12, color: DIM, fontFamily: "monospace" }}>
+                        <div className="text-xs text-gray-500 font-mono">
                           {app.email} · {app.country} · {new Date(app.submittedAt).toLocaleDateString()}
                         </div>
                       </div>
                       <Badge value={app.status} />
                     </div>
 
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                    <div className="flex flex-wrap gap-1">
                       {app.languages.map((l) => (
                         <span
                           key={l}
-                          style={{
-                            fontSize: 9,
-                            padding: "2px 8px",
-                            border: `1px solid ${LINE}`,
-                            color: DIM,
-                            fontFamily: "monospace",
-                            textTransform: "uppercase",
-                          }}
+                          className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 font-mono uppercase"
                         >
                           {l}
                         </span>
@@ -276,31 +166,25 @@ export default function AdminInvestigatorsPage() {
                       {app.specialties.map((s) => (
                         <span
                           key={s}
-                          style={{
-                            fontSize: 9,
-                            padding: "2px 8px",
-                            background: "rgba(255,107,0,0.08)",
-                            color: ACCENT,
-                            fontFamily: "monospace",
-                          }}
+                          className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-orange-400 font-mono"
                         >
                           {s}
                         </span>
                       ))}
                     </div>
 
-                    <details style={{ marginBottom: 12 }}>
-                      <summary style={{ color: DIM, fontSize: 11, cursor: "pointer" }}>
+                    <details>
+                      <summary className="text-gray-400 text-xs cursor-pointer hover:text-orange-400 transition">
                         Show full application
                       </summary>
-                      <div style={{ marginTop: 10, fontSize: 12, color: DIM, lineHeight: 1.7 }}>
-                        <div style={{ marginBottom: 8 }}>
-                          <strong style={{ color: TEXT }}>Background:</strong>
+                      <div className="mt-3 text-xs text-gray-400 leading-relaxed">
+                        <div className="mb-2">
+                          <strong className="text-white">Background:</strong>
                           <br />
                           {app.background}
                         </div>
                         <div>
-                          <strong style={{ color: TEXT }}>Motivation:</strong>
+                          <strong className="text-white">Motivation:</strong>
                           <br />
                           {app.motivation}
                         </div>
@@ -314,72 +198,28 @@ export default function AdminInvestigatorsPage() {
                       }
                       placeholder="Internal review note..."
                       rows={2}
-                      style={{
-                        width: "100%",
-                        background: "#0d0d0d",
-                        border: `1px solid ${LINE}`,
-                        color: TEXT,
-                        padding: "8px 12px",
-                        fontSize: 12,
-                        fontFamily: "monospace",
-                        outline: "none",
-                        marginBottom: 12,
-                        resize: "vertical",
-                      }}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
                     />
 
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={() => reviewApp(app.id, "APPROVED")}
                         disabled={pendingAction === app.id}
-                        style={{
-                          fontSize: 10,
-                          padding: "8px 14px",
-                          background: "rgba(74,222,128,0.12)",
-                          color: "#4ADE80",
-                          border: "1px solid rgba(74,222,128,0.4)",
-                          fontFamily: "monospace",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          cursor: "pointer",
-                        }}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black transition"
                       >
                         Approve
                       </button>
                       <button
                         onClick={() => reviewApp(app.id, "NEEDS_REVIEW")}
                         disabled={pendingAction === app.id}
-                        style={{
-                          fontSize: 10,
-                          padding: "8px 14px",
-                          background: "rgba(255,200,0,0.12)",
-                          color: "#FFC800",
-                          border: "1px solid rgba(255,200,0,0.4)",
-                          fontFamily: "monospace",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          cursor: "pointer",
-                        }}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition"
                       >
                         Needs Review
                       </button>
                       <button
                         onClick={() => reviewApp(app.id, "REJECTED")}
                         disabled={pendingAction === app.id}
-                        style={{
-                          fontSize: 10,
-                          padding: "8px 14px",
-                          background: "rgba(255,59,92,0.12)",
-                          color: "#FF3B5C",
-                          border: "1px solid rgba(255,59,92,0.4)",
-                          fontFamily: "monospace",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          cursor: "pointer",
-                        }}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-red-400 hover:bg-gray-700 transition"
                       >
                         Reject
                       </button>
@@ -395,50 +235,35 @@ export default function AdminInvestigatorsPage() {
         {tab === "profiles" && !loading && (
           <div>
             {profiles.length === 0 ? (
-              <div style={{ color: DIM, fontSize: 13, padding: 40, textAlign: "center" }}>
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
                 No investigators yet.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="flex flex-col gap-2">
                 {profiles.map((p) => (
                   <Link
                     key={p.id}
                     href={`/admin/investigators/${p.id}`}
-                    style={{
-                      display: "block",
-                      padding: 16,
-                      background: SURFACE,
-                      border: `1px solid ${LINE}`,
-                      textDecoration: "none",
-                      color: TEXT,
-                    }}
+                    className="block bg-gray-900 rounded-xl border border-gray-800 hover:border-orange-500 p-4 transition"
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 16,
-                        flexWrap: "wrap",
-                      }}
-                    >
+                    <div className="flex justify-between items-center gap-4 flex-wrap">
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>
+                        <div className="text-sm font-bold text-white">
                           @{p.handle}
                           {p.legalFirstName && (
-                            <span style={{ color: DIM, fontWeight: 400, marginLeft: 8 }}>
+                            <span className="text-gray-400 font-normal ml-2">
                               · {p.legalFirstName} {p.legalLastName}
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: 11, color: DIM, fontFamily: "monospace", marginTop: 4 }}>
+                        <div className="text-xs text-gray-500 font-mono mt-1">
                           {p.primaryEmail ?? "—"} ·{" "}
                           {p.lastActiveAt
                             ? `last active ${new Date(p.lastActiveAt).toLocaleDateString()}`
                             : "never active"}
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <div className="flex gap-1 flex-wrap">
                         <Badge value={p.verificationStatus} />
                         <Badge value={p.accessLevel} />
                         <Badge value={p.accessState} />

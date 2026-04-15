@@ -41,36 +41,16 @@ async function loadLogs(): Promise<LogRow[]> {
   }
 }
 
-const cellBase: React.CSSProperties = {
-  padding: "8px 10px",
-  borderBottom: "1px solid #1e293b",
-  fontSize: 11,
-  color: "#cbd5e1",
-  verticalAlign: "top",
+function tierColorCls(tier: string): string {
+  if (tier === "high") return "text-green-400"
+  if (tier === "medium") return "text-orange-400"
+  return "text-gray-400"
 }
 
-const headerCell: React.CSSProperties = {
-  ...cellBase,
-  color: "#64748b",
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-  fontSize: 10,
-  background: "#0f172a",
-  position: "sticky",
-  top: 0,
-}
-
-function tierColor(tier: string): string {
-  if (tier === "high") return "#22c55e"
-  if (tier === "medium") return "#eab308"
-  return "#94a3b8"
-}
-
-function typeColor(type: string): string {
-  if (type === "deterministic") return "#4f46e5"
-  if (type === "refusal") return "#ef4444"
-  return "#0ea5e9"
+function typeColorCls(type: string): string {
+  if (type === "deterministic") return "text-orange-400"
+  if (type === "refusal") return "text-red-400"
+  return "text-gray-300"
 }
 
 function fmtDate(d: Date): string {
@@ -86,109 +66,77 @@ export default async function AskLogsPage() {
   const rows = await loadLogs()
 
   return (
-    <div style={{ padding: "24px 32px", color: "#e2e8f0", minHeight: "100vh", background: "#0a0f1a" }}>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 10, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.2em" }}>
-          ASK INTERLIGENS
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-orange-400">Audit Trail</h1>
+          <p className="text-gray-400 text-sm">
+            {rows.length} most recent interactions · non-blocking log · DB-native
+          </p>
         </div>
-        <h1 style={{ fontSize: 20, fontWeight: 900, margin: "4px 0 2px", color: "#f1f5f9" }}>
-          Audit Trail
-        </h1>
-        <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-          {rows.length} most recent interactions · non-blocking log · DB-native
-        </p>
-      </div>
 
-      {rows.length === 0 ? (
-        <div
-          style={{
-            padding: 40,
-            border: "1px dashed #1e293b",
-            borderRadius: 8,
-            color: "#64748b",
-            fontSize: 13,
-            textAlign: "center",
-          }}
-        >
-          No AskLog entries yet. Either the ASK endpoint hasn&apos;t been called since the
-          migration was applied, or the migration hasn&apos;t run. See <code>MIGRATION_ASKLOG.md</code>.
-        </div>
-      ) : (
-        <div
-          style={{
-            border: "1px solid #1e293b",
-            borderRadius: 8,
-            overflow: "auto",
-            maxHeight: "calc(100vh - 140px)",
-          }}
-        >
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace" }}>
-            <thead>
-              <tr>
-                <th style={headerCell}>Time</th>
-                <th style={headerCell}>Scan</th>
-                <th style={headerCell}>Question</th>
-                <th style={headerCell}>Answer</th>
-                <th style={headerCell}>Type</th>
-                <th style={headerCell}>Mode</th>
-                <th style={headerCell}>Conf.</th>
-                <th style={headerCell}>Src</th>
-                <th style={headerCell}>Lat</th>
-                <th style={headerCell}>Loc</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td style={{ ...cellBase, whiteSpace: "nowrap", color: "#94a3b8" }}>
-                    {fmtDate(r.createdAt)}
-                  </td>
-                  <td style={{ ...cellBase, fontFamily: "monospace", color: "#64748b" }}>
-                    {r.scanId ? truncate(r.scanId, 10) : "—"}
-                  </td>
-                  <td style={{ ...cellBase, maxWidth: 220 }}>
-                    {truncate(r.userQuestion, 120)}
-                  </td>
-                  <td style={{ ...cellBase, maxWidth: 320, color: "#e2e8f0" }}>
-                    {truncate(r.assistantAnswer, 200)}
-                  </td>
-                  <td style={{ ...cellBase }}>
-                    <span
-                      style={{
-                        color: typeColor(r.answerType),
-                        fontSize: 10,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {r.answerType.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td style={{ ...cellBase, color: "#94a3b8", fontSize: 10 }}>{r.mode}</td>
-                  <td style={{ ...cellBase }}>
-                    <span
-                      style={{
-                        color: tierColor(r.confidenceTier),
-                        fontSize: 10,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {r.confidenceTier.toUpperCase()}
-                    </span>
-                  </td>
-                  <td style={{ ...cellBase, textAlign: "right", color: "#64748b" }}>
-                    {r.sourceCount}
-                  </td>
-                  <td style={{ ...cellBase, textAlign: "right", color: "#64748b" }}>
-                    {r.latencyMs != null ? r.latencyMs + "ms" : "—"}
-                  </td>
-                  <td style={{ ...cellBase, color: "#64748b" }}>{r.locale}</td>
+        {rows.length === 0 ? (
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
+            No AskLog entries yet. Either the ASK endpoint hasn&apos;t been called since the
+            migration was applied, or the migration hasn&apos;t run. See <code>MIGRATION_ASKLOG.md</code>.
+          </div>
+        ) : (
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 overflow-auto max-h-[calc(100vh-180px)]">
+            <table className="w-full text-sm font-mono">
+              <thead>
+                <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                  <th className="text-left py-2 px-3 font-semibold">Time</th>
+                  <th className="text-left py-2 px-3 font-semibold">Scan</th>
+                  <th className="text-left py-2 px-3 font-semibold">Question</th>
+                  <th className="text-left py-2 px-3 font-semibold">Answer</th>
+                  <th className="text-left py-2 px-3 font-semibold">Type</th>
+                  <th className="text-left py-2 px-3 font-semibold">Mode</th>
+                  <th className="text-left py-2 px-3 font-semibold">Conf.</th>
+                  <th className="text-left py-2 px-3 font-semibold">Src</th>
+                  <th className="text-left py-2 px-3 font-semibold">Lat</th>
+                  <th className="text-left py-2 px-3 font-semibold">Loc</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                    <td className="py-2 px-3 whitespace-nowrap text-gray-400">
+                      {fmtDate(r.createdAt)}
+                    </td>
+                    <td className="py-2 px-3 text-gray-500">
+                      {r.scanId ? truncate(r.scanId, 10) : "—"}
+                    </td>
+                    <td className="py-2 px-3 max-w-[220px]">
+                      {truncate(r.userQuestion, 120)}
+                    </td>
+                    <td className="py-2 px-3 max-w-[320px] text-gray-300">
+                      {truncate(r.assistantAnswer, 200)}
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className={`text-xs font-semibold uppercase ${typeColorCls(r.answerType)}`}>
+                        {r.answerType.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-gray-400 text-xs">{r.mode}</td>
+                    <td className="py-2 px-3">
+                      <span className={`text-xs font-semibold ${tierColorCls(r.confidenceTier)}`}>
+                        {r.confidenceTier.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right text-gray-500">
+                      {r.sourceCount}
+                    </td>
+                    <td className="py-2 px-3 text-right text-gray-500">
+                      {r.latencyMs != null ? r.latencyMs + "ms" : "—"}
+                    </td>
+                    <td className="py-2 px-3 text-gray-500">{r.locale}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

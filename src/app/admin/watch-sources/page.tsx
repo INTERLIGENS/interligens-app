@@ -55,77 +55,78 @@ export default function WatchSources() {
   useEffect(() => { load(); }, []);
 
   return (
-    <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#f1f5f9", padding: "32px", fontFamily: "monospace" }}>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.2em", marginBottom: 4 }}>INTEL VAULT</div>
-        <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>WATCH SOURCES</h1>
-        <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>Auto-monitored URLs — checked every 6h</div>
-      </div>
-
-      {msg && (
-        <div style={{ background: msg.startsWith("✓") ? "#14532d" : "#450a0a", borderRadius: 8, padding: "10px 16px", marginBottom: 16, color: msg.startsWith("✓") ? "#4ade80" : "#fca5a5", fontSize: 13 }}>{msg}</div>
-      )}
-
-      {/* Add form */}
-      <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 20, marginBottom: 24 }}>
-        <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>ADD SOURCE</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 12, marginBottom: 12 }}>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Name (ex: ZachXBT Scam List)"
-            style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "10px 14px", color: "#f1f5f9", fontSize: 13 }} />
-          <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://raw.githubusercontent.com/..."
-            style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "10px 14px", color: "#f1f5f9", fontSize: 13 }} />
-          <input value={investigator} onChange={e => setInv(e.target.value)} placeholder="@investigator"
-            style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "10px 14px", color: "#f1f5f9", fontSize: 13 }} />
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-orange-400">Watch Sources</h1>
+          <p className="text-gray-400 text-sm">Auto-monitored URLs — checked every 6h</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
-          <input value={tags} onChange={e => setTags(e.target.value)} placeholder="tags (comma-sep: scam, drainer)"
-            style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "10px 14px", color: "#f1f5f9", fontSize: 13 }} />
+
+        {msg && (
+          <div className={`rounded-lg p-3 text-sm ${msg.startsWith("✓") ? "bg-gray-900 border border-gray-800 text-green-400" : "bg-red-900/30 border border-red-700 text-red-400"}`}>
+            {msg}
+          </div>
+        )}
+
+        {/* Add form */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Add Source</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Name (ex: ZachXBT Scam List)"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+            <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://raw.githubusercontent.com/..."
+              className="md:col-span-2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+            <input value={investigator} onChange={e => setInv(e.target.value)} placeholder="@investigator"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+            <input value={tags} onChange={e => setTags(e.target.value)} placeholder="tags (comma-sep: scam, drainer)"
+              className="md:col-span-2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+          </div>
           <button onClick={addSource} disabled={adding || !name || !url}
-            style={{ background: "#4f46e5", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black transition">
             {adding ? "Adding..." : "+ Add"}
           </button>
         </div>
-      </div>
 
-      {/* Sources list */}
-      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1e293b", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
-              {["Name","URL","Investigator","Last Checked","Last Intake","Errors","Actions"].map(h => (
-                <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h.toUpperCase()}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#475569" }}>Loading...</td></tr>
-            ) : sources.filter(s => s.active).length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#475569" }}>No sources yet</td></tr>
-            ) : sources.filter(s => s.active).map((s: any) => (
-              <tr key={s.id} style={{ borderBottom: "1px solid #0f172a" }}>
-                <td style={{ padding: "10px 14px", color: "#f1f5f9", fontWeight: 700 }}>{s.name}</td>
-                <td style={{ padding: "10px 14px", color: "#64748b", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.url}</td>
-                <td style={{ padding: "10px 14px", color: "#8b5cf6" }}>{s.investigator}</td>
-                <td style={{ padding: "10px 14px", color: "#475569" }}>{s.lastChecked ? new Date(s.lastChecked).toLocaleString() : "never"}</td>
-                <td style={{ padding: "10px 14px" }}>
-                  {s.lastIntakeId ? <Link href={`/admin/intake/${s.lastIntakeId}`} style={{ color: "#4f46e5", textDecoration: "none" }}>→ view</Link> : "—"}
-                </td>
-                <td style={{ padding: "10px 14px", color: s.errorCount > 0 ? "#ef4444" : "#475569" }}>{s.errorCount || "—"}</td>
-                <td style={{ padding: "10px 14px", display: "flex", gap: 8 }}>
-                  <button onClick={() => checkNow(s.id)} disabled={checking === s.id}
-                    style={{ background: "#1e3a5f", color: "#60a5fa", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                    {checking === s.id ? "..." : "Check Now"}
-                  </button>
-                  <button onClick={() => removeSource(s.id)}
-                    style={{ background: "#450a0a", color: "#fca5a5", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                    Remove
-                  </button>
-                </td>
+        {/* Sources list */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                {["Name","URL","Investigator","Last Checked","Last Intake","Errors","Actions"].map(h => (
+                  <th key={h} className="text-left py-2 px-3 font-semibold">{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="py-8 text-center text-gray-500">Loading...</td></tr>
+              ) : sources.filter(s => s.active).length === 0 ? (
+                <tr><td colSpan={7} className="py-8 text-center text-gray-500">No sources yet</td></tr>
+              ) : sources.filter(s => s.active).map((s: any) => (
+                <tr key={s.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                  <td className="py-2 px-3 text-white font-semibold">{s.name}</td>
+                  <td className="py-2 px-3 text-gray-500 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{s.url}</td>
+                  <td className="py-2 px-3 text-orange-400">{s.investigator}</td>
+                  <td className="py-2 px-3 text-gray-500">{s.lastChecked ? new Date(s.lastChecked).toLocaleString() : "never"}</td>
+                  <td className="py-2 px-3">
+                    {s.lastIntakeId ? <Link href={`/admin/intake/${s.lastIntakeId}`} className="text-orange-400 hover:text-orange-300 transition">→ view</Link> : "—"}
+                  </td>
+                  <td className={`py-2 px-3 ${s.errorCount > 0 ? "text-red-400" : "text-gray-500"}`}>{s.errorCount || "—"}</td>
+                  <td className="py-2 px-3 flex gap-2">
+                    <button onClick={() => checkNow(s.id)} disabled={checking === s.id}
+                      className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">
+                      {checking === s.id ? "..." : "Check Now"}
+                    </button>
+                    <button onClick={() => removeSource(s.id)}
+                      className="px-2 py-1 rounded text-xs bg-gray-800 text-red-400 hover:bg-gray-700 transition">
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

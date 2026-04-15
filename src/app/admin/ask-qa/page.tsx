@@ -100,25 +100,25 @@ function FlagBadge({ flag }: { flag: string }) {
 function TurnCard({ turn, index }: { turn: TurnResult; index: number }) {
   const hasFlags = turn.flags.length > 0
   return (
-    <div className={['rounded border p-3 mb-2', hasFlags ? 'border-red-900/40 bg-red-950/10' : 'border-zinc-800 bg-zinc-900/30'].join(' ')}>
+    <div className={['rounded-xl border p-5 mb-2', hasFlags ? 'border-red-700 bg-red-900/30' : 'border-gray-800 bg-gray-900'].join(' ')}>
       {/* User */}
       <div className="flex items-start gap-2 mb-2">
-        <span className="font-mono text-[9px] text-cyan-500 uppercase mt-0.5 w-16 flex-shrink-0">Turn {index + 1} / User</span>
-        <span className="text-xs text-zinc-400 italic">"{turn.user}"</span>
+        <span className="text-xs text-orange-400 uppercase mt-0.5 w-16 flex-shrink-0">Turn {index + 1} / User</span>
+        <span className="text-xs text-gray-400 italic">"{turn.user}"</span>
       </div>
       {/* Assistant */}
       <div className="flex items-start gap-2 mb-2">
-        <span className="font-mono text-[9px] text-[#F85B05]/70 uppercase mt-0.5 w-16 flex-shrink-0">ASK</span>
-        <span className="text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap">{turn.assistant}</span>
+        <span className="text-xs text-orange-400/70 uppercase mt-0.5 w-16 flex-shrink-0">ASK</span>
+        <span className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">{turn.assistant}</span>
       </div>
       {/* Meta */}
       <div className="flex items-center gap-2 flex-wrap mt-1">
-        <span className="font-mono text-[9px] text-zinc-600">{turn.ms}ms</span>
+        <span className="text-xs text-gray-500">{turn.ms}ms</span>
         {turn.expectedTone && (
-          <span className="font-mono text-[9px] text-zinc-600">expect: {turn.expectedTone}</span>
+          <span className="text-xs text-gray-500">expect: {turn.expectedTone}</span>
         )}
         {turn.flags.map(f => <FlagBadge key={f} flag={f} />)}
-        {!hasFlags && <span className="font-mono text-[9px] text-green-600">✓ clean</span>}
+        {!hasFlags && <span className="text-xs text-green-400">✓ clean</span>}
       </div>
     </div>
   )
@@ -196,20 +196,20 @@ export default function AskQAPage() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen bg-[#0A0C10] flex items-center justify-center">
-        <div className="bg-[#111318] border border-[#1E2330] rounded-xl p-8 w-80">
-          <p className="font-mono text-[10px] text-[#FFB800] uppercase tracking-widest mb-4">ASK INTERLIGENS · QA</p>
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4 w-80">
+          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">ASK Interligens · QA</h2>
           <input
             type="password"
             placeholder="Admin token"
             value={token}
             onChange={e => setToken(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && auth()}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 mb-3"
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
           />
           <button
             onClick={auth}
-            className="w-full bg-[#FFB800]/10 border border-[#FFB800]/30 text-[#FFB800] font-mono text-xs uppercase tracking-widest py-2 rounded hover:bg-[#FFB800]/20 transition-colors"
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition text-sm"
           >
             Enter
           </button>
@@ -222,21 +222,21 @@ export default function AskQAPage() {
   const selectedResult = selected ? results[selected] : null
 
   return (
-    <div className="min-h-screen bg-[#0A0C10] text-[#E8EAF0]" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-gray-950 text-white">
 
       {/* Header */}
-      <div className="border-b border-[#1E2330] px-6 py-3 flex items-center justify-between">
+      <div className="border-b border-gray-800 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] text-[#FFB800] uppercase tracking-widest">INTERLIGENS · ASK QA</span>
-          <span className="font-mono text-[9px] text-[#7A8599]">Internal only · {QA_FIXTURES.length} fixtures</span>
+          <h1 className="text-2xl font-bold text-orange-400">ASK QA</h1>
+          <span className="text-sm text-gray-400">Internal only · {QA_FIXTURES.length} fixtures</span>
         </div>
         <div className="flex items-center gap-2">
           {runningAll ? (
-            <button onClick={stopAll} className="font-mono text-[10px] uppercase tracking-wider text-red-400 border border-red-900/40 px-3 py-1.5 rounded hover:bg-red-900/20 transition-colors">
+            <button onClick={stopAll} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-red-400 hover:bg-gray-700 transition">
               Stop
             </button>
           ) : (
-            <button onClick={runAll} className="font-mono text-[10px] uppercase tracking-wider text-[#FFB800] border border-[#FFB800]/30 px-3 py-1.5 rounded hover:bg-[#FFB800]/10 transition-colors">
+            <button onClick={runAll} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 text-black transition">
               Run All
             </button>
           )}
@@ -246,7 +246,7 @@ export default function AskQAPage() {
       <div className="flex h-[calc(100vh-49px)]">
 
         {/* Sidebar — fixture list */}
-        <div className="w-72 border-r border-[#1E2330] overflow-y-auto flex-shrink-0">
+        <div className="w-72 border-r border-gray-800 overflow-y-auto flex-shrink-0 bg-gray-900">
           {QA_FIXTURES.map(fixture => {
             const result = results[fixture.id]
             const flags = totalFlags(fixture.id)
@@ -256,30 +256,30 @@ export default function AskQAPage() {
                 key={fixture.id}
                 onClick={() => setSelected(fixture.id)}
                 className={[
-                  'w-full text-left px-4 py-3 border-b border-[#1E2330] transition-colors',
-                  selected === fixture.id ? 'bg-[#FFB800]/5 border-l-2 border-l-[#FFB800]' : 'hover:bg-zinc-900/40',
+                  'w-full text-left px-4 py-3 border-b border-gray-800 transition',
+                  selected === fixture.id ? 'bg-gray-800 border-l-2 border-l-orange-500' : 'hover:bg-gray-900/50',
                 ].join(' ')}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-[9px] text-[#7A8599] uppercase">
+                  <span className="text-xs text-gray-500 uppercase tracking-wider">
                     {fixture.locale.toUpperCase()}
                   </span>
                   <div className="flex items-center gap-1">
-                    {status === 'running' && <span className="font-mono text-[9px] text-[#FFB800] animate-pulse">running</span>}
-                    {status === 'done' && flags === 0 && <span className="font-mono text-[9px] text-green-500">✓</span>}
-                    {status === 'done' && flags > 0 && <span className="font-mono text-[9px] text-red-400">{flags} flags</span>}
-                    {status === 'error' && <span className="font-mono text-[9px] text-red-500">error</span>}
+                    {status === 'running' && <span className="text-xs text-orange-400 animate-pulse">running</span>}
+                    {status === 'done' && flags === 0 && <span className="text-xs text-green-400">✓</span>}
+                    {status === 'done' && flags > 0 && <span className="text-xs text-red-400">{flags} flags</span>}
+                    {status === 'error' && <span className="text-xs text-red-400">error</span>}
                     {!status && (
                       <button
                         onClick={e => { e.stopPropagation(); runFixture(fixture) }}
-                        className="font-mono text-[9px] text-[#7A8599] hover:text-[#FFB800] transition-colors"
+                        className="text-xs text-gray-400 hover:text-orange-400 transition"
                       >
                         run ▶
                       </button>
                     )}
                   </div>
                 </div>
-                <span className="text-xs text-zinc-300 leading-snug block">{fixture.label}</span>
+                <span className="text-sm text-gray-300 leading-snug block">{fixture.label}</span>
               </button>
             )
           })}
@@ -289,25 +289,25 @@ export default function AskQAPage() {
         <div className="flex-1 overflow-y-auto p-6">
           {!selected && (
             <div className="flex items-center justify-center h-full">
-              <p className="font-mono text-[11px] text-[#7A8599] uppercase tracking-widest">Select a fixture or Run All</p>
+              <p className="text-sm text-gray-500 uppercase tracking-wider">Select a fixture or Run All</p>
             </div>
           )}
 
           {selected && selectedFixture && (
-            <div>
+            <div className="max-w-4xl mx-auto space-y-4">
               {/* Fixture header */}
-              <div className="mb-4 pb-4 border-b border-[#1E2330]">
-                <h2 className="font-mono text-sm text-[#FFB800] mb-1">{selectedFixture.label}</h2>
-                <div className="flex gap-6 text-[11px] text-[#7A8599]">
-                  <span>Verdict: <strong className="text-zinc-300">{selectedFixture.summary.verdict}</strong></span>
-                  <span>Score: <strong className="text-zinc-300">{selectedFixture.summary.tigerScore}/100</strong></span>
-                  <span>Chain: <strong className="text-zinc-300">{selectedFixture.summary.chain}</strong></span>
-                  <span>Locale: <strong className="text-zinc-300">{selectedFixture.locale}</strong></span>
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+                <h2 className="text-sm font-semibold text-orange-400">{selectedFixture.label}</h2>
+                <div className="flex gap-6 text-xs text-gray-500 flex-wrap">
+                  <span>Verdict: <strong className="text-gray-300">{selectedFixture.summary.verdict}</strong></span>
+                  <span>Score: <strong className="text-gray-300">{selectedFixture.summary.tigerScore}/100</strong></span>
+                  <span>Chain: <strong className="text-gray-300">{selectedFixture.summary.chain}</strong></span>
+                  <span>Locale: <strong className="text-gray-300">{selectedFixture.locale}</strong></span>
                 </div>
-                <div className="mt-2 flex gap-4 text-[11px]">
-                  <span className="text-green-600">✓ {selectedFixture.toneExpected}</span>
+                <div className="flex gap-4 text-xs">
+                  <span className="text-green-400">✓ {selectedFixture.toneExpected}</span>
                 </div>
-                <div className="mt-1 text-[11px] text-red-500/70">
+                <div className="text-xs text-red-400/70">
                   ⚠ Watch: {selectedFixture.toneRed}
                 </div>
               </div>
@@ -316,13 +316,13 @@ export default function AskQAPage() {
               {selectedResult?.status !== 'running' && (
                 <button
                   onClick={() => runFixture(selectedFixture)}
-                  className="mb-4 font-mono text-[10px] uppercase tracking-wider text-[#FFB800] border border-[#FFB800]/30 px-4 py-1.5 rounded hover:bg-[#FFB800]/10 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 text-black transition"
                 >
                   {selectedResult ? 'Re-run ▶' : 'Run ▶'}
                 </button>
               )}
               {selectedResult?.status === 'running' && (
-                <p className="mb-4 font-mono text-[10px] text-[#FFB800] animate-pulse uppercase tracking-wider">Running…</p>
+                <p className="text-sm text-orange-400 animate-pulse uppercase tracking-wider">Running…</p>
               )}
 
               {/* Results */}

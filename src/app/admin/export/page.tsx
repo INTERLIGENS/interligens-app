@@ -33,74 +33,75 @@ export default function ExportPage() {
   }
 
   return (
-    <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#f1f5f9", padding: "32px", fontFamily: "monospace" }}>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.2em", marginBottom: 4 }}>INTEL VAULT</div>
-        <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>EXPORT</h1>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, maxWidth: 900 }}>
-
-        {/* CSV Export */}
-        <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 24 }}>
-          <div style={{ fontSize: 11, color: "#22c55e", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>CSV DOWNLOAD</div>
-          <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 20 }}>Download all active address labels as CSV. Instant, no setup required.</p>
-          <button onClick={exportCsv}
-            style={{ width: "100%", background: "#14532d", color: "#4ade80", border: "1px solid #14532d", borderRadius: 8, padding: "12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            ↓ Download CSV
-          </button>
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-orange-400">Export</h1>
+          <p className="text-gray-400 text-sm">Address labels export options</p>
         </div>
 
-        {/* Google Sheets Export */}
-        <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 24 }}>
-          <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>GOOGLE SHEETS</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          {!process.env.NEXT_PUBLIC_SHEETS_CONFIGURED && (
-            <div style={{ background: "#1e1b4b", border: "1px solid #4f46e533", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "#a5b4fc" }}>
-              ⚙ Setup: add <code>GOOGLE_APPS_SCRIPT_URL</code> in Vercel env.<br/>
-              <a href="https://developers.google.com/apps-script/guides/web" target="_blank" style={{ color: "#818cf8" }}>Apps Script guide →</a>
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-            {[
-              ["Chain", chain, setChain, "EVM / SOL / TRON"],
-              ["Label Type", labelType, setLabelType, "scam / drainer / phishing"],
-              ["Confidence", confidence, setConfidence, "low / medium / high"],
-            ].map(([label, val, setter, placeholder]) => (
-              <div key={label as string}>
-                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{label as string} (optional)</div>
-                <input value={val as string} onChange={e => (setter as Function)(e.target.value)}
-                  placeholder={placeholder as string}
-                  style={{ width: "100%", background: "#0f172a", border: "1px solid #334155", borderRadius: 6, padding: "8px 12px", color: "#f1f5f9", fontSize: 12, boxSizing: "border-box" }} />
-              </div>
-            ))}
+          {/* CSV Export */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">CSV Download</h2>
+            <p className="text-gray-400 text-sm">Download all active address labels as CSV. Instant, no setup required.</p>
+            <button onClick={exportCsv}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition text-sm">
+              ↓ Download CSV
+            </button>
           </div>
 
-          <button onClick={exportSheets} disabled={loading}
-            style={{ width: "100%", background: loading ? "#334155" : "#4f46e5", color: "#fff", border: "none", borderRadius: 8, padding: "12px", fontSize: 13, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer" }}>
-            {loading ? "Exporting..." : "→ Push to Google Sheets"}
-          </button>
+          {/* Google Sheets Export */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Google Sheets</h2>
 
-          {error && <div style={{ marginTop: 12, color: "#fca5a5", fontSize: 12 }}>✗ {error}</div>}
-          {result && (
-            <div style={{ marginTop: 12, background: "#14532d", borderRadius: 8, padding: 12, fontSize: 12, color: "#4ade80" }}>
-              ✓ {result.rowsExported} rows exported
-              {result.sheetUrl && <><br/><a href={result.sheetUrl} target="_blank" style={{ color: "#86efac" }}>Open Sheet →</a></>}
+            {!process.env.NEXT_PUBLIC_SHEETS_CONFIGURED && (
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-300">
+                ⚙ Setup: add <code>GOOGLE_APPS_SCRIPT_URL</code> in Vercel env.<br/>
+                <a href="https://developers.google.com/apps-script/guides/web" target="_blank" className="text-orange-400 hover:text-orange-300 transition">Apps Script guide →</a>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {[
+                ["Chain", chain, setChain, "EVM / SOL / TRON"],
+                ["Label Type", labelType, setLabelType, "scam / drainer / phishing"],
+                ["Confidence", confidence, setConfidence, "low / medium / high"],
+              ].map(([label, val, setter, placeholder]) => (
+                <div key={label as string}>
+                  <label className="text-xs text-gray-500 mb-1 block">{label as string} (optional)</label>
+                  <input value={val as string} onChange={e => (setter as Function)(e.target.value)}
+                    placeholder={placeholder as string}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Apps Script setup instructions */}
-      <div style={{ marginTop: 32, background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 24, maxWidth: 900 }}>
-        <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 16 }}>GOOGLE APPS SCRIPT SETUP</div>
-        <ol style={{ color: "#94a3b8", fontSize: 13, lineHeight: 2, paddingLeft: 20 }}>
-          <li>Crée un Google Sheet vide</li>
-          <li>Extensions → Apps Script</li>
-          <li>Colle ce code et déploie comme "Web App" (accès : Anyone) :</li>
-        </ol>
-        <pre style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: 16, fontSize: 11, color: "#94a3b8", overflow: "auto", marginTop: 12 }}>{`function doPost(e) {
+            <button onClick={exportSheets} disabled={loading}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition text-sm">
+              {loading ? "Exporting..." : "→ Push to Google Sheets"}
+            </button>
+
+            {error && <div className="text-red-400 text-sm">✗ {error}</div>}
+            {result && (
+              <div className="bg-gray-800 rounded-lg p-3 text-sm text-green-400">
+                ✓ {result.rowsExported} rows exported
+                {result.sheetUrl && <><br/><a href={result.sheetUrl} target="_blank" className="text-orange-400 hover:text-orange-300 transition">Open Sheet →</a></>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Apps Script setup instructions */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Google Apps Script Setup</h2>
+          <ol className="text-gray-400 text-sm leading-loose list-decimal pl-5">
+            <li>Crée un Google Sheet vide</li>
+            <li>Extensions → Apps Script</li>
+            <li>Colle ce code et déploie comme "Web App" (accès : Anyone) :</li>
+          </ol>
+          <pre className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-xs text-gray-400 overflow-auto">{`function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(data.sheetName);
@@ -112,8 +113,9 @@ export default function ExportPage() {
     .createTextOutput(JSON.stringify({ sheetUrl: ss.getUrl() }))
     .setMimeType(ContentService.MimeType.JSON);
 }`}</pre>
-        <div style={{ marginTop: 12, color: "#64748b", fontSize: 12 }}>
-          4. Copie l'URL de déploiement → Vercel env → <code style={{ color: "#a5b4fc" }}>GOOGLE_APPS_SCRIPT_URL</code>
+          <div className="text-gray-500 text-sm">
+            4. Copie l'URL de déploiement → Vercel env → <code className="text-orange-400">GOOGLE_APPS_SCRIPT_URL</code>
+          </div>
         </div>
       </div>
     </div>

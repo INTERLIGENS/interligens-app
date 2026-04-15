@@ -5,10 +5,6 @@ const SOLSCAN = (addr: string) => 'https://solscan.io/account/' + addr
 const ETHERSCAN = (addr: string) => 'https://etherscan.io/address/' + addr
 const explorerUrl = (addr: string, chain: string) => chain === 'ETH' ? ETHERSCAN(addr) : SOLSCAN(addr)
 
-const ROLE_COLOR: Record<string, string> = {
-  dev: '#8b5cf6', paid_promoter: '#ef4444', advisor: '#f59e0b', promoter: '#f97316', insider: '#ec4899',
-}
-
 export default function KolNetworkPage() {
   const [data, setData] = useState<any>(null)
   const [publishability, setPublishability] = useState<Record<string, any>>({})
@@ -61,21 +57,21 @@ export default function KolNetworkPage() {
   const fmtUsd = (n: number) => n >= 1000000 ? '$' + (n/1000000).toFixed(1) + 'M' : n >= 1000 ? '$' + (n/1000).toFixed(0) + 'K' : '$' + n
 
   if (!authed && !loading) return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 12, padding: 32, width: 320 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, color: '#F85B05', letterSpacing: '0.2em', marginBottom: 16 }}>ADMIN TOKEN</div>
+    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 w-80 space-y-4">
+        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Admin Token</h2>
         <input type="password" value={adminToken} onChange={e => setAdminToken(e.target.value)}
-          style={{ width: '100%', background: '#111', border: '1px solid #374151', borderRadius: 6, padding: '10px 12px', color: '#fff', fontSize: 12, fontFamily: 'monospace', boxSizing: 'border-box' as const }}
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 font-mono"
           placeholder="Enter admin token" />
         <button onClick={() => { localStorage.setItem('admin_token', adminToken); setLoading(true); load(adminToken) }}
-          style={{ width: '100%', marginTop: 12, background: '#F85B05', color: '#000', fontWeight: 900, fontSize: 11, padding: '10px', borderRadius: 6, border: 'none', cursor: 'pointer', letterSpacing: '0.1em' }}>
+          className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition text-sm">
           ACCESS
         </button>
       </div>
     </div>
   )
 
-  if (loading) return <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#374151', fontFamily: 'monospace', fontSize: 11 }}>LOADING NETWORK...</div>
+  if (loading) return <div className="min-h-screen bg-gray-950 text-gray-500 flex items-center justify-center font-mono text-xs">LOADING NETWORK...</div>
 
   const selectedKol = data?.kols?.find((k: any) => k.handle === selected)
   const selectedWallets = data?.wallets?.filter((w: any) => w.kolHandle === selected) ?? []
@@ -83,62 +79,60 @@ export default function KolNetworkPage() {
   const selectedConnections = data?.connections?.filter((c: any) => c.a === selected || c.b === selected) ?? []
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f9fafb', fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-gray-950 text-white">
 
       {/* Header */}
-      <div style={{ background: '#0a0a0a', borderBottom: '1px solid #111827', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <a href="/admin" style={{ color: '#F85B05', fontSize: 11, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.15em' }}>← ADMIN</a>
-        <span style={{ color: '#1f2937' }}>·</span>
-        <span style={{ color: '#4b5563', fontSize: 11, letterSpacing: '0.1em' }}>KOL NETWORK — INTER-PROJECT LIAISON</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 16 }}>
-          <span style={{ fontSize: 10, color: '#374151' }}>{data?.kols?.length ?? 0} SCAMMERS</span>
-          <span style={{ fontSize: 10, color: '#374151' }}>{data?.connections?.length ?? 0} CONNECTIONS</span>
-          <span style={{ fontSize: 10, color: '#374151' }}>{Object.keys(data?.projectMap ?? {}).length} PROJECTS</span>
+      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-3">
+        <a href="/admin" className="text-orange-400 hover:text-orange-300 text-xs font-semibold transition">← ADMIN</a>
+        <span className="text-gray-500">·</span>
+        <span className="text-gray-400 text-xs uppercase tracking-wider">KOL NETWORK — INTER-PROJECT LIAISON</span>
+        <div className="ml-auto flex gap-4">
+          <span className="text-xs text-gray-500">{data?.kols?.length ?? 0} SCAMMERS</span>
+          <span className="text-xs text-gray-500">{data?.connections?.length ?? 0} CONNECTIONS</span>
+          <span className="text-xs text-gray-500">{Object.keys(data?.projectMap ?? {}).length} PROJECTS</span>
         </div>
       </div>
 
-      <div style={{ display: 'flex', height: 'calc(100vh - 49px)' }}>
+      <div className="flex h-[calc(100vh-49px)]">
 
         {/* LEFT — KOL list */}
-        <div style={{ width: 280, borderRight: '1px solid #111827', overflowY: 'auto' as const, background: '#050505' }}>
-          <div style={{ padding: '12px 16px', fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', borderBottom: '1px solid #111827' }}>CONFIRMED SCAMMERS</div>
+        <div className="w-72 border-r border-gray-800 overflow-y-auto bg-gray-900">
+          <div className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800">CONFIRMED SCAMMERS</div>
           {(data?.kols ?? []).map((kol: any) => {
             const isSelected = selected === kol.handle
             const connections = (data?.connections ?? []).filter((c: any) => c.a === kol.handle || c.b === kol.handle)
             return (
               <div key={kol.handle} onClick={() => setSelected(isSelected ? null : kol.handle)}
-                style={{ padding: '14px 16px', borderBottom: '1px solid #0f172a', cursor: 'pointer', background: isSelected ? '#0f172a' : 'transparent', borderLeft: isSelected ? '3px solid #F85B05' : '3px solid transparent' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 6, background: '#ef444422', border: '1px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#ef4444', flexShrink: 0 }}>
+                className={`px-4 py-3 border-b border-gray-800 cursor-pointer transition ${isSelected ? "bg-gray-800 border-l-[3px] border-l-orange-500" : "border-l-[3px] border-l-transparent hover:bg-gray-900/50"}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-bold text-orange-400 flex-shrink-0">
                     {(kol.displayName ?? kol.handle)[0].toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>{kol.displayName}</div>
-                    <div style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace' }}>@{kol.handle}</div>
+                    <div className="text-sm font-semibold">{kol.displayName}</div>
+                    <div className="text-xs text-gray-500 font-mono">@{kol.handle}</div>
                   </div>
-                  <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 2 }}>
-                    {kol.verified && <span style={{ fontSize: 8, color: '#10b981', fontWeight: 900 }}>✓ VERIFIED</span>}
+                  <div className="ml-auto flex flex-col items-end gap-1">
+                    {kol.verified && <span className="text-[9px] text-green-400 font-bold">✓ VERIFIED</span>}
                     {publishability[kol.handle] && (
-                      <span style={{ fontSize: 7, fontWeight: 900, padding: '2px 6px', borderRadius: 3, background: publishability[kol.handle].publishable ? '#10b98122' : '#ef444422', color: publishability[kol.handle].publishable ? '#10b981' : '#ef4444' }}>
+                      <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-gray-800 ${publishability[kol.handle].publishable ? "text-green-400" : "text-red-400"}`}>
                         {publishability[kol.handle].publishable ? '● PUB' : '● BLOCKED'}
                       </span>
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-                  <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700 }}>{kol.rugCount} rugs</span>
+                <div className="flex gap-2 flex-wrap">
+                  <span className="text-[10px] text-red-400 font-semibold">{kol.rugCount} rugs</span>
                   <button
                     onClick={e => { e.stopPropagation(); investigate(kol.handle) }}
-                    style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 3,
-                      background: 'transparent', color: investigating === kol.handle ? '#f59e0b' : '#374151',
-                      border: 'none', cursor: 'pointer' }}>
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded bg-transparent border-none cursor-pointer transition ${investigating === kol.handle ? "text-orange-400" : "text-gray-500 hover:text-orange-400"}`}>
                     {investigating === kol.handle ? '⟳' : '🔍'} {investigating === kol.handle ? 'scanning...' : 'investigate'}
                     {investigateResults[kol.handle] ? ' ✓' : ''}
                   </button>
 
-                  <span style={{ fontSize: 9, color: '#f59e0b' }}>{fmtUsd(kol.totalScammed)}</span>
-                  <span style={{ fontSize: 9, color: '#6b7280' }}>{kol.walletCount}w · {kol.caseCount}c</span>
-                  {connections.length > 0 && <span style={{ fontSize: 9, color: '#8b5cf6' }}>{connections.length} links</span>}
+                  <span className="text-[10px] text-orange-400">{fmtUsd(kol.totalScammed)}</span>
+                  <span className="text-[10px] text-gray-500">{kol.walletCount}w · {kol.caseCount}c</span>
+                  {connections.length > 0 && <span className="text-[10px] text-orange-300">{connections.length} links</span>}
                 </div>
               </div>
             )
@@ -146,33 +140,33 @@ export default function KolNetworkPage() {
         </div>
 
         {/* RIGHT — Detail panel */}
-        <div style={{ flex: 1, overflowY: 'auto' as const, padding: 24 }}>
+        <div className="flex-1 overflow-y-auto p-6">
           {!selected ? (
             <div>
               {/* Project clusters */}
-              <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 16 }}>PROJECT CLUSTERS — WHO WORKED TOGETHER</div>
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">PROJECT CLUSTERS — WHO WORKED TOGETHER</div>
+              <div className="flex flex-col gap-3">
                 {Object.entries(data?.projectMap ?? {}).map(([project, handles]: [string, any]) => (
-                  <div key={project} style={{ background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 10, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 900, color: '#f9fafb' }}>{project}</span>
-                      <span style={{ fontSize: 9, color: '#374151' }}>{handles.length} actor{handles.length > 1 ? 's' : ''}</span>
+                  <div key={project} className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="font-mono text-sm font-bold text-white">{project}</span>
+                      <span className="text-xs text-gray-500">{handles.length} actor{handles.length > 1 ? 's' : ''}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                    <div className="flex gap-2 flex-wrap">
                       {handles.map((h: string) => {
                         const k = (data?.kols ?? []).find((k: any) => k.handle === h)
                         const cases = (data?.cases ?? []).filter((c: any) => c.kolHandle === h && c.caseId === project)
                         return (
                           <div key={h} onClick={() => setSelected(h)}
-                            style={{ background: '#111', border: '1px solid #374151', borderRadius: 6, padding: '8px 12px', cursor: 'pointer' }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#f9fafb' }}>{k?.displayName ?? h}</div>
-                            <div style={{ fontSize: 9, color: '#4b5563', fontFamily: 'monospace' }}>@{h}</div>
+                            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 cursor-pointer hover:border-orange-500 transition">
+                            <div className="text-xs font-semibold text-white">{k?.displayName ?? h}</div>
+                            <div className="text-[10px] text-gray-500 font-mono">@{h}</div>
                             {cases.map((c: any) => (
-                              <div key={c.id} style={{ marginTop: 4 }}>
-                                <span style={{ background: (ROLE_COLOR[c.role] ?? '#6b7280') + '22', color: ROLE_COLOR[c.role] ?? '#6b7280', fontSize: 8, fontWeight: 900, padding: '2px 6px', borderRadius: 3 }}>
+                              <div key={c.id} className="mt-1">
+                                <span className="inline-block px-2 py-0.5 rounded text-[9px] bg-gray-800 text-gray-300 font-bold">
                                   {c.role.toUpperCase().replace('_', ' ')}
                                 </span>
-                                {c.paidUsd && <span style={{ fontSize: 9, color: '#ef4444', marginLeft: 6 }}>{fmtUsd(c.paidUsd)}</span>}
+                                {c.paidUsd && <span className="text-[10px] text-red-400 ml-1">{fmtUsd(c.paidUsd)}</span>}
                               </div>
                             ))}
                           </div>
@@ -184,34 +178,34 @@ export default function KolNetworkPage() {
               </div>
             </div>
           ) : (
-            <div>
+            <div className="space-y-6">
               {/* KOL detail */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 10, background: '#ef444422', border: '2px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#ef4444' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gray-800 border-2 border-orange-500 flex items-center justify-center text-xl font-bold text-orange-400">
                   {(selectedKol?.displayName ?? selected)[0].toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 900 }}>{selectedKol?.displayName}</div>
-                  <div style={{ fontSize: 11, color: '#4b5563', fontFamily: 'monospace' }}>@{selected} · {selectedKol?.rugCount} rugs · {fmtUsd(selectedKol?.totalScammed ?? 0)}</div>
+                  <div className="text-xl font-bold">{selectedKol?.displayName}</div>
+                  <div className="text-xs text-gray-500 font-mono">@{selected} · {selectedKol?.rugCount} rugs · {fmtUsd(selectedKol?.totalScammed ?? 0)}</div>
                 </div>
-                <a href={'/en/kol/' + selected} target="_blank" style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 900, color: '#F85B05', textDecoration: 'none', border: '1px solid #F85B0544', padding: '6px 14px', borderRadius: 6 }}>
+                <a href={'/en/kol/' + selected} target="_blank" className="ml-auto text-xs font-semibold text-orange-400 hover:text-orange-300 transition border border-gray-800 px-3 py-1.5 rounded-lg">
                   PUBLIC PAGE →
                 </a>
               </div>
 
               {/* Connections */}
               {selectedConnections.length > 0 && (
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 12 }}>NETWORK CONNECTIONS</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">NETWORK CONNECTIONS</div>
+                  <div className="flex gap-2 flex-wrap">
                     {selectedConnections.map((conn: any, i: number) => {
                       const peer = conn.a === selected ? conn.b : conn.a
                       const peerKol = (data?.kols ?? []).find((k: any) => k.handle === peer)
                       return (
                         <div key={i} onClick={() => setSelected(peer)}
-                          style={{ background: '#8b5cf622', border: '1px solid #8b5cf644', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa' }}>{peerKol?.displayName ?? peer}</div>
-                          <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>via {conn.project}</div>
+                          className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 cursor-pointer hover:border-orange-500 transition">
+                          <div className="text-xs font-semibold text-orange-400">{peerKol?.displayName ?? peer}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">via {conn.project}</div>
                         </div>
                       )
                     })}
@@ -220,17 +214,17 @@ export default function KolNetworkPage() {
               )}
 
               {/* Cases */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 12 }}>CASES</div>
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+              <div>
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">CASES</div>
+                <div className="flex flex-col gap-2">
                   {selectedCases.map((c: any) => (
-                    <div key={c.id} style={{ background: '#0a0a0a', border: '1px solid ' + (ROLE_COLOR[c.role] ?? '#374151') + '33', borderRadius: 8, padding: '12px 16px', borderLeft: '3px solid ' + (ROLE_COLOR[c.role] ?? '#374151') }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                        <span style={{ background: (ROLE_COLOR[c.role] ?? '#374151') + '22', color: ROLE_COLOR[c.role] ?? '#6b7280', fontSize: 9, fontWeight: 900, padding: '3px 8px', borderRadius: 3 }}>{c.role.toUpperCase().replace('_', ' ')}</span>
-                        <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700 }}>{c.caseId}</span>
-                        {c.paidUsd && <span style={{ marginLeft: 'auto', fontSize: 12, color: '#ef4444', fontWeight: 900 }}>{fmtUsd(c.paidUsd)}</span>}
+                    <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 border-l-[3px] border-l-orange-500">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="inline-block px-2 py-0.5 rounded text-[10px] bg-gray-800 text-gray-300 font-bold">{c.role.toUpperCase().replace('_', ' ')}</span>
+                        <span className="font-mono text-sm font-semibold">{c.caseId}</span>
+                        {c.paidUsd && <span className="ml-auto text-sm text-red-400 font-bold">{fmtUsd(c.paidUsd)}</span>}
                       </div>
-                      {c.evidence && <div style={{ fontSize: 11, color: '#6b7280', fontFamily: 'monospace', lineHeight: 1.5 }}>{c.evidence}</div>}
+                      {c.evidence && <div className="text-xs text-gray-500 font-mono leading-relaxed">{c.evidence}</div>}
                     </div>
                   ))}
                 </div>
@@ -238,15 +232,15 @@ export default function KolNetworkPage() {
 
               {/* Wallets */}
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, color: '#374151', letterSpacing: '0.2em', marginBottom: 12 }}>WALLETS — ON-CHAIN PROOF</div>
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">WALLETS — ON-CHAIN PROOF</div>
+                <div className="flex flex-col gap-1">
                   {selectedWallets.map((w: any) => (
-                    <div key={w.id} style={{ background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ background: '#ef444422', color: '#ef4444', fontSize: 9, fontWeight: 900, padding: '2px 8px', borderRadius: 3, flexShrink: 0 }}>ACTIVE</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8', flex: 1 }}>{w.address}</span>
-                      <span style={{ fontSize: 9, background: '#1f2937', color: '#4b5563', padding: '2px 6px', borderRadius: 3 }}>{w.chain}</span>
-                      {w.label && <span style={{ fontSize: 10, color: '#4b5563', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{w.label}</span>}
-                      <a href={explorerUrl(w.address, w.chain)} target="_blank" style={{ fontSize: 9, fontWeight: 900, color: '#F85B05', textDecoration: 'none', border: '1px solid #F85B0544', padding: '4px 10px', borderRadius: 4, whiteSpace: 'nowrap' as const }}>
+                    <div key={w.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex items-center gap-3">
+                      <span className="inline-block px-2 py-0.5 rounded text-[10px] bg-gray-800 text-red-400 font-bold flex-shrink-0">ACTIVE</span>
+                      <span className="font-mono text-xs text-gray-400 flex-1">{w.address}</span>
+                      <span className="inline-block px-2 py-0.5 rounded text-[10px] bg-gray-800 text-gray-500">{w.chain}</span>
+                      {w.label && <span className="text-xs text-gray-500 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{w.label}</span>}
+                      <a href={explorerUrl(w.address, w.chain)} target="_blank" className="text-[10px] font-bold text-orange-400 hover:text-orange-300 transition border border-gray-800 px-2 py-1 rounded whitespace-nowrap">
                         ON-CHAIN →
                       </a>
                     </div>
