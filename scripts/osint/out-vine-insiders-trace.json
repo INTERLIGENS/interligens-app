@@ -1,0 +1,110 @@
+{
+  "mint": "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump",
+  "rus_deployer": "4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4",
+  "wallets": {
+    "INSIDER_MAIN": {
+      "label": "INSIDER_MAIN",
+      "address": "2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ",
+      "sol_balance": 0.037067,
+      "vine_balance": 0.0,
+      "signatures_count": 1234,
+      "first_tx_date": "2024-05-08 02:36 UTC",
+      "first_tx_signature": "Uezt7yM8uXpYyQCfN84rKy6S8ATED1kWP44V5FQfF7GoGHYeRonvESZdwd2xUavvVL7u5LKYedM31XBcPV6pJsZ",
+      "last_tx_date": "2026-04-02 22:42 UTC",
+      "last_tx_signature": "59JPszHoCLwTgFse6g5qAxTV3cVFU7KKdXxC36TkLNBhKwzmghvNvtqCLb65vPSRHQGdgDu6v45pizWiNEgB7YXm",
+      "solscan_url": "https://solscan.io/account/2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ"
+    },
+    "BUY_1": {
+      "label": "BUY_1",
+      "address": "BPBLjZrvn6ZCKMS2BiDwoLdCH5tF36pZJWgHV9KSqqNS",
+      "sol_balance": 3.030045,
+      "vine_balance": 0.0,
+      "signatures_count": 183,
+      "first_tx_date": "2025-01-22 22:30 UTC",
+      "first_tx_signature": "4zWHq3qeibzsM3HNDPgrM68witiaHds8q6cEpzyoHMtPuU7mEmrSH7v4x8xcjcpyx2LzWLXfuEfp5Rgw3HozxuNE",
+      "last_tx_date": "2025-04-09 19:40 UTC",
+      "last_tx_signature": "5DfeXAqn1QusTkZYqynUppxreWyNGBVCdXqQfjTQPDiQSUHQzF9mU1j2ToxYnKEj3VahMRZe9b2KXuWFAwJQYrYt",
+      "solscan_url": "https://solscan.io/account/BPBLjZrvn6ZCKMS2BiDwoLdCH5tF36pZJWgHV9KSqqNS"
+    },
+    "BUY_2": {
+      "label": "BUY_2",
+      "address": "8Lr7nr1RCQ2PUsKEG5D7djwgvFazsRXVqyhRAi5DMbc7",
+      "sol_balance": 2.538816,
+      "vine_balance": 0.0,
+      "signatures_count": 235,
+      "first_tx_date": "2025-01-22 22:29 UTC",
+      "first_tx_signature": "2JEr2q5rU3SeurWxGCFSVSXn3x7PC8RdC45KBGGqdp5qdk7sF6pu9dm2LHDgESmFiCjJKvsPBrkj8B2fRpJeySYN",
+      "last_tx_date": "2025-04-12 19:26 UTC",
+      "last_tx_signature": "TXJ4hJaVK9LPtdKwXdbJtEh745QBuNsj1EpQ2m2fCzBU883jZvRdfJqhPo2AbeBVj9YSz2AJkY4CEn2yPtTgjgk",
+      "solscan_url": "https://solscan.io/account/8Lr7nr1RCQ2PUsKEG5D7djwgvFazsRXVqyhRAi5DMbc7"
+    },
+    "BUY_3": {
+      "label": "BUY_3",
+      "address": "DSYPh29JTLhpjq4LzGcep4BK6pqUzoRi2o5Mqve71STU",
+      "sol_balance": 2.89684,
+      "vine_balance": 0.0,
+      "signatures_count": 163,
+      "first_tx_date": "2025-01-22 22:29 UTC",
+      "first_tx_signature": "sD4G5Cr1Pd39znGyrMCDzCfD5zcY96YLA5C2vjE74YgdfTDFB8YCL7t9fju35LaTdgnBXzFdwnDfF9EMjKhgq54",
+      "last_tx_date": "2025-03-02 22:09 UTC",
+      "last_tx_signature": "3xMDhUcqgpA2K4QGhFULU2QWoEeQWTMWXN7YUnUpttFkVy3npm1u5Fg9PEHnLqdHDp6s6zKXfRApPHx8sDUiXpKq",
+      "solscan_url": "https://solscan.io/account/DSYPh29JTLhpjq4LzGcep4BK6pqUzoRi2o5Mqve71STU"
+    },
+    "BUY_4": {
+      "label": "BUY_4",
+      "address": "DMR43Ldd7T7KWPSiFajKPgTSF4UPkVXyZAAB5dEyYsDH",
+      "sol_balance": 0.0,
+      "vine_balance": 0.0,
+      "signatures_count": 321,
+      "first_tx_date": "2025-01-22 03:05 UTC",
+      "first_tx_signature": "5GFeWLrpjdGBdtfXaqYmv1qESKapsgVCYeMrtP2ea3KFdCs9a9WdVwrBZD2oEetwXrvUnYqxWibXd3frPPXpmCiZ",
+      "last_tx_date": "2025-04-09 19:40 UTC",
+      "last_tx_signature": "4UUCYtFD83Hww8iPpUwJ7jrVLhu1fMufbgLgCbKfS3tAU2WjUUWibzwn4a9Y4vi42MN3WKhGoPq8odYymsZUTqzU",
+      "solscan_url": "https://solscan.io/account/DMR43Ldd7T7KWPSiFajKPgTSF4UPkVXyZAAB5dEyYsDH"
+    }
+  },
+  "main_funding_trace": {
+    "pre_launch_count": 398,
+    "earliest_tx": {
+      "signature": "Uezt7yM8uXpYyQCfN84rKy6S8ATED1kWP44V5FQfF7GoGHYeRonvESZdwd2xUavvVL7u5LKYedM31XBcPV6pJsZ",
+      "date": "2024-05-08 02:36 UTC"
+    },
+    "inspected_count": 30,
+    "sources": {
+      "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": {
+        "tx_count": 1,
+        "sol_received": 1.123385,
+        "first_date": "2024-05-08 02:36 UTC"
+      },
+      "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": {
+        "tx_count": 1,
+        "sol_received": 157.661544,
+        "first_date": "2024-05-16 15:24 UTC"
+      },
+      "4kPJL1LmempALPjjwMWSo6JRBjmKQY7HX3edozqmJBPe": {
+        "tx_count": 3,
+        "sol_received": 249.36076,
+        "first_date": "2024-05-16 22:13 UTC"
+      },
+      "BJzUx7fYZKGDbiJD8bPynwukUKqb7oKLZQGbx48PFHeZ": {
+        "tx_count": 1,
+        "sol_received": 2e-06,
+        "first_date": "2024-05-21 14:52 UTC"
+      },
+      "FLiPggWYQyKVTULFWMQjAk26JfK5XRCajfyTmD5weaZ7": {
+        "tx_count": 1,
+        "sol_received": 0.0,
+        "first_date": "2024-06-26 14:32 UTC"
+      },
+      "Habp5bncMSsBC3vkChyebepym5dcTNRYeg2LVG464E96": {
+        "tx_count": 1,
+        "sol_received": 0.0,
+        "first_date": "2024-06-26 14:32 UTC"
+      }
+    },
+    "rus_link": {
+      "direct": false,
+      "note": "No direct SOL transfer from 4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4 to 2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ in the 30 earliest pre-launch TX inspected"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import vineData from "@/data/vine-osint.json";
+import networkData from "@/data/vine-insider-network.json";
 
 const ACCENT = "#FF6B00";
 const BG = "#000000";
@@ -430,6 +431,306 @@ export default function VineOsintPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* INSIDER NETWORK */}
+        <SectionTitle>
+          Insider Network — score de coordination {networkData.coordination_score}/100
+        </SectionTitle>
+        <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+          {/* Coordination breakdown */}
+          <div style={CARD}>
+            <div
+              style={{
+                fontSize: 10,
+                color: "rgba(255,255,255,0.4)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 10,
+              }}
+            >
+              Breakdown score coordination
+            </div>
+            {(networkData.coordination_breakdown || []).map((b, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  padding: "6px 0",
+                  borderBottom:
+                    i < (networkData.coordination_breakdown || []).length - 1
+                      ? "1px solid rgba(255,255,255,0.04)"
+                      : "none",
+                  fontSize: 12,
+                }}
+              >
+                <div
+                  style={{
+                    minWidth: 44,
+                    color: ACCENT,
+                    fontWeight: 700,
+                  }}
+                >
+                  +{b.points}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: "#FFFFFF", fontWeight: 600 }}>{b.factor}</div>
+                  <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, marginTop: 2 }}>
+                    {b.detail}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Rus link */}
+          <div
+            style={{
+              ...CARD,
+              borderLeft: `3px solid ${
+                (networkData.rus_link as { direct?: boolean })?.direct ? "#FF6B6B" : "rgba(255,255,255,0.2)"
+              }`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.4)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 6,
+              }}
+            >
+              Lien deployer Rus Yusupov
+            </div>
+            <div style={{ fontSize: 13, color: "#FFFFFF" }}>
+              {(networkData.rus_link as { note?: string })?.note ??
+                "Inspection non effectuée."}
+            </div>
+          </div>
+
+          {/* Cross-buyer common parents */}
+          <div style={CARD}>
+            <div
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.4)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 10,
+              }}
+            >
+              Parents de funding communs (cross-buyers pre-launch)
+            </div>
+            {Object.entries(
+              (networkData.parent_search as { cross_buyer_common?: Record<string, string[]> })
+                ?.cross_buyer_common ?? {}
+            ).length === 0 ? (
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+                Aucun parent commun identifié dans les TX inspectées.
+              </div>
+            ) : (
+              <table style={TABLE}>
+                <thead>
+                  <tr>
+                    <th style={TH}>Adresse parent</th>
+                    <th style={TH}>Buyers financés</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(
+                    (networkData.parent_search as {
+                      cross_buyer_common?: Record<string, string[]>;
+                    })?.cross_buyer_common ?? {}
+                  ).map(([src, labels]) => {
+                    const isSelf = src === "2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ";
+                    return (
+                      <tr key={src}>
+                        <td
+                          style={{
+                            ...TD,
+                            fontFamily: "Menlo, monospace",
+                            fontSize: 10,
+                            wordBreak: "break-all",
+                            maxWidth: 340,
+                            color: isSelf ? "#FF6B6B" : "rgba(255,255,255,0.85)",
+                            fontWeight: isSelf ? 700 : 400,
+                          }}
+                        >
+                          {src}
+                          {isSelf && (
+                            <div
+                              style={{
+                                fontSize: 9,
+                                color: "#FF6B6B",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.08em",
+                                marginTop: 2,
+                              }}
+                            >
+                              🔴 Wi11em itself — parent direct des autres buyers
+                            </div>
+                          )}
+                        </td>
+                        <td style={TD}>
+                          {labels.map((l, i) => (
+                            <span
+                              key={l}
+                              style={{
+                                display: "inline-block",
+                                padding: "2px 7px",
+                                marginRight: 4,
+                                marginBottom: 2,
+                                fontSize: 10,
+                                background: "rgba(255,107,0,0.1)",
+                                color: ACCENT,
+                                borderRadius: 3,
+                                border: "1px solid rgba(255,107,0,0.25)",
+                              }}
+                            >
+                              {l}
+                            </span>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Consolidators */}
+          <div style={CARD}>
+            <div
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.4)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 10,
+              }}
+            >
+              Consolidateurs post-dump (2025-01-26+) — {networkData.consolidators.length} résolus
+            </div>
+            <table style={TABLE}>
+              <thead>
+                <tr>
+                  <th style={TH}>Consolidateur</th>
+                  <th style={TH}>Source buyer</th>
+                  <th style={TH}>USD claim</th>
+                  <th style={TH}>Outflows</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(networkData.consolidators as Array<{
+                  prefix: string;
+                  full_address: string | null;
+                  from_buyer: string;
+                  usd_received_claim: number;
+                  outflows_aggregate?: Array<{
+                    address: string;
+                    label: string | null;
+                    tx_count: number;
+                    total_sol: number;
+                  }>;
+                  resolution_status: string;
+                }>).map((c) => (
+                  <tr key={c.prefix}>
+                    <td
+                      style={{
+                        ...TD,
+                        fontFamily: "Menlo, monospace",
+                        fontSize: 9,
+                        wordBreak: "break-all",
+                        maxWidth: 260,
+                      }}
+                    >
+                      {c.full_address ?? (
+                        <span style={{ color: "rgba(255,255,255,0.35)" }}>
+                          {c.prefix}… (unresolved)
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      style={{
+                        ...TD,
+                        fontFamily: "Menlo, monospace",
+                        fontSize: 9,
+                      }}
+                    >
+                      {c.from_buyer.slice(0, 8)}…{c.from_buyer.slice(-4)}
+                    </td>
+                    <td style={{ ...TD, fontWeight: 600, color: ACCENT }}>
+                      ${(c.usd_received_claim / 1_000_000).toFixed(2)}M
+                    </td>
+                    <td style={TD}>
+                      {c.outflows_aggregate && c.outflows_aggregate.length > 0 ? (
+                        c.outflows_aggregate.slice(0, 3).map((o) => (
+                          <div
+                            key={o.address}
+                            style={{ fontSize: 10, marginBottom: 3 }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: "Menlo, monospace",
+                                color: o.label ? ACCENT : "rgba(255,255,255,0.65)",
+                                fontWeight: o.label ? 700 : 400,
+                              }}
+                            >
+                              {o.label ?? `${o.address.slice(0, 8)}…${o.address.slice(-4)}`}
+                            </span>
+                            <span
+                              style={{ color: "rgba(255,255,255,0.4)", marginLeft: 6 }}
+                            >
+                              {o.total_sol.toFixed(2)} SOL · {o.tx_count} TX
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+                          no outflow TX parsed
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {networkData.exchanges_identified.length > 0 ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 10,
+                  background: "rgba(255,107,0,0.08)",
+                  border: "1px solid rgba(255,107,0,0.25)",
+                  borderRadius: 6,
+                  fontSize: 11,
+                  color: ACCENT,
+                }}
+              >
+                <strong>Exchanges identifiés :</strong>{" "}
+                {networkData.exchanges_identified.join(" · ")}
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 10,
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 6,
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.55)",
+                }}
+              >
+                Aucun exchange connu détecté dans les outflows (label table limitée).
+                Destinations réelles : cf. colonne outflows ci-dessus — à croiser avec
+                Arkham Intelligence pour labellisation.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* POINTS CHAUDS */}
