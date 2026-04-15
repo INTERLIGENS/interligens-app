@@ -1,0 +1,419 @@
+{
+  "scanDate": "2026-04-15",
+  "mode": "write",
+  "totalKolsScanned": 41,
+  "totalUsdDocumented": 558429,
+  "solPriceEstimate": 200,
+  "kols": [
+    {
+      "handle": "OD",
+      "wallet": "RTwVCWB3DjQ2vapBZtPTwizTcERGkNg2246AqAq1b7o",
+      "txCount": 6,
+      "totalUsdCashout": 4077,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 1,
+      "usdDeal": 10000
+    },
+    {
+      "handle": "Brazil",
+      "wallet": "46o9ufNhLACTkGPAng37Xw4Z6GR2ubUWanGBoPfEoHDb",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.91,
+      "usdDeal": null
+    },
+    {
+      "handle": "Dale",
+      "wallet": "EbEfNLYD6QtRJmyBtZ9E5Wepms8XHCWBLBwwgP6y4iLo",
+      "txCount": 22,
+      "totalUsdCashout": 9963,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.6,
+      "usdDeal": null
+    },
+    {
+      "handle": "Xeus",
+      "wallet": "9turTgeLPDk77u4aZDvgtYZaXzjZ1jzxV239j6WDmv2X",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.52,
+      "usdDeal": null
+    },
+    {
+      "handle": "Spider",
+      "wallet": "3aHb2NzpvuafrRtNkeHcDrh56JeTGX4VAAyRUUmSdMBN",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.5,
+      "usdDeal": null
+    },
+    {
+      "handle": "Mason",
+      "wallet": "7ZdDRV7dVksCWgUuAbviFzafVbt5mb1vcZ58p9Ah7zCi",
+      "txCount": 11,
+      "totalUsdCashout": 4901,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.5,
+      "usdDeal": null
+    },
+    {
+      "handle": "MaisonGhost",
+      "wallet": "2ucbjTj5RWJfs2jFat37qoiKpBQ9xHzaDGd1UNaaZ6nP",
+      "txCount": 1,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.5,
+      "usdDeal": null
+    },
+    {
+      "handle": "Shah",
+      "wallet": "DDzW6w3wPyh58XNSpnC3VAHSGMifPdic7ZEe5Du5RcwN",
+      "txCount": 16,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.5,
+      "usdDeal": null
+    },
+    {
+      "handle": "Henok",
+      "wallet": "2bxdtvSBnKDRFkgCDnJMF79PbRBV5UwXxCRiBH9Cq5h4",
+      "txCount": 19,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.5,
+      "usdDeal": null
+    },
+    {
+      "handle": "YourPop",
+      "wallet": "7sRQ7RJSCDSynJr3aFXqVffAaPJKvmZZGRHTWzHHVTbm",
+      "txCount": 16,
+      "totalUsdCashout": 6591,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.5,
+      "usdDeal": null
+    },
+    {
+      "handle": "Iced",
+      "wallet": "GZqgPnKiDGrBt7oQLzVQ9J17oT4dFuLdwXcQ35sHpmxp",
+      "txCount": 3,
+      "totalUsdCashout": 6724,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.5,
+      "usdDeal": null
+    },
+    {
+      "handle": "Nekoz",
+      "wallet": "5KtrjaTBSpsmg42PGRHYohoXd4pHPRZ21yzskfsU9WNa",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.4,
+      "usdDeal": null
+    },
+    {
+      "handle": "Shmoo",
+      "wallet": "EjhN9HgBwhzcpKEJtgiUL41PWKF7u56NpbFjuL7hvn2P",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.325,
+      "usdDeal": 10000
+    },
+    {
+      "handle": "Sibel",
+      "wallet": "9ZYq8SL5XPECWqnfYB1F6i7oT4Fakfck8QhzZqo18fHX",
+      "txCount": 2,
+      "totalUsdCashout": 1381,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.256,
+      "usdDeal": null
+    },
+    {
+      "handle": "Brommy",
+      "wallet": "J9Lwoh2bimo4UwLHPJU7TvMhxqgpRimtsBqPS25y8kN2",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.25,
+      "usdDeal": null
+    },
+    {
+      "handle": "Exy",
+      "wallet": "F3jZKYLYh7wR2cfatZV1w6jXiwrgQh9PyPXEL7segYtW",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.2,
+      "usdDeal": null
+    },
+    {
+      "handle": "Acid",
+      "wallet": "6gn9y7iG72MxMmD9wAbGWA5ZQSTtUZtZ2AAk7wvQEMbM",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.2,
+      "usdDeal": null
+    },
+    {
+      "handle": "CryptoZin",
+      "wallet": "Ao47TMguxAXCG7CmcQJTnh5fu9tqkeZFo1YsS4hCyryr",
+      "txCount": 17,
+      "totalUsdCashout": 7223,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.1745,
+      "usdDeal": 10000
+    },
+    {
+      "handle": "CryptoCowboy",
+      "wallet": "6Q7MLhVJtrZT2Joix5sYzLxh1eRcoj1CxiUTge9QWp8m",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.1745,
+      "usdDeal": null
+    },
+    {
+      "handle": "Bossman",
+      "wallet": "9P2np34H1umoKVGeXMFd5UUpA5m6DHuv5uPDoucGyF9",
+      "txCount": 6,
+      "totalUsdCashout": 5459,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.166,
+      "usdDeal": 10000
+    },
+    {
+      "handle": "Solid",
+      "wallet": "4HdddUJRMJKwJCAYST1AxuBdmYpu5C3BP2pedsuDQ7Qz",
+      "txCount": 3,
+      "totalUsdCashout": 5368,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.16,
+      "usdDeal": null
+    },
+    {
+      "handle": "Ronnie",
+      "wallet": "2C1HCNgXLryQ4W5ExrehTy793K9nzWcZcfpq2NsVPVHx",
+      "txCount": 5,
+      "totalUsdCashout": 3023,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.1265,
+      "usdDeal": 25000
+    },
+    {
+      "handle": "ConorKenny",
+      "wallet": "5iM9sR7yzh6x93GLPAbh6wuEkmNNgzpyc5Lq2bgJQQjU",
+      "txCount": 12,
+      "totalUsdCashout": 6794,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.11,
+      "usdDeal": null
+    },
+    {
+      "handle": "Vic",
+      "wallet": "3jJuCoWBdAu5pULXPuzXn8gYsGk5jifqVApRLDvjUKWB",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.1048,
+      "usdDeal": 10000
+    },
+    {
+      "handle": "Barbie",
+      "wallet": "D68istiZpeSrCzMsJSWb46hRimqFTCP8xqHRtbfSm3Z4",
+      "txCount": 11,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.1,
+      "usdDeal": 10000
+    },
+    {
+      "handle": "Venom",
+      "wallet": "G1hgGFq1FqcxrS36SUL67JJ8GivKWG5dx2e8u7eKFm6F",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.075,
+      "usdDeal": null
+    },
+    {
+      "handle": "CoachTY",
+      "wallet": "5Rx84j9TqiFH2CgeQKP2pHKGPsK45PcXXiKdqPdQPRkR",
+      "txCount": 2,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.069,
+      "usdDeal": 25000
+    },
+    {
+      "handle": "Geppetto",
+      "wallet": "EnrRj77ffuRc9MfY2GKygTSbpu8QyFT7VZdK1DHk3hhc",
+      "txCount": 10,
+      "totalUsdCashout": 1167,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.059,
+      "usdDeal": 10000
+    },
+    {
+      "handle": "LogicJohn",
+      "wallet": "Ga1r1RdUHyk1E4yJPVGHKF5QZ6FE2csWKJGNcBtS63Ff",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.0551,
+      "usdDeal": 5000
+    },
+    {
+      "handle": "Wulf",
+      "wallet": "GzLUEPZHGUrfqPnPErtSiTjxrWUkZdw8tcQoJTQKN2zx",
+      "txCount": 6,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.05,
+      "usdDeal": null
+    },
+    {
+      "handle": "Blackbeard",
+      "wallet": "6pADY44tK88735dyK6AzAUu2dpracC7h4RPTHbM727CL",
+      "txCount": 1,
+      "totalUsdCashout": 899,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.05,
+      "usdDeal": null
+    },
+    {
+      "handle": "Altstein",
+      "wallet": "Faq1T2prNfydMMauFrZsKyztLa9wEzgVwy9kFjhW4igK",
+      "txCount": 2,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.035,
+      "usdDeal": null
+    },
+    {
+      "handle": "Rivercrypto",
+      "wallet": "ChnMUy4pjXw29mxPTEpGctRwa7Qd3udRFfPnNNwmV86E",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.0326,
+      "usdDeal": 7500
+    },
+    {
+      "handle": "Rocco",
+      "wallet": "2huX5X9iSeksX2vS6C5jdA5doLm2B6PykeMqqbMZq2Xu",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.0275,
+      "usdDeal": 5000
+    },
+    {
+      "handle": "Fiend",
+      "wallet": "3hJcP4wbPo6NjPcM8bMoTJTX8NavuqfNPP4mNsWznZpW",
+      "txCount": 2,
+      "totalUsdCashout": 1032,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.0275,
+      "usdDeal": 3000
+    },
+    {
+      "handle": "Hardy",
+      "wallet": "CwtBn2B5Ky8XJiyxFfvjRitsnc97M6BXmHzWpnXaU6J8",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0.025,
+      "usdDeal": null
+    },
+    {
+      "handle": "Meraki",
+      "wallet": "FvYFDc1JYiG9574dyQtr9H8jv95YFP7tKPmbWCReJSEP",
+      "txCount": 12,
+      "totalUsdCashout": 7793,
+      "cexIdentified": [],
+      "status": "active",
+      "pct": 0.0125,
+      "usdDeal": 20000
+    },
+    {
+      "handle": "SolanaRockets",
+      "wallet": "3XAcxTSiw5twRudMFhG7Mmg6h5hGxyB7jjwKVW4Nh4BT",
+      "txCount": 0,
+      "totalUsdCashout": 0,
+      "cexIdentified": [],
+      "status": "no_activity",
+      "pct": 0,
+      "usdDeal": null
+    },
+    {
+      "handle": "EduRio",
+      "wallet": "GWnE324dDERAgrQU7B6SVUbFkkzgx7JppfzvzpASKF66,EBLZB5QA9QPFwUgtDcUHeWqRptc6q5ywLk4Dk1GhWA2M",
+      "txCount": 1,
+      "totalUsdCashout": 347237,
+      "cexIdentified": [
+        "MEXC"
+      ],
+      "status": "arkham_seed"
+    },
+    {
+      "handle": "ElonTrades",
+      "wallet": "BN5edYKL6tV4ZsTKqJGJBmHjrxW4seK6i5sXSG3fGKwX",
+      "txCount": 1,
+      "totalUsdCashout": 53313,
+      "cexIdentified": [
+        "MEXC"
+      ],
+      "status": "arkham_seed"
+    },
+    {
+      "handle": "MoneyLord",
+      "wallet": "7QquANyvZgpNKdavkdDVjQ5GwwBDck7wMf9ZTTotp8JJ",
+      "txCount": 1,
+      "totalUsdCashout": 85484,
+      "cexIdentified": [
+        "Bybit"
+      ],
+      "status": "arkham_seed"
+    }
+  ]
+}
