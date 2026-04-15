@@ -402,6 +402,11 @@ model KolProfile {
   profileStrength           String                @default("minimal")
   lastEnrichedAt            DateTime?
   botifyDeal                Json?
+  pdfUrl                    String?
+  pdfGeneratedAt            DateTime?
+  pdfScore                  Int?
+  pdfVersion                Int                   @default(0)
+  lastHeliusScan            DateTime?
   aliases                   KolAlias[]
   tokenLinks                KolTokenLink[]
   cashoutCache              Json?
