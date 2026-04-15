@@ -231,108 +231,33 @@ export default function FounderIntelPage() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: BG,
-        color: TEXT,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "40px 24px 120px" }}>
+    <main className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 28,
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 900,
-                letterSpacing: "0.25em",
-                fontFamily: "monospace",
-                color: ACCENT,
-                marginBottom: 8,
-              }}
-            >
-              INTERLIGENS · ADMIN
-            </div>
-            <h1
-              style={{
-                fontSize: 30,
-                fontWeight: 900,
-                fontStyle: "italic",
-                textTransform: "uppercase",
-                letterSpacing: "-0.01em",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-              }}
-            >
+            <h1 className="text-2xl font-bold text-orange-400 flex items-center gap-3">
               Founder Intel Feed
               {unreadCount > 0 && (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minWidth: 28,
-                    height: 22,
-                    padding: "0 8px",
-                    background: "#FF3B5C",
-                    color: BG,
-                    fontSize: 11,
-                    fontFamily: "monospace",
-                    fontWeight: 900,
-                    borderRadius: 2,
-                  }}
-                >
+                <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 bg-red-600 text-white text-xs font-bold rounded">
                   {unreadCount}
                 </span>
               )}
             </h1>
+            <p className="text-gray-400 text-sm">Signal feed · internal</p>
           </div>
           <button
             onClick={handleSync}
             disabled={syncing}
-            style={{
-              padding: "12px 20px",
-              background: ACCENT,
-              color: BG,
-              border: "none",
-              fontSize: 11,
-              fontWeight: 900,
-              letterSpacing: "0.15em",
-              fontFamily: "monospace",
-              textTransform: "uppercase",
-              cursor: syncing ? "wait" : "pointer",
-              opacity: syncing ? 0.6 : 1,
-            }}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black transition"
           >
             {syncing ? "Syncing..." : "Sync"}
           </button>
         </div>
 
-        {/* Filters (sticky) */}
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            background: BG,
-            zIndex: 10,
-            paddingBottom: 20,
-            marginBottom: 24,
-            borderBottom: `1px solid ${LINE}`,
-          }}
-        >
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {/* Filters */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3 sticky top-0 z-10">
+          <div className="flex gap-2 flex-wrap">
             {CATEGORIES.map((c) => (
               <FilterPill
                 key={c}
@@ -342,7 +267,7 @@ export default function FounderIntelPage() {
               />
             ))}
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <div className="flex gap-2 flex-wrap items-center">
             {STAR_FILTERS.map((s) => (
               <FilterPill
                 key={s.label}
@@ -366,22 +291,15 @@ export default function FounderIntelPage() {
         </div>
 
         {error && (
-          <div
-            style={{
-              color: "#FF3B5C",
-              fontFamily: "monospace",
-              fontSize: 12,
-              marginBottom: 20,
-            }}
-          >
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-400 text-sm">
             {error}
           </div>
         )}
 
         {/* Feed */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="flex flex-col gap-4">
           {items.length === 0 && !loading && (
-            <div style={{ color: DIM, fontSize: 13, fontFamily: "monospace", padding: 24 }}>
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
               No items. Click SYNC to ingest.
             </div>
           )}
@@ -405,29 +323,18 @@ export default function FounderIntelPage() {
 
         {/* Load more */}
         {nextCursor && (
-          <div style={{ marginTop: 28, display: "flex", justifyContent: "center" }}>
+          <div className="mt-6 flex justify-center">
             <button
               onClick={() => loadPage({ cursor: nextCursor })}
               disabled={loading}
-              style={{
-                padding: "12px 24px",
-                background: "transparent",
-                color: ACCENT,
-                border: `1px solid ${ACCENT}80`,
-                fontSize: 10,
-                fontWeight: 900,
-                letterSpacing: "0.15em",
-                fontFamily: "monospace",
-                textTransform: "uppercase",
-                cursor: loading ? "wait" : "pointer",
-              }}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
             >
               {loading ? "Loading..." : "Charger plus"}
             </button>
           </div>
         )}
         {loading && items.length === 0 && (
-          <div style={{ color: DIM, fontFamily: "monospace", fontSize: 12, padding: 24 }}>
+          <div className="text-gray-500 text-sm p-6">
             Loading...
           </div>
         )}
@@ -448,19 +355,7 @@ function FilterPill({
   return (
     <button
       onClick={onClick}
-      style={{
-        padding: "7px 12px",
-        fontSize: 10,
-        fontWeight: 900,
-        letterSpacing: "0.12em",
-        fontFamily: "monospace",
-        textTransform: "uppercase",
-        background: active ? ACCENT : "transparent",
-        color: active ? BG : DIM,
-        border: `1px solid ${active ? ACCENT : LINE}`,
-        cursor: "pointer",
-        borderRadius: 2,
-      }}
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${active ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
     >
       {label}
     </button>
@@ -559,13 +454,7 @@ function Card({
 
   return (
     <article
-      style={{
-        background: SURFACE,
-        border: `1px solid ${LINE}`,
-        borderLeft: isUnread ? `2px solid ${ACCENT}` : `1px solid ${LINE}`,
-        padding: "18px 20px",
-        position: "relative",
-      }}
+      className={`bg-gray-900 rounded-xl border border-gray-800 p-5 relative ${isUnread ? "border-l-2 border-l-orange-500" : ""}`}
       onClick={() => {
         if (starEditing) onStopEdit();
       }}

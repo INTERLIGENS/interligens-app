@@ -108,33 +108,12 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
-      style={{
-        background: active ? "#4f46e5" : "#1e293b",
-        color: active ? "#fff" : "#94a3b8",
-        border: "1px solid " + (active ? "#4f46e5" : "#334155"),
-        borderRadius: 8,
-        padding: "8px 16px",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        transition: "all 0.15s ease",
-      }}
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${active ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
     >
       <Icon size={14} />
       {label}
       {count !== undefined && (
-        <span
-          style={{
-            background: active ? "rgba(255,255,255,0.2)" : "#334155",
-            borderRadius: 10,
-            padding: "1px 6px",
-            fontSize: 10,
-            fontWeight: 800,
-          }}
-        >
+        <span className={`inline-block px-2 py-0.5 rounded text-xs ${active ? "bg-black/20" : "bg-gray-700"}`}>
           {count}
         </span>
       )}
@@ -154,35 +133,11 @@ function Stat({
   color?: string;
 }) {
   return (
-    <div
-      style={{
-        background: "#111827",
-        border: "1px solid #1e293b",
-        borderRadius: 10,
-        padding: "16px 20px",
-        flex: 1,
-        minWidth: 140,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          color: "#64748b",
-          fontWeight: 700,
-          letterSpacing: "0.1em",
-          marginBottom: 4,
-        }}
-      >
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 flex-1 min-w-[140px]">
+      <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
         {label.toUpperCase()}
       </div>
-      <div
-        style={{
-          fontSize: 28,
-          fontWeight: 900,
-          color: color ?? "#f1f5f9",
-          fontFamily: "monospace",
-        }}
-      >
+      <div className="text-3xl font-bold text-white font-mono" style={color ? { color } : undefined}>
         {value}
       </div>
     </div>
@@ -205,49 +160,21 @@ function Pagination({
   const totalPages = Math.ceil(total / pageSize);
   if (totalPages <= 1) return null;
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 8,
-        marginTop: 16,
-        justifyContent: "flex-end",
-        alignItems: "center",
-      }}
-    >
+    <div className="flex gap-2 mt-4 justify-end items-center">
       <button
         onClick={() => onPage(Math.max(1, page - 1))}
         disabled={page === 1}
-        style={{
-          background: "#1e293b",
-          color: "#94a3b8",
-          border: "1px solid #334155",
-          borderRadius: 6,
-          padding: "6px 14px",
-          cursor: page === 1 ? "not-allowed" : "pointer",
-          opacity: page === 1 ? 0.4 : 1,
-          fontSize: 12,
-          fontWeight: 600,
-        }}
+        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
       >
         ← Prev
       </button>
-      <span style={{ color: "#6b7280", fontSize: 12 }}>
+      <span className="text-gray-500 text-sm">
         {page} / {totalPages}
       </span>
       <button
         onClick={() => onPage(Math.min(totalPages, page + 1))}
         disabled={page >= totalPages}
-        style={{
-          background: "#1e293b",
-          color: "#94a3b8",
-          border: "1px solid #334155",
-          borderRadius: 6,
-          padding: "6px 14px",
-          cursor: page >= totalPages ? "not-allowed" : "pointer",
-          opacity: page >= totalPages ? 0.4 : 1,
-          fontSize: 12,
-          fontWeight: 600,
-        }}
+        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
       >
         Next →
       </button>
@@ -1047,77 +974,36 @@ export default function IntelligencePage() {
   };
 
   return (
-    <div
-      style={{
-        background: "#0a0f1a",
-        minHeight: "100vh",
-        color: "#f1f5f9",
-        padding: 32,
-        fontFamily: "monospace",
-      }}
-    >
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            fontSize: 11,
-            color: "#ef4444",
-            fontWeight: 700,
-            letterSpacing: "0.2em",
-            marginBottom: 4,
-          }}
-        >
-          CASE INTELLIGENCE
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-orange-400">
+            Intelligence Hub
+          </h1>
+          <p className="text-gray-400 text-sm">
+            Entity scoring, source ingestion, case tracking — beta
+          </p>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>
-          Intelligence Hub
-        </h1>
-        <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-          Entity scoring, source ingestion, case tracking — beta
-        </p>
-      </div>
 
       {/* Stats bar */}
       {stats && (
-        <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+        <div className="flex gap-3 flex-wrap">
           <Stat label="Entities" value={stats.entities.total} />
           <Stat label="Sanctions" value={stats.entities.sanction} color="#ef4444" />
           <Stat label="High Risk" value={stats.entities.high} color="#f97316" />
           <Stat label="Observations" value={stats.observations} />
           <Stat label="Cases" value={stats.cases} />
-          <Stat label="Ingests" value={stats.batches} color="#3b82f6" />
+          <Stat label="Ingests" value={stats.batches} color="#f97316" />
         </div>
       )}
 
       {/* Ingest result banner */}
       {ingestResult && (
-        <div
-          style={{
-            background:
-              ingestResult.status === "success"
-                ? "#22c55e11"
-                : ingestResult.status === "failed"
-                ? "#ef444411"
-                : "#eab30811",
-            border: `1px solid ${
-              ingestResult.status === "success"
-                ? "#22c55e44"
-                : ingestResult.status === "failed"
-                ? "#ef444444"
-                : "#eab30844"
-            }`,
-            borderRadius: 10,
-            padding: "12px 16px",
-            marginBottom: 16,
-            fontSize: 12,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-3 text-sm flex justify-between items-center">
           <span>
             <strong>{ingestResult.sourceSlug}</strong> ingest{" "}
-            <span style={{ color: STATUS_COLOR[ingestResult.status] ?? "#6b7280", fontWeight: 700 }}>
+            <span className="font-semibold text-orange-400">
               {ingestResult.status}
             </span>
             {" — "}
@@ -1126,7 +1012,7 @@ export default function IntelligencePage() {
           </span>
           <button
             onClick={() => setIngestResult(null)}
-            style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer" }}
+            className="text-gray-500 hover:text-orange-400 transition bg-transparent border-none cursor-pointer"
           >
             ✕
           </button>
@@ -1134,7 +1020,7 @@ export default function IntelligencePage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+      <div className="flex gap-2 flex-wrap">
         <TabBtn
           active={tab === "entities"}
           label="Entities"
@@ -1183,6 +1069,7 @@ export default function IntelligencePage() {
       {tab === "ingestion" && <IngestionTab />}
       {tab === "cases" && <CasesTab />}
       {tab === "audit" && <AuditTab />}
+      </div>
     </div>
   );
 }

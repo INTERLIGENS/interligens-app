@@ -3,14 +3,6 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 
-const BG = "#000000";
-const ACCENT = "#FF6B00";
-const TEXT = "#FFFFFF";
-const DIM = "rgba(255,255,255,0.5)";
-const LINE = "rgba(255,255,255,0.08)";
-const SURFACE = "#0a0a0a";
-const MUTED = "rgba(255,255,255,0.35)";
-
 type Criterion = { met: boolean; value?: number; required?: number };
 
 type DetailData = {
@@ -64,39 +56,9 @@ type DetailData = {
   };
 };
 
-const statusColors: Record<string, { bg: string; fg: string; border: string }> = {
-  PENDING: { bg: "rgba(255,107,0,0.08)", fg: "#FF6B00", border: "rgba(255,107,0,0.4)" },
-  APPROVED: { bg: "rgba(74,222,128,0.08)", fg: "#4ADE80", border: "rgba(74,222,128,0.4)" },
-  REJECTED: { bg: "rgba(255,59,92,0.08)", fg: "#FF3B5C", border: "rgba(255,59,92,0.4)" },
-  VERIFIED: { bg: "rgba(74,222,128,0.08)", fg: "#4ADE80", border: "rgba(74,222,128,0.4)" },
-  TRUSTED: { bg: "rgba(255,107,0,0.12)", fg: "#FF6B00", border: "rgba(255,107,0,0.5)" },
-  SUSPENDED: { bg: "rgba(255,200,0,0.08)", fg: "#FFC800", border: "rgba(255,200,0,0.4)" },
-  REVOKED: { bg: "rgba(255,59,92,0.08)", fg: "#FF3B5C", border: "rgba(255,59,92,0.4)" },
-  ACTIVE: { bg: "rgba(74,222,128,0.06)", fg: "#4ADE80", border: "rgba(74,222,128,0.3)" },
-  APPLICANT: { bg: "rgba(255,255,255,0.04)", fg: "rgba(255,255,255,0.6)", border: LINE },
-  BETA: { bg: "rgba(255,107,0,0.08)", fg: "#FF6B00", border: "rgba(255,107,0,0.3)" },
-  TRUSTED_CONTRIBUTOR: { bg: "rgba(255,107,0,0.14)", fg: "#FF6B00", border: "rgba(255,107,0,0.6)" },
-  NEEDS_REVIEW: { bg: "rgba(255,200,0,0.08)", fg: "#FFC800", border: "rgba(255,200,0,0.4)" },
-};
-
 function Badge({ value }: { value: string }) {
-  const c = statusColors[value] ?? { bg: "rgba(255,255,255,0.04)", fg: "#888", border: LINE };
   return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "3px 10px",
-        fontSize: 9,
-        fontWeight: 900,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        fontFamily: "monospace",
-        backgroundColor: c.bg,
-        color: c.fg,
-        border: `1px solid ${c.border}`,
-        borderRadius: 2,
-      }}
-    >
+    <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-300 font-mono uppercase">
       {value.replace(/_/g, " ")}
     </span>
   );
@@ -104,18 +66,7 @@ function Badge({ value }: { value: string }) {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h2
-      style={{
-        fontSize: 11,
-        fontWeight: 900,
-        letterSpacing: "0.2em",
-        fontFamily: "monospace",
-        textTransform: "uppercase",
-        color: ACCENT,
-        marginBottom: 16,
-        marginTop: 40,
-      }}
-    >
+    <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mt-8 mb-4">
       {children}
     </h2>
   );
@@ -190,32 +141,15 @@ export default function InvestigatorDetailPage({
 
   if (error) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: BG,
-          color: TEXT,
-          padding: 40,
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        }}
-      >
-        <div style={{ color: "#FF3B5C", fontFamily: "monospace" }}>{error}</div>
+      <main className="min-h-screen bg-gray-950 text-white p-6">
+        <div className="text-red-400 text-sm">{error}</div>
       </main>
     );
   }
 
   if (!data) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: BG,
-          color: DIM,
-          padding: 40,
-          fontFamily: "monospace",
-          fontSize: 12,
-        }}
-      >
+      <main className="min-h-screen bg-gray-950 text-gray-400 p-6 text-sm">
         Loading...
       </main>
     );
@@ -225,86 +159,39 @@ export default function InvestigatorDetailPage({
   const criteria = data.eligibility.criteria;
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: BG,
-        color: TEXT,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 120px" }}>
+    <main className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <Link
           href="/admin/investigators"
-          style={{
-            fontSize: 11,
-            fontFamily: "monospace",
-            color: DIM,
-            textDecoration: "none",
-          }}
+          className="text-sm text-gray-400 hover:text-orange-400 transition"
         >
           ← Back to list
         </Link>
 
         {/* Profile card */}
-        <div style={{ marginTop: 20 }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: "0.25em",
-              fontFamily: "monospace",
-              color: ACCENT,
-              marginBottom: 8,
-            }}
-          >
-            INTERLIGENS · INVESTIGATOR DASHBOARD
-          </div>
-          <h1
-            style={{
-              fontSize: 32,
-              fontWeight: 900,
-              fontStyle: "italic",
-              textTransform: "uppercase",
-              letterSpacing: "-0.01em",
-              marginBottom: 12,
-            }}
-          >
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+          <h1 className="text-2xl font-bold text-orange-400">
             @{p.handle}
           </h1>
           {(p.legalFirstName || p.legalLastName) && (
-            <div style={{ fontSize: 14, color: DIM, marginBottom: 12 }}>
+            <div className="text-sm text-gray-400">
               {p.legalFirstName} {p.legalLastName}
               {p.country && ` · ${p.country}`}
               {p.organizationName && ` · ${p.organizationName}`}
             </div>
           )}
           {p.primaryEmail && (
-            <div
-              style={{
-                fontSize: 12,
-                color: MUTED,
-                fontFamily: "monospace",
-                marginBottom: 16,
-              }}
-            >
+            <div className="text-xs text-gray-500 font-mono">
               {p.primaryEmail}
             </div>
           )}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="flex gap-2 flex-wrap">
             <Badge value={p.verificationStatus} />
             <Badge value={p.accessLevel} />
             <Badge value={p.accessState} />
           </div>
 
-          <div
-            style={{
-              marginTop: 20,
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
-              gap: 16,
-            }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
             <Field label="Workspace activated" value={p.workspaceActivatedAt ? new Date(p.workspaceActivatedAt).toLocaleString() : "Not yet"} />
             <Field label="Last active" value={p.lastActiveAt ? new Date(p.lastActiveAt).toLocaleString() : "Never"} />
             <Field
@@ -331,13 +218,7 @@ export default function InvestigatorDetailPage({
 
         {/* Activity summary */}
         <SectionHeader>Activity Summary</SectionHeader>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-            gap: 16,
-          }}
-        >
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Metric label="Logins" value={data.activitySummary.LOGIN ?? 0} />
           <Metric label="Workspace opens" value={data.activitySummary.WORKSPACE_OPENED ?? 0} />
           <Metric label="Cases created" value={data.activitySummary.CASE_CREATED ?? 0} />
@@ -348,76 +229,34 @@ export default function InvestigatorDetailPage({
 
         {/* Eligibility */}
         <SectionHeader>Trusted Contributor Eligibility</SectionHeader>
-        <div
-          style={{
-            background: SURFACE,
-            border: `1px solid ${LINE}`,
-            padding: 20,
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+          <div className="flex flex-col gap-2">
             {Object.entries(criteria).map(([key, c]) => (
               <div
                 key={key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  fontSize: 13,
-                }}
+                className="flex items-center gap-3 text-sm"
               >
-                <span
-                  style={{
-                    color: c.met ? "#4ADE80" : "#FF3B5C",
-                    fontFamily: "monospace",
-                    fontWeight: 900,
-                    width: 14,
-                  }}
-                >
+                <span className={`font-mono font-bold w-4 ${c.met ? "text-green-400" : "text-red-400"}`}>
                   {c.met ? "✓" : "✗"}
                 </span>
-                <span style={{ color: c.met ? TEXT : DIM, textTransform: "capitalize" }}>
+                <span className={`capitalize ${c.met ? "text-white" : "text-gray-400"}`}>
                   {key.replace(/([A-Z])/g, " $1").trim()}
                 </span>
                 {c.value !== undefined && c.required !== undefined && (
-                  <span style={{ color: MUTED, fontFamily: "monospace", fontSize: 11 }}>
+                  <span className="text-gray-500 font-mono text-xs">
                     ({c.value} / {c.required})
                   </span>
                 )}
               </div>
             ))}
           </div>
-          <div
-            style={{
-              marginTop: 20,
-              paddingTop: 16,
-              borderTop: `1px solid ${LINE}`,
-              fontSize: 12,
-              fontFamily: "monospace",
-              fontWeight: 900,
-              textTransform: "uppercase",
-              letterSpacing: "0.12em",
-              color: data.eligibility.eligible ? "#4ADE80" : "#FFC800",
-            }}
-          >
+          <div className={`pt-4 border-t border-gray-800 text-sm font-mono font-bold uppercase tracking-wider ${data.eligibility.eligible ? "text-green-400" : "text-orange-400"}`}>
             {data.eligibility.eligible ? "✓ Eligible" : "Not yet eligible"}
           </div>
           <button
             onClick={() => setActionModal({ kind: "upgrade" })}
             disabled={!data.eligibility.eligible}
-            style={{
-              marginTop: 16,
-              padding: "10px 20px",
-              background: data.eligibility.eligible ? ACCENT : "rgba(255,107,0,0.2)",
-              color: BG,
-              border: "none",
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: "0.15em",
-              fontFamily: "monospace",
-              textTransform: "uppercase",
-              cursor: data.eligibility.eligible ? "pointer" : "not-allowed",
-            }}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black transition"
           >
             Upgrade to Trusted Contributor
           </button>
@@ -425,41 +264,30 @@ export default function InvestigatorDetailPage({
 
         {/* Trust actions */}
         <SectionHeader>Trust Actions</SectionHeader>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="flex gap-2 flex-wrap">
           {!p.workspaceActivatedAt && (
             <button
               onClick={() => setActionModal({ kind: "activate" })}
-              style={{
-                padding: "10px 18px",
-                background: ACCENT,
-                color: BG,
-                border: "none",
-                fontSize: 10,
-                fontWeight: 900,
-                letterSpacing: "0.15em",
-                fontFamily: "monospace",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 text-black transition"
             >
               Activate Workspace
             </button>
           )}
           <button
             onClick={() => setActionModal({ kind: "suspend", reason: "" })}
-            style={actionBtn("#FFC800")}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition"
           >
             Suspend
           </button>
           <button
             onClick={() => setActionModal({ kind: "revoke", reason: "" })}
-            style={actionBtn("#FF3B5C")}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-red-400 hover:bg-gray-700 transition"
           >
             Revoke
           </button>
           <button
             onClick={() => setActionModal({ kind: "restore" })}
-            style={actionBtn("#4ADE80")}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-green-400 hover:bg-gray-700 transition"
           >
             Restore
           </button>
@@ -467,34 +295,21 @@ export default function InvestigatorDetailPage({
 
         {/* Activity timeline */}
         <SectionHeader>Activity Timeline (Metadata Only)</SectionHeader>
-        <div
-          style={{
-            background: SURFACE,
-            border: `1px solid ${LINE}`,
-            fontSize: 11,
-            fontFamily: "monospace",
-          }}
-        >
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 text-xs font-mono">
           {data.activity.length === 0 && (
-            <div style={{ padding: 20, color: DIM }}>No activity recorded.</div>
+            <div className="text-gray-500">No activity recorded.</div>
           )}
           {data.activity.map((a) => (
             <div
               key={a.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "180px 200px 120px 1fr",
-                gap: 12,
-                padding: "10px 16px",
-                borderBottom: `1px solid ${LINE}`,
-              }}
+              className="grid grid-cols-[180px_200px_120px_1fr] gap-3 py-2 border-b border-gray-800"
             >
-              <span style={{ color: MUTED }}>
+              <span className="text-gray-500">
                 {new Date(a.createdAt).toLocaleString()}
               </span>
-              <span style={{ color: ACCENT }}>{a.event}</span>
-              <span style={{ color: MUTED }}>{a.ipAddress ?? "—"}</span>
-              <span style={{ color: DIM, wordBreak: "break-all" }}>
+              <span className="text-orange-400">{a.event}</span>
+              <span className="text-gray-500">{a.ipAddress ?? "—"}</span>
+              <span className="text-gray-400 break-all">
                 {a.metadata ? JSON.stringify(a.metadata).slice(0, 200) : "—"}
               </span>
             </div>
@@ -503,34 +318,21 @@ export default function InvestigatorDetailPage({
 
         {/* Program audit log */}
         <SectionHeader>Program Audit Log</SectionHeader>
-        <div
-          style={{
-            background: SURFACE,
-            border: `1px solid ${LINE}`,
-            fontSize: 11,
-            fontFamily: "monospace",
-          }}
-        >
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 text-xs font-mono">
           {data.programAudit.length === 0 && (
-            <div style={{ padding: 20, color: DIM }}>No audit entries.</div>
+            <div className="text-gray-500">No audit entries.</div>
           )}
           {data.programAudit.map((l) => (
             <div
               key={l.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "180px 280px 120px 1fr",
-                gap: 12,
-                padding: "10px 16px",
-                borderBottom: `1px solid ${LINE}`,
-              }}
+              className="grid grid-cols-[180px_280px_120px_1fr] gap-3 py-2 border-b border-gray-800"
             >
-              <span style={{ color: MUTED }}>
+              <span className="text-gray-500">
                 {new Date(l.createdAt).toLocaleString()}
               </span>
-              <span style={{ color: ACCENT }}>{l.event}</span>
-              <span style={{ color: MUTED }}>{l.actorId ?? "—"}</span>
-              <span style={{ color: DIM, wordBreak: "break-all" }}>
+              <span className="text-orange-400">{l.event}</span>
+              <span className="text-gray-500">{l.actorId ?? "—"}</span>
+              <span className="text-gray-400 break-all">
                 {l.metadata ? JSON.stringify(l.metadata).slice(0, 200) : "—"}
               </span>
             </div>
@@ -541,39 +343,13 @@ export default function InvestigatorDetailPage({
       {/* Action modal */}
       {actionModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-            zIndex: 100,
-          }}
+          className="fixed inset-0 bg-black/85 flex items-center justify-center p-6 z-50"
           onClick={(e) => {
             if (e.target === e.currentTarget) setActionModal(null);
           }}
         >
-          <div
-            style={{
-              background: BG,
-              border: `1px solid ${ACCENT}`,
-              padding: 32,
-              maxWidth: 480,
-              width: "100%",
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 12,
-                fontFamily: "monospace",
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-                color: ACCENT,
-                marginBottom: 16,
-              }}
-            >
+          <div className="bg-gray-900 rounded-xl border border-orange-500 p-6 max-w-md w-full space-y-4">
+            <h3 className="text-sm font-semibold text-orange-400 uppercase tracking-wider">
               Confirm {actionModal.kind}
             </h3>
             {(actionModal.kind === "suspend" || actionModal.kind === "revoke") && (
@@ -584,21 +360,10 @@ export default function InvestigatorDetailPage({
                 }
                 placeholder="Reason (required)"
                 rows={4}
-                style={{
-                  width: "100%",
-                  background: "#0d0d0d",
-                  border: `1px solid ${LINE}`,
-                  color: TEXT,
-                  padding: 12,
-                  fontSize: 13,
-                  fontFamily: "monospace",
-                  outline: "none",
-                  resize: "vertical",
-                  marginBottom: 16,
-                }}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
               />
             )}
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex gap-2">
               <button
                 onClick={runAction}
                 disabled={
@@ -606,35 +371,13 @@ export default function InvestigatorDetailPage({
                   ((actionModal.kind === "suspend" || actionModal.kind === "revoke") &&
                     !actionModal.reason?.trim())
                 }
-                style={{
-                  padding: "10px 18px",
-                  background: ACCENT,
-                  color: BG,
-                  border: "none",
-                  fontSize: 10,
-                  fontFamily: "monospace",
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black transition"
               >
                 {actionBusy ? "..." : "Confirm"}
               </button>
               <button
                 onClick={() => setActionModal(null)}
-                style={{
-                  padding: "10px 18px",
-                  background: "transparent",
-                  color: DIM,
-                  border: `1px solid ${LINE}`,
-                  fontSize: 10,
-                  fontFamily: "monospace",
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition"
               >
                 Cancel
               </button>
@@ -649,72 +392,23 @@ export default function InvestigatorDetailPage({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div
-        style={{
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: MUTED,
-          fontFamily: "monospace",
-          marginBottom: 4,
-        }}
-      >
+      <div className="text-xs text-gray-500 mb-1 block uppercase tracking-wider">
         {label}
       </div>
-      <div style={{ fontSize: 12, color: TEXT, fontFamily: "monospace" }}>{value}</div>
+      <div className="text-sm text-white font-mono">{value}</div>
     </div>
   );
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div
-      style={{
-        background: SURFACE,
-        border: `1px solid ${LINE}`,
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 28,
-          fontWeight: 900,
-          fontStyle: "italic",
-          color: TEXT,
-          lineHeight: 1,
-          marginBottom: 8,
-        }}
-      >
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+      <div className="text-3xl font-bold text-white mb-2">
         {value}
       </div>
-      <div
-        style={{
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: MUTED,
-          fontFamily: "monospace",
-        }}
-      >
+      <div className="text-xs text-gray-500 uppercase tracking-wider">
         {label}
       </div>
     </div>
   );
-}
-
-function actionBtn(color: string): React.CSSProperties {
-  return {
-    padding: "10px 18px",
-    background: "transparent",
-    color,
-    border: `1px solid ${color}80`,
-    fontSize: 10,
-    fontWeight: 900,
-    letterSpacing: "0.15em",
-    fontFamily: "monospace",
-    textTransform: "uppercase",
-    cursor: "pointer",
-  };
 }

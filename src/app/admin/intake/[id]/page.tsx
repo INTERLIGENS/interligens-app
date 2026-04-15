@@ -34,123 +34,129 @@ export default function IntakeDetail() {
 
   useEffect(() => { load(); }, [id]);
 
-  if (loading) return <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#f1f5f9", padding: 32, fontFamily: "monospace" }}>Loading...</div>;
-  if (!record)  return <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#f1f5f9", padding: 32, fontFamily: "monospace" }}>Not found</div>;
+  if (loading) return <div className="min-h-screen bg-gray-950 text-white p-6">Loading...</div>;
+  if (!record)  return <div className="min-h-screen bg-gray-950 text-white p-6">Not found</div>;
 
-  const clrMap: Record<string,string> = { ioc: "#ef4444", kol: "#8b5cf6", mixed: "#f97316", rawdoc: "#6b7280" };
+  const classColor: Record<string,string> = { ioc: "text-red-400", kol: "text-orange-300", mixed: "text-orange-400", rawdoc: "text-gray-400" };
   const ex = record.extracted ?? {};
 
   return (
-    <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#f1f5f9", padding: "32px", fontFamily: "monospace" }}>
-      <Link href="/admin/intake" style={{ color: "#4f46e5", textDecoration: "none", fontSize: 13 }}>← Inbox</Link>
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Link href="/admin/intake" className="text-sm text-gray-400 hover:text-orange-400 transition">← Inbox</Link>
 
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", margin: "16px 0 24px" }}>
-        <div>
-          <h1 style={{ fontSize: 18, fontWeight: 900, margin: "0 0 4px", fontFamily: "monospace", color: "#94a3b8" }}>{id}</h1>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ background: (clrMap[record.classification] ?? "#334155") + "33", color: clrMap[record.classification] ?? "#94a3b8", padding: "3px 10px", borderRadius: 5, fontWeight: 900, fontSize: 12 }}>
-              {record.classification?.toUpperCase()}
-            </span>
-            <span style={{ color: "#6b7280", fontSize: 12 }}>v{record.extractVersion} · {new Date(record.createdAt).toLocaleString()}</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => action("rerun_extract")} disabled={acting}
-            style={{ background: "#1e3a5f", color: "#60a5fa", border: "1px solid #1e3a5f", borderRadius: 7, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-            ↻ Rerun Extract
-          </button>
-          {record.pendingBatch && (
-            <button onClick={() => action("push_to_vault")} disabled={acting}
-              style={{ background: "#14532d", color: "#4ade80", border: "1px solid #14532d", borderRadius: 7, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-              → Push to Vault
-            </button>
-          )}
-          <button onClick={() => action("archive")} disabled={acting}
-            style={{ background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", borderRadius: 7, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-            Archive
-          </button>
-        </div>
-      </div>
-
-      {msg && <div style={{ background: msg.startsWith("✓") ? "#14532d" : "#450a0a", borderRadius: 8, padding: "10px 16px", marginBottom: 16, color: msg.startsWith("✓") ? "#4ade80" : "#fca5a5", fontSize: 13 }}>{msg}</div>}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-
-        {/* Provenance */}
-        <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 20 }}>
-          <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>PROVENANCE</div>
-          {[
-            ["Source",     record.sourceRef ?? "—"],
-            ["Submitted",  record.submittedBy ?? "—"],
-            ["Parser",     record.parserUsed],
-            ["Investigator", record.provenance?.investigatorHandle ?? "—"],
-            ["Context",    record.provenance?.context ?? "—"],
-            ["Tags",       (record.provenance?.tags ?? []).join(", ") || "—"],
-          ].map(([l,v]) => (
-            <div key={l as string} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
-              <span style={{ color: "#64748b" }}>{l}</span>
-              <span style={{ color: "#cbd5e1", maxWidth: 240, textAlign: "right", wordBreak: "break-all" }}>{v}</span>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-orange-400 font-mono">{id}</h1>
+            <div className="flex gap-2 items-center mt-2">
+              <span className={`inline-block px-2 py-0.5 rounded text-xs bg-gray-800 font-semibold ${classColor[record.classification] ?? "text-gray-400"}`}>
+                {record.classification?.toUpperCase()}
+              </span>
+              <span className="text-gray-500 text-xs">v{record.extractVersion} · {new Date(record.createdAt).toLocaleString()}</span>
             </div>
-          ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => action("rerun_extract")} disabled={acting}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+              ↻ Rerun Extract
+            </button>
+            {record.pendingBatch && (
+              <button onClick={() => action("push_to_vault")} disabled={acting}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 text-black transition">
+                → Push to Vault
+              </button>
+            )}
+            <button onClick={() => action("archive")} disabled={acting}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+              Archive
+            </button>
+          </div>
         </div>
 
-        {/* Stats */}
-        <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 20 }}>
-          <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>EXTRACTION STATS</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {msg && (
+          <div className={`rounded-lg p-3 text-sm ${msg.startsWith("✓") ? "bg-gray-900 border border-gray-800 text-green-400" : "bg-red-900/30 border border-red-700 text-red-400"}`}>
+            {msg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Provenance */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Provenance</h2>
             {[
-              ["Addresses",  ex.addressCount ?? ex.addresses?.length ?? 0],
-              ["Handles",    ex.handleCount ?? ex.handles?.length ?? 0],
-              ["Domains",    ex.domains?.length ?? 0],
-              ["TX Hashes",  ex.txHashes?.length ?? 0],
-              ["Confidence", record.routerConfidence ? (record.routerConfidence*100).toFixed(0)+"%" : "—"],
-              ["Pending Batch", record.pendingBatch ? "YES" : "no"],
+              ["Source",     record.sourceRef ?? "—"],
+              ["Submitted",  record.submittedBy ?? "—"],
+              ["Parser",     record.parserUsed],
+              ["Investigator", record.provenance?.investigatorHandle ?? "—"],
+              ["Context",    record.provenance?.context ?? "—"],
+              ["Tags",       (record.provenance?.tags ?? []).join(", ") || "—"],
             ].map(([l,v]) => (
-              <div key={l as string} style={{ background: "#0f172a", borderRadius: 8, padding: "10px 14px" }}>
-                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{l}</div>
-                <div style={{ fontSize: 18, fontWeight: 900 }}>{v}</div>
+              <div key={l as string} className="flex justify-between text-sm">
+                <span className="text-gray-500">{l}</span>
+                <span className="text-gray-300 max-w-[240px] text-right break-all">{v}</span>
               </div>
             ))}
           </div>
-          {record.linkedBatchId && (
-            <Link href={`/admin/intel-vault/batch/${record.linkedBatchId}`}
-              style={{ display: "block", marginTop: 12, background: "#14532d", color: "#4ade80", padding: "10px 16px", borderRadius: 8, textDecoration: "none", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
-              Review Batch in Intel Vault →
-            </Link>
+
+          {/* Stats */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Extraction Stats</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                ["Addresses",  ex.addressCount ?? ex.addresses?.length ?? 0],
+                ["Handles",    ex.handleCount ?? ex.handles?.length ?? 0],
+                ["Domains",    ex.domains?.length ?? 0],
+                ["TX Hashes",  ex.txHashes?.length ?? 0],
+                ["Confidence", record.routerConfidence ? (record.routerConfidence*100).toFixed(0)+"%" : "—"],
+                ["Pending Batch", record.pendingBatch ? "YES" : "no"],
+              ].map(([l,v]) => (
+                <div key={l as string} className="bg-gray-800 rounded-lg p-3">
+                  <div className="text-xs text-gray-500 mb-1">{l}</div>
+                  <div className="text-lg font-bold text-white">{v}</div>
+                </div>
+              ))}
+            </div>
+            {record.linkedBatchId && (
+              <Link href={`/admin/intel-vault/batch/${record.linkedBatchId}`}
+                className="block mt-2 bg-orange-500 hover:bg-orange-400 text-black font-bold py-2 rounded-lg text-sm text-center transition">
+                Review Batch in Intel Vault →
+              </Link>
+            )}
+          </div>
+
+          {/* Sample addresses */}
+          {ex.addresses?.length > 0 && (
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-2">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Sample Addresses ({ex.addressCount ?? ex.addresses.length})</h2>
+              {ex.addresses.slice(0,10).map((a: any, i: number) => (
+                <div key={i} className="text-xs text-gray-400 font-mono">
+                  <span className="text-gray-500 mr-2">{a.chain}</span>{a.address}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Sample handles */}
+          {ex.handles?.length > 0 && (
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-2">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Handles ({ex.handleCount ?? ex.handles.length})</h2>
+              {ex.handles.slice(0,15).map((h: any, i: number) => (
+                <div key={i} className="text-sm text-gray-300">{h.handle}</div>
+              ))}
+            </div>
+          )}
+
+          {/* Warnings */}
+          {record.warnings?.length > 0 && (
+            <div className="bg-red-900/30 border border-red-700 rounded-lg p-5 md:col-span-2 space-y-2">
+              <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider">Warnings</h2>
+              {record.warnings.map((w: string, i: number) => (
+                <div key={i} className="text-sm text-red-400">⚠ {w}</div>
+              ))}
+            </div>
           )}
         </div>
-
-        {/* Sample addresses */}
-        {ex.addresses?.length > 0 && (
-          <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 20 }}>
-            <div style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>SAMPLE ADDRESSES ({ex.addressCount ?? ex.addresses.length})</div>
-            {ex.addresses.slice(0,10).map((a: any, i: number) => (
-              <div key={i} style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4, fontFamily: "monospace" }}>
-                <span style={{ color: "#64748b", marginRight: 8 }}>{a.chain}</span>{a.address}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Sample handles */}
-        {ex.handles?.length > 0 && (
-          <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 20 }}>
-            <div style={{ fontSize: 11, color: "#8b5cf6", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>HANDLES ({ex.handleCount ?? ex.handles.length})</div>
-            {ex.handles.slice(0,15).map((h: any, i: number) => (
-              <div key={i} style={{ fontSize: 12, color: "#c4b5fd", marginBottom: 4 }}>{h.handle}</div>
-            ))}
-          </div>
-        )}
-
-        {/* Warnings */}
-        {record.warnings?.length > 0 && (
-          <div style={{ background: "#451a03", border: "1px solid #78350f", borderRadius: 12, padding: 20, gridColumn: "span 2" }}>
-            <div style={{ fontSize: 11, color: "#fb923c", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 12 }}>WARNINGS</div>
-            {record.warnings.map((w: string, i: number) => (
-              <div key={i} style={{ fontSize: 13, color: "#fdba74", marginBottom: 6 }}>⚠ {w}</div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

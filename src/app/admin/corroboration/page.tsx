@@ -1,9 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function CorroborationPage() {
   const [data, setData]       = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [msg, setMsg]         = useState<string | null>(null);
 
@@ -18,67 +17,70 @@ export default function CorroborationPage() {
   }
 
   return (
-    <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#f1f5f9", padding: "32px", fontFamily: "monospace" }}>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, letterSpacing: "0.2em", marginBottom: 4 }}>INTEL VAULT</div>
-        <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>CORROBORATION ENGINE</h1>
-        <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>Cross-source address corroboration — runs automatically every 24h</div>
-      </div>
-
-      {msg && (
-        <div style={{ background: msg.startsWith("✓") ? "#14532d" : "#450a0a", borderRadius: 8, padding: "10px 16px", marginBottom: 16, color: msg.startsWith("✓") ? "#4ade80" : "#fca5a5", fontSize: 13 }}>{msg}</div>
-      )}
-
-      <button onClick={runCorroboration} disabled={running}
-        style={{ background: running ? "#334155" : "#4f46e5", color: "#fff", border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 14, fontWeight: 900, cursor: running ? "not-allowed" : "pointer", marginBottom: 24 }}>
-        {running ? "Running..." : "▶ Run Corroboration Now"}
-      </button>
-
-      {data && (
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-            {[
-              ["Corroborated Addresses", data.corroboratedAddresses],
-              ["Labels Elevated",        data.labelsElevated],
-              ["Top Evidence",           data.top10?.[0]?.evidenceCount ?? 0],
-            ].map(([l,v]) => (
-              <div key={l as string} style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: 20, textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>{l}</div>
-                <div style={{ fontSize: 32, fontWeight: 900, color: "#4f46e5" }}>{v}</div>
-              </div>
-            ))}
-          </div>
-
-          {data.top10?.length > 0 && (
-            <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid #1e293b", fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: "0.1em" }}>TOP CORROBORATED ADDRESSES</div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: "#0f172a" }}>
-                    {["Address","Chain","Evidence Count","Confidence"].map(h => (
-                      <th key={h} style={{ padding: "8px 14px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.top10.map((r: any, i: number) => (
-                    <tr key={i} style={{ borderBottom: "1px solid #0f172a" }}>
-                      <td style={{ padding: "8px 14px", color: "#94a3b8", fontFamily: "monospace", fontSize: 11 }}>{r.address}</td>
-                      <td style={{ padding: "8px 14px", color: "#64748b" }}>{r.chain}</td>
-                      <td style={{ padding: "8px 14px" }}>
-                        <span style={{ background: "#1e3a5f", color: "#60a5fa", padding: "2px 8px", borderRadius: 4, fontWeight: 700 }}>{r.evidenceCount}</span>
-                      </td>
-                      <td style={{ padding: "8px 14px" }}>
-                        <span style={{ color: r.confidence === "high" ? "#22c55e" : r.confidence === "medium" ? "#f59e0b" : "#6b7280", fontWeight: 700 }}>{r.confidence}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <h1 className="text-2xl font-bold text-orange-400">Corroboration Engine</h1>
+          <p className="text-gray-400 text-sm">Cross-source address corroboration — runs automatically every 24h</p>
         </div>
-      )}
+
+        {msg && (
+          <div className={`rounded-lg p-3 text-sm ${msg.startsWith("✓") ? "bg-gray-900 border border-gray-800 text-green-400" : "bg-red-900/30 border border-red-700 text-red-400"}`}>
+            {msg}
+          </div>
+        )}
+
+        <button onClick={runCorroboration} disabled={running}
+          className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition text-sm">
+          {running ? "Running..." : "▶ Run Corroboration Now"}
+        </button>
+
+        {data && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                ["Corroborated Addresses", data.corroboratedAddresses],
+                ["Labels Elevated",        data.labelsElevated],
+                ["Top Evidence",           data.top10?.[0]?.evidenceCount ?? 0],
+              ].map(([l,v]) => (
+                <div key={l as string} className="bg-gray-900 rounded-xl border border-gray-800 p-5 text-center">
+                  <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">{l}</div>
+                  <div className="text-3xl font-bold text-orange-400">{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {data.top10?.length > 0 && (
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Top Corroborated Addresses</h2>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                      {["Address","Chain","Evidence Count","Confidence"].map(h => (
+                        <th key={h} className="text-left py-2 px-3 font-semibold">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.top10.map((r: any, i: number) => (
+                      <tr key={i} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                        <td className="py-2 px-3 text-gray-400 font-mono text-xs">{r.address}</td>
+                        <td className="py-2 px-3 text-gray-500">{r.chain}</td>
+                        <td className="py-2 px-3">
+                          <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-orange-400 font-semibold">{r.evidenceCount}</span>
+                        </td>
+                        <td className="py-2 px-3">
+                          <span className={`font-semibold ${r.confidence === "high" ? "text-green-400" : r.confidence === "medium" ? "text-orange-400" : "text-gray-500"}`}>{r.confidence}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
