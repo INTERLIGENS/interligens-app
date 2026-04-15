@@ -378,6 +378,66 @@
       "xai_role": "Special Projects Lead",
       "related_claims": ["C10"],
       "description_fr": "Lors d'un X Space le 18 février 2025, Rus Yusupov a publiquement confirmé une relation de travail directe avec Rylan Gade, déclarant 'He is working directly with Rylan' ('Il travaille directement avec Rylan'). Ce X Space a été documenté par @PeterGirr et @WiseAdmiral. Rylan Gade (@rylangade) est Special Projects Lead chez xAI (la société d'IA d'Elon Musk). Gade a publiquement recommandé Rus Yusupov et a lui-même posté au sujet du token $VINE. Combiné avec deux autres acteurs affiliés à X/xAI déjà reportés à la SEC — @chrisparkX et @Nate_Esparza — ceci établit un triangle de conflits d'intérêts matériels entre : (1) xAI (via le rôle senior de Rylan Gade et ses posts publics sur VINE), (2) Rus Yusupov (déployeur VINE), et (3) la promotion et le trading du token VINE lui-même. Ce claim corrobore et précise directement le C10 (post de @aixbt_agent du 8 fév 2025 : 'x team members loading up on $VINE') — les 'membres de l'équipe X' n'étaient pas une affirmation marketing vague, c'étaient des individus identifiables ayant des rôles opérationnels chez xAI, avec une exposition publique à VINE et des relations de travail confirmées avec le créateur du token. Le signalement à la SEC de @chrisparkX et @Nate_Esparza établit que le régulateur a déjà des motifs d'enquêter sur le chevauchement xAI-VINE ; le C14 étend ce périmètre à Rylan Gade sur la base de la confirmation publique par Rus lui-même de la relation de travail. Ajouté le 2026-04-15."
+    },
+    {
+      "claim_id": "C15",
+      "title": "Telegram export 280,861 messages — Rus admissions 'no roadmap / only a community coin / no Dev Team' + organized raid operation + Rylan embedded in group",
+      "severity": "CRITICAL",
+      "status": "TELEGRAM_ARCHIVED",
+      "description": "Full Telegram Desktop HTML export of the official $VINE group (ChatExport_2026-04-15, 282 HTML files, 280,861 messages, 4,730 unique senders, 86,290 messages in the Jan 23 – Feb 28 2025 window) was parsed by INTERLIGENS on 2026-04-16. Five structural findings make this the most damaging evidence added to the casefile to date: (1) Rus Yusupov is directly quoted in the Telegram on 2025-02-19 (via member repeating Rus's X Space statement from the previous day): 'he said there is no roadmap, that vine is only a community coin and he is working directly with Rylan' — this confirms C14 verbatim from inside the official group one day after the X Space. (2) On 2025-03-05 a member summarizes Rus's own clarification: 'There is no Dev Team. There is Rus, our Founder and Co Founder of the original Vine platform, now owned by X/Twitter/Elon, and the Mod Team which consists of a dozen holders' — Rus explicitly disclaims any product engineering team behind VINE, converting the 'memecoin as product' marketing narrative into an acknowledged community project with no real deliverables. (3) Rylan Gade was personally active inside the official $VINE Telegram group during Feb 7-9, 2025, posting at least 8 X post links promoting VINE directly into the group chat — he was not an external endorser but an embedded operational participant. (4) An organized raid operation was running inside the group, powered by the 'Raidar' raid bot, with formal raid campaigns targeting specific tweets with hard quotas (500 likes, 300 retweets, 100 replies, 500 bookmarks, 10-minute sprints). This is structural proof that VINE's social media engagement was astroturfed via coordinated bot-directed pump activity, not organic community enthusiasm. (5) Rus himself is operationally active in the group (posting Feb 5-9 2025) directing strategy: pursuing a Super Bowl ad ($2.1M FOX spot quoted), directing community video production ('6-second square videos to go viral on X'), setting engagement goals ('Can our tweets start getting 1m+ views?'). Combined, these findings establish that Rus is not a distant co-founder who 'launched a memecoin for fun' — he is the operational director of an organized pump campaign with embedded xAI personnel and bot-coordinated astroturfing. Added 2026-04-16.",
+      "category": "telegram_operational_evidence",
+      "actors": [
+        "Rus Yusupov (Rus)",
+        "Rylan Gade (Rylan, xAI) — embedded in group",
+        "Joshua / @paperthynn — mod",
+        "Sol Goodman / @itsSol_Goodman — mod",
+        "Backwoods — mod",
+        "Raidar bot — raid coordination infrastructure",
+        "~4,730 unique senders in the group"
+      ],
+      "date": "2025-02-19",
+      "evidence_refs": [
+        "src/data/vine-telegram-analysis.json (801 KB — 280,861 messages parsed)",
+        "scripts/osint/analyzeVineTelegram.py",
+        "Telegram export ChatExport_2026-04-15 (282 HTML files)",
+        "Rus Telegram message 2025-02-05 03:05 — 'I really wanna do a superbowl ad for $VINE'",
+        "Rus Telegram message 2025-02-06 15:26 — '$2.1M FOX spot' pursuit",
+        "Rus Telegram message 2025-02-07 15:24 — 'TAKE MY SILENCE ON X AS A BLESSING'",
+        "Rus Telegram message 2025-02-09 03:39 — '6-second square videos to go viral on X'",
+        "Member quote 2025-02-19 17:32 — verbatim 'he is working directly with Rylan'",
+        "Member quote 2025-03-05 16:30 — verbatim 'there is no Dev Team'",
+        "Raidar bot raid-end messages with completion quotas (multiple occurrences Feb 5-28 2025)",
+        "Rylan Gade X-link posts in group Feb 7-9 2025 (8 occurrences minimum)"
+      ],
+      "thread_url": "https://x.com/rus",
+      "rus_telegram_participation": {
+        "first_message": "2025-02-05 02:13 UTC",
+        "messages_in_group": 88,
+        "key_topics": ["Super Bowl ad pursuit", "Community video strategy", "Engagement goal setting", "Direct member welcome", "Token listing progress (dexscreener, Binance application NDA)"]
+      },
+      "description_fr": "L'export Telegram Desktop HTML du groupe officiel $VINE (ChatExport_2026-04-15, 282 fichiers HTML, 280 861 messages, 4 730 auteurs uniques, 86 290 messages dans la fenêtre 23 jan – 28 fév 2025) a été analysé par INTERLIGENS le 16 avril 2026. Cinq constats structurels font de cette pièce la plus lourde ajoutée au dossier à ce jour : (1) Rus Yusupov est directement cité dans le Telegram le 19 février 2025 (via un membre reprenant la déclaration de Rus lors du X Space de la veille) : 'he said there is no roadmap, that vine is only a community coin and he is working directly with Rylan' — confirmant le C14 de manière verbatim depuis l'intérieur du groupe officiel un jour après le X Space. (2) Le 5 mars 2025, un membre résume la clarification de Rus lui-même : 'There is no Dev Team. There is Rus, our Founder and Co Founder of the original Vine platform, now owned by X/Twitter/Elon, and the Mod Team which consists of a dozen holders' — Rus désavoue explicitement toute équipe d'ingénierie produit derrière VINE, convertissant le narratif marketing 'memecoin-as-product' en un projet communautaire reconnu sans livrables réels. (3) Rylan Gade était personnellement actif dans le groupe Telegram officiel $VINE entre le 7 et le 9 février 2025, postant au moins 8 liens vers ses propres X posts faisant la promotion de VINE directement dans le chat du groupe — il n'était pas un endorser externe mais un participant opérationnel embarqué. (4) Une opération de raids organisée était en cours dans le groupe, alimentée par le bot 'Raidar', avec des campagnes de raid formelles ciblant des tweets spécifiques avec des quotas durs (500 likes, 300 retweets, 100 réponses, 500 bookmarks, sprints de 10 minutes). C'est la preuve structurelle que l'engagement réseau social de VINE était astroturfé via une activité de pump coordonnée dirigée par bot, et non un enthousiasme communautaire organique. (5) Rus lui-même est opérationnellement actif dans le groupe (postant entre le 5 et le 9 février 2025) en dirigeant la stratégie : poursuivant une publicité Super Bowl (2,1M$ chez FOX), dirigeant la production vidéo communautaire ('vidéos de 6 secondes au format carré pour devenir virales sur X'), fixant des objectifs d'engagement ('nos tweets peuvent-ils commencer à atteindre 1M+ vues ?'). Ensemble, ces constats établissent que Rus n'est pas un cofondateur distant ayant 'lancé un memecoin pour le fun' — c'est le directeur opérationnel d'une campagne de pump organisée avec du personnel xAI embarqué et un astroturfing coordonné par bot. Ajouté le 16 avril 2026."
+    },
+    {
+      "claim_id": "C16",
+      "title": "Identity resolution — @PeterGirr = Wise Admiral (single person), X Space host of the 24/7 VINE operation",
+      "severity": "HIGH",
+      "status": "TELEGRAM_ARCHIVED",
+      "description": "Member 'seymour' confirmed in the official $VINE Telegram group on 2025-02-08 01:11 UTC that the three main X Spaces hosts for the $VINE community are: '1. hbar (thefarklord), Wise Admiral (PeterGirr), and Christiano Covino (heyChristiano)'. This explicitly states that the handle @PeterGirr on X is operated by the same person who goes by 'Wise Admiral'. A second member message on 2025-02-10 07:16 corroborates: 'The latest tweet from Wise Admiral (Peter Girr) shows some good thinking'. The INTERLIGENS OSINT case until now treated PeterGirr and WiseAdmiral as two separate X Space documenter witnesses (referenced in C14 evidence). They are in fact ONE PERSON using two identifiers — @PeterGirr on X and 'Wise Admiral' as his public persona name. The identity resolution matters for witness reliability assessment (a single witness is different from two independent witnesses) and for subpoena scoping. Additionally, a member quote on 2025-02-07 12:59 establishes the scale of the Space operation: 'the spaces on X that are running almost 18 hours every day'. This means PeterGirr/Wise Admiral was not a casual listener — he was one of three rotating hosts running an ~18-hour-per-day X Space operation for $VINE during peak pump. Added 2026-04-16.",
+      "category": "identity_resolution",
+      "actors": [
+        "@PeterGirr / Wise Admiral / Peter Girr (single person, 3 identifiers)",
+        "@thefarklord (hbar) — second Space host",
+        "@heyChristiano (Christiano Covino) — third Space host"
+      ],
+      "date": "2025-02-08",
+      "evidence_refs": [
+        "src/data/vine-telegram-analysis.json q4_key_people_mentions.PeterGirr",
+        "Telegram seymour message 2025-02-08 01:11 UTC (explicit naming of 3 Space hosts)",
+        "Telegram Tom message 2025-02-10 07:16 UTC ('Wise Admiral (Peter Girr)')",
+        "Telegram Reda Hanna message 2025-02-07 12:59 UTC ('spaces on X that are running almost 18 hours every day')"
+      ],
+      "thread_url": "https://x.com/petergirr",
+      "description_fr": "Le membre 'seymour' a confirmé dans le groupe Telegram officiel $VINE le 8 février 2025 à 01:11 UTC que les trois principaux hôtes de X Spaces pour la communauté $VINE sont : '1. hbar (thefarklord), Wise Admiral (PeterGirr), et Christiano Covino (heyChristiano)'. Cette déclaration établit explicitement que le handle @PeterGirr sur X est opéré par la même personne qui se fait appeler 'Wise Admiral'. Un second message de membre le 10 février 2025 07:16 corrobore : 'Le dernier tweet de Wise Admiral (Peter Girr) montre une bonne réflexion'. L'enquête OSINT INTERLIGENS traitait jusqu'ici PeterGirr et WiseAdmiral comme deux témoins documenteurs distincts du X Space (référencés dans les preuves du C14). Ils sont en fait UNE SEULE PERSONNE utilisant deux identifiants — @PeterGirr sur X et 'Wise Admiral' comme nom de persona publique. La résolution d'identité compte pour l'évaluation de la fiabilité du témoignage (un seul témoin est différent de deux témoins indépendants) et pour le cadrage des réquisitions. De plus, une citation de membre le 7 février 2025 à 12:59 établit l'échelle de l'opération Spaces : 'les spaces sur X qui tournent presque 18 heures par jour'. Cela signifie que PeterGirr/Wise Admiral n'était pas un auditeur occasionnel — c'était l'un des trois hôtes rotatifs faisant tourner une opération de X Space d'environ 18 heures par jour pour $VINE pendant le pic du pump. Ajouté le 16 avril 2026."
     }
   ]
 }
