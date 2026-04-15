@@ -60,14 +60,14 @@ const SECTIONS: Section[] = [
     title: "Donnees",
     links: [
       { label: "Export", href: "/admin/export" },
-      { label: "Stats plateforme", href: "/admin/export" },
+      { label: "Stats plateforme", href: "/admin/stats" },
     ],
   },
   {
     title: "Systeme",
     links: [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
-      { label: "Transparency", href: "/admin/intelligence" },
+      { label: "Documents", href: "/admin/documents" },
     ],
   },
 ];

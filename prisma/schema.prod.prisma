@@ -1962,3 +1962,23 @@ model FounderIntelIngestRun {
   errors        String[]
   status        IntelRunStatus @default(RUNNING)
 }
+
+// ─── ADMIN DOCUMENTS ────────────────────────────────────────────────────────
+// Admin-only document library (NDA, Terms, Data Room, operational docs).
+// Files live in R2; this table stores metadata + r2Key.
+
+model AdminDocument {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String // LEGAL | DATA_ROOM | OPERATIONAL | EDITORIAL | CONFIG
+  version     String?
+  r2Key       String?
+  r2Url       String?
+  status      String   @default("pending") // pending | uploaded
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([createdAt(sort: Desc)])
+}
