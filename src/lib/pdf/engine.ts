@@ -471,7 +471,7 @@ export async function generateCasePdf(handle: string): Promise<PdfGenerationResu
       );
     }
 
-    const pdfUrl = `${publicBase}/${latestKey}`;
+    const pdfUrl = `/api/pdf/${encodeURIComponent(handle)}`;
     const archiveUrl = `${publicBase}/${archiveKey}`;
 
     const nextVersion = (profile.pdfVersion || 0) + 1;

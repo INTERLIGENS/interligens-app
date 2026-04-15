@@ -1,0 +1,142 @@
+{
+  "summary": {
+    "wallet": "Hka5a2b35xPAuDgAxCX1r5yzFXG7vPLahrBCqPG1GSB3",
+    "mint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
+    "tokenAccountsFound": 1,
+    "currentBalance": 0,
+    "signaturesInspected": 154,
+    "eventsWithBotifyMovement": 11,
+    "totalBought": 75592.45772699988,
+    "totalSold": 0,
+    "totalReceived": 1343468.783497,
+    "totalSent": 1419061.2412239998,
+    "totalUsdBuy": 675.0123762000001,
+    "totalUsdSell": 0,
+    "firstActivity": "2025-04-02T22:20:00.000Z",
+    "lastActivity": "2026-01-05T17:03:11.000Z",
+    "note": "USD estimates use SOL=$150 fallback (no PriceCache lookup in this script). For absolute precision use on-chain pricing at blockTime."
+  },
+  "events": [
+    {
+      "date": "2026-01-05T17:03:11.000Z",
+      "blockTime": 1767632591,
+      "txHash": "5zWoYdAwJaJC1f3v8A55pMrfptdm4eruZSK3Np7RK9ULqA66KWFV9yaWKXp324EkpjK4yNpVH7gZf2Eemtoswgo9",
+      "type": "send",
+      "botifyDelta": -614061.241224,
+      "solDelta": -0.00010448000000001789,
+      "usdEstimate": 0.015672000000002684,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "fallback_no_sol"
+    },
+    {
+      "date": "2025-12-11T21:18:29.000Z",
+      "blockTime": 1765487909,
+      "txHash": "62fJFDKhjiu8Jnpa9fqJErRzTxaAkprtBP8BAqLLgQpWWVe565ijywWQa8svd5h3fAeZ44VuSkuhEmN5RbRZ2RzP",
+      "type": "receive",
+      "botifyDelta": 116081.308356,
+      "solDelta": 0,
+      "usdEstimate": 0,
+      "counterparty": "3BMa6SkeiJ6e1g2jRq4JyZ265ioPh5zSa1qJrnd63rXu",
+      "pricingSource": "fallback_no_sol"
+    },
+    {
+      "date": "2025-05-14T18:17:13.000Z",
+      "blockTime": 1747246633,
+      "txHash": "4Ex6PDAXDmwf13ZSe7wU2ppPZaYPvotXGqTW7HKczie72pp3U3zj8TbaaM21o8YYYFmZQ9NeWdEsNyCM3YDpgM5F",
+      "type": "send",
+      "botifyDelta": -55000,
+      "solDelta": -0.002080445,
+      "usdEstimate": 0.31206675000000006,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "sol_movement"
+    },
+    {
+      "date": "2025-05-09T13:21:57.000Z",
+      "blockTime": 1746796917,
+      "txHash": "3ZynKyqUCP7FYgnEKkbF5jarHmKZd6pGscXzePUZiX4Jt2UjS9tFvorSANJ9V6v2NMfC956BFYNqJG7iSEux95xC",
+      "type": "send",
+      "botifyDelta": -150000,
+      "solDelta": -0.0007856320000000014,
+      "usdEstimate": 0.11784480000000021,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "fallback_no_sol"
+    },
+    {
+      "date": "2025-05-08T10:43:05.000Z",
+      "blockTime": 1746700985,
+      "txHash": "5dJjx7QarLGnPBd3pN6pDGXSqYVaggpVN4MGBFS4QfMQ6458FGMVq9RrARyyxFmVdMwWp2cuGP4aNSWmFvGjsHMx",
+      "type": "send",
+      "botifyDelta": -300000,
+      "solDelta": -0.002385654000000001,
+      "usdEstimate": 0.3578481000000001,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "sol_movement"
+    },
+    {
+      "date": "2025-05-06T21:06:04.000Z",
+      "blockTime": 1746565564,
+      "txHash": "22NS6JRogJBQDCpNqtAizJTxgvrS1rcyTMHh42QZY7NHQJuhCJhqSh2Thy5auLCRjY8SNUDsCGPnHLDCsFPBUcY2",
+      "type": "send",
+      "botifyDelta": -99999.99999999988,
+      "solDelta": -0.00012658699999999745,
+      "usdEstimate": 0.018988049999999618,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "fallback_no_sol"
+    },
+    {
+      "date": "2025-04-25T16:36:16.000Z",
+      "blockTime": 1745598976,
+      "txHash": "5BjdXWa8F7kzj7HMFjp85LzCsQLnxRG1XWRZcmgdbMoVNPBZaDWiLyaswaHdUmiKs9Q3Ho68zfqhfZRLuokRgtbm",
+      "type": "send",
+      "botifyDelta": -200000,
+      "solDelta": -0.00008600100000000221,
+      "usdEstimate": 0.012900150000000332,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "fallback_no_sol"
+    },
+    {
+      "date": "2025-04-23T13:57:16.000Z",
+      "blockTime": 1745416636,
+      "txHash": "5Ah7NVCB8pjk4d5dJcPaWUzLdxAWXNyVkWP6MAZf13KxjqqCapE1kmeZPcc17k4mh7KcnpX41e11dDyR2uBGztri",
+      "type": "receive",
+      "botifyDelta": 45606.52488199994,
+      "solDelta": -0.00008600100000000221,
+      "usdEstimate": 0.012900150000000332,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "fallback_no_sol"
+    },
+    {
+      "date": "2025-04-07T13:25:16.000Z",
+      "blockTime": 1744032316,
+      "txHash": "CisTCo6FnsQ4fxYV1jCKf1PGrfjsyusi3erVMJyL2oLZnzF2hDQ36tDW3ErbPXwc7aHyG83ak8DDj3Q5kwPRLbF",
+      "type": "receive",
+      "botifyDelta": 195210.90977200004,
+      "solDelta": 0,
+      "usdEstimate": 0,
+      "counterparty": "BnVtpmb68JS3wf1zBHCevtt6epq5VDBxjxfGVYWsWVN9",
+      "pricingSource": "fallback_no_sol"
+    },
+    {
+      "date": "2025-04-05T10:34:11.000Z",
+      "blockTime": 1743849251,
+      "txHash": "AfwtzH2HXqG6QhVJBw2g5ZJEMuGSUV1YhDfhCearWCA79RRKaEtH8e9geDfWxiUbNmrpDGHA5rpRrGd5ZwdhUqR",
+      "type": "buy",
+      "botifyDelta": 75592.45772699988,
+      "solDelta": -4.500082508,
+      "usdEstimate": 675.0123762000001,
+      "counterparty": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "pricingSource": "sol_movement"
+    },
+    {
+      "date": "2025-04-02T22:20:00.000Z",
+      "blockTime": 1743632400,
+      "txHash": "3n8fwxh189taZhBhQvkQoapwEZgfRCnCJLhhG8eHjCCiH3kQCFjsGR4PTqLJf8SUk5F6TprZF3U5UfsN4GRzV1kK",
+      "type": "receive",
+      "botifyDelta": 986570.040487,
+      "solDelta": 0,
+      "usdEstimate": 0,
+      "counterparty": "BnVtpmb68JS3wf1zBHCevtt6epq5VDBxjxfGVYWsWVN9",
+      "pricingSource": "fallback_no_sol"
+    }
+  ]
+}
