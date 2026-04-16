@@ -19,9 +19,9 @@ const EVIDENCE: EvidenceItem[] = [
     nom: "document_interne_botify_original.pdf",
     affaire: "BOTIFY",
     date: "2026-04-16",
-    hash: "1a2cbdad34771d87472e14fa3fb8cc6961e34328a37a79cacd3bc8f49b369920",
+    hash: "c29122cbda2bf90568259cdaf6b55b60152950a8773e30809574529959770feb",
     statut: "A_CONFIRMER",
-    note: "Registre paiements KOL — James/Orbit/Sam — TX Solscan vérifiables",
+    note: "Document BOTIFY complet 15 pages — PIÈCE MAÎTRESSE — pitch deck + 40+ KOLs + F&F + dépenses TX Solscan",
     path: "evidence/botify/document_interne_botify_original.pdf",
   },
   {
