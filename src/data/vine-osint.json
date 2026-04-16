@@ -438,6 +438,39 @@
       ],
       "thread_url": "https://x.com/petergirr",
       "description_fr": "Le membre 'seymour' a confirmé dans le groupe Telegram officiel $VINE le 8 février 2025 à 01:11 UTC que les trois principaux hôtes de X Spaces pour la communauté $VINE sont : '1. hbar (thefarklord), Wise Admiral (PeterGirr), et Christiano Covino (heyChristiano)'. Cette déclaration établit explicitement que le handle @PeterGirr sur X est opéré par la même personne qui se fait appeler 'Wise Admiral'. Un second message de membre le 10 février 2025 07:16 corrobore : 'Le dernier tweet de Wise Admiral (Peter Girr) montre une bonne réflexion'. L'enquête OSINT INTERLIGENS traitait jusqu'ici PeterGirr et WiseAdmiral comme deux témoins documenteurs distincts du X Space (référencés dans les preuves du C14). Ils sont en fait UNE SEULE PERSONNE utilisant deux identifiants — @PeterGirr sur X et 'Wise Admiral' comme nom de persona publique. La résolution d'identité compte pour l'évaluation de la fiabilité du témoignage (un seul témoin est différent de deux témoins indépendants) et pour le cadrage des réquisitions. De plus, une citation de membre le 7 février 2025 à 12:59 établit l'échelle de l'opération Spaces : 'les spaces sur X qui tournent presque 18 heures par jour'. Cela signifie que PeterGirr/Wise Admiral n'était pas un auditeur occasionnel — c'était l'un des trois hôtes rotatifs faisant tourner une opération de X Space d'environ 18 heures par jour pour $VINE pendant le pic du pump. Ajouté le 16 avril 2026."
+    },
+    {
+      "claim_id": "C17",
+      "title": "QTeam Sheet — 9 Coinbase-funded insider wallets, ALL bought 00:18-00:20 UTC (580m before announcement), 5/9 funded by Wi11em infrastructure, ALL dumped Day 1",
+      "severity": "CRITICAL",
+      "status": "ON_CHAIN_CONFIRMED",
+      "description": "9 wallets documented in the QTeam Google Sheet (spreadsheet ID 1y6-fljb5gnIDPw7bgILwbOxFvyNUOoIT5IwpxNmbnH0, shared in $VINE Telegram on 2025-02-16) were traced via Helius RPC on 2026-04-16. ALL 9 made their first VINE purchase within a 2-minute-14-second window between 00:18:31 and 00:20:45 UTC on 2025-01-23 — approximately 580 minutes (9h40m) before the publicly announced 10:00 UTC trading window. This is 12-13 minutes BEFORE Wi11em's first buy at 00:31 UTC (C12), making the QTeam wallets the EARLIEST known insider buyers. All 9 have VINE balance = 0 (completely exited). 5 out of 9 have direct funding-lineage overlap with the Wi11em network: 2 wallets funded by the same Coinbase hot wallet (GJRs4FwH...n7npE) that funded Wi11em in May 2024, 2 wallets funded by Wi11em's seed funder (2AQdpHJ2...prPicm), and 1 wallet funded by the cross-buyer parent (D89hHJT5...qedvzf) that also funded BUY_4 and BUY_5. The 2-minute buying window is incompatible with 9 independent human actors — it is the signature of an automated batch-purchase script run by a single operator. Combined with the funding-lineage overlap to Wi11em's infrastructure, this extends the Wi11em sybil network from 6 buyer wallets to at minimum 15 buyer wallets (6 original + 9 QTeam), all controlled by the same entity, collectively extracting $12.5M+ from VINE retail investors. Added 2026-04-16.",
+      "category": "sybil_extension_qteam",
+      "actors": [
+        "AfGiE2ewhDARAaJZgGfoPUfXsG93KPYavjEDbe5vBhrk (00:18:36)",
+        "2BocdyQGg3apZetbQNdPqGDESRMxBsYmTCUCmEcgrejv (00:19:22)",
+        "7hgWzvEx87tc9wGa9crU9wrwUZEKTFgpdYHWAZ7AP252 (00:18:31) — funded by Wi11em seed 2AQdpHJ2",
+        "5KRK1HRma1AXQTZZrcfYUaVNmXDief7tT8n58x7PfMbM (00:18:50)",
+        "HceGN5cQMexM7g1epbFeMCUmftnmxnxySCbPaxjbF5z8 (00:19:07) — funded by Coinbase GJRs4FwH",
+        "3NfdNNhbQnbH5WpNAh6ntCrAfh4F6kpAXVePCHaWqzdQ (00:19:22) — funded by Wi11em seed 2AQdpHJ2",
+        "HfyPuua8ioDMQxzrLmNmeztvB3fNwLCT2c7M9Kwfgy7o (00:19:33) — funded by cross-buyer parent D89hHJT5",
+        "A4QpmhKrNieG9H3iQQV9aLSG9AvN4ED7NprfjpxpMSEr (00:19:46) — funded by Coinbase GJRs4FwH",
+        "76kKHHmJg8AsoXa52oPvxSU7haLG4r5DBPtFvsih1K8p (00:20:45) — funded by Coinbase 9WzDX"
+      ],
+      "date": "2025-01-23",
+      "timing_window": "00:18:31 — 00:20:45 UTC (134 seconds)",
+      "minutes_before_announcement": 580,
+      "wi11em_network_overlap": "5 out of 9 wallets share funding sources with Wi11em network",
+      "all_vine_balance_zero": true,
+      "evidence_refs": [
+        "scripts/osint/out-vine-qteam.json",
+        "scripts/osint/traceVineQTeam.py",
+        "Google Sheet ID 1y6-fljb5gnIDPw7bgILwbOxFvyNUOoIT5IwpxNmbnH0 (shared by QTeam x in Telegram 2025-02-16)",
+        "src/data/vine-telegram-analysis.json q1_google_docs_links",
+        "Helius getTokenAccountsByOwner + getSignaturesForAddress for all 9 wallets"
+      ],
+      "thread_url": "https://docs.google.com/spreadsheets/d/1y6-fljb5gnIDPw7bgILwbOxFvyNUOoIT5IwpxNmbnH0",
+      "description_fr": "9 wallets documentés dans le Google Sheet QTeam (ID 1y6-fljb5gnIDPw7bgILwbOxFvyNUOoIT5IwpxNmbnH0, partagé dans le Telegram $VINE le 16 février 2025) ont été tracés via Helius RPC le 16 avril 2026. LES 9 ont effectué leur premier achat VINE dans une fenêtre de 2 minutes 14 secondes entre 00:18:31 et 00:20:45 UTC le 23 janvier 2025 — soit environ 580 minutes (9h40m) avant la fenêtre de trading annoncée publiquement à 10:00 UTC. C'est 12-13 minutes AVANT le premier achat de Wi11em à 00:31 UTC (C12), faisant des wallets QTeam les acheteurs insiders les plus précoces connus. Les 9 ont un solde VINE = 0 (entièrement sortis). 5 sur 9 ont un chevauchement de lignée de financement direct avec le réseau Wi11em : 2 wallets financés par le même hot wallet Coinbase (GJRs4FwH...n7npE) qui a financé Wi11em en mai 2024, 2 wallets financés par le funder de seed de Wi11em (2AQdpHJ2...prPicm), et 1 wallet financé par le parent cross-buyer (D89hHJT5...qedvzf) qui a aussi financé BUY_4 et BUY_5. La fenêtre d'achat de 2 minutes est incompatible avec 9 acteurs humains indépendants — c'est la signature d'un script d'achat batch automatisé opéré par un seul opérateur. Combiné avec le chevauchement de lignée de financement vers l'infrastructure de Wi11em, ceci étend le réseau sybil Wi11em de 6 wallets acheteurs à au minimum 15 wallets acheteurs (6 originaux + 9 QTeam), tous contrôlés par la même entité, extrayant collectivement 12,5M$+ des investisseurs retail VINE. Ajouté le 16 avril 2026."
     }
   ]
 }

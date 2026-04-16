@@ -3,7 +3,7 @@
   "rus_deployer": "4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4",
   "launch_date": "2025-01-23",
   "dump_date": "2025-01-26",
-  "generated_at": "2026-04-15T20:28:52.387445+00:00",
+  "generated_at": "2026-04-16T00:45:00Z",
   "buyers": [
     {
       "label": "Wi11em (INSIDER_MAIN)",
@@ -34,6 +34,119 @@
       "label": "BUY_5",
       "address": "4uLDrqss4mcVjJKrqcr4PfyCQmFhNkBLu5Aqb8Sy3yeP",
       "solscan_url": "https://solscan.io/account/4uLDrqss4mcVjJKrqcr4PfyCQmFhNkBLu5Aqb8Sy3yeP"
+    },
+    {
+      "label": "QTeam_AfGiE2",
+      "address": "AfGiE2ewhDARAaJZgGfoPUfXsG93KPYavjEDbe5vBhrk",
+      "solscan_url": "https://solscan.io/account/AfGiE2ewhDARAaJZgGfoPUfXsG93KPYavjEDbe5vBhrk",
+      "first_vine_buy": "2025-01-23 00:18:36 UTC",
+      "minutes_before_announcement": 581.4,
+      "wi11em_network_overlap": {},
+      "funding_sources": {},
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_2Bocdy",
+      "address": "2BocdyQGg3apZetbQNdPqGDESRMxBsYmTCUCmEcgrejv",
+      "solscan_url": "https://solscan.io/account/2BocdyQGg3apZetbQNdPqGDESRMxBsYmTCUCmEcgrejv",
+      "first_vine_buy": "2025-01-23 00:19:22 UTC",
+      "minutes_before_announcement": 580.6,
+      "wi11em_network_overlap": {},
+      "funding_sources": {},
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_7hgWzv",
+      "address": "7hgWzvEx87tc9wGa9crU9wrwUZEKTFgpdYHWAZ7AP252",
+      "solscan_url": "https://solscan.io/account/7hgWzvEx87tc9wGa9crU9wrwUZEKTFgpdYHWAZ7AP252",
+      "first_vine_buy": "2025-01-23 00:18:31 UTC",
+      "minutes_before_announcement": 581.5,
+      "wi11em_network_overlap": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": "Wi11em seed funder (May 2024)"
+      },
+      "funding_sources": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": "Wi11em seed funder (May 2024)"
+      },
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_5KRK1H",
+      "address": "5KRK1HRma1AXQTZZrcfYUaVNmXDief7tT8n58x7PfMbM",
+      "solscan_url": "https://solscan.io/account/5KRK1HRma1AXQTZZrcfYUaVNmXDief7tT8n58x7PfMbM",
+      "first_vine_buy": "2025-01-23 00:18:50 UTC",
+      "minutes_before_announcement": 581.2,
+      "wi11em_network_overlap": {},
+      "funding_sources": {},
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_HceGN5",
+      "address": "HceGN5cQMexM7g1epbFeMCUmftnmxnxySCbPaxjbF5z8",
+      "solscan_url": "https://solscan.io/account/HceGN5cQMexM7g1epbFeMCUmftnmxnxySCbPaxjbF5z8",
+      "first_vine_buy": "2025-01-23 00:19:07 UTC",
+      "minutes_before_announcement": 580.9,
+      "wi11em_network_overlap": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": "Coinbase (hot) \u2014 Wi11em funder"
+      },
+      "funding_sources": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": "Coinbase (hot)"
+      },
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_3NfdNN",
+      "address": "3NfdNNhbQnbH5WpNAh6ntCrAfh4F6kpAXVePCHaWqzdQ",
+      "solscan_url": "https://solscan.io/account/3NfdNNhbQnbH5WpNAh6ntCrAfh4F6kpAXVePCHaWqzdQ",
+      "first_vine_buy": "2025-01-23 00:19:22 UTC",
+      "minutes_before_announcement": 580.6,
+      "wi11em_network_overlap": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": "Wi11em seed funder (May 2024)"
+      },
+      "funding_sources": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": "Wi11em seed funder (May 2024)"
+      },
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_HfyPuu",
+      "address": "HfyPuua8ioDMQxzrLmNmeztvB3fNwLCT2c7M9Kwfgy7o",
+      "solscan_url": "https://solscan.io/account/HfyPuua8ioDMQxzrLmNmeztvB3fNwLCT2c7M9Kwfgy7o",
+      "first_vine_buy": "2025-01-23 00:19:33 UTC",
+      "minutes_before_announcement": 580.5,
+      "wi11em_network_overlap": {
+        "D89hHJT5Aqyx1trP6EnGY9jJUB3whgnq3aUvvCqedvzf": "Cross-buyer parent (BUY_4+5)"
+      },
+      "funding_sources": {
+        "D89hHJT5Aqyx1trP6EnGY9jJUB3whgnq3aUvvCqedvzf": "Cross-buyer parent (BUY_4+5)",
+        "H2dHTXttztA23BHX4HmTJ1oi5XAzikXusvDppB8a2dqR": "unknown"
+      },
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_A4Qpmh",
+      "address": "A4QpmhKrNieG9H3iQQV9aLSG9AvN4ED7NprfjpxpMSEr",
+      "solscan_url": "https://solscan.io/account/A4QpmhKrNieG9H3iQQV9aLSG9AvN4ED7NprfjpxpMSEr",
+      "first_vine_buy": "2025-01-23 00:19:46 UTC",
+      "minutes_before_announcement": 580.2,
+      "wi11em_network_overlap": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": "Coinbase (hot) \u2014 Wi11em funder"
+      },
+      "funding_sources": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": "Coinbase (hot)"
+      },
+      "source": "QTeam Google Sheet (C17)"
+    },
+    {
+      "label": "QTeam_76kKHH",
+      "address": "76kKHHmJg8AsoXa52oPvxSU7haLG4r5DBPtFvsih1K8p",
+      "solscan_url": "https://solscan.io/account/76kKHHmJg8AsoXa52oPvxSU7haLG4r5DBPtFvsih1K8p",
+      "first_vine_buy": "2025-01-23 00:20:45 UTC",
+      "minutes_before_announcement": 579.2,
+      "wi11em_network_overlap": {},
+      "funding_sources": {
+        "H8sMJSCQxfKiFTCfDR3DUMLPwcRbM61LGFJ8N4dK3WjS": "Coinbase"
+      },
+      "source": "QTeam Google Sheet (C17)"
     }
   ],
   "consolidators": [
@@ -920,6 +1033,11 @@
       "factor": "Pre-launch pre-positioning",
       "points": 10,
       "detail": "4 BUY wallets first-funded ~20h before launch; Wi11em 8 months prior"
+    },
+    {
+      "factor": "QTeam 9-wallet sybil extension",
+      "points": 0,
+      "detail": "9 additional insider wallets bought in 134-second window (00:18-00:20 UTC), 5/9 funded by Wi11em infrastructure. Score already maxed at 100."
     }
   ],
   "exchanges_identified": [],

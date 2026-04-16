@@ -1,0 +1,237 @@
+{
+  "generated_at": "2026-04-16T06:18:36.302828+00:00",
+  "announced_trading_utc": "2025-01-23 10:00:00 UTC",
+  "mint": "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump",
+  "wallets": [
+    {
+      "address": "AfGiE2ewhDARAaJZgGfoPUfXsG93KPYavjEDbe5vBhrk",
+      "solscan": "https://solscan.io/account/AfGiE2ewhDARAaJZgGfoPUfXsG93KPYavjEDbe5vBhrk",
+      "vine_ata": "GXRYhQG6XZavY4zqJiGtKWsku6qyWR2rPwY1ecn76VrG",
+      "vine_balance_now": 0,
+      "first_vine_tx": "4yhxXqEpAMX8Q1TZQnNxrUgciBnCs2JNCiQjwd9W5cAKNLU7gj7nvB7PgVnHAMN6SKhmCJsBFFi9C4kb7rAwoZ1N",
+      "first_vine_date": "2025-01-23 00:18:36 UTC",
+      "first_vine_unix": 1737591516,
+      "minutes_before_announcement": 581.4,
+      "bought_before_announcement": true,
+      "sol_balance": 0.0,
+      "total_signatures": 327,
+      "wallet_first_tx_date": "2025-01-23 00:07:04 UTC",
+      "wallet_last_tx_date": "2025-04-09 19:41:07 UTC",
+      "pre_launch_tx_count": 0,
+      "funding_sources": {},
+      "wi11em_network_overlap": {}
+    },
+    {
+      "address": "2BocdyQGg3apZetbQNdPqGDESRMxBsYmTCUCmEcgrejv",
+      "solscan": "https://solscan.io/account/2BocdyQGg3apZetbQNdPqGDESRMxBsYmTCUCmEcgrejv",
+      "vine_ata": "ChRwgztQcTrh8JoTmNb7WaBsi9SsqVpL5zgifYwTFdrb",
+      "vine_balance_now": 0,
+      "first_vine_tx": "2QCXZfzeV3w8YRpqDApmpB8pxj2srxKqMCDS6LGZkJU84KGyMfT3q7Bv2CBkHhQUewYim1kcNLsLEZJrzV68d54M",
+      "first_vine_date": "2025-01-23 00:19:22 UTC",
+      "first_vine_unix": 1737591562,
+      "minutes_before_announcement": 580.6,
+      "bought_before_announcement": true,
+      "sol_balance": 0.358586,
+      "total_signatures": 258,
+      "wallet_first_tx_date": "2025-01-23 00:08:26 UTC",
+      "wallet_last_tx_date": "2025-05-29 20:59:51 UTC",
+      "pre_launch_tx_count": 0,
+      "funding_sources": {},
+      "wi11em_network_overlap": {}
+    },
+    {
+      "address": "7hgWzvEx87tc9wGa9crU9wrwUZEKTFgpdYHWAZ7AP252",
+      "solscan": "https://solscan.io/account/7hgWzvEx87tc9wGa9crU9wrwUZEKTFgpdYHWAZ7AP252",
+      "vine_ata": "3U7n829CnYSsrrFoPHWduA6ABasN3bKkSDL8JW12CSRv",
+      "vine_balance_now": 0,
+      "first_vine_tx": "Hasx9P66A858b5gj3TyJVjzpomTTjgNJh2FVGvAfqLEaeUpZCKa8ia5u2ueVudcZESac22hKrXb1WDGme8J46KP",
+      "first_vine_date": "2025-01-23 00:18:31 UTC",
+      "first_vine_unix": 1737591511,
+      "minutes_before_announcement": 581.5,
+      "bought_before_announcement": true,
+      "sol_balance": 1.702374,
+      "total_signatures": 119,
+      "wallet_first_tx_date": "2025-01-22 22:47:10 UTC",
+      "wallet_last_tx_date": "2025-02-27 12:03:45 UTC",
+      "pre_launch_tx_count": 1,
+      "funding_sources": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": {
+          "tx_count": 1,
+          "sol_total": 3.1002,
+          "first_date": "2025-01-22 22:47:10 UTC",
+          "label": "Wi11em seed funder (May 2024)"
+        }
+      },
+      "wi11em_network_overlap": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": "Wi11em seed funder (May 2024)"
+      }
+    },
+    {
+      "address": "5KRK1HRma1AXQTZZrcfYUaVNmXDief7tT8n58x7PfMbM",
+      "solscan": "https://solscan.io/account/5KRK1HRma1AXQTZZrcfYUaVNmXDief7tT8n58x7PfMbM",
+      "vine_ata": "F7LdTCC456fkXDjb2rkPvvHoeHHvXggC2xyZFs77xTNN",
+      "vine_balance_now": 0,
+      "first_vine_tx": "5G4ASw7DFrsRDKtridnc1exUNHLdxfBRLcGjbZGefgpavLMZ82tWpLaHWrx4rJ7p4Gk3AiUy32gKPCVpejmjQSfs",
+      "first_vine_date": "2025-01-23 00:18:50 UTC",
+      "first_vine_unix": 1737591530,
+      "minutes_before_announcement": 581.2,
+      "bought_before_announcement": true,
+      "sol_balance": 0.0,
+      "total_signatures": 26,
+      "wallet_first_tx_date": "2025-01-23 00:07:44 UTC",
+      "wallet_last_tx_date": "2025-02-11 21:15:28 UTC",
+      "pre_launch_tx_count": 0,
+      "funding_sources": {},
+      "wi11em_network_overlap": {}
+    },
+    {
+      "address": "HceGN5cQMexM7g1epbFeMCUmftnmxnxySCbPaxjbF5z8",
+      "solscan": "https://solscan.io/account/HceGN5cQMexM7g1epbFeMCUmftnmxnxySCbPaxjbF5z8",
+      "vine_ata": "61ghgDWoNV1oyUQ84v6JnrVdmw2VF7ypYQUntpCFdFLm",
+      "vine_balance_now": 0,
+      "first_vine_tx": "4J21TrGHPWxUUsUp5ZqgLB3VZ4BP5hgAetPakxGSbbJCfNNnECAitr11xnZNTT8aN4kSi3HXrX6ogfnU3g29qGj",
+      "first_vine_date": "2025-01-23 00:19:07 UTC",
+      "first_vine_unix": 1737591547,
+      "minutes_before_announcement": 580.9,
+      "bought_before_announcement": true,
+      "sol_balance": 0.0,
+      "total_signatures": 76,
+      "wallet_first_tx_date": "2025-01-22 23:01:26 UTC",
+      "wallet_last_tx_date": "2025-02-15 22:30:53 UTC",
+      "pre_launch_tx_count": 3,
+      "funding_sources": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": {
+          "tx_count": 2,
+          "sol_total": 6.2004,
+          "first_date": "2025-01-22 23:01:26 UTC",
+          "label": "Coinbase (hot)"
+        }
+      },
+      "wi11em_network_overlap": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": "Coinbase (hot) \u2014 Wi11em funder"
+      }
+    },
+    {
+      "address": "3NfdNNhbQnbH5WpNAh6ntCrAfh4F6kpAXVePCHaWqzdQ",
+      "solscan": "https://solscan.io/account/3NfdNNhbQnbH5WpNAh6ntCrAfh4F6kpAXVePCHaWqzdQ",
+      "vine_ata": "76wbomT6cewD8EPnuFoq5ksLp9Phnzz7CTMd8XjZHNjc",
+      "vine_balance_now": 0,
+      "first_vine_tx": "423b3nWm6RPn936iqyxxnda23KuyLxB6pZAthqW8wwCgHzAuEe6LUMaznrHhHGNxjNKjoXQQR3bxKNApzHQioedE",
+      "first_vine_date": "2025-01-23 00:19:22 UTC",
+      "first_vine_unix": 1737591562,
+      "minutes_before_announcement": 580.6,
+      "bought_before_announcement": true,
+      "sol_balance": 0.0,
+      "total_signatures": 26,
+      "wallet_first_tx_date": "2025-01-22 23:15:38 UTC",
+      "wallet_last_tx_date": "2025-02-11 21:15:28 UTC",
+      "pre_launch_tx_count": 2,
+      "funding_sources": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": {
+          "tx_count": 1,
+          "sol_total": 2.7002,
+          "first_date": "2025-01-22 23:15:38 UTC",
+          "label": "Wi11em seed funder (May 2024)"
+        }
+      },
+      "wi11em_network_overlap": {
+        "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": "Wi11em seed funder (May 2024)"
+      }
+    },
+    {
+      "address": "HfyPuua8ioDMQxzrLmNmeztvB3fNwLCT2c7M9Kwfgy7o",
+      "solscan": "https://solscan.io/account/HfyPuua8ioDMQxzrLmNmeztvB3fNwLCT2c7M9Kwfgy7o",
+      "vine_ata": "DgrrdJvcnR4ravFmKx9gDpH9XUQs6bcN22cVhGJgqkvP",
+      "vine_balance_now": 0,
+      "first_vine_tx": "2jhAFsgxSvW3CCtcT5juWwKXxiU5Ym5NcuHq2gSfLFyXEiDbRJqDWdwnUHbYdJEihjx6gQSq6DR1qXojyahCSe5E",
+      "first_vine_date": "2025-01-23 00:19:33 UTC",
+      "first_vine_unix": 1737591573,
+      "minutes_before_announcement": 580.5,
+      "bought_before_announcement": true,
+      "sol_balance": 0.0,
+      "total_signatures": 26,
+      "wallet_first_tx_date": "2025-01-22 23:16:24 UTC",
+      "wallet_last_tx_date": "2025-01-27 04:17:21 UTC",
+      "pre_launch_tx_count": 2,
+      "funding_sources": {
+        "D89hHJT5Aqyx1trP6EnGY9jJUB3whgnq3aUvvCqedvzf": {
+          "tx_count": 1,
+          "sol_total": 2.9702,
+          "first_date": "2025-01-22 23:16:24 UTC",
+          "label": "Cross-buyer parent (BUY_4+5)"
+        },
+        "H2dHTXttztA23BHX4HmTJ1oi5XAzikXusvDppB8a2dqR": {
+          "tx_count": 1,
+          "sol_total": 0.0,
+          "first_date": "2025-01-22 23:16:36 UTC",
+          "label": "unknown"
+        }
+      },
+      "wi11em_network_overlap": {
+        "D89hHJT5Aqyx1trP6EnGY9jJUB3whgnq3aUvvCqedvzf": "Cross-buyer parent (BUY_4+5)"
+      }
+    },
+    {
+      "address": "A4QpmhKrNieG9H3iQQV9aLSG9AvN4ED7NprfjpxpMSEr",
+      "solscan": "https://solscan.io/account/A4QpmhKrNieG9H3iQQV9aLSG9AvN4ED7NprfjpxpMSEr",
+      "vine_ata": "HTU4fAhpJYMpPBQVaWckEDTCv7A2yvRFAg7DN8YJZYcy",
+      "vine_balance_now": 0,
+      "first_vine_tx": "44RtoLC5KqvW9Z4QA7e5vK4zyTmdCHfUkq1rrA5Tg47GMxkjocFX9AbEF6uBokTDhkBo6zzFVYnSA72hVYNkNq2y",
+      "first_vine_date": "2025-01-23 00:19:46 UTC",
+      "first_vine_unix": 1737591586,
+      "minutes_before_announcement": 580.2,
+      "bought_before_announcement": true,
+      "sol_balance": 0.0,
+      "total_signatures": 24,
+      "wallet_first_tx_date": "2025-01-22 23:16:39 UTC",
+      "wallet_last_tx_date": "2025-01-27 04:17:47 UTC",
+      "pre_launch_tx_count": 1,
+      "funding_sources": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": {
+          "tx_count": 1,
+          "sol_total": 4.1002,
+          "first_date": "2025-01-22 23:16:39 UTC",
+          "label": "Coinbase (hot)"
+        }
+      },
+      "wi11em_network_overlap": {
+        "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": "Coinbase (hot) \u2014 Wi11em funder"
+      }
+    },
+    {
+      "address": "76kKHHmJg8AsoXa52oPvxSU7haLG4r5DBPtFvsih1K8p",
+      "solscan": "https://solscan.io/account/76kKHHmJg8AsoXa52oPvxSU7haLG4r5DBPtFvsih1K8p",
+      "vine_ata": "G9GuA2GEgsUw1rAZtsNc11pAoJdpgcZRDXTPsEMiX646",
+      "vine_balance_now": 1.0,
+      "first_vine_tx": "aXHxYfubbBcq3cogggEZdYA1YUCN5dPkDcd3Z8n43fdutxTNRpWjVh59RiSBxiLRmAb9TjiUSmybW1Z3v5tLQXP",
+      "first_vine_date": "2025-01-23 00:20:45 UTC",
+      "first_vine_unix": 1737591645,
+      "minutes_before_announcement": 579.2,
+      "bought_before_announcement": true,
+      "sol_balance": 0.0,
+      "total_signatures": 76,
+      "wallet_first_tx_date": "2025-01-22 23:27:10 UTC",
+      "wallet_last_tx_date": "2025-08-01 17:33:49 UTC",
+      "pre_launch_tx_count": 1,
+      "funding_sources": {
+        "H8sMJSCQxfKiFTCfDR3DUMLPwcRbM61LGFJ8N4dK3WjS": {
+          "tx_count": 1,
+          "sol_total": 3.1202,
+          "first_date": "2025-01-22 23:27:10 UTC",
+          "label": "Coinbase"
+        }
+      },
+      "wi11em_network_overlap": {}
+    }
+  ],
+  "aggregate": {
+    "total_wallets": 9,
+    "bought_before_announcement": 9,
+    "common_funding_sources": {
+      "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": 2,
+      "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": 2
+    },
+    "common_funding_count": 2,
+    "wi11em_network_links": 5
+  }
+}
