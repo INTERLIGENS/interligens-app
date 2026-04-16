@@ -1967,3 +1967,23 @@ model FounderIntelIngestRun {
   errors        String[]
   status        IntelRunStatus @default(RUNNING)
 }
+
+// ─── THREADS X ──────────────────────────────────────────────────────────────
+
+model XThread {
+  id          String    @id @default(cuid())
+  title       String
+  target      String?
+  status      String    @default("draft")
+  body        String    @db.Text
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  tweetUrl    String?
+  impressions Int?
+  retweets    Int?
+  likes       Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+}

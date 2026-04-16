@@ -58,6 +58,12 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    title: "Publication",
+    links: [
+      { label: "Threads X", href: "/admin/threads" },
+    ],
+  },
+  {
     title: "Donnees",
     links: [
       { label: "Export", href: "/admin/export" },
