@@ -3,7 +3,7 @@
 // Legal-dossier HTML template. White-background judicial document format.
 // All 10 GPT review corrections applied.
 
-import type { PlainteInput, Jurisdiction, PreuveStatut } from "./data";
+import type { PlainteInput, Jurisdiction, PreuveStatut, PlainteTheme } from "./data";
 
 function esc(s: string | undefined | null): string {
   if (!s) return "";
@@ -63,6 +63,46 @@ function infractionLabel(t: string): string {
   return map[t] || t;
 }
 
+type ThemeColors = {
+  bg: string; text: string; textMuted: string; textLight: string;
+  headerBg: string; headerText: string;
+  sectionBg: string; sectionText: string;
+  tableBg1: string; tableBg2: string; tableBorder: string;
+  cardBg: string; cardBorder: string;
+  monoBg: string; monoText: string;
+  calloutBg: string; calloutBorder: string;
+  qualNote: string; leakedBg: string; leakedBorder: string; leakedText: string;
+  disclaimerText: string; font: string;
+};
+
+const PRINT_THEME: ThemeColors = {
+  bg: "#fff", text: "#000", textMuted: "#666", textLight: "#888",
+  headerBg: "#fff", headerText: "#000",
+  sectionBg: "#f0f0f0", sectionText: "#000",
+  tableBg1: "#fff", tableBg2: "#f5f5f5", tableBorder: "#ccc",
+  cardBg: "#fff", cardBorder: "#ddd",
+  monoBg: "#f0f0f0", monoText: "#000",
+  calloutBg: "#fafafa", calloutBorder: "#999",
+  qualNote: "#666", leakedBg: "#fff8f0", leakedBorder: "#FF6B00", leakedText: "#cc6600",
+  disclaimerText: "#999", font: "'Times New Roman',Georgia,serif",
+};
+
+const INTERLIGENS_THEME: ThemeColors = {
+  bg: "#000", text: "#fff", textMuted: "#aaa", textLight: "#666",
+  headerBg: "#000", headerText: "#fff",
+  sectionBg: "#111", sectionText: "#fff",
+  tableBg1: "#0a0a0a", tableBg2: "#111", tableBorder: "#333",
+  cardBg: "#0d0d0d", cardBorder: "#333",
+  monoBg: "#1a1a1a", monoText: "#FF6B00",
+  calloutBg: "#0a0a0a", calloutBorder: "#FF6B00",
+  qualNote: "#aaa", leakedBg: "#1a0f00", leakedBorder: "#FF6B00", leakedText: "#FF6B00",
+  disclaimerText: "#555", font: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+};
+
+function getTheme(t?: PlainteTheme): ThemeColors {
+  return t === "interligens" ? INTERLIGENS_THEME : PRINT_THEME;
+}
+
 function statutStyle(s?: PreuveStatut): { color: string; label: string; bg: string } {
   if (s === "CONSTATE") return { color: "#2d7a2d", label: "FAIT CONSTATÉ", bg: "#f0fff0" };
   if (s === "ATTRIBUE") return { color: "#FF6B00", label: "ATTRIBUTION / CORRÉLATION", bg: "#fff8f0" };
@@ -76,40 +116,42 @@ function statutBadge(s?: PreuveStatut): string {
 
 // ── Main HTML builder ────────────────────────────────────────────────────────
 
-export function buildPlainteHtml(input: PlainteInput): string {
+export function buildPlainteHtml(input: PlainteInput, theme?: PlainteTheme): string {
   const now = new Date().toISOString().slice(0, 10);
   const ref = `INTERLIGENS-${(input.nom || "CASE").replace(/[^A-Z0-9]/gi, "").slice(0, 20)}-${now.replace(/-/g, "")}`;
+  const T = getTheme(theme);
 
   let html = `<!DOCTYPE html><html lang="${input.juridiction === "US" ? "en" : "fr"}"><head><meta charset="UTF-8"><style>
 @page{size:A4;margin:18mm 16mm 24mm 16mm}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Times New Roman',Georgia,serif;color:#111;font-size:11px;line-height:1.55;background:#fff}
-.header-band{background:#000;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center}
-.header-band .logo{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+body{font-family:${T.font};color:${T.text};font-size:11px;line-height:1.55;background:${T.bg}}
+.header-band{background:${theme === "interligens" ? "#000" : "#fff"};color:${T.headerText};padding:10px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #FF6B00}
+.header-band .logo{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${theme === "interligens" ? "#fff" : "#000"}}
 .header-band .logo .box{width:22px;height:22px;background:#FF6B00;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#000;border-radius:3px}
 .header-band .conf{color:#ff4444;font-size:9px;text-transform:uppercase;letter-spacing:1px;font-weight:700}
 .page-content{padding:0 4px}
-h1{font-size:18px;text-align:center;margin:20px 0 6px;font-weight:800;letter-spacing:1px}
-h2{font-size:13px;background:#1a1a1a;color:#fff;padding:7px 12px;margin:18px 0 10px;text-transform:uppercase;letter-spacing:2px;font-weight:700;page-break-after:avoid}
-h3{font-size:11.5px;font-weight:700;margin:12px 0 6px;border-bottom:1px solid #ddd;padding-bottom:3px}
+h1{font-size:18px;text-align:center;margin:20px 0 6px;font-weight:800;letter-spacing:1px;color:${T.text}}
+h2{font-size:13px;background:${T.sectionBg};color:${T.sectionText};padding:7px 12px;margin:18px 0 10px;text-transform:uppercase;letter-spacing:2px;font-weight:700;page-break-after:avoid;border-left:4px solid #FF6B00}
+h3{font-size:11.5px;font-weight:700;margin:12px 0 6px;border-bottom:1px solid ${T.tableBorder};padding-bottom:3px;color:${T.text}}
 p{margin:0 0 8px;text-align:justify}
 table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0}
-th{background:#e8e8e8;padding:5px 8px;text-align:left;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;border:1px solid #ccc}
-td{padding:5px 8px;border:1px solid #ddd;vertical-align:top}
-tr:nth-child(even) td{background:#f8f8f8}
-.mono{font-family:'Courier New',Consolas,monospace;font-size:9.5px;background:#f0f0f0;padding:1px 4px;word-break:break-all}
-.mono-block{font-family:'Courier New',Consolas,monospace;font-size:9px;background:#f4f4f4;padding:6px 10px;border:1px solid #ddd;margin:6px 0;word-break:break-all;line-height:1.5}
-.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:8px;font-weight:700;color:#fff}
-.badge-critique{background:#c41e1e}
-.badge-haute{background:#FF6B00}
-.badge-moyenne{background:#888}
-.callout{border:1px solid #999;padding:10px;margin:8px 0;font-size:10px;background:#fafafa;border-left:4px solid #FF6B00}
+th{background:${T.sectionBg};padding:5px 8px;text-align:left;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;border:1px solid ${T.tableBorder};color:${T.sectionText}}
+td{padding:5px 8px;border:1px solid ${T.tableBorder};vertical-align:top;color:${T.text}}
+tr:nth-child(even) td{background:${T.tableBg2}}
+tr:nth-child(odd) td{background:${T.tableBg1}}
+.mono{font-family:'Courier New',Consolas,monospace;font-size:9.5px;background:${T.monoBg};color:${T.monoText};padding:1px 4px;word-break:break-all}
+.mono-block{font-family:'Courier New',Consolas,monospace;font-size:9px;background:${T.monoBg};color:${T.monoText};padding:6px 10px;border:1px solid ${T.cardBorder};margin:6px 0;word-break:break-all;line-height:1.5}
+.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:8px;font-weight:700}
+.badge-critique{${theme === "interligens" ? "background:#c41e1e;color:#fff" : "background:#fff;color:#cc0000;border:1px solid #cc0000"}}
+.badge-haute{${theme === "interligens" ? "background:#FF6B00;color:#fff" : "background:#fff;color:#FF6B00;border:1px solid #FF6B00"}}
+.badge-moyenne{${theme === "interligens" ? "background:#888;color:#fff" : "background:#fff;color:#666;border:1px solid #666"}}
+.callout{border:1px solid ${T.calloutBorder};padding:10px;margin:8px 0;font-size:10px;background:${T.calloutBg};border-left:4px solid #FF6B00;color:${T.textMuted}}
 .cover-center{text-align:center;margin:30px 0}
-.cover-table td{border:none;padding:4px 10px;font-size:11px}
-.cover-table td:first-child{font-weight:700;text-align:right;width:160px;color:#444}
-.qual-note{font-style:italic;color:#666;font-size:9px;margin:2px 0 8px 12px}
-.leaked-warning{background:#fff3f3;border:1px solid #cc0000;border-left:4px solid #cc0000;padding:8px;margin:6px 0;font-size:9px;color:#880000}
-.disclaimer-footer{font-size:7px;color:#999;text-align:center;margin-top:8px;padding-top:4px;border-top:1px solid #eee}
+.cover-table td{border:none;padding:4px 10px;font-size:11px;color:${T.text}}
+.cover-table td:first-child{font-weight:700;text-align:right;width:160px;color:${T.textMuted}}
+.qual-note{font-style:italic;color:${T.qualNote};font-size:9px;margin:2px 0 8px 12px}
+.leaked-warning{background:${T.leakedBg};border:1px solid ${T.leakedBorder};border-left:4px solid ${T.leakedBorder};padding:8px;margin:6px 0;font-size:9px;color:${T.leakedText}}
+.disclaimer-footer{font-size:7px;color:${T.disclaimerText};text-align:center;margin-top:8px;padding-top:4px;border-top:1px solid ${T.cardBorder}}
 .page-break{page-break-before:always}
 </style></head><body>`;
 

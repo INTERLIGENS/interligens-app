@@ -106,6 +106,8 @@ export type PlainteInput = {
   signatureTxPrincipale?: string;
 };
 
+export type PlainteTheme = "print" | "interligens";
+
 export const VINE_DATA: PlainteInput = {
   nom: "VINE — Insider Trading + Manipulation de marché",
   token: "$VINE",
@@ -165,6 +167,16 @@ export const VINE_DATA: PlainteInput = {
     { date: "08/02/2025", evenement: "@aixbt_agent : 'x team members loading up on $VINE'", acteurs: "@aixbt_agent", preuve: "Post X", statut: "A_CONFIRMER" },
     { date: "18/02/2025", evenement: "X Space : Rus confirme 'working directly with Rylan'", acteurs: "Rus Yusupov, Rylan Gade", preuve: "P-006, C14", force: "CRITIQUE", statut: "ATTRIBUE" },
     { date: "05/03/2025", evenement: "Rus admet 'there is no Dev Team'", acteurs: "Rus Yusupov", preuve: "P-006", force: "CRITIQUE", statut: "ATTRIBUE" },
+  ],
+  piecesJointes: [
+    { ref: "P-000", nature: "Preuve de propriété des wallets victime", source: "Exchange / Phantom / Ledger", prouve: "Contrôle du wallet avant les faits", format: "PDF / Screenshot" },
+    { ref: "P-001", nature: "Transaction on-chain Wi11em 00:31:07 UTC", source: "Solscan / Helius RPC", prouve: "Achat insider 9h29m avant annonce", format: "On-chain" },
+    { ref: "P-002", nature: "Réseau sybil — financement direct", source: "Helius getSignaturesForAddress", prouve: "Wi11em parent de 5 wallets", format: "On-chain" },
+    { ref: "P-003", nature: "QTeam 9 wallets — fenêtre 134 sec", source: "Helius RPC", prouve: "Script automatisé — 580m avant annonce", format: "On-chain" },
+    { ref: "P-004", nature: "Hub Coinbase KYC route", source: "Helius RPC", prouve: "Route d'identification Wi11em", format: "On-chain" },
+    { ref: "P-005", nature: "Profit 63 125 SOL — 6 consolidateurs", source: "Helius hop-1/2/3 trace", prouve: "Magnitude du profit insider", format: "On-chain" },
+    { ref: "P-006", nature: "Export Telegram officiel $VINE", source: "Telegram Desktop HTML export", prouve: "Admissions Rus + raids coordonnés + Rylan embarqué", format: "HTML (282 fichiers)" },
+    { ref: "D-002", nature: "NOTE D'EXPORT TELEGRAM — À COMPLÉTER ET SIGNER\n\nJe soussigné [Nom Prénom], certifie avoir procédé le [DATE D'EXPORT] à l'export du groupe Telegram officiel $VINE depuis Telegram Desktop version [X] sur macOS [version].\n\nL'export contient 280 861 messages au total.\nFormat : HTML — 282 fichiers — arborescence non modifiée.\nLe fichier source est conservé sans modification.\n\nExtraits cités (notamment : 'no roadmap', 'vine is only a community coin', 'working directly with Rylan') proviennent de cet export natif.\n\nDate d'export : [À COMPLÉTER]\nHeure : [À COMPLÉTER] UTC\nEmpreinte SHA-256 : [À COMPLÉTER]\n\nFait pour servir et valoir ce que de droit.\n[Ville], le [date] — Signature : ___________", source: "Plaignant", prouve: "Authenticité et intégrité de l'export Telegram", format: "Note manuscrite" },
   ],
 };
 

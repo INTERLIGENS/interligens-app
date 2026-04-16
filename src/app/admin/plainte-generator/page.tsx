@@ -47,7 +47,7 @@ export default function PlainteGeneratorPage() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  async function handleGenerate() {
+  async function handleGenerate(selectedTheme: "print" | "interligens" = "print") {
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -55,7 +55,7 @@ export default function PlainteGeneratorPage() {
     try {
       const body: Record<string, unknown> =
         mode === "preset"
-          ? { preset }
+          ? { preset, theme: selectedTheme }
           : {
               data: {
                 nom: form.nom || "Affaire personnalisée",
@@ -85,6 +85,7 @@ export default function PlainteGeneratorPage() {
                       return { priorite: "P1", cible: cible || "—", demande: demande || "" };
                     })
                   : [],
+              theme: selectedTheme,
               },
             };
 
@@ -328,28 +329,47 @@ export default function PlainteGeneratorPage() {
           </div>
         )}
 
-        {/* GENERATE BUTTON */}
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          style={{
-            width: "100%",
-            marginTop: 28,
-            padding: "16px 24px",
-            background: loading ? "#333" : ACCENT,
-            color: "#000",
-            fontSize: 14,
-            fontWeight: 800,
-            textTransform: "uppercase",
-            letterSpacing: "0.12em",
-            border: "none",
-            borderRadius: 10,
-            cursor: loading ? "wait" : "pointer",
-            opacity: loading ? 0.6 : 1,
-          }}
-        >
-          {loading ? "Génération en cours…" : "Générer le dossier PDF"}
-        </button>
+        {/* GENERATE BUTTONS */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 28 }}>
+          <button
+            onClick={() => handleGenerate("print")}
+            disabled={loading}
+            style={{
+              padding: "16px 20px",
+              background: loading ? "#333" : "#FFFFFF",
+              color: "#000",
+              fontSize: 12,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              border: `2px solid ${ACCENT}`,
+              borderRadius: 10,
+              cursor: loading ? "wait" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "Génération…" : "VERSION IMPRESSION (fond blanc)"}
+          </button>
+          <button
+            onClick={() => handleGenerate("interligens")}
+            disabled={loading}
+            style={{
+              padding: "16px 20px",
+              background: loading ? "#333" : ACCENT,
+              color: "#000",
+              fontSize: 12,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              border: "none",
+              borderRadius: 10,
+              cursor: loading ? "wait" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "Génération…" : "VERSION INTERLIGENS (fond noir)"}
+          </button>
+        </div>
 
         {error && (
           <div
