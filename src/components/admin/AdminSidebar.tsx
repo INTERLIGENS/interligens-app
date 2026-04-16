@@ -70,6 +70,7 @@ const SECTIONS: Section[] = [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
       { label: "Documents", href: "/admin/documents" },
       { label: "CaseFile Generator", href: "/admin/casefile-generator" },
+      { label: "Plainte Generator", href: "/admin/plainte-generator" },
     ],
   },
 ];
