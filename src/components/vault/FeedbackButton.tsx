@@ -34,6 +34,7 @@ export default function FeedbackButton() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [feedbackType, setFeedbackType] = useState("feedback");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +82,7 @@ export default function FeedbackButton() {
       const res = await fetch("/api/investigators/feedback", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: message.trim(), caseId }),
+        body: JSON.stringify({ message: message.trim(), caseId, type: feedbackType }),
       });
       if (res.ok) {
         setSuccess(true);
@@ -189,6 +190,26 @@ export default function FeedbackButton() {
               </div>
             ) : (
               <>
+                <select
+                  value={feedbackType}
+                  onChange={(e) => setFeedbackType(e.target.value)}
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#0d0d0d",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 6,
+                    padding: "8px 12px",
+                    color: "#FFFFFF",
+                    fontSize: 12,
+                    marginBottom: 8,
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <option value="feedback">Feedback général</option>
+                  <option value="question">Question</option>
+                  <option value="blocker">Bloqueur</option>
+                  <option value="evidence_note">Note d'évidence</option>
+                </select>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
