@@ -6,6 +6,7 @@ const ACCENT = "#FF6B00";
 
 const PRESETS = [
   { id: "vine", label: "VINE — CASE-2025-VINE-001", description: "Full CaseFile from vine-osint.json + vine-smoking-guns.json" },
+  { id: "botify", label: "BOTIFY — CASE-2025-BOTIFY-001", description: "Full CaseFile from botify-osint data + document interne" },
 ];
 
 export default function CaseFileGeneratorPage() {
