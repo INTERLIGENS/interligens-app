@@ -31,6 +31,7 @@ const SECTIONS: Section[] = [
     links: [
       { label: "Liste investigators", href: "/admin/investigators" },
       { label: "Candidatures", href: "/admin/investigators?tab=applications" },
+      { label: "Inbox", href: "/admin/inbox" },
       {
         label: "Espace Investigateur",
         href: "/investigators/box",

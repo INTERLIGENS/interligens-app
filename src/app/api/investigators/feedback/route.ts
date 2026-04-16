@@ -71,6 +71,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Also store in FeedbackEntry for admin inbox
+  try {
+    await prisma.feedbackEntry.create({
+      data: {
+        accessId: ctx.access.id,
+        investigatorName: handle,
+        investigatorEmail: (ctx.profile as Record<string, unknown>).contactEmail as string ?? undefined,
+        workspaceId: ctx.workspace.id,
+        type: typeof body.type === "string" ? body.type : "feedback",
+        body: message,
+      },
+    });
+  } catch {
+    // Non-blocking — FeedbackEntry table may not exist yet
+  }
+
   await logAudit({
     investigatorAccessId: ctx.access.id,
     profileId: ctx.profile.id,

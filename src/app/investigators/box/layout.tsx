@@ -85,6 +85,10 @@ export default async function InvestigatorsBoxLayout({
           <Link href="/en/explorer" className="investigators-quick-link" style={QUICK_LINK}>
             Explorer
           </Link>
+          <span style={SEPARATOR}>|</span>
+          <Link href="/investigators/box/messages" className="investigators-quick-link" style={QUICK_LINK}>
+            Messages
+          </Link>
         </div>
       </nav>
       <style>{`
