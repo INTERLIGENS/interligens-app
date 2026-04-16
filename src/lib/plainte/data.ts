@@ -205,7 +205,7 @@ export const BOTIFY_DATA: PlainteInput = {
     { handle: "Djordje Stupar / @planted", role: "Voix publique BOTIFY", certitude: "ETABLI", preuve: "Aveu public X 19/03/2025" },
   ],
   preuvesCles: [
-    { id: "D-001", statut: "A_CONFIRMER", nature: "Document interne BOTIFY (leaked)", description: "Document interne — réseau KOL coordonné, allocations F&F, paiements on-chain — source : @mariaqueennft", force: "CRITIQUE", note: "60+ wallets F&F — PIÈCE D'ORIENTATION : authentification formelle requise avant présentation comme preuve centrale. Joindre hash SHA-256 du fichier + date et contexte de réception." },
+    { id: "D-001", statut: "A_CONFIRMER", nature: "Document interne BOTIFY — registre paiements KOL", description: "Registre de paiements KOL avec TX Solscan vérifiables. Acteurs : James, Orbit, Sam. Paiements en SOL documentés du 10 au 29 janvier 2025. Chaque ligne contient un lien Solscan vérifiable on-chain.", force: "HAUTE", note: "PIÈCE D'ORIENTATION — Intégrité certifiée par hash SHA-256 : 1a2cbdad34771d87472e14fa3fb8cc6961e34328a37a79cacd3bc8f49b369920. Fichier conservé sans modification depuis le 16 avril 2026. Authentification formelle requise avant présentation comme preuve centrale." },
     { id: "D-002", statut: "CONSTATE", nature: "Rapport scan INTERLIGENS", description: "41 KOLs scannés — 295 événements cashout — $604 489 documentés — 28 KOLs avec activité", force: "HAUTE" },
   ],
   requisitions: [

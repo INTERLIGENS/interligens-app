@@ -71,6 +71,7 @@ const SECTIONS: Section[] = [
       { label: "Documents", href: "/admin/documents" },
       { label: "CaseFile Generator", href: "/admin/casefile-generator" },
       { label: "Plainte Generator", href: "/admin/plainte-generator" },
+      { label: "Evidence Vault", href: "/admin/evidence-vault" },
     ],
   },
 ];
