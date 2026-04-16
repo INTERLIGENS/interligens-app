@@ -69,6 +69,7 @@ const SECTIONS: Section[] = [
     links: [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
       { label: "Documents", href: "/admin/documents" },
+      { label: "CaseFile Generator", href: "/admin/casefile-generator" },
     ],
   },
 ];
