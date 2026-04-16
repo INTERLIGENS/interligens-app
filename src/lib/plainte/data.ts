@@ -26,10 +26,13 @@ export type Suspect = {
   preuve?: string;
 };
 
+export type PreuveStatut = "CONSTATE" | "ATTRIBUE" | "A_CONFIRMER";
+
 export type PreuveCle = {
   id: string;
   nature: string;
   description: string;
+  statut?: PreuveStatut;
   adresse?: string;
   ata?: string;
   wallets?: string[];
@@ -77,6 +80,7 @@ export type PlainteInput = {
     acteurs?: string;
     preuve?: string;
     force?: string;
+    statut?: PreuveStatut;
   }>;
   prejudiceMoral?: string;
   piecesJointes?: Array<{
@@ -125,12 +129,13 @@ export const VINE_DATA: PlainteInput = {
     { handle: "Nate Esparza / @Nate_Esparza", role: "Employé X (Twitter) — promotion $VINE", certitude: "PROBABLE", preuve: "Posts X — Reporté SEC avec Rus et @chrisparkX" },
   ],
   preuvesCles: [
-    { id: "P-001", nature: "Transaction on-chain", description: "Premier achat VINE de Wi11em — 00:31:07 UTC le 23/01/2025 — 9h29m avant annonce publique 10:00 UTC", adresse: "2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ", ata: "BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t", force: "CRITIQUE", verification: "https://solscan.io/account/BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t" },
-    { id: "P-002", nature: "Réseau sybil — financement direct", description: "Wi11em financeur SOL direct de 5 wallets acheteurs 'indépendants' avant le launch", wallets: ["BPBLjZrvn6ZCKMS2BiDwoLdCH5tF36pZJWgHV9KSqqNS", "8Lr7nr1RCQ2PUsKEG5D7djwgvFazsRXVqyhRAi5DMbc7", "DSYPh29JTLhpjq4LzGcep4BK6pqUzoRi2o5Mqve71STU", "DMR43Ldd7T7KWPSiFajKPgTSF4UPkVXyZAAB5dEyYsDH", "4uLDrqss4mcVjJKrqcr4PfyCQmFhNkBLu5Aqb8Sy3yeP"], force: "CRITIQUE" },
-    { id: "P-003", nature: "QTeam — 9 wallets Coinbase", description: "9 wallets acheteurs entre 00:18:31 et 00:20:45 UTC — fenêtre 134 sec — 580 min avant annonce", wallets: ["AfGiE2ewhDARAaJZgGfoPUfXsG93KPYavjEDbe5vBhrk", "2BocdyQGg3apZetbQNdPqGDESRMxBsYmTCUCmEcgrejv", "7hgWzvEx87tc9wGa9crU9wrwUZEKTFgpdYHWAZ7AP252", "5KRK1HRma1AXQTZZrcfYUaVNmXDief7tT8n58x7PfMbM", "HceGN5cQMexM7g1epbFeMCUmftnmxnxySCbPaxjbF5z8", "3NfdNNhbQnbH5WpNAh6ntCrAfh4F6kpAXVePCHaWqzdQ", "HfyPuua8ioDMQxzrLmNmeztvB3fNwLCT2c7M9Kwfgy7o", "A4QpmhKrNieG9H3iQQV9aLSG9AvN4ED7NprfjpxpMSEr", "76kKHHmJg8AsoXa52oPvxSU7haLG4r5DBPtFvsih1K8p"], force: "CRITIQUE" },
-    { id: "P-004", nature: "Route KYC Coinbase", description: "Hub Coinbase finançant Wi11em en mai 2024 — 8 mois avant VINE — 158 SOL minimum", wallet: "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE", force: "CRITIQUE", note: "Réquisition KYC Coinbase = chemin le plus direct vers identité civile de Wi11em" },
-    { id: "P-005", nature: "Profit on-chain", description: "63 125 SOL ≈ 12,6M$ tracés depuis 6 consolidateurs — 0 cashout CEX — capital en circulation interne", force: "HAUTE" },
-    { id: "P-006", nature: "Export Telegram officiel", description: "280 861 messages — 4 730 auteurs — admissions Rus : 'no roadmap', 'vine is only a community coin', 'working directly with Rylan'", force: "CRITIQUE" },
+    { id: "P-000", statut: "A_CONFIRMER", nature: "PREUVE DE PROPRIÉTÉ DES WALLETS VICTIME", description: "Le plaignant doit fournir la preuve qu'il contrôlait les wallets depuis lesquels il a investi dans $VINE. Pièces recommandées : relevé Coinbase/Binance/Revolut montrant les achats VINE ou transferts SOL vers ses wallets personnels.", force: "CRITIQUE", note: "PIÈCE À JOINDRE PHYSIQUEMENT AU DOSSIER." },
+    { id: "P-001", statut: "CONSTATE", nature: "Transaction on-chain", description: "Premier achat VINE de Wi11em — 00:31:07 UTC le 23/01/2025 — 9h29m avant annonce publique 10:00 UTC", adresse: "2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ", ata: "BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t", force: "CRITIQUE", verification: "https://solscan.io/account/BaczC2LQDS4riZroRThc246u7YcWAzpyDgVvfNQjTk1t" },
+    { id: "P-002", statut: "CONSTATE", nature: "Réseau sybil — financement direct", description: "Wi11em financeur SOL direct de 5 wallets acheteurs 'indépendants' avant le launch", wallets: ["BPBLjZrvn6ZCKMS2BiDwoLdCH5tF36pZJWgHV9KSqqNS", "8Lr7nr1RCQ2PUsKEG5D7djwgvFazsRXVqyhRAi5DMbc7", "DSYPh29JTLhpjq4LzGcep4BK6pqUzoRi2o5Mqve71STU", "DMR43Ldd7T7KWPSiFajKPgTSF4UPkVXyZAAB5dEyYsDH", "4uLDrqss4mcVjJKrqcr4PfyCQmFhNkBLu5Aqb8Sy3yeP"], force: "CRITIQUE" },
+    { id: "P-003", statut: "CONSTATE", nature: "QTeam — 9 wallets Coinbase", description: "9 wallets acheteurs entre 00:18:31 et 00:20:45 UTC — fenêtre 134 sec — 580 min avant annonce", wallets: ["AfGiE2ewhDARAaJZgGfoPUfXsG93KPYavjEDbe5vBhrk", "2BocdyQGg3apZetbQNdPqGDESRMxBsYmTCUCmEcgrejv", "7hgWzvEx87tc9wGa9crU9wrwUZEKTFgpdYHWAZ7AP252", "5KRK1HRma1AXQTZZrcfYUaVNmXDief7tT8n58x7PfMbM", "HceGN5cQMexM7g1epbFeMCUmftnmxnxySCbPaxjbF5z8", "3NfdNNhbQnbH5WpNAh6ntCrAfh4F6kpAXVePCHaWqzdQ", "HfyPuua8ioDMQxzrLmNmeztvB3fNwLCT2c7M9Kwfgy7o", "A4QpmhKrNieG9H3iQQV9aLSG9AvN4ED7NprfjpxpMSEr", "76kKHHmJg8AsoXa52oPvxSU7haLG4r5DBPtFvsih1K8p"], force: "CRITIQUE" },
+    { id: "P-004", statut: "CONSTATE", nature: "Route KYC Coinbase", description: "Hub Coinbase finançant Wi11em en mai 2024 — 8 mois avant VINE — 158 SOL minimum", wallet: "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE", force: "CRITIQUE", note: "Réquisition KYC Coinbase = chemin le plus direct vers identité civile de Wi11em" },
+    { id: "P-005", statut: "CONSTATE", nature: "Profit on-chain", description: "63 125 SOL ≈ 12,6M$ tracés depuis 6 consolidateurs — 0 cashout CEX — capital en circulation interne", force: "HAUTE" },
+    { id: "P-006", statut: "ATTRIBUE", nature: "Export Telegram officiel", description: "280 861 messages — 4 730 auteurs — admissions Rus : 'no roadmap', 'vine is only a community coin', 'working directly with Rylan'", force: "CRITIQUE" },
   ],
   requisitions: [
     { priorite: "P1", cible: "Coinbase Inc.", demande: "Identité KYC des utilisateurs ayant retiré SOL vers 2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ depuis GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE en mai 2024 (≥158 SOL)", fondement: "Art. L561-26 CMF — AMLD5/6 — Bank Secrecy Act (US)", contact: "legal@coinbase.com", delai: "30-60 jours" },
@@ -140,10 +145,10 @@ export const VINE_DATA: PlainteInput = {
     { priorite: "P3", cible: "Arkham Intelligence + Nansen", demande: "Labels 30 wallets layer-3 cascade consolidateurs", fondement: "Coopération volontaire", contact: "support@arkm.com", delai: "5-15 jours" },
   ],
   qualificationsFR: [
-    "Art. L465-3-2 CMF — Opérations d'initiés",
-    "Art. L465-1 CMF — Manipulation de cours",
+    "Art. L465-1 CMF — Manipulation de cours (qualification principale)",
+    "Art. L465-3-2 CMF — Opérations d'initiés (subsidiaire) — Les éléments on-chain documentés constituent des indices graves et concordants au sens de l'article 80 du Code de procédure pénale, de nature à laisser présumer la commission d'opérations d'initiés. La confirmation de cette qualification nécessite les réquisitions judiciaires détaillées en Section 6, notamment auprès de Coinbase Inc. (identification KYC de l'opérateur du wallet 2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ) et de X Corp (identification civile de @Wi11em et @rylangade).",
     "Art. 313-1 Code pénal — Escroquerie",
-    "Art. 450-1 Code pénal — Association de malfaiteurs",
+    "Art. 450-1 Code pénal — Association de malfaiteurs (conditionné à la preuve de faits matériels préparatoires documentés)",
   ],
   qualificationsUS: [
     "15 U.S.C. § 78j + SEC Rule 10b-5 — Securities Fraud",
@@ -151,15 +156,15 @@ export const VINE_DATA: PlainteInput = {
     "18 U.S.C. § 1956 — Money Laundering",
   ],
   chronologie: [
-    { date: "22/01/2025", heure: "22:29 UTC", evenement: "Création synchronisée de 3 wallets BUY (134 sec)", acteurs: "Wi11em (opérateur)", preuve: "P-002", force: "CRITIQUE" },
-    { date: "23/01/2025", heure: "00:18 UTC", evenement: "9 wallets QTeam achètent VINE en 134 secondes", acteurs: "QTeam wallets", preuve: "P-003", force: "CRITIQUE" },
-    { date: "23/01/2025", heure: "00:31 UTC", evenement: "Wi11em achète VINE — 9h29m avant annonce publique", acteurs: "Wi11em", preuve: "P-001", force: "CRITIQUE" },
-    { date: "23/01/2025", heure: "10:00 UTC", evenement: "Rus annonce publiquement trading VINE ouvert", acteurs: "Rus Yusupov", preuve: "BeInCrypto, MiTrade" },
-    { date: "26/01/2025", evenement: "$9.77M cashout coordonné via 6 consolidateurs", acteurs: "Wi11em network", preuve: "P-005", force: "HAUTE" },
-    { date: "05/02/2025", evenement: "Rus rejoint Telegram — dirige campagne pump (Super Bowl, raids)", acteurs: "Rus Yusupov", preuve: "P-006", force: "CRITIQUE" },
-    { date: "08/02/2025", evenement: "@aixbt_agent : 'x team members loading up on $VINE'", acteurs: "@aixbt_agent", preuve: "Post X" },
-    { date: "18/02/2025", evenement: "X Space : Rus confirme 'working directly with Rylan'", acteurs: "Rus Yusupov, Rylan Gade", preuve: "P-006, C14", force: "CRITIQUE" },
-    { date: "05/03/2025", evenement: "Rus admet 'there is no Dev Team'", acteurs: "Rus Yusupov", preuve: "P-006", force: "CRITIQUE" },
+    { date: "22/01/2025", heure: "22:29 UTC", evenement: "Création synchronisée de 3 wallets BUY (134 sec)", acteurs: "Wi11em (opérateur)", preuve: "P-002", force: "CRITIQUE", statut: "CONSTATE" },
+    { date: "23/01/2025", heure: "00:18 UTC", evenement: "9 wallets QTeam achètent VINE en 134 secondes", acteurs: "QTeam wallets", preuve: "P-003", force: "CRITIQUE", statut: "CONSTATE" },
+    { date: "23/01/2025", heure: "00:31 UTC", evenement: "Wi11em achète VINE — 9h29m avant annonce publique", acteurs: "Wi11em", preuve: "P-001", force: "CRITIQUE", statut: "CONSTATE" },
+    { date: "23/01/2025", heure: "10:00 UTC", evenement: "Rus annonce publiquement trading VINE ouvert", acteurs: "Rus Yusupov", preuve: "BeInCrypto, MiTrade", statut: "CONSTATE" },
+    { date: "26/01/2025", evenement: "$9.77M cashout coordonné via 6 consolidateurs", acteurs: "Wi11em network", preuve: "P-005", force: "HAUTE", statut: "CONSTATE" },
+    { date: "05/02/2025", evenement: "Rus rejoint Telegram — dirige campagne pump (Super Bowl, raids)", acteurs: "Rus Yusupov", preuve: "P-006", force: "CRITIQUE", statut: "ATTRIBUE" },
+    { date: "08/02/2025", evenement: "@aixbt_agent : 'x team members loading up on $VINE'", acteurs: "@aixbt_agent", preuve: "Post X", statut: "A_CONFIRMER" },
+    { date: "18/02/2025", evenement: "X Space : Rus confirme 'working directly with Rylan'", acteurs: "Rus Yusupov, Rylan Gade", preuve: "P-006, C14", force: "CRITIQUE", statut: "ATTRIBUE" },
+    { date: "05/03/2025", evenement: "Rus admet 'there is no Dev Team'", acteurs: "Rus Yusupov", preuve: "P-006", force: "CRITIQUE", statut: "ATTRIBUE" },
   ],
 };
 
@@ -188,8 +193,8 @@ export const BOTIFY_DATA: PlainteInput = {
     { handle: "Djordje Stupar / @planted", role: "Voix publique BOTIFY", certitude: "ETABLI", preuve: "Aveu public X 19/03/2025" },
   ],
   preuvesCles: [
-    { id: "D-001", nature: "Document interne BOTIFY", description: "Document interne — réseau KOL coordonné, allocations F&F, paiements on-chain — source : @mariaqueennft", force: "CRITIQUE", note: "60+ wallets F&F" },
-    { id: "D-002", nature: "Rapport scan INTERLIGENS", description: "41 KOLs scannés — 295 événements cashout — $604 489 documentés — 28 KOLs avec activité", force: "HAUTE" },
+    { id: "D-001", statut: "A_CONFIRMER", nature: "Document interne BOTIFY (leaked)", description: "Document interne — réseau KOL coordonné, allocations F&F, paiements on-chain — source : @mariaqueennft", force: "CRITIQUE", note: "60+ wallets F&F — PIÈCE D'ORIENTATION : authentification formelle requise avant présentation comme preuve centrale. Joindre hash SHA-256 du fichier + date et contexte de réception." },
+    { id: "D-002", statut: "CONSTATE", nature: "Rapport scan INTERLIGENS", description: "41 KOLs scannés — 295 événements cashout — $604 489 documentés — 28 KOLs avec activité", force: "HAUTE" },
   ],
   requisitions: [
     { priorite: "P1", cible: "MEXC Exchange", demande: "KYC wallets EduRio + ElonTrades", fondement: "AMLD5/6", contact: "legal@mexc.com" },
@@ -227,8 +232,9 @@ export const DRAIN_DATA: PlainteInput = {
     { handle: "Collecteur", wallet: "B6PMDaB67v1MHwUaqqdnqquX2k4NntttxNn6fWiNhpii", role: "Consolidation des fonds volés", certitude: "ETABLI" },
   ],
   preuvesCles: [
-    { id: "P-001", nature: "Transaction drain", description: "631 608,53 $VINE drainés en une seule TX — bloc 318919436", force: "CRITIQUE" },
-    { id: "P-002", nature: "OKX DEX Router", description: "20 390 VINE ($1 363) routés via OKX DEX Router le 13/02/2025 06:07 GMT+1", force: "CRITIQUE", verification: "https://intel.arkm.com/visualizer/entity/5Bb8LEnNdS3CBY6fDPBSegDmzx8WgXVzfBADP9tgB77Q" },
+    { id: "P-000", statut: "A_CONFIRMER", nature: "PREUVE DE PROPRIÉTÉ DU WALLET VICTIME", description: "Le plaignant doit fournir la preuve qu'il contrôlait le wallet FAGpqfADoU1GwoybSpnXA1L83R3RcU6JwFnQzHQucubT avant le drain du 6 février 2025. Pièces recommandées par ordre de force probante : (1) relevé exchange Coinbase/Binance/Revolut montrant un retrait vers cette adresse avant le drain — PIÈCE LA PLUS SIMPLE ; (2) capture Phantom/Ledger Live affichant cette adresse avec date antérieure au drain ; (3) signature cryptographique d'un message via Phantom Settings → Sign Message — PREUVE MATHÉMATIQUEMENT IRRÉFUTABLE.", adresse: "FAGpqfADoU1GwoybSpnXA1L83R3RcU6JwFnQzHQucubT", force: "CRITIQUE", note: "PIÈCE À JOINDRE PHYSIQUEMENT AU DOSSIER. Sans cette pièce le dossier DRAIN peut être rejeté d'office." },
+    { id: "P-001", statut: "CONSTATE", nature: "Transaction drain", description: "631 608,53 $VINE drainés en une seule TX — bloc 318919436", force: "CRITIQUE" },
+    { id: "P-002", statut: "CONSTATE", nature: "OKX DEX Router", description: "20 390 VINE ($1 363) routés via OKX DEX Router le 13/02/2025 06:07 GMT+1", force: "CRITIQUE", verification: "https://intel.arkm.com/visualizer/entity/5Bb8LEnNdS3CBY6fDPBSegDmzx8WgXVzfBADP9tgB77Q" },
   ],
   requisitions: [
     { priorite: "P1", cible: "OKX Exchange", demande: "KYC utilisateur DEX Router 13/02/2025 06:07 GMT+1 — 20 390 VINE ($1 363) → 5Bb8LEnNdS3CBY6fDPBSegDmzx8WgXVzfBADP9tgB77Q", fondement: "AMLD5/6 — Art. L561-26 CMF", contact: "compliance@okx.com", delai: "30-60 jours" },

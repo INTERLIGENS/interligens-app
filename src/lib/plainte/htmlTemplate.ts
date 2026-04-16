@@ -1,9 +1,9 @@
 // src/lib/plainte/htmlTemplate.ts
 //
 // Legal-dossier HTML template. White-background judicial document format.
-// Generates a full multi-section PDF from PlainteInput.
+// All 10 GPT review corrections applied.
 
-import type { PlainteInput, Jurisdiction } from "./data";
+import type { PlainteInput, Jurisdiction, PreuveStatut } from "./data";
 
 function esc(s: string | undefined | null): string {
   if (!s) return "";
@@ -15,7 +15,9 @@ function fmtMoney(n: number | undefined, currency = "€"): string {
   return `${n.toLocaleString("fr-FR")} ${currency}`;
 }
 
-const GLOSSARY = [
+// ── Glossary ─────────────────────────────────────────────────────────────────
+
+const GLOSSARY: [string, string][] = [
   ["Blockchain", "Registre numérique public, permanent et infalsifiable. Chaque transaction y est enregistrée de façon définitive et consultable par n'importe qui dans le monde. Équivalent numérique d'un registre notarié consultable publiquement."],
   ["Portefeuille numérique (Wallet)", "Équivalent d'un compte bancaire sur la blockchain. Identifié par une adresse unique (suite de lettres et chiffres). Son propriétaire est la seule personne pouvant autoriser des transferts depuis ce compte, grâce à une clé privée secrète."],
   ["Adresse de portefeuille", "Identifiant public d'un portefeuille. Exemple : 2yw4H33NGVLUeg8199VNzNEAXWGMEnMQvvyhAAwaamGQ. Visible par tous, comparable à un IBAN."],
@@ -23,18 +25,20 @@ const GLOSSARY = [
   ["Signature de transaction", "Identifiant unique et infalsifiable d'une transaction. Permet à n'importe qui de vérifier les détails de l'opération sur un explorateur blockchain public."],
   ["Token / Jeton numérique", "Actif numérique créé et échangé sur une blockchain. Comparable à une action ou une monnaie virtuelle."],
   ["Mint", "Adresse unique identifiant un type de token sur la blockchain Solana. Équivalent du code ISIN d'une valeur mobilière."],
-  ["CEX (Exchange centralisé)", "Plateforme d'échange de cryptomonnaies soumise à des obligations légales d'identification (KYC). Exemples : Coinbase, Binance, OKX. Ces plateformes collectent et conservent des pièces d'identité vérifiées."],
-  ["KYC (Know Your Customer)", "Procédure d'identification obligatoire imposée aux exchanges centralisés par la réglementation anti-blanchiment. Un utilisateur KYC a fourni un passeport ou une carte d'identité vérifiée."],
+  ["CEX (Exchange centralisé)", "Plateforme d'échange de cryptomonnaies soumise à des obligations légales d'identification (KYC). Exemples : Coinbase, Binance, OKX."],
+  ["KYC (Know Your Customer)", "Procédure d'identification obligatoire imposée aux exchanges centralisés par la réglementation anti-blanchiment."],
   ["DEX (Exchange décentralisé)", "Plateforme d'échange sans intermédiaire centralisé, sans KYC. Les transactions y sont automatiques et traçables on-chain mais anonymes."],
   ["Seed phrase", "Suite de 12 à 24 mots permettant de prendre le contrôle total d'un portefeuille. Sa divulgation donne à un tiers un accès irréversible à tous les fonds."],
   ["Drain", "Technique de vol automatisé vidant instantanément un portefeuille de la totalité de son contenu sans le consentement du propriétaire."],
-  ["Réseau Sybil", "Ensemble de portefeuilles en apparence indépendants mais contrôlés par une seule et même entité. Utilisé pour dissimuler une coordination illicite."],
+  ["Réseau Sybil", "Ensemble de portefeuilles en apparence indépendants mais contrôlés par une seule et même entité."],
   ["Insider Trading on-chain", "Achat de tokens avant une annonce publique grâce à des informations non publiques. Détectable par l'horodatage immuable des transactions blockchain."],
   ["Layering (stratification)", "Technique de blanchiment consistant à faire transiter des fonds illicites à travers une série de portefeuilles intermédiaires pour en brouiller la traçabilité."],
   ["Solscan / Etherscan", "Explorateurs blockchain publics permettant à quiconque de vérifier n'importe quelle transaction en tapant sa signature."],
   ["Arkham Intelligence", "Plateforme professionnelle d'analyse blockchain permettant de visualiser et d'identifier les flux de fonds entre portefeuilles."],
   ["RPC (Remote Procedure Call)", "Méthode technique permettant d'interroger directement la blockchain pour extraire des données vérifiables."],
 ];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function jurisdictionLabel(j: Jurisdiction): string {
   if (j === "FR") return "Brigade d'Enquête sur les Fraudes aux Technologies de l'Information (BEFTI) — Direction Régionale de la Police Judiciaire de Paris";
@@ -55,15 +59,22 @@ function niveauLabel(n: string): string {
 }
 
 function infractionLabel(t: string): string {
-  const map: Record<string, string> = {
-    insider_trading: "Insider Trading",
-    pump_dump: "Pump & Dump",
-    manipulation_marche: "Manipulation de marché",
-    drain_phishing: "Drain / Phishing",
-    blanchiment: "Blanchiment",
-  };
+  const map: Record<string, string> = { insider_trading: "Insider Trading", pump_dump: "Pump & Dump", manipulation_marche: "Manipulation de marché", drain_phishing: "Drain / Phishing", blanchiment: "Blanchiment" };
   return map[t] || t;
 }
+
+function statutStyle(s?: PreuveStatut): { color: string; label: string; bg: string } {
+  if (s === "CONSTATE") return { color: "#2d7a2d", label: "FAIT CONSTATÉ", bg: "#f0fff0" };
+  if (s === "ATTRIBUE") return { color: "#FF6B00", label: "ATTRIBUTION / CORRÉLATION", bg: "#fff8f0" };
+  return { color: "#888", label: "À CONFIRMER PAR RÉQUISITION", bg: "#f8f8f8" };
+}
+
+function statutBadge(s?: PreuveStatut): string {
+  const st = statutStyle(s);
+  return `<span style="display:inline-block;padding:2px 6px;font-size:7px;font-weight:700;color:${st.color};border:1px solid ${st.color};border-radius:3px;text-transform:uppercase;letter-spacing:0.5px">${st.label}</span>`;
+}
+
+// ── Main HTML builder ────────────────────────────────────────────────────────
 
 export function buildPlainteHtml(input: PlainteInput): string {
   const now = new Date().toISOString().slice(0, 10);
@@ -73,7 +84,7 @@ export function buildPlainteHtml(input: PlainteInput): string {
 @page{size:A4;margin:18mm 16mm 24mm 16mm}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Times New Roman',Georgia,serif;color:#111;font-size:11px;line-height:1.55;background:#fff}
-.header-band{background:#000;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:0}
+.header-band{background:#000;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center}
 .header-band .logo{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
 .header-band .logo .box{width:22px;height:22px;background:#FF6B00;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#000;border-radius:3px}
 .header-band .conf{color:#ff4444;font-size:9px;text-transform:uppercase;letter-spacing:1px;font-weight:700}
@@ -96,14 +107,10 @@ tr:nth-child(even) td{background:#f8f8f8}
 .cover-center{text-align:center;margin:30px 0}
 .cover-table td{border:none;padding:4px 10px;font-size:11px}
 .cover-table td:first-child{font-weight:700;text-align:right;width:160px;color:#444}
-.footer{position:fixed;bottom:0;left:0;right:0;padding:4px 20px;font-size:8px;color:#888;text-align:center;border-top:1px solid #ddd}
+.qual-note{font-style:italic;color:#666;font-size:9px;margin:2px 0 8px 12px}
+.leaked-warning{background:#fff3f3;border:1px solid #cc0000;border-left:4px solid #cc0000;padding:8px;margin:6px 0;font-size:9px;color:#880000}
+.disclaimer-footer{font-size:7px;color:#999;text-align:center;margin-top:8px;padding-top:4px;border-top:1px solid #eee}
 .page-break{page-break-before:always}
-.glossary-term{font-weight:700;color:#1a1a1a}
-.glossary-def{color:#333}
-.req-model{background:#f0f0f0;border:1px solid #ccc;padding:8px;font-size:9px;font-family:'Courier New',monospace;margin:6px 0;white-space:pre-wrap}
-.contacts-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0}
-.contact-box{border:1px solid #ddd;padding:8px;font-size:9px}
-.contact-box .title{font-weight:700;font-size:10px;margin-bottom:4px}
 </style></head><body>`;
 
   // HEADER BAND
@@ -130,7 +137,7 @@ tr:nth-child(even) td{background:#f8f8f8}
   html += `<div class="page-break"></div><h2>Section 0 — Lexique technique — À lire en premier</h2>
   <p style="font-size:10px;color:#666;margin-bottom:10px;font-style:italic">Ce glossaire permet à tout lecteur, sans connaissance technique préalable, de comprendre les preuves présentées dans ce dossier.</p>`;
   for (const [term, def] of GLOSSARY) {
-    html += `<p><span class="glossary-term">${esc(term)}</span> — <span class="glossary-def">${esc(def)}</span></p>`;
+    html += `<p><strong style="color:#1a1a1a">${esc(term)}</strong> — <span style="color:#333">${esc(def)}</span></p>`;
   }
 
   // SECTION 1 — RÉSUMÉ EXÉCUTIF
@@ -140,6 +147,12 @@ tr:nth-child(even) td{background:#f8f8f8}
   <p>${input.suspects.length} suspect(s) identifié(s). ${input.preuvesCles.length} preuve(s) clé(s) documentée(s). ${input.requisitions.length} réquisition(s) judiciaire(s) recommandée(s).</p>`;
   if (input.ampleur) {
     html += `<p><strong>Ampleur du schéma</strong> : ${input.ampleur.victimesIdentifiees ?? "—"} victimes identifiées, ${input.ampleur.walletIntermediaires ?? "—"} wallets intermédiaires, ${input.ampleur.transactionsTotales ?? "—"} transactions, extrapolation ${esc(input.ampleur.extrapolationTotale)}.</p>`;
+  }
+
+  // ── MOD 3 : COMPÉTENCE TERRITORIALE (FR only, between S1 and S2) ───────
+  if (input.juridiction === "FR") {
+    html += `<h2>Compétence territoriale</h2>
+    <p>Le plaignant réside en France (département 91 — Essonne, Île-de-France). Les faits ont produit leurs effets sur le territoire français, le préjudice ayant été subi par une personne physique résidant en France. La compétence de la juridiction parisienne est établie conformément aux articles 43 et 706-72 du Code de procédure pénale. Les infractions commises via un réseau de communication électronique sont réputées commises en France lorsqu'elles lèsent une personne physique résidant sur le territoire (Art. 113-2 Code pénal).</p>`;
   }
 
   // SECTION 2 — PARTIES
@@ -162,24 +175,30 @@ tr:nth-child(even) td{background:#f8f8f8}
   }
   html += `</tbody></table>`;
 
-  // SECTION 3 — CHRONOLOGIE
+  // SECTION 3 — CHRONOLOGIE (MOD 2: statut column)
   if (input.chronologie?.length) {
     html += `<div class="page-break"></div><h2>Section 3 — Chronologie détaillée</h2>
-    <table><thead><tr><th>Date</th><th>Heure UTC</th><th>Événement</th><th>Acteurs</th><th>Preuve</th><th>Force</th></tr></thead><tbody>`;
+    <table><thead><tr><th>Date</th><th>Heure UTC</th><th>Événement</th><th>Acteurs</th><th>Preuve</th><th>Force</th><th>Statut</th></tr></thead><tbody>`;
     for (const c of input.chronologie) {
       const forceBadge = c.force === "CRITIQUE" ? "badge-critique" : c.force === "HAUTE" ? "badge-haute" : "badge-moyenne";
-      html += `<tr><td>${esc(c.date)}</td><td>${esc(c.heure || "—")}</td><td>${esc(c.evenement)}</td><td style="font-size:9px">${esc(c.acteurs || "")}</td><td style="font-size:9px">${esc(c.preuve || "")}</td><td>${c.force ? `<span class="badge ${forceBadge}">${c.force}</span>` : "—"}</td></tr>`;
+      html += `<tr><td>${esc(c.date)}</td><td>${esc(c.heure || "—")}</td><td>${esc(c.evenement)}</td><td style="font-size:9px">${esc(c.acteurs || "")}</td><td style="font-size:9px">${esc(c.preuve || "")}</td><td>${c.force ? `<span class="badge ${forceBadge}">${c.force}</span>` : "—"}</td><td>${statutBadge(c.statut as PreuveStatut | undefined)}</td></tr>`;
     }
     html += `</tbody></table>`;
   }
 
-  // SECTION 4 — PREUVES
-  html += `<div class="page-break"></div><h2>Section 4 — Preuves techniques on-chain (${input.preuvesCles.length})</h2>`;
+  // SECTION 4 — PREUVES (MOD 2: 3 visual levels + MOD 10: leaked warning)
+  html += `<div class="page-break"></div><h2>Section 4 — Preuves techniques (${input.preuvesCles.length})</h2>`;
   for (const p of input.preuvesCles) {
+    const st = statutStyle(p.statut);
     const forceBadge = p.force === "CRITIQUE" ? "badge-critique" : p.force === "HAUTE" ? "badge-haute" : "badge-moyenne";
-    html += `<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-left:4px solid ${p.force === "CRITIQUE" ? "#c41e1e" : p.force === "HAUTE" ? "#FF6B00" : "#888"}">
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong>${esc(p.id)} — ${esc(p.nature)}</strong><span class="badge ${forceBadge}">${p.force}</span></div>
+    const isLeaked = p.statut === "A_CONFIRMER" && (p.nature.toLowerCase().includes("document interne") || p.nature.toLowerCase().includes("leaked"));
+    html += `<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-left:4px solid ${st.color};background:${st.bg}">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px"><div style="font-size:8px;font-weight:700;color:${st.color};text-transform:uppercase;letter-spacing:1px">${st.label}</div><span class="badge ${forceBadge}">${p.force}</span></div>
+    <div style="font-weight:700;margin-bottom:6px">${esc(p.id)} — ${esc(p.nature)}</div>
     <p style="font-size:10px">${esc(p.description)}</p>`;
+    if (isLeaked) {
+      html += `<div class="leaked-warning">⚠ PIÈCE D'ORIENTATION — Cette pièce nécessite une authentification formelle avant d'être présentée comme preuve centrale. Joindre si possible : hash SHA-256 du fichier + date et contexte de réception + corroborations on-chain ligne par ligne.</div>`;
+    }
     if (p.adresse) html += `<div class="mono-block">Adresse : ${esc(p.adresse)}</div>`;
     if (p.ata) html += `<div class="mono-block">ATA : ${esc(p.ata)}</div>`;
     if (p.wallet) html += `<div class="mono-block">Wallet : ${esc(p.wallet)}</div>`;
@@ -189,18 +208,21 @@ tr:nth-child(even) td{background:#f8f8f8}
     html += `</div>`;
   }
 
-  // SECTION 5 — QUALIFICATIONS
+  // SECTION 5 — QUALIFICATIONS (MOD 1: bandeau + MOD 4: prescription)
   html += `<div class="page-break"></div><h2>Section 5 — Qualifications pénales applicables</h2>`;
   if (input.qualificationsFR?.length) {
-    html += `<h3>Droit français</h3><ul style="margin:6px 0 12px 20px">`;
+    html += `<h3>Droit français</h3><ul style="margin:6px 0 0 20px">`;
     for (const q of input.qualificationsFR) html += `<li style="margin:4px 0;font-size:10.5px">${esc(q)}</li>`;
-    html += `</ul>`;
+    html += `</ul><div class="qual-note">Qualification principale / subsidiaire proposée au vu des éléments actuellement disponibles, susceptible d'être affinée par les enquêteurs ou le parquet.</div>`;
   }
   if (input.qualificationsUS?.length) {
-    html += `<h3>Droit américain</h3><ul style="margin:6px 0 12px 20px">`;
+    html += `<h3>Droit américain</h3><ul style="margin:6px 0 0 20px">`;
     for (const q of input.qualificationsUS) html += `<li style="margin:4px 0;font-size:10.5px">${esc(q)}</li>`;
-    html += `</ul>`;
+    html += `</ul><div class="qual-note">Qualification principale / subsidiaire proposée au vu des éléments actuellement disponibles, susceptible d'être affinée par les enquêteurs ou le parquet.</div>`;
   }
+  // MOD 4 — Prescription
+  html += `<h3>Prescription</h3>
+  <p>Les faits visés datent de ${esc(input.datesFaits)}. Le délai de prescription applicable aux délits est de 6 ans à compter du jour où l'infraction a été commise (Art. 8 du Code de procédure pénale). La présente plainte est déposée dans le délai légal.</p>`;
 
   // SECTION 6 — RÉQUISITIONS
   html += `<div class="page-break"></div><h2>Section 6 — Réquisitions judiciaires recommandées (${input.requisitions.length})</h2>
@@ -210,21 +232,32 @@ tr:nth-child(even) td{background:#f8f8f8}
   }
   html += `</tbody></table>`;
 
-  // SECTION 7 — PRÉJUDICE
+  // SECTION 7 — PRÉJUDICE (MOD 6: méthode de calcul structurée)
   html += `<h2>Section 7 — Préjudice et demandes</h2>
-  <h3>Préjudice matériel direct</h3>
+  <h3>Méthode de calcul du préjudice</h3>
   <table class="cover-table"><tbody>
-  <tr><td>Préjudice EUR</td><td><strong>${fmtMoney(input.prejudiceEUR)}</strong></td></tr>
-  <tr><td>Préjudice USD</td><td><strong>${fmtMoney(input.prejudiceUSD, "$")}</strong></td></tr>
+  <tr><td>Cours ${esc(input.token || "token")}/USD au moment du fait</td><td>À préciser — source CoinGecko données historiques (coingecko.com)</td></tr>
+  <tr><td>Quantité investie / volée</td><td>Voir Section 4 — preuves techniques</td></tr>
+  <tr><td>Valeur USD au moment du fait</td><td><strong>${fmtMoney(input.prejudiceUSD, "$")}</strong></td></tr>
+  <tr><td>Taux EUR/USD BCE</td><td>Taux du jour applicable — à préciser</td></tr>
+  <tr><td>Valeur EUR au moment du fait</td><td><strong>${fmtMoney(input.prejudiceEUR)}</strong></td></tr>
+  <tr><td>Préjudice total retenu</td><td><strong>${fmtMoney(input.prejudiceEUR)}</strong></td></tr>
   </tbody></table>
-  ${input.prejudiceMoral ? `<h3>Préjudice moral</h3><p>${esc(input.prejudiceMoral)}</p>` : ""}
-  <h3>Demandes au titre de la procédure</h3>
-  <ul style="margin:6px 0 12px 20px;font-size:10.5px">
-  <li>Ouverture d'une enquête judiciaire pour les faits exposés</li>
-  <li>Gel des avoirs identifiés sur les wallets et comptes exchange listés</li>
-  <li>Exécution des réquisitions judiciaires détaillées en Section 6</li>
-  <li>Désignation d'un expert judiciaire en analyse blockchain si nécessaire</li>
-  </ul>`;
+  <p style="font-size:9px;color:#666;font-style:italic">Les cours historiques sont publiquement vérifiables sur CoinGecko (coingecko.com) — source reconnue par les juridictions pour l'évaluation des cryptoactifs.</p>`;
+  if (input.prejudiceMoral) html += `<h3>Préjudice moral</h3><p>${esc(input.prejudiceMoral)}</p>`;
+
+  // MOD 5 — Constitution de partie civile (Section 7bis)
+  html += `<h2>Section 7bis — Constitution de partie civile</h2>
+  <p>Conformément aux articles 85 et suivants du Code de procédure pénale, le plaignant entend se constituer partie civile afin d'obtenir réparation intégrale du préjudice subi.</p>
+  <p>Le plaignant a personnellement subi le préjudice décrit, ayant investi ses fonds propres depuis ses wallets personnels identifiés en Section 2. Sans les manœuvres frauduleuses décrites dans ce dossier, le plaignant n'aurait pas subi le préjudice financier documenté.</p>
+  <p>Le plaignant sollicite :</p>
+  <ol style="margin:6px 0 12px 20px;font-size:10.5px">
+  <li>L'ouverture d'une enquête préliminaire sur les faits exposés</li>
+  <li>Le gel conservatoire des avoirs crypto identifiés en Section 2</li>
+  <li>L'exécution des réquisitions judiciaires détaillées en Section 6</li>
+  <li>La désignation d'un expert judiciaire en analyse blockchain</li>
+  <li>La réparation intégrale du préjudice matériel et moral subi</li>
+  </ol>`;
 
   // SECTION 8 — PIÈCES
   if (input.piecesJointes?.length) {
@@ -238,11 +271,20 @@ tr:nth-child(even) td{background:#f8f8f8}
     html += `<h2>Section 8 — Inventaire des pièces</h2><p style="color:#666;font-style:italic">Les preuves techniques (Section 4) font office de pièces jointes. Le détail des preuves additionnelles pourra être communiqué sur demande du magistrat instructeur.</p>`;
   }
 
-  // SECTION 9 — DÉCLARATION
+  // SECTION 9 — DÉCLARATION + MOD 9: instructions de dépôt
   html += `<div class="page-break"></div><h2>Section 9 — Déclaration de véracité</h2>
   <p>Je soussigné(e) <strong>${esc(input.plaignantNom)}</strong>, déclare que les informations contenues dans ce dossier sont exactes et sincères à ma connaissance. Je certifie que les données on-chain présentées ont été extraites directement depuis la blockchain publique ${esc(input.blockchain)} via les méthodes RPC standards et sont publiquement vérifiables.</p>
   <p style="margin-top:20px">Fait à __________________, le ${now}</p>
-  <p style="margin-top:30px">Signature : ___________________</p>`;
+  <p style="margin-top:30px">Signature : ___________________</p>
+
+  <h3 style="margin-top:24px">Instructions de dépôt physique</h3>
+  <ul style="margin:6px 0 12px 20px;font-size:10px;line-height:1.7">
+  <li>Imprimer en <strong>2 exemplaires minimum</strong> (1 pour le service enquêteur, 1 pour le plaignant)</li>
+  <li>Porter sur chaque page la mention manuscrite <em>"Certifié conforme à l'original"</em> + signature du plaignant</li>
+  <li>Joindre les pièces dans l'ordre de l'inventaire Section 8</li>
+  <li>Apporter une <strong>clé USB</strong> contenant : PDF complet du dossier + tous les fichiers sources (exports on-chain, captures, JSON) + fichier INVENTAIRE.txt listant chaque fichier avec sa date de capture et son hash SHA-256</li>
+  <li>Se munir d'une <strong>pièce d'identité en cours de validité</strong></li>
+  </ul>`;
 
   // SECTION 10 — CONTACTS
   html += `<h2>Section 10 — Contacts et ressources</h2>`;
@@ -270,6 +312,9 @@ tr:nth-child(even) td{background:#f8f8f8}
     <tr><td>Europol</td><td>europol.europa.eu/report-a-crime</td></tr>
     </tbody></table>`;
   }
+
+  // MOD 10 — Disclaimer footer on every page conceptually (added at end)
+  html += `<div class="disclaimer-footer">Ce document est généré à titre d'aide à la constitution de dossier par INTERLIGENS (app.interligens.com). Il ne constitue pas un avis juridique. Consultez un avocat spécialisé en droit du numérique avant dépôt.</div>`;
 
   html += `</div></body></html>`;
   return html;
