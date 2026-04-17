@@ -2057,3 +2057,76 @@ model XThread {
 
   @@index([status])
 }
+
+// ─── TIGERSCORE HARDENING — SPRINT 1 ────────────────────────────────────────
+// Two additive models. Rollback = drop both tables + enums. Isolated from the
+// existing TigerScore engine code, which stays pure.
+
+model EntityGovernedStatus {
+  id                        String                      @id @default(cuid())
+  entityType                String                      // "wallet" | "token" | "domain" | "handle"
+  entityValue               String                      // lowercase for wallets/tokens
+  chain                     String?                     // optional chain qualifier
+  status                    GovernedStatusEnum
+  basis                     GovernedStatusBasisEnum?
+  reason                    String?                     @db.Text
+  setByUserId               String
+  setByUserRole             String                      @default("admin")
+  setAt                     DateTime                    @default(now())
+  reviewState               GovernedStatusReviewStateEnum @default(draft)
+  evidenceRefs              Json                        @default("[]")
+  revokedAt                 DateTime?
+  revokedByUserId           String?
+  revokedReason             String?                     @db.Text
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+
+  @@unique([entityType, entityValue])
+  @@index([status])
+  @@index([reviewState])
+  @@index([setAt])
+}
+
+enum GovernedStatusEnum {
+  none
+  watchlisted
+  suspected
+  corroborated_high_risk
+  confirmed_known_bad
+  authority_flagged
+}
+
+enum GovernedStatusBasisEnum {
+  manual_internal_confirmation
+  external_authority_source
+  multi_source_corroboration
+  legacy_case_linkage
+}
+
+enum GovernedStatusReviewStateEnum {
+  draft
+  reviewed
+  approved
+}
+
+model ScoreSnapshot {
+  id                     String    @id @default(cuid())
+  entityType             String    // "wallet" | "token"
+  entityValue            String
+  chain                  String
+  score                  Int       // 0-100
+  tier                   String    // "GREEN" | "ORANGE" | "RED"
+  confidenceLevel        String    // "Low" | "Medium" | "High"
+  version                String    // TigerScore engine version (e.g. "1.0.0")
+  topReasons             Json      // array of { id, label, severity, delta, why }
+  provenanceData         Json?     // per-signal provenance (source, dataSource, fetchedAt)
+  governedStatus         Json?     // snapshot of EntityGovernedStatus at scoring time
+  rawInput               Json?     // ScanNormalized payload for audit
+  createdAt              DateTime  @default(now())
+
+  @@index([entityType, entityValue, createdAt])
+  @@index([chain])
+  @@index([version])
+  @@index([tier])
+  @@index([createdAt])
+}
