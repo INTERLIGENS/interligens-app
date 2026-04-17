@@ -205,6 +205,19 @@
         if (mint) scoreMint(mint);
       }
     });
+
+    // ── MM alerts settings toggle (Phase 10) ─────────────────────────────
+    var mmToggle = document.getElementById("mm-alerts-toggle");
+    if (mmToggle) {
+      chrome.storage.local.get("mm_alerts_enabled").then(function (res) {
+        mmToggle.checked = res.mm_alerts_enabled !== false;
+      });
+      mmToggle.addEventListener("change", function () {
+        chrome.storage.local.set({
+          mm_alerts_enabled: !!mmToggle.checked,
+        });
+      });
+    }
   }
 
   // ── Boot: check onboarding state ─────────────────────────────────────────

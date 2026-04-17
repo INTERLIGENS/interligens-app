@@ -53,6 +53,7 @@ console.log('INTERLIGENS Guard loaded');
   };
 
   var BADGE_ID = "interligens-guard-badge";
+  var MM_BADGE_ID = "interligens-guard-mm-badge";
   var currentMint = null;
   var isScoring = false;
 
@@ -264,6 +265,93 @@ console.log('INTERLIGENS Guard loaded');
     }, 8000);
   }
 
+  // ── MM badge (Phase 10) ────────────────────────────────────────────────────
+  // Additional badge rendered above the TigerScore badge when the MM public
+  // endpoint returns a cached risk summary with displayScore >= 40. Fails
+  // silently on 404 / error — the TigerScore badge never depends on it.
+
+  var MM_BAND_COLORS = {
+    RED: "#CC0000",
+    ORANGE: "#FF6B00",
+    // YELLOW / GREEN never render a MM badge per Phase 10 spec.
+  };
+
+  function removeMmBadge() {
+    var existing = document.getElementById(MM_BADGE_ID);
+    if (existing) existing.remove();
+  }
+
+  function createMmBadge(mmData) {
+    removeMmBadge();
+    if (!mmData || typeof mmData.displayScore !== "number") return;
+    if (mmData.displayScore < 40) return;
+    var band = mmData.band || "ORANGE";
+    var bg = MM_BAND_COLORS[band] || "#FF6B00";
+    var tooltip =
+      mmData.disclaimer ||
+      "MM Risk: patterns de manipulation on-chain détectés ou entité Market Maker documentée.";
+
+    var badge = document.createElement("div");
+    badge.id = MM_BADGE_ID;
+    badge.title = tooltip;
+    badge.style.cssText = [
+      "position:fixed",
+      // Positioned just above the TigerScore badge (which sits at bottom:24px).
+      "bottom:170px",
+      "right:24px",
+      "z-index:999999",
+      "background:" + bg,
+      "color:#FFFFFF",
+      "border-radius:10px",
+      "padding:8px 12px",
+      "font-family:monospace",
+      "font-size:12px",
+      "font-weight:bold",
+      "box-shadow:0 0 18px " + bg + "66",
+      "cursor:pointer",
+      "display:flex",
+      "align-items:center",
+      "gap:8px",
+      "max-width:240px",
+    ].join(";");
+
+    // Warning triangle glyph + label + score.
+    badge.innerHTML = [
+      "<span style=\"font-size:14px\">&#9888;</span>",
+      "<span style=\"letter-spacing:1.5px\">MM Risk</span>",
+      "<span style=\"background:rgba(0,0,0,0.28);padding:2px 6px;border-radius:4px\">" +
+        String(mmData.displayScore) +
+        " " +
+        band +
+        "</span>",
+    ].join("");
+
+    badge.addEventListener("click", function () {
+      var target =
+        mmData.entity && mmData.entity.slug
+          ? "https://app.interligens.com/mm/" + mmData.entity.slug
+          : "https://app.interligens.com/mm";
+      window.open(target, "_blank", "noopener,noreferrer");
+    });
+
+    document.body.appendChild(badge);
+  }
+
+  function requestMmRisk(mint) {
+    try {
+      chrome.runtime.sendMessage(
+        { type: "MM_RISK", mint: mint, chain: "SOLANA" },
+        function (response) {
+          if (chrome.runtime.lastError) return; // silent
+          if (!response || !response.success) return;
+          createMmBadge(response.data);
+        },
+      );
+    } catch {
+      // API unavailable — silent.
+    }
+  }
+
   // ── Main scan logic ────────────────────────────────────────────────────────
 
   function scanCurrentPage() {
@@ -274,6 +362,7 @@ console.log('INTERLIGENS Guard loaded');
       // No mint found — no badge needed
       if (currentMint) {
         removeBadge();
+        removeMmBadge();
         currentMint = null;
       }
       return;
@@ -281,6 +370,9 @@ console.log('INTERLIGENS Guard loaded');
 
     // Same mint already scored — skip
     if (mint === currentMint) return;
+
+    // A fresh mint — clear the MM badge before re-rendering
+    removeMmBadge();
 
     // Prevent concurrent scoring
     if (isScoring) return;
@@ -318,6 +410,10 @@ console.log('INTERLIGENS Guard loaded');
         createScoreBadge(response.data);
       }
     );
+
+    // Parallel, non-blocking MM risk lookup. Fires-and-forgets regardless
+    // of the TigerScore result. Fails silently on 404 / disabled.
+    requestMmRisk(mint);
   }
 
   // ── SPA Navigation Observer ────────────────────────────────────────────────

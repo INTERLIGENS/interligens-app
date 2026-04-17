@@ -111,7 +111,7 @@ export default async function MmEntityPage({ params }: PageProps) {
         </div>
       ) : null}
 
-      <EntityHeader entity={entity} />
+      <EntityHeader entity={entity} isPublic={isPublic} />
 
       {facts.length > 0 ? (
         <Section id="procedural" title="Statut procédural">
@@ -242,8 +242,10 @@ export default async function MmEntityPage({ params }: PageProps) {
 
 function EntityHeader({
   entity,
+  isPublic,
 }: {
   entity: Awaited<ReturnType<typeof getEntityFull>> & object;
+  isPublic: boolean;
 }) {
   return (
     <header style={{ marginBottom: 40 }}>
@@ -305,6 +307,29 @@ function EntityHeader({
           <p style={{ color: "#E5E5E5", fontSize: 15, lineHeight: 1.65, margin: 0 }}>
             {entity.publicSummaryFr || entity.publicSummary}
           </p>
+          {isPublic ? (
+            <a
+              href={`/api/v1/mm/entity/${entity.slug}/report`}
+              download={`mm-report-${entity.slug}.pdf`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 16,
+                padding: "10px 16px",
+                border: "1px solid #FF6B00",
+                color: "#FF6B00",
+                textDecoration: "none",
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                borderRadius: 2,
+              }}
+            >
+              ↓ Télécharger le rapport forensique (PDF)
+            </a>
+          ) : null}
         </div>
       </div>
     </header>
