@@ -7,3 +7,4 @@ export * as registry from "./registry";
 export * as engine from "./engine";
 export * as adapter from "./adapter";
 export * as integration from "./integration";
+export * as data from "./data";

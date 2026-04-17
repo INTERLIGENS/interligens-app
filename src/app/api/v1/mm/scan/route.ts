@@ -1,12 +1,11 @@
-// ─── POST /api/v1/mm/scan (spec §10.5, beta-gated) ────────────────────────
-// On-demand scan endpoint. Phase 5 stubs this out and returns 501 because
-// the on-chain data layer (helius/birdeye/etherscan) lands in Phase 6+.
+// ─── POST /api/v1/mm/scan (spec §10.5, beta-gated) — Phase 8 activated ───
+// On-demand scan endpoint wired to the real data layer.
 //
-// Even as a stub the endpoint:
-//   • authenticates the caller (X-Api-Token)
-//   • requires an access code in the body
-//   • rate-limits 5 req / day / access code
-//   • logs the attempt into MmReviewLog with action=CREATED, targetType=SCAN_RUN
+//   • X-Api-Token auth (MM_API_TOKEN or ADMIN_TOKEN, constant-time)
+//   • Beta access code required in body
+//   • Rate limit 5 req / day / access code
+//   • Logs the attempt AND the resolved scanRunId into MmReviewLog
+//   • Returns the full MmRiskAssessment via the adapter
 
 import { NextResponse, type NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
@@ -16,10 +15,12 @@ import {
 } from "@/lib/security/rateLimit";
 import { writeReviewLog } from "@/lib/mm/registry/reviewLog";
 import type { MmChain, MmSubjectType } from "@/lib/mm/types";
+import { scanToken, scanWallet } from "@/lib/mm/data/scanner";
+import { computeMmRiskAssessment } from "@/lib/mm/adapter/riskAssessment";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const SCAN_RATE_LIMIT = {
   windowMs: 24 * 60 * 60 * 1_000,
@@ -61,6 +62,7 @@ interface ScanBody {
   subjectType?: MmSubjectType;
   subjectId?: string;
   chain?: MmChain;
+  cohortKey?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -81,6 +83,9 @@ export async function POST(req: NextRequest) {
   if (!body.subjectType || !VALID_SUBJECT_TYPES.includes(body.subjectType)) {
     return badRequest("invalid_subject_type");
   }
+  if (body.subjectType === "ENTITY") {
+    return badRequest("scan_not_supported_for_entity");
+  }
   if (!body.subjectId || typeof body.subjectId !== "string") {
     return badRequest("invalid_subject_id");
   }
@@ -91,7 +96,7 @@ export async function POST(req: NextRequest) {
   const rl = await checkRateLimit(`access:${body.accessCode}`, SCAN_RATE_LIMIT);
   if (!rl.allowed) return rateLimitResponse(rl);
 
-  // Log the attempt so we can see demand even while the endpoint is stubbed.
+  // Pre-log the attempt so we capture demand + unauthorised scans.
   try {
     await writeReviewLog({
       targetType: "SCAN_RUN",
@@ -99,28 +104,61 @@ export async function POST(req: NextRequest) {
       action: "CREATED",
       actorUserId: body.accessCode,
       actorRole: "beta_user",
-      notes: "scan endpoint invoked — data layer not available",
-      snapshotAfter: {
-        subjectType: body.subjectType,
-        subjectId: body.subjectId,
-        chain: body.chain,
-        status: "STUB_501",
-      },
+      notes: "scan endpoint invoked",
     });
   } catch (err) {
-    console.error("[mm/scan] reviewLog write failed", err);
+    console.error("[mm/scan] reviewLog pre-log failed", err);
   }
 
-  return NextResponse.json(
-    {
-      error: "not_implemented",
-      message: "scan endpoint requires data layer — available in Phase 6+",
-      subject: {
-        subjectType: body.subjectType,
-        subjectId: body.subjectId,
-        chain: body.chain,
+  try {
+    // Fresh scan via the data-layer orchestrator.
+    const result =
+      body.subjectType === "WALLET"
+        ? await scanWallet(body.subjectId, body.chain, {
+            cohortKey: body.cohortKey,
+            triggeredBy: "API_PUBLIC",
+            triggeredByRef: `access:${body.accessCode}`,
+          })
+        : await scanToken(body.subjectId, body.chain, {
+            cohortKey: body.cohortKey,
+            triggeredBy: "API_PUBLIC",
+            triggeredByRef: `access:${body.accessCode}`,
+          });
+
+    // The scanner persisted the scan run + cache; now read it back as a
+    // full MmRiskAssessment so the response matches /assess.
+    const assessment = await computeMmRiskAssessment({
+      subjectType: body.subjectType,
+      subjectId: body.subjectId,
+      chain: body.chain,
+      useCache: true,
+      persist: false,
+      triggeredBy: "API_PUBLIC",
+    });
+
+    return NextResponse.json(
+      {
+        ok: true,
+        scanRunId: assessment.scanRunId,
+        assessment,
+        rawEngine: {
+          behaviorDrivenScore: result.behaviorDrivenScore,
+          confidence: result.confidence,
+          coverage: result.coverage,
+          signalsCount: result.signalsCount,
+          capsApplied: result.capsApplied,
+        },
       },
-    },
-    { status: 501 },
-  );
+      { status: 200 },
+    );
+  } catch (err) {
+    console.error("[mm/scan] scan failed", err);
+    return NextResponse.json(
+      {
+        error: "scan_failed",
+        message: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 },
+    );
+  }
 }
