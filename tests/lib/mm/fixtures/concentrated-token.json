@@ -1,0 +1,86 @@
+{
+  "tokenId": "WHALE",
+  "chain": "SOLANA",
+  "walletVolumes": [
+    {
+      "wallet": "whale-1",
+      "volumeUsd": 475000
+    },
+    {
+      "wallet": "whale-2",
+      "volumeUsd": 285000
+    },
+    {
+      "wallet": "whale-3",
+      "volumeUsd": 190000
+    },
+    {
+      "wallet": "tail-000",
+      "volumeUsd": 17500
+    },
+    {
+      "wallet": "tail-001",
+      "volumeUsd": 11375
+    },
+    {
+      "wallet": "tail-002",
+      "volumeUsd": 7393.749999999999
+    },
+    {
+      "wallet": "tail-003",
+      "volumeUsd": 4805.9375
+    },
+    {
+      "wallet": "tail-004",
+      "volumeUsd": 3123.859375
+    },
+    {
+      "wallet": "tail-005",
+      "volumeUsd": 2030.5085937499998
+    },
+    {
+      "wallet": "tail-006",
+      "volumeUsd": 1319.8305859375
+    },
+    {
+      "wallet": "tail-007",
+      "volumeUsd": 857.889880859375
+    },
+    {
+      "wallet": "tail-008",
+      "volumeUsd": 557.6284225585938
+    },
+    {
+      "wallet": "tail-009",
+      "volumeUsd": 362.458474663086
+    },
+    {
+      "wallet": "tail-010",
+      "volumeUsd": 235.59800853100595
+    },
+    {
+      "wallet": "tail-011",
+      "volumeUsd": 153.13870554515387
+    },
+    {
+      "wallet": "tail-012",
+      "volumeUsd": 99.54015860435003
+    },
+    {
+      "wallet": "tail-013",
+      "volumeUsd": 64.70110309282751
+    },
+    {
+      "wallet": "tail-014",
+      "volumeUsd": 42.05571701033788
+    },
+    {
+      "wallet": "tail-015",
+      "volumeUsd": 27.33621605671963
+    },
+    {
+      "wallet": "tail-016",
+      "volumeUsd": 50.76725839105074
+    }
+  ]
+}

@@ -2057,3 +2057,412 @@ model XThread {
 
   @@index([status])
 }
+
+// ─── MM_TRACKER — PHASE 1 ───────────────────────────────────────────────────
+// 11 modèles isolés du reste du schéma. Rollback = drop these 11 tables.
+
+model MmEntity {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  name            String
+  legalName       String?
+  jurisdiction    String?
+  foundedYear     Int?
+  founders        String[]
+  status          MmStatus
+  riskBand        MmRiskBand
+  defaultScore    Int
+  publicSummary   String    @db.Text
+  publicSummaryFr String?   @db.Text
+  knownAliases    String[]
+  officialDomains String[]
+  workflow        MmWorkflow @default(DRAFT)
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  attributions MmAttribution[]
+  claims       MmClaim[]
+  signals      MmSignal[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([workflow])
+}
+
+enum MmStatus {
+  CONVICTED
+  CHARGED
+  SETTLED
+  INVESTIGATED
+  DOCUMENTED
+  OBSERVED
+}
+
+enum MmRiskBand {
+  GREEN
+  YELLOW
+  ORANGE
+  RED
+}
+
+enum MmWorkflow {
+  DRAFT
+  REVIEWED
+  PUBLISHED
+  CHALLENGED
+  UNPUBLISHED
+}
+
+model MmSource {
+  id              String         @id @default(cuid())
+  publisher       String
+  sourceType      MmSourceType
+  url             String
+  archivedUrl     String?
+  archivalStatus  MmArchivalStatus @default(PENDING)
+  archivalError   String?
+  localSnapshot   String?
+  title           String
+  author          String?
+  publishedAt     DateTime?
+  fetchedAt       DateTime       @default(now())
+  credibilityTier MmCredTier
+  language        String         @default("en")
+  notes           String?        @db.Text
+
+  claims MmClaim[]
+
+  @@index([sourceType])
+  @@index([credibilityTier])
+  @@index([archivalStatus])
+}
+
+enum MmSourceType {
+  DOJ
+  CFTC
+  SEC
+  COURT
+  REGULATOR
+  MEDIA_TIER1
+  MEDIA_TIER2
+  MEDIA_TIER3
+  OSINT
+  OFFICIAL
+  HACK_LEAK
+}
+
+enum MmCredTier {
+  TIER_1
+  TIER_2
+  TIER_3
+}
+
+enum MmArchivalStatus {
+  PENDING
+  SUCCESS
+  WAYBACK_FAIL
+  R2_FAIL
+  RETRY
+}
+
+model MmClaim {
+  id            String        @id @default(cuid())
+  mmEntityId    String
+  claimType     MmClaimType
+  text          String        @db.Text
+  textFr        String?       @db.Text
+  sourceId      String
+  jurisdiction  String?
+  publishStatus MmPubStatus   @default(DRAFT)
+  publishedAt   DateTime?
+  orderIndex    Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
+  source   MmSource @relation(fields: [sourceId], references: [id])
+
+  @@index([mmEntityId])
+  @@index([claimType])
+  @@index([publishStatus])
+}
+
+enum MmClaimType {
+  FACT
+  ALLEGATION
+  INFERENCE
+  RESPONSE
+}
+
+enum MmPubStatus {
+  DRAFT
+  REVIEWED
+  PUBLISHED
+  RETRACTED
+}
+
+model MmAttribution {
+  id                String          @id @default(cuid())
+  walletAddress     String
+  chain             MmChain
+  mmEntityId        String
+  attributionMethod MmAttribMethod
+  confidence        Float
+  evidenceRefs      Json
+  reviewerUserId    String?
+  reviewedAt        DateTime?
+  challengedAt      DateTime?
+  challengeReason   String?         @db.Text
+  revokedAt         DateTime?
+  revokedReason     String?         @db.Text
+  createdAt         DateTime        @default(now())
+
+  mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
+
+  @@index([walletAddress, chain])
+  @@index([mmEntityId])
+  @@index([confidence])
+}
+
+enum MmChain {
+  SOLANA
+  ETHEREUM
+  BASE
+  ARBITRUM
+  OPTIMISM
+  BNB
+  POLYGON
+}
+
+enum MmAttribMethod {
+  ARKHAM
+  HACK_LEAK
+  OFFICIAL
+  OSINT
+  INFERRED_CLUSTER
+  COURT_FILING
+}
+
+model MmReviewLog {
+  id             String         @id @default(cuid())
+  targetType     MmTargetType
+  targetId       String
+  action         MmReviewAction
+  actorUserId    String
+  actorRole      String
+  notes          String?        @db.Text
+  snapshotBefore Json?
+  snapshotAfter  Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([targetType, targetId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+enum MmTargetType {
+  ENTITY
+  CLAIM
+  ATTRIBUTION
+  SOURCE
+  CHALLENGE
+  SCAN_RUN
+}
+
+enum MmReviewAction {
+  CREATED
+  EDITED
+  REVIEWED
+  PUBLISHED
+  UNPUBLISHED
+  CHALLENGED
+  CHALLENGE_VERIFIED
+  CHALLENGE_REJECTED
+  CORRECTED
+  RETRACTED
+}
+
+model MmScanRun {
+  id                  String         @id @default(cuid())
+  subjectType         MmSubjectType
+  subjectId           String
+  chain               MmChain
+  engineVersion       String
+  detectorsVersion    Json
+  schemaVersion       Int
+  cohortKey           String
+  cohortPercentiles   Json
+  dataSources         Json
+  rawDataRef          String?
+  registryDrivenScore Int
+  behaviorDrivenScore Int
+  displayScore        Int
+  confidenceLevel     String
+  coverageLevel       String
+  dominantDriver      String
+  displayReason       String
+  signalsCount        Int
+  triggeredBy         MmTriggerType
+  triggeredByRef      String?
+  durationMs          Int
+  errors              Json?
+  createdAt           DateTime       @default(now())
+
+  detectorOutputs MmDetectorOutput[]
+
+  @@index([subjectId, chain])
+  @@index([createdAt])
+}
+
+enum MmSubjectType {
+  WALLET
+  TOKEN
+  ENTITY
+}
+
+enum MmTriggerType {
+  CRON
+  API_PUBLIC
+  API_ADMIN
+  TIGERSCORE_INTEGRATION
+  BATCH_SCAN
+}
+
+model MmDetectorOutput {
+  id              String         @id @default(cuid())
+  scanRunId       String
+  detectorType    MmDetectorType
+  detectorVersion String
+  score           Int
+  signalsCount    Int
+  signals         Json
+  evidence        Json
+  durationMs      Int
+
+  scanRun MmScanRun @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
+
+  @@index([scanRunId])
+  @@index([detectorType])
+}
+
+enum MmDetectorType {
+  WASH_TRADING
+  CLUSTER_COORDINATION
+  CONCENTRATION_ABNORMALITY
+  PRICE_ASYMMETRY
+  POST_LISTING_PUMP
+  KNOWN_ENTITY_FLOOR
+}
+
+model MmCohortPercentile {
+  id                   String   @id @default(cuid())
+  cohortKey            String
+  metricName           String
+  p50                  Float
+  p75                  Float
+  p90                  Float
+  p95                  Float
+  p99                  Float
+  sampleSize           Int
+  excludedFlaggedCount Int
+  computedAt           DateTime @default(now())
+  schemaVersion        Int      @default(1)
+  notes                String?  @db.Text
+
+  @@unique([cohortKey, metricName, schemaVersion])
+  @@index([cohortKey])
+  @@index([computedAt])
+}
+
+model MmSignal {
+  id           String         @id @default(cuid())
+  subjectType  MmSubjectType
+  subjectId    String
+  chain        MmChain
+  detectorType MmDetectorType
+  severity     MmSeverity
+  scoreImpact  Int
+  evidence     Json
+  description  String         @db.Text
+  detectedAt   DateTime       @default(now())
+  expiresAt    DateTime?
+  scanRunId    String?
+  mmEntityId   String?
+
+  mmEntity MmEntity? @relation(fields: [mmEntityId], references: [id])
+
+  @@index([subjectId, chain])
+  @@index([detectorType])
+  @@index([detectedAt])
+}
+
+enum MmSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model MmChallenge {
+  id                 String            @id @default(cuid())
+  targetType         MmTargetType
+  targetId           String
+  challengerEmail    String
+  challengerName     String
+  challengerRole     String?
+  challengerEntity   String
+  claimedText        String            @db.Text
+  responseText       String            @db.Text
+  verificationStatus MmVerifStatus     @default(PENDING)
+  verificationMethod MmVerifMethod?
+  verifiedAt         DateTime?
+  verifiedBy         String?
+  publishStatus      MmPubStatus       @default(DRAFT)
+  publishedAt        DateTime?
+  rejectionReason    String?           @db.Text
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([verificationStatus])
+  @@index([publishStatus])
+}
+
+enum MmVerifStatus {
+  PENDING
+  EMAIL_VERIFIED
+  LEGAL_VERIFIED
+  REJECTED
+}
+
+enum MmVerifMethod {
+  EMAIL_DKIM
+  LEGAL_SIGNATURE
+  OFFICIAL_CHANNEL
+}
+
+model MmScore {
+  id                  String        @id @default(cuid())
+  subjectType         MmSubjectType
+  subjectId           String
+  chain               MmChain
+  registryDrivenScore Int
+  behaviorDrivenScore Int
+  displayScore        Int
+  band                MmRiskBand
+  confidence          String
+  coverage            String
+  dominantDriver      String
+  displayReason       String
+  breakdown           Json
+  signalsCount        Int
+  scanRunId           String
+  computedAt          DateTime      @default(now())
+  expiresAt           DateTime
+  schemaVersion       Int           @default(1)
+
+  @@unique([subjectType, subjectId, chain])
+  @@index([computedAt])
+}
