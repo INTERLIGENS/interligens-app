@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useVaultSession } from "@/hooks/useVaultSession";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 type Props = { children: React.ReactNode };
 
 export default function VaultGate({ children }: Props) {
   const { keys, isLoading, unlock } = useVaultSession();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
   const [salt, setSalt] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +17,11 @@ export default function VaultGate({ children }: Props) {
 
   useEffect(() => {
     if (keys || isLoading) return;
+    // Admin founder bypass — never fetch the salt, never redirect to the
+    // investigator onboarding flow. Children render without keys; any
+    // encrypted content shows a "locked" placeholder instead of being
+    // decrypted (the admin doesn't own the per-investigator keys).
+    if (adminLoading || isAdmin) return;
     (async () => {
       try {
         const res = await fetch("/api/investigators/workspace/salt");
@@ -37,19 +44,25 @@ export default function VaultGate({ children }: Props) {
         setError("salt_fetch_failed");
       }
     })();
-  }, [keys, isLoading]);
+  }, [keys, isLoading, isAdmin, adminLoading]);
 
   useEffect(() => {
-    if (!keys && !isLoading) inputRef.current?.focus();
-  }, [keys, isLoading]);
+    if (!keys && !isLoading && !isAdmin && !adminLoading) {
+      inputRef.current?.focus();
+    }
+  }, [keys, isLoading, isAdmin, adminLoading]);
 
-  if (isLoading) {
+  if (isLoading || adminLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
         <div className="text-white/40 text-sm">Loading…</div>
       </div>
     );
   }
+
+  // Admin founder — render the workspace chrome without requiring keys.
+  // Encrypted content downstream must render a locked placeholder.
+  if (isAdmin) return <>{children}</>;
 
   if (keys) return <>{children}</>;
 

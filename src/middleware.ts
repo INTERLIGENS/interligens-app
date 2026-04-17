@@ -69,6 +69,20 @@ function isLocalizedAdminRoute(pathname: string): boolean {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // ── Admin founder shortcut on investigator onboarding ──────────────────
+  // The founder must never be pushed through the investigator NDA / legal
+  // / identity screens. When the admin_session cookie is valid, any GET on
+  // /investigators/onboarding/* bounces straight back to the dashboard.
+  if (
+    pathname.startsWith("/investigators/onboarding") &&
+    verifyAdminSession(req)
+  ) {
+    const dashboardUrl = req.nextUrl.clone();
+    dashboardUrl.pathname = "/investigators/dashboard";
+    dashboardUrl.search = "";
+    return NextResponse.redirect(dashboardUrl);
+  }
+
   // ── Admin routes — cookie session (pages) / basic-or-cookie (APIs) ─────
   // Exempt: the login page itself + the login/logout API endpoints must be
   // reachable without auth, otherwise the user can never obtain a cookie.
@@ -145,6 +159,8 @@ export const config = {
     // Investigator
     "/en/investigator/:path*",
     "/api/investigator/:path*",
+    // Investigator onboarding — needs admin-bypass check in middleware
+    "/investigators/onboarding/:path*",
     // Beta gating — all locale pages + root
     "/",
     "/en/:path*",

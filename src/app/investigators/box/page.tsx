@@ -5,12 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import VaultGate from "@/components/vault/VaultGate";
 import { useVaultSession } from "@/hooks/useVaultSession";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   decryptString,
   decryptTags,
   encryptString,
   encryptTags,
 } from "@/lib/vault/crypto.client";
+
+const ENCRYPTED_PLACEHOLDER =
+  "Contenu chiffré — accessible uniquement par l'investigator propriétaire.";
 
 type CaseRow = {
   id: string;
@@ -93,6 +97,7 @@ type DecryptedSearchResult = SearchResult & { caseTitle: string };
 function DashboardInner() {
   const router = useRouter();
   const { keys, lock } = useVaultSession();
+  const { isAdmin } = useIsAdmin();
   const [cases, setCases] = useState<DecryptedCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -186,12 +191,23 @@ function DashboardInner() {
   }, []);
 
   useEffect(() => {
-    if (!keys) return;
+    // Normal path requires vault keys. Admin bypass path runs without keys
+    // and renders the cases list in read-only mode with an encrypted-
+    // content placeholder — the admin doesn't own the per-investigator
+    // decryption key.
+    if (!keys && !isAdmin) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/investigators/cases");
         if (res.status === 401) {
+          // Admin founder: a 401 here means the server still treats the
+          // session as non-investigator. Do NOT push into the NDA flow —
+          // just render an empty, read-only workspace.
+          if (isAdmin) {
+            if (!cancelled) setCases([]);
+            return;
+          }
           router.replace("/investigators/box/onboarding");
           return;
         }
@@ -199,6 +215,16 @@ function DashboardInner() {
         const rows: CaseRow[] = data.cases ?? [];
         const decrypted: DecryptedCase[] = [];
         for (const row of rows) {
+          if (!keys) {
+            // Admin view — no key, render placeholder without attempting
+            // to decrypt.
+            decrypted.push({
+              ...row,
+              title: ENCRYPTED_PLACEHOLDER,
+              tags: [],
+            });
+            continue;
+          }
           try {
             const title = await decryptString(
               row.titleEnc,
@@ -227,7 +253,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [keys, router]);
+  }, [keys, router, isAdmin]);
 
   async function createCase() {
     if (!keys || !newTitle.trim() || creating) return;

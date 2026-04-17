@@ -218,6 +218,26 @@ export function verifyAdminSession(req: NextRequest): boolean {
 }
 
 /**
+ * Server-component flavour of {@link verifyAdminSession}. Reads the
+ * admin_session cookie via next/headers and checks its HMAC — same
+ * semantics, no NextRequest required.
+ *
+ * Used by non-admin server surfaces (e.g. investigator layouts) that need
+ * to detect an admin founder and bypass their own onboarding gates.
+ */
+export async function isAdminSessionFromCookies(): Promise<boolean> {
+  // Import lazily so this module stays importable from anywhere (middleware,
+  // API routes, server components). next/headers only works in server runtime.
+  const { cookies } = await import("next/headers");
+  const store = await cookies();
+  const provided = store.get(ADMIN_SESSION_COOKIE_NAME)?.value ?? null;
+  if (!provided) return false;
+  const expected = computeAdminSessionToken();
+  if (!expected) return false;
+  return safeCompareHex(provided, expected);
+}
+
+/**
  * Set the admin session cookie on an existing response. Caller must have
  * verified the user's password already. Does nothing if env is misconfigured.
  */

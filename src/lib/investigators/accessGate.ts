@@ -16,6 +16,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { validateSession } from "@/lib/security/investigatorAuth";
+import { isAdminSessionFromCookies } from "@/lib/security/adminAuth";
 
 const COOKIE_NAME = "investigator_session";
 
@@ -41,6 +42,13 @@ const COOKIE_NAME = "investigator_session";
 export async function enforceInvestigatorAccess(): Promise<{
   profileId: string | null;
 }> {
+  // Admin founder bypass — the admin_session cookie (HMAC-signed) short-
+  // circuits every investigator onboarding / NDA gate. The founder isn't
+  // an investigator and must never be funnelled into that flow.
+  if (await isAdminSessionFromCookies()) {
+    return { profileId: null };
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
@@ -95,6 +103,11 @@ export async function enforceInvestigatorAccess(): Promise<{
  *   - profile + workspaceActivatedAt == null      → LET THROUGH (render)
  */
 export async function enforcePendingScreen(): Promise<void> {
+  // Admin founder bypass — same rationale as enforceInvestigatorAccess.
+  if (await isAdminSessionFromCookies()) {
+    redirect("/investigators/dashboard");
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
