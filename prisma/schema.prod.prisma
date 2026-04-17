@@ -1436,8 +1436,9 @@ model VaultWorkspace {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  cases  VaultCase[]
-  audits VaultAuditLog[]
+  cases         VaultCase[]
+  audits        VaultAuditLog[]
+  networkGraphs VaultNetworkGraph[]
 }
 
 model VaultCase {
@@ -2354,6 +2355,7 @@ enum MmDetectorType {
   PRICE_ASYMMETRY
   POST_LISTING_PUMP
   KNOWN_ENTITY_FLOOR
+  FAKE_LIQUIDITY
 }
 
 model MmCohortPercentile {
@@ -2465,4 +2467,40 @@ model MmScore {
 
   @@unique([subjectType, subjectId, chain])
   @@index([computedAt])
+}
+
+// --- Investigator Network Graphs (3-tier) ---------------------------------
+// Per-investigator graphs with progressive visibility:
+//   PRIVATE    — only the owner sees it (default)
+//   TEAM_POOL  — read-only across the investigator team, editable by owner
+//   PUBLIC     — surfaced in Intel Vault (admin-reviewed, additive only)
+//
+// Nodes/edges live on this row as encrypted JSON blobs keyed by the owner's
+// metaKey; the server never inspects the payload. Counts and titles are
+// stored in plaintext for dashboard enumeration (no case-level secrets here).
+
+enum VaultGraphVisibility {
+  PRIVATE
+  TEAM_POOL
+  PUBLIC
+}
+
+model VaultNetworkGraph {
+  id            String               @id @default(cuid())
+  workspaceId   String
+  workspace     VaultWorkspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  visibility    VaultGraphVisibility @default(PRIVATE)
+  nodeCount     Int                  @default(0)
+  edgeCount     Int                  @default(0)
+  payloadEnc    String               // ciphertext of the full graph JSON
+  payloadIv     String
+  publishedAt   DateTime?
+  reviewedBy    String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([workspaceId])
+  @@index([visibility])
 }

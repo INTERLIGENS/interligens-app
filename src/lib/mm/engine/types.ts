@@ -39,7 +39,8 @@ export type DetectorType =
   | "CONCENTRATION_ABNORMALITY"
   | "PRICE_ASYMMETRY"
   | "POST_LISTING_PUMP"
-  | "KNOWN_ENTITY_FLOOR";
+  | "KNOWN_ENTITY_FLOOR"
+  | "FAKE_LIQUIDITY";
 
 // ─── Wash Trading ──────────────────────────────────────────────────────────
 
@@ -238,6 +239,43 @@ export interface PostListingPumpInput {
   topN?: number;
 }
 
+// ─── Fake Liquidity (core, Phase 9) ───────────────────────────────────────
+// Detects market makers running the same capital in circles to inflate
+// DexScreener / Birdeye metrics. Unlike Price Asymmetry / Post-Listing
+// Pump, this is a CORE detector — no co-occurrence gate required.
+
+export interface LiquidityProvider {
+  wallet: string;
+  liquidityUsd: number;
+}
+
+export interface FakeLiquidityInput {
+  tokenAddress: string;
+  chain: MmChain;
+  totalLiquidityUsd: number;
+  dailyVolumeUsd: number;
+  volumeByWallet: WalletVolume[];
+  liquidityProviders: LiquidityProvider[];
+  poolCount: number;
+  /**
+   * Override the daily-volume / total-liquidity HIGH threshold (default 10).
+   */
+  volumeRatioHighThreshold?: number;
+  /**
+   * Override the daily-volume / total-liquidity MEDIUM threshold (default 5).
+   */
+  volumeRatioMediumThreshold?: number;
+  /**
+   * Phantom-volume USD minimum — below this the signal never fires
+   * (default 500_000 USD).
+   */
+  phantomVolumeMinUsd?: number;
+  /**
+   * Microcap liquidity cutoff for POOL_FRAGMENTATION (default 1_000_000 USD).
+   */
+  microcapLiquidityMax?: number;
+}
+
 // ─── Scan Run orchestration ────────────────────────────────────────────────
 
 export interface ScanRunInput {
@@ -252,6 +290,10 @@ export interface ScanRunInput {
   washTrading?: WashTradingInput;
   cluster?: ClusterInput;
   concentration?: ConcentrationInput;
+  /**
+   * Core detector (Phase 9). No co-occurrence gate.
+   */
+  fakeLiquidity?: FakeLiquidityInput;
   /**
    * Secondary, corroborative detectors. Only contribute if at least one core
    * detector emitted a HIGH-severity signal in the same scan (spec §7.4).
@@ -302,6 +344,7 @@ export interface ScanRunResult {
     washTrading: DetectorOutput | null;
     cluster: DetectorOutput | null;
     concentration: DetectorOutput | null;
+    fakeLiquidity: DetectorOutput | null;
     priceAsymmetry: DetectorOutput | null;
     postListingPump: DetectorOutput | null;
   };

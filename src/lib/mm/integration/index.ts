@@ -3,3 +3,5 @@ export * from "./evidence";
 export * from "./tigerScoreAdapter";
 export * from "./override";
 export * from "./hook";
+export * from "./watcherHook";
+export * from "./alertManager";

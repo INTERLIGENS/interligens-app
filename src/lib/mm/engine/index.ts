@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./detectors/washTrading";
 export * from "./detectors/clusterMapper";
 export * from "./detectors/concentration";
+export * from "./detectors/fakeLiquidity";
 export * from "./detectors/priceAsymmetry";
 export * from "./detectors/postListingPump";
 export * from "./scoring/weights";

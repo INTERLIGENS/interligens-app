@@ -23,6 +23,11 @@ export interface BehaviorScoreInput {
     cluster: DetectorOutput | null;
     concentration: DetectorOutput | null;
     /**
+     * Core detector (Phase 9). Contributes unconditionally — no
+     * co-occurrence gate.
+     */
+    fakeLiquidity?: DetectorOutput | null;
+    /**
      * Secondary corroborative detectors. Their `score` is always 0 on the
      * output object — the real contribution lives on
      * `evidence.scoreIfCoOccurrent` and is admitted here only when a core
@@ -65,15 +70,27 @@ const CAP_CONFIDENCE_LOW_NO_REG = 44;
 export function computeBehaviorDrivenScore(
   input: BehaviorScoreInput,
 ): BehaviorScoreOutput {
-  const { washTrading, cluster, concentration, priceAsymmetry, postListingPump } =
-    input.detectors;
+  const {
+    washTrading,
+    cluster,
+    concentration,
+    fakeLiquidity,
+    priceAsymmetry,
+    postListingPump,
+  } = input.detectors;
 
   const coreSum =
     (washTrading?.score ?? 0) +
     (cluster?.score ?? 0) +
-    (concentration?.score ?? 0);
+    (concentration?.score ?? 0) +
+    (fakeLiquidity?.score ?? 0);
 
-  const detectorList = [washTrading, cluster, concentration];
+  const detectorList: Array<DetectorOutput | null> = [
+    washTrading ?? null,
+    cluster ?? null,
+    concentration ?? null,
+    fakeLiquidity ?? null,
+  ];
   const coreHigh = countCoreWithHigh(detectorList);
 
   // Secondary detectors only contribute when ≥ 1 core detector emitted HIGH.

@@ -41,6 +41,7 @@ import type {
   ConfidenceLevel,
   CoverageLevel,
   DetectorSignal,
+  FakeLiquidityInput,
   PostListingPumpInput,
   PriceAsymmetryInput,
   ScanRunInput,
@@ -70,6 +71,7 @@ export interface AdapterInput {
   washTrading?: WashTradingInput;
   cluster?: ClusterInput;
   concentration?: ConcentrationInput;
+  fakeLiquidity?: FakeLiquidityInput;
   priceAsymmetry?: PriceAsymmetryInput;
   postListingPump?: PostListingPumpInput;
   walletAgeDays?: number;
@@ -175,6 +177,7 @@ async function runEngine(input: AdapterInput): Promise<ScanRunResult> {
     washTrading: input.washTrading,
     cluster: input.cluster,
     concentration: input.concentration,
+    fakeLiquidity: input.fakeLiquidity,
     priceAsymmetry: input.priceAsymmetry,
     postListingPump: input.postListingPump,
     walletAgeDays: input.walletAgeDays,
@@ -199,6 +202,7 @@ function buildEngineComponent(result: ScanRunResult): EngineComponent {
       washTrading: result.detectorBreakdown.washTrading,
       cluster: result.detectorBreakdown.cluster,
       concentration: result.detectorBreakdown.concentration,
+      fakeLiquidity: result.detectorBreakdown.fakeLiquidity,
       priceAsymmetry: result.detectorBreakdown.priceAsymmetry,
       postListingPump: result.detectorBreakdown.postListingPump,
     },
@@ -437,6 +441,7 @@ export function projectForMode(
           washTrading: null,
           cluster: null,
           concentration: null,
+          fakeLiquidity: null,
           priceAsymmetry: null,
           postListingPump: null,
         },

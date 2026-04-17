@@ -47,6 +47,7 @@ function mkAssessment(
         washTrading: null,
         cluster: null,
         concentration: null,
+        fakeLiquidity: null,
         priceAsymmetry: null,
         postListingPump: null,
       },

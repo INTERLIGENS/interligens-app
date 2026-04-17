@@ -8,3 +8,4 @@ export * as engine from "./engine";
 export * as adapter from "./adapter";
 export * as integration from "./integration";
 export * as data from "./data";
+export * as discovery from "./discovery";

@@ -48,13 +48,14 @@ describe("runScan orchestration (Phase 4 — 5 detectors)", () => {
     expect(r.coverage).toBe("low");
     expect(r.signals).toEqual([]);
     expect(r.detectorBreakdown.washTrading).toBeNull();
+    expect(r.detectorBreakdown.fakeLiquidity).toBeNull();
     expect(r.detectorBreakdown.priceAsymmetry).toBeNull();
     expect(r.detectorBreakdown.postListingPump).toBeNull();
     expect(r.cohortKey).toBeNull();
     expect(r.cohortPercentiles).toBeNull();
   });
 
-  it("runs all 5 detectors when all inputs are present", () => {
+  it("runs all 6 detectors when all inputs are present", () => {
     const input: ScanRunInput = {
       subjectType: "TOKEN",
       subjectId: "TKN",
@@ -63,6 +64,24 @@ describe("runScan orchestration (Phase 4 — 5 detectors)", () => {
       washTrading: washPattern({ pairCount: 10, volumeUsd: 100_000 }),
       cluster: loadJson<ClusterInput>("gotbit-cluster.json"),
       concentration: loadJson<ConcentrationInput>("concentrated-token.json"),
+      fakeLiquidity: {
+        tokenAddress: "0xT",
+        chain: "SOLANA",
+        totalLiquidityUsd: 100_000,
+        dailyVolumeUsd: 5_000_000, // ratio 50 → HIGH
+        volumeByWallet: [
+          { wallet: "A", volumeUsd: 400_000 },
+          { wallet: "B", volumeUsd: 200_000 },
+          { wallet: "C", volumeUsd: 50_000 },
+          { wallet: "D", volumeUsd: 10_000 },
+          { wallet: "E", volumeUsd: 10_000 },
+        ],
+        liquidityProviders: [
+          { wallet: "LP1", liquidityUsd: 95_000 },
+          { wallet: "LP2", liquidityUsd: 5_000 },
+        ],
+        poolCount: 12,
+      },
       priceAsymmetry: loadJson<PriceAsymmetryInput>("asymmetric-price-token.json"),
       postListingPump: loadJson<PostListingPumpInput>("post-listing-pump.json"),
     };
@@ -70,8 +89,11 @@ describe("runScan orchestration (Phase 4 — 5 detectors)", () => {
     expect(r.detectorBreakdown.washTrading).not.toBeNull();
     expect(r.detectorBreakdown.cluster).not.toBeNull();
     expect(r.detectorBreakdown.concentration).not.toBeNull();
+    expect(r.detectorBreakdown.fakeLiquidity).not.toBeNull();
     expect(r.detectorBreakdown.priceAsymmetry).not.toBeNull();
     expect(r.detectorBreakdown.postListingPump).not.toBeNull();
+    // Raw total with fakeLiquidity can exceed 90; score must be clamped.
+    expect(r.behaviorDrivenScore).toBeLessThanOrEqual(90);
   });
 
   it("admits secondary detectors when ≥ 1 core HIGH signal present", () => {

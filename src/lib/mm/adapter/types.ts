@@ -66,6 +66,7 @@ export interface EngineDetectorBreakdown {
   washTrading: DetectorOutput | null;
   cluster: DetectorOutput | null;
   concentration: DetectorOutput | null;
+  fakeLiquidity: DetectorOutput | null;
   priceAsymmetry: DetectorOutput | null;
   postListingPump: DetectorOutput | null;
 }

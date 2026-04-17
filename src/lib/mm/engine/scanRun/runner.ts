@@ -18,6 +18,7 @@ import type {
 import { runWashTradingDetector } from "../detectors/washTrading";
 import { runClusterDetector } from "../detectors/clusterMapper";
 import { runConcentrationDetector } from "../detectors/concentration";
+import { runFakeLiquidityDetector } from "../detectors/fakeLiquidity";
 import { runPriceAsymmetryDetector } from "../detectors/priceAsymmetry";
 import { runPostListingPumpDetector } from "../detectors/postListingPump";
 import { computeBehaviorDrivenScore } from "../scoring/behaviorDrivenScore";
@@ -58,6 +59,11 @@ export function runScan(input: ScanRunInput): ScanRunResult {
       )
     : null;
 
+  // Phase 9 core — no co-occurrence gate, contributes unconditionally.
+  const fakeLiquidity: DetectorOutput | null = input.fakeLiquidity
+    ? runFakeLiquidityDetector(input.fakeLiquidity)
+    : null;
+
   // Secondary detectors run regardless but their contribution is gated by
   // co-occurrence inside computeBehaviorDrivenScore.
   const priceAsymmetry: DetectorOutput | null = input.priceAsymmetry
@@ -68,7 +74,7 @@ export function runScan(input: ScanRunInput): ScanRunResult {
     ? runPostListingPumpDetector(input.postListingPump)
     : null;
 
-  const coreDetectors = [washTrading, cluster, concentration];
+  const coreDetectors = [washTrading, cluster, concentration, fakeLiquidity];
   const confidence = computeConfidence(coreDetectors);
   const coverage = computeCoverage(input);
 
@@ -77,6 +83,7 @@ export function runScan(input: ScanRunInput): ScanRunResult {
       washTrading,
       cluster,
       concentration,
+      fakeLiquidity,
       priceAsymmetry,
       postListingPump,
     },
@@ -90,6 +97,7 @@ export function runScan(input: ScanRunInput): ScanRunResult {
     washTrading,
     cluster,
     concentration,
+    fakeLiquidity,
     priceAsymmetry,
     postListingPump,
   ]) {
@@ -109,6 +117,7 @@ export function runScan(input: ScanRunInput): ScanRunResult {
       washTrading,
       cluster,
       concentration,
+      fakeLiquidity,
       priceAsymmetry,
       postListingPump,
     },

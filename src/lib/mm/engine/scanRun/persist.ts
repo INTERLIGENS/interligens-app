@@ -46,6 +46,9 @@ export async function persistScanRun(
   if (result.detectorBreakdown.concentration) {
     detectorOutputs.push(result.detectorBreakdown.concentration);
   }
+  if (result.detectorBreakdown.fakeLiquidity) {
+    detectorOutputs.push(result.detectorBreakdown.fakeLiquidity);
+  }
   if (result.detectorBreakdown.priceAsymmetry) {
     detectorOutputs.push(result.detectorBreakdown.priceAsymmetry);
   }
@@ -113,6 +116,8 @@ function detectorKey(t: DetectorOutput["detectorType"]): string {
       return "cluster";
     case "CONCENTRATION_ABNORMALITY":
       return "concentration";
+    case "FAKE_LIQUIDITY":
+      return "fakeLiquidity";
     case "PRICE_ASYMMETRY":
       return "priceAsymmetry";
     case "POST_LISTING_PUMP":

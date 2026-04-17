@@ -10,7 +10,9 @@
 import type {
   ClusterInput,
   ConcentrationInput,
+  FakeLiquidityInput,
   FundingTx,
+  LiquidityProvider,
   PostListingPumpInput,
   PriceAsymmetryInput,
   PriceMove,
@@ -22,7 +24,11 @@ import type {
 import type { MmChain } from "../types";
 import type { EtherscanTokenTx, EtherscanTx } from "./etherscan";
 import type { HeliusTx } from "./helius";
-import type { BirdeyePricePoint, BirdeyeVolumeByWallet } from "./birdeye";
+import type {
+  BirdeyeHolder,
+  BirdeyePricePoint,
+  BirdeyeVolumeByWallet,
+} from "./birdeye";
 
 // ─── EVM transactions → WashTradingInput ─────────────────────────────────
 
@@ -180,6 +186,47 @@ export function toConcentrationInput(
     tokenId: context.tokenId,
     chain: context.chain,
     walletVolumes,
+  };
+}
+
+// ─── Birdeye holders + volume → FakeLiquidityInput (Phase 9) ─────────────
+
+export function toFakeLiquidityInput(
+  context: {
+    tokenAddress: string;
+    chain: MmChain;
+    totalLiquidityUsd: number;
+    dailyVolumeUsd: number;
+    poolCount: number;
+  },
+  volumes: BirdeyeVolumeByWallet[],
+  holders: BirdeyeHolder[],
+): FakeLiquidityInput {
+  const volumeByWallet: WalletVolume[] = volumes
+    .map((v) => ({ wallet: v.wallet, volumeUsd: Math.max(0, v.volumeUsd) }))
+    .filter((v) => v.wallet && v.volumeUsd > 0);
+
+  // Birdeye's /defi/v3/token/holder returns top holders with `percentage` of
+  // the circulating supply. To translate to USD liquidity contribution, we
+  // allocate the reported `totalLiquidityUsd` proportionally. This is an
+  // approximation — real LP attribution would need on-chain pool data — but
+  // it's enough for the top-1 / top-3 share sub-signal in the detector.
+  const total = Math.max(0, context.totalLiquidityUsd);
+  const providers: LiquidityProvider[] = holders
+    .filter((h) => h.wallet && h.percentage > 0)
+    .map((h) => ({
+      wallet: h.wallet,
+      liquidityUsd: total * (h.percentage / 100),
+    }));
+
+  return {
+    tokenAddress: context.tokenAddress.toLowerCase(),
+    chain: context.chain,
+    totalLiquidityUsd: context.totalLiquidityUsd,
+    dailyVolumeUsd: context.dailyVolumeUsd,
+    volumeByWallet,
+    liquidityProviders: providers,
+    poolCount: Math.max(0, context.poolCount),
   };
 }
 

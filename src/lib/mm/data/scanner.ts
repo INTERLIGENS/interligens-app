@@ -33,11 +33,13 @@ import {
 import {
   fetchTokenPriceHistory,
   fetchTokenVolumeByWallet,
+  fetchTopHolders,
   type BirdeyeFetchOptions,
 } from "./birdeye";
 import {
   toClusterInput,
   toConcentrationInput,
+  toFakeLiquidityInput,
   toPostListingPumpInput,
   toPriceAsymmetryInput,
   toWashTradingInput,
@@ -66,6 +68,16 @@ export interface ScannerOptions {
   triggeredByRef?: string | null;
   /** Skip token volume fetching (scanToken-specific gate). */
   skipBirdeye?: boolean;
+  /**
+   * Phase 9 — FakeLiquidity detector context. The data layer does not yet
+   * fetch TVL / pool count from DeFiLlama, so callers provide these
+   * upfront. When absent, the scanner skips the fakeLiquidity detector.
+   */
+  fakeLiquidityContext?: {
+    totalLiquidityUsd: number;
+    dailyVolumeUsd?: number;
+    poolCount?: number;
+  };
 }
 
 interface Errors {
@@ -424,12 +436,50 @@ export async function scanToken(
         })
       : undefined;
 
+  // Fake liquidity (Phase 9) — needs top holders + volume + TVL + pool count.
+  // TVL and poolCount are optional opts passed by the caller (for Phase 9
+  // we don't yet have a DefiLlama client, so the scanner accepts them
+  // directly via opts.fakeLiquidityContext). When they're missing we skip
+  // the detector gracefully.
+  let fakeLiquidityInput: ScanRunInput["fakeLiquidity"] | undefined;
+  if (
+    opts.fakeLiquidityContext &&
+    opts.fakeLiquidityContext.totalLiquidityUsd > 0 &&
+    volumes.length > 0
+  ) {
+    let holders: Awaited<ReturnType<typeof fetchTopHolders>> = [];
+    try {
+      holders = await fetchTopHolders(
+        tokenAddress,
+        chain,
+        50,
+        opts.birdeye ?? {},
+      );
+    } catch (err) {
+      capture(errors, "birdeye.topHolders", err);
+    }
+    fakeLiquidityInput = toFakeLiquidityInput(
+      {
+        tokenAddress,
+        chain,
+        totalLiquidityUsd: opts.fakeLiquidityContext.totalLiquidityUsd,
+        dailyVolumeUsd:
+          opts.fakeLiquidityContext.dailyVolumeUsd ??
+          volumes.reduce((s, v) => s + Math.max(0, v.volumeUsd), 0),
+        poolCount: opts.fakeLiquidityContext.poolCount ?? 1,
+      },
+      volumes,
+      holders,
+    );
+  }
+
   const input: ScanRunInput = {
     subjectType,
     subjectId: tokenAddress,
     chain,
     washTrading: washTradingInput,
     concentration: concentrationInput,
+    fakeLiquidity: fakeLiquidityInput,
     priceAsymmetry: priceAsymmetryInput,
     postListingPump: postListingPumpInput,
     cohortKey: opts.cohortKey,

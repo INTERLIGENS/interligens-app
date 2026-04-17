@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import FeedbackButton from "@/components/vault/FeedbackButton";
+import InvestigatorPresence from "@/components/investigators/InvestigatorPresence";
 import { VaultToastProvider } from "@/components/vault/VaultToast";
 import WatermarkOverlay from "@/components/vault/WatermarkOverlay";
 import { enforceInvestigatorAccess } from "@/lib/investigators/accessGate";
@@ -43,14 +44,14 @@ const BACK_LINK: React.CSSProperties = {
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.08em",
-  color: "rgba(255,255,255,0.3)",
+  color: "rgba(255,255,255,0.5)",
   textDecoration: "none",
   transition: "color 150ms",
 };
 
 const QUICK_LINK: React.CSSProperties = {
   fontSize: 11,
-  color: "rgba(255,255,255,0.25)",
+  color: "rgba(255,255,255,0.5)",
   textDecoration: "none",
   transition: "color 150ms",
 };
@@ -70,10 +71,26 @@ export default async function InvestigatorsBoxLayout({
   return (
     <VaultToastProvider>
       <nav style={BAR_STYLE}>
-        <Link href="/en/demo" className="investigators-back-link" style={BACK_LINK}>
-          &larr; INTERLIGENS
+        <Link href="/investigators/dashboard" className="investigators-back-link" style={BACK_LINK}>
+          &larr; DASHBOARD
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Link href="/investigators/box" className="investigators-quick-link" style={QUICK_LINK}>
+            My Cases
+          </Link>
+          <span style={SEPARATOR}>|</span>
+          <Link href="/investigators/box/graphs" className="investigators-quick-link" style={QUICK_LINK}>
+            Graphs
+          </Link>
+          <span style={SEPARATOR}>|</span>
+          <Link href="/investigators/box/messages" className="investigators-quick-link" style={QUICK_LINK}>
+            Messages
+          </Link>
+          <span style={SEPARATOR}>|</span>
+          <Link href="/investigators/mm" className="investigators-quick-link" style={QUICK_LINK}>
+            MM Intel
+          </Link>
+          <span style={SEPARATOR}>|</span>
           <Link href="/en/demo" className="investigators-quick-link" style={QUICK_LINK}>
             Scan
           </Link>
@@ -86,9 +103,7 @@ export default async function InvestigatorsBoxLayout({
             Explorer
           </Link>
           <span style={SEPARATOR}>|</span>
-          <Link href="/investigators/box/messages" className="investigators-quick-link" style={QUICK_LINK}>
-            Messages
-          </Link>
+          <InvestigatorPresence />
         </div>
       </nav>
       <style>{`
