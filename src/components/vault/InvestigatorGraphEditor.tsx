@@ -38,7 +38,7 @@ const DIM = "rgba(255,255,255,0.6)";
 const SVG_HEIGHT = 640;
 // Bumped on every ship of this component. If you don't see this tag in the
 // control-bar, your browser is serving a stale bundle — hard-reload.
-const EDITOR_BUILD = "v3";
+const EDITOR_BUILD = "v4";
 
 const GROUP_COLOR: Record<NodeGroup, string> = {
   person: "#ff4040",
@@ -156,11 +156,26 @@ export default function InvestigatorGraphEditor({
   const [autoMode, setAutoMode] = useState(true);
   const [orchestrating, setOrchestrating] = useState(false);
 
-  // Add-node form state.
-  const [newGroup, setNewGroup] = useState<NodeGroup>("wallet");
-  const [newLabel, setNewLabel] = useState("");
-  const [newValue, setNewValue] = useState("");
-  const [newTier, setNewTier] = useState<EvidenceTier>("suspected");
+  // Add-node form — UNCONTROLLED inputs backed by refs. We deliberately
+  // bypass useState here because Next.js 16 + React 19 + the React
+  // Compiler has been observed to serve stale closures for `onClick`
+  // handlers in this exact component, causing `addNode()` to read an
+  // empty `newLabel` even when the DOM shows a filled field. Reading the
+  // raw DOM value via `ref.current.value` is immune to that.
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  const valueInputRef = useRef<HTMLInputElement>(null);
+  const groupSelectRef = useRef<HTMLSelectElement>(null);
+  const tierSelectRef = useRef<HTMLSelectElement>(null);
+  // Tiny render-trigger state so the button disabled-state & hint text
+  // reflect the typed value without needing a full controlled-input pair.
+  const [, forceRerender] = useState(0);
+  const markFormChanged = () => forceRerender((n) => n + 1);
+  const currentLabel = () => (labelInputRef.current?.value ?? "").trim();
+  const currentValue = () => (valueInputRef.current?.value ?? "").trim();
+  const currentGroup = (): NodeGroup =>
+    (groupSelectRef.current?.value as NodeGroup) ?? "wallet";
+  const currentTier = (): EvidenceTier =>
+    (tierSelectRef.current?.value as EvidenceTier) ?? "suspected";
 
   const simRef = useRef<d3.Simulation<SimNode, SimEdge> | null>(null);
   const dirtyRef = useRef(false);
@@ -443,34 +458,43 @@ export default function InvestigatorGraphEditor({
   const [lastAdded, setLastAdded] = useState<{ id: string; at: number } | null>(null);
 
   function addNode() {
-    const label = newLabel.trim();
+    // Read live DOM values — refs, not state — so we never read a stale
+    // closure over useState. This is the investigator-grade fix for the
+    // "button does nothing" symptom when the DOM clearly shows content.
+    const label = currentLabel();
+    const val = currentValue() || undefined;
+    const group = currentGroup();
+    const tier = currentTier();
+
+    console.log("[graph-editor] addNode() invoked", {
+      label,
+      value: val ?? null,
+      group,
+      tier,
+      labelRefSeen: labelInputRef.current?.value,
+      valueRefSeen: valueInputRef.current?.value,
+    });
+
     if (!label) {
-      // Loud feedback when Add is clicked on an empty form. Defensive:
-      // the button is also `disabled={!newLabel.trim()}`, so this path
-      // should never run from the UI — but if it's wired from Enter on
-      // an empty label field it used to silently no-op.
-      console.warn("[graph-editor] Add node clicked with empty label — ignored");
+      console.warn("[graph-editor] Add node: label empty — ignoring");
       return;
     }
-    const id = uid(newGroup);
-    const val = newValue.trim() || undefined;
+    const id = uid(group);
     const isWalletGroup =
-      newGroup === "wallet" || newGroup === "wallet_family" || newGroup === "contract";
-    const isHandleGroup =
-      newGroup === "person" || newGroup === "handle";
+      group === "wallet" || group === "wallet_family" || group === "contract";
+    const isHandleGroup = group === "person" || group === "handle";
     const node: NetworkNode = {
       id,
-      group: newGroup,
-      tier: newTier,
+      group,
+      tier,
       label,
       handle: isHandleGroup ? val : undefined,
       address:
-        isWalletGroup || newGroup === "token" ? val : undefined,
+        isWalletGroup || group === "token" ? val : undefined,
     };
 
-    // Position the new node near the centre with a small random offset so
-    // it's visible immediately — before the force simulation settles. Use
-    // the live SVG size when available.
+    // Explicit initial x/y so the node is visible immediately — before
+    // the force simulation has a chance to tick.
     const svg = svgRef.current;
     const width = svg?.clientWidth ?? 800;
     const height = SVG_HEIGHT;
@@ -478,30 +502,27 @@ export default function InvestigatorGraphEditor({
     nodeWithPos.x = width / 2 + (Math.random() - 0.5) * 80;
     nodeWithPos.y = height / 2 + (Math.random() - 0.5) * 80;
 
-    console.log("[graph-editor] adding node", { id, group: newGroup, label, value: val });
-
     setNodes((prev) => [...prev, node]);
     setSelectedId(id);
-    setNewLabel("");
-    setNewValue("");
+    // Clear the UNCONTROLLED inputs by touching their DOM values.
+    if (labelInputRef.current) labelInputRef.current.value = "";
+    if (valueInputRef.current) valueInputRef.current.value = "";
     notifyDirty(true);
     setLastAdded({ id, at: Date.now() });
+    markFormChanged();
 
-    // Reheat the simulation so the new node is positioned quickly.
     simRef.current?.alpha(0.8).restart();
 
-    // Fire the orchestrator in AUTO mode (non-blocking) — maps new
-    // investigator-grade groups onto the lookup API's lead types.
     const leadType =
       isWalletGroup
-        ? newGroup === "contract"
+        ? group === "contract"
           ? "CONTRACT"
           : "WALLET"
-        : newGroup === "token"
+        : group === "token"
           ? "CONTRACT"
           : isHandleGroup
             ? "HANDLE"
-            : newGroup === "domain" || newGroup === "infra_service"
+            : group === "domain" || group === "infra_service"
               ? "DOMAIN"
               : null;
     if (autoMode && val && leadType) {
@@ -631,8 +652,8 @@ export default function InvestigatorGraphEditor({
       >
         <select
           aria-label="Node type"
-          value={newGroup}
-          onChange={(e) => setNewGroup(e.target.value as NodeGroup)}
+          ref={groupSelectRef}
+          defaultValue="wallet"
           style={inputStyle}
         >
           {GROUP_VALUES.map((g) => (
@@ -644,8 +665,9 @@ export default function InvestigatorGraphEditor({
         <input
           aria-label="Node label"
           placeholder="Label (e.g. bkokoski)"
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
+          ref={labelInputRef}
+          defaultValue=""
+          onInput={markFormChanged}
           onKeyDown={(e) => {
             if (e.key === "Enter") addNode();
           }}
@@ -654,8 +676,8 @@ export default function InvestigatorGraphEditor({
         <input
           aria-label="Identifier (handle / address / domain)"
           placeholder="Handle, wallet address, domain…"
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
+          ref={valueInputRef}
+          defaultValue=""
           onKeyDown={(e) => {
             if (e.key === "Enter") addNode();
           }}
@@ -663,8 +685,8 @@ export default function InvestigatorGraphEditor({
         />
         <select
           aria-label="Evidence tier"
-          value={newTier}
-          onChange={(e) => setNewTier(e.target.value as EvidenceTier)}
+          ref={tierSelectRef}
+          defaultValue="suspected"
           style={inputStyle}
         >
           {TIER_VALUES.map((t) => (
@@ -676,7 +698,6 @@ export default function InvestigatorGraphEditor({
         <button
           type="button"
           onClick={addNode}
-          disabled={!newLabel.trim()}
           style={{
             fontSize: 12,
             padding: "8px 14px",
@@ -685,8 +706,7 @@ export default function InvestigatorGraphEditor({
             color: "#fff",
             borderRadius: 4,
             fontWeight: 600,
-            cursor: newLabel.trim() ? "pointer" : "not-allowed",
-            opacity: newLabel.trim() ? 1 : 0.5,
+            cursor: "pointer",
           }}
         >
           Add node
