@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isKolPublic } from "@/lib/kol/publishGate";
 
 export type EnrichedEntity = {
   id: string;
@@ -95,6 +96,21 @@ export type CaseIntelligencePack = {
   confidenceAssessment: ConfidenceClaim[];
   contradictions: ContradictionSignal[];
   timelineCorrelation: TimelineCorrelation;
+  /**
+   * Recent Case Intelligence Orchestrator events (KOL_MATCH_FOUND,
+   * LAUNDRY_TRAIL_FOUND, …). Same events rendered on the Overview tab —
+   * provided to the assistant so its reasoning stays consistent with the
+   * UI the investigator is looking at.
+   */
+  orchestratorEvents: Array<{
+    eventType: string;
+    sourceModule: string;
+    severity: string;
+    title: string;
+    summary: string;
+    confidence: number | null;
+    createdAt: string;
+  }>;
 };
 
 function normalizeHandle(v: string): string {
@@ -129,6 +145,36 @@ export async function buildCaseIntelligencePack(
         select: { caseTemplate: true },
       }),
     null
+  );
+
+  // Orchestrator events — appended to the pack so the assistant sees the
+  // exact signals the investigator is reacting to in the UI. Pre-migration
+  // this table doesn't exist; safeQuery returns [].
+  const orchestratorEvents = await safeQuery(
+    () =>
+      prisma.vaultCaseIntelligenceEvent.findMany({
+        where: { caseId, isDismissed: false },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: {
+          eventType: true,
+          sourceModule: true,
+          severity: true,
+          title: true,
+          summary: true,
+          confidence: true,
+          createdAt: true,
+        },
+      }),
+    [] as Array<{
+      eventType: string;
+      sourceModule: string;
+      severity: string;
+      title: string;
+      summary: string;
+      confidence: number | null;
+      createdAt: Date;
+    }>
   );
 
   const entitiesRaw = await safeQuery(
@@ -239,6 +285,7 @@ export async function buildCaseIntelligencePack(
               label: true,
               tier: true,
               publishable: true,
+              publishStatus: true,
             },
           }),
     [] as Array<{
@@ -251,6 +298,7 @@ export async function buildCaseIntelligencePack(
       label: string;
       tier: string | null;
       publishable: boolean;
+      publishStatus: string;
     }>
   );
 
@@ -380,7 +428,7 @@ export async function buildCaseIntelligencePack(
       if (profile) {
         cross.inKolRegistry = true;
         cross.kolHandle = profile.handle;
-        if (profile.publishable) cross.isKnownBad = true;
+        if (isKolPublic(profile)) cross.isKnownBad = true;
         const flags: string[] = [];
         if (profile.riskFlag && profile.riskFlag !== "unverified")
           flags.push(profile.riskFlag);
@@ -946,6 +994,15 @@ export async function buildCaseIntelligencePack(
     confidenceAssessment,
     contradictions: contradictionSignals,
     timelineCorrelation,
+    orchestratorEvents: orchestratorEvents.map((e) => ({
+      eventType: e.eventType,
+      sourceModule: e.sourceModule,
+      severity: e.severity,
+      title: e.title,
+      summary: e.summary,
+      confidence: e.confidence,
+      createdAt: e.createdAt.toISOString(),
+    })),
   };
 }
 

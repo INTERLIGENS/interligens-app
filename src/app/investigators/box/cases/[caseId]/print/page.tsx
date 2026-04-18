@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import VaultGate from "@/components/vault/VaultGate";
 import { useVaultSession } from "@/hooks/useVaultSession";
 import { decryptString, decryptTags } from "@/lib/vault/crypto.client";
+import { UNREADABLE_LABEL } from "@/lib/vault/display";
 
 type Entity = {
   id: string;
@@ -88,7 +89,7 @@ function PrintInner({ caseId }: { caseId: string }) {
               )
             );
           } catch {
-            setTitle("[unreadable]");
+            setTitle(UNREADABLE_LABEL);
           }
         }
 
@@ -108,7 +109,7 @@ function PrintInner({ caseId }: { caseId: string }) {
               );
               dec.push({ id: n.id, content, createdAt: n.createdAt });
             } catch {
-              // skip unreadable
+              dec.push({ id: n.id, content: UNREADABLE_LABEL, createdAt: n.createdAt });
             }
           }
           setNotes(dec);
@@ -319,7 +320,7 @@ function PrintInner({ caseId }: { caseId: string }) {
             <tbody>
               {events.map((ev) => (
                 <tr key={ev.id}>
-                  <td>{new Date(ev.eventDate).toLocaleDateString()}</td>
+                  <td>{new Date(ev.eventDate).toLocaleDateString("en-US")}</td>
                   <td>{ev.title}</td>
                   <td>{ev.description ?? "—"}</td>
                 </tr>

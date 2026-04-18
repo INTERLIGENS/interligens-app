@@ -419,7 +419,7 @@ function RedactInner() {
             <div
               style={{
                 fontSize: 10,
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.5)",
                 marginBottom: 16,
                 lineHeight: 1.6,
               }}
@@ -442,7 +442,7 @@ function RedactInner() {
                     className="flex items-center gap-2"
                     style={{
                       fontSize: 12,
-                      color: "rgba(255,255,255,0.3)",
+                      color: "rgba(255,255,255,0.5)",
                       cursor: "pointer",
                     }}
                   >
@@ -462,7 +462,7 @@ function RedactInner() {
             <div
               style={{
                 fontSize: 11,
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.5)",
                 lineHeight: 1.6,
               }}
             >

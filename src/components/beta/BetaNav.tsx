@@ -125,7 +125,7 @@ export default function BetaNav() {
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
           const targetLocale = item.fallbackLocale ?? locale;
-          const href = item.slug === "investigators" ? "/investigators/box" : `/${targetLocale}/${item.slug}`;
+          const href = item.slug === "investigators" ? "/investigators/dashboard" : `/${targetLocale}/${item.slug}`;
           return (
             <a
               key={item.slug}

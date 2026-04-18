@@ -1433,12 +1433,23 @@ model VaultWorkspace {
   encMode       String       @default("CLIENT_SIDE_AES256GCM")
   assistantTokensUsed  Int   @default(0)
   assistantTokensLimit Int   @default(100000)
+  // Intelligence orchestrator — per-workspace knobs ("ON" / "QUIET" / "OFF")
+  assistanceLevel          String @default("BALANCED") // FULL_ASSIST | BALANCED | MANUAL_FIRST
+  autoKolRegistryMode      String @default("ON")
+  autoObservedProceedsMode String @default("ON")
+  autoLaundryTrailMode     String @default("QUIET")
+  autoIntelVaultMode       String @default("ON")
+  autoCaseCorrelationMode  String @default("QUIET")
+  autoMarketMakerMode      String @default("QUIET")
+  autoWalletJourneyMode    String @default("ON")
+  autoNextStepsMode        String @default("ON")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  cases         VaultCase[]
-  audits        VaultAuditLog[]
-  networkGraphs VaultNetworkGraph[]
+  cases              VaultCase[]
+  audits             VaultAuditLog[]
+  networkGraphs      VaultNetworkGraph[]
+  intelligenceEvents VaultCaseIntelligenceEvent[]
 }
 
 model VaultCase {
@@ -1455,13 +1466,15 @@ model VaultCase {
   updatedAt   DateTime        @updatedAt
   archivedAt  DateTime?
 
-  entities          VaultCaseEntity[]
-  files             VaultCaseFile[]
-  notes             VaultCaseNote[]
-  timeline          VaultCaseTimeline[]
-  hypotheses        VaultHypothesis[]
-  timelineEvents    VaultTimelineEvent[]
-  publishCandidates VaultPublishCandidate[]
+  entities           VaultCaseEntity[]
+  files              VaultCaseFile[]
+  notes              VaultCaseNote[]
+  timeline           VaultCaseTimeline[]
+  hypotheses         VaultHypothesis[]
+  timelineEvents     VaultTimelineEvent[]
+  publishCandidates  VaultPublishCandidate[]
+  intelligenceEvents VaultCaseIntelligenceEvent[]
+  intelligenceSummary VaultCaseIntelligenceSummary?
 
   @@index([workspaceId])
   @@index([status])
@@ -2503,4 +2516,121 @@ model VaultNetworkGraph {
 
   @@index([workspaceId])
   @@index([visibility])
+}
+
+// --- Case Intelligence Orchestrator ---------------------------------------
+// Events produced by Tier-1+ engines (KOL, Intel Vault, Proceeds, etc.).
+// Source of truth lives in the engines and user data — this table is a
+// durable projection for fast Overview rendering and audit.
+model VaultCaseIntelligenceEvent {
+  id                       String   @id @default(cuid())
+  caseId                   String
+  workspaceId              String
+  entityId                 String?
+  eventType                String   // KOL_MATCH_FOUND, OBSERVED_PROCEEDS_FOUND, …
+  sourceModule             String   // "KOL_Registry", "Observed_Proceeds", …
+  severity                 String   // LOW | MEDIUM | HIGH | CRITICAL
+  title                    String
+  summary                  String
+  confidence               Float?
+  assistanceModeAtCreation String   // FULL_ASSIST | BALANCED | MANUAL_FIRST
+  payload                  Json
+  isDismissed              Boolean  @default(false)
+  createdAt                DateTime @default(now())
+
+  case      VaultCase      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  workspace VaultWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([caseId, isDismissed, createdAt])
+}
+
+// Cached projection for the Overview tab. Always reconstructible from
+// events + case data — never written to without an orchestrator run.
+model VaultCaseIntelligenceSummary {
+  caseId               String   @id
+  strongestSignals     Json     @default("[]")
+  currentGaps          Json     @default("[]")
+  nextSuggestedActions Json     @default("[]")
+  publicationReadiness Json     @default("{}")
+  latestEventIds       Json     @default("[]")
+  lastOrchestratedAt   DateTime?
+  orchestrationStatus  String   @default("IDLE") // IDLE | RUNNING | PARTIAL | FAILED
+  lastFailedModules    Json?
+  updatedAt            DateTime @default(now()) @updatedAt
+
+  case VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Founding Intelligence Seed — day-1 multi-source threat labels
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Domain-level threat labels. Mirror of AddressLabel but keyed on the domain
+// string. Multi-source (composite unique) so OFAC + MetaMask + Phantom can
+// each own their own row for the same domain with independent attribution.
+model DomainLabel {
+  id          String          @id @default(cuid())
+  domain      String          // normalised lowercase, no protocol, no trailing slash
+  labelType   String          // PHISHING | DRAINER | MALICIOUS_DAPP | SCAM_DOMAIN | TRUSTED | SANCTIONS
+  label       String          // human-readable tag, e.g. "MetaMask phishing list"
+  confidence  String          @default("medium")
+  category    String?         // free-form: drainer, dapp-clone, impersonation, bridge…
+  entityName  String?
+  sourceName  String
+  sourceUrl   String?
+  evidence    String?
+  visibility  String          @default("internal_only")
+  license     String?
+  tosRisk     String          @default("low")
+  isActive    Boolean         @default(true)
+  firstSeenAt DateTime        @default(now())
+  lastSeenAt  DateTime        @default(now())
+
+  @@unique([domain, labelType, label, sourceUrl], name: "dedup_key")
+  @@index([domain])
+  @@index([sourceName])
+}
+
+// DefiLlama-style protocol metadata. One row per protocol slug.
+// Used to contextualise leads ("this domain belongs to Uniswap, not a scam").
+model ProtocolLabel {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  category    String?
+  chains      String[] @default([])
+  website     String?
+  twitter     String?
+  logo        String?
+  description String?
+  tvlUsd      Float?
+  sourceName  String   @default("DefiLlama")
+  sourceUrl   String?
+  fetchedAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([category])
+}
+
+// Generic TTL cache for on-demand external lookups (Chainabuse, GoPlus, ENS, …).
+// One row per (source, query) — orchestrator hits this before calling the
+// upstream API again. Negative results are cached too (shorter TTL).
+model ExternalLookupCache {
+  id         String   @id @default(cuid())
+  source     String   // "chainabuse" | "goplus" | "ens" | …
+  queryType  String   // "address" | "domain" | "handle" | "ens"
+  queryKey   String   // normalised lookup string
+  status     String   // "HIT" | "NO_MATCH" | "ERROR" | "RATE_LIMITED"
+  payload    Json?
+  errorCode  String?
+  fetchedAt  DateTime @default(now())
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@unique([source, queryType, queryKey])
+  @@index([source, expiresAt])
+  @@index([queryKey])
 }

@@ -67,14 +67,25 @@ export async function getLeaderboardProfiles(filters: LeaderboardFilters = {}) {
     },
   })
 
+  // Per-actor on-chain cashout from KolCase.paidUsd — dominates totalDocumented for big cases (BOTIFY cluster).
+  const casePaidByHandle = new Map<string, number>()
+  const caseSums = await prisma.kolCase.groupBy({
+    by: ['kolHandle'],
+    _sum: { paidUsd: true },
+    where: { kolHandle: { in: profiles.map((p) => p.handle) } },
+  })
+  for (const cs of caseSums) casePaidByHandle.set(cs.kolHandle, cs._sum.paidUsd ?? 0)
+
   const results = profiles.map((p) => {
     const flagsParsed = parseBehaviorFlags(p.behaviorFlags)
+    const casePaid = casePaidByHandle.get(p.handle) ?? 0
+    const observed = Math.max(p.totalDocumented ?? 0, casePaid)
     return {
       handle: p.handle,
       displayName: p.displayName,
       tier: p.tier,
       summary: p.summary,
-      observedProceedsTotal: p.totalDocumented ?? null,
+      observedProceedsTotal: observed > 0 ? observed : null,
       proceedsCoverage: p.proceedsCoverage,
       evidenceDepth: p.evidenceDepth,
       completenessLevel: p.completenessLevel,
@@ -103,32 +114,36 @@ export async function getLeaderboardStats() {
 
   const [
     publishedCount,
-    proceedsAgg,
+    publishedHandlesRows,
     walletsCount,
     tokensCount,
-    profilesWithProceeds,
     profilesWithStrongEvidence,
   ] = await Promise.all([
     prisma.kolProfile.count({ where }),
-    prisma.kolProfile.aggregate({
-      where: { ...where, totalDocumented: { not: null, gt: 0 } },
-      _sum: { totalDocumented: true },
-    }),
-    prisma.kolWallet.count({
-      where: { kol: where },
-    }),
+    prisma.kolProfile.findMany({ where, select: { handle: true, totalDocumented: true } }),
+    prisma.kolWallet.count({ where: { kol: where } }),
     prisma.kolTokenLink.findMany({ where: { kol: where }, select: { tokenSymbol: true }, distinct: ['tokenSymbol'] }).then(r => r.length),
-    prisma.kolProfile.count({
-      where: { ...where, totalDocumented: { not: null, gt: 0 } },
-    }),
-    prisma.kolProfile.count({
-      where: { ...where, evidenceDepth: { in: ['strong', 'comprehensive'] } },
-    }),
+    prisma.kolProfile.count({ where: { ...where, evidenceDepth: { in: ['strong', 'comprehensive'] } } }),
   ])
+
+  const pubHandles = publishedHandlesRows.map(r => r.handle)
+  const caseSums = await prisma.kolCase.groupBy({
+    by: ['kolHandle'],
+    _sum: { paidUsd: true },
+    where: { kolHandle: { in: pubHandles } },
+  })
+  const casePaid = new Map(caseSums.map(c => [c.kolHandle, c._sum.paidUsd ?? 0]))
+
+  let total = 0
+  let profilesWithProceeds = 0
+  for (const p of publishedHandlesRows) {
+    const observed = Math.max(p.totalDocumented ?? 0, casePaid.get(p.handle) ?? 0)
+    if (observed > 0) { total += observed; profilesWithProceeds++ }
+  }
 
   return {
     publishedCount,
-    totalObservedProceeds: proceedsAgg._sum.totalDocumented ?? 0,
+    totalObservedProceeds: total,
     totalDocumentedWallets: walletsCount,
     totalLinkedTokens: tokensCount,
     profilesWithProceeds,

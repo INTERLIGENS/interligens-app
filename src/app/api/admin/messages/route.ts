@@ -71,6 +71,22 @@ export async function POST(req: NextRequest) {
   const toAccessId = typeof body.toAccessId === "string" ? body.toAccessId : "";
   const priority = body.priority === "urgent" ? "urgent" : "normal";
 
+  // Optional explicit thread status override (e.g. quick-reply template #4
+  // "Thread résolu…" sets this to "resolved"). Falls back to the default
+  // "waiting_on_investigator" when the founder sends a message.
+  const ALLOWED_STATUSES = [
+    "open",
+    "waiting_on_founder",
+    "waiting_on_investigator",
+    "resolved",
+  ] as const;
+  const overrideStatus =
+    typeof body.overrideStatus === "string" &&
+    (ALLOWED_STATUSES as readonly string[]).includes(body.overrideStatus)
+      ? (body.overrideStatus as (typeof ALLOWED_STATUSES)[number])
+      : null;
+  const finalStatus = overrideStatus ?? "waiting_on_investigator";
+
   if (body.broadcast) {
     const actives = await prisma.investigatorAccess.findMany({
       where: { isActive: true },
@@ -98,7 +114,7 @@ export async function POST(req: NextRequest) {
       });
       await prisma.conversation.update({
         where: { id: conv.id },
-        data: { lastMessageAt: new Date() },
+        data: { lastMessageAt: new Date(), status: finalStatus },
       });
       results.push({ accessId: inv.id, messageId: msg.id });
     }

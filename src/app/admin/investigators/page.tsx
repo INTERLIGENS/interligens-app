@@ -156,7 +156,7 @@ export default function AdminInvestigatorsPage() {
                           )}
                         </div>
                         <div className="text-xs text-gray-500 font-mono">
-                          {app.email} · {app.country} · {new Date(app.submittedAt).toLocaleDateString()}
+                          {app.email} · {app.country} · {new Date(app.submittedAt).toLocaleDateString("fr-FR")}
                         </div>
                       </div>
                       <Badge value={app.status} />
@@ -267,7 +267,7 @@ export default function AdminInvestigatorsPage() {
                         <div className="text-xs text-gray-500 font-mono mt-1">
                           {p.primaryEmail ?? "—"} ·{" "}
                           {p.lastActiveAt
-                            ? `last active ${new Date(p.lastActiveAt).toLocaleDateString()}`
+                            ? `last active ${new Date(p.lastActiveAt).toLocaleDateString("fr-FR")}`
                             : "never active"}
                         </div>
                       </div>

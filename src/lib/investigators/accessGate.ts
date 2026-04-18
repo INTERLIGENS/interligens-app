@@ -91,7 +91,7 @@ export async function enforceInvestigatorAccess(): Promise<{
  *   - no cookie / invalid session                 → /access
  *   - no profile                                  → LET THROUGH (legacy)
  *   - profile + SUSPENDED / REVOKED               → appropriate terminal
- *   - profile + workspaceActivatedAt != null      → /investigators/box
+ *   - profile + workspaceActivatedAt != null      → /investigators/dashboard
  *   - profile + workspaceActivatedAt == null      → LET THROUGH (render)
  */
 export async function enforcePendingScreen(): Promise<void> {
@@ -122,6 +122,78 @@ export async function enforcePendingScreen(): Promise<void> {
   }
 
   if (profile.workspaceActivatedAt) {
-    redirect("/investigators/box");
+    redirect("/investigators/dashboard");
   }
+}
+
+/**
+ * Soft gate for onboarding surfaces (legal / identity / welcome / legal doc API).
+ *
+ * Onboarding steps must be reachable BEFORE the workspace is activated, so we
+ * can't use enforceInvestigatorAccess() (which kicks non-activated users to the
+ * pending page). We still need to block unauthenticated users and terminal states.
+ *
+ *   - no cookie / invalid session       → /access (or 401 for API)
+ *   - SUSPENDED                         → /investigators/suspended
+ *   - REVOKED                           → /investigators/revoked
+ *   - otherwise (with or without profile) → LET THROUGH
+ *
+ * Returns the resolved access/profile IDs so API routes can attribute writes.
+ */
+export async function enforceOnboardingAccess(): Promise<{
+  accessId: string;
+  profileId: string | null;
+}> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+
+  if (!token) {
+    redirect("/access");
+  }
+
+  const session = await validateSession(token);
+  if (!session) {
+    redirect("/access");
+  }
+
+  const profile = await prisma.investigatorProfile.findUnique({
+    where: { accessId: session.accessId },
+    select: { id: true, accessState: true },
+  });
+
+  if (profile?.accessState === "SUSPENDED") {
+    redirect("/investigators/suspended");
+  }
+  if (profile?.accessState === "REVOKED") {
+    redirect("/investigators/revoked");
+  }
+
+  return { accessId: session.accessId, profileId: profile?.id ?? null };
+}
+
+/**
+ * Same as enforceOnboardingAccess but for API routes: returns null on failure
+ * instead of redirecting. The route handler decides how to respond (usually 401).
+ */
+export async function validateOnboardingSessionForApi(): Promise<{
+  accessId: string;
+  profileId: string | null;
+} | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+  if (!token) return null;
+
+  const session = await validateSession(token);
+  if (!session) return null;
+
+  const profile = await prisma.investigatorProfile.findUnique({
+    where: { accessId: session.accessId },
+    select: { id: true, accessState: true },
+  });
+
+  if (profile?.accessState === "SUSPENDED" || profile?.accessState === "REVOKED") {
+    return null;
+  }
+
+  return { accessId: session.accessId, profileId: profile?.id ?? null };
 }

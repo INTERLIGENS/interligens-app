@@ -54,7 +54,7 @@ export default function ReviewPage() {
               >
                 <div>
                   <p className="font-mono text-sm text-gray-300">{b.id.slice(0, 16)}…</p>
-                  <p className="text-xs text-gray-500 mt-1">{b.inputType} · {b.matchedAddrs} adresses · {new Date(b.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">{b.inputType} · {b.matchedAddrs} adresses · {new Date(b.createdAt).toLocaleDateString("fr-FR")}</p>
                   {b.warnings.length > 0 && <p className="text-xs text-yellow-400 mt-1">⚠️ {b.warnings[0]}</p>}
                 </div>
                 <span className="text-yellow-400 text-xs font-semibold">{b.status}</span>

@@ -222,10 +222,16 @@ export default function TrustPage() {
             <span>
               <strong style={{ color: "#FFFFFF" }}>Session fingerprint.</strong>{" "}
               Sensitive actions — case access, AI queries, file URL generation,
-              share link creation — record an audit line containing your IP and
-              a truncated browser signature. This trail is server-side only,
-              never surfaced back to the client, and can be used in legal
-              proceedings if needed.
+              share link creation — record an audit line containing your
+              hashed IP and a truncated browser signature. You can inspect
+              your own trail at{" "}
+              <a
+                href="/investigators/box/audit"
+                style={{ color: "#FF6B00", textDecoration: "none" }}
+              >
+                /investigators/box/audit
+              </a>
+              . This data can be used in legal proceedings if needed.
             </span>
           </div>
           <div style={ITEM}>
@@ -264,7 +270,7 @@ export default function TrustPage() {
             paddingTop: 16,
             borderTop: "1px solid rgba(255,255,255,0.06)",
             fontSize: 11,
-            color: "rgba(255,255,255,0.3)",
+            color: "rgba(255,255,255,0.5)",
           }}
         >
           Questions about how any of this works? Use the feedback button in

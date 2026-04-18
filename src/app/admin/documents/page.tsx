@@ -295,7 +295,7 @@ export default function AdminDocumentsPage() {
             note="data.interligens.com — à configurer"
           />
           <QuickLink
-            href="/investigators/box"
+            href="/investigators/dashboard"
             label="Espace Investigators"
             external
           />

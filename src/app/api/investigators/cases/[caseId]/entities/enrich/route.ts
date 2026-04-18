@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isKolPublic } from "@/lib/kol/publishGate";
 import {
   getVaultWorkspace,
   assertCaseOwnership,
@@ -173,6 +174,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             totalScammed: true,
             riskFlag: true,
             publishable: true,
+            publishStatus: true,
           },
         });
         const byHandle = new Map<string, (typeof matches)[number]>();
@@ -187,7 +189,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             result[e.id].kolName = hit.displayName ?? hit.handle;
             result[e.id].kolScore =
               typeof hit.rugCount === "number" ? hit.rugCount : null;
-            if (hit.publishable) {
+            if (isKolPublic(hit)) {
               result[e.id].inIntelVault = true;
             }
             // Watchlist proxy — WatchScan has no address column, so we

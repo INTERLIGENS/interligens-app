@@ -114,9 +114,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Investigator sent → now waiting on founder (unless already resolved: a
+  // new message re-opens the thread into the investigator-waiting state too).
   await prisma.conversation.update({
     where: { id: conversationId },
-    data: { lastMessageAt: new Date() },
+    data: { lastMessageAt: new Date(), status: "waiting_on_founder" },
   });
 
   return NextResponse.json({ success: true, messageId: message.id, conversationId });

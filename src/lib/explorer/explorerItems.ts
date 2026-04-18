@@ -293,20 +293,30 @@ export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
 export async function getExplorerStats() {
   const where = { ...PUBLIC_KOL_FILTER }
 
-  const [publishedProfiles, proceedsAgg, documentedWallets, linkedLaunches, strongEvidenceCount] = await Promise.all([
+  const [publishedProfiles, publishedRows, documentedWallets, linkedLaunches, strongEvidenceCount] = await Promise.all([
     prisma.kolProfile.count({ where }),
-    prisma.kolProfile.aggregate({
-      where: { ...where, totalDocumented: { not: null, gt: 0 } },
-      _sum: { totalDocumented: true },
-    }),
+    prisma.kolProfile.findMany({ where, select: { handle: true, totalDocumented: true } }),
     prisma.kolWallet.count({ where: { isPubliclyUsable: true, kol: where } }),
     prisma.kolTokenLink.findMany({ where: { kol: where }, select: { tokenSymbol: true }, distinct: ['tokenSymbol'] }).then(r => r.length),
     prisma.kolProfile.count({ where: { ...where, evidenceDepth: { in: ['strong', 'comprehensive'] } } }),
   ])
 
+  const pubHandles = publishedRows.map(r => r.handle)
+  const caseSums = await prisma.kolCase.groupBy({
+    by: ['kolHandle'],
+    _sum: { paidUsd: true },
+    where: { kolHandle: { in: pubHandles } },
+  })
+  const casePaid = new Map(caseSums.map(c => [c.kolHandle, c._sum.paidUsd ?? 0]))
+
+  let minimumObservedProceeds = 0
+  for (const p of publishedRows) {
+    minimumObservedProceeds += Math.max(p.totalDocumented ?? 0, casePaid.get(p.handle) ?? 0)
+  }
+
   return {
     publishedProfiles,
-    minimumObservedProceeds: proceedsAgg._sum.totalDocumented ?? 0,
+    minimumObservedProceeds,
     documentedWallets,
     linkedLaunches,
     strongEvidenceCount,

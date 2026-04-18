@@ -14,7 +14,7 @@ const COPY: Record<VerdictTier, Record<VerdictLang, VerdictCopy>> = {
       label: "OK",
       subtitle: "Pas d'alerte critique détectée. Vérifie quand même les liens.",
       actions: [
-        "Vérifie bien le lien avant de cliquer.",
+        "Vérifie bien l'URL avant de cliquer.",
         "Commence petit. Augmente seulement si tu es à l'aise.",
         "Reste vigilant — les choses peuvent changer vite.",
       ],
@@ -46,7 +46,7 @@ const COPY: Record<VerdictTier, Record<VerdictLang, VerdictCopy>> = {
       label: "CAUTION",
       subtitle: "Suspicious signals. Proceed with caution.",
       actions: [
-        "Do not rush. Check the evidence before doing anything.",
+        "Do not rush. Verify what you're signing before approving any transaction.",
         "If you test, use a tiny amount only.",
         "Review the case file for more details.",
       ],

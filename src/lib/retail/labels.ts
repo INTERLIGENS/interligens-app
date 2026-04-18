@@ -151,22 +151,29 @@ export function rugcheckToLabel(
 
 export function rollingProceedsLabel(
   window: "24h" | "7d" | "30d" | "365d",
-  usd: number
+  usd: number,
+  locale: "en" | "fr" = "fr"
 ): string {
-  const map: Record<typeof window, string> = {
-    "24h": "Dernières 24h",
-    "7d": "7 derniers jours",
-    "30d": "30 derniers jours",
-    "365d": "Cette année",
+  const map: Record<"en" | "fr", Record<typeof window, string>> = {
+    fr: { "24h": "Dernières 24h", "7d": "7 derniers jours", "30d": "30 derniers jours", "365d": "Cette année" },
+    en: { "24h": "Last 24h", "7d": "Last 7 days", "30d": "Last 30 days", "365d": "This year" },
   };
-  return `💸 ${map[window]} : +${formatUsd(usd)}`;
+  return `${map[locale][window]} : +${formatUsd(usd)}`;
 }
 
-export function lastUpdatedLabel(isoDate: string | null | undefined): string {
-  if (!isoDate) return "jamais mis à jour";
+export function lastUpdatedLabel(isoDate: string | null | undefined, locale: "en" | "fr" = "fr"): string {
+  const never = locale === "en" ? "never updated" : "jamais mis à jour";
+  if (!isoDate) return never;
   const diffMs = Date.now() - new Date(isoDate).getTime();
-  if (Number.isNaN(diffMs) || diffMs < 0) return "jamais mis à jour";
+  if (Number.isNaN(diffMs) || diffMs < 0) return never;
   const mins = Math.floor(diffMs / 60_000);
+  if (locale === "en") {
+    if (mins < 60) return `Updated ${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 48) return `Updated ${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `Updated ${days}d ago`;
+  }
   if (mins < 60) return `Mis à jour il y a ${mins} min`;
   const hours = Math.floor(mins / 60);
   if (hours < 48) return `Mis à jour il y a ${hours}h`;

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { handlesV2 } from '@/lib/watcher/handles'
 import { parseBehaviorFlags } from '@/lib/kol/behaviorFlags'
+import { isKolPublic } from '@/lib/kol/publishGate'
 
 export const dynamic = 'force-dynamic'
 
@@ -197,7 +198,7 @@ export async function GET() {
         walletsCount: kol?._count.kolWallets ?? 0,
         casesCount: kol?._count.kolCases ?? 0,
         linkedTokensCount: kol?._count.tokenLinks ?? 0,
-        isPublished: kol?.publishStatus === 'published' || (kol?.publishable === true && kol?.publishStatus === 'draft'),
+        isPublished: kol ? isKolPublic(kol) : false,
         lastUpdated: kol?.updatedAt ?? null,
 
         // Signal activity (from watcher v2)

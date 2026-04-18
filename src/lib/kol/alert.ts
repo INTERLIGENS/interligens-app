@@ -10,6 +10,7 @@
  * (DB unreachable etc.) propagate; callers decide whether to swallow them.
  */
 import { prisma } from "@/lib/prisma";
+import { isKolPublic } from "@/lib/kol/publishGate";
 import {
   tigerScoreToLabel,
   dumpDelayToLabel,
@@ -117,9 +118,7 @@ export async function buildKolAlert(
     },
   });
 
-  const published = involvements.filter(
-    (i) => i.kol?.publishable && i.kol?.publishStatus === "published"
-  );
+  const published = involvements.filter((i) => i.kol && isKolPublic(i.kol));
 
   if (published.length === 0) return emptyAlert(chain, address);
 

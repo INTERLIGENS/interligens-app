@@ -250,7 +250,7 @@ export default function AdminThreadsPage() {
                   {t.body.slice(0, 120)}{t.body.length > 120 ? "..." : ""}
                 </div>
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>
-                  {t.scheduledAt ? `Programme: ${new Date(t.scheduledAt).toLocaleDateString()}` : t.publishedAt ? `Publie: ${new Date(t.publishedAt).toLocaleDateString()}` : `Cree: ${new Date(t.createdAt).toLocaleDateString()}`}
+                  {t.scheduledAt ? `Programme: ${new Date(t.scheduledAt).toLocaleDateString("fr-FR")}` : t.publishedAt ? `Publie: ${new Date(t.publishedAt).toLocaleDateString("fr-FR")}` : `Cree: ${new Date(t.createdAt).toLocaleDateString("fr-FR")}`}
                 </div>
               </div>
             ))

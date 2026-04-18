@@ -11,6 +11,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
 import Link from "next/link";
 
 export const runtime = "nodejs";
@@ -159,7 +160,7 @@ async function loadNews(): Promise<NewsItem[]> {
     const kols = await prisma.kolProfile.findMany({
       where: {
         createdAt: { gte: weekAgo },
-        publishable: true,
+        ...PUBLIC_KOL_FILTER,
       },
       orderBy: { createdAt: "desc" },
       take: 15,
