@@ -297,6 +297,12 @@ const SIDEBAR_CSS = `
   font-style: normal;
   color: rgba(255,255,255,0.35);
 }
+.graph-canvas-svg {
+  cursor: grab;
+}
+.graph-canvas-svg:active {
+  cursor: grabbing;
+}
 `;
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -1703,6 +1709,7 @@ export default function EditableGraph({
       >
         <svg
           ref={svgRef}
+          className="graph-canvas-svg"
           style={{ width: "100%", height: "100%", display: "block" }}
         />
         <style>{`

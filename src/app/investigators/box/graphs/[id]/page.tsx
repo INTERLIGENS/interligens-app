@@ -8,6 +8,7 @@ import { decryptString, encryptString } from "@/lib/vault/crypto.client";
 import { UNREADABLE_LABEL } from "@/lib/vault/display";
 import { describeResponse } from "@/lib/investigators/errorMessages";
 import EditableGraph from "@/components/network/EditableGraph";
+import GraphSkeleton from "@/components/network/GraphSkeleton";
 import type { NetworkGraph } from "@/lib/network/schema";
 
 function emptyGraph(): NetworkGraph {
@@ -216,7 +217,7 @@ function EditorInner({ id }: { id: string }) {
   // Lightweight loading / error states — keep them subtle so they don't
   // preempt the graph chrome when it loads.
   if (loading) {
-    return <FullViewportMessage tone="dim">Loading graph…</FullViewportMessage>;
+    return <GraphSkeleton />;
   }
   if (loadError) {
     return <FullViewportMessage tone="error">{loadError}</FullViewportMessage>;
