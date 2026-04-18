@@ -24,18 +24,6 @@ const SVG_HEIGHT = 600;
 type SimNode = d3.SimulationNodeDatum & NetworkNode & { r: number };
 type SimEdge = d3.SimulationLinkDatum<SimNode> & NetworkEdge;
 
-function nodeRadius(n: NetworkNode): number {
-  if (n.group === "person") {
-    const s = n.totalScammedUsd ?? 0;
-    return Math.max(12, Math.min(34, 12 + Math.sqrt(s) / 120));
-  }
-  if (n.group === "project") return 16;
-  if (n.group === "token") return 9;
-  if (n.group === "wallet") return 8;
-  if (n.group === "wallet_family") return 6;
-  return 10;
-}
-
 function edgeEndpoint(v: SimEdge["source"] | SimEdge["target"]): string {
   return typeof v === "string" ? v : (v as SimNode).id;
 }
@@ -73,7 +61,34 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
     const width = svgRef.current.clientWidth || 800;
     const height = SVG_HEIGHT;
 
-    const nodes: SimNode[] = data.nodes.map((n) => ({ ...n, r: nodeRadius(n) }));
+    // Degree centrality — drives radius scaling (6→22 px), border weight
+    // (median threshold), and the top-3 hub halos.
+    const degree: Record<string, number> = {};
+    for (const e of data.edges) {
+      degree[e.source] = (degree[e.source] ?? 0) + 1;
+      degree[e.target] = (degree[e.target] ?? 0) + 1;
+    }
+    const degValues = data.nodes.map((n) => degree[n.id] ?? 0);
+    const maxDeg = Math.max(1, ...degValues);
+    const sortedDeg = [...degValues].sort((a, b) => a - b);
+    const medianDeg = sortedDeg.length
+      ? sortedDeg[Math.floor(sortedDeg.length / 2)]
+      : 0;
+    const top3Hubs = new Set(
+      data.nodes
+        .map((n) => ({ id: n.id, d: degree[n.id] ?? 0 }))
+        .filter((x) => x.d > 0)
+        .sort((a, b) => b.d - a.d)
+        .slice(0, 3)
+        .map((x) => x.id),
+    );
+    const radiusFor = (id: string) =>
+      6 + Math.min(1, (degree[id] ?? 0) / maxDeg) * 16;
+
+    const nodes: SimNode[] = data.nodes.map((n) => ({
+      ...n,
+      r: radiusFor(n.id),
+    }));
     const edges: SimEdge[] = data.edges.map((e) => ({ ...e }));
     nodesRef.current = nodes;
     edgesRef.current = edges;
@@ -148,13 +163,82 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
         setSelectedId(d.id);
       });
 
+    // Halos for the top-3 hubs — rendered FIRST inside each node's <g> so
+    // they sit behind the body circle.
+    const haloSel = nodeG.filter((d) => top3Hubs.has(d.id));
+    haloSel
+      .append("circle")
+      .attr("class", "halo halo-3")
+      .attr("r", (d) => d.r * 1.8)
+      .attr("fill", (d) => GROUP_COLOR[d.group])
+      .attr("fill-opacity", 0.03)
+      .attr("pointer-events", "none");
+    haloSel
+      .append("circle")
+      .attr("class", "halo halo-2")
+      .attr("r", (d) => d.r * 1.4)
+      .attr("fill", (d) => GROUP_COLOR[d.group])
+      .attr("fill-opacity", 0.06)
+      .attr("pointer-events", "none");
+    haloSel
+      .append("circle")
+      .attr("class", "halo halo-1")
+      .attr("r", (d) => d.r * 1.1)
+      .attr("fill", (d) => GROUP_COLOR[d.group])
+      .attr("fill-opacity", 0.12)
+      .attr("pointer-events", "none");
+
+    // Main body. Border width picks up the median-degree threshold so hubs
+    // read heavier at a glance. Drop shadow lifts the node off the canvas.
     nodeG
       .append("circle")
+      .attr("class", "node-body")
       .attr("r", (d) => d.r)
       .attr("fill", (d) => GROUP_COLOR[d.group])
       .attr("fill-opacity", 0.85)
       .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+      .attr("stroke-width", (d) =>
+        (degree[d.id] ?? 0) > medianDeg ? 2 : 1,
+      )
+      .style("filter", "drop-shadow(0 1px 2px rgba(0,0,0,0.8))");
+
+    // Selected: double ring #FF6B00 (inner 2px, 1px gap, outer 1px).
+    const selRing = nodeG.filter((d) => d.id === selectedId);
+    selRing
+      .append("circle")
+      .attr("class", "sel-ring-inner")
+      .attr("r", (d) => d.r + 1)
+      .attr("fill", "none")
+      .attr("stroke", ACCENT)
+      .attr("stroke-width", 2)
+      .attr("pointer-events", "none");
+    selRing
+      .append("circle")
+      .attr("class", "sel-ring-outer")
+      .attr("r", (d) => d.r + 3.5)
+      .attr("fill", "none")
+      .attr("stroke", ACCENT)
+      .attr("stroke-width", 1)
+      .attr("pointer-events", "none");
+
+    // Hover: ring expansion +2px on the body only.
+    nodeG
+      .on("mouseenter.hover", function (_ev, d) {
+        d3.select(this)
+          .select<SVGCircleElement>("circle.node-body")
+          .transition()
+          .duration(80)
+          .ease(d3.easeCubicOut)
+          .attr("r", d.r + 2);
+      })
+      .on("mouseleave.hover", function (_ev, d) {
+        d3.select(this)
+          .select<SVGCircleElement>("circle.node-body")
+          .transition()
+          .duration(80)
+          .ease(d3.easeCubicOut)
+          .attr("r", d.r);
+      });
 
     nodeG
       .append("text")
