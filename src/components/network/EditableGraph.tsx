@@ -231,7 +231,37 @@ export default function EditableGraph({
     svg.selectAll("*").remove();
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
+    // Constellation grid — renders inside the zoom group so panning/zooming
+    // gives a sense of depth. Non-scaling stroke keeps lines hairline at any
+    // zoom level. pointer-events:none so the rect never intercepts the
+    // empty-canvas click/dblclick handlers (deselect + rotate).
+    const defs = svg.append("defs");
+    const gridPattern = defs
+      .append("pattern")
+      .attr("id", "constellation-grid")
+      .attr("width", 48)
+      .attr("height", 48)
+      .attr("patternUnits", "userSpaceOnUse");
+    gridPattern
+      .append("path")
+      .attr("d", "M 48 0 L 0 0 0 48")
+      .attr("stroke", "#ffffff")
+      .attr("stroke-opacity", 0.02)
+      .attr("stroke-width", 1)
+      .attr("fill", "none")
+      .attr("vector-effect", "non-scaling-stroke");
+
     const root = svg.append("g");
+
+    root
+      .append("rect")
+      .attr("class", "constellation-grid-bg")
+      .attr("x", -20000)
+      .attr("y", -20000)
+      .attr("width", 40000)
+      .attr("height", 40000)
+      .attr("fill", "url(#constellation-grid)")
+      .attr("pointer-events", "none");
 
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
@@ -1196,6 +1226,7 @@ export default function EditableGraph({
           border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: 6,
           overflow: "hidden",
+          boxShadow: "0 0 20px rgba(0,0,0,0.6) inset",
         }}
       >
         <svg
