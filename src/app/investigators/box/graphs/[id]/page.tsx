@@ -1,14 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import VaultGate from "@/components/vault/VaultGate";
 import { useVaultSession } from "@/hooks/useVaultSession";
 import { decryptString, encryptString } from "@/lib/vault/crypto.client";
 import { UNREADABLE_LABEL } from "@/lib/vault/display";
 import { describeResponse } from "@/lib/investigators/errorMessages";
-import InvestigatorGraphEditor from "@/components/vault/InvestigatorGraphEditor";
+import EditableGraph from "@/components/network/EditableGraph";
 import type { NetworkGraph } from "@/lib/network/schema";
 
 function emptyGraph(): NetworkGraph {
@@ -55,16 +54,11 @@ type GraphRow = {
   updatedAt: string;
 };
 
-const ACCENT = "#FF6B00";
-const DIM = "rgba(255,255,255,0.5)";
-const LINE = "rgba(255,255,255,0.08)";
-
 function EditorInner({ id }: { id: string }) {
   const router = useRouter();
   const { keys } = useVaultSession();
   const [graph, setGraph] = useState<GraphRow | null>(null);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [graphData, setGraphData] = useState<NetworkGraph | null>(null);
   const [decryptFailed, setDecryptFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -72,6 +66,15 @@ function EditorInner({ id }: { id: string }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [investigatorHandle, setInvestigatorHandle] = useState("investigator");
+
+  // Latest live graph from EditableGraph. Stored in a ref so edits don't
+  // trigger a parent re-render that would remount D3.
+  const liveGraphRef = useRef<NetworkGraph | null>(null);
+  const handleGraphChanged = useCallback((g: NetworkGraph) => {
+    liveGraphRef.current = g;
+  }, []);
+  const handleDirtyChange = useCallback((d: boolean) => setDirty(d), []);
 
   useEffect(() => {
     if (!keys) return;
@@ -88,18 +91,17 @@ function EditorInner({ id }: { id: string }) {
         const g: GraphRow = data.graph;
         setGraph(g);
         setTitle(g.title);
-        setDescription(g.description ?? "");
         try {
-          const plain = await decryptString(
-            g.payloadEnc,
-            g.payloadIv,
-            keys.metaKey
-          );
+          const plain = await decryptString(g.payloadEnc, g.payloadIv, keys.metaKey);
           const parsed = parseGraph(plain);
-          setGraphData(parsed ?? emptyGraph());
+          const initial = parsed ?? emptyGraph();
+          setGraphData(initial);
+          liveGraphRef.current = initial;
         } catch {
           setDecryptFailed(true);
-          setGraphData(emptyGraph());
+          const initial = emptyGraph();
+          setGraphData(initial);
+          liveGraphRef.current = initial;
         }
       } catch {
         setLoadError("Network error — retry.");
@@ -109,27 +111,48 @@ function EditorInner({ id }: { id: string }) {
     })();
   }, [id, keys]);
 
-  async function save() {
-    if (!keys || !graph || saving || !graphData) return;
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/investigators/me");
+        if (!res.ok) return;
+        const j = await res.json();
+        if (alive && typeof j.handle === "string" && j.handle.length > 0) {
+          setInvestigatorHandle(j.handle);
+        }
+      } catch {
+        /* silent */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const handleTitleChange = useCallback((next: string) => {
+    setTitle(next);
+    setDirty(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!keys || !graph || saving) return;
+    const snapshot = liveGraphRef.current ?? graphData;
+    if (!snapshot) return;
     setSaveError(null);
     setSaving(true);
     try {
-      const serialised = JSON.stringify({
-        ...graphData,
-        nodes: graphData.nodes,
-        edges: graphData.edges,
-      });
+      const serialised = JSON.stringify(snapshot);
       const ct = await encryptString(serialised, keys.metaKey);
       const res = await fetch(`/api/investigators/graphs/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           title: title.trim() || graph.title,
-          description: description.trim(),
           payloadEnc: ct.enc,
           payloadIv: ct.iv,
-          nodeCount: graphData.nodes.length,
-          edgeCount: graphData.edges.length,
+          nodeCount: snapshot.nodes.length,
+          edgeCount: snapshot.edges.length,
         }),
       });
       if (!res.ok) {
@@ -137,35 +160,43 @@ function EditorInner({ id }: { id: string }) {
         return;
       }
       setDirty(false);
+      setGraph({
+        ...graph,
+        nodeCount: snapshot.nodes.length,
+        edgeCount: snapshot.edges.length,
+      });
     } catch {
       setSaveError("Encryption failed — please retry.");
     } finally {
       setSaving(false);
     }
-  }
+  }, [keys, graph, saving, graphData, id, title]);
 
-  async function setVisibility(next: "PRIVATE" | "TEAM_POOL") {
-    if (!graph) return;
-    try {
-      const res = await fetch(`/api/investigators/graphs/${id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ visibility: next }),
-      });
-      if (!res.ok) {
-        setSaveError(describeResponse(res));
-        return;
+  const handleVisibilityChange = useCallback(
+    async (next: "PRIVATE" | "TEAM_POOL") => {
+      if (!graph) return;
+      try {
+        const res = await fetch(`/api/investigators/graphs/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ visibility: next }),
+        });
+        if (!res.ok) {
+          setSaveError(describeResponse(res));
+          return;
+        }
+        setGraph({ ...graph, visibility: next });
+      } catch {
+        setSaveError("Network error — retry.");
       }
-      setGraph({ ...graph, visibility: next });
-    } catch {
-      setSaveError("Network error — retry.");
-    }
-  }
+    },
+    [graph, id],
+  );
 
-  async function deleteGraph() {
+  const handleDelete = useCallback(async () => {
     if (!graph) return;
     const ok = window.confirm(
-      `Permanently delete "${graph.title}"? This cannot be undone.`
+      `Permanently delete "${graph.title}"? This cannot be undone.`,
     );
     if (!ok) return;
     try {
@@ -180,245 +211,105 @@ function EditorInner({ id }: { id: string }) {
     } catch {
       setSaveError("Network error — retry.");
     }
+  }, [graph, id, router]);
+
+  // Lightweight loading / error states — keep them subtle so they don't
+  // preempt the graph chrome when it loads.
+  if (loading) {
+    return <FullViewportMessage tone="dim">Loading graph…</FullViewportMessage>;
+  }
+  if (loadError) {
+    return <FullViewportMessage tone="error">{loadError}</FullViewportMessage>;
+  }
+  if (!graph || !graphData) {
+    return <FullViewportMessage tone="dim">Graph unavailable.</FullViewportMessage>;
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="max-w-4xl mx-auto px-6 py-10">
-        <div style={{ marginBottom: 8 }}>
-          <Link
-            href="/investigators/box/graphs"
-            style={{ fontSize: 11, color: DIM, textDecoration: "none" }}
-          >
-            ← Graphs
-          </Link>
-        </div>
-
-        {loading && (
-          <div style={{ fontSize: 13, color: DIM, marginTop: 24 }}>Loading…</div>
-        )}
-        {loadError && (
-          <div
-            role="alert"
-            style={{
-              marginTop: 24,
-              border: "1px solid rgba(255,59,92,0.35)",
-              background: "rgba(255,59,92,0.08)",
-              borderRadius: 6,
-              padding: "12px 14px",
-              fontSize: 13,
-              color: "#FF9AAB",
-            }}
-          >
-            {loadError}
-          </div>
-        )}
-
-        {!loading && !loadError && graph && (
-          <>
-            <div className="flex items-start justify-between flex-wrap gap-4">
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{
-                    textTransform: "uppercase",
-                    fontSize: 11,
-                    letterSpacing: "0.08em",
-                    color: DIM,
-                    marginTop: 12,
-                  }}
-                >
-                  INTERLIGENS · GRAPH EDITOR
-                </div>
-                <input
-                  value={title}
-                  onChange={(e) => {
-                    setTitle(e.target.value);
-                    setDirty(true);
-                  }}
-                  maxLength={160}
-                  style={{
-                    marginTop: 8,
-                    background: "transparent",
-                    border: "none",
-                    outline: "none",
-                    fontSize: 26,
-                    fontWeight: 700,
-                    color: "#FFFFFF",
-                    width: "100%",
-                  }}
-                />
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setVisibility(
-                      graph.visibility === "TEAM_POOL" ? "PRIVATE" : "TEAM_POOL"
-                    )
-                  }
-                  style={{
-                    fontSize: 12,
-                    padding: "8px 14px",
-                    borderRadius: 6,
-                    border: `1px solid ${LINE}`,
-                    background: "transparent",
-                    color: "rgba(255,255,255,0.75)",
-                    cursor: "pointer",
-                  }}
-                >
-                  {graph.visibility === "TEAM_POOL"
-                    ? "Make private"
-                    : "Share to team pool"}
-                </button>
-                <button
-                  type="button"
-                  onClick={deleteGraph}
-                  style={{
-                    fontSize: 12,
-                    padding: "8px 14px",
-                    borderRadius: 6,
-                    border: "1px solid rgba(255,59,92,0.4)",
-                    background: "transparent",
-                    color: "#FF3B5C",
-                    cursor: "pointer",
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 20, display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <Meta label="Visibility" value={graph.visibility.replace("_", " ")} />
-              <Meta label="Nodes" value={String(graph.nodeCount)} />
-              <Meta label="Edges" value={String(graph.edgeCount)} />
-              <Meta
-                label="Updated"
-                value={new Date(graph.updatedAt).toLocaleString("en-US")}
-              />
-            </div>
-
-            <div style={{ marginTop: 32 }}>
-              <label style={LABEL}>Description</label>
-              <input
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  setDirty(true);
-                }}
-                maxLength={400}
-                style={INPUT}
-              />
-            </div>
-
-            <div style={{ marginTop: 24 }}>
-              {decryptFailed && (
-                <div
-                  role="alert"
-                  style={{
-                    marginBottom: 12,
-                    fontSize: 12,
-                    color: "#FF9AAB",
-                    border: "1px solid rgba(255,59,92,0.35)",
-                    background: "rgba(255,59,92,0.08)",
-                    padding: "10px 12px",
-                    borderRadius: 6,
-                  }}
-                >
-                  {UNREADABLE_LABEL}
-                </div>
-              )}
-              {graphData && (
-                <InvestigatorGraphEditor
-                  initialGraph={graphData}
-                  onDirtyChange={(d) => setDirty(d)}
-                  onGraphChanged={(g) => setGraphData(g)}
-                />
-              )}
-            </div>
-
-            {saveError && (
-              <div
-                role="alert"
-                style={{
-                  fontSize: 12,
-                  color: "#FF3B5C",
-                  marginTop: 16,
-                }}
-              >
-                {saveError}
-              </div>
-            )}
-
-            <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
-              <button
-                onClick={save}
-                disabled={saving || !dirty}
-                style={{
-                  background: ACCENT,
-                  color: "#fff",
-                  border: "none",
-                  height: 44,
-                  padding: "0 20px",
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: saving || !dirty ? "not-allowed" : "pointer",
-                  opacity: saving || !dirty ? 0.5 : 1,
-                }}
-              >
-                {saving ? "Encrypting…" : "Save"}
-              </button>
-              {dirty && (
-                <span style={{ fontSize: 12, color: DIM, alignSelf: "center" }}>
-                  Unsaved changes
-                </span>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </main>
+    <>
+      {decryptFailed && (
+        <FloatingNotice tone="error">{UNREADABLE_LABEL}</FloatingNotice>
+      )}
+      {saveError && <FloatingNotice tone="error">{saveError}</FloatingNotice>}
+      <EditableGraph
+        data={graphData}
+        editable
+        fullViewport
+        focusOnMount={null}
+        investigatorHandle={investigatorHandle}
+        onGraphChanged={handleGraphChanged}
+        onDirtyChange={handleDirtyChange}
+        title={title}
+        onTitleChange={handleTitleChange}
+        dirty={dirty}
+        saving={saving}
+        onSave={handleSave}
+        visibility={graph.visibility}
+        onVisibilityChange={handleVisibilityChange}
+        onDelete={handleDelete}
+        backHref="/investigators/box/graphs"
+        backLabel="Graphs"
+      />
+    </>
   );
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+function FullViewportMessage({
+  tone,
+  children,
+}: {
+  tone: "dim" | "error";
+  children: React.ReactNode;
+}) {
+  const color = tone === "error" ? "#FF9AAB" : "rgba(255,255,255,0.5)";
   return (
-    <div>
-      <div
-        style={{
-          fontSize: 10,
-          textTransform: "uppercase",
-          letterSpacing: "0.1em",
-          color: DIM,
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ fontSize: 13, color: "#FFFFFF", marginTop: 4 }}>{value}</div>
+    <div
+      style={{
+        minHeight: "calc(100vh - 36px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#000",
+        color,
+        fontSize: 13,
+        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+      }}
+    >
+      {children}
     </div>
   );
 }
 
-const INPUT: React.CSSProperties = {
-  width: "100%",
-  backgroundColor: "#0d0d0d",
-  border: `1px solid ${LINE}`,
-  borderRadius: 6,
-  padding: "12px 14px",
-  color: "#FFFFFF",
-  fontSize: 14,
-  outline: "none",
-};
-
-const LABEL: React.CSSProperties = {
-  textTransform: "uppercase",
-  fontSize: 11,
-  letterSpacing: "0.08em",
-  color: "rgba(255,255,255,0.5)",
-  display: "block",
-  marginBottom: 8,
-};
+function FloatingNotice({
+  tone,
+  children,
+}: {
+  tone: "error";
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="alert"
+      style={{
+        position: "fixed",
+        top: 44,
+        right: 12,
+        zIndex: 20,
+        maxWidth: 360,
+        fontSize: 12,
+        color: tone === "error" ? "#FF9AAB" : "#fff",
+        border: "1px solid rgba(255,59,92,0.35)",
+        background: "rgba(255,59,92,0.08)",
+        padding: "8px 10px",
+        borderRadius: 6,
+        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function GraphEditorPage({
   params,
