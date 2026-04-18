@@ -38,7 +38,7 @@ const DIM = "rgba(255,255,255,0.6)";
 const SVG_HEIGHT = 640;
 // Bumped on every ship of this component. If you don't see this tag in the
 // control-bar, your browser is serving a stale bundle — hard-reload.
-const EDITOR_BUILD = "v4";
+const EDITOR_BUILD = "v5";
 
 const GROUP_COLOR: Record<NodeGroup, string> = {
   person: "#ff4040",
@@ -227,6 +227,16 @@ export default function InvestigatorGraphEditor({
       }
     });
 
+    // Double-click on empty canvas → rotate the whole graph 90° around
+    // the centre, animated. Investigator shortcut to reorganise layout
+    // when the simulation settles in an awkward orientation.
+    svg.on("dblclick.rotate", (ev) => {
+      // Only trigger on empty canvas, not on a node dblclick.
+      if (ev.target !== svgRef.current) return;
+      ev.preventDefault();
+      rotateNodes(simNodes, width, height);
+    });
+
     const linkSel = root
       .append("g")
       .selectAll<SVGLineElement, SimEdge>("line")
@@ -340,6 +350,75 @@ export default function InvestigatorGraphEditor({
         .attr("y2", (d) => (d.target as SimNode).y ?? 0);
       nodeG.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
+
+    // Rotation: freeze the simulation, interpolate every node's x/y
+    // around the centre by angle radians over 600ms, then release. Pin
+    // positions (fx/fy) so the rotation doesn't fight the force layout
+    // mid-way, then drop pins at the end.
+    function rotateNodes(
+      targets: SimNode[],
+      w: number,
+      h: number,
+      angleRad = Math.PI / 2,
+      durationMs = 600,
+    ) {
+      if (targets.length === 0) return;
+      const cx = w / 2;
+      const cy = h / 2;
+      const starts = targets.map((n) => ({
+        id: n.id,
+        x0: n.x ?? cx,
+        y0: n.y ?? cy,
+      }));
+      simulation.alphaTarget(0).stop();
+      for (const n of targets) {
+        n.fx = n.x ?? cx;
+        n.fy = n.y ?? cy;
+      }
+      const cos = Math.cos(angleRad);
+      const sin = Math.sin(angleRad);
+      const t0 = performance.now();
+      const step = () => {
+        const elapsed = performance.now() - t0;
+        const tRaw = Math.min(1, elapsed / durationMs);
+        // Smooth ease-out-cubic.
+        const t = 1 - Math.pow(1 - tRaw, 3);
+        for (let i = 0; i < targets.length; i++) {
+          const node = targets[i];
+          const s = starts[i];
+          const dx = s.x0 - cx;
+          const dy = s.y0 - cy;
+          // Interpolate angle by blending old → rotated.
+          const rx = dx * (1 - t) + (dx * cos - dy * sin) * t;
+          const ry = dy * (1 - t) + (dx * sin + dy * cos) * t;
+          node.fx = cx + rx;
+          node.fy = cy + ry;
+          node.x = cx + rx;
+          node.y = cy + ry;
+        }
+        linkSel
+          .attr("x1", (d) => (d.source as SimNode).x ?? 0)
+          .attr("y1", (d) => (d.source as SimNode).y ?? 0)
+          .attr("x2", (d) => (d.target as SimNode).x ?? 0)
+          .attr("y2", (d) => (d.target as SimNode).y ?? 0);
+        nodeG.attr(
+          "transform",
+          (d) => `translate(${d.x ?? 0},${d.y ?? 0})`,
+        );
+        if (tRaw < 1) {
+          requestAnimationFrame(step);
+        } else {
+          // Release pins so the user can drag again; give the simulation
+          // a gentle reheat to settle any overlap.
+          for (const n of targets) {
+            n.fx = null;
+            n.fy = null;
+          }
+          simulation.alpha(0.3).restart();
+        }
+      };
+      requestAnimationFrame(step);
+    }
 
     return () => {
       simulation.stop();
@@ -456,6 +535,62 @@ export default function InvestigatorGraphEditor({
   );
 
   const [lastAdded, setLastAdded] = useState<{ id: string; at: number } | null>(null);
+
+  // Core node-creation logic, parameterised so both the keyboard-Enter
+  // path and the native form onSubmit can hit it with the right values.
+  function addNodeFromForm(args: {
+    label: string;
+    val: string | undefined;
+    group: NodeGroup;
+    tier: EvidenceTier;
+  }) {
+    const { label, val, group, tier } = args;
+    if (!label) {
+      console.warn("[graph-editor] Add node: label empty — ignoring");
+      return;
+    }
+    const id = uid(group);
+    const isWalletGroup =
+      group === "wallet" || group === "wallet_family" || group === "contract";
+    const isHandleGroup = group === "person" || group === "handle";
+    const node: NetworkNode = {
+      id,
+      group,
+      tier,
+      label,
+      handle: isHandleGroup ? val : undefined,
+      address: isWalletGroup || group === "token" ? val : undefined,
+    };
+
+    const svg = svgRef.current;
+    const width = svg?.clientWidth ?? 800;
+    const height = SVG_HEIGHT;
+    const nodeWithPos = node as NetworkNode & { x?: number; y?: number };
+    nodeWithPos.x = width / 2 + (Math.random() - 0.5) * 80;
+    nodeWithPos.y = height / 2 + (Math.random() - 0.5) * 80;
+
+    setNodes((prev) => [...prev, node]);
+    setSelectedId(id);
+    notifyDirty(true);
+    setLastAdded({ id, at: Date.now() });
+
+    simRef.current?.alpha(0.8).restart();
+
+    const leadType = isWalletGroup
+      ? group === "contract"
+        ? "CONTRACT"
+        : "WALLET"
+      : group === "token"
+        ? "CONTRACT"
+        : isHandleGroup
+          ? "HANDLE"
+          : group === "domain" || group === "infra_service"
+            ? "DOMAIN"
+            : null;
+    if (autoMode && val && leadType) {
+      runOrchestrator(id, leadType, val);
+    }
+  }
 
   function addNode() {
     // Read live DOM values — refs, not state — so we never read a stale
@@ -638,8 +773,21 @@ export default function InvestigatorGraphEditor({
         )}
       </div>
 
-      {/* Add-node form */}
-      <div
+      {/* Add-node form — NATIVE <form> + FormData read so submission
+          bypasses any React synthetic-event / Compiler quirks. The
+          browser always delivers the latest DOM values on submit. */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const label = String(fd.get("label") ?? "").trim();
+          const val = String(fd.get("value") ?? "").trim() || undefined;
+          const group = (String(fd.get("group") ?? "wallet") as NodeGroup);
+          const tier = (String(fd.get("tier") ?? "suspected") as EvidenceTier);
+          console.log("[graph-editor] submit", { label, val, group, tier });
+          addNodeFromForm({ label, val, group, tier });
+          e.currentTarget.reset();
+        }}
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
@@ -652,7 +800,7 @@ export default function InvestigatorGraphEditor({
       >
         <select
           aria-label="Node type"
-          ref={groupSelectRef}
+          name="group"
           defaultValue="wallet"
           style={inputStyle}
         >
@@ -664,28 +812,21 @@ export default function InvestigatorGraphEditor({
         </select>
         <input
           aria-label="Node label"
+          name="label"
           placeholder="Label (e.g. bkokoski)"
-          ref={labelInputRef}
           defaultValue=""
-          onInput={markFormChanged}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") addNode();
-          }}
           style={inputStyle}
         />
         <input
           aria-label="Identifier (handle / address / domain)"
+          name="value"
           placeholder="Handle, wallet address, domain…"
-          ref={valueInputRef}
           defaultValue=""
-          onKeyDown={(e) => {
-            if (e.key === "Enter") addNode();
-          }}
           style={inputStyle}
         />
         <select
           aria-label="Evidence tier"
-          ref={tierSelectRef}
+          name="tier"
           defaultValue="suspected"
           style={inputStyle}
         >
@@ -696,8 +837,7 @@ export default function InvestigatorGraphEditor({
           ))}
         </select>
         <button
-          type="button"
-          onClick={addNode}
+          type="submit"
           style={{
             fontSize: 12,
             padding: "8px 14px",
@@ -711,7 +851,7 @@ export default function InvestigatorGraphEditor({
         >
           Add node
         </button>
-      </div>
+      </form>
 
       {/* Canvas + inspector */}
       <div
@@ -788,7 +928,8 @@ export default function InvestigatorGraphEditor({
             </>
           ) : (
             <div style={{ color: DIM, lineHeight: 1.6 }}>
-              Click a node to inspect it. Drag to reposition. Use the form
+              Click a node to inspect it. Drag to reposition. Double-click
+              the empty canvas to rotate the whole graph 90°. Use the form
               above to add wallets, handles, projects, tokens or services.
               {autoMode
                 ? " With Auto-populate ON, adding a wallet or handle also fires the orchestrator and merges hits into the graph."
