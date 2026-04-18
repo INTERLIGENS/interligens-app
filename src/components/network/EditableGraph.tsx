@@ -45,6 +45,134 @@ import {
   labelSize,
 } from "@/styles/graph-tokens";
 
+// ── Sidebar CSS ──────────────────────────────────────────────────────
+// Scoped by `.graph-sidebar` so it can't leak to other pages. Duplicated
+// verbatim from ScamUniverseGraph on purpose — no dedup refactor during
+// the Constellation visual upgrade.
+const SIDEBAR_CSS = `
+.graph-sidebar {
+  background: #0b0b0b;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: #fff;
+}
+.graph-sidebar .graph-sidebar-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid ${ACCENT};
+  display: inline-block;
+}
+.graph-sidebar .graph-sidebar-meta {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 10px;
+}
+.graph-sidebar .graph-sidebar-search {
+  width: 100%;
+  height: 32px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #fff;
+  padding: 0 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 14px;
+  outline: none;
+  transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+.graph-sidebar .graph-sidebar-search::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+.graph-sidebar .graph-sidebar-search:focus {
+  border-color: ${ACCENT};
+  box-shadow: 0 0 0 1px ${ACCENT};
+}
+.graph-sidebar .graph-chip-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  margin-bottom: 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(255,255,255,0.7);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
+}
+.graph-sidebar .graph-chip-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+}
+.graph-sidebar .graph-chip-btn.is-active {
+  color: #fff;
+  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+}
+.graph-sidebar .graph-chip-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.graph-sidebar .graph-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 8px;
+}
+.graph-sidebar .graph-chip-dash {
+  flex: 0 0 22px;
+}
+.graph-sidebar .graph-chip-label {
+  flex: 1;
+  font-size: 11px;
+}
+.graph-sidebar .graph-chip-count {
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  min-width: 22px;
+  text-align: right;
+}
+.graph-sidebar .graph-action-btn {
+  display: block;
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  margin-bottom: 4px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.7);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+.graph-sidebar .graph-action-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+}
+.graph-sidebar .graph-sidebar-note {
+  margin-top: 16px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  line-height: 1.5;
+}
+`;
+
 // ── Types ────────────────────────────────────────────────────────────
 
 type SimNode = d3.SimulationNodeDatum & NetworkNode & { r: number };
@@ -993,14 +1121,43 @@ export default function EditableGraph({
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
   }
 
-  function toggleGroup(g: NodeGroup) {
+  // Solo vs add-to-solo UX for group chips:
+  //   click        → solo this group (or reset to all if already soloed)
+  //   double-click → add/remove this group from the current visible set
+  const groupClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function soloGroup(g: NodeGroup) {
+    setActiveGroups((prev) => {
+      if (prev.size === 1 && prev.has(g)) return new Set(GROUP_VALUES);
+      return new Set<NodeGroup>([g]);
+    });
+  }
+
+  function addToSoloGroup(g: NodeGroup) {
     setActiveGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(g)) next.delete(g);
-      else next.add(g);
+      if (next.has(g)) {
+        if (next.size > 1) next.delete(g);
+      } else {
+        next.add(g);
+      }
       return next;
     });
   }
+
+  function handleGroupClick(g: NodeGroup) {
+    if (groupClickTimer.current) {
+      clearTimeout(groupClickTimer.current);
+      groupClickTimer.current = null;
+      addToSoloGroup(g);
+      return;
+    }
+    groupClickTimer.current = setTimeout(() => {
+      groupClickTimer.current = null;
+      soloGroup(g);
+    }, 220);
+  }
+
   function toggleTier(t: EvidenceTier) {
     setActiveTiers((prev) => {
       const next = new Set(prev);
@@ -1009,6 +1166,25 @@ export default function EditableGraph({
       return next;
     });
   }
+
+  // Group node-counts and per-tier edge-counts for the sidebar.
+  const groupCounts = useMemo(() => {
+    const c = {} as Record<NodeGroup, number>;
+    for (const g of GROUP_VALUES) c[g] = 0;
+    for (const n of nodes) c[n.group] = (c[n.group] ?? 0) + 1;
+    return c;
+  }, [nodes]);
+
+  const tierEdgeCounts = useMemo(() => {
+    const c: Record<EvidenceTier, number> = {
+      confirmed: 0,
+      strong: 0,
+      suspected: 0,
+      alleged: 0,
+    };
+    for (const e of edges) c[e.tier]++;
+    return c;
+  }, [edges]);
 
   // ── Connections summary for the detail panel ─────────────────────
   const connections = useMemo(() => {
@@ -1055,16 +1231,8 @@ export default function EditableGraph({
       }}
     >
       {/* LEFT SIDEBAR — filters + (editable) add form + actions */}
-      <aside
-        style={{
-          background: "#0b0b0b",
-          border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: 6,
-          padding: 12,
-          overflowY: "auto",
-          fontSize: 12,
-        }}
-      >
+      <aside className="graph-sidebar graph-sidebar-left">
+        <style>{SIDEBAR_CSS}</style>
         {editable && backHref && (
           <a
             href={backHref}
@@ -1082,15 +1250,7 @@ export default function EditableGraph({
           </a>
         )}
 
-        <h1
-          style={{
-            fontSize: 13,
-            color: ACCENT,
-            margin: "0 0 4px",
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-          }}
-        >
+        <h1 className="graph-sidebar-title">
           {editable ? "Investigation Graph" : "Scam Universe"}
         </h1>
 
@@ -1117,11 +1277,8 @@ export default function EditableGraph({
         ) : null}
 
         <div
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.3)",
-            marginBottom: editable ? 8 : 10,
-          }}
+          className="graph-sidebar-meta"
+          style={{ marginBottom: editable ? 8 : 10 }}
         >
           {nodes.length} nodes · {edges.length} edges
           {!editable && data.generatedAt ? ` · ${data.generatedAt.slice(0, 10)}` : ""}
@@ -1184,41 +1341,27 @@ export default function EditableGraph({
           placeholder="Search…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{
-            width: "100%",
-            background: "#111",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: "#fff",
-            padding: "6px 8px",
-            borderRadius: 4,
-            fontSize: 11,
-            marginBottom: 14,
-          }}
+          className="graph-sidebar-search"
         />
 
         <SectionLabel>Groups</SectionLabel>
         {GROUP_VALUES.map((g) => {
           const active = activeGroups.has(g);
-          const count = nodes.filter((n) => n.group === g).length;
+          const count = groupCounts[g] ?? 0;
           return (
             <button
               key={g}
               type="button"
-              onClick={() => toggleGroup(g)}
-              style={legendButton(active)}
+              onClick={() => handleGroupClick(g)}
+              className={`graph-chip-btn${active ? " is-active" : ""}`}
+              title="Click to solo · double-click to add/remove"
             >
               <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 10,
-                  background: GROUP_COLOR[g],
-                  display: "inline-block",
-                  marginRight: 8,
-                }}
+                className="graph-chip-dot"
+                style={{ background: GROUP_COLOR[g] }}
               />
-              <span style={{ flex: 1, textAlign: "left" }}>{GROUP_LABEL[g]}</span>
-              <span style={{ opacity: 0.45, fontSize: 10 }}>{count}</span>
+              <span className="graph-chip-label">{GROUP_LABEL[g]}</span>
+              <span className="graph-chip-count">{count}</span>
             </button>
           );
         })}
@@ -1226,19 +1369,16 @@ export default function EditableGraph({
         <SectionLabel>Evidence tier</SectionLabel>
         {TIER_VALUES.map((t) => {
           const active = activeTiers.has(t);
+          const edgeCount = tierEdgeCounts[t] ?? 0;
           return (
             <button
               key={t}
               type="button"
               onClick={() => toggleTier(t)}
-              style={legendButton(active)}
+              className={`graph-chip-btn${active ? " is-active" : ""}`}
               title={data.evidenceTiers?.[t]}
             >
-              <svg
-                width={22}
-                height={6}
-                style={{ marginRight: 8, flex: "0 0 22px" }}
-              >
+              <svg width={22} height={6} className="graph-chip-dash">
                 <line
                   x1={0}
                   y1={3}
@@ -1249,7 +1389,8 @@ export default function EditableGraph({
                   strokeDasharray={TIER_DASH[t] ?? undefined}
                 />
               </svg>
-              <span style={{ flex: 1, textAlign: "left" }}>{TIER_LABEL[t]}</span>
+              <span className="graph-chip-label">{TIER_LABEL[t]}</span>
+              <span className="graph-chip-count">{edgeCount}</span>
             </button>
           );
         })}
@@ -1258,7 +1399,7 @@ export default function EditableGraph({
         <button
           type="button"
           onClick={() => setRadialMode((v) => !v)}
-          style={legendButton(radialMode)}
+          className={`graph-chip-btn${radialMode ? " is-active" : ""}`}
           disabled={!selectedId}
           title={
             selectedId
@@ -1266,20 +1407,20 @@ export default function EditableGraph({
               : "Select a node first"
           }
         >
-          <span style={{ flex: 1, textAlign: "left" }}>Radial around selection</span>
+          <span className="graph-chip-label">Radial around selection</span>
         </button>
-        <button type="button" onClick={zoomToFit} style={actionButton}>
+        <button type="button" onClick={zoomToFit} className="graph-action-btn">
           Zoom to fit visible
         </button>
-        <button type="button" onClick={resetView} style={actionButton}>
+        <button type="button" onClick={resetView} className="graph-action-btn">
           Reset view
         </button>
 
         <SectionLabel>Export</SectionLabel>
-        <button type="button" onClick={exportPng} style={actionButton}>
+        <button type="button" onClick={exportPng} className="graph-action-btn">
           Export PNG (watermarked)
         </button>
-        <button type="button" onClick={exportJson} style={actionButton}>
+        <button type="button" onClick={exportJson} className="graph-action-btn">
           Export JSON
         </button>
 
