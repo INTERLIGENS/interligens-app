@@ -8,6 +8,8 @@
 
 export const TIER_VALUES = ["confirmed", "strong", "suspected", "alleged"] as const;
 export const GROUP_VALUES = [
+  // Legacy core set — must stay first, committed scam-universe data
+  // payload references these keys by exact string.
   "person",
   "project",
   "token",
@@ -17,6 +19,17 @@ export const GROUP_VALUES = [
   "infra_service",
   "source",
   "claim",
+  // Investigator-grade additions (2026-04-18). Additive only — old graphs
+  // that don't use these keep working.
+  "handle",
+  "contract",
+  "domain",
+  "transaction",
+  "pool",
+  "bridge",
+  "mixer",
+  "email",
+  "evidence",
 ] as const;
 
 export type EvidenceTier = (typeof TIER_VALUES)[number];

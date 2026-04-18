@@ -47,6 +47,15 @@ const GROUP_COLOR: Record<NodeGroup, string> = {
   infra_service: "#c084fc",
   source: "#34d399",
   claim: "#f472b6",
+  handle: "#fca5a5",
+  contract: "#fbbf24",
+  domain: "#67e8f9",
+  transaction: "#f97316",
+  pool: "#22d3ee",
+  bridge: "#a3e635",
+  mixer: "#dc2626",
+  email: "#fb7185",
+  evidence: "#facc15",
 };
 
 const GROUP_LABEL: Record<NodeGroup, string> = {
@@ -59,6 +68,15 @@ const GROUP_LABEL: Record<NodeGroup, string> = {
   infra_service: "Service",
   source: "Source",
   claim: "Claim",
+  handle: "Handle",
+  contract: "Contract",
+  domain: "Domain",
+  transaction: "Transaction",
+  pool: "Pool",
+  bridge: "Bridge",
+  mixer: "Mixer",
+  email: "Email",
+  evidence: "Evidence",
 };
 
 const TIER_STROKE: Record<EvidenceTier, string> = {
@@ -419,42 +437,72 @@ export default function InvestigatorGraphEditor({
     [autoMode, mapTypeToGroup, notifyDirty]
   );
 
+  const [lastAdded, setLastAdded] = useState<{ id: string; at: number } | null>(null);
+
   function addNode() {
     const label = newLabel.trim();
-    if (!label) return;
+    if (!label) {
+      // Loud feedback when Add is clicked on an empty form. Defensive:
+      // the button is also `disabled={!newLabel.trim()}`, so this path
+      // should never run from the UI — but if it's wired from Enter on
+      // an empty label field it used to silently no-op.
+      console.warn("[graph-editor] Add node clicked with empty label — ignored");
+      return;
+    }
     const id = uid(newGroup);
+    const val = newValue.trim() || undefined;
+    const isWalletGroup =
+      newGroup === "wallet" || newGroup === "wallet_family" || newGroup === "contract";
+    const isHandleGroup =
+      newGroup === "person" || newGroup === "handle";
     const node: NetworkNode = {
       id,
       group: newGroup,
       tier: newTier,
       label,
-      handle: newGroup === "person" ? newValue.trim() || undefined : undefined,
+      handle: isHandleGroup ? val : undefined,
       address:
-        newGroup === "wallet" || newGroup === "wallet_family" || newGroup === "token"
-          ? newValue.trim() || undefined
-          : undefined,
+        isWalletGroup || newGroup === "token" ? val : undefined,
     };
+
+    // Position the new node near the centre with a small random offset so
+    // it's visible immediately — before the force simulation settles. Use
+    // the live SVG size when available.
+    const svg = svgRef.current;
+    const width = svg?.clientWidth ?? 800;
+    const height = SVG_HEIGHT;
+    const nodeWithPos = node as NetworkNode & { x?: number; y?: number };
+    nodeWithPos.x = width / 2 + (Math.random() - 0.5) * 80;
+    nodeWithPos.y = height / 2 + (Math.random() - 0.5) * 80;
+
+    console.log("[graph-editor] adding node", { id, group: newGroup, label, value: val });
+
     setNodes((prev) => [...prev, node]);
     setSelectedId(id);
     setNewLabel("");
     setNewValue("");
     notifyDirty(true);
+    setLastAdded({ id, at: Date.now() });
 
-    // Fire the orchestrator in AUTO mode (non-blocking).
-    if (autoMode && newValue.trim()) {
-      const leadType =
-        newGroup === "wallet" || newGroup === "wallet_family"
-          ? "WALLET"
-          : newGroup === "token"
-            ? "CONTRACT"
-            : newGroup === "person"
-              ? "HANDLE"
-              : newGroup === "infra_service"
-                ? "DOMAIN"
-                : null;
-      if (leadType) {
-        runOrchestrator(id, leadType, newValue.trim());
-      }
+    // Reheat the simulation so the new node is positioned quickly.
+    simRef.current?.alpha(0.8).restart();
+
+    // Fire the orchestrator in AUTO mode (non-blocking) — maps new
+    // investigator-grade groups onto the lookup API's lead types.
+    const leadType =
+      isWalletGroup
+        ? newGroup === "contract"
+          ? "CONTRACT"
+          : "WALLET"
+        : newGroup === "token"
+          ? "CONTRACT"
+          : isHandleGroup
+            ? "HANDLE"
+            : newGroup === "domain" || newGroup === "infra_service"
+              ? "DOMAIN"
+              : null;
+    if (autoMode && val && leadType) {
+      runOrchestrator(id, leadType, val);
     }
   }
 
@@ -530,6 +578,24 @@ export default function InvestigatorGraphEditor({
           {nodes.length} nodes · {edges.length} edges
           {orchestrating && " · intelligence running…"}
         </span>
+        {lastAdded && Date.now() - lastAdded.at < 4000 && (
+          <span
+            role="status"
+            style={{
+              marginLeft: "auto",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: ACCENT,
+              border: `1px solid rgba(255,107,0,0.4)`,
+              borderRadius: 10,
+              padding: "3px 10px",
+              background: "rgba(255,107,0,0.12)",
+            }}
+          >
+            Node added
+          </span>
+        )}
       </div>
 
       {/* Add-node form */}

@@ -23,6 +23,15 @@ const GROUP_COLOR: Record<NodeGroup, string> = {
   infra_service: "#c084fc",
   source: "#34d399",
   claim: "#f472b6",
+  handle: "#fca5a5",
+  contract: "#fbbf24",
+  domain: "#67e8f9",
+  transaction: "#f97316",
+  pool: "#22d3ee",
+  bridge: "#a3e635",
+  mixer: "#dc2626",
+  email: "#fb7185",
+  evidence: "#facc15",
 };
 
 const GROUP_LABEL: Record<NodeGroup, string> = {
@@ -35,6 +44,15 @@ const GROUP_LABEL: Record<NodeGroup, string> = {
   infra_service: "Services",
   source: "External sources",
   claim: "Allegation bundles",
+  handle: "Handles",
+  contract: "Contracts",
+  domain: "Domains",
+  transaction: "Transactions",
+  pool: "Pools",
+  bridge: "Bridges",
+  mixer: "Mixers",
+  email: "Emails",
+  evidence: "Evidence",
 };
 
 const TIER_LABEL: Record<EvidenceTier, string> = {
