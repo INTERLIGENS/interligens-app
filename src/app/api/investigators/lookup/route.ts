@@ -46,8 +46,10 @@ export async function POST(request: NextRequest) {
         select: { labelType: true, label: true, sourceName: true, confidence: true, chain: true },
         take: 5,
       });
-      if (labels.length > 0) {
-        const top = labels[0];
+      const threats = labels.filter((l) => l.labelType !== "LEGITIMATE");
+      const legit = labels.filter((l) => l.labelType === "LEGITIMATE");
+      if (threats.length > 0) {
+        const top = threats[0];
         const severity: Card["severity"] =
           top.label === "OFAC SDN"
             ? "CRITICAL"
@@ -58,10 +60,17 @@ export async function POST(request: NextRequest) {
           title:
             top.label === "OFAC SDN"
               ? `OFAC sanctioned on ${top.chain}`
-              : `${labels.length} threat label${labels.length === 1 ? "" : "s"}`,
+              : `${threats.length} threat label${threats.length === 1 ? "" : "s"}`,
           sourceModule: "Threat_Intel",
           severity,
-          summary: labels.map((l) => `${l.sourceName}: ${l.label}`).join(" · "),
+          summary: threats.map((l) => `${l.sourceName}: ${l.label}`).join(" · "),
+        });
+      } else if (legit.length > 0) {
+        cards.push({
+          title: `Known-legitimate address on ${legit[0].chain}`,
+          sourceModule: "Threat_Intel",
+          severity: "LOW",
+          summary: `${legit[0].sourceName}: ${legit[0].label}`,
         });
       }
 

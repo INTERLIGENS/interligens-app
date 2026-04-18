@@ -143,8 +143,13 @@ async function runInner(
         take: 10,
       });
 
-      if (labels.length > 0) {
-        const top = labels[0];
+      // Split threat vs context. LEGITIMATE rows (e.g. Real-CATS benign
+      // exchange customers) are informational, never threats.
+      const threats = labels.filter((l) => l.labelType !== "LEGITIMATE");
+      const legit = labels.filter((l) => l.labelType === "LEGITIMATE");
+
+      if (threats.length > 0) {
+        const top = threats[0];
         const severity =
           top.label === "OFAC SDN" ? "CRITICAL"
           : top.confidence === "high" ? "HIGH"
@@ -156,15 +161,31 @@ async function runInner(
           severity,
           title: top.label === "OFAC SDN"
             ? `OFAC sanctioned address on ${top.chain}`
-            : `${labels.length} threat label${labels.length === 1 ? "" : "s"} for ${short(address)}`,
-          summary: labels.slice(0, 3).map((l) => `${l.sourceName}: ${l.label}`).join(" · "),
+            : `${threats.length} threat label${threats.length === 1 ? "" : "s"} for ${short(address)}`,
+          summary: threats.slice(0, 3).map((l) => `${l.sourceName}: ${l.label}`).join(" · "),
           confidence:
             top.confidence === "high" ? 0.9
             : top.confidence === "medium" ? 0.65
             : 0.4,
-          payload: { address, labels },
+          payload: { address, labels: threats, legitimateLabels: legit },
         });
         return { success: true, events, sourceStatus: "EXTERNAL_THREAT_SIGNAL_FOUND" };
+      }
+
+      if (legit.length > 0) {
+        // Known-legitimate address (e.g. exchange customer). Emit as
+        // context, not a threat — LOW severity, neutral wording.
+        events.push({
+          entityId: entity.id,
+          eventType: "PROTOCOL_CONTEXT_FOUND",
+          sourceModule: "Threat_Intel",
+          severity: "LOW",
+          title: `Known-legitimate address on ${legit[0].chain}`,
+          summary: `${legit[0].sourceName}: ${legit[0].label}`,
+          confidence: 0.6,
+          payload: { address, legitimateLabels: legit },
+        });
+        return { success: true, events, sourceStatus: "INTERNAL_MATCH_FOUND" };
       }
 
       const any = await prisma.addressLabel.findFirst({ select: { id: true } });

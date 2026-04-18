@@ -21,6 +21,9 @@ import { ingestScamSnifferDomains } from "@/lib/intel/ingestion/sources/scamSnif
 import { ingestScamSniffer as ingestScamSnifferAddresses } from "@/lib/intel/scamSniffer";
 import { ingestOfac } from "@/lib/intel/ofac";
 import { ingestDefiLlama } from "@/lib/intel/ingestion/sources/defiLlamaProtocols";
+import { ingestRealCats } from "@/lib/intel/ingestion/sources/realCats";
+import { ingestCryptoScamDb } from "@/lib/intel/ingestion/sources/cryptoScamDb";
+import { ingestOpenSanctions } from "@/lib/intel/ingestion/sources/openSanctions";
 import type { IngestSummary } from "@/lib/intel/ingestion/run/types";
 
 type Runner = () => Promise<IngestSummary | { fetched: number; upserted: number; errors: number; durationMs: number; [k: string]: unknown }>;
@@ -38,6 +41,9 @@ const RUNNERS: Record<string, Runner> = {
     return { ...r, source: "OFAC_SDN", normalised: r.fetched, updated: 0, skipped: 0 };
   },
   defillama: ingestDefiLlama,
+  "real-cats": ingestRealCats,
+  cryptoscamdb: ingestCryptoScamDb,
+  opensanctions: ingestOpenSanctions,
 };
 
 function parseArgs(argv: string[]): { source: string; dryRun: boolean } {

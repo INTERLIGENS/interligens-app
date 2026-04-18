@@ -17,6 +17,9 @@
     { "path": "/api/cron/intel/metamask", "schedule": "0 4 * * *" },
     { "path": "/api/cron/intel/phantom", "schedule": "15 4 * * *" },
     { "path": "/api/cron/intel/scamsniffer-domains", "schedule": "30 4 * * *" },
-    { "path": "/api/cron/intel/defillama", "schedule": "45 4 * * *" }
+    { "path": "/api/cron/intel/defillama", "schedule": "45 4 * * *" },
+    { "path": "/api/cron/intel/opensanctions", "schedule": "0 5 * * *" },
+    { "path": "/api/cron/intel/cryptoscamdb", "schedule": "15 5 * * *" },
+    { "path": "/api/cron/intel/real-cats", "schedule": "0 5 * * 0" }
   ]
 }
