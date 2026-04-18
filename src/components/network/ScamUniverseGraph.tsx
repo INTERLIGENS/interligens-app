@@ -153,6 +153,132 @@ const SIDEBAR_CSS = `
   color: rgba(255,255,255,0.3);
   line-height: 1.5;
 }
+.graph-sidebar .graph-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 16px;
+  min-height: 180px;
+  color: rgba(255,255,255,0.5);
+}
+.graph-sidebar .graph-detail-empty-icon {
+  opacity: 0.24;
+  margin-bottom: 14px;
+}
+.graph-sidebar .graph-detail-empty-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 6px;
+}
+.graph-sidebar .graph-detail-empty-text {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.5;
+  max-width: 220px;
+}
+.graph-sidebar .graph-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.graph-sidebar .graph-detail-chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 10px;
+}
+.graph-sidebar .graph-detail-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  word-break: break-word;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.graph-sidebar .graph-detail-type-badge {
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.02);
+}
+.graph-sidebar .graph-detail-tier-row {
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 10px;
+}
+.graph-sidebar .graph-detail-tiger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #000;
+  margin: 8px 0 14px;
+  border: 1px solid rgba(0,0,0,0.25);
+}
+.graph-sidebar .graph-detail-tiger.tiger-red { background: #ff4040; }
+.graph-sidebar .graph-detail-tiger.tiger-orange { background: #ff9630; }
+.graph-sidebar .graph-detail-tiger.tiger-green { background: #34d399; }
+.graph-sidebar .graph-detail-breakdown {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+  margin: 6px 0 10px;
+}
+.graph-sidebar .graph-detail-breakdown-chip {
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.graph-sidebar .graph-detail-connection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 120ms ease-out;
+}
+.graph-sidebar .graph-detail-connection:hover {
+  color: #fff;
+}
+.graph-sidebar .graph-detail-connection-dir {
+  color: rgba(255,255,255,0.3);
+  width: 10px;
+  flex: 0 0 10px;
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.graph-sidebar .graph-detail-connection-other {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-sidebar .graph-detail-connection-type {
+  font-style: normal;
+  color: rgba(255,255,255,0.35);
+}
 `;
 
 type SimNode = d3.SimulationNodeDatum & NetworkNode & { r: number };
@@ -992,80 +1118,125 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       </main>
 
       {/* RIGHT SIDEBAR — detail */}
-      <aside
-        style={{
-          background: "#0b0b0b",
-          border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: 6,
-          padding: 14,
-          overflowY: "auto",
-          fontSize: 12,
-        }}
-      >
+      <aside className="graph-sidebar graph-sidebar-right">
         {!selected ? (
-          <div style={{ color: "rgba(255,255,255,0.35)" }}>
-            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: ACCENT, marginBottom: 6 }}>
-              Select a node
+          <div className="graph-detail-empty">
+            <svg
+              className="graph-detail-empty-icon"
+              width="48"
+              height="48"
+              viewBox="0 0 48 48"
+              aria-hidden="true"
+            >
+              <circle
+                cx="24"
+                cy="24"
+                r="10"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="1"
+              />
+              <line x1="24" y1="4" x2="24" y2="14" stroke="#ffffff" strokeWidth="1" />
+              <line x1="24" y1="34" x2="24" y2="44" stroke="#ffffff" strokeWidth="1" />
+            </svg>
+            <div className="graph-detail-empty-title">Select a node</div>
+            <div className="graph-detail-empty-text">
+              Click any node in the canvas to inspect metadata, tier, and
+              its connections.
             </div>
-            Click any node to see metadata, tier, and its connections. Edges are colour-coded by evidence tier; confirmed edges dominate so only non-confirmed ties show an individual badge.
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 14, color: ACCENT, marginBottom: 4 }}>
-              {selected.label}
+            <div className="graph-detail-header">
+              <span
+                className="graph-detail-chip"
+                style={{ background: GROUP_COLOR[selected.group] }}
+              />
+              <span className="graph-detail-name">{selected.label}</span>
+              <span className="graph-detail-type-badge">
+                {GROUP_LABEL[selected.group]}
+              </span>
+            </div>
+            <div className="graph-detail-tier-row">
               <TierBadge tier={selected.tier} />
             </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              {GROUP_LABEL[selected.group]}
-            </div>
+
+            <TigerScoreBadge node={selected} />
+
+            {connections && (
+              <>
+                <SectionLabel>
+                  Connections ({connections.all.length})
+                </SectionLabel>
+                <div className="graph-detail-breakdown">
+                  {TIER_VALUES.map((t) =>
+                    connections.tally[t] > 0 ? (
+                      <span
+                        key={t}
+                        className="graph-detail-breakdown-chip"
+                        title={TIER_LABEL[t]}
+                      >
+                        {TIER_LABEL[t].toLowerCase()} {connections.tally[t]}
+                      </span>
+                    ) : null,
+                  )}
+                </div>
+                {connections.all.length > 0 && (
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {connections.all.map(({ e, other, otherId, dir }, i) => (
+                      <li
+                        key={`${otherId}-${i}`}
+                        className="graph-detail-connection"
+                        onClick={() => {
+                          setSelectedId(otherId);
+                          focusNode(otherId);
+                        }}
+                      >
+                        <span className="graph-detail-connection-dir">
+                          {dir}
+                        </span>
+                        <span className="graph-detail-connection-other">
+                          {other!.label}{" "}
+                          <em className="graph-detail-connection-type">
+                            · {e.type}
+                          </em>
+                        </span>
+                        {e.tier !== "confirmed" && (
+                          <TierBadge tier={e.tier} small />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+
+            <SectionLabel>Metadata</SectionLabel>
             <KV label="handle" value={selected.handle} />
             <KV label="risk" value={selected.risk} />
             <KV label="confidence" value={selected.confidence} />
             <KV label="rugCount" value={selected.rugCount?.toString()} />
             <KV
               label="total USD"
-              value={selected.totalScammedUsd != null ? `$${selected.totalScammedUsd.toLocaleString()}` : undefined}
+              value={
+                selected.totalScammedUsd != null
+                  ? `$${selected.totalScammedUsd.toLocaleString()}`
+                  : undefined
+              }
             />
             <KV label="chain" value={selected.chain} />
             <KV label="address" value={selected.address} mono />
             <KV label="status" value={selected.status} />
             {selected.notes && (
-              <div style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.6)",
+                  lineHeight: 1.5,
+                }}
+              >
                 {selected.notes}
-              </div>
-            )}
-
-            {connections && connections.all.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <SectionLabel>Connections ({connections.all.length})</SectionLabel>
-                <ConnectionsSummary tally={connections.tally} />
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {connections.all.map(({ e, other, otherId, dir }, i) => (
-                    <li
-                      key={`${otherId}-${i}`}
-                      style={{
-                        fontSize: 11,
-                        color: "rgba(255,255,255,0.7)",
-                        margin: "4px 0",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                      onClick={() => {
-                        setSelectedId(otherId);
-                        focusNode(otherId);
-                      }}
-                    >
-                      <span style={{ color: "rgba(255,255,255,0.3)", width: 10 }}>{dir}</span>
-                      <span style={{ flex: 1 }}>
-                        {other!.label}{" "}
-                        <em style={{ color: "rgba(255,255,255,0.35)", fontStyle: "normal" }}>· {e.type}</em>
-                      </span>
-                      {e.tier !== "confirmed" && <TierBadge tier={e.tier} small />}
-                    </li>
-                  ))}
-                </ul>
               </div>
             )}
           </>
@@ -1122,6 +1293,20 @@ const actionButton: React.CSSProperties = {
   fontFamily: "inherit",
   textAlign: "left",
 };
+
+function TigerScoreBadge({ node }: { node: NetworkNode }) {
+  // Read an optional tigerScore off the node without extending the schema.
+  // If the data doesn't carry one, skip the badge entirely.
+  const score = (node as NetworkNode & { tigerScore?: number }).tigerScore;
+  if (score == null || Number.isNaN(score)) return null;
+  const tone =
+    score >= 70 ? "tiger-red" : score >= 40 ? "tiger-orange" : "tiger-green";
+  return (
+    <div className={`graph-detail-tiger ${tone}`} title={`TigerScore ${score}`}>
+      {score}
+    </div>
+  );
+}
 
 function TierBadge({ tier, small }: { tier: EvidenceTier; small?: boolean }) {
   const bg: Record<EvidenceTier, string> = {
