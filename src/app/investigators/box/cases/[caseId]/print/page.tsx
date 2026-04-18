@@ -54,22 +54,35 @@ function PrintInner({ caseId }: { caseId: string }) {
     if (!keys) return;
     (async () => {
       try {
+        // Each sub-fetch is wrapped so a single 500 can't poison the whole
+        // print load. Missing sections render empty rather than breaking the
+        // page entirely.
+        const safeJson = async <T,>(url: string, fallback: T): Promise<T> => {
+          try {
+            const r = await fetch(url);
+            if (!r.ok) return fallback;
+            return (await r.json()) as T;
+          } catch {
+            return fallback;
+          }
+        };
+        type CaseRes = {
+          case?: {
+            titleEnc: string;
+            titleIv: string;
+            tagsEnc: string;
+            tagsIv: string;
+          };
+        };
+        type NoteRow = { id: string; contentEnc: string; contentIv: string; createdAt: string };
         const [caseRes, entRes, hypRes, tlRes, notesRes] = await Promise.all([
-          fetch(`/api/investigators/cases/${caseId}`).then((r) => r.json()),
-          fetch(`/api/investigators/cases/${caseId}/entities`).then((r) =>
-            r.json()
-          ),
-          fetch(`/api/investigators/cases/${caseId}/hypotheses`).then((r) =>
-            r.json()
-          ),
-          fetch(`/api/investigators/cases/${caseId}/timeline-events`).then(
-            (r) => r.json()
-          ),
+          safeJson<CaseRes>(`/api/investigators/cases/${caseId}`, {}),
+          safeJson<{ entities: Entity[] }>(`/api/investigators/cases/${caseId}/entities`, { entities: [] }),
+          safeJson<{ hypotheses: Hypothesis[] }>(`/api/investigators/cases/${caseId}/hypotheses`, { hypotheses: [] }),
+          safeJson<{ events: TimelineEvent[] }>(`/api/investigators/cases/${caseId}/timeline-events`, { events: [] }),
           includeNotes
-            ? fetch(`/api/investigators/cases/${caseId}/notes`).then((r) =>
-                r.json()
-              )
-            : Promise.resolve({ notes: [] }),
+            ? safeJson<{ notes: NoteRow[] }>(`/api/investigators/cases/${caseId}/notes`, { notes: [] })
+            : Promise.resolve({ notes: [] as NoteRow[] }),
         ]);
 
         if (caseRes.case) {

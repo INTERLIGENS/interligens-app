@@ -36,6 +36,9 @@ const LINE = "rgba(255,255,255,0.08)";
 const SURFACE = "#0a0a0a";
 const DIM = "rgba(255,255,255,0.6)";
 const SVG_HEIGHT = 640;
+// Bumped on every ship of this component. If you don't see this tag in the
+// control-bar, your browser is serving a stale bundle — hard-reload.
+const EDITOR_BUILD = "v3";
 
 const GROUP_COLOR: Record<NodeGroup, string> = {
   person: "#ff4040",
@@ -577,6 +580,22 @@ export default function InvestigatorGraphEditor({
         <span style={{ color: DIM, fontSize: 11 }}>
           {nodes.length} nodes · {edges.length} edges
           {orchestrating && " · intelligence running…"}
+        </span>
+        <span
+          aria-label="Editor build"
+          title="If this doesn't match the latest deploy, hard-reload (Cmd+Shift+R)."
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.3)",
+            fontFamily: "ui-monospace, monospace",
+            border: `1px solid ${LINE}`,
+            padding: "2px 6px",
+            borderRadius: 10,
+          }}
+        >
+          editor {EDITOR_BUILD}
         </span>
         {lastAdded && Date.now() - lastAdded.at < 4000 && (
           <span

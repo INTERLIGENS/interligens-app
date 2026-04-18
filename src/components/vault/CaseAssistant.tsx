@@ -168,19 +168,35 @@ export default function CaseAssistant({
           }),
         }
       );
-      const data = await res.json();
-      if (res.ok && data.response) {
+      // Parse body defensively — 429 / 503 can return non-JSON or
+      // empty bodies and a blind res.json() would throw.
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        const errCode = (data as { error?: string }).error;
+        const errMsg = (data as { message?: string }).message;
+        setError(
+          errCode === "quota_exceeded"
+            ? errMsg ?? "Monthly AI quota reached. Contact INTERLIGENS to increase."
+            : errCode === "no_api_key"
+              ? errMsg ?? "Assistant is not configured for this deployment."
+              : errMsg ?? errCode ?? `Request failed (${res.status})`
+        );
+        return;
+      }
+      if (data.response) {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.response },
+          { role: "assistant", content: data.response as string },
         ]);
         if (typeof data.tokensUsed === "number") setTokensUsed(data.tokensUsed);
         if (typeof data.tokensLimit === "number") setTokensLimit(data.tokensLimit);
       } else {
-        setError(data.message ?? data.error ?? "Request failed");
+        setError("Empty response from assistant. Please retry.");
       }
-    } catch {
-      setError("Network error");
+    } catch (err) {
+      setError(
+        err instanceof Error ? `Network error: ${err.message}` : "Network error"
+      );
     } finally {
       setSending(false);
     }
@@ -271,19 +287,33 @@ export default function CaseAssistant({
           }),
         }
       );
-      const data = await res.json();
-      if (res.ok && data.response) {
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        const errCode = (data as { error?: string }).error;
+        const errMsg = (data as { message?: string }).message;
+        setError(
+          errCode === "quota_exceeded"
+            ? errMsg ?? "Monthly AI quota reached. Contact INTERLIGENS to increase."
+            : errCode === "no_api_key"
+              ? errMsg ?? "Assistant is not configured for this deployment."
+              : errMsg ?? errCode ?? `Request failed (${res.status})`
+        );
+        return;
+      }
+      if (data.response) {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.response },
+          { role: "assistant", content: data.response as string },
         ]);
         if (typeof data.tokensUsed === "number") setTokensUsed(data.tokensUsed);
         if (typeof data.tokensLimit === "number") setTokensLimit(data.tokensLimit);
       } else {
-        setError(data.message ?? data.error ?? "Request failed");
+        setError("Empty response from assistant. Please retry.");
       }
-    } catch {
-      setError("Network error");
+    } catch (err) {
+      setError(
+        err instanceof Error ? `Network error: ${err.message}` : "Network error"
+      );
     } finally {
       setSending(false);
     }

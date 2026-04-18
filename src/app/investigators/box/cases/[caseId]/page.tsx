@@ -309,8 +309,15 @@ function CaseInner({ caseId }: { caseId: string }) {
 
   function refreshEntities() {
     fetch(`/api/investigators/cases/${caseId}/entities`)
-      .then((r) => r.json())
-      .then((d) => setEntities(d.entities ?? []));
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`entities_fetch_${r.status}`);
+        return r.json();
+      })
+      .then((d) => setEntities(d.entities ?? []))
+      .catch((err) => {
+        console.warn("[case] entities refresh failed", err);
+        toast.showError("Couldn't refresh entities — try reloading.");
+      });
     setEnrichment({});
   }
 

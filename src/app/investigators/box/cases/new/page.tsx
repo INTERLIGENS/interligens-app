@@ -109,7 +109,16 @@ function NewCaseInner() {
         }),
       });
       if (!res.ok) {
-        setError("Could not create case — please retry.");
+        // Surface the real server reason so the investigator can actually
+        // diagnose (e.g. missing_ciphertext, unauthorized, rate_limited).
+        const body = (await res
+          .json()
+          .catch(() => ({}))) as { error?: string; message?: string };
+        setError(
+          body.message ??
+            body.error ??
+            `Could not create case (${res.status}) — please retry.`
+        );
         setCreating(false);
         return;
       }
