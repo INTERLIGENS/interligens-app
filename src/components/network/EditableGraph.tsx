@@ -32,11 +32,17 @@ import {
   ACCENT,
   GROUP_COLOR,
   GROUP_LABEL,
+  LABEL_PILL,
   TIER_DASH,
   TIER_LABEL,
   TIER_OPACITY,
   TIER_STROKE,
   TIER_WIDTH,
+  estimatedLabelWidth,
+  formatNodeLabel,
+  isMonoGroup,
+  labelFont,
+  labelSize,
 } from "@/styles/graph-tokens";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -459,19 +465,92 @@ export default function EditableGraph({
           .attr("r", d.r);
       });
 
-    nodeG
-      .append("text")
-      .attr("dx", (d) => d.r + 3)
-      .attr("dy", 4)
-      .attr("fill", "#fff")
-      .attr("font-size", 10)
-      .attr("font-family", "ui-sans-serif, system-ui, sans-serif")
+    // Label pill: <g class="label"> with <rect> background + <text>. Pill
+    // sits to the right of the node body and is measured per-node.
+    const labelG = nodeG
+      .append("g")
+      .attr("class", "label")
       .attr("pointer-events", "none")
-      .attr("paint-order", "stroke")
-      .attr("stroke", "#000")
-      .attr("stroke-width", 3)
-      .attr("stroke-opacity", 0.75)
-      .text((d) => d.label);
+      .attr("transform", (d) => `translate(${d.r + 5}, 0)`);
+
+    labelG
+      .append("rect")
+      .attr("class", "label-bg")
+      .attr("rx", LABEL_PILL.radius)
+      .attr("ry", LABEL_PILL.radius)
+      .attr("fill", LABEL_PILL.bg)
+      .attr("stroke", LABEL_PILL.border)
+      .attr("stroke-width", 1);
+
+    labelG
+      .append("text")
+      .attr("class", "label-text")
+      .attr("x", LABEL_PILL.padX)
+      .attr("fill", "#fff")
+      .attr("dominant-baseline", "central")
+      .attr("font-size", (d) => labelSize(d.id, degree, top3Hubs))
+      .attr("font-family", (d) => labelFont(d.group))
+      .text((d) => formatNodeLabel(d));
+
+    labelG.each(function () {
+      const g = d3.select(this);
+      const textEl = g.select<SVGTextElement>("text.label-text").node();
+      if (!textEl) return;
+      let bbox: DOMRect | null = null;
+      try {
+        bbox = textEl.getBBox() as DOMRect;
+      } catch {
+        bbox = null;
+      }
+      const w = (bbox?.width ?? 0) + LABEL_PILL.padX * 2;
+      const h = (bbox?.height ?? 12) + LABEL_PILL.padY * 2;
+      g.select<SVGRectElement>("rect.label-bg")
+        .attr("x", 0)
+        .attr("y", -h / 2)
+        .attr("width", w)
+        .attr("height", h);
+    });
+
+    // Pre-compute estimated label boxes for the anti-collision force.
+    const labelDims = new Map<string, { w: number; h: number }>();
+    for (const n of simNodes) {
+      const sz = labelSize(n.id, degree, top3Hubs);
+      const text = formatNodeLabel(n);
+      const w = estimatedLabelWidth(text, sz, isMonoGroup(n.group));
+      const h = sz + LABEL_PILL.padY * 2;
+      labelDims.set(n.id, { w, h });
+    }
+
+    const labelAntiCollide: d3.Force<SimNode, SimEdge> = (alpha) => {
+      const strength = alpha * 0.6;
+      for (let i = 0; i < simNodes.length; i++) {
+        const a = simNodes[i];
+        const aDim = labelDims.get(a.id);
+        if (!aDim) continue;
+        const ax = (a.x ?? 0) + a.r + 5;
+        const ay = a.y ?? 0;
+        const aHalfH = aDim.h / 2;
+        for (let j = i + 1; j < simNodes.length; j++) {
+          const b = simNodes[j];
+          const bDim = labelDims.get(b.id);
+          if (!bDim) continue;
+          const bx = (b.x ?? 0) + b.r + 5;
+          const by = b.y ?? 0;
+          const bHalfH = bDim.h / 2;
+          if (ax + aDim.w < bx || bx + bDim.w < ax) continue;
+          if (ay + aHalfH < by - bHalfH || by + bHalfH < ay - aHalfH) continue;
+          const dx = (a.x ?? 0) - (b.x ?? 0);
+          const dy = (a.y ?? 0) - (b.y ?? 0);
+          const dist = Math.hypot(dx, dy) || 1;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          a.vx = (a.vx ?? 0) + nx * strength;
+          a.vy = (a.vy ?? 0) + ny * strength;
+          b.vx = (b.vx ?? 0) - nx * strength;
+          b.vy = (b.vy ?? 0) - ny * strength;
+        }
+      }
+    };
 
     const simulation = d3
       .forceSimulation<SimNode>(simNodes)
@@ -484,7 +563,8 @@ export default function EditableGraph({
       )
       .force("charge", d3.forceManyBody().strength(-260))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide<SimNode>().radius((d) => d.r + 4));
+      .force("collide", d3.forceCollide<SimNode>().radius((d) => d.r + 4))
+      .force("labelCollide", labelAntiCollide);
     simRef.current = simulation;
 
     simulation.on("tick", () => {
