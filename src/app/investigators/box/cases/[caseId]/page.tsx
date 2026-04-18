@@ -204,6 +204,32 @@ function CaseInner({ caseId }: { caseId: string }) {
   const [intelLastRun, setIntelLastRun] = useState<string | null>(null);
   const [reaction, setReaction] = useState<ReactionData | null>(null);
   const [reactionLoading, setReactionLoading] = useState(false);
+  // Investigator kill-switch. Persisted per-case in localStorage so the
+  // silence choice survives reloads and tab switches.
+  const [silenced, setSilenced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const v = window.localStorage.getItem(`intel-silenced:${caseId}`);
+      setSilenced(v === "1");
+    } catch {}
+  }, [caseId]);
+  const toggleSilenced = () => {
+    setSilenced((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(
+          `intel-silenced:${caseId}`,
+          next ? "1" : "0"
+        );
+      } catch {}
+      if (next) {
+        setReaction(null);
+        setReactionLoading(false);
+      }
+      return next;
+    });
+  };
   const [enrichment, setEnrichment] = useState<Record<string, EntityEnrichment>>(
     {}
   );
@@ -313,8 +339,14 @@ function CaseInner({ caseId }: { caseId: string }) {
   async function triggerOrchestrator(
     triggerType: "LEAD_ADDED" | "CASE_OPENED" | "MANUAL_ENGINE_RUN",
     entityId?: string,
-    opts?: { showReaction?: boolean }
+    opts?: { showReaction?: boolean; force?: boolean }
   ): Promise<void> {
+    // Silence switch: fully skip the orchestrator for automatic triggers.
+    // Manual MANUAL_ENGINE_RUN with opts.force bypasses the switch so the
+    // "Run checks" button still works on explicit user action.
+    if (silenced && !opts?.force) {
+      return;
+    }
     const showReaction = opts?.showReaction ?? triggerType === "LEAD_ADDED";
     if (showReaction) {
       setReactionLoading(true);
@@ -711,7 +743,47 @@ function CaseInner({ caseId }: { caseId: string }) {
         </Link>
         <div className="flex items-start justify-between mt-2">
           <h1 className="text-3xl font-semibold">{title}</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={toggleSilenced}
+              aria-pressed={silenced}
+              title={
+                silenced
+                  ? "Intelligence is silenced for this case. Click to re-enable."
+                  : "Silence all automatic intelligence on this case. 'Run checks' still works manually."
+              }
+              style={{
+                fontSize: 13,
+                color: silenced ? "#FFB800" : "rgba(255,255,255,0.5)",
+                border: silenced
+                  ? "1px solid rgba(255,184,0,0.4)"
+                  : "1px solid rgba(255,255,255,0.12)",
+                background: silenced ? "rgba(255,184,0,0.08)" : "none",
+                borderRadius: 6,
+                padding: "8px 16px",
+                cursor: "pointer",
+                fontWeight: silenced ? 600 : 400,
+              }}
+              className="hover:text-white"
+            >
+              {silenced ? "Intelligence silenced" : "Silence intelligence"}
+            </button>
+            <Link
+              href="/investigators/box/settings"
+              title="Per-engine ON/QUIET/OFF controls"
+              style={{
+                fontSize: 13,
+                color: "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 6,
+                padding: "8px 16px",
+                textDecoration: "none",
+              }}
+              className="hover:text-white"
+            >
+              Intel controls
+            </Link>
             <button
               onClick={() => setShareOpen(true)}
               style={{
@@ -1035,7 +1107,11 @@ function CaseInner({ caseId }: { caseId: string }) {
                   )}
                   <button
                     type="button"
-                    onClick={() => triggerOrchestrator("MANUAL_ENGINE_RUN")}
+                    onClick={() =>
+                      triggerOrchestrator("MANUAL_ENGINE_RUN", undefined, {
+                        force: true,
+                      })
+                    }
                     disabled={intelLoading}
                     style={{
                       background: "transparent",
@@ -1240,6 +1316,7 @@ function CaseInner({ caseId }: { caseId: string }) {
               onRunAgain={() =>
                 triggerOrchestrator("MANUAL_ENGINE_RUN", undefined, {
                   showReaction: true,
+                  force: true,
                 })
               }
               onAddSuggestion={addSuggestionEntity}

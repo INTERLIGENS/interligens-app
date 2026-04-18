@@ -8,6 +8,40 @@ import { useVaultSession } from "@/hooks/useVaultSession";
 import { decryptString, encryptString } from "@/lib/vault/crypto.client";
 import { UNREADABLE_LABEL } from "@/lib/vault/display";
 import { describeResponse } from "@/lib/investigators/errorMessages";
+import InvestigatorGraphEditor from "@/components/vault/InvestigatorGraphEditor";
+import type { NetworkGraph } from "@/lib/network/schema";
+
+function emptyGraph(): NetworkGraph {
+  return {
+    generatedAt: new Date().toISOString(),
+    sourceOfTruth: "investigator-built",
+    evidenceTiers: {
+      confirmed: "Cryptographic or on-chain proof",
+      strong: "Multiple converging sources",
+      suspected: "Pattern-based",
+      alleged: "Single-source claim",
+    },
+    nodes: [],
+    edges: [],
+  };
+}
+
+function parseGraph(text: string): NetworkGraph | null {
+  try {
+    const obj = JSON.parse(text);
+    if (!obj || typeof obj !== "object") return null;
+    const nodes = Array.isArray(obj.nodes) ? obj.nodes : [];
+    const edges = Array.isArray(obj.edges) ? obj.edges : [];
+    return {
+      ...emptyGraph(),
+      ...obj,
+      nodes,
+      edges,
+    };
+  } catch {
+    return null;
+  }
+}
 
 type GraphRow = {
   id: string;
@@ -31,8 +65,8 @@ function EditorInner({ id }: { id: string }) {
   const [graph, setGraph] = useState<GraphRow | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [payloadText, setPayloadText] = useState("");
-  const [payloadError, setPayloadError] = useState<string | null>(null);
+  const [graphData, setGraphData] = useState<NetworkGraph | null>(null);
+  const [decryptFailed, setDecryptFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -61,15 +95,11 @@ function EditorInner({ id }: { id: string }) {
             g.payloadIv,
             keys.metaKey
           );
-          // Pretty-print for the editor
-          try {
-            const obj = JSON.parse(plain);
-            setPayloadText(JSON.stringify(obj, null, 2));
-          } catch {
-            setPayloadText(plain);
-          }
+          const parsed = parseGraph(plain);
+          setGraphData(parsed ?? emptyGraph());
         } catch {
-          setPayloadText(UNREADABLE_LABEL);
+          setDecryptFailed(true);
+          setGraphData(emptyGraph());
         }
       } catch {
         setLoadError("Network error — retry.");
@@ -79,34 +109,17 @@ function EditorInner({ id }: { id: string }) {
     })();
   }, [id, keys]);
 
-  function validatePayload(text: string): {
-    nodeCount: number;
-    edgeCount: number;
-  } | null {
-    try {
-      const obj = JSON.parse(text);
-      if (!obj || typeof obj !== "object")
-        throw new Error("Graph must be a JSON object.");
-      const nodes = Array.isArray(obj.nodes) ? obj.nodes : [];
-      const edges = Array.isArray(obj.edges) ? obj.edges : [];
-      return { nodeCount: nodes.length, edgeCount: edges.length };
-    } catch (err) {
-      setPayloadError(
-        err instanceof Error ? err.message : "Payload isn't valid JSON."
-      );
-      return null;
-    }
-  }
-
   async function save() {
-    if (!keys || !graph || saving) return;
+    if (!keys || !graph || saving || !graphData) return;
     setSaveError(null);
-    setPayloadError(null);
-    const counts = validatePayload(payloadText);
-    if (!counts) return;
     setSaving(true);
     try {
-      const ct = await encryptString(payloadText, keys.metaKey);
+      const serialised = JSON.stringify({
+        ...graphData,
+        nodes: graphData.nodes,
+        edges: graphData.edges,
+      });
+      const ct = await encryptString(serialised, keys.metaKey);
       const res = await fetch(`/api/investigators/graphs/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -115,8 +128,8 @@ function EditorInner({ id }: { id: string }) {
           description: description.trim(),
           payloadEnc: ct.enc,
           payloadIv: ct.iv,
-          nodeCount: counts.nodeCount,
-          edgeCount: counts.edgeCount,
+          nodeCount: graphData.nodes.length,
+          edgeCount: graphData.edges.length,
         }),
       });
       if (!res.ok) {
@@ -299,43 +312,28 @@ function EditorInner({ id }: { id: string }) {
             </div>
 
             <div style={{ marginTop: 24 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                }}
-              >
-                <label style={LABEL}>Graph payload (JSON)</label>
-                <span style={{ fontSize: 11, color: DIM }}>
-                  Schema: <code>{`{ "nodes": [...], "edges": [...] }`}</code>
-                </span>
-              </div>
-              <textarea
-                aria-label="Graph payload JSON"
-                value={payloadText}
-                onChange={(e) => {
-                  setPayloadText(e.target.value);
-                  setPayloadError(null);
-                  setDirty(true);
-                }}
-                spellCheck={false}
-                style={{
-                  ...INPUT,
-                  minHeight: 320,
-                  fontFamily: "ui-monospace, monospace",
-                  fontSize: 12,
-                  lineHeight: 1.5,
-                  resize: "vertical",
-                }}
-              />
-              {payloadError && (
+              {decryptFailed && (
                 <div
                   role="alert"
-                  style={{ fontSize: 12, color: "#FF3B5C", marginTop: 8 }}
+                  style={{
+                    marginBottom: 12,
+                    fontSize: 12,
+                    color: "#FF9AAB",
+                    border: "1px solid rgba(255,59,92,0.35)",
+                    background: "rgba(255,59,92,0.08)",
+                    padding: "10px 12px",
+                    borderRadius: 6,
+                  }}
                 >
-                  {payloadError}
+                  {UNREADABLE_LABEL}
                 </div>
+              )}
+              {graphData && (
+                <InvestigatorGraphEditor
+                  initialGraph={graphData}
+                  onDirtyChange={(d) => setDirty(d)}
+                  onGraphChanged={(g) => setGraphData(g)}
+                />
               )}
             </div>
 
