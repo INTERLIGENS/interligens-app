@@ -16,7 +16,9 @@ import {
   GROUP_LABEL,
   TIER_DASH,
   TIER_LABEL,
+  TIER_OPACITY,
   TIER_STROKE,
+  TIER_WIDTH,
 } from "@/styles/graph-tokens";
 
 const SVG_HEIGHT = 600;
@@ -26,6 +28,14 @@ type SimEdge = d3.SimulationLinkDatum<SimNode> & NetworkEdge;
 
 function edgeEndpoint(v: SimEdge["source"] | SimEdge["target"]): string {
   return typeof v === "string" ? v : (v as SimNode).id;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 type Props = {
@@ -139,17 +149,38 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       if (ev.target === svgRef.current) setSelectedId(null);
     });
 
-    const linkSel = root
-      .append("g")
-      .attr("class", "links")
+    const nodeById = new Map(data.nodes.map((n) => [n.id, n] as const));
+
+    const linksG = root.append("g").attr("class", "links");
+    const linkSel = linksG
       .selectAll<SVGLineElement, SimEdge>("line")
       .data(edges)
       .join("line")
       .attr("stroke", (d) => TIER_STROKE[d.tier])
-      .attr("stroke-width", (d) => (d.tier === "confirmed" ? 1.6 : 1))
+      .attr("stroke-width", (d) => TIER_WIDTH[d.tier])
       .attr("stroke-dasharray", (d) => TIER_DASH[d.tier])
-      .attr("stroke-opacity", 0.55);
+      .attr("stroke-opacity", (d) => TIER_OPACITY[d.tier])
+      .style("filter", (d) => {
+        if (d.tier !== "confirmed") return null;
+        const src = nodeById.get(edgeEndpoint(d.source));
+        const color = src ? GROUP_COLOR[src.group] : "#ffffff";
+        return `drop-shadow(0 0 2px ${hexToRgba(color, 0.2)})`;
+      });
     linkSel.append("title").text((d) => `${d.type}${d.label ? ": " + d.label : ""} [${d.tier}]`);
+
+    // Directional arrowheads — small triangle placed 70% along each line so
+    // it sits clear of the target node's body. Position + rotation update
+    // every simulation tick.
+    const arrowSel = root
+      .append("g")
+      .attr("class", "arrows")
+      .selectAll<SVGPolygonElement, SimEdge>("polygon")
+      .data(edges)
+      .join("polygon")
+      .attr("points", "0,0 -4,-2 -4,2")
+      .attr("fill", (d) => TIER_STROKE[d.tier])
+      .attr("fill-opacity", (d) => TIER_OPACITY[d.tier])
+      .attr("pointer-events", "none");
 
     const nodeG = root
       .append("g")
@@ -274,6 +305,16 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
         .attr("y1", (d) => (d.source as SimNode).y ?? 0)
         .attr("x2", (d) => (d.target as SimNode).x ?? 0)
         .attr("y2", (d) => (d.target as SimNode).y ?? 0);
+      arrowSel.attr("transform", (d) => {
+        const sx = (d.source as SimNode).x ?? 0;
+        const sy = (d.source as SimNode).y ?? 0;
+        const tx = (d.target as SimNode).x ?? 0;
+        const ty = (d.target as SimNode).y ?? 0;
+        const x = sx + (tx - sx) * 0.7;
+        const y = sy + (ty - sy) * 0.7;
+        const angle = (Math.atan2(ty - sy, tx - sx) * 180) / Math.PI;
+        return `translate(${x},${y}) rotate(${angle})`;
+      });
       nodeG.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
@@ -329,19 +370,23 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
           !activeGroups.has(d.group) ||
           (matchIds !== null && !matchIds.has(d.id))
       );
+    const edgeDimmed = (d: SimEdge): boolean => {
+      const sId = edgeEndpoint(d.source);
+      const tId = edgeEndpoint(d.target);
+      const s = data.nodes.find((n) => n.id === sId);
+      const t = data.nodes.find((n) => n.id === tId);
+      if (!s || !t) return true;
+      if (!activeTiers.has(d.tier)) return true;
+      if (!activeGroups.has(s.group) || !activeGroups.has(t.group)) return true;
+      if (matchIds && !matchIds.has(sId) && !matchIds.has(tId)) return true;
+      return false;
+    };
     svg
       .selectAll<SVGLineElement, SimEdge>(".links line")
-      .classed("dim", (d) => {
-        const sId = edgeEndpoint(d.source);
-        const tId = edgeEndpoint(d.target);
-        const s = data.nodes.find((n) => n.id === sId);
-        const t = data.nodes.find((n) => n.id === tId);
-        if (!s || !t) return true;
-        if (!activeTiers.has(d.tier)) return true;
-        if (!activeGroups.has(s.group) || !activeGroups.has(t.group)) return true;
-        if (matchIds && !matchIds.has(sId) && !matchIds.has(tId)) return true;
-        return false;
-      });
+      .classed("dim", edgeDimmed);
+    svg
+      .selectAll<SVGPolygonElement, SimEdge>(".arrows polygon")
+      .classed("dim", edgeDimmed);
   }, [activeGroups, activeTiers, query, data.nodes]);
 
   // Radial layout: when enabled AND a node is selected, pull the selected

@@ -79,6 +79,21 @@ export const TIER_STROKE: Record<EvidenceTier, string> = {
 export const TIER_DASH: Record<EvidenceTier, string | null> = {
   confirmed: null,
   strong: "6 2",
-  suspected: "3 3",
-  alleged: "1 3",
+  suspected: "2 3",
+  alleged: "2 4",
+};
+
+// Tier visual weight on edges. Confirmed reads heaviest; alleged fades back.
+export const TIER_WIDTH: Record<EvidenceTier, number> = {
+  confirmed: 1.2,
+  strong: 1,
+  suspected: 1,
+  alleged: 0.75,
+};
+
+export const TIER_OPACITY: Record<EvidenceTier, number> = {
+  confirmed: 0.9,
+  strong: 0.75,
+  suspected: 0.55,
+  alleged: 0.4,
 };
