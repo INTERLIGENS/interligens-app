@@ -34,7 +34,7 @@ const SECTIONS: Section[] = [
       { label: "Inbox", href: "/admin/inbox" },
       {
         label: "Espace Investigateur",
-        href: "/investigators/box",
+        href: "/investigators/dashboard",
         external: true,
         accent: true,
       },

@@ -78,7 +78,7 @@ export default function KolDirectory() {
                         <Link href={`/admin/intake/${intakeIds[0]}`} className="text-orange-400 hover:text-orange-300 transition">→ intake</Link>
                       ) : "—"}
                     </td>
-                    <td className="py-2 px-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="py-2 px-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString("fr-FR")}</td>
                   </tr>
                 );
               })}

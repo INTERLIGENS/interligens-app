@@ -12,6 +12,11 @@ import CaseGraph from "@/components/vault/CaseGraph";
 import CaseTwin from "@/components/vault/CaseTwin";
 import CaseExport from "@/components/vault/CaseExport";
 import CaseAssistant from "@/components/vault/CaseAssistant";
+import ErrorBoundary from "@/components/vault/ErrorBoundary";
+import IntelligenceReactionPanel, {
+  type ReactionData,
+  type ReactionSuggestion,
+} from "@/components/vault/IntelligenceReactionPanel";
 import NotesToolbar from "@/components/vault/NotesToolbar";
 import { renderMarkdown } from "@/lib/vault/renderMarkdown";
 import { useVaultToast } from "@/components/vault/VaultToast";
@@ -31,8 +36,13 @@ import {
   decryptBuffer,
   encryptString,
 } from "@/lib/vault/crypto.client";
+import { UNREADABLE_LABEL, UNREADABLE_LABEL_SHORT } from "@/lib/vault/display";
 
+// Internal tab identifier (unchanged — many existing blocks already key on
+// these values). New top-level navigation adds "overview" and groups the
+// others under Leads / Evidence / Analysis / Assistant / Output.
 type Tab =
+  | "overview"
   | "entities"
   | "intelligence"
   | "files"
@@ -41,6 +51,36 @@ type Tab =
   | "timeline"
   | "export"
   | "assistant";
+
+type TopTab = "overview" | "leads" | "evidence" | "analysis" | "assistant" | "output";
+
+const TOP_TABS: { id: TopTab; label: string; defaultInner: Tab }[] = [
+  { id: "overview",  label: "Overview",  defaultInner: "overview"  },
+  { id: "leads",     label: "Leads",     defaultInner: "entities"  },
+  { id: "evidence",  label: "Evidence",  defaultInner: "files"     },
+  { id: "analysis",  label: "Analysis",  defaultInner: "graph"     },
+  { id: "assistant", label: "Assistant", defaultInner: "assistant" },
+  { id: "output",    label: "Output",    defaultInner: "export"    },
+];
+
+const EVIDENCE_SUB: { id: Tab; label: string }[] = [
+  { id: "files", label: "Files" },
+  { id: "notes", label: "Notes" },
+];
+
+const ANALYSIS_SUB: { id: Tab; label: string }[] = [
+  { id: "graph",    label: "Graph"    },
+  { id: "timeline", label: "Timeline" },
+];
+
+function innerTabToTopTab(t: Tab): TopTab {
+  if (t === "overview" || t === "intelligence") return "overview";
+  if (t === "entities") return "leads";
+  if (t === "files" || t === "notes") return "evidence";
+  if (t === "graph" || t === "timeline") return "analysis";
+  if (t === "assistant") return "assistant";
+  return "output"; // export
+}
 
 type CaseDetail = {
   id: string;
@@ -104,6 +144,18 @@ type NoteRow = {
 
 type DecryptedNote = NoteRow & { content: string };
 
+type IntelEvent = {
+  id: string;
+  entityId: string | null;
+  eventType: string;
+  sourceModule: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  title: string;
+  summary: string;
+  confidence: number | null;
+  createdAt: string;
+};
+
 const TEMPLATE_LABELS: Record<string, string> = {
   "rug-pull": "Rug Pull",
   "kol-promo": "KOL Promo Scheme",
@@ -141,16 +193,50 @@ function CaseInner({ caseId }: { caseId: string }) {
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [tab, setTab] = useState<Tab>("entities");
+  const [tab, setTab] = useState<Tab>("overview");
   const [structurePanelDismissed, setStructurePanelDismissed] = useState(false);
 
   const [entities, setEntities] = useState<Entity[]>([]);
+  const [intelEvents, setIntelEvents] = useState<IntelEvent[]>([]);
+  const [intelLoading, setIntelLoading] = useState(false);
+  const [intelError, setIntelError] = useState(false);
+  const [intelStatus, setIntelStatus] = useState<string>("IDLE");
+  const [intelLastRun, setIntelLastRun] = useState<string | null>(null);
+  const [reaction, setReaction] = useState<ReactionData | null>(null);
+  const [reactionLoading, setReactionLoading] = useState(false);
+  // Investigator kill-switch. Persisted per-case in localStorage so the
+  // silence choice survives reloads and tab switches.
+  const [silenced, setSilenced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const v = window.localStorage.getItem(`intel-silenced:${caseId}`);
+      setSilenced(v === "1");
+    } catch {}
+  }, [caseId]);
+  const toggleSilenced = () => {
+    setSilenced((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(
+          `intel-silenced:${caseId}`,
+          next ? "1" : "0"
+        );
+      } catch {}
+      if (next) {
+        setReaction(null);
+        setReactionLoading(false);
+      }
+      return next;
+    });
+  };
   const [enrichment, setEnrichment] = useState<Record<string, EntityEnrichment>>(
     {}
   );
   const [enrichLoading, setEnrichLoading] = useState(false);
   const [launchpadEntityId, setLaunchpadEntityId] = useState<string | null>(null);
   const [files, setFiles] = useState<DecryptedFile[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
   const [notes, setNotes] = useState<DecryptedNote[]>([]);
   const [newNote, setNewNote] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -223,9 +309,107 @@ function CaseInner({ caseId }: { caseId: string }) {
 
   function refreshEntities() {
     fetch(`/api/investigators/cases/${caseId}/entities`)
-      .then((r) => r.json())
-      .then((d) => setEntities(d.entities ?? []));
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`entities_fetch_${r.status}`);
+        return r.json();
+      })
+      .then((d) => setEntities(d.entities ?? []))
+      .catch((err) => {
+        console.warn("[case] entities refresh failed", err);
+        toast.showError("Couldn't refresh entities — try reloading.");
+      });
     setEnrichment({});
+  }
+
+  async function fetchIntelligence() {
+    setIntelLoading(true);
+    setIntelError(false);
+    try {
+      const res = await fetch(
+        `/api/investigators/cases/${caseId}/intelligence`
+      );
+      if (!res.ok) {
+        setIntelError(true);
+        return;
+      }
+      const data = await res.json();
+      setIntelEvents(data.events ?? []);
+      setIntelStatus(data.summary?.orchestrationStatus ?? "IDLE");
+      setIntelLastRun(data.summary?.lastOrchestratedAt ?? null);
+    } catch {
+      setIntelError(true);
+    } finally {
+      setIntelLoading(false);
+    }
+  }
+
+  async function triggerOrchestrator(
+    triggerType: "LEAD_ADDED" | "CASE_OPENED" | "MANUAL_ENGINE_RUN",
+    entityId?: string,
+    opts?: { showReaction?: boolean; force?: boolean }
+  ): Promise<void> {
+    // Silence switch: fully skip the orchestrator for automatic triggers.
+    // Manual MANUAL_ENGINE_RUN with opts.force bypasses the switch so the
+    // "Run checks" button still works on explicit user action.
+    if (silenced && !opts?.force) {
+      return;
+    }
+    const showReaction = opts?.showReaction ?? triggerType === "LEAD_ADDED";
+    if (showReaction) {
+      setReactionLoading(true);
+      setReaction(null);
+    }
+    try {
+      const res = await fetch(
+        `/api/investigators/cases/${caseId}/orchestrate`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ triggerType, entityId }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (showReaction && data?.uiReaction) {
+          setReaction(data.uiReaction as ReactionData);
+        }
+        if (!data?.success && data?.error) {
+          console.warn("[orchestrator] error:", data.error, "failed:", data.failedModules);
+        }
+      } else {
+        console.warn("[orchestrator] HTTP", res.status);
+      }
+    } catch (err) {
+      console.warn("[orchestrator] network error", err);
+    } finally {
+      if (showReaction) setReactionLoading(false);
+    }
+    fetchIntelligence();
+  }
+
+  async function addSuggestionEntity(s: ReactionSuggestion): Promise<void> {
+    try {
+      const res = await fetch(
+        `/api/investigators/cases/${caseId}/entities`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            type: s.type,
+            value: s.value,
+            label: s.label ?? null,
+          }),
+        }
+      );
+      if (res.ok) {
+        toast.showSuccess(`Added ${s.type.toLowerCase()}`);
+        refreshEntities();
+      } else {
+        toast.showError("Couldn't add suggestion — try manually.");
+      }
+    } catch {
+      toast.showError("Network error — try manually.");
+    }
   }
 
   async function deleteEntity(entityId: string) {
@@ -280,7 +464,7 @@ function CaseInner({ caseId }: { caseId: string }) {
             await decryptTags(d.case.tagsEnc, d.case.tagsIv, keys.metaKey)
           );
         } catch {
-          setTitle("[unreadable]");
+          setTitle(UNREADABLE_LABEL);
         }
       });
   }, [caseId, keys]);
@@ -292,6 +476,7 @@ function CaseInner({ caseId }: { caseId: string }) {
         .then((r) => r.json())
         .then((d) => setEntities(d.entities ?? []));
     } else if (tab === "files") {
+      setFilesLoading(true);
       fetch(`/api/investigators/cases/${caseId}/files`)
         .then((r) => r.json())
         .then(async (d) => {
@@ -306,11 +491,12 @@ function CaseInner({ caseId }: { caseId: string }) {
               );
               dec.push({ ...f, filename });
             } catch {
-              dec.push({ ...f, filename: "[unreadable]" });
+              dec.push({ ...f, filename: UNREADABLE_LABEL_SHORT });
             }
           }
           setFiles(dec);
-        });
+        })
+        .finally(() => setFilesLoading(false));
     } else if (tab === "notes") {
       fetch(`/api/investigators/cases/${caseId}/notes`)
         .then((r) => r.json())
@@ -326,7 +512,7 @@ function CaseInner({ caseId }: { caseId: string }) {
               );
               dec.push({ ...n, content });
             } catch {
-              dec.push({ ...n, content: "[unreadable]" });
+              dec.push({ ...n, content: UNREADABLE_LABEL });
             }
           }
           setNotes(dec);
@@ -335,6 +521,21 @@ function CaseInner({ caseId }: { caseId: string }) {
   }, [caseId, keys, tab]);
 
   // Load hypothesis + contradiction summary (for publication checklist).
+  useEffect(() => {
+    if (!keys) return;
+    // Load current intelligence and fire a light CASE_OPENED refresh.
+    // Both calls are non-blocking; the feed just re-renders when they land.
+    fetchIntelligence();
+    fetch(`/api/investigators/cases/${caseId}/orchestrate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ triggerType: "CASE_OPENED" }),
+    })
+      .then(() => fetchIntelligence())
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseId, keys]);
+
   useEffect(() => {
     if (!keys) return;
     fetch(`/api/investigators/cases/${caseId}/hypotheses`)
@@ -549,7 +750,47 @@ function CaseInner({ caseId }: { caseId: string }) {
         </Link>
         <div className="flex items-start justify-between mt-2">
           <h1 className="text-3xl font-semibold">{title}</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={toggleSilenced}
+              aria-pressed={silenced}
+              title={
+                silenced
+                  ? "Intelligence is silenced for this case. Click to re-enable."
+                  : "Silence all automatic intelligence on this case. 'Run checks' still works manually."
+              }
+              style={{
+                fontSize: 13,
+                color: silenced ? "#FFB800" : "rgba(255,255,255,0.5)",
+                border: silenced
+                  ? "1px solid rgba(255,184,0,0.4)"
+                  : "1px solid rgba(255,255,255,0.12)",
+                background: silenced ? "rgba(255,184,0,0.08)" : "none",
+                borderRadius: 6,
+                padding: "8px 16px",
+                cursor: "pointer",
+                fontWeight: silenced ? 600 : 400,
+              }}
+              className="hover:text-white"
+            >
+              {silenced ? "Intelligence silenced" : "Silence intelligence"}
+            </button>
+            <Link
+              href="/investigators/box/settings"
+              title="Per-engine ON/QUIET/OFF controls"
+              style={{
+                fontSize: 13,
+                color: "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 6,
+                padding: "8px 16px",
+                textDecoration: "none",
+              }}
+              className="hover:text-white"
+            >
+              Intel controls
+            </Link>
             <button
               onClick={() => setShareOpen(true)}
               style={{
@@ -632,7 +873,7 @@ function CaseInner({ caseId }: { caseId: string }) {
                 right: 10,
                 background: "none",
                 border: "none",
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.5)",
                 fontSize: 16,
                 cursor: "pointer",
               }}
@@ -673,33 +914,35 @@ function CaseInner({ caseId }: { caseId: string }) {
             whiteSpace: "nowrap",
           }}
         >
-          {tabs.map((t) => {
+          {TOP_TABS.map((tt) => {
+            const activeTop = innerTabToTopTab(tab);
+            const active = activeTop === tt.id;
             const count =
-              t === "notes"
-                ? notes.length
-                : t === "entities"
-                  ? entities.length
+              tt.id === "leads"
+                ? entities.length
+                : tt.id === "evidence"
+                  ? files.length + notes.length
                   : null;
             return (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-3 py-2 text-sm capitalize ${
-                  tab === t
+                key={tt.id}
+                onClick={() => setTab(tt.defaultInner)}
+                aria-pressed={active}
+                className={`px-3 py-2 text-sm ${
+                  active
                     ? "text-[#FF6B00] border-b-2 border-[#FF6B00]"
                     : "text-white/60"
                 }`}
               >
-                {t}
+                {tt.label}
                 {count != null && count > 0 && (
                   <span
                     style={{
                       marginLeft: 4,
                       fontSize: 11,
-                      color:
-                        tab === t
-                          ? "rgba(255,107,0,0.6)"
-                          : "rgba(255,255,255,0.3)",
+                      color: active
+                        ? "rgba(255,107,0,0.6)"
+                        : "rgba(255,255,255,0.5)",
                     }}
                   >
                     ({count})
@@ -710,12 +953,382 @@ function CaseInner({ caseId }: { caseId: string }) {
           })}
         </div>
 
+        {/* Sub-navigation for Evidence and Analysis */}
+        {(innerTabToTopTab(tab) === "evidence" ||
+          innerTabToTopTab(tab) === "analysis") && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              padding: "8px 0 16px",
+              borderBottom: "1px solid rgba(255,255,255,0.04)",
+              marginBottom: 16,
+            }}
+          >
+            {(innerTabToTopTab(tab) === "evidence"
+              ? EVIDENCE_SUB
+              : ANALYSIS_SUB
+            ).map((sub) => {
+              const active = tab === sub.id;
+              const badge =
+                sub.id === "files"
+                  ? files.length
+                  : sub.id === "notes"
+                    ? notes.length
+                    : null;
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setTab(sub.id)}
+                  aria-pressed={active}
+                  style={{
+                    fontSize: 12,
+                    padding: "4px 10px",
+                    borderRadius: 16,
+                    border: active
+                      ? "1px solid #FF6B00"
+                      : "1px solid rgba(255,255,255,0.12)",
+                    background: active
+                      ? "rgba(255,107,0,0.12)"
+                      : "transparent",
+                    color: active ? "#FF6B00" : "rgba(255,255,255,0.6)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {sub.label}
+                  {badge != null && badge > 0 && (
+                    <span style={{ marginLeft: 6, opacity: 0.7 }}>
+                      ({badge})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div
           key={tab}
           style={{ animation: "vaultTabFadeIn 120ms ease" }}
         >
+        {tab === "overview" && (
+          <div style={{ display: "grid", gap: 24 }}>
+            {/* Case meta strip */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: 24,
+                padding: "20px 0",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <OverviewStat label="Leads" value={entities.length} />
+              <OverviewStat label="Files" value={files.length} />
+              <OverviewStat label="Notes" value={notes.length} />
+              <OverviewStat
+                label="Status"
+                value={detail?.status?.replace("_", " ") ?? "—"}
+                textual
+              />
+            </div>
+
+            {/* What we know / recent activity */}
+            <section>
+              <h2 style={OVERVIEW_H2}>Recent activity</h2>
+              {entities.length === 0 && files.length === 0 && notes.length === 0 ? (
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+                  No activity yet. Start by adding your first lead.
+                </div>
+              ) : (
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {entities
+                    .slice(-3)
+                    .reverse()
+                    .map((e) => (
+                      <li
+                        key={`ent-${e.id}`}
+                        style={OVERVIEW_ROW}
+                      >
+                        <span style={OVERVIEW_KIND}>LEAD</span>
+                        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                          {e.value.length > 36 ? e.value.slice(0, 36) + "…" : e.value}
+                        </span>
+                        <span style={OVERVIEW_WHEN}>
+                          {new Date(e.createdAt).toLocaleDateString("en-US")}
+                        </span>
+                      </li>
+                    ))}
+                  {notes
+                    .slice(-2)
+                    .reverse()
+                    .map((n) => (
+                      <li key={`note-${n.id}`} style={OVERVIEW_ROW}>
+                        <span style={OVERVIEW_KIND}>NOTE</span>
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)" }}>
+                          {n.content.length > 60 ? n.content.slice(0, 60) + "…" : n.content}
+                        </span>
+                        <span style={OVERVIEW_WHEN}>
+                          {new Date(n.createdAt).toLocaleDateString("en-US")}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Orchestrator-driven intelligence feed */}
+            <section>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <h2 style={OVERVIEW_H2}>Intelligence feed</h2>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  {intelStatus === "RUNNING" && <span>Running…</span>}
+                  {intelStatus === "PARTIAL" && (
+                    <span style={{ color: "#FFB800" }}>Partial</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      triggerOrchestrator("MANUAL_ENGINE_RUN", undefined, {
+                        force: true,
+                      })
+                    }
+                    disabled={intelLoading}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: 4,
+                      color: "rgba(255,255,255,0.7)",
+                      fontSize: 11,
+                      padding: "3px 10px",
+                      cursor: intelLoading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Run checks
+                  </button>
+                </div>
+              </div>
+              {intelError && (
+                <div
+                  role="alert"
+                  style={{
+                    border: "1px solid rgba(255,59,92,0.35)",
+                    background: "rgba(255,59,92,0.08)",
+                    borderRadius: 6,
+                    padding: "10px 12px",
+                    fontSize: 12,
+                    color: "#FF9AAB",
+                    marginBottom: 12,
+                  }}
+                >
+                  Couldn&apos;t load intelligence. Retry with the button
+                  above.
+                </div>
+              )}
+              {intelEvents.length === 0 && !intelLoading && !intelError ? (
+                <div
+                  style={{
+                    border: "1px dashed rgba(255,255,255,0.12)",
+                    borderRadius: 6,
+                    padding: 20,
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.5)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {intelLastRun ? (
+                    <>
+                      <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                        No intelligence matches yet.
+                      </strong>{" "}
+                      Last check {relativeTime(intelLastRun)} — KOL Registry,
+                      Intel Vault and Observed Proceeds found no references.
+                      Either the leads in this case aren&apos;t in our
+                      datasets, or the addresses need broader curation.
+                    </>
+                  ) : entities.length === 0 ? (
+                    <>
+                      No leads yet. Add a wallet or handle to kick off
+                      automatic cross-referencing against KOL Registry, Intel
+                      Vault and Observed Proceeds.
+                    </>
+                  ) : (
+                    <>
+                      Intelligence hasn&apos;t run yet for this case. Hit{" "}
+                      <em>Run checks</em> above to fire the orchestrator.
+                    </>
+                  )}
+                </div>
+              ) : (
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {intelEvents.slice(0, 5).map((e) => (
+                    <li
+                      key={e.id}
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 6,
+                        padding: "12px 14px",
+                        background: "#0a0a0a",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          marginBottom: 4,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 9,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            color:
+                              e.severity === "HIGH" || e.severity === "CRITICAL"
+                                ? "#FF3B5C"
+                                : e.severity === "MEDIUM"
+                                  ? "#FFB800"
+                                  : "rgba(255,255,255,0.5)",
+                          }}
+                        >
+                          {e.severity}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            color: "#FF6B00",
+                          }}
+                        >
+                          {e.sourceModule.replace("_", " ")}
+                        </span>
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: 11,
+                            color: "rgba(255,255,255,0.5)",
+                          }}
+                        >
+                          {new Date(e.createdAt).toLocaleDateString("en-US")}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: "#FFFFFF",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {e.title}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "rgba(255,255,255,0.6)",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {e.summary}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Quick jumps */}
+            <section
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                marginTop: 4,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setTab("entities")}
+                style={OVERVIEW_CTA_PRIMARY}
+              >
+                Add a lead →
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("files")}
+                style={OVERVIEW_CTA}
+              >
+                Deposit evidence
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("graph")}
+                style={OVERVIEW_CTA}
+              >
+                Open graph
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("assistant")}
+                style={OVERVIEW_CTA}
+              >
+                Ask assistant
+              </button>
+            </section>
+          </div>
+        )}
+
         {tab === "entities" && (
           <div>
+            <IntelligenceReactionPanel
+              reaction={reaction}
+              loading={reactionLoading}
+              onDismiss={() => setReaction(null)}
+              onRunAgain={() =>
+                triggerOrchestrator("MANUAL_ENGINE_RUN", undefined, {
+                  showReaction: true,
+                  force: true,
+                })
+              }
+              onAddSuggestion={addSuggestionEntity}
+              onOpenOverview={() => setTab("overview")}
+            />
             <EntityAddForm
               caseId={caseId}
               onAdded={(added) => {
@@ -724,6 +1337,11 @@ function CaseInner({ caseId }: { caseId: string }) {
                   const step = buildNextBestStep(added.type, added.value);
                   if (step) setToastStep(step);
                   fetchSuggestions(added.type, added.value);
+                  // Fire the orchestrator — non-blocking. The feed on the
+                  // Overview tab updates on its own a moment later. We
+                  // don't have the new entity id on this callback, but the
+                  // orchestrator falls back to the case's most recent lead.
+                  triggerOrchestrator("LEAD_ADDED");
                 }
               }}
             />
@@ -739,6 +1357,8 @@ function CaseInner({ caseId }: { caseId: string }) {
                     <button
                       key={t}
                       type="button"
+                      aria-pressed={active}
+                      aria-label={`Filter entities by ${t}`}
                       onClick={() => setEntityTypeFilter(t)}
                       style={{
                         fontSize: 11,
@@ -960,7 +1580,7 @@ function CaseInner({ caseId }: { caseId: string }) {
                               style: {
                                 ...BADGE_BASE,
                                 color: "rgba(255,255,255,0.8)",
-                                border: "1px solid rgba(255,255,255,0.3)",
+                                border: "1px solid rgba(255,255,255,0.5)",
                               },
                             });
                           }
@@ -1346,7 +1966,27 @@ function CaseInner({ caseId }: { caseId: string }) {
                 }}
               />
             </label>
-            {files.length === 0 && (
+            {filesLoading && (
+              <div style={{ display: "grid", gap: 8 }}>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    aria-hidden="true"
+                    style={{
+                      height: 52,
+                      borderRadius: 6,
+                      background:
+                        "linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+                      backgroundSize: "200% 100%",
+                      animation: "vault-skeleton 1.2s linear infinite",
+                      border: "1px solid rgba(255,255,255,0.04)",
+                    }}
+                  />
+                ))}
+                <style>{`@keyframes vault-skeleton { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
+              </div>
+            )}
+            {!filesLoading && files.length === 0 && (
               <div
                 style={{
                   fontSize: 13,
@@ -1399,6 +2039,7 @@ function CaseInner({ caseId }: { caseId: string }) {
             />
             <textarea
               ref={noteTextareaRef}
+              aria-label="New case note"
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
               rows={4}
@@ -1408,7 +2049,7 @@ function CaseInner({ caseId }: { caseId: string }) {
             <div
               style={{
                 fontSize: 11,
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.5)",
                 textAlign: "right",
                 marginBottom: 10,
               }}
@@ -1505,7 +2146,9 @@ function CaseInner({ caseId }: { caseId: string }) {
         )}
 
         {tab === "timeline" && (
-          <TimelineBuilder caseId={caseId} entities={entities} />
+          <ErrorBoundary label="Timeline">
+            <TimelineBuilder caseId={caseId} entities={entities} />
+          </ErrorBoundary>
         )}
 
         {tab === "export" && (
@@ -1560,27 +2203,31 @@ function CaseInner({ caseId }: { caseId: string }) {
               minHeight: 480,
             }}
           >
-            <CaseAssistant
-              caseId={caseId}
-              caseTitle={title}
-              caseTemplate={detail.caseTemplate}
-              entities={entities}
-              enrichment={enrichment}
-            />
+            <ErrorBoundary label="Assistant">
+              <CaseAssistant
+                caseId={caseId}
+                caseTitle={title}
+                caseTemplate={detail.caseTemplate}
+                entities={entities}
+                enrichment={enrichment}
+              />
+            </ErrorBoundary>
           </div>
         )}
         </div>
       </div>
       {walletJourneyId && (
-        <WalletJourney
-          rootEntityId={walletJourneyId}
-          entities={entities}
-          onClose={() => setWalletJourneyId(null)}
-          onOpenGraph={() => {
-            setWalletJourneyId(null);
-            setTab("graph");
-          }}
-        />
+        <ErrorBoundary label="Wallet journey">
+          <WalletJourney
+            rootEntityId={walletJourneyId}
+            entities={entities}
+            onClose={() => setWalletJourneyId(null)}
+            onOpenGraph={() => {
+              setWalletJourneyId(null);
+              setTab("graph");
+            }}
+          />
+        </ErrorBoundary>
       )}
       {shareOpen && (
         <ShareCaseModal
@@ -1595,6 +2242,112 @@ function CaseInner({ caseId }: { caseId: string }) {
         onDismiss={() => setToastStep(null)}
       />
     </main>
+  );
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "never";
+  const delta = Date.now() - new Date(iso).getTime();
+  if (delta < 45_000) return "just now";
+  const m = Math.round(delta / 60_000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  return `${d}d ago`;
+}
+
+const OVERVIEW_H2: React.CSSProperties = {
+  fontSize: 11,
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+  color: "#FF6B00",
+  marginBottom: 12,
+  fontWeight: 700,
+};
+
+const OVERVIEW_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "10px 12px",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: 6,
+  background: "#0a0a0a",
+};
+
+const OVERVIEW_KIND: React.CSSProperties = {
+  fontSize: 9,
+  letterSpacing: "0.1em",
+  color: "#FF6B00",
+  textTransform: "uppercase",
+  width: 52,
+  flexShrink: 0,
+};
+
+const OVERVIEW_WHEN: React.CSSProperties = {
+  marginLeft: "auto",
+  fontSize: 11,
+  color: "rgba(255,255,255,0.5)",
+  flexShrink: 0,
+};
+
+const OVERVIEW_CTA: React.CSSProperties = {
+  background: "transparent",
+  border: "1px solid rgba(255,255,255,0.12)",
+  color: "rgba(255,255,255,0.75)",
+  fontSize: 13,
+  padding: "10px 14px",
+  borderRadius: 6,
+  cursor: "pointer",
+};
+
+const OVERVIEW_CTA_PRIMARY: React.CSSProperties = {
+  background: "#FF6B00",
+  border: "none",
+  color: "#FFFFFF",
+  fontSize: 13,
+  padding: "10px 14px",
+  borderRadius: 6,
+  cursor: "pointer",
+  fontWeight: 500,
+};
+
+function OverviewStat({
+  label,
+  value,
+  textual = false,
+}: {
+  label: string;
+  value: number | string;
+  textual?: boolean;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: textual ? 16 : 24,
+          fontWeight: 700,
+          color: "#FFFFFF",
+          lineHeight: 1.1,
+          textTransform: textual ? "uppercase" : "none",
+          letterSpacing: textual ? "0.04em" : undefined,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          textTransform: "uppercase",
+          fontSize: 11,
+          letterSpacing: "0.08em",
+          color: "rgba(255,255,255,0.5)",
+          marginTop: 6,
+        }}
+      >
+        {label}
+      </div>
+    </div>
   );
 }
 

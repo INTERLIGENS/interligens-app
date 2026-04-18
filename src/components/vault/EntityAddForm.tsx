@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useVaultToast } from "@/components/vault/VaultToast";
+import { describeResponse } from "@/lib/investigators/errorMessages";
 
 const TYPES = [
   "WALLET",
@@ -96,12 +98,14 @@ function parseBulk(text: string): ParsedItem[] {
 }
 
 export default function EntityAddForm({ onAdded, caseId }: Props) {
+  const toast = useVaultToast();
   const [showBulk, setShowBulk] = useState(false);
   const [type, setType] = useState<EntityType>("WALLET");
   const [value, setValue] = useState("");
   const [label, setLabel] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const bulkParsed = useMemo(() => parseBulk(bulkText), [bulkText]);
 
@@ -116,6 +120,7 @@ export default function EntityAddForm({ onAdded, caseId }: Props) {
   async function submitSingle() {
     if (!value.trim() || saving) return;
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch(`/api/investigators/cases/${caseId}/entities`, {
         method: "POST",
@@ -131,12 +136,25 @@ export default function EntityAddForm({ onAdded, caseId }: Props) {
           ],
         }),
       });
-      if (res.ok) {
-        const added: ParsedItem = { type, value: value.trim() };
-        setValue("");
-        setLabel("");
-        onAdded(added);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg = describeResponse(res, body);
+        setError(msg);
+        toast.showError(msg);
+        return;
       }
+      const added: ParsedItem = { type, value: value.trim() };
+      setValue("");
+      setLabel("");
+      toast.showSuccess(`Added ${type.toLowerCase()}`);
+      onAdded(added);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? `Network error — ${err.message}`
+          : "Network error — check your connection";
+      setError(msg);
+      toast.showError(msg);
     } finally {
       setSaving(false);
     }
@@ -145,6 +163,7 @@ export default function EntityAddForm({ onAdded, caseId }: Props) {
   async function submitBulk() {
     if (bulkParsed.length === 0 || saving) return;
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch(`/api/investigators/cases/${caseId}/entities`, {
         method: "POST",
@@ -157,11 +176,24 @@ export default function EntityAddForm({ onAdded, caseId }: Props) {
           })),
         }),
       });
-      if (res.ok) {
-        const last = bulkParsed[bulkParsed.length - 1] ?? null;
-        setBulkText("");
-        onAdded(last);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg = describeResponse(res, body);
+        setError(msg);
+        toast.showError(msg);
+        return;
       }
+      const last = bulkParsed[bulkParsed.length - 1] ?? null;
+      setBulkText("");
+      toast.showSuccess(`Added ${bulkParsed.length} entit${bulkParsed.length === 1 ? "y" : "ies"}`);
+      onAdded(last);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? `Network error — ${err.message}`
+          : "Network error — check your connection";
+      setError(msg);
+      toast.showError(msg);
     } finally {
       setSaving(false);
     }
@@ -259,6 +291,22 @@ export default function EntityAddForm({ onAdded, caseId }: Props) {
           {showBulk ? "Hide bulk paste" : "Bulk paste"}
         </button>
       </div>
+      {error && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 12,
+            fontSize: 12,
+            color: "#FF9AAB",
+            border: "1px solid rgba(255,59,92,0.35)",
+            background: "rgba(255,59,92,0.08)",
+            padding: "8px 12px",
+            borderRadius: 6,
+          }}
+        >
+          {error}
+        </div>
+      )}
 
       {showBulk && (
         <div style={{ marginTop: 18 }}>

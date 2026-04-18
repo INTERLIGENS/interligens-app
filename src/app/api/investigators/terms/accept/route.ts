@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLegalDoc, type LegalDocLanguage } from "@/lib/investigators/legalDocs";
+import { validateOnboardingSessionForApi } from "@/lib/investigators/accessGate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,8 +15,15 @@ function getClientIp(req: NextRequest): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await validateOnboardingSessionForApi();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json().catch(() => ({}));
-  const profileId = typeof body.profileId === "string" ? body.profileId : null;
+  // profileId is now trusted to the session, not taken from the request body,
+  // so attackers can't spoof acceptances for other investigators.
+  const profileId = session.profileId;
   const betaCodeId = typeof body.betaCodeId === "string" ? body.betaCodeId : null;
   const signerName = typeof body.signerName === "string" ? body.signerName.trim() : "";
   const termsVersion = typeof body.termsVersion === "string" ? body.termsVersion : "1.0";

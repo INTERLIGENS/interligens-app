@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import VaultGate from "@/components/vault/VaultGate";
 import { useVaultSession } from "@/hooks/useVaultSession";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -12,6 +12,7 @@ import {
   encryptString,
   encryptTags,
 } from "@/lib/vault/crypto.client";
+import { UNREADABLE_LABEL, UNREADABLE_LABEL_SHORT } from "@/lib/vault/display";
 
 const ENCRYPTED_PLACEHOLDER =
   "Contenu chiffré — accessible uniquement par l'investigator propriétaire.";
@@ -55,7 +56,7 @@ const LABEL_STYLE: React.CSSProperties = {
 
 const HELPER_STYLE: React.CSSProperties = {
   fontSize: 12,
-  color: "rgba(255,255,255,0.3)",
+  color: "rgba(255,255,255,0.5)",
   marginTop: 6,
 };
 
@@ -100,7 +101,15 @@ function DashboardInner() {
   const { isAdmin } = useIsAdmin();
   const [cases, setCases] = useState<DecryptedCase[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNew, setShowNew] = useState(false);
+  const searchParams = useSearchParams();
+  const [showNew, setShowNew] = useState(searchParams?.get("new") === "1");
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [renameCase, setRenameCaseState] = useState<{
+    id: string;
+    currentTitle: string;
+  } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newTags, setNewTags] = useState("");
   const [newTemplate, setNewTemplate] = useState<string>("blank");
@@ -153,7 +162,7 @@ function DashboardInner() {
         const raw: SearchResult[] = data.results ?? [];
         const decrypted: DecryptedSearchResult[] = [];
         for (const r of raw) {
-          let caseTitle = "[unreadable]";
+          let caseTitle = UNREADABLE_LABEL_SHORT;
           try {
             caseTitle = await decryptString(
               r.caseTitleEnc,
@@ -178,9 +187,15 @@ function DashboardInner() {
       if (!target.closest?.("[data-global-search]")) {
         setShowSearchResults(false);
       }
+      if (!target.closest?.("[data-case-menu]")) {
+        setMenuOpenId(null);
+      }
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setShowSearchResults(false);
+      if (e.key === "Escape") {
+        setShowSearchResults(false);
+        setMenuOpenId(null);
+      }
     }
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
@@ -240,7 +255,7 @@ function DashboardInner() {
           } catch {
             decrypted.push({
               ...row,
-              title: "[unreadable — wrong key?]",
+              title: UNREADABLE_LABEL,
               tags: [],
             });
           }
@@ -278,29 +293,94 @@ function DashboardInner() {
       });
       const data = await res.json();
       if (res.ok) {
-        setCases((prev) => [
-          {
-            id: data.id,
-            titleEnc: data.titleEnc,
-            titleIv: data.titleIv,
-            tagsEnc: data.tagsEnc,
-            tagsIv: data.tagsIv,
-            status: data.status,
-            entityCount: 0,
-            fileCount: 0,
-            updatedAt: data.createdAt,
-            title: newTitle.trim(),
-            tags: tagsList,
-          },
-          ...prev,
-        ]);
-        setNewTitle("");
-        setNewTags("");
-        setNewTemplate("blank");
-        setShowNew(false);
+        // Go straight into the new case workspace — avoids the user having
+        // to find their fresh case in a long list.
+        router.push(`/investigators/box/cases/${data.id}`);
+        return;
       }
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function deleteCase(id: string, title: string) {
+    const label =
+      title === UNREADABLE_LABEL ? "this unreadable case" : `"${title}"`;
+    const ok = window.confirm(
+      `Permanently delete ${label}? This removes all entities, files, notes and timeline entries. It cannot be undone.`
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/investigators/cases/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        window.alert("Delete failed — please retry.");
+        return;
+      }
+      setCases((prev) => prev.filter((c) => c.id !== id));
+    } catch {
+      window.alert("Network error — please retry.");
+    }
+  }
+
+  async function toggleArchive(id: string, currentStatus: string) {
+    const nextStatus = currentStatus === "ARCHIVED" ? "PRIVATE" : "ARCHIVED";
+    try {
+      const res = await fetch(`/api/investigators/cases/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (!res.ok) {
+        window.alert("Could not update status — please retry.");
+        return;
+      }
+      setCases((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status: nextStatus } : c))
+      );
+    } catch {
+      window.alert("Network error — please retry.");
+    }
+  }
+
+  function openRenameModal(id: string, currentTitle: string) {
+    setRenameCaseState({ id, currentTitle });
+    setRenameValue(currentTitle === UNREADABLE_LABEL ? "" : currentTitle);
+  }
+
+  async function submitRename() {
+    if (!renameCase || !keys || renaming) return;
+    const next = renameValue.trim();
+    if (!next) return;
+    setRenaming(true);
+    try {
+      const titleCt = await encryptString(next, keys.metaKey);
+      const res = await fetch(
+        `/api/investigators/cases/${renameCase.id}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            titleEnc: titleCt.enc,
+            titleIv: titleCt.iv,
+          }),
+        }
+      );
+      if (!res.ok) {
+        window.alert("Rename failed — please retry.");
+        setRenaming(false);
+        return;
+      }
+      setCases((prev) =>
+        prev.map((c) => (c.id === renameCase.id ? { ...c, title: next } : c))
+      );
+      setRenameCaseState(null);
+      setRenameValue("");
+    } catch {
+      window.alert("Encryption failed — please retry.");
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -349,15 +429,15 @@ function DashboardInner() {
         <div
           style={{
             fontSize: 12,
-            color: "rgba(255,255,255,0.25)",
+            color: "rgba(255,255,255,0.5)",
             letterSpacing: "0.04em",
             marginTop: 20,
             marginBottom: 24,
           }}
         >
-          Client-side encrypted&nbsp;&nbsp;·&nbsp;&nbsp;Your key never
-          reaches our servers&nbsp;&nbsp;·&nbsp;&nbsp;Nothing is readable
-          without your passphrase&nbsp;&nbsp;·&nbsp;&nbsp;
+          Client-side encrypted&nbsp;&nbsp;·&nbsp;&nbsp;Your passphrase
+          never leaves your browser&nbsp;&nbsp;·&nbsp;&nbsp;Nothing is
+          readable without it&nbsp;&nbsp;·&nbsp;&nbsp;
           <Link
             href="/investigators/box/trust"
             style={{ color: "#FF6B00", textDecoration: "none" }}
@@ -401,7 +481,7 @@ function DashboardInner() {
                     textTransform: "uppercase",
                     fontSize: 11,
                     letterSpacing: "0.08em",
-                    color: "rgba(255,255,255,0.3)",
+                    color: "rgba(255,255,255,0.5)",
                     marginTop: 6,
                   }}
                 >
@@ -676,11 +756,31 @@ function DashboardInner() {
           </div>
         )}
 
+        {!loading && cases.length > 0 && cases.every((c) => c.title === UNREADABLE_LABEL) && (
+          <div
+            style={{
+              border: "1px solid rgba(255,59,92,0.35)",
+              background: "rgba(255,59,92,0.08)",
+              borderRadius: 6,
+              padding: "14px 18px",
+              marginBottom: 16,
+              fontSize: 13,
+              color: "#FF9AAB",
+              lineHeight: 1.6,
+            }}
+          >
+            <strong style={{ color: "#FF3B5C" }}>None of your cases could be decrypted.</strong>{" "}
+            The passphrase used to unlock this session doesn&apos;t match the one that created
+            these cases. Click <em>Lock</em> and retry with the original passphrase — or delete
+            the unreadable rows below if they were test data.
+          </div>
+        )}
+
         {loading ? (
           <div
             style={{
               fontSize: 13,
-              color: "rgba(255,255,255,0.3)",
+              color: "rgba(255,255,255,0.5)",
             }}
           >
             Loading cases…
@@ -694,7 +794,7 @@ function DashboardInner() {
               style={{
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.5)",
               }}
             >
               Sort by
@@ -739,7 +839,7 @@ function DashboardInner() {
             <div
               style={{
                 fontSize: 14,
-                color: "rgba(255,255,255,0.25)",
+                color: "rgba(255,255,255,0.5)",
                 marginTop: 12,
                 maxWidth: 400,
                 marginLeft: "auto",
@@ -784,83 +884,306 @@ function DashboardInner() {
                   },
                 };
                 const col = statusColors[c.status] ?? statusColors.PRIVATE;
+                const unreadable = c.title === UNREADABLE_LABEL;
                 return (
-                  <Link
+                  <div
                     key={c.id}
-                    href={`/investigators/box/cases/${c.id}`}
-                    className="block transition-colors hover:border-[rgba(255,107,0,0.2)]"
                     style={{
+                      position: "relative",
                       border: "1px solid rgba(255,255,255,0.08)",
                       borderRadius: 6,
-                      padding: 20,
                       backgroundColor: "#0a0a0a",
-                      textDecoration: "none",
                     }}
                   >
-                    <div
+                    <Link
+                      href={`/investigators/box/cases/${c.id}`}
+                      className="block transition-colors hover:border-[rgba(255,107,0,0.2)]"
                       style={{
-                        color: "#FFFFFF",
-                        fontWeight: 700,
-                        fontSize: 16,
-                        marginBottom: 10,
-                        wordBreak: "break-word",
+                        display: "block",
+                        padding: 20,
+                        paddingRight: 48,
+                        textDecoration: "none",
                       }}
                     >
-                      {c.title}
-                    </div>
-                    <div
-                      className="flex items-center justify-between gap-2"
-                      style={{ flexWrap: "wrap" }}
-                    >
-                      <div className="flex flex-wrap gap-1">
-                        {c.tags.map((t) => (
-                          <span
-                            key={t}
-                            style={{
-                              fontSize: 10,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.06em",
-                              color: "rgba(255,255,255,0.5)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              borderRadius: 4,
-                              padding: "2px 8px",
-                            }}
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                      <span
+                      <div
                         style={{
-                          fontSize: 10,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.06em",
-                          padding: "3px 8px",
-                          borderRadius: 4,
-                          backgroundColor: col.bg,
-                          color: col.fg,
+                          color: unreadable ? "#FF3B5C" : "#FFFFFF",
+                          fontWeight: 700,
+                          fontSize: 16,
+                          marginBottom: 10,
+                          wordBreak: "break-word",
                         }}
                       >
-                        {c.status.replace("_", " ")}
-                      </span>
-                    </div>
+                        {c.title}
+                      </div>
+                      <div
+                        className="flex items-center justify-between gap-2"
+                        style={{ flexWrap: "wrap" }}
+                      >
+                        <div className="flex flex-wrap gap-1">
+                          {c.tags.map((t) => (
+                            <span
+                              key={t}
+                              style={{
+                                fontSize: 10,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.06em",
+                                color: "rgba(255,255,255,0.5)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                borderRadius: 4,
+                                padding: "2px 8px",
+                              }}
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            padding: "3px 8px",
+                            borderRadius: 4,
+                            backgroundColor: col.bg,
+                            color: col.fg,
+                          }}
+                        >
+                          {c.status.replace("_", " ")}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "rgba(255,255,255,0.5)",
+                          marginTop: 12,
+                        }}
+                      >
+                        {c.entityCount} entities · {c.fileCount} files ·{" "}
+                        {new Date(c.updatedAt).toLocaleDateString("en-US")}
+                      </div>
+                    </Link>
                     <div
+                      data-case-menu
                       style={{
-                        fontSize: 12,
-                        color: "rgba(255,255,255,0.3)",
-                        marginTop: 12,
+                        position: "absolute",
+                        top: 10,
+                        right: 10,
                       }}
                     >
-                      {c.entityCount} entities · {c.fileCount} files ·{" "}
-                      {new Date(c.updatedAt).toLocaleDateString()}
+                      <button
+                        type="button"
+                        aria-label="Case actions"
+                        aria-haspopup="menu"
+                        aria-expanded={menuOpenId === c.id}
+                        onClick={() =>
+                          setMenuOpenId((cur) => (cur === c.id ? null : c.id))
+                        }
+                        style={{
+                          width: 28,
+                          height: 28,
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: 4,
+                          background:
+                            menuOpenId === c.id
+                              ? "rgba(255,255,255,0.08)"
+                              : "transparent",
+                          color: "rgba(255,255,255,0.5)",
+                          cursor: "pointer",
+                          fontSize: 16,
+                          lineHeight: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        ⋯
+                      </button>
+                      {menuOpenId === c.id && (
+                        <div
+                          role="menu"
+                          style={{
+                            position: "absolute",
+                            top: 34,
+                            right: 0,
+                            minWidth: 180,
+                            backgroundColor: "#0d0d0d",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: 6,
+                            padding: 4,
+                            zIndex: 40,
+                            boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
+                          }}
+                        >
+                          <MenuItem
+                            onClick={() => {
+                              setMenuOpenId(null);
+                              openRenameModal(c.id, c.title);
+                            }}
+                          >
+                            Rename
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              setMenuOpenId(null);
+                              toggleArchive(c.id, c.status);
+                            }}
+                          >
+                            {c.status === "ARCHIVED"
+                              ? "Restore from archive"
+                              : "Archive"}
+                          </MenuItem>
+                          <MenuItem
+                            danger
+                            onClick={() => {
+                              setMenuOpenId(null);
+                              deleteCase(c.id, c.title);
+                            }}
+                          >
+                            Delete permanently
+                          </MenuItem>
+                        </div>
+                      )}
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
           </div>
         )}
       </div>
+
+      {renameCase && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setRenameCaseState(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            backdropFilter: "blur(4px)",
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              backgroundColor: "#0a0a0a",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 8,
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                textTransform: "uppercase",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                color: "rgba(255,255,255,0.4)",
+                marginBottom: 6,
+              }}
+            >
+              Rename case
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 16 }}>
+              The new title is re-encrypted with your current key before it&apos;s saved.
+            </div>
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitRename();
+              }}
+              maxLength={200}
+              placeholder="New investigation title"
+              style={INPUT_STYLE}
+            />
+            <div
+              style={{
+                marginTop: 20,
+                display: "flex",
+                gap: 12,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setRenameCaseState(null)}
+                style={{
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.5)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitRename}
+                disabled={renaming || !renameValue.trim()}
+                style={{
+                  ...PRIMARY_BTN,
+                  height: 38,
+                  opacity: renaming || !renameValue.trim() ? 0.5 : 1,
+                  cursor:
+                    renaming || !renameValue.trim() ? "not-allowed" : "pointer",
+                }}
+              >
+                {renaming ? "Encrypting…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
+  );
+}
+
+function MenuItem({
+  children,
+  onClick,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "transparent";
+      }}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        padding: "8px 10px",
+        fontSize: 13,
+        color: danger ? "#FF3B5C" : "rgba(255,255,255,0.85)",
+        background: "transparent",
+        border: "none",
+        borderRadius: 4,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

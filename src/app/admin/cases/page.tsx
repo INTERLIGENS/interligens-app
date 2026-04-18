@@ -109,7 +109,7 @@ export default function CasesPage() {
                       ) : "—"}
                     </td>
                     <td className="py-2 px-3 text-gray-500">
-                      {new Date(s.createdAt).toLocaleDateString()}
+                      {new Date(s.createdAt).toLocaleDateString("fr-FR")}
                     </td>
                     <td className="py-2 px-3">
                       <button onClick={() => generateCasefile(s.id)} disabled={generating === s.id}

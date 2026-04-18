@@ -109,7 +109,7 @@ export default function IntakeInbox() {
                         <Link href={`/admin/intel-vault/batch/${r.linkedBatchId}`} className="text-orange-400 hover:text-orange-300 transition">→ batch</Link>
                       ) : r.pendingBatch ? <span className="text-orange-400">pending</span> : "—"}
                     </td>
-                    <td className="py-2 px-3 text-gray-500">{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="py-2 px-3 text-gray-500">{new Date(r.createdAt).toLocaleDateString("fr-FR")}</td>
                     <td className="py-2 px-3">
                       <Link href={`/admin/intake/${r.id}`} className="text-orange-400 hover:text-orange-300 transition font-semibold">View →</Link>
                     </td>

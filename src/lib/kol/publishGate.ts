@@ -22,6 +22,23 @@ export const ADMIN_KOL_FILTER = {
 export const ALL_KOL_FILTER = {}
 
 /**
+ * In-memory equivalent of PUBLIC_KOL_FILTER — use on already-loaded profiles
+ * (e.g. after a findMany with `include`) to preserve identical semantics.
+ *
+ * Never hand-inline `publishable && publishStatus === 'published'`: that was the
+ * pre-gate AND logic and drops profiles that passed the review flow cleanly
+ * (publishStatus='published' without the legacy publishable=true flag).
+ */
+export function isKolPublic(profile: {
+  publishStatus?: string | null
+  publishable?: boolean | null
+}): boolean {
+  if (profile.publishStatus === 'published') return true
+  if (profile.publishable === true && profile.publishStatus === 'draft') return true
+  return false
+}
+
+/**
  * Garde-fou avant publication manuelle.
  * Un profil doit avoir du contenu minimal pour passer en published.
  */

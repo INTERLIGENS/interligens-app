@@ -22,6 +22,8 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBad } from "@/lib/entities/knownBad";
 import { buildKolAlertSafe } from "@/lib/kol/alert";
+import { prisma } from "@/lib/prisma";
+import type { MmChain } from "@/lib/mm/types";
 import { timingSafeEqual } from "crypto";
 
 // SEC-006 — timing-safe compare on the mobile API token.
@@ -102,7 +104,11 @@ export async function POST(request: NextRequest) {
 
     // KOL alert — additive, always present, fail-soft to { hasAlert: false }.
     // Direct module call (no HTTP self-fetch) — see src/lib/kol/alert.ts.
-    const kolAlert = await buildKolAlertSafe(chain, address);
+    // MM risk — cache-only lookup, fail-soft to null.
+    const [kolAlert, mmRisk] = await Promise.all([
+      buildKolAlertSafe(chain, address),
+      loadMmRiskCached(chain, address),
+    ]);
 
     return NextResponse.json({
       address,
@@ -114,6 +120,7 @@ export async function POST(request: NextRequest) {
       confidence: tiger.confidence,
       scannedAt: new Date().toISOString(),
       kolAlert,
+      mmRisk,
     });
   } catch (err: any) {
     console.error(`[mobile/scan] chain=${chain} address=${address} error=`, err?.message);
@@ -272,4 +279,72 @@ async function computeEthViaAdapter(address: string) {
 async function computeFromEngine(chain: Chain, _address: string) {
   // TRON/HYPER/BSC — no adapter support yet, use engine directly
   return computeTigerScore({ chain });
+}
+
+// ── MM risk cache lookup ────────────────────────────────────────────────────
+
+const SCAN_TO_MM_CHAIN: Partial<Record<Chain, MmChain>> = {
+  SOL: "SOLANA",
+  ETH: "ETHEREUM",
+  BSC: "BNB",
+};
+
+const MM_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
+
+interface SnapshotOverall {
+  disclaimer?: string;
+}
+
+interface SnapshotRegistry {
+  entity?: { slug?: string; name?: string; status?: string } | null;
+}
+
+interface MmScoreSnapshot {
+  overall?: SnapshotOverall;
+  registry?: SnapshotRegistry;
+}
+
+async function loadMmRiskCached(chain: Chain, address: string) {
+  const mmChain = SCAN_TO_MM_CHAIN[chain];
+  if (!mmChain) return null;
+  try {
+    const row = await prisma.mmScore.findUnique({
+      where: {
+        subjectType_subjectId_chain: {
+          subjectType: "TOKEN",
+          subjectId: address,
+          chain: mmChain,
+        },
+      },
+      select: {
+        displayScore: true,
+        band: true,
+        dominantDriver: true,
+        computedAt: true,
+        breakdown: true,
+      },
+    });
+    if (!row) return null;
+    if (Date.now() - row.computedAt.getTime() > MM_CACHE_MAX_AGE_MS) return null;
+
+    const snapshot = (row.breakdown ?? null) as MmScoreSnapshot | null;
+    const entity = snapshot?.registry?.entity ?? null;
+    return {
+      displayScore: row.displayScore,
+      band: row.band,
+      dominantDriver: row.dominantDriver,
+      disclaimer: snapshot?.overall?.disclaimer ?? null,
+      entity: entity
+        ? {
+            slug: entity.slug ?? null,
+            name: entity.name ?? null,
+            status: entity.status ?? null,
+          }
+        : null,
+      computedAt: row.computedAt.toISOString(),
+    };
+  } catch (err) {
+    console.warn("[mobile/scan] mmRisk lookup failed", err);
+    return null;
+  }
 }

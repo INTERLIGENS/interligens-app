@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useVaultToast } from "@/components/vault/VaultToast";
 
 type Entity = {
   id: string;
@@ -75,6 +76,7 @@ export default function CaseExport({
   noteCount,
   onSaveToNotes,
 }: Props) {
+  const toast = useVaultToast();
   const [savedToNotes, setSavedToNotes] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(false);
   const [retail, setRetail] = useState<RetailSummary | null>(null);
@@ -197,7 +199,12 @@ export default function CaseExport({
       "",
       retail.disclaimer,
     ].join("\n");
-    navigator.clipboard.writeText(text).catch(() => {});
+    navigator.clipboard
+      .writeText(text)
+      .then(() => toast.showSuccess("Copied to clipboard"))
+      .catch(() =>
+        toast.showError("Couldn't copy automatically — select and copy manually.")
+      );
   }
 
   async function submitPublish() {

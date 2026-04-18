@@ -174,7 +174,7 @@ export default function VaultGate({ children }: Props) {
             fontSize: 14,
           }}
         >
-          {busy ? "Deriving your key…" : "Unlock"}
+          {busy ? "Deriving passphrase…" : "Unlock"}
         </button>
         <div
           style={{
@@ -184,7 +184,7 @@ export default function VaultGate({ children }: Props) {
             lineHeight: 1.6,
           }}
         >
-          No recovery exists. This is the proof that we do not hold your key.
+          No recovery exists. This is the proof that we do not hold your passphrase.
         </div>
       </div>
     </div>

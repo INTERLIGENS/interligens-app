@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { describeError, describeResponse } from "@/lib/investigators/errorMessages";
 
 type Entity = {
   id: string;
@@ -54,13 +55,23 @@ export default function ShareCaseModal({
 
   useEffect(() => {
     fetch(`/api/investigators/cases/${caseId}/shares`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(describeResponse(r));
+        return r.json();
+      })
       .then((d) => setActiveShares(d.shares ?? []))
-      .catch(() => {});
+      .catch((err) => setError(describeError(err)));
     fetch(`/api/investigators/cases/${caseId}/hypotheses`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(describeResponse(r));
+        return r.json();
+      })
       .then((d) => setHypotheses(d.hypotheses ?? []))
-      .catch(() => {});
+      .catch(() => {
+        // Hypotheses are optional; silently fall back to empty list but
+        // don't pollute the main error banner.
+        setHypotheses([]);
+      });
   }, [caseId]);
 
   async function generate() {
@@ -119,7 +130,7 @@ export default function ShareCaseModal({
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       })
-      .catch(() => {});
+      .catch(() => setError("Couldn't copy to clipboard — copy it manually."));
   }
 
   async function revoke(shareId: string) {

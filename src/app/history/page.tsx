@@ -247,7 +247,7 @@ export default function HistoryPage() {
                     </span>
                   )}
                   <div style={{ color: DIMMED, fontSize: 9, fontFamily: "monospace" }}>
-                    {new Date(entry.scannedAt).toLocaleDateString()}
+                    {new Date(entry.scannedAt).toLocaleDateString("en-US")}
                   </div>
                 </div>
               </a>

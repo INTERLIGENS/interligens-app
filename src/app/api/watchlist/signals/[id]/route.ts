@@ -1,6 +1,7 @@
 // src/app/api/watchlist/signals/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isKolPublic } from '@/lib/kol/publishGate'
 
 export const dynamic = 'force-dynamic'
 
@@ -125,7 +126,7 @@ export async function GET(
         evidenceCount: kolProfile._count.evidences,
         walletsCount: kolProfile._count.kolWallets,
         casesCount: kolProfile._count.kolCases,
-        isPublished: kolProfile.publishStatus === 'published' || (kolProfile.publishable === true && kolProfile.publishStatus === 'draft'),
+        isPublished: isKolPublic(kolProfile),
       } : null,
       relatedSignals: related,
     })
