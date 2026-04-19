@@ -515,16 +515,23 @@ export default function EditableGraph({
     const medianDeg = sortedDeg.length
       ? sortedDeg[Math.floor(sortedDeg.length / 2)]
       : 0;
-    const top3Hubs = new Set(
-      nodes
-        .map((n) => ({ id: n.id, d: degree[n.id] ?? 0 }))
-        .filter((x) => x.d > 0)
-        .sort((a, b) => b.d - a.d)
-        .slice(0, 3)
-        .map((x) => x.id),
-    );
-    const radiusFor = (id: string) =>
-      6 + Math.min(1, (degree[id] ?? 0) / maxDeg) * 16;
+    const hubsRanked = nodes
+      .map((n) => ({ id: n.id, d: degree[n.id] ?? 0 }))
+      .filter((x) => x.d > 0)
+      .sort((a, b) => b.d - a.d)
+      .slice(0, 3)
+      .map((x) => x.id);
+    const top3Hubs = new Set(hubsRanked);
+    const topHubId = hubsRanked[0] ?? null;
+    const secondaryHubs = new Set(hubsRanked.slice(1, 3));
+    // Premium hub hierarchy: boost #1 by 12%, #2–#3 by 7%, leave the rest
+    // of the graph untouched so peripheral node sizes don't drift.
+    const radiusFor = (id: string) => {
+      const base = 6 + Math.min(1, (degree[id] ?? 0) / maxDeg) * 16;
+      if (id === topHubId) return base * 1.12;
+      if (secondaryHubs.has(id)) return base * 1.07;
+      return base;
+    };
 
     const simNodes: SimNode[] = nodes.map((n) => {
       const base = { ...n, r: radiusFor(n.id) } as SimNode;
@@ -636,29 +643,29 @@ export default function EditableGraph({
       });
 
     // Halos for the top-3 hubs — rendered FIRST inside each node's <g> so
-    // they sit behind the body circle. Opacities softened to 8/4/2% so the
-    // radius scaling stays the dominant centrality cue.
+    // they sit behind the body circle. Opacities 16/9/5% give the hubs a
+    // readable aura without pushing into "cosmic glow" territory.
     const haloSel = nodeG.filter((d) => top3Hubs.has(d.id));
     haloSel
       .append("circle")
       .attr("class", "halo halo-3")
       .attr("r", (d) => d.r * 1.8)
       .attr("fill", (d) => GROUP_COLOR[d.group])
-      .attr("fill-opacity", 0.02)
+      .attr("fill-opacity", 0.05)
       .attr("pointer-events", "none");
     haloSel
       .append("circle")
       .attr("class", "halo halo-2")
       .attr("r", (d) => d.r * 1.4)
       .attr("fill", (d) => GROUP_COLOR[d.group])
-      .attr("fill-opacity", 0.04)
+      .attr("fill-opacity", 0.09)
       .attr("pointer-events", "none");
     haloSel
       .append("circle")
       .attr("class", "halo halo-1")
       .attr("r", (d) => d.r * 1.1)
       .attr("fill", (d) => GROUP_COLOR[d.group])
-      .attr("fill-opacity", 0.08)
+      .attr("fill-opacity", 0.16)
       .attr("pointer-events", "none");
 
     // Main body. Border width picks up the median-degree threshold so hubs
