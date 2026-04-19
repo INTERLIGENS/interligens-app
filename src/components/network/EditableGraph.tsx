@@ -73,23 +73,27 @@ const SIDEBAR_CSS = `
 }
 .graph-sidebar .graph-sidebar-search {
   width: 100%;
-  height: 32px;
-  background: rgba(255,255,255,0.03);
+  height: 38px;
+  background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.08);
   color: #fff;
-  padding: 0 10px;
-  border-radius: 4px;
+  padding: 0 12px;
+  border-radius: 8px;
   font-size: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   outline: none;
-  transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 .graph-sidebar .graph-sidebar-search::placeholder {
   color: rgba(255,255,255,0.35);
 }
+.graph-sidebar .graph-sidebar-search:hover {
+  background: rgba(255,255,255,0.03);
+}
 .graph-sidebar .graph-sidebar-search:focus {
-  border-color: ${ACCENT};
-  box-shadow: 0 0 0 1px ${ACCENT};
+  border-color: rgba(255,107,0,0.45);
+  box-shadow: 0 0 0 3px rgba(255,107,0,0.10);
+  background: rgba(255,255,255,0.03);
 }
 .graph-sidebar .graph-chip-btn {
   display: flex;
@@ -328,6 +332,32 @@ const SIDEBAR_CSS = `
 }
 .graph-canvas-svg:active {
   cursor: grabbing;
+}
+.graph-section-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+  margin: 18px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.graph-section-label:first-of-type,
+.graph-section-label.first {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 4px;
+}
+circle.halo-1 {
+  animation: graph-halo-breathe 5s ease-in-out infinite;
+}
+@keyframes graph-halo-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.62; }
+}
+@media (prefers-reduced-motion: reduce) {
+  circle.halo-1 { animation: none; }
 }
 `;
 
@@ -1700,7 +1730,8 @@ export default function EditableGraph({
         ref={canvasWrapRef}
         style={{
           position: "relative",
-          background: "radial-gradient(ellipse at center, #0a0a0a 0%, #000 100%)",
+          background:
+            "radial-gradient(circle at center, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,0.18) 100%), radial-gradient(ellipse at center, #0a0a0a 0%, #000 100%)",
           border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: 6,
           overflow: "hidden",
@@ -1866,19 +1897,7 @@ export default function EditableGraph({
 // ── Small subcomponents / styled helpers ────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 10,
-        color: "rgba(255,255,255,0.35)",
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        margin: "14px 0 6px",
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="graph-section-label">{children}</div>;
 }
 
 function legendButton(active: boolean): React.CSSProperties {
