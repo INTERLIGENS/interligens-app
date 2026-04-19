@@ -400,9 +400,15 @@ function hexToRgba(hex: string, alpha: number): string {
 type Props = {
   data: NetworkGraph;
   investigatorHandle: string;
+  /**
+   * Optional banner rendered above the 240/1fr/320 grid (e.g. a DEMO
+   * ribbon on the demo viewer pages). When omitted the outer layout is
+   * byte-identical to the shipped premium graph.
+   */
+  banner?: React.ReactNode;
 };
 
-export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
+export default function ScamUniverseGraph({ data, investigatorHandle, banner }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const simRef = useRef<d3.Simulation<SimNode, SimEdge> | null>(null);
@@ -1149,14 +1155,15 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
     return { all, tally };
   }, [selected, data.edges, data.nodes]);
 
-  return (
+  const gridInner = (
     <div
       style={{
         display: "grid",
         gridTemplateColumns: "240px 1fr 320px",
         gap: 12,
         padding: 12,
-        height: `calc(100vh - 48px)`,
+        height: banner ? "100%" : `calc(100vh - 48px)`,
+        minHeight: 0,
         color: "#fff",
         fontFamily: "ui-sans-serif, system-ui, sans-serif",
       }}
@@ -1458,6 +1465,22 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
           </>
         )}
       </aside>
+    </div>
+  );
+
+  if (!banner) return gridInner;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "calc(100vh - 48px)",
+        minHeight: 0,
+      }}
+    >
+      {banner}
+      <div style={{ flex: "1 1 auto", minHeight: 0 }}>{gridInner}</div>
     </div>
   );
 }

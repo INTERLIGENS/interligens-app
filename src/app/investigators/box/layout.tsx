@@ -70,7 +70,7 @@ export default async function InvestigatorsBoxLayout({
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <NavLink href="/investigators/box" label="My Cases" exact />
           <span style={SEPARATOR}>|</span>
-          <NavLink href="/investigators/box/network" label="Network" />
+          <NavLink href="/investigators/box/graph" label="Graph" />
           <span style={SEPARATOR}>|</span>
           <NavLink href="/investigators/box/messages" label="Messages" />
           <span style={SEPARATOR}>|</span>
