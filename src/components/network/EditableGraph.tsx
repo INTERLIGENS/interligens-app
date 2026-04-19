@@ -359,6 +359,45 @@ circle.halo-1 {
 @media (prefers-reduced-motion: reduce) {
   circle.halo-1 { animation: none; }
 }
+/* Quick filter row — ALL / NONE shortcuts above each chip list. */
+.graph-sidebar .graph-filter-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-start;
+  margin: 4px 0 8px;
+}
+.graph-sidebar .graph-filter-quick {
+  height: 24px;
+  padding: 0 10px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.graph-sidebar .graph-filter-quick[data-variant="all"] {
+  background: rgba(255,107,0,0.08);
+  border: 1px solid rgba(255,107,0,0.32);
+  color: #FFFFFF;
+}
+.graph-sidebar .graph-filter-quick[data-variant="all"]:hover {
+  background: rgba(255,107,0,0.12);
+  border-color: rgba(255,107,0,0.4);
+}
+.graph-sidebar .graph-filter-quick[data-variant="none"] {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.6);
+}
+.graph-sidebar .graph-filter-quick[data-variant="none"]:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+}
 `;
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -1503,6 +1542,24 @@ export default function EditableGraph({
         />
 
         <SectionLabel>Groups</SectionLabel>
+        <div className="graph-filter-row" role="group" aria-label="Group quick filters">
+          <button
+            type="button"
+            className="graph-filter-quick"
+            data-variant="all"
+            onClick={selectAllGroups}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            className="graph-filter-quick"
+            data-variant="none"
+            onClick={clearGroups}
+          >
+            None
+          </button>
+        </div>
         {GROUP_VALUES.map((g) => {
           const active = activeGroups.has(g);
           const count = groupCounts[g] ?? 0;
@@ -1525,6 +1582,24 @@ export default function EditableGraph({
         })}
 
         <SectionLabel>Evidence tier</SectionLabel>
+        <div className="graph-filter-row" role="group" aria-label="Tier quick filters">
+          <button
+            type="button"
+            className="graph-filter-quick"
+            data-variant="all"
+            onClick={selectAllTiers}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            className="graph-filter-quick"
+            data-variant="none"
+            onClick={clearTiers}
+          >
+            None
+          </button>
+        </div>
         {TIER_VALUES.map((t) => {
           const active = activeTiers.has(t);
           const edgeCount = tierEdgeCounts[t] ?? 0;
