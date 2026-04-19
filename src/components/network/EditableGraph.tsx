@@ -535,13 +535,16 @@ export default function EditableGraph({
   const [orchestrating, setOrchestrating] = useState(false);
   const [lastAdded, setLastAdded] = useState<{ id: string; at: number } | null>(null);
 
-  // Toggle-based filters. Empty set = no filter = show everything. Set
-  // containing at least one value = show ONLY those values.
+  // Toggle-based filters. First load = all values in the set, so the chip
+  // row visually mirrors the "everything is on" starting state of the
+  // canvas. Clicking a chip toggles its membership. Empty set is still a
+  // valid state (user explicitly clicked NONE) and is interpreted as
+  // "no filter" → show everything, so NONE stays non-destructive.
   const [activeGroups, setActiveGroups] = useState<Set<NodeGroup>>(
-    () => new Set<NodeGroup>(),
+    () => new Set<NodeGroup>(GROUP_VALUES),
   );
   const [activeTiers, setActiveTiers] = useState<Set<EvidenceTier>>(
-    () => new Set<EvidenceTier>(),
+    () => new Set<EvidenceTier>(TIER_VALUES),
   );
   const [query, setQuery] = useState("");
   const [radialMode, setRadialMode] = useState(false);
