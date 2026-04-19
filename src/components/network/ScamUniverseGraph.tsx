@@ -371,11 +371,13 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
   const edgesRef = useRef<SimEdge[]>([]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Toggle-based filters. Empty set = no filter = show everything. Set
+  // containing at least one value = show ONLY those values.
   const [activeGroups, setActiveGroups] = useState<Set<NodeGroup>>(
-    () => new Set(GROUP_VALUES)
+    () => new Set<NodeGroup>()
   );
   const [activeTiers, setActiveTiers] = useState<Set<EvidenceTier>>(
-    () => new Set(TIER_VALUES)
+    () => new Set<EvidenceTier>()
   );
   const [query, setQuery] = useState("");
   const [radialMode, setRadialMode] = useState(false);
@@ -736,22 +738,27 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
         )
       : null;
 
+    const groupFilterOn = activeGroups.size > 0;
+    const tierFilterOn = activeTiers.size > 0;
     svg
       .selectAll<SVGGElement, SimNode>(".nodes g")
       .classed(
         "dim",
         (d) =>
-          !activeGroups.has(d.group) ||
+          (groupFilterOn && !activeGroups.has(d.group)) ||
           (matchIds !== null && !matchIds.has(d.id))
       );
+    // Edges: standard investigator semantics. Dim an edge only when neither
+    // endpoint is in the active group filter (if any), or the tier itself is
+    // filtered out, or the search query excludes both endpoints.
     const edgeDimmed = (d: SimEdge): boolean => {
       const sId = edgeEndpoint(d.source);
       const tId = edgeEndpoint(d.target);
       const s = data.nodes.find((n) => n.id === sId);
       const t = data.nodes.find((n) => n.id === tId);
       if (!s || !t) return true;
-      if (!activeTiers.has(d.tier)) return true;
-      if (!activeGroups.has(s.group) || !activeGroups.has(t.group)) return true;
+      if (tierFilterOn && !activeTiers.has(d.tier)) return true;
+      if (groupFilterOn && !activeGroups.has(s.group) && !activeGroups.has(t.group)) return true;
       if (matchIds && !matchIds.has(sId) && !matchIds.has(tId)) return true;
       return false;
     };
@@ -826,8 +833,9 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
 
   function zoomToFit() {
     if (!svgRef.current || !zoomRef.current) return;
+    const groupFilterOn = activeGroups.size > 0;
     const visible = nodesRef.current.filter((n) => {
-      if (!activeGroups.has(n.group)) return false;
+      if (groupFilterOn && !activeGroups.has(n.group)) return false;
       if (n.x == null || n.y == null) return false;
       return true;
     });
@@ -912,43 +920,16 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
   }
 
-  // Solo vs add-to-solo UX for group chips:
-  //   click        → solo this group (or reset to all if already soloed)
-  //   double-click → add/remove this group from the current visible set
-  // Implemented with a 220 ms timer so the single-click action doesn't fire
-  // while a double-click is in progress.
-  const groupClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function soloGroup(g: NodeGroup) {
-    setActiveGroups((prev) => {
-      if (prev.size === 1 && prev.has(g)) return new Set(GROUP_VALUES);
-      return new Set<NodeGroup>([g]);
-    });
-  }
-
-  function addToSoloGroup(g: NodeGroup) {
+  // Pure toggle semantics: clicking a chip flips its membership in the
+  // filter set and leaves every other chip alone. Empty set = no filter
+  // (everything visible); a non-empty set restricts the view to its members.
+  function toggleGroup(g: NodeGroup) {
     setActiveGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(g)) {
-        if (next.size > 1) next.delete(g);
-      } else {
-        next.add(g);
-      }
+      if (next.has(g)) next.delete(g);
+      else next.add(g);
       return next;
     });
-  }
-
-  function handleGroupClick(g: NodeGroup) {
-    if (groupClickTimer.current) {
-      clearTimeout(groupClickTimer.current);
-      groupClickTimer.current = null;
-      addToSoloGroup(g);
-      return;
-    }
-    groupClickTimer.current = setTimeout(() => {
-      groupClickTimer.current = null;
-      soloGroup(g);
-    }, 220);
   }
 
   function toggleTier(t: EvidenceTier) {
@@ -958,6 +939,19 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       else next.add(t);
       return next;
     });
+  }
+
+  function selectAllGroups() {
+    setActiveGroups(new Set(GROUP_VALUES));
+  }
+  function clearGroups() {
+    setActiveGroups(new Set<NodeGroup>());
+  }
+  function selectAllTiers() {
+    setActiveTiers(new Set(TIER_VALUES));
+  }
+  function clearTiers() {
+    setActiveTiers(new Set<EvidenceTier>());
   }
 
   // Group node-counts and per-tier edge-counts, memoised so the sidebar
@@ -1047,9 +1041,9 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
             <button
               key={g}
               type="button"
-              onClick={() => handleGroupClick(g)}
+              onClick={() => toggleGroup(g)}
               className={`graph-chip-btn${active ? " is-active" : ""}`}
-              title="Click to solo · double-click to add/remove"
+              title="Click to toggle this group on/off"
             >
               <span
                 className="graph-chip-dot"
