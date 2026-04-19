@@ -611,29 +611,29 @@ export default function EditableGraph({
       });
 
     // Halos for the top-3 hubs — rendered FIRST inside each node's <g> so
-    // they sit behind the body circle. Three concentric rings at decreasing
-    // opacity borrow the group colour as a categorical cue.
+    // they sit behind the body circle. Opacities softened to 8/4/2% so the
+    // radius scaling stays the dominant centrality cue.
     const haloSel = nodeG.filter((d) => top3Hubs.has(d.id));
     haloSel
       .append("circle")
       .attr("class", "halo halo-3")
       .attr("r", (d) => d.r * 1.8)
       .attr("fill", (d) => GROUP_COLOR[d.group])
-      .attr("fill-opacity", 0.03)
+      .attr("fill-opacity", 0.02)
       .attr("pointer-events", "none");
     haloSel
       .append("circle")
       .attr("class", "halo halo-2")
       .attr("r", (d) => d.r * 1.4)
       .attr("fill", (d) => GROUP_COLOR[d.group])
-      .attr("fill-opacity", 0.06)
+      .attr("fill-opacity", 0.04)
       .attr("pointer-events", "none");
     haloSel
       .append("circle")
       .attr("class", "halo halo-1")
       .attr("r", (d) => d.r * 1.1)
       .attr("fill", (d) => GROUP_COLOR[d.group])
-      .attr("fill-opacity", 0.12)
+      .attr("fill-opacity", 0.08)
       .attr("pointer-events", "none");
 
     // Main body. Border width picks up the median-degree threshold so hubs
