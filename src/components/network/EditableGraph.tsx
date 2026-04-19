@@ -654,7 +654,12 @@ export default function EditableGraph({
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 4])
       .on("zoom", (ev) => root.attr("transform", ev.transform.toString()));
-    svg.call(zoom);
+    // Disable d3.zoom's default dblclick-to-zoom handler so our custom
+    // `dblclick.rotate` listener below has sole ownership of double-click.
+    // Both handlers live in the same event slot tree; without this, a
+    // double-click would zoom AND rotate and the rotation would visually
+    // get washed out by the zoom transform.
+    svg.call(zoom).on("dblclick.zoom", null);
     zoomRef.current = zoom;
 
     svg.on("click", (ev) => {

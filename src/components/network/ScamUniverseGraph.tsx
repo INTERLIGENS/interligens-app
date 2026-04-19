@@ -494,11 +494,22 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 4])
       .on("zoom", (ev) => root.attr("transform", ev.transform.toString()));
-    svg.call(zoom);
+    // Disable d3.zoom's default dblclick-to-zoom handler so our custom
+    // `dblclick.rotate` listener below has sole ownership of double-click.
+    svg.call(zoom).on("dblclick.zoom", null);
     zoomRef.current = zoom;
 
     svg.on("click", (ev) => {
       if (ev.target === svgRef.current) setSelectedId(null);
+    });
+
+    // Double-click the empty canvas rotates the whole graph 90° around the
+    // canvas centre. Fires only when the target is the bare <svg> so a
+    // double-click ON a node never triggers it.
+    svg.on("dblclick.rotate", (ev) => {
+      if (ev.target !== svgRef.current) return;
+      ev.preventDefault();
+      rotate(nodes, width, height);
     });
 
     const nodeById = new Map(data.nodes.map((n) => [n.id, n] as const));
@@ -751,6 +762,65 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
         }
       });
     nodeG.call(drag);
+
+    // Double-click rotation helper — symmetric with EditableGraph. Pins
+    // every node, animates a 90° rotation around the canvas centre over
+    // 600ms with an ease-out cubic curve, then unpins and nudges the
+    // simulation so forces settle the new layout naturally. Captures
+    // `simulation`, `linkSel`, `nodeG`, and the node array from the
+    // enclosing closure.
+    function rotate(
+      targets: SimNode[],
+      w: number,
+      h: number,
+      angleRad = Math.PI / 2,
+      durationMs = 600,
+    ) {
+      if (targets.length === 0) return;
+      const cx = w / 2;
+      const cy = h / 2;
+      const starts = targets.map((n) => ({ x0: n.x ?? cx, y0: n.y ?? cy }));
+      simulation.alphaTarget(0).stop();
+      for (const n of targets) {
+        n.fx = n.x ?? cx;
+        n.fy = n.y ?? cy;
+      }
+      const cos = Math.cos(angleRad);
+      const sin = Math.sin(angleRad);
+      const t0 = performance.now();
+      const step = () => {
+        const elapsed = performance.now() - t0;
+        const tRaw = Math.min(1, elapsed / durationMs);
+        const t = 1 - Math.pow(1 - tRaw, 3);
+        for (let i = 0; i < targets.length; i++) {
+          const node = targets[i];
+          const s = starts[i];
+          const dx = s.x0 - cx;
+          const dy = s.y0 - cy;
+          const rx = dx * (1 - t) + (dx * cos - dy * sin) * t;
+          const ry = dy * (1 - t) + (dx * sin + dy * cos) * t;
+          node.fx = cx + rx;
+          node.fy = cy + ry;
+          node.x = cx + rx;
+          node.y = cy + ry;
+        }
+        linkSel
+          .attr("x1", (d) => (d.source as SimNode).x ?? 0)
+          .attr("y1", (d) => (d.source as SimNode).y ?? 0)
+          .attr("x2", (d) => (d.target as SimNode).x ?? 0)
+          .attr("y2", (d) => (d.target as SimNode).y ?? 0);
+        nodeG.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
+        if (tRaw < 1) requestAnimationFrame(step);
+        else {
+          for (const n of targets) {
+            n.fx = null;
+            n.fy = null;
+          }
+          simulation.alpha(0.3).restart();
+        }
+      };
+      requestAnimationFrame(step);
+    }
 
     return () => {
       simulation.stop();
