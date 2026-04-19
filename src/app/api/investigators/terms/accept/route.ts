@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLegalDoc, type LegalDocLanguage } from "@/lib/investigators/legalDocs";
+import { getInvestigatorSessionContext } from "@/lib/investigators/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,15 +14,43 @@ function getClientIp(req: NextRequest): string | null {
   );
 }
 
+/**
+ * Beta-terms acceptance.
+ *
+ * IDOR hotfix: `profileId` and `betaCodeId` are derived from the signed
+ * investigator_session cookie, never from the request body. If the body
+ * still carries a `profileId` (legacy clients) it must match the session's
+ * profile; mismatch is rejected with a generic 403. An attacker can no
+ * longer accept terms on behalf of another investigator by forging a
+ * body value.
+ */
 export async function POST(req: NextRequest) {
+  const ctx = await getInvestigatorSessionContext(req);
+  if (!ctx) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json().catch(() => ({}));
-  const profileId = typeof body.profileId === "string" ? body.profileId : null;
-  const betaCodeId = typeof body.betaCodeId === "string" ? body.betaCodeId : null;
-  const signerName = typeof body.signerName === "string" ? body.signerName.trim() : "";
-  const termsVersion = typeof body.termsVersion === "string" ? body.termsVersion : "1.0";
-  const termsLanguage = (typeof body.termsLanguage === "string" ? body.termsLanguage : "en") as LegalDocLanguage;
-  const termsDocHash = typeof body.termsDocHash === "string" ? body.termsDocHash : "";
+  const suppliedProfileId =
+    typeof body.profileId === "string" ? body.profileId : null;
+  const signerName =
+    typeof body.signerName === "string" ? body.signerName.trim() : "";
+  const termsVersion =
+    typeof body.termsVersion === "string" ? body.termsVersion : "1.0";
+  const termsLanguage = (
+    typeof body.termsLanguage === "string" ? body.termsLanguage : "en"
+  ) as LegalDocLanguage;
+  const termsDocHash =
+    typeof body.termsDocHash === "string" ? body.termsDocHash : "";
   const accepted = body.accepted === true;
+
+  // If the caller supplies a profileId, it must match the session's
+  // derived profile. A null session profile (legacy onboarding) can only
+  // accept if the body also omits profileId — we never take a body value
+  // when we have none to compare against.
+  if (suppliedProfileId && suppliedProfileId !== ctx.profileId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (!accepted) {
     return NextResponse.json(
@@ -59,8 +88,10 @@ export async function POST(req: NextRequest) {
   try {
     const acceptance = await prisma.investigatorBetaTermsAcceptance.create({
       data: {
-        profileId,
-        betaCodeId,
+        // Always derive from session. Legacy testers with no profile row
+        // get `null` here, matching the pre-hotfix behaviour for that path.
+        profileId: ctx.profileId,
+        betaCodeId: ctx.accessId,
         signerName,
         termsVersion,
         termsLanguage,
@@ -72,7 +103,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.investigatorProgramAuditLog.create({
       data: {
-        profileId,
+        profileId: ctx.profileId,
         event: "BETA_TERMS_ACCEPTED",
         metadata: {
           termsVersion,
