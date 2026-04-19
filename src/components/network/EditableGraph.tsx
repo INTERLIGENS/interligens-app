@@ -60,14 +60,11 @@ const SIDEBAR_CSS = `
 }
 .graph-sidebar .graph-sidebar-title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #ffffff;
-  margin: 0 0 6px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid ${ACCENT};
-  display: inline-block;
+  color: ${ACCENT};
+  margin: 0 0 8px;
 }
 .graph-sidebar .graph-sidebar-meta {
   font-size: 10px;
