@@ -421,6 +421,19 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
   const [query, setQuery] = useState("");
   const [radialMode, setRadialMode] = useState(false);
 
+  // Refs mirroring state for closures that must NOT force a simulation
+  // rebuild. The main D3 effect intentionally omits these from its deps so
+  // a plain node click doesn't tear down and restart the layout (which
+  // would reset pan/zoom and snap the viewport).
+  const selectedIdRef = useRef<string | null>(null);
+  const radialModeRef = useRef<boolean>(false);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+  useEffect(() => {
+    radialModeRef.current = radialMode;
+  }, [radialMode]);
+
   const selected = useMemo(
     () => data.nodes.find((n) => n.id === selectedId) ?? null,
     [data.nodes, selectedId]
@@ -573,24 +586,9 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       )
       .style("filter", "drop-shadow(0 1px 2px rgba(0,0,0,0.8))");
 
-    // Selected: double ring #FF6B00 (inner 2px, 1px gap, outer 1px).
-    const selRing = nodeG.filter((d) => d.id === selectedId);
-    selRing
-      .append("circle")
-      .attr("class", "sel-ring-inner")
-      .attr("r", (d) => d.r + 1)
-      .attr("fill", "none")
-      .attr("stroke", ACCENT)
-      .attr("stroke-width", 2)
-      .attr("pointer-events", "none");
-    selRing
-      .append("circle")
-      .attr("class", "sel-ring-outer")
-      .attr("r", (d) => d.r + 3.5)
-      .attr("fill", "none")
-      .attr("stroke", ACCENT)
-      .attr("stroke-width", 1)
-      .attr("pointer-events", "none");
+    // Selected-ring rendering lives in its own useEffect below so a node
+    // click can update the orange double-ring without tearing down the
+    // whole simulation (which would lose pan/zoom).
 
     // Hover: ring expansion +2px on the body only.
     nodeG
@@ -746,7 +744,8 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       })
       .on("end", (ev, d) => {
         if (!ev.active) simulation.alphaTarget(0);
-        if (!radialMode || d.id !== selectedId) {
+        // Read the latest state via refs — omitted from effect deps below.
+        if (!radialModeRef.current || d.id !== selectedIdRef.current) {
           d.fx = null;
           d.fy = null;
         }
@@ -756,7 +755,41 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
     return () => {
       simulation.stop();
     };
-  }, [data, radialMode, selectedId]);
+    // selectedId + radialMode are intentionally excluded: they're read via
+    // refs inside the drag handler, and the sel-ring has its own effect
+    // below. Including them here would rebuild the simulation on every
+    // node click and destroy the user's pan/zoom state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  // Draw / update the orange double-ring on the currently selected node
+  // without rebuilding the whole simulation. Re-runs when the selection
+  // changes or when the sim rebuilds (data change).
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.selectAll(".sel-ring-inner, .sel-ring-outer").remove();
+    if (!selectedId) return;
+    const sel = svg
+      .selectAll<SVGGElement, SimNode>(".nodes g")
+      .filter((d) => d.id === selectedId);
+    sel
+      .append("circle")
+      .attr("class", "sel-ring-inner")
+      .attr("r", (d) => d.r + 1)
+      .attr("fill", "none")
+      .attr("stroke", ACCENT)
+      .attr("stroke-width", 2)
+      .attr("pointer-events", "none");
+    sel
+      .append("circle")
+      .attr("class", "sel-ring-outer")
+      .attr("r", (d) => d.r + 3.5)
+      .attr("fill", "none")
+      .attr("stroke", ACCENT)
+      .attr("stroke-width", 1)
+      .attr("pointer-events", "none");
+  }, [selectedId, data]);
 
   // Filter effect — re-run without rebuilding the simulation.
   useEffect(() => {

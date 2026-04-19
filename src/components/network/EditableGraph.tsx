@@ -546,6 +546,26 @@ export default function EditableGraph({
   const [query, setQuery] = useState("");
   const [radialMode, setRadialMode] = useState(false);
 
+  // Refs mirroring state for closures inside the main D3 effect. Keeping
+  // these out of the effect's deps prevents a simulation rebuild (and the
+  // pan/zoom reset that comes with it) on every node click or connect-mode
+  // toggle. The main effect still re-runs when `nodes`, `edges`, or
+  // `editable` change.
+  const selectedIdRef = useRef<string | null>(null);
+  const connectFromRef = useRef<string | null>(null);
+  const radialModeRef = useRef<boolean>(false);
+  const degreeRef = useRef<Record<string, number>>({});
+  const medianDegRef = useRef<number>(0);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+  useEffect(() => {
+    connectFromRef.current = connectFrom;
+  }, [connectFrom]);
+  useEffect(() => {
+    radialModeRef.current = radialMode;
+  }, [radialMode]);
+
   const dirtyRef = useRef(false);
   const notifyDirty = useCallback(
     (dirty: boolean) => {
@@ -591,6 +611,10 @@ export default function EditableGraph({
     const medianDeg = sortedDeg.length
       ? sortedDeg[Math.floor(sortedDeg.length / 2)]
       : 0;
+    // Expose to the connect-from effect below so stroke updates can be
+    // done without rebuilding the simulation.
+    degreeRef.current = degree;
+    medianDegRef.current = medianDeg;
     const hubsRanked = nodes
       .map((n) => ({ id: n.id, d: degree[n.id] ?? 0 }))
       .filter((x) => x.d > 0)
@@ -698,17 +722,20 @@ export default function EditableGraph({
       .on("click", (ev, d) => {
         ev.stopPropagation();
         // In editable mode + connect-from set: create an edge and exit.
-        if (editable && connectFrom && connectFrom !== d.id) {
+        // Read connectFrom via ref so this handler stays valid across
+        // connect-mode toggles without a simulation rebuild.
+        const cf = connectFromRef.current;
+        if (editable && cf && cf !== d.id) {
           setEdges((prev) => {
             const exists = prev.some(
               (e) =>
-                (e.source === connectFrom && e.target === d.id) ||
-                (e.source === d.id && e.target === connectFrom),
+                (e.source === cf && e.target === d.id) ||
+                (e.source === d.id && e.target === cf),
             );
             if (exists) return prev;
             return [
               ...prev,
-              { source: connectFrom, target: d.id, type: "linked", tier: "suspected" },
+              { source: cf, target: d.id, type: "linked", tier: "suspected" },
             ];
           });
           setConnectFrom(null);
@@ -746,38 +773,22 @@ export default function EditableGraph({
 
     // Main body. Border width picks up the median-degree threshold so hubs
     // read heavier at a glance. Drop shadow lifts the node off the canvas.
-    // Connect-from target keeps the original orange border cue (editor UX).
+    // Connect-from + selection rings are applied in their own effects below
+    // (so toggling those states doesn't force a simulation rebuild and
+    // lose the user's pan/zoom).
+    const cfAtSetup = connectFromRef.current;
     nodeG
       .append("circle")
       .attr("class", "node-body")
       .attr("r", (d) => d.r)
       .attr("fill", (d) => GROUP_COLOR[d.group])
       .attr("fill-opacity", 0.85)
-      .attr("stroke", (d) => (d.id === connectFrom ? ACCENT : "#000"))
+      .attr("stroke", (d) => (d.id === cfAtSetup ? ACCENT : "#000"))
       .attr("stroke-width", (d) => {
-        if (d.id === connectFrom) return 3;
+        if (d.id === cfAtSetup) return 3;
         return (degree[d.id] ?? 0) > medianDeg ? 2 : 1;
       })
       .style("filter", "drop-shadow(0 1px 2px rgba(0,0,0,0.8))");
-
-    // Selected: double ring #FF6B00 (inner 2px, 1px gap, outer 1px).
-    const selRing = nodeG.filter((d) => d.id === selectedId);
-    selRing
-      .append("circle")
-      .attr("class", "sel-ring-inner")
-      .attr("r", (d) => d.r + 1)
-      .attr("fill", "none")
-      .attr("stroke", ACCENT)
-      .attr("stroke-width", 2)
-      .attr("pointer-events", "none");
-    selRing
-      .append("circle")
-      .attr("class", "sel-ring-outer")
-      .attr("r", (d) => d.r + 3.5)
-      .attr("fill", "none")
-      .attr("stroke", ACCENT)
-      .attr("stroke-width", 1)
-      .attr("pointer-events", "none");
 
     // Hover: ring expansion +2px on the body only (halos/selection rings
     // stay put). 80ms ease-out per spec.
@@ -930,7 +941,8 @@ export default function EditableGraph({
       })
       .on("end", (ev, d) => {
         if (!ev.active) simulation.alphaTarget(0);
-        if (!radialMode || d.id !== selectedId) {
+        // Read the latest state via refs — omitted from effect deps below.
+        if (!radialModeRef.current || d.id !== selectedIdRef.current) {
           d.fx = null;
           d.fy = null;
         }
@@ -994,8 +1006,58 @@ export default function EditableGraph({
     return () => {
       simulation.stop();
     };
+    // selectedId, connectFrom, radialMode are intentionally excluded:
+    // they're read via refs, and their visual effects (sel-ring,
+    // connect-from stroke) are painted in separate effects below. Keeping
+    // them out of the deps prevents a full sim rebuild (and pan/zoom
+    // reset) on every node click.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, edges, editable, selectedId, connectFrom]);
+  }, [nodes, edges, editable]);
+
+  // Draw / update the orange double-ring on the currently selected node
+  // without rebuilding the whole simulation.
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.selectAll(".sel-ring-inner, .sel-ring-outer").remove();
+    if (!selectedId) return;
+    const sel = svg
+      .selectAll<SVGGElement, SimNode>(".nodes g")
+      .filter((d) => d.id === selectedId);
+    sel
+      .append("circle")
+      .attr("class", "sel-ring-inner")
+      .attr("r", (d) => d.r + 1)
+      .attr("fill", "none")
+      .attr("stroke", ACCENT)
+      .attr("stroke-width", 2)
+      .attr("pointer-events", "none");
+    sel
+      .append("circle")
+      .attr("class", "sel-ring-outer")
+      .attr("r", (d) => d.r + 3.5)
+      .attr("fill", "none")
+      .attr("stroke", ACCENT)
+      .attr("stroke-width", 1)
+      .attr("pointer-events", "none");
+  }, [selectedId, nodes, edges]);
+
+  // Update the node-body stroke when connect-from changes. Reads degree /
+  // medianDeg from refs populated by the main sim effect so we don't need
+  // to recompute them here.
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    const degree = degreeRef.current;
+    const over = medianDegRef.current;
+    svg
+      .selectAll<SVGCircleElement, SimNode>(".nodes g circle.node-body")
+      .attr("stroke", (d) => (d.id === connectFrom ? ACCENT : "#000"))
+      .attr("stroke-width", (d) => {
+        if (d.id === connectFrom) return 3;
+        return (degree[d.id] ?? 0) > over ? 2 : 1;
+      });
+  }, [connectFrom, nodes, edges]);
 
   // ── Filter / search — applied directly to the selections without a
   //    simulation rebuild, because state changes here are frequent.
