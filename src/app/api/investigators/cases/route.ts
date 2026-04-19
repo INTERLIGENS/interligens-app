@@ -7,8 +7,16 @@ export async function GET(request: NextRequest) {
   const ctx = await getVaultWorkspace(request);
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  // Default list excludes ARCHIVED to match workspace/metrics.activeCases.
+  // Callers that want the complete set opt-in with ?includeArchived=true.
+  const { searchParams } = new URL(request.url);
+  const includeArchived = searchParams.get("includeArchived") === "true";
+
   const cases = await prisma.vaultCase.findMany({
-    where: { workspaceId: ctx.workspace.id },
+    where: {
+      workspaceId: ctx.workspace.id,
+      ...(includeArchived ? {} : { status: { not: "ARCHIVED" } }),
+    },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

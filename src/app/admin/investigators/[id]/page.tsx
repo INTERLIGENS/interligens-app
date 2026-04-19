@@ -198,7 +198,7 @@ export default function InvestigatorDetailPage({
               label="NDA"
               value={
                 p.ndaAcceptance
-                  ? `v${p.ndaAcceptance.ndaVersion} · ${p.ndaAcceptance.ndaLanguage.toUpperCase()} · ${p.ndaAcceptance.ndaDocHash.slice(0, 16)}... · ${new Date(p.ndaAcceptance.signedAt).toLocaleDateString()}`
+                  ? `v${p.ndaAcceptance.ndaVersion} · ${p.ndaAcceptance.ndaLanguage.toUpperCase()} · ${p.ndaAcceptance.ndaDocHash.slice(0, 16)}... · ${new Date(p.ndaAcceptance.signedAt).toLocaleDateString("fr-FR")}`
                   : "Not signed"
               }
             />
@@ -206,7 +206,7 @@ export default function InvestigatorDetailPage({
               label="Beta Terms"
               value={
                 p.betaTermsAcceptance
-                  ? `v${p.betaTermsAcceptance.termsVersion} · ${p.betaTermsAcceptance.termsLanguage.toUpperCase()} · ${p.betaTermsAcceptance.termsDocHash.slice(0, 16)}... · ${new Date(p.betaTermsAcceptance.acceptedAt).toLocaleDateString()}`
+                  ? `v${p.betaTermsAcceptance.termsVersion} · ${p.betaTermsAcceptance.termsLanguage.toUpperCase()} · ${p.betaTermsAcceptance.termsDocHash.slice(0, 16)}... · ${new Date(p.betaTermsAcceptance.acceptedAt).toLocaleDateString("fr-FR")}`
                   : "Not accepted"
               }
             />

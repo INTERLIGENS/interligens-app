@@ -35,6 +35,9 @@ ${JSON.stringify(pack.contradictions, null, 2)}
 TIMELINE CORRELATION:
 ${JSON.stringify(pack.timelineCorrelation, null, 2)}
 
+ORCHESTRATOR EVENTS (what the investigator is seeing in the Overview feed):
+${JSON.stringify(pack.orchestratorEvents, null, 2)}
+
 CRITICAL RULES:
 1. Treat entities and cross-intelligence hits as confirmed structured signals.
 2. Treat network inference and pattern analysis as analytical indicators, not hard facts.

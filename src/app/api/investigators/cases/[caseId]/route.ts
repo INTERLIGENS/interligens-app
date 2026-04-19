@@ -121,3 +121,33 @@ export async function PATCH(request: NextRequest, { params }: RouteCtx) {
     archivedAt: updated.archivedAt,
   });
 }
+
+// DELETE — hard delete, owner-only. Cascades to entities/files/notes/etc.
+// Used to purge test cases and cases that can no longer be decrypted.
+export async function DELETE(request: NextRequest, { params }: RouteCtx) {
+  const { caseId } = await params;
+  const ctx = await getVaultWorkspace(request);
+  if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const owner = await assertCaseOwnership(ctx.workspace.id, caseId);
+  if (owner instanceof NextResponse) return owner;
+
+  try {
+    await prisma.vaultCase.delete({ where: { id: caseId } });
+  } catch (err) {
+    console.error("[cases/:id] delete failed", err);
+    return NextResponse.json({ error: "delete_failed" }, { status: 500 });
+  }
+
+  await logAudit({
+    investigatorAccessId: ctx.access.id,
+    profileId: ctx.profile.id,
+    workspaceId: ctx.workspace.id,
+    caseId,
+    action: "CASE_DELETED",
+    actor: ctx.access.label,
+    request,
+    fingerprint: buildFingerprint(request),
+  });
+
+  return NextResponse.json({ ok: true });
+}

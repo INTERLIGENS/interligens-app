@@ -1433,11 +1433,23 @@ model VaultWorkspace {
   encMode       String       @default("CLIENT_SIDE_AES256GCM")
   assistantTokensUsed  Int   @default(0)
   assistantTokensLimit Int   @default(100000)
+  // Intelligence orchestrator — per-workspace knobs ("ON" / "QUIET" / "OFF")
+  assistanceLevel          String @default("BALANCED") // FULL_ASSIST | BALANCED | MANUAL_FIRST
+  autoKolRegistryMode      String @default("ON")
+  autoObservedProceedsMode String @default("ON")
+  autoLaundryTrailMode     String @default("QUIET")
+  autoIntelVaultMode       String @default("ON")
+  autoCaseCorrelationMode  String @default("QUIET")
+  autoMarketMakerMode      String @default("QUIET")
+  autoWalletJourneyMode    String @default("ON")
+  autoNextStepsMode        String @default("ON")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  cases  VaultCase[]
-  audits VaultAuditLog[]
+  cases              VaultCase[]
+  audits             VaultAuditLog[]
+  networkGraphs      VaultNetworkGraph[]
+  intelligenceEvents VaultCaseIntelligenceEvent[]
 }
 
 model VaultCase {
@@ -1454,13 +1466,15 @@ model VaultCase {
   updatedAt   DateTime        @updatedAt
   archivedAt  DateTime?
 
-  entities          VaultCaseEntity[]
-  files             VaultCaseFile[]
-  notes             VaultCaseNote[]
-  timeline          VaultCaseTimeline[]
-  hypotheses        VaultHypothesis[]
-  timelineEvents    VaultTimelineEvent[]
-  publishCandidates VaultPublishCandidate[]
+  entities           VaultCaseEntity[]
+  files              VaultCaseFile[]
+  notes              VaultCaseNote[]
+  timeline           VaultCaseTimeline[]
+  hypotheses         VaultHypothesis[]
+  timelineEvents     VaultTimelineEvent[]
+  publishCandidates  VaultPublishCandidate[]
+  intelligenceEvents VaultCaseIntelligenceEvent[]
+  intelligenceSummary VaultCaseIntelligenceSummary?
 
   @@index([workspaceId])
   @@index([status])
@@ -2056,4 +2070,567 @@ model XThread {
   updatedAt   DateTime  @updatedAt
 
   @@index([status])
+}
+
+// ─── MM_TRACKER — PHASE 1 ───────────────────────────────────────────────────
+// 11 modèles isolés du reste du schéma. Rollback = drop these 11 tables.
+
+model MmEntity {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  name            String
+  legalName       String?
+  jurisdiction    String?
+  foundedYear     Int?
+  founders        String[]
+  status          MmStatus
+  riskBand        MmRiskBand
+  defaultScore    Int
+  publicSummary   String    @db.Text
+  publicSummaryFr String?   @db.Text
+  knownAliases    String[]
+  officialDomains String[]
+  workflow        MmWorkflow @default(DRAFT)
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  attributions MmAttribution[]
+  claims       MmClaim[]
+  signals      MmSignal[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([workflow])
+}
+
+enum MmStatus {
+  CONVICTED
+  CHARGED
+  SETTLED
+  INVESTIGATED
+  DOCUMENTED
+  OBSERVED
+}
+
+enum MmRiskBand {
+  GREEN
+  YELLOW
+  ORANGE
+  RED
+}
+
+enum MmWorkflow {
+  DRAFT
+  REVIEWED
+  PUBLISHED
+  CHALLENGED
+  UNPUBLISHED
+}
+
+model MmSource {
+  id              String         @id @default(cuid())
+  publisher       String
+  sourceType      MmSourceType
+  url             String
+  archivedUrl     String?
+  archivalStatus  MmArchivalStatus @default(PENDING)
+  archivalError   String?
+  localSnapshot   String?
+  title           String
+  author          String?
+  publishedAt     DateTime?
+  fetchedAt       DateTime       @default(now())
+  credibilityTier MmCredTier
+  language        String         @default("en")
+  notes           String?        @db.Text
+
+  claims MmClaim[]
+
+  @@index([sourceType])
+  @@index([credibilityTier])
+  @@index([archivalStatus])
+}
+
+enum MmSourceType {
+  DOJ
+  CFTC
+  SEC
+  COURT
+  REGULATOR
+  MEDIA_TIER1
+  MEDIA_TIER2
+  MEDIA_TIER3
+  OSINT
+  OFFICIAL
+  HACK_LEAK
+}
+
+enum MmCredTier {
+  TIER_1
+  TIER_2
+  TIER_3
+}
+
+enum MmArchivalStatus {
+  PENDING
+  SUCCESS
+  WAYBACK_FAIL
+  R2_FAIL
+  RETRY
+}
+
+model MmClaim {
+  id            String        @id @default(cuid())
+  mmEntityId    String
+  claimType     MmClaimType
+  text          String        @db.Text
+  textFr        String?       @db.Text
+  sourceId      String
+  jurisdiction  String?
+  publishStatus MmPubStatus   @default(DRAFT)
+  publishedAt   DateTime?
+  orderIndex    Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
+  source   MmSource @relation(fields: [sourceId], references: [id])
+
+  @@index([mmEntityId])
+  @@index([claimType])
+  @@index([publishStatus])
+}
+
+enum MmClaimType {
+  FACT
+  ALLEGATION
+  INFERENCE
+  RESPONSE
+}
+
+enum MmPubStatus {
+  DRAFT
+  REVIEWED
+  PUBLISHED
+  RETRACTED
+}
+
+model MmAttribution {
+  id                String          @id @default(cuid())
+  walletAddress     String
+  chain             MmChain
+  mmEntityId        String
+  attributionMethod MmAttribMethod
+  confidence        Float
+  evidenceRefs      Json
+  reviewerUserId    String?
+  reviewedAt        DateTime?
+  challengedAt      DateTime?
+  challengeReason   String?         @db.Text
+  revokedAt         DateTime?
+  revokedReason     String?         @db.Text
+  createdAt         DateTime        @default(now())
+
+  mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
+
+  @@index([walletAddress, chain])
+  @@index([mmEntityId])
+  @@index([confidence])
+}
+
+enum MmChain {
+  SOLANA
+  ETHEREUM
+  BASE
+  ARBITRUM
+  OPTIMISM
+  BNB
+  POLYGON
+}
+
+enum MmAttribMethod {
+  ARKHAM
+  HACK_LEAK
+  OFFICIAL
+  OSINT
+  INFERRED_CLUSTER
+  COURT_FILING
+}
+
+model MmReviewLog {
+  id             String         @id @default(cuid())
+  targetType     MmTargetType
+  targetId       String
+  action         MmReviewAction
+  actorUserId    String
+  actorRole      String
+  notes          String?        @db.Text
+  snapshotBefore Json?
+  snapshotAfter  Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([targetType, targetId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+enum MmTargetType {
+  ENTITY
+  CLAIM
+  ATTRIBUTION
+  SOURCE
+  CHALLENGE
+  SCAN_RUN
+}
+
+enum MmReviewAction {
+  CREATED
+  EDITED
+  REVIEWED
+  PUBLISHED
+  UNPUBLISHED
+  CHALLENGED
+  CHALLENGE_VERIFIED
+  CHALLENGE_REJECTED
+  CORRECTED
+  RETRACTED
+}
+
+model MmScanRun {
+  id                  String         @id @default(cuid())
+  subjectType         MmSubjectType
+  subjectId           String
+  chain               MmChain
+  engineVersion       String
+  detectorsVersion    Json
+  schemaVersion       Int
+  cohortKey           String
+  cohortPercentiles   Json
+  dataSources         Json
+  rawDataRef          String?
+  registryDrivenScore Int
+  behaviorDrivenScore Int
+  displayScore        Int
+  confidenceLevel     String
+  coverageLevel       String
+  dominantDriver      String
+  displayReason       String
+  signalsCount        Int
+  triggeredBy         MmTriggerType
+  triggeredByRef      String?
+  durationMs          Int
+  errors              Json?
+  createdAt           DateTime       @default(now())
+
+  detectorOutputs MmDetectorOutput[]
+
+  @@index([subjectId, chain])
+  @@index([createdAt])
+}
+
+enum MmSubjectType {
+  WALLET
+  TOKEN
+  ENTITY
+}
+
+enum MmTriggerType {
+  CRON
+  API_PUBLIC
+  API_ADMIN
+  TIGERSCORE_INTEGRATION
+  BATCH_SCAN
+}
+
+model MmDetectorOutput {
+  id              String         @id @default(cuid())
+  scanRunId       String
+  detectorType    MmDetectorType
+  detectorVersion String
+  score           Int
+  signalsCount    Int
+  signals         Json
+  evidence        Json
+  durationMs      Int
+
+  scanRun MmScanRun @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
+
+  @@index([scanRunId])
+  @@index([detectorType])
+}
+
+enum MmDetectorType {
+  WASH_TRADING
+  CLUSTER_COORDINATION
+  CONCENTRATION_ABNORMALITY
+  PRICE_ASYMMETRY
+  POST_LISTING_PUMP
+  KNOWN_ENTITY_FLOOR
+  FAKE_LIQUIDITY
+}
+
+model MmCohortPercentile {
+  id                   String   @id @default(cuid())
+  cohortKey            String
+  metricName           String
+  p50                  Float
+  p75                  Float
+  p90                  Float
+  p95                  Float
+  p99                  Float
+  sampleSize           Int
+  excludedFlaggedCount Int
+  computedAt           DateTime @default(now())
+  schemaVersion        Int      @default(1)
+  notes                String?  @db.Text
+
+  @@unique([cohortKey, metricName, schemaVersion])
+  @@index([cohortKey])
+  @@index([computedAt])
+}
+
+model MmSignal {
+  id           String         @id @default(cuid())
+  subjectType  MmSubjectType
+  subjectId    String
+  chain        MmChain
+  detectorType MmDetectorType
+  severity     MmSeverity
+  scoreImpact  Int
+  evidence     Json
+  description  String         @db.Text
+  detectedAt   DateTime       @default(now())
+  expiresAt    DateTime?
+  scanRunId    String?
+  mmEntityId   String?
+
+  mmEntity MmEntity? @relation(fields: [mmEntityId], references: [id])
+
+  @@index([subjectId, chain])
+  @@index([detectorType])
+  @@index([detectedAt])
+}
+
+enum MmSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model MmChallenge {
+  id                 String            @id @default(cuid())
+  targetType         MmTargetType
+  targetId           String
+  challengerEmail    String
+  challengerName     String
+  challengerRole     String?
+  challengerEntity   String
+  claimedText        String            @db.Text
+  responseText       String            @db.Text
+  verificationStatus MmVerifStatus     @default(PENDING)
+  verificationMethod MmVerifMethod?
+  verifiedAt         DateTime?
+  verifiedBy         String?
+  publishStatus      MmPubStatus       @default(DRAFT)
+  publishedAt        DateTime?
+  rejectionReason    String?           @db.Text
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([verificationStatus])
+  @@index([publishStatus])
+}
+
+enum MmVerifStatus {
+  PENDING
+  EMAIL_VERIFIED
+  LEGAL_VERIFIED
+  REJECTED
+}
+
+enum MmVerifMethod {
+  EMAIL_DKIM
+  LEGAL_SIGNATURE
+  OFFICIAL_CHANNEL
+}
+
+model MmScore {
+  id                  String        @id @default(cuid())
+  subjectType         MmSubjectType
+  subjectId           String
+  chain               MmChain
+  registryDrivenScore Int
+  behaviorDrivenScore Int
+  displayScore        Int
+  band                MmRiskBand
+  confidence          String
+  coverage            String
+  dominantDriver      String
+  displayReason       String
+  breakdown           Json
+  signalsCount        Int
+  scanRunId           String
+  computedAt          DateTime      @default(now())
+  expiresAt           DateTime
+  schemaVersion       Int           @default(1)
+
+  @@unique([subjectType, subjectId, chain])
+  @@index([computedAt])
+}
+
+// --- Investigator Network Graphs (3-tier) ---------------------------------
+// Per-investigator graphs with progressive visibility:
+//   PRIVATE    — only the owner sees it (default)
+//   TEAM_POOL  — read-only across the investigator team, editable by owner
+//   PUBLIC     — surfaced in Intel Vault (admin-reviewed, additive only)
+//
+// Nodes/edges live on this row as encrypted JSON blobs keyed by the owner's
+// metaKey; the server never inspects the payload. Counts and titles are
+// stored in plaintext for dashboard enumeration (no case-level secrets here).
+
+enum VaultGraphVisibility {
+  PRIVATE
+  TEAM_POOL
+  PUBLIC
+}
+
+model VaultNetworkGraph {
+  id            String               @id @default(cuid())
+  workspaceId   String
+  workspace     VaultWorkspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  visibility    VaultGraphVisibility @default(PRIVATE)
+  nodeCount     Int                  @default(0)
+  edgeCount     Int                  @default(0)
+  payloadEnc    String               // ciphertext of the full graph JSON
+  payloadIv     String
+  publishedAt   DateTime?
+  reviewedBy    String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([workspaceId])
+  @@index([visibility])
+}
+
+// --- Case Intelligence Orchestrator ---------------------------------------
+// Events produced by Tier-1+ engines (KOL, Intel Vault, Proceeds, etc.).
+// Source of truth lives in the engines and user data — this table is a
+// durable projection for fast Overview rendering and audit.
+model VaultCaseIntelligenceEvent {
+  id                       String   @id @default(cuid())
+  caseId                   String
+  workspaceId              String
+  entityId                 String?
+  eventType                String   // KOL_MATCH_FOUND, OBSERVED_PROCEEDS_FOUND, …
+  sourceModule             String   // "KOL_Registry", "Observed_Proceeds", …
+  severity                 String   // LOW | MEDIUM | HIGH | CRITICAL
+  title                    String
+  summary                  String
+  confidence               Float?
+  assistanceModeAtCreation String   // FULL_ASSIST | BALANCED | MANUAL_FIRST
+  payload                  Json
+  isDismissed              Boolean  @default(false)
+  createdAt                DateTime @default(now())
+
+  case      VaultCase      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  workspace VaultWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([caseId, isDismissed, createdAt])
+}
+
+// Cached projection for the Overview tab. Always reconstructible from
+// events + case data — never written to without an orchestrator run.
+model VaultCaseIntelligenceSummary {
+  caseId               String   @id
+  strongestSignals     Json     @default("[]")
+  currentGaps          Json     @default("[]")
+  nextSuggestedActions Json     @default("[]")
+  publicationReadiness Json     @default("{}")
+  latestEventIds       Json     @default("[]")
+  lastOrchestratedAt   DateTime?
+  orchestrationStatus  String   @default("IDLE") // IDLE | RUNNING | PARTIAL | FAILED
+  lastFailedModules    Json?
+  updatedAt            DateTime @default(now()) @updatedAt
+
+  case VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Founding Intelligence Seed — day-1 multi-source threat labels
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Domain-level threat labels. Mirror of AddressLabel but keyed on the domain
+// string. Multi-source (composite unique) so OFAC + MetaMask + Phantom can
+// each own their own row for the same domain with independent attribution.
+model DomainLabel {
+  id          String          @id @default(cuid())
+  domain      String          // normalised lowercase, no protocol, no trailing slash
+  labelType   String          // PHISHING | DRAINER | MALICIOUS_DAPP | SCAM_DOMAIN | TRUSTED | SANCTIONS
+  label       String          // human-readable tag, e.g. "MetaMask phishing list"
+  confidence  String          @default("medium")
+  category    String?         // free-form: drainer, dapp-clone, impersonation, bridge…
+  entityName  String?
+  sourceName  String
+  sourceUrl   String?
+  evidence    String?
+  visibility  String          @default("internal_only")
+  license     String?
+  tosRisk     String          @default("low")
+  isActive    Boolean         @default(true)
+  firstSeenAt DateTime        @default(now())
+  lastSeenAt  DateTime        @default(now())
+
+  @@unique([domain, labelType, label, sourceUrl], name: "dedup_key")
+  @@index([domain])
+  @@index([sourceName])
+}
+
+// DefiLlama-style protocol metadata. One row per protocol slug.
+// Used to contextualise leads ("this domain belongs to Uniswap, not a scam").
+model ProtocolLabel {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  category    String?
+  chains      String[] @default([])
+  website     String?
+  twitter     String?
+  logo        String?
+  description String?
+  tvlUsd      Float?
+  sourceName  String   @default("DefiLlama")
+  sourceUrl   String?
+  fetchedAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([category])
+}
+
+// Generic TTL cache for on-demand external lookups (Chainabuse, GoPlus, ENS, …).
+// One row per (source, query) — orchestrator hits this before calling the
+// upstream API again. Negative results are cached too (shorter TTL).
+model ExternalLookupCache {
+  id         String   @id @default(cuid())
+  source     String   // "chainabuse" | "goplus" | "ens" | …
+  queryType  String   // "address" | "domain" | "handle" | "ens"
+  queryKey   String   // normalised lookup string
+  status     String   // "HIT" | "NO_MATCH" | "ERROR" | "RATE_LIMITED"
+  payload    Json?
+  errorCode  String?
+  fetchedAt  DateTime @default(now())
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@unique([source, queryType, queryKey])
+  @@index([source, expiresAt])
+  @@index([queryKey])
 }

@@ -1,3 +1,40 @@
+# Founding Intelligence Seed — Decisions
+
+**Branch**: `feat/founding-intelligence-seed`
+**Started**: 2026-04-18
+**Author**: Claude Code (Opus 4.7, 1M context) — autonomous agent run
+
+## What existed before
+
+Carried over from earlier phases (`feat/scam-universe-graph`):
+
+| Layer | Status before this session |
+|---|---|
+| `AddressLabel` | Populated: 779 OFAC SDN + 2,530 ScamSniffer (EVM) addresses = 3,309 rows |
+| `KolProfile`, `KolWallet`, `KolAlias` | Seeded from existing curation (363 profiles / 478 wallets) |
+| `LaundryTrail`, `WalletFundingEdge` | Sparse (5 trails, 38 edges) |
+| `FounderIntelItem` | 241 intel feed items |
+| `DomainIoc` | **Exists**, single-row-per-domain (`@unique domain`). Not multi-source friendly. |
+| OFAC ingest | Live (`src/lib/intel/ofac.ts`, daily cron) |
+| ScamSniffer address ingest | Live (`src/lib/intel/scamSniffer.ts`, daily cron) |
+| Intelligence orchestrator | 7 engines, 3-state source status (`HIT` / `NO_INTERNAL_MATCH_YET` / `SOURCE_UNAVAILABLE`) |
+| Reaction panel | Shows per-engine status chips |
+
+**Gap identified**: no domain threat layer. Investigators adding a `DOMAIN` / `URL` lead get no feedback — the existing engines all target wallets/handles.
+
+## Reuse vs add
+
+| Reuse | Add |
+|---|---|
+| `AddressLabel` (already great shape for multi-source threat labels) | `DomainLabel` — parallel to AddressLabel for domains/URLs |
+| Existing OFAC + ScamSniffer-address ingestors & crons | `ProtocolLabel` — DefiLlama protocol metadata |
+| Existing orchestrator + reaction panel architecture | `ExternalLookupCache` — TTL cache for P1 on-demand lookups (ENS, GoPlus, Chainabuse) |
+| Existing engine interface (`IntelligenceEngineResult` + `SourceStatus`) | `Threat_Intel_Domain` — new engine querying `DomainLabel` |
+| `IntelligenceReactionPanel` | Split `HIT` source-state into `INTERNAL_MATCH_FOUND` vs `EXTERNAL_THREAT_SIGNAL_FOUND` so the UI can say "OFAC sanctioned" ≠ "our actor graph" |
+| `scripts/` convention | `scripts/run-founding-intelligence-seed.ts` — one-shot + single-source CLI runner |
+| Vercel cron pattern | 3 new cron routes under `/api/cron/intel/*` for MetaMask, Phantom, DefiLlama |
+
+`DomainIoc` is left untouched — it's consumed by existing watchlist features. New domain-label work uses the new `DomainLabel` table.
 # Investigators V2A + V2B + V2C — Autonomous Sessions Decisions
 
 Branch: `feat/investigators-v2a`
@@ -486,3 +523,166 @@ Export/sharing/publish polish, shared page upgrade, merge feat branch into main,
 - Resend webhook for delivery confirmation
 - Investigator-side share management dashboard (revoke, list active shares)
 - Multi-investigator collaboration on a single case
+
+---
+
+## Phase 2 — Language strategy
+
+**Decision**: three surfaces, three locales, no mixing.
+
+- **`/admin/**`** — French only. Internal surface, founder + staff only. Fixed to `fr-FR` date locale. No need for a translation system.
+- **`/investigators/**`** — English only. Beta investigators are international professionals; English is the operating language for evidence, methodology and reports. Fixed to `en-US` date locale. French variant is explicitly out of scope for V1.
+- **`/en/**` and `/fr/**`** — Public bilingual surface. Each locale is a complete tree; strings come from page-local dictionaries, no shared component should hardcode a language.
+
+Error codes returned by APIs stay as machine codes. The client surface translates them via `src/lib/investigators/errorMessages.ts` (EN) or page-local dictionaries (public surface).
+
+
+## Sources implemented
+
+| Source | Status | Kind | Rows ingested (prod, 2026-04-18) |
+|---|---|---|---|
+| MetaMask eth-phishing-detect | ✅ daily cron | external | 242,915 |
+| Phantom blocklist (SOL + EVM + fuzzy) | ✅ daily cron | external | 44,852 |
+| ScamSniffer domains | ✅ daily cron | external | 330,059 |
+| ScamSniffer addresses | ✅ daily cron (pre-existing) | external | 2,530 |
+| OFAC SDN digital currency addresses | ✅ daily cron (pre-existing) | external | 779 |
+| DefiLlama protocols | ✅ daily cron | context | 7,358 protocols + 5,073 trusted domains |
+| ENS on-demand reverse-lookup | ✅ via api.ensideas.com, cache-backed | external | on-demand |
+| Chainabuse on-demand lookup | ⚠ skeleton — requires `CHAINABUSE_API_KEY` | external | 0 |
+| GoPlus Security on-demand lookup | ⚠ skeleton — `GOPLUS_API_KEY` optional | external | 0 |
+| Dune Spellbook labels | ❌ skipped | external | — |
+
+## Sources skipped (and why)
+
+- **Chainabuse bulk import** — ToS restricts redistribution. Only on-demand
+  lookup layer exists, gated on a missing env var.
+- **Etherscan labels** — ToS explicitly forbids programmatic scraping.
+- **Dune Spellbook labels** — parseability would require SQL execution against
+  Dune which is not free. Skipped.
+- **Apex-domain fallback for DefiLlama trusted labels** — we only label the
+  exact URL DefiLlama publishes (e.g. `app.uniswap.org`). Apex (`uniswap.org`)
+  is a polish task for later; documented as limitation, not a blocker.
+
+## Schema changes
+
+Three new tables added to `prisma/schema.prod.prisma` (additive only):
+
+| Table | Purpose |
+|---|---|
+| `DomainLabel` | Multi-source threat/trust labels keyed on `(domain, labelType, label, sourceUrl)` — parallel to existing `AddressLabel`. |
+| `ProtocolLabel` | DefiLlama protocol metadata, one row per slug. Not queried directly by the orchestrator yet; `DomainLabel` TRUSTED rows drive the context path. |
+| `ExternalLookupCache` | Generic TTL cache keyed on `(source, queryType, queryKey)`. Feeds P1 on-demand lookups (ENS / Chainabuse / GoPlus). |
+
+SQL migration: `prisma/migrations/manual_founding_intelligence_seed/001_founding_intelligence_seed.sql`.
+Applied to prod (`ep-square-band`) via direct `prisma.$executeRawUnsafe` on
+`2026-04-18`. All statements idempotent (`CREATE IF NOT EXISTS`), safe to re-run.
+
+## Normalisation rules
+
+- **Domains** (`src/lib/intel/ingestion/normalize/domain.ts`):
+  - strip `https?://` + leading `//`
+  - strip `www.`
+  - drop path / query / fragment / port
+  - lowercase
+  - reject: no dot (unless localhost — explicitly excluded), whitespace,
+    length outside [3..253], non-hostname characters
+  - punycode (`xn--`) allowed
+- **Addresses** (`src/lib/intel/ingestion/normalize/address.ts`):
+  - EVM (`/^0x[0-9a-fA-F]{40}$/`) → lowercase
+  - SOL (base58 32–44 chars) → preserved case
+  - `chainHint` used when shape is ambiguous (ScamSniffer map format)
+  - unknown shape → stored with `chain = "OTHER"` rather than guessed
+
+## Confidence policy
+
+| Source (label) | Confidence | Severity rule |
+|---|---|---|
+| OFAC SDN | `high` | CRITICAL |
+| MetaMask blacklist | `high` | HIGH |
+| MetaMask fuzzylist | `medium` | MEDIUM |
+| Phantom blocklist / eth-blocklist | `high` | HIGH (malicious dApp) |
+| Phantom fuzzylist | `medium` | MEDIUM |
+| ScamSniffer domains | `medium` | MEDIUM |
+| ScamSniffer addresses | `medium` | MEDIUM |
+| DefiLlama TRUSTED | `high` | context (LOW severity event) |
+
+## Cache TTL decisions (`ExternalLookupCache`)
+
+- HIT → **7 days**
+- NO_MATCH → **6 hours** (new registrations / report submissions happen)
+- ERROR → **15 minutes** (short backoff to retry after transient upstream issues)
+- RATE_LIMITED → **15 minutes** (same)
+
+## Orchestrator integration points
+
+- New engine: `Threat_Intel` (`src/lib/vault/intelligence/engines/threatIntel.ts`)
+  - handles `DOMAIN` / `URL` via `DomainLabel`
+  - handles `WALLET` / `CONTRACT` via `AddressLabel`
+  - emits `THREAT_SIGNAL_FOUND` or `PROTOCOL_CONTEXT_FOUND` events
+- Registered in `TRIGGER_ENGINES.LEAD_ADDED` (first in the fan-out — highest
+  expected coverage) and `TRIGGER_ENGINES.CASE_OPENED` (cheap refresh).
+- **No workspace flag** — the engine is always on because it's the single
+  engine with broad day-1 coverage.
+- `SourceStatus` split: legacy `HIT` remains as a back-compat alias mapped
+  to `INTERNAL_MATCH_FOUND`; new engines emit the four-state enum.
+- `buildUiReaction` reworded — no more "Checked N sources — none are in
+  our datasets". Instead: "No INTERLIGENS internal actor match yet. Valid
+  lead — external threat signals didn't fire, no internal memory yet.
+  Manual checks available."
+
+## UI wording changes
+
+`IntelligenceReactionPanel`:
+
+- Chips per engine now render 4 states (internal match / threat signal /
+  no match / source unavailable). `EXTERNAL_THREAT_SIGNAL_FOUND` uses the
+  red accent (`#FF3B5C`) so sanctions hits are visually obvious.
+- Reaction title distinguishes internal from external-only hits:
+  - both → "N intelligence hits (internal + external)"
+  - external only → "External threat signal found"
+  - internal only → "N INTERLIGENS matches"
+
+## Cron / refresh plan
+
+- `vercel.json` crons (all UTC, staggered):
+  - `03:00` OFAC
+  - `03:30` ScamSniffer addresses
+  - `04:00` MetaMask
+  - `04:15` Phantom
+  - `04:30` ScamSniffer domains
+  - `04:45` DefiLlama
+- All protected by `CRON_SECRET` bearer check.
+- Manual runs: `npx tsx --env-file=.env.local scripts/run-founding-intelligence-seed.ts --source=<name>`.
+
+## Limitations
+
+- **DefiLlama apex-domain fallback**: DefiLlama only lists the exact frontend
+  URL (`app.uniswap.org`). Pasting `uniswap.org` won't match. Follow-up:
+  domain-root fallback inside the `Threat_Intel` engine.
+- **ProtocolLabel not directly queried** by the engine yet — the trusted
+  domain flag is enough for day-1. Extend if/when protocol-address coverage
+  lands.
+- **`DomainIoc` is orphaned** — kept for legacy watchlist consumers,
+  unused by new intel layer.
+- **No normaliser for address chains beyond EVM/SOL/BTC/TRON** — anything
+  else becomes `OTHER` rather than wrongly attributed.
+
+## Next recommended step
+
+1. **BOTIFY / Vine / GHOST / Dione / Kokoski / Gekko curation**. The seed
+   layer gives external coverage; proprietary actor graphs stay the edge.
+   Ingest into `KolProfile` + `KolAlias` + `KolWallet` via the existing
+   curation pipeline.
+2. **Apex-domain fallback** inside `Threat_Intel` (5-line change).
+3. **Chainabuse + GoPlus keys** in Vercel env so the P1 skeletons light up.
+4. **ENS watchlist** — pre-resolve every known KOL wallet so ENS names
+   surface in investigator cases without a per-lookup request.
+
+## Legal / licensing posture
+
+- All external rows store `license` + `sourceUrl`. The app itself only
+  consumes them internally — no re-publication as a feed.
+- ScamSniffer is GPL-3.0. The DB rows are factual; our app is not a
+  derivative work of their codebase. If the rows are ever exposed as a
+  standalone dataset / API, the GPL-3.0 copyleft applies to that dataset.
+- Chainabuse / Etherscan / Dune bulk scraping is deliberately out of scope.

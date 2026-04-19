@@ -127,7 +127,7 @@ export default async function InvestigatorsPage() {
             <p
               style={{
                 fontSize: 13,
-                color: "rgba(255,255,255,0.25)",
+                color: "rgba(255,255,255,0.5)",
                 maxWidth: 520,
                 margin: "0 auto",
                 lineHeight: 1.6,
@@ -205,7 +205,7 @@ export default async function InvestigatorsPage() {
                       </div>
                       <div
                         style={{
-                          color: "rgba(255,255,255,0.3)",
+                          color: "rgba(255,255,255,0.5)",
                           fontSize: 12,
                           marginTop: 2,
                         }}

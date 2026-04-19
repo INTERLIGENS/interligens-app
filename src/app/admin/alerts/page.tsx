@@ -100,7 +100,7 @@ export default function AlertsPage() {
                         {s.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-gray-500">{new Date(s.createdAt).toLocaleDateString()}</td>
+                    <td className="py-2 px-3 text-gray-500">{new Date(s.createdAt).toLocaleDateString("fr-FR")}</td>
                   </tr>
                 ))}
               </tbody>

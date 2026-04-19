@@ -21,25 +21,26 @@ export async function GET(request: NextRequest) {
   try {
     const workspaceId = ctx.workspace.id;
 
-    const [activeCases, allCaseIds, openHypotheses] = await Promise.all([
+    const [activeCases, activeCaseRows, openHypotheses] = await Promise.all([
       prisma.vaultCase.count({
         where: { workspaceId, status: { not: "ARCHIVED" } },
       }),
       prisma.vaultCase.findMany({
-        where: { workspaceId },
+        where: { workspaceId, status: { not: "ARCHIVED" } },
         select: { id: true },
       }),
       prisma.vaultHypothesis
         .count({
           where: {
             status: "OPEN",
-            case: { workspaceId },
+            case: { workspaceId, status: { not: "ARCHIVED" } },
           },
         })
         .catch(() => 0),
     ]);
 
-    const caseIds = allCaseIds.map((c) => c.id);
+    // trackedEntities must reflect the same scope as the case list (non-archived).
+    const caseIds = activeCaseRows.map((c) => c.id);
     const trackedEntities =
       caseIds.length === 0
         ? 0

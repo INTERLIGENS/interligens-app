@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import VaultGate from "@/components/vault/VaultGate";
 import { useVaultSession } from "@/hooks/useVaultSession";
 import { decryptString, decryptTags } from "@/lib/vault/crypto.client";
+import { UNREADABLE_LABEL } from "@/lib/vault/display";
 
 type Entity = {
   id: string;
@@ -53,22 +54,35 @@ function PrintInner({ caseId }: { caseId: string }) {
     if (!keys) return;
     (async () => {
       try {
+        // Each sub-fetch is wrapped so a single 500 can't poison the whole
+        // print load. Missing sections render empty rather than breaking the
+        // page entirely.
+        const safeJson = async <T,>(url: string, fallback: T): Promise<T> => {
+          try {
+            const r = await fetch(url);
+            if (!r.ok) return fallback;
+            return (await r.json()) as T;
+          } catch {
+            return fallback;
+          }
+        };
+        type CaseRes = {
+          case?: {
+            titleEnc: string;
+            titleIv: string;
+            tagsEnc: string;
+            tagsIv: string;
+          };
+        };
+        type NoteRow = { id: string; contentEnc: string; contentIv: string; createdAt: string };
         const [caseRes, entRes, hypRes, tlRes, notesRes] = await Promise.all([
-          fetch(`/api/investigators/cases/${caseId}`).then((r) => r.json()),
-          fetch(`/api/investigators/cases/${caseId}/entities`).then((r) =>
-            r.json()
-          ),
-          fetch(`/api/investigators/cases/${caseId}/hypotheses`).then((r) =>
-            r.json()
-          ),
-          fetch(`/api/investigators/cases/${caseId}/timeline-events`).then(
-            (r) => r.json()
-          ),
+          safeJson<CaseRes>(`/api/investigators/cases/${caseId}`, {}),
+          safeJson<{ entities: Entity[] }>(`/api/investigators/cases/${caseId}/entities`, { entities: [] }),
+          safeJson<{ hypotheses: Hypothesis[] }>(`/api/investigators/cases/${caseId}/hypotheses`, { hypotheses: [] }),
+          safeJson<{ events: TimelineEvent[] }>(`/api/investigators/cases/${caseId}/timeline-events`, { events: [] }),
           includeNotes
-            ? fetch(`/api/investigators/cases/${caseId}/notes`).then((r) =>
-                r.json()
-              )
-            : Promise.resolve({ notes: [] }),
+            ? safeJson<{ notes: NoteRow[] }>(`/api/investigators/cases/${caseId}/notes`, { notes: [] })
+            : Promise.resolve({ notes: [] as NoteRow[] }),
         ]);
 
         if (caseRes.case) {
@@ -88,7 +102,7 @@ function PrintInner({ caseId }: { caseId: string }) {
               )
             );
           } catch {
-            setTitle("[unreadable]");
+            setTitle(UNREADABLE_LABEL);
           }
         }
 
@@ -108,7 +122,7 @@ function PrintInner({ caseId }: { caseId: string }) {
               );
               dec.push({ id: n.id, content, createdAt: n.createdAt });
             } catch {
-              // skip unreadable
+              dec.push({ id: n.id, content: UNREADABLE_LABEL, createdAt: n.createdAt });
             }
           }
           setNotes(dec);
@@ -319,7 +333,7 @@ function PrintInner({ caseId }: { caseId: string }) {
             <tbody>
               {events.map((ev) => (
                 <tr key={ev.id}>
-                  <td>{new Date(ev.eventDate).toLocaleDateString()}</td>
+                  <td>{new Date(ev.eventDate).toLocaleDateString("en-US")}</td>
                   <td>{ev.title}</td>
                   <td>{ev.description ?? "—"}</td>
                 </tr>

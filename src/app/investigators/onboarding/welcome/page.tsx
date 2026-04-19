@@ -114,7 +114,7 @@ export default async function WelcomePage() {
         </Section>
 
         <Link
-          href="/investigators/box"
+          href="/investigators/dashboard"
           style={{
             display: "block",
             width: "100%",

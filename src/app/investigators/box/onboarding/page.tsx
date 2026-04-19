@@ -56,7 +56,7 @@ const LABEL_STYLE: React.CSSProperties = {
 
 const HELPER_STYLE: React.CSSProperties = {
   fontSize: 12,
-  color: "rgba(255,255,255,0.3)",
+  color: "rgba(255,255,255,0.5)",
   marginTop: 6,
 };
 
@@ -367,7 +367,7 @@ export default function OnboardingPage() {
         <div
           style={{
             fontSize: 12,
-            color: "rgba(255,255,255,0.3)",
+            color: "rgba(255,255,255,0.5)",
             marginTop: 6,
             marginBottom: 32,
           }}
@@ -852,7 +852,7 @@ export default function OnboardingPage() {
                 textTransform: "uppercase",
                 fontSize: 11,
                 letterSpacing: "0.08em",
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.5)",
                 marginBottom: 16,
               }}
             >

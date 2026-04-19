@@ -13,6 +13,8 @@ export default function LegalFooter({ lang = "en" }: { lang?: "en" | "fr" }) {
       <a href={`${base}/legal/disclaimer`} className="hover:text-zinc-500 transition-colors no-underline">Disclaimer</a>
       <span className="text-zinc-800">·</span>
       <a href={`${base}/correction`} className="hover:text-zinc-500 transition-colors no-underline">Correction</a>
+      <span className="text-zinc-800">·</span>
+      <a href="/mm" className="hover:text-zinc-500 transition-colors no-underline">MM Intelligence</a>
     </div>
   );
 }

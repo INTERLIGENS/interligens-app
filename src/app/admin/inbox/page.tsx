@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  FOUNDER_TEMPLATES,
+  getTemplateByShortcut,
+  type FounderTemplate,
+} from "@/lib/messages/founderTemplates";
 
 const ACCENT = "#FF6B00";
 
@@ -34,6 +39,8 @@ export default function AdminInboxPage() {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [overrideStatus, setOverrideStatus] = useState<"resolved" | null>(null);
+  const replyInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     loadInbox();
@@ -61,13 +68,42 @@ export default function AdminInboxPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ toAccessId, body: replyBody }),
+      body: JSON.stringify({
+        toAccessId,
+        body: replyBody,
+        ...(overrideStatus ? { overrideStatus } : {}),
+      }),
     });
     setReplyBody("");
     setReplyTo(null);
+    setOverrideStatus(null);
     setSending(false);
     loadInbox();
   }
+
+  function applyTemplate(t: FounderTemplate) {
+    setReplyBody(t.body);
+    setOverrideStatus(t.overrideStatus ?? null);
+    replyInputRef.current?.focus();
+  }
+
+  // Ctrl/⌘+1..4 → insert matching template. Only fires while a reply is open
+  // and the reply input is focused — avoids hijacking global shortcuts.
+  useEffect(() => {
+    if (!replyTo) return;
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      const digit = Number(e.key);
+      if (!Number.isFinite(digit) || digit < 1 || digit > 4) return;
+      const t = getTemplateByShortcut(digit);
+      if (!t) return;
+      if (document.activeElement !== replyInputRef.current) return;
+      e.preventDefault();
+      applyTemplate(t);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [replyTo]);
 
   function relDate(iso: string): string {
     const ms = Date.now() - new Date(iso).getTime();
@@ -171,11 +207,60 @@ export default function AdminInboxPage() {
                       </button>
                     </div>
                     {replyTo === f.accessId && (
-                      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                        <input value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Votre réponse…" style={{ flex: 1, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "8px 12px", color: "#fff", fontSize: 12, fontFamily: "inherit" }} />
-                        <button onClick={() => sendReply(f.accessId)} disabled={sending} style={{ padding: "8px 14px", background: ACCENT, color: "#000", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                          Envoyer
-                        </button>
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                          {FOUNDER_TEMPLATES.map((t) => {
+                            const active = replyBody === t.body;
+                            return (
+                              <button
+                                key={t.key}
+                                type="button"
+                                onClick={() => applyTemplate(t)}
+                                title={t.body + "  (Ctrl+" + t.shortcut + ")"}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  padding: "6px 10px",
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  letterSpacing: "0.06em",
+                                  textTransform: "uppercase",
+                                  borderRadius: 6,
+                                  cursor: "pointer",
+                                  background: active ? "rgba(255,107,0,0.18)" : "rgba(255,107,0,0.06)",
+                                  border: "1px solid " + (active ? "rgba(255,107,0,0.6)" : "rgba(255,107,0,0.25)"),
+                                  color: ACCENT,
+                                }}
+                              >
+                                <span style={{ opacity: 0.6, fontFamily: "monospace" }}>{t.shortcut}</span>
+                                <span>{t.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            ref={replyInputRef}
+                            value={replyBody}
+                            onChange={(e) => {
+                              setReplyBody(e.target.value);
+                              // User edited away from a template → drop the resolved override
+                              if (overrideStatus) setOverrideStatus(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                sendReply(f.accessId);
+                              }
+                            }}
+                            placeholder="Votre réponse… (Ctrl+1..4 pour les modèles)"
+                            style={{ flex: 1, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "8px 12px", color: "#fff", fontSize: 12, fontFamily: "inherit" }}
+                          />
+                          <button onClick={() => sendReply(f.accessId)} disabled={sending || !replyBody.trim()} style={{ padding: "8px 14px", background: ACCENT, color: "#000", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: sending || !replyBody.trim() ? 0.5 : 1 }}>
+                            {overrideStatus === "resolved" ? "Envoyer · Résoudre" : "Envoyer"}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
