@@ -1025,7 +1025,7 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       {/* LEFT SIDEBAR — filters */}
       <aside className="graph-sidebar graph-sidebar-left">
         <style>{SIDEBAR_CSS}</style>
-        <h1 className="graph-sidebar-title">Scam Universe</h1>
+        <h1 className="graph-sidebar-title">Constellation</h1>
         <div className="graph-sidebar-meta">
           {data.nodes.length} nodes · {data.edges.length} edges
           {data.generatedAt ? ` · ${data.generatedAt.slice(0, 10)}` : ""}

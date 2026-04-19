@@ -1413,7 +1413,7 @@ export default function EditableGraph({
         )}
 
         <h1 className="graph-sidebar-title">
-          {editable ? "Investigation Graph" : "Scam Universe"}
+          {editable ? "Investigation Graph" : "Constellation"}
         </h1>
 
         {editable ? (
