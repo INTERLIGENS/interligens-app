@@ -84,18 +84,20 @@ export const TIER_DASH: Record<EvidenceTier, string | null> = {
 };
 
 // Tier visual weight on edges. Confirmed reads heaviest; alleged fades back.
+// Opacities bumped up from the initial Constellation spec — on the pure-black
+// background the lower values made non-confirmed links disappear into the void.
 export const TIER_WIDTH: Record<EvidenceTier, number> = {
-  confirmed: 1.2,
+  confirmed: 1.4,
   strong: 1,
   suspected: 1,
   alleged: 0.75,
 };
 
 export const TIER_OPACITY: Record<EvidenceTier, number> = {
-  confirmed: 0.9,
-  strong: 0.75,
-  suspected: 0.55,
-  alleged: 0.4,
+  confirmed: 1.0,
+  strong: 0.9,
+  suspected: 0.75,
+  alleged: 0.6,
 };
 
 // Label typography stacks. Inter for entity labels, JetBrains Mono for
