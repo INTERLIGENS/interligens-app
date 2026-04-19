@@ -150,16 +150,6 @@ export function labelSize(
   return (degree[nodeId] ?? 0) === 0 ? 10 : 11;
 }
 
-// Pill padding and border — match the spec (3×6, radius 3). Reused by the
-// two graph components so the pill geometry can't drift.
-export const LABEL_PILL = {
-  padX: 6,
-  padY: 3,
-  radius: 3,
-  bg: "rgba(0,0,0,0.7)",
-  border: "rgba(255,255,255,0.1)",
-} as const;
-
 // Rough character-width ratios for label width estimation (used by the
 // custom anti-label-collision force). We can't call getBBox inside a force
 // on every tick — estimation is good enough for layout.
@@ -172,5 +162,5 @@ export function estimatedLabelWidth(
   mono: boolean,
 ): number {
   const avg = mono ? CHAR_W_MONO : CHAR_W_SANS;
-  return text.length * fontSize * avg + LABEL_PILL.padX * 2;
+  return text.length * fontSize * avg;
 }

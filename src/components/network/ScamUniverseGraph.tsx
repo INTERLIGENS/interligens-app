@@ -14,7 +14,6 @@ import {
   ACCENT,
   GROUP_COLOR,
   GROUP_LABEL,
-  LABEL_PILL,
   TIER_DASH,
   TIER_LABEL,
   TIER_OPACITY,
@@ -506,55 +505,31 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
           .attr("r", d.r);
       });
 
-    // Label pill: <g class="label"> with <rect> background + <text>. Pill
-    // sits to the right of the node body and is measured per-node so
-    // addresses/hashes keep their monospace rhythm. Rect is inserted before
-    // the text so it renders behind.
-    const labelG = nodeG
-      .append("g")
-      .attr("class", "label")
-      .attr("pointer-events", "none")
-      .attr("transform", (d) => `translate(${d.r + 5}, 0)`);
-
-    labelG
-      .append("rect")
-      .attr("class", "label-bg")
-      .attr("rx", LABEL_PILL.radius)
-      .attr("ry", LABEL_PILL.radius)
-      .attr("fill", LABEL_PILL.bg)
-      .attr("stroke", LABEL_PILL.border)
-      .attr("stroke-width", 1);
-
-    labelG
+    // Flat floating labels — no pill, no border, no background. The
+    // typography hierarchy (12/11/10 px + Inter/JetBrains-Mono split)
+    // carries the read; a stroked text-shadow keeps legibility over edges
+    // that pass behind.
+    nodeG
       .append("text")
       .attr("class", "label-text")
-      .attr("x", LABEL_PILL.padX)
-      .attr("fill", "#fff")
+      .attr("dx", (d) => d.r + 5)
       .attr("dominant-baseline", "central")
       .attr("font-size", (d) => labelSize(d.id, degree, top3Hubs))
       .attr("font-family", (d) => labelFont(d.group))
+      .attr("font-weight", 500)
+      .attr("fill", (d) => {
+        if (top3Hubs.has(d.id)) return "#FFFFFF";
+        return (degree[d.id] ?? 0) === 0
+          ? "rgba(255,255,255,0.7)"
+          : "rgba(255,255,255,0.85)";
+      })
+      .attr("pointer-events", "none")
+      .attr("paint-order", "stroke")
+      .attr("stroke", "#000000")
+      .attr("stroke-width", 3)
+      .attr("stroke-opacity", 0.9)
+      .attr("stroke-linejoin", "round")
       .text((d) => formatNodeLabel(d));
-
-    // Size each pill rect to its actual rendered text bbox, with a 3×6
-    // padding and a 3 px corner radius.
-    labelG.each(function () {
-      const g = d3.select(this);
-      const textEl = g.select<SVGTextElement>("text.label-text").node();
-      if (!textEl) return;
-      let bbox: DOMRect | null = null;
-      try {
-        bbox = textEl.getBBox() as DOMRect;
-      } catch {
-        bbox = null;
-      }
-      const w = (bbox?.width ?? 0) + LABEL_PILL.padX * 2;
-      const h = (bbox?.height ?? 12) + LABEL_PILL.padY * 2;
-      g.select<SVGRectElement>("rect.label-bg")
-        .attr("x", 0)
-        .attr("y", -h / 2)
-        .attr("width", w)
-        .attr("height", h);
-    });
 
     // Pre-compute estimated label boxes for the custom anti-collision force
     // below. Re-measuring with getBBox on every tick would torch the main
@@ -564,7 +539,7 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
       const sz = labelSize(n.id, degree, top3Hubs);
       const text = formatNodeLabel(n);
       const w = estimatedLabelWidth(text, sz, isMonoGroup(n.group));
-      const h = sz + LABEL_PILL.padY * 2;
+      const h = sz;
       labelDims.set(n.id, { w, h });
     }
 
