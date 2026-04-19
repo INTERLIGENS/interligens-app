@@ -371,36 +371,7 @@ export default function ScamUniverseGraph({ data, investigatorHandle }: Props) {
     svg.selectAll("*").remove();
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-    // Constellation grid — renders inside the zoom group so panning/zooming
-    // gives a sense of depth. Non-scaling stroke keeps lines hairline at any
-    // zoom level.
-    const defs = svg.append("defs");
-    const gridPattern = defs
-      .append("pattern")
-      .attr("id", "constellation-grid")
-      .attr("width", 48)
-      .attr("height", 48)
-      .attr("patternUnits", "userSpaceOnUse");
-    gridPattern
-      .append("path")
-      .attr("d", "M 48 0 L 0 0 0 48")
-      .attr("stroke", "#ffffff")
-      .attr("stroke-opacity", 0.02)
-      .attr("stroke-width", 1)
-      .attr("fill", "none")
-      .attr("vector-effect", "non-scaling-stroke");
-
     const root = svg.append("g");
-
-    root
-      .append("rect")
-      .attr("class", "constellation-grid-bg")
-      .attr("x", -20000)
-      .attr("y", -20000)
-      .attr("width", 40000)
-      .attr("height", 40000)
-      .attr("fill", "url(#constellation-grid)")
-      .attr("pointer-events", "none");
 
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
