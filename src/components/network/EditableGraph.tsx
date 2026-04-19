@@ -94,28 +94,32 @@ const SIDEBAR_CSS = `
 .graph-sidebar .graph-chip-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  height: 26px;
-  padding: 0 8px;
-  margin-bottom: 2px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: rgba(255,255,255,0.7);
+  min-height: 34px;
+  padding: 0 12px;
+  margin-bottom: 4px;
+  background: rgba(255,255,255,0.01);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.72);
   font: inherit;
   cursor: pointer;
   text-align: left;
-  transition: background 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease, color 160ms ease;
 }
 .graph-sidebar .graph-chip-btn:hover:not(:disabled) {
-  background: rgba(255,255,255,0.04);
-  color: #fff;
+  background: rgba(255,107,0,0.08);
+  border-color: rgba(255,107,0,0.35);
+  box-shadow: 0 0 0 1px rgba(255,107,0,0.12) inset;
+  color: #ffffff;
+  transform: translateX(1px);
 }
 .graph-sidebar .graph-chip-btn.is-active {
-  color: #fff;
-  border-color: rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.02);
+  color: #ffffff;
+  background: rgba(255,107,0,0.12);
+  border-color: rgba(255,107,0,0.55);
+  box-shadow: 0 0 0 1px rgba(255,107,0,0.18) inset, 0 0 18px rgba(255,107,0,0.10);
 }
 .graph-sidebar .graph-chip-btn:disabled {
   opacity: 0.35;
@@ -126,6 +130,10 @@ const SIDEBAR_CSS = `
   height: 8px;
   border-radius: 50%;
   flex: 0 0 8px;
+  transition: box-shadow 160ms ease;
+}
+.graph-sidebar .graph-chip-btn.is-active .graph-chip-dot {
+  box-shadow: 0 0 6px currentColor;
 }
 .graph-sidebar .graph-chip-dash {
   flex: 0 0 22px;
@@ -133,33 +141,50 @@ const SIDEBAR_CSS = `
 .graph-sidebar .graph-chip-label {
   flex: 1;
   font-size: 11px;
+  letter-spacing: 0.01em;
 }
 .graph-sidebar .graph-chip-count {
   font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  color: rgba(255,255,255,0.45);
-  min-width: 22px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  min-width: 24px;
   text-align: right;
+  transition: color 160ms ease;
+}
+.graph-sidebar .graph-chip-btn.is-active .graph-chip-count {
+  color: ${ACCENT};
 }
 .graph-sidebar .graph-action-btn {
   display: block;
   width: 100%;
-  height: 28px;
-  padding: 0 10px;
-  margin-bottom: 4px;
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 4px;
-  color: rgba(255,255,255,0.7);
+  height: 34px;
+  padding: 0 12px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.78);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   text-align: left;
-  transition: background 120ms ease-out, color 120ms ease-out;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
 }
 .graph-sidebar .graph-action-btn:hover:not(:disabled) {
-  background: rgba(255,255,255,0.04);
-  color: #fff;
+  background: rgba(255,107,0,0.07);
+  border-color: rgba(255,107,0,0.32);
+  color: #ffffff;
+}
+.graph-sidebar .graph-action-btn.primary {
+  background: rgba(255,107,0,0.08);
+  border-color: rgba(255,107,0,0.35);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255,107,0,0.12) inset;
+}
+.graph-sidebar .graph-action-btn.primary:hover:not(:disabled) {
+  background: rgba(255,107,0,0.14);
+  border-color: rgba(255,107,0,0.55);
+  box-shadow: 0 0 0 1px rgba(255,107,0,0.22) inset, 0 0 18px rgba(255,107,0,0.12);
 }
 .graph-sidebar .graph-sidebar-note {
   margin-top: 16px;
@@ -1436,7 +1461,7 @@ export default function EditableGraph({
             >
               <span
                 className="graph-chip-dot"
-                style={{ background: GROUP_COLOR[g] }}
+                style={{ background: GROUP_COLOR[g], color: GROUP_COLOR[g] }}
               />
               <span className="graph-chip-label">{GROUP_LABEL[g]}</span>
               <span className="graph-chip-count">{count}</span>
@@ -1495,7 +1520,7 @@ export default function EditableGraph({
         </button>
 
         <SectionLabel>Export</SectionLabel>
-        <button type="button" onClick={exportPng} className="graph-action-btn">
+        <button type="button" onClick={exportPng} className="graph-action-btn primary">
           Export PNG (watermarked)
         </button>
         <button type="button" onClick={exportJson} className="graph-action-btn">
