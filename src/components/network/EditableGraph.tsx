@@ -198,44 +198,47 @@ const SIDEBAR_CSS = `
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 32px 16px;
-  min-height: 180px;
+  padding: 36px 16px 28px;
+  min-height: 200px;
   color: rgba(255,255,255,0.5);
 }
 .graph-sidebar .graph-detail-empty-icon {
-  opacity: 0.24;
-  margin-bottom: 14px;
+  opacity: 0.28;
+  margin-bottom: 16px;
 }
 .graph-sidebar .graph-detail-empty-title {
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.6);
-  margin-bottom: 6px;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 8px;
 }
 .graph-sidebar .graph-detail-empty-text {
-  font-size: 11px;
-  color: rgba(255,255,255,0.35);
-  line-height: 1.5;
-  max-width: 220px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.6;
+  max-width: 230px;
 }
 .graph-sidebar .graph-detail-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .graph-sidebar .graph-detail-chip {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  flex: 0 0 10px;
+  flex: 0 0 12px;
+  box-shadow: 0 0 6px currentColor;
 }
 .graph-sidebar .graph-detail-name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: #ffffff;
+  letter-spacing: -0.005em;
   word-break: break-word;
   flex: 1 1 auto;
   min-width: 0;
@@ -243,18 +246,20 @@ const SIDEBAR_CSS = `
 .graph-sidebar .graph-detail-type-badge {
   font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.02);
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.025);
 }
 .graph-sidebar .graph-detail-tier-row {
   font-size: 10px;
-  color: rgba(255,255,255,0.45);
-  margin-bottom: 10px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 .graph-sidebar .graph-detail-tiger {
   display: flex;
@@ -726,11 +731,13 @@ export default function EditableGraph({
     // Flat floating labels — no pill, no border, no background. The
     // typography hierarchy (12/11/10 px + Inter/JetBrains-Mono split)
     // carries the read; a stroked text-shadow keeps legibility over edges
-    // that pass behind.
-    nodeG
+    // that pass behind. The tick.labels listener below flips labels whose
+    // node ends up left of canvas centre.
+    const labelTextSel = nodeG
       .append("text")
       .attr("class", "label-text")
       .attr("dx", (d) => d.r + 5)
+      .attr("text-anchor", "start")
       .attr("dominant-baseline", "central")
       .attr("font-size", (d) => labelSize(d.id, degree, top3Hubs))
       .attr("font-family", (d) => labelFont(d.group))
@@ -822,6 +829,21 @@ export default function EditableGraph({
         return `translate(${x},${y}) rotate(${angle})`;
       });
       nodeG.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
+    });
+
+    // Label orientation: once the simulation has cooled, flip any label
+    // whose node settled on the left half of the canvas so it reads
+    // outward instead of crashing into sibling labels in dense clusters.
+    simulation.on("tick.labels", () => {
+      if (simulation.alpha() > 0.08) return;
+      const w = canvasWrapRef.current?.clientWidth ?? width;
+      const cx = w / 2;
+      labelTextSel.each(function (d) {
+        const left = (d.x ?? 0) < cx;
+        const t = d3.select(this);
+        t.attr("text-anchor", left ? "end" : "start");
+        t.attr("dx", left ? -(d.r + 5) : d.r + 5);
+      });
     });
 
     const drag = d3
@@ -1742,7 +1764,10 @@ export default function EditableGraph({
             <div className="graph-detail-header">
               <span
                 className="graph-detail-chip"
-                style={{ background: GROUP_COLOR[selected.group] }}
+                style={{
+                  background: GROUP_COLOR[selected.group],
+                  color: GROUP_COLOR[selected.group],
+                }}
               />
               <span className="graph-detail-name">{selected.label}</span>
               <span className="graph-detail-type-badge">
