@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import FeedbackButton from "@/components/vault/FeedbackButton";
+import NavLink from "@/components/investigators/NavLink";
 import { VaultToastProvider } from "@/components/vault/VaultToast";
 import WatermarkOverlay from "@/components/vault/WatermarkOverlay";
 import { enforceInvestigatorAccess } from "@/lib/investigators/accessGate";
@@ -48,13 +49,6 @@ const BACK_LINK: React.CSSProperties = {
   transition: "color 150ms",
 };
 
-const QUICK_LINK: React.CSSProperties = {
-  fontSize: 11,
-  color: "rgba(255,255,255,0.25)",
-  textDecoration: "none",
-  transition: "color 150ms",
-};
-
 const SEPARATOR: React.CSSProperties = {
   fontSize: 11,
   color: "rgba(255,255,255,0.1)",
@@ -74,26 +68,35 @@ export default async function InvestigatorsBoxLayout({
           &larr; INTERLIGENS
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/en/demo" className="investigators-quick-link" style={QUICK_LINK}>
-            Scan
-          </Link>
+          <NavLink href="/investigators/box" label="My Cases" exact />
           <span style={SEPARATOR}>|</span>
-          <Link href="/en/kol" className="investigators-quick-link" style={QUICK_LINK}>
-            KOL Registry
-          </Link>
+          <NavLink href="/investigators/box/network" label="Network" />
           <span style={SEPARATOR}>|</span>
-          <Link href="/en/explorer" className="investigators-quick-link" style={QUICK_LINK}>
-            Explorer
-          </Link>
+          <NavLink href="/investigators/box/messages" label="Messages" />
           <span style={SEPARATOR}>|</span>
-          <Link href="/investigators/box/messages" className="investigators-quick-link" style={QUICK_LINK}>
-            Messages
-          </Link>
+          <NavLink href="/en/demo" label="Scan" />
+          <span style={SEPARATOR}>|</span>
+          <NavLink href="/en/kol" label="KOL Registry" />
+          <span style={SEPARATOR}>|</span>
+          <NavLink href="/en/explorer" label="Explorer" />
         </div>
       </nav>
       <style>{`
         .investigators-back-link:hover { color: #FF6B00 !important; }
-        .investigators-quick-link:hover { color: #FFFFFF !important; }
+        .investigators-quick-link {
+          font-size: 11px;
+          color: rgba(255,255,255,0.5);
+          text-decoration: none;
+          padding: 4px 8px;
+          border-radius: 4px;
+          transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+        }
+        .investigators-quick-link:hover { color: #FFFFFF; }
+        .investigators-quick-link.is-active {
+          color: #FF6B00;
+          background: rgba(255,107,0,0.07);
+          box-shadow: 0 0 0 1px rgba(255,107,0,0.22) inset;
+        }
       `}</style>
       {children}
       <WatermarkOverlay handle={watermarkHandle} />

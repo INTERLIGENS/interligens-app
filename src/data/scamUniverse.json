@@ -1,0 +1,1023 @@
+{
+  "generatedAt": "2026-04-17",
+  "sourceOfTruth": "INTERLIGENS prod DB (5 profiles, 29 evidences, 47 wallets, 7 tokens, 11 KOL-token involvements) + INVESTIGATION_DIONE_REPORT.md + on-chain reads performed 2026-04-17",
+  "evidenceTiers": {
+    "confirmed": "Primary source or direct on-chain verification (tx hashes, primary-source rebuttals, Etherscan-verified contract data, leaked internal docs)",
+    "strong": "Documented via multiple secondary sources (Arkham labels, third-party press, verified promoters)",
+    "suspected": "Internal repo claim with corroboration trail but not independently verified",
+    "alleged": "Repo claim (or user hypothesis) without external verification — do not file without reinforcement"
+  },
+  "nodes": [
+    {
+      "id": "bkokoski",
+      "group": "person",
+      "label": "Brandon Kokoski",
+      "handle": "@KokoskiB",
+      "risk": "confirmed_scammer",
+      "confidence": "high",
+      "rugCount": 12,
+      "totalScammedUsd": 4500000,
+      "tier": "confirmed",
+      "notes": "Co-fondateur BOTIFY + Dione VP/COO (Aug 2022 → Mar 2026). Wallet personnel 0x32B6…3ecF funded from Gate.io. Exit 20/03/2026 coordinated $210K USDC."
+    },
+    {
+      "id": "sxyz500",
+      "group": "person",
+      "label": "Sam O'Leary (SAMBO)",
+      "handle": "@sxyz500",
+      "risk": "confirmed_scammer",
+      "confidence": "high",
+      "rugCount": 2,
+      "totalScammedUsd": 1200000,
+      "tier": "confirmed",
+      "notes": "Co-fondateur BOTIFY. CEX funding via Binance + BloFin + Rollbit. Cashout relay $117,919 en 3 jours."
+    },
+    {
+      "id": "GordonGekko",
+      "group": "person",
+      "label": "GordonGekko",
+      "handle": "@GordonGekko",
+      "risk": "high",
+      "confidence": "strong_linkage",
+      "rugCount": 2,
+      "totalScammedUsd": 485627,
+      "tier": "strong",
+      "notes": "KOL BOTIFY 1.665% supply. $SWIF insiders $445K. Cluster Arkham 10 wallets. Actif sur pump.fun."
+    },
+    {
+      "id": "planted",
+      "group": "person",
+      "label": "Djordje Stupar",
+      "handle": "@planted",
+      "risk": "high",
+      "confidence": "confirmed",
+      "rugCount": 2,
+      "tier": "confirmed",
+      "notes": "Admet publiquement être 'la voix publique de BOTIFY' — X post 19/03/2025. Rencontre documentée avec BK + GordonGekko 30/04/2025."
+    },
+    {
+      "id": "kapadia23",
+      "group": "person",
+      "label": "Parth Kapadia",
+      "handle": "@ParthKapadiaX",
+      "risk": "conflict_of_interest",
+      "confidence": "high",
+      "rugCount": 0,
+      "tier": "confirmed",
+      "notes": "Concurrent Head of Energy @ Dione Protocol + Co-Founder/CEO @ OpenVPP. SPARK grant cohort recipient (self-dealing, no disclosure). Sept 2025 Peirce false-endorsement episode."
+    },
+    {
+      "id": "TheFudHound",
+      "group": "person",
+      "label": "Ryan Arriaga",
+      "handle": "@TheFudHound",
+      "risk": "whistleblower_reframe",
+      "confidence": "high",
+      "tier": "confirmed",
+      "notes": "Ex-SafeMoon Head of Products, publicly accused Karony (convicted 100 months Feb 2026). Contracted by Dione Jan 2023 (Blockchain Dev Shop). NOT the serial operator — reframe from prior repo narrative."
+    },
+    {
+      "id": "dione_protocol",
+      "group": "project",
+      "label": "Dione Protocol",
+      "chain": "ETH/Odyssey",
+      "status": "soft_exit_pattern",
+      "tier": "strong",
+      "notes": "Newark DE LLC. V1→V2 migration 30/10/2024 with trading-suspension + LP-withdrawal + 'do not buy old token on Uniswap' warning. KYC-less OTC via TrustSwap."
+    },
+    {
+      "id": "botify",
+      "group": "project",
+      "label": "BOTIFY",
+      "chain": "SOL",
+      "status": "confirmed_scam",
+      "tier": "confirmed",
+      "notes": "Payroll leak + F&F distribution + $210K coordinated exit + paid-promo spend ($90K MEXC + $150K TikTok + $80K UEFA). 29 wallets seeded."
+    },
+    {
+      "id": "ghost",
+      "group": "project",
+      "label": "GhostwareOS",
+      "chain": "SOL",
+      "status": "confirmed_scam",
+      "tier": "confirmed",
+      "notes": "Insider supply to BK Mom/Dad/Carter + SAM Mom/Dad wallets. 213k GHOST dumped by SAM MUM in 3 minutes 26/11/2025."
+    },
+    {
+      "id": "openvpp",
+      "group": "project",
+      "label": "OpenVPP",
+      "chain": "ETH+Base+SOL",
+      "status": "conflict_of_interest_active",
+      "tier": "confirmed",
+      "notes": "Parth Kapadia CEO. Dione SPARK cohort 1 while Kapadia was Dione Head of Energy — no disclosure. Peirce false-endorsement claim Sept 2025 (rebuked). ComEd partnership claim disputed."
+    },
+    {
+      "id": "predic",
+      "group": "project",
+      "label": "PredicTools",
+      "chain": "SOL",
+      "status": "suspected",
+      "tier": "suspected",
+      "notes": "Surfaced via mariaqueennft × grok crossref. bkokoski + sxyz500 + GordonGekko marked as promoters in DB. External corroboration limited."
+    },
+    {
+      "id": "loic",
+      "group": "project",
+      "label": "LOIC (Low Orbit Ion Cannon)",
+      "chain": "ETH",
+      "status": "pattern_flag",
+      "tier": "confirmed",
+      "notes": "Deployed by BK personal wallet 2023-07-09. Classic meme-token operator flow: Set Fees → Open Trading → Renounce Ownership. Not a rug per se; documents earlier deployment pattern."
+    },
+    {
+      "id": "tok_dione",
+      "group": "token",
+      "label": "DIONE",
+      "chain": "ETH",
+      "address": "0x89b69f2d1adffa9a253d40840b6baa7fc903d697",
+      "tier": "confirmed",
+      "notes": "Deployed 2022-08-14 by 0xbB2A…7a2e. 10B supply, 15,475 holders."
+    },
+    {
+      "id": "tok_wdione",
+      "group": "token",
+      "label": "Wrapped DIONE",
+      "chain": "ETH",
+      "address": "0x65278f702019078e9ab196c0da0a6ee55e7248b7",
+      "tier": "confirmed"
+    },
+    {
+      "id": "tok_ovpp_eth",
+      "group": "token",
+      "label": "OVPP (ETH)",
+      "chain": "ETH",
+      "address": "0xb4c6fedd984bc983b1a758d0875f1ea34f81a6af",
+      "tier": "confirmed",
+      "notes": "Deployed 2025-08-21. Deployer 0x60dc…7d07 funded by Coinbase 10. Ownable2Step, NOT renounced."
+    },
+    {
+      "id": "tok_ovpp_base",
+      "group": "token",
+      "label": "OVPP (Base)",
+      "chain": "Base",
+      "address": "0x8c0d3adcf8ce094e1ae437557ec90a6374dc9bdd",
+      "tier": "confirmed",
+      "notes": "Deployed ~2025-12-11. Deployer 0x5d02…7243."
+    },
+    {
+      "id": "tok_ovpp_sol",
+      "group": "token",
+      "label": "OVPP (SOL)",
+      "chain": "SOL",
+      "address": "81ahKAxqHxj9qsHVNK7uZY6wteK8peoe3Heyxq3Lpump",
+      "tier": "strong",
+      "notes": "Token-2022 program. Listed in mariaqueennft_kokoski_cluster source."
+    },
+    {
+      "id": "tok_loic",
+      "group": "token",
+      "label": "LOIC",
+      "chain": "ETH",
+      "address": "0xBF4F891C5f3d4e9b84dab25cb4dbd61025f13bbe",
+      "tier": "confirmed",
+      "notes": "Deployed by BK personal wallet 0x32B6…3ecF on 2023-07-09. Creation tx 0xb674dae7…cee1."
+    },
+    {
+      "id": "tok_botify_sol",
+      "group": "token",
+      "label": "BOTIFY",
+      "chain": "SOL",
+      "address": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
+      "tier": "confirmed"
+    },
+    {
+      "id": "tok_ghost_sol",
+      "group": "token",
+      "label": "GHOST",
+      "chain": "SOL",
+      "address": "BBKPiLM9KjdJW7oQSKt99RVWcZdhF6sEHRKnwqeBGHST",
+      "tier": "confirmed"
+    },
+    {
+      "id": "tok_predic_sol",
+      "group": "token",
+      "label": "PREDIC",
+      "chain": "SOL",
+      "address": "AaRLHCvt6G8e3dbxLvN6BQi2S34Lvv3eeBjKNzc2QZB9",
+      "tier": "suspected"
+    },
+    {
+      "id": "wallet_bk_eth",
+      "group": "wallet",
+      "label": "BK personal ETH",
+      "chain": "ETH",
+      "address": "0x32B6006e5b942F47Ab4DB68eE70f683370853ecF",
+      "tier": "confirmed",
+      "notes": "Arkham entity 'kokoskib'. $400,732 portfolio. Funded by Gate.io 2023-06-26. NOT liquidated as of 20/03/2026."
+    },
+    {
+      "id": "wallet_bk_bot",
+      "group": "wallet",
+      "label": "BK operational SOL (BOTIFY deployer)",
+      "chain": "SOL",
+      "address": "HRuLzZkfkmqt3sMRXLoSEA5i58Z4rm7qtPTQZmd14LUx",
+      "tier": "confirmed",
+      "notes": "Créateur token BOTIFY, signataire OrbitApe TX."
+    },
+    {
+      "id": "wallet_dione_deployer",
+      "group": "wallet",
+      "label": "Dione: Deployer",
+      "chain": "ETH",
+      "address": "0xbb2a56543df6d2070cfb6a68f8e16bf5b2237a2e",
+      "tier": "confirmed",
+      "notes": "ENS dioneprotocol.eth. Funded by KuCoin 2022-07-03. Last tx Aug 2025."
+    },
+    {
+      "id": "wallet_ovpp_eth_deployer",
+      "group": "wallet",
+      "label": "OpenVPP: Deployer (ETH)",
+      "chain": "ETH",
+      "address": "0x60dc88ad804c736a3e640f19bf45f3201dc07d07",
+      "tier": "confirmed",
+      "notes": "Funded by Coinbase 10 2025-08-21."
+    },
+    {
+      "id": "wallet_ovpp_base_deployer",
+      "group": "wallet",
+      "label": "OpenVPP: Deployer (Base)",
+      "chain": "Base",
+      "address": "0x5d020c0510dac638588dc0e2d097c92ad08d7243",
+      "tier": "confirmed"
+    },
+    {
+      "id": "wallet_exit_hub",
+      "group": "wallet",
+      "label": "Exit hub (HeaiDUtMQ)",
+      "chain": "SOL",
+      "address": "HeaiDUtMQjt163afwV7zeAJhzDi16SsEGK1T4AyhqS4R",
+      "tier": "confirmed",
+      "notes": "Entrée du flux exit 20/03/2026 — démarrage T+520 min après post X de bkokoski."
+    },
+    {
+      "id": "wallet_1234Co",
+      "group": "wallet",
+      "label": "Vanity wallet 1234Co",
+      "chain": "SOL",
+      "address": "1234CoNGEgHsyaQtWZbAeYRF9iw7WsiSrxvNZvL5RsHa",
+      "tier": "confirmed",
+      "notes": "Consolide $256,969 USDC depuis hub pendant l'exit."
+    },
+    {
+      "id": "bk_fam_mom",
+      "group": "wallet_family",
+      "label": "BK Mom (F&F 0.055%)",
+      "chain": "SOL",
+      "address": "5ed7HUrYWS8h7EwM6wBpCvUHP4jc5McWYcL2yX4QimQj",
+      "tier": "confirmed"
+    },
+    {
+      "id": "bk_fam_dad",
+      "group": "wallet_family",
+      "label": "BK Dad (F&F 0.055%)",
+      "chain": "SOL",
+      "address": "HSueXrabQVABdHezbQ5Q4UbgLTx4Nc6VqyX5R88zzxmz",
+      "tier": "confirmed"
+    },
+    {
+      "id": "bk_fam_carter",
+      "group": "wallet_family",
+      "label": "BK Carter (F&F 0.02%)",
+      "chain": "SOL",
+      "address": "FzDXp1AqPhmwqkXjeFeTohbVcDEbJM9bjDcH9DPN4nEc",
+      "tier": "confirmed"
+    },
+    {
+      "id": "bk_fam_illya",
+      "group": "wallet_family",
+      "label": "BK Illya (F&F 0.05%)",
+      "chain": "SOL",
+      "address": "CFEBsnVtB3qz9ano2nL9mVjmUu26EGDpoY9nGEAqRTqR",
+      "tier": "confirmed"
+    },
+    {
+      "id": "sam_fam_mum",
+      "group": "wallet_family",
+      "label": "SAM Mum (F&F 0.05%)",
+      "chain": "SOL",
+      "address": "23cdxwyFgC4ru5FdN5NEcGLzPioBkqknhGU8rLK2S9P1",
+      "tier": "confirmed"
+    },
+    {
+      "id": "sam_fam_dad",
+      "group": "wallet_family",
+      "label": "SAM Dad (F&F 0.07%)",
+      "chain": "SOL",
+      "address": "9PQwizgbW2ruvypLQ9baVRZ4tiJdhDrEzD63m4oMqtxB",
+      "tier": "confirmed"
+    },
+    {
+      "id": "cex_kucoin",
+      "group": "infra_cex",
+      "label": "KuCoin 10",
+      "chain": "ETH",
+      "address": "0xcad621da75a66c7a8f4ff86d30a2bf981bfc8fdd",
+      "tier": "confirmed",
+      "notes": "MLAT-subpoenable. Funded Dione deployer 2022-07-03."
+    },
+    {
+      "id": "cex_gate",
+      "group": "infra_cex",
+      "label": "Gate.io deposit",
+      "chain": "ETH",
+      "address": "0x0D0707963952f2fba59dd06f2b425ace40b492fe",
+      "tier": "confirmed",
+      "notes": "MLAT-subpoenable. Funded BK personal wallet 2023-06-26."
+    },
+    {
+      "id": "cex_coinbase",
+      "group": "infra_cex",
+      "label": "Coinbase 10",
+      "chain": "ETH",
+      "address": "0xa9d1e08c7793af67e9d92fe308d5697fb81d3e43",
+      "tier": "confirmed",
+      "notes": "US-regulated. Funded OpenVPP: Deployer 2025-08-21."
+    },
+    {
+      "id": "infra_trustswap",
+      "group": "infra_service",
+      "label": "TrustSwap",
+      "tier": "confirmed",
+      "notes": "Dione OTC primary-sale platform with explicit 'KYC is not required'. Team Finance locker for DIONE token."
+    },
+    {
+      "id": "infra_spark",
+      "group": "infra_service",
+      "label": "DIONE SPARK grants",
+      "tier": "confirmed",
+      "notes": "Launched 2024-11-22. 12-project cohort 1 including OpenVPP. Up to $100K per project across Spark Green/Seed/Build tranches. No COI disclosure re Kapadia."
+    },
+    {
+      "id": "mariaqueennft",
+      "group": "source",
+      "label": "@mariaqueennft",
+      "handle": "@mariaqueennft",
+      "role": "external_onchain_investigator",
+      "tier": "confirmed",
+      "notes": "Primary external source for Kokoski family-wallet IDs (Mom/Dad/Carter, 2026-02-27), BOTIFY IMG_0647 KOL table (~38 handles + pct supply + USD deals), GHOST co-developer linkage (@sxyz500), and the Feb 2026 '12+ tokens' list. Family-wallet attributions are corroborated on-chain via Helius holders on BOTIFY mint BYZ9Cc…69xb."
+    },
+    {
+      "id": "maria_12_list",
+      "group": "claim",
+      "label": "MariaQueen '12+ tokens' list (Feb 2026)",
+      "tier": "alleged",
+      "notes": "Per MariaQueen Feb 2026 X thread: $GOLD1 $XMEN $TOBE $PUPPET $EBE $OPENVPP $PREDIC $AMARA $STUDY + '30 others'. Resolution audit 2026-04-17: 4/9 named symbols have confirmed mints linkable to the Kokoski cluster (BOTIFY, GHOST, OPENVPP, PREDIC). AMARA has a Base candidate (0x14D4…A739f) that is NOT on-chain-linked to BK (creator 0x63867C…). STUDY/PUPPET/XMEN return only wrong-chain (XRPL/Conflux) or dust Solana candidates. GOLD1/TOBE/EBE return zero matches on DexScreener AND Tronscan. BK's personal ETH wallet has deployed exactly 1 ERC-20 (LOIC) per Etherscan f=5 filter. Treat as allegation bundle; full audit in ~/osint/mariaqueen-tokens/COMPLETE_12_AUDIT.md.",
+      "memberResolutionMatrix": {
+        "confirmed_with_mint":       ["BOTIFY", "GHOST", "OPENVPP", "PREDIC"],
+        "candidate_not_on_chain_linked": ["AMARA"],
+        "unresolved_ambiguous_or_wrong_chain": ["STUDY", "PUPPET", "XMEN"],
+        "zero_matches":              ["GOLD1", "TOBE", "EBE"]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "bkokoski",
+      "target": "sxyz500",
+      "type": "co_founder",
+      "label": "BOTIFY co-founders",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "planted",
+      "type": "social_meeting",
+      "label": "Meeting 30/04/2025 (with Gordon)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "GordonGekko",
+      "type": "social_meeting",
+      "label": "Meeting 30/04/2025 (with planted)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "planted",
+      "target": "GordonGekko",
+      "type": "social_meeting",
+      "label": "Same meeting 30/04/2025",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "TheFudHound",
+      "type": "contracted",
+      "label": "Dione hired Blockchain Dev Shop Jan 2023",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "dione_protocol",
+      "type": "cofounder_vp_coo",
+      "label": "VP/COO Dione (Aug 2022 → Mar 2026)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "kapadia23",
+      "target": "dione_protocol",
+      "type": "executive",
+      "label": "Head of Energy — concurrent with OpenVPP CEO",
+      "tier": "confirmed"
+    },
+    {
+      "source": "TheFudHound",
+      "target": "dione_protocol",
+      "type": "contracted_dev",
+      "label": "Blockchain Dev Shop / Onchain Solutions Inc",
+      "tier": "confirmed"
+    },
+    {
+      "source": "kapadia23",
+      "target": "openvpp",
+      "type": "cofounder_ceo",
+      "label": "Co-Founder & CEO OpenVPP (Sept 2024–)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "dione_protocol",
+      "target": "openvpp",
+      "type": "grant_recipient",
+      "label": "SPARK cohort 1 grant (undisclosed COI)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "infra_spark",
+      "target": "openvpp",
+      "type": "grant_program",
+      "label": "OVPP in first cohort announced 2024-11-22",
+      "tier": "confirmed"
+    },
+    {
+      "source": "dione_protocol",
+      "target": "infra_spark",
+      "type": "operates",
+      "label": "Dione SPARK grants program",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "botify",
+      "type": "cofounder",
+      "label": "Co-fondateur BOTIFY",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sxyz500",
+      "target": "botify",
+      "type": "cofounder",
+      "label": "Co-fondateur BOTIFY",
+      "tier": "confirmed"
+    },
+    {
+      "source": "GordonGekko",
+      "target": "botify",
+      "type": "paid_kol",
+      "label": "KOL table 1.665% supply",
+      "tier": "confirmed"
+    },
+    {
+      "source": "planted",
+      "target": "botify",
+      "type": "public_voice",
+      "label": "Admet être voix publique BOTIFY — X 19/03/2025",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "ghost",
+      "type": "insider",
+      "label": "Mom/Dad/Carter reçoivent GHOST supply et vendent",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sxyz500",
+      "target": "ghost",
+      "type": "insider",
+      "label": "Mum/Dad reçoivent GHOST supply et vendent",
+      "tier": "confirmed"
+    },
+    {
+      "source": "GordonGekko",
+      "target": "ghost",
+      "type": "promoter",
+      "label": "DB isPromoted=true",
+      "tier": "strong"
+    },
+    {
+      "source": "bkokoski",
+      "target": "openvpp",
+      "type": "promoter",
+      "label": "Endorsement public Sept 2025",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sxyz500",
+      "target": "openvpp",
+      "type": "promoter",
+      "label": "DB isPromoted=true (OVPP-SOL)",
+      "tier": "strong"
+    },
+    {
+      "source": "bkokoski",
+      "target": "predic",
+      "type": "promoter",
+      "label": "DB isPromoted=true",
+      "tier": "suspected"
+    },
+    {
+      "source": "sxyz500",
+      "target": "predic",
+      "type": "promoter",
+      "label": "DB isPromoted=true",
+      "tier": "suspected"
+    },
+    {
+      "source": "GordonGekko",
+      "target": "predic",
+      "type": "promoter",
+      "label": "DB isPromoted=true",
+      "tier": "suspected"
+    },
+    {
+      "source": "bkokoski",
+      "target": "loic",
+      "type": "deployer",
+      "label": "Deployed 2023-07-09 from 0x32B6…3ecF",
+      "tier": "confirmed"
+    },
+    {
+      "source": "dione_protocol",
+      "target": "tok_dione",
+      "type": "token",
+      "label": "DIONE token on Ethereum",
+      "tier": "confirmed"
+    },
+    {
+      "source": "dione_protocol",
+      "target": "tok_wdione",
+      "type": "token",
+      "label": "Wrapped DIONE",
+      "tier": "confirmed"
+    },
+    {
+      "source": "openvpp",
+      "target": "tok_ovpp_eth",
+      "type": "token",
+      "label": "OVPP ETH token",
+      "tier": "confirmed"
+    },
+    {
+      "source": "openvpp",
+      "target": "tok_ovpp_base",
+      "type": "token",
+      "label": "OVPP Base token",
+      "tier": "confirmed"
+    },
+    {
+      "source": "openvpp",
+      "target": "tok_ovpp_sol",
+      "type": "token",
+      "label": "OVPP Solana token",
+      "tier": "strong"
+    },
+    {
+      "source": "botify",
+      "target": "tok_botify_sol",
+      "type": "token",
+      "label": "BOTIFY SOL mint",
+      "tier": "confirmed"
+    },
+    {
+      "source": "ghost",
+      "target": "tok_ghost_sol",
+      "type": "token",
+      "label": "GHOST SOL mint",
+      "tier": "confirmed"
+    },
+    {
+      "source": "predic",
+      "target": "tok_predic_sol",
+      "type": "token",
+      "label": "PREDIC SOL mint",
+      "tier": "suspected"
+    },
+    {
+      "source": "loic",
+      "target": "tok_loic",
+      "type": "token",
+      "label": "LOIC ETH token",
+      "tier": "confirmed"
+    },
+    {
+      "source": "wallet_dione_deployer",
+      "target": "tok_dione",
+      "type": "deployed",
+      "label": "Contract creator 2022-08-14",
+      "tier": "confirmed"
+    },
+    {
+      "source": "wallet_bk_eth",
+      "target": "tok_loic",
+      "type": "deployed",
+      "label": "Contract creator 2023-07-09",
+      "tier": "confirmed"
+    },
+    {
+      "source": "wallet_ovpp_eth_deployer",
+      "target": "tok_ovpp_eth",
+      "type": "deployed",
+      "label": "Contract creator 2025-08-21",
+      "tier": "confirmed"
+    },
+    {
+      "source": "wallet_ovpp_base_deployer",
+      "target": "tok_ovpp_base",
+      "type": "deployed",
+      "label": "Contract creator ~2025-12-11",
+      "tier": "confirmed"
+    },
+    {
+      "source": "wallet_bk_bot",
+      "target": "tok_botify_sol",
+      "type": "deployed",
+      "label": "BOTIFY creator wallet",
+      "tier": "confirmed"
+    },
+    {
+      "source": "cex_kucoin",
+      "target": "wallet_dione_deployer",
+      "type": "funding",
+      "label": "2.5 ETH funding 2022-07-03",
+      "tier": "confirmed"
+    },
+    {
+      "source": "cex_gate",
+      "target": "wallet_bk_eth",
+      "type": "funding",
+      "label": "First funding 2023-06-26",
+      "tier": "confirmed"
+    },
+    {
+      "source": "cex_coinbase",
+      "target": "wallet_ovpp_eth_deployer",
+      "type": "funding",
+      "label": "First funding 2025-08-21",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "wallet_bk_eth",
+      "type": "owns",
+      "label": "Arkham entity 'kokoskib'",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "wallet_bk_bot",
+      "type": "owns",
+      "label": "BOTIFY operational wallet",
+      "tier": "confirmed"
+    },
+    {
+      "source": "kapadia23",
+      "target": "wallet_ovpp_eth_deployer",
+      "type": "controls",
+      "label": "OpenVPP deployment wallet (via company)",
+      "tier": "strong"
+    },
+    {
+      "source": "kapadia23",
+      "target": "wallet_ovpp_base_deployer",
+      "type": "controls",
+      "label": "OpenVPP deployment wallet (via company)",
+      "tier": "strong"
+    },
+    {
+      "source": "bkokoski",
+      "target": "bk_fam_mom",
+      "type": "family_fnf",
+      "label": "Mom wallet F&F",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "bk_fam_dad",
+      "type": "family_fnf",
+      "label": "Dad wallet F&F",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "bk_fam_carter",
+      "type": "family_fnf",
+      "label": "Carter wallet F&F",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "bk_fam_illya",
+      "type": "family_fnf",
+      "label": "Illya wallet F&F",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sxyz500",
+      "target": "sam_fam_mum",
+      "type": "family_fnf",
+      "label": "Mum wallet F&F — 213k GHOST dumped in 3min",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sxyz500",
+      "target": "sam_fam_dad",
+      "type": "family_fnf",
+      "label": "Dad wallet F&F — 4h-interval swap bot",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bk_fam_mom",
+      "target": "ghost",
+      "type": "cashout",
+      "label": "$5,207 in 26 tx over 10 weeks",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bk_fam_dad",
+      "target": "ghost",
+      "type": "cashout",
+      "label": "$802 + 550k BOTIFY",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bk_fam_carter",
+      "target": "ghost",
+      "type": "cashout",
+      "label": "28.6 SOL (~$4,500)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bk_fam_illya",
+      "target": "botify",
+      "type": "cashout",
+      "label": "451k BOTIFY relay → $8,700",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sam_fam_mum",
+      "target": "ghost",
+      "type": "cashout",
+      "label": "213k GHOST dumped in 3 minutes",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sam_fam_dad",
+      "target": "botify",
+      "type": "cashout",
+      "label": "700k BOTIFY + 500k GHOST → 72 SOL",
+      "tier": "confirmed"
+    },
+    {
+      "source": "wallet_exit_hub",
+      "target": "wallet_1234Co",
+      "type": "exit_flow",
+      "label": "$256,969 USDC consolidated",
+      "tier": "confirmed"
+    },
+    {
+      "source": "bkokoski",
+      "target": "wallet_exit_hub",
+      "type": "exit_event",
+      "label": "Exit 20/03/2026 T+520min after X post",
+      "tier": "confirmed"
+    },
+    {
+      "source": "sxyz500",
+      "target": "wallet_exit_hub",
+      "type": "exit_event",
+      "label": "Exit 20/03/2026 (same event)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "dione_protocol",
+      "target": "infra_trustswap",
+      "type": "used_service",
+      "label": "KYC-less OTC + Team Finance lock",
+      "tier": "confirmed"
+    },
+    {
+      "source": "mariaqueennft",
+      "target": "bkokoski",
+      "type": "attribution_of",
+      "label": "Family-wallet IDs 2026-02-27",
+      "tier": "confirmed"
+    },
+    {
+      "source": "mariaqueennft",
+      "target": "sxyz500",
+      "type": "attribution_of",
+      "label": "GHOST co-developer (Feb 2026 thread)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "mariaqueennft",
+      "target": "botify",
+      "type": "attribution_of",
+      "label": "IMG_0647 KOL table (~38 handles)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "mariaqueennft",
+      "target": "ghost",
+      "type": "attribution_of",
+      "label": "Insider-cluster linkage",
+      "tier": "confirmed"
+    },
+    {
+      "source": "mariaqueennft",
+      "target": "maria_12_list",
+      "type": "authored",
+      "label": "Feb 2026 X thread",
+      "tier": "confirmed"
+    },
+    {
+      "source": "maria_12_list",
+      "target": "bkokoski",
+      "type": "alleged_rugs_by",
+      "label": "Unverified rug list",
+      "tier": "alleged"
+    },
+    {
+      "source": "maria_12_list",
+      "target": "openvpp",
+      "type": "named_in_list",
+      "label": "Confirmed mint (OVPP)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "maria_12_list",
+      "target": "predic",
+      "type": "named_in_list",
+      "label": "Confirmed mint (PREDIC)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "maria_12_list",
+      "target": "botify",
+      "type": "named_in_list",
+      "label": "Confirmed mint (BOTIFY)",
+      "tier": "confirmed"
+    },
+    {
+      "source": "maria_12_list",
+      "target": "ghost",
+      "type": "named_in_list",
+      "label": "Confirmed mint (GHOST)",
+      "tier": "confirmed"
+    }
+  ],
+  "metrics": {
+    "totalScammedUsd_bkokoski": 4500000,
+    "totalScammedUsd_sxyz500": 1200000,
+    "totalScammedUsd_GordonGekko_documented": 485627,
+    "coordinatedExit_2026_03_20_usd": 210000,
+    "bk_evm_not_liquidated_usd": 400732,
+    "bk_paid_promo_documented_usd": 320800,
+    "sam_relay_cashout_3_days_usd": 117919,
+    "tokenCountByTier": {
+      "confirmed": 7,
+      "strong": 1,
+      "suspected": 1
+    },
+    "walletCount": 47,
+    "personCount": 6
+  },
+  "timeline": [
+    {
+      "date": "2022-07-03",
+      "event": "Dione deployer funded by KuCoin (2.5 ETH)",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2022-08-14",
+      "event": "DIONE token deployed on Ethereum",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2023-01",
+      "event": "Dione contracts Blockchain Dev Shop (Arriaga)",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2023-06-26",
+      "event": "BK personal EVM wallet 0x32B6… first-funded by Gate.io",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2023-07-09",
+      "event": "LOIC deployed by BK personal wallet (meme-token pattern)",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2024-09",
+      "event": "OpenVPP X account created",
+      "tier": "strong"
+    },
+    {
+      "date": "2024-10-30",
+      "event": "Dione V1→V2 migration — trading suspended, LP withdrawn, 'don't buy old token' warning",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2024-11-01",
+      "event": "Dione roadmap presentation: 'Energy, OVPP, Spark' (Parth)",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2024-11-22",
+      "event": "DIONE SPARK launched; OpenVPP in cohort 1 — no COI disclosure",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-03-19",
+      "event": "Djordje Stupar (@planted) admits being 'public voice of BOTIFY' on X",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-04-30",
+      "event": "Meeting confirmed — bkokoski + planted + GordonGekko",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-08-21",
+      "event": "OVPP ETH deployed (deployer funded by Coinbase 10)",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-09-02",
+      "event": "OVPP ATL ($0.01586)",
+      "tier": "strong"
+    },
+    {
+      "date": "2025-09-15",
+      "event": "OpenVPP claims 'working alongside' SEC Commissioner Peirce",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-09-16",
+      "event": "OVPP ATH",
+      "tier": "strong"
+    },
+    {
+      "date": "2025-09-17",
+      "event": "Peirce publicly refutes OpenVPP claim",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-10-30",
+      "event": "BK Carter wallet starts GHOST dumps",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-11-26",
+      "event": "SAM Mum: 213k GHOST dumped in 3 minutes",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-11-29",
+      "event": "BK Mom begins 10-week GHOST cashout ($5,207, 26 tx)",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2025-12-11",
+      "event": "OVPP Base deployed (approx)",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2026-01-30",
+      "event": "SAM Dad starts 4h-interval swap-bot cashout",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2026-03-19T23:25Z",
+      "event": "BK posts departure from Dione on X",
+      "tier": "confirmed"
+    },
+    {
+      "date": "2026-03-20T08:05Z",
+      "event": "Exit hub HeaiDUtMQ starts — T+520min after X post; $210K USDC in 3h",
+      "tier": "confirmed"
+    }
+  ]
+}
