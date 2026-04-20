@@ -297,7 +297,7 @@ export function AskInterligensChat({ summary, locale }: Props) {
         <button
           onClick={() => handleSubmit()}
           disabled={isLoading || !input.trim()}
-          className="shrink-0 h-9 bg-[#F85B05] text-black font-black uppercase text-[10px] tracking-[0.15em] px-4 rounded-lg hover:bg-[#ff7a1a] hover:text-black transition-all active:scale-95 disabled:opacity-50 disabled:hover:bg-[#F85B05]"
+          className="shrink-0 h-9 bg-white text-black font-black uppercase text-[10px] tracking-[0.15em] px-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all active:scale-95 disabled:text-black/40"
         >
           {t('ask', locale)}
         </button>
