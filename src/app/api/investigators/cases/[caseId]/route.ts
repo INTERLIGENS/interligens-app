@@ -121,3 +121,46 @@ export async function PATCH(request: NextRequest, { params }: RouteCtx) {
     archivedAt: updated.archivedAt,
   });
 }
+
+/**
+ * Hard-delete a case and everything it owns.
+ *
+ * Ownership is derived server-side from the session via getVaultWorkspace
+ * + assertCaseOwnership — we NEVER trust a client-sent profileId. Cascade
+ * deletes (declared in the Prisma schema on VaultCaseEntity / File / Note
+ * / Timeline / Hypothesis / TimelineEvent / PublishCandidate) remove the
+ * children automatically. VaultAuditLog entries referencing this caseId
+ * intentionally remain: they have a nullable caseId and audit trails must
+ * survive the resource they describe.
+ */
+export async function DELETE(request: NextRequest, { params }: RouteCtx) {
+  const { caseId } = await params;
+  const ctx = await getVaultWorkspace(request);
+  if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const owner = await assertCaseOwnership(ctx.workspace.id, caseId);
+  if (owner instanceof NextResponse) return owner;
+
+  // Audit BEFORE the delete so the log survives even if cascade fails.
+  await logAudit({
+    investigatorAccessId: ctx.access.id,
+    profileId: ctx.profile.id,
+    workspaceId: ctx.workspace.id,
+    caseId,
+    action: "CASE_DELETED",
+    actor: ctx.access.label,
+    request,
+    fingerprint: buildFingerprint(request),
+  });
+
+  try {
+    await prisma.vaultCase.delete({ where: { id: caseId } });
+  } catch (err) {
+    console.error("[investigators/cases] delete failed", err);
+    return NextResponse.json(
+      { error: "delete_failed" },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ success: true });
+}

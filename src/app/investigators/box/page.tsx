@@ -126,6 +126,87 @@ function DashboardInner() {
     "recent"
   );
 
+  // Case-card action menu + rename/delete modal state.
+  const [menuOpenForId, setMenuOpenForId] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<DecryptedCase | null>(null);
+  const [renameInput, setRenameInput] = useState("");
+  const [renameBusy, setRenameBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DecryptedCase | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  function openRename(c: DecryptedCase) {
+    setRenameTarget(c);
+    setRenameInput(c.title);
+    setMenuOpenForId(null);
+  }
+
+  function openDelete(c: DecryptedCase) {
+    setDeleteTarget(c);
+    setMenuOpenForId(null);
+  }
+
+  async function submitRename() {
+    if (!keys || !renameTarget || renameBusy) return;
+    const next = renameInput.trim();
+    if (!next || next === renameTarget.title) {
+      setRenameTarget(null);
+      return;
+    }
+    setRenameBusy(true);
+    try {
+      const ct = await encryptString(next, keys.metaKey);
+      const res = await fetch(
+        `/api/investigators/cases/${renameTarget.id}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ titleEnc: ct.enc, titleIv: ct.iv }),
+        }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setCases((prev) =>
+        prev.map((c) =>
+          c.id === renameTarget.id
+            ? { ...c, titleEnc: data.titleEnc, titleIv: data.titleIv, title: next }
+            : c,
+        ),
+      );
+      setRenameTarget(null);
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
+  async function submitDelete() {
+    if (!deleteTarget || deleteBusy) return;
+    setDeleteBusy(true);
+    try {
+      const res = await fetch(
+        `/api/investigators/cases/${deleteTarget.id}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) return;
+      setCases((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  // Close the kebab menu on any outside click.
+  useEffect(() => {
+    if (!menuOpenForId) return;
+    function onDown(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest?.("[data-case-menu]")) {
+        setMenuOpenForId(null);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menuOpenForId]);
+
   useEffect(() => {
     if (!keys) return;
     fetch("/api/investigators/workspace/metrics")
@@ -784,9 +865,14 @@ function DashboardInner() {
                   },
                 };
                 const col = statusColors[c.status] ?? statusColors.PRIVATE;
+                const canManage = Boolean(keys);
+                const menuOpen = menuOpenForId === c.id;
                 return (
-                  <Link
+                  <div
                     key={c.id}
+                    style={{ position: "relative" }}
+                  >
+                  <Link
                     href={`/investigators/box/cases/${c.id}`}
                     className="block transition-colors hover:border-[rgba(255,107,0,0.2)]"
                     style={{
@@ -804,6 +890,7 @@ function DashboardInner() {
                         fontSize: 16,
                         marginBottom: 10,
                         wordBreak: "break-word",
+                        paddingRight: canManage ? 32 : 0,
                       }}
                     >
                       {c.title}
@@ -855,11 +942,304 @@ function DashboardInner() {
                       {new Date(c.updatedAt).toLocaleDateString()}
                     </div>
                   </Link>
+                  {canManage && (
+                    <div
+                      data-case-menu
+                      style={{ position: "absolute", top: 14, right: 12 }}
+                    >
+                      <button
+                        type="button"
+                        aria-label="Case actions"
+                        aria-haspopup="menu"
+                        aria-expanded={menuOpen}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setMenuOpenForId(menuOpen ? null : c.id);
+                        }}
+                        style={{
+                          width: 28,
+                          height: 28,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "transparent",
+                          border: "1px solid transparent",
+                          borderRadius: 4,
+                          color: "rgba(255,255,255,0.5)",
+                          cursor: "pointer",
+                          fontSize: 18,
+                          lineHeight: 1,
+                          transition:
+                            "background 150ms, border-color 150ms, color 150ms",
+                        }}
+                        className="case-kebab"
+                      >
+                        &#x22EE;
+                      </button>
+                      {menuOpen && (
+                        <div
+                          role="menu"
+                          style={{
+                            position: "absolute",
+                            right: 0,
+                            top: 32,
+                            minWidth: 150,
+                            background: "#0d0d0d",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            borderRadius: 6,
+                            boxShadow:
+                              "0 10px 30px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)",
+                            padding: 4,
+                            zIndex: 20,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openRename(c);
+                            }}
+                            className="case-menu-item"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openDelete(c);
+                            }}
+                            className="case-menu-item case-menu-item--danger"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  </div>
                 );
               })}
           </div>
         )}
       </div>
+
+      {/* Rename modal — reuses the PATCH endpoint; title is re-encrypted
+          client-side with the investigator's metaKey before sending. */}
+      {renameTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !renameBusy && setRenameTarget(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 440,
+              background: "#0a0a0a",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 8,
+              padding: 24,
+            }}
+          >
+            <div style={LABEL_STYLE}>Rename case</div>
+            <input
+              autoFocus
+              value={renameInput}
+              onChange={(e) => setRenameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitRename();
+                if (e.key === "Escape" && !renameBusy) setRenameTarget(null);
+              }}
+              placeholder="New case title"
+              style={{ ...INPUT_STYLE, marginTop: 8 }}
+            />
+            <div style={HELPER_STYLE}>
+              Title is encrypted client-side before leaving your browser.
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                marginTop: 20,
+              }}
+            >
+              <button
+                type="button"
+                disabled={renameBusy}
+                onClick={() => setRenameTarget(null)}
+                style={SECONDARY_BTN}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={renameBusy || !renameInput.trim()}
+                onClick={submitRename}
+                style={{
+                  ...PRIMARY_BTN,
+                  opacity: renameBusy || !renameInput.trim() ? 0.6 : 1,
+                }}
+              >
+                {renameBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal — destructive wording, server derives
+          ownership from session so a non-owner can never delete a case
+          they don't own. */}
+      {deleteTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !deleteBusy && setDeleteTarget(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 460,
+              background: "#0a0a0a",
+              border: "1px solid rgba(255,64,64,0.35)",
+              borderRadius: 8,
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                textTransform: "uppercase",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                color: "#ff4040",
+                marginBottom: 8,
+              }}
+            >
+              Delete case
+            </div>
+            <div
+              style={{
+                fontSize: 16,
+                color: "#FFFFFF",
+                fontWeight: 600,
+                marginBottom: 6,
+                wordBreak: "break-word",
+              }}
+            >
+              {(() => {
+                const readable =
+                  deleteTarget.title &&
+                  !deleteTarget.title.startsWith("[unreadable") &&
+                  deleteTarget.title !== ENCRYPTED_PLACEHOLDER;
+                if (readable) return deleteTarget.title;
+                return (
+                  <>
+                    Case <span style={{ fontFamily: "ui-monospace, monospace" }}>
+                      {deleteTarget.id.slice(0, 8)}
+                    </span>{" "}
+                    <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>
+                      (title unreadable)
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 13,
+                lineHeight: 1.5,
+                marginTop: 12,
+              }}
+            >
+              This permanently deletes the case and every entity, file, note,
+              timeline event, and hypothesis inside it. This cannot be undone.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                marginTop: 20,
+              }}
+            >
+              <button
+                type="button"
+                disabled={deleteBusy}
+                onClick={() => setDeleteTarget(null)}
+                style={SECONDARY_BTN}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteBusy}
+                onClick={submitDelete}
+                style={{
+                  ...PRIMARY_BTN,
+                  backgroundColor: "#ff4040",
+                  opacity: deleteBusy ? 0.6 : 1,
+                }}
+              >
+                {deleteBusy ? "Deleting…" : "Delete case"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .case-kebab:hover {
+          background: rgba(255,255,255,0.06);
+          border-color: rgba(255,255,255,0.12);
+          color: #FFFFFF;
+        }
+        .case-menu-item {
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 8px 12px;
+          background: transparent;
+          border: 0;
+          color: rgba(255,255,255,0.8);
+          font-size: 13px;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: background 120ms ease, color 120ms ease;
+        }
+        .case-menu-item:hover { background: rgba(255,255,255,0.06); color: #FFFFFF; }
+        .case-menu-item--danger { color: #ff7070; }
+        .case-menu-item--danger:hover { background: rgba(255,64,64,0.1); color: #ff4040; }
+      `}</style>
     </main>
   );
 }

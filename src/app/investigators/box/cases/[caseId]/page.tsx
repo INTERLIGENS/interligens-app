@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import VaultGate from "@/components/vault/VaultGate";
 import EntityLaunchpad from "@/components/vault/EntityLaunchpad";
 import EntityAddForm from "@/components/vault/EntityAddForm";
@@ -162,6 +163,9 @@ function CaseInner({ caseId }: { caseId: string }) {
   const [hasBlockingConflicts, setHasBlockingConflicts] = useState(false);
   const [walletJourneyId, setWalletJourneyId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [deleteCaseOpen, setDeleteCaseOpen] = useState(false);
+  const [deleteCaseBusy, setDeleteCaseBusy] = useState(false);
+  const router = useRouter();
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("ALL");
   const [filterHasIntel, setFilterHasIntel] = useState(false);
   const [filterHasScore, setFilterHasScore] = useState(false);
@@ -579,6 +583,24 @@ function CaseInner({ caseId }: { caseId: string }) {
             >
               Redact screenshot
             </Link>
+            <button
+              type="button"
+              onClick={() => setDeleteCaseOpen(true)}
+              style={{
+                fontSize: 13,
+                color: "#ff7070",
+                border: "1px solid rgba(255,64,64,0.28)",
+                borderRadius: 6,
+                padding: "8px 16px",
+                background: "none",
+                cursor: "pointer",
+                transition: "color 150ms, border-color 150ms, background 150ms",
+              }}
+              className="case-detail-delete"
+              aria-label="Delete case"
+            >
+              Delete case
+            </button>
           </div>
         </div>
         <div className="flex flex-wrap gap-1 mt-2 mb-6">
@@ -1590,10 +1612,160 @@ function CaseInner({ caseId }: { caseId: string }) {
           onClose={() => setShareOpen(false)}
         />
       )}
+      {deleteCaseOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !deleteCaseBusy && setDeleteCaseOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 460,
+              background: "#0a0a0a",
+              border: "1px solid rgba(255,64,64,0.35)",
+              borderRadius: 8,
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                textTransform: "uppercase",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                color: "#ff4040",
+                marginBottom: 8,
+              }}
+            >
+              Delete case
+            </div>
+            <div
+              style={{
+                fontSize: 16,
+                color: "#FFFFFF",
+                fontWeight: 600,
+                marginBottom: 6,
+                wordBreak: "break-word",
+              }}
+            >
+              {title && !title.startsWith("[unreadable") ? (
+                title
+              ) : (
+                <>
+                  Case{" "}
+                  <span style={{ fontFamily: "ui-monospace, monospace" }}>
+                    {caseId.slice(0, 8)}
+                  </span>{" "}
+                  <span
+                    style={{
+                      color: "rgba(255,255,255,0.4)",
+                      fontWeight: 400,
+                    }}
+                  >
+                    (title unreadable)
+                  </span>
+                </>
+              )}
+            </div>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 13,
+                lineHeight: 1.5,
+                marginTop: 12,
+              }}
+            >
+              This permanently deletes the case and every entity, file, note,
+              timeline event, and hypothesis inside it. This cannot be undone.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                marginTop: 20,
+              }}
+            >
+              <button
+                type="button"
+                disabled={deleteCaseBusy}
+                onClick={() => setDeleteCaseOpen(false)}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "rgba(255,255,255,0.5)",
+                  height: 44,
+                  borderRadius: 6,
+                  fontSize: 14,
+                  padding: "0 20px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteCaseBusy}
+                onClick={async () => {
+                  if (deleteCaseBusy) return;
+                  setDeleteCaseBusy(true);
+                  try {
+                    const res = await fetch(
+                      `/api/investigators/cases/${caseId}`,
+                      { method: "DELETE" },
+                    );
+                    if (res.ok) {
+                      router.push("/investigators/box");
+                    } else {
+                      toast.showError("Delete failed. Try again.");
+                      setDeleteCaseBusy(false);
+                    }
+                  } catch {
+                    toast.showError("Delete failed. Try again.");
+                    setDeleteCaseBusy(false);
+                  }
+                }}
+                style={{
+                  backgroundColor: "#ff4040",
+                  color: "#FFFFFF",
+                  height: 44,
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  padding: "0 20px",
+                  cursor: "pointer",
+                  opacity: deleteCaseBusy ? 0.6 : 1,
+                  border: "none",
+                }}
+              >
+                {deleteCaseBusy ? "Deleting…" : "Delete case"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <NextBestStepToast
         step={toastStep}
         onDismiss={() => setToastStep(null)}
       />
+      <style>{`
+        .case-detail-delete:hover {
+          color: #ff4040;
+          border-color: rgba(255,64,64,0.5);
+          background: rgba(255,64,64,0.08);
+        }
+      `}</style>
     </main>
   );
 }
