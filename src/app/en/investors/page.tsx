@@ -55,8 +55,16 @@ export default function InvestorsPage() {
             <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Data Room</div>
             <div style={{ fontSize: 12, color: '#52525b', lineHeight: 1.5 }}>Architecture, methodology, evidence system, security, legal, financials.</div>
           </div>
+          {/*
+            The canonical URL is https://data.interligens.com but the DNS
+            record is missing in Cloudflare (NXDOMAIN). Swap back to
+            data.interligens.com once the CNAME is added:
+              CNAME data → cname.vercel-dns.com  (DNS-only, grey cloud)
+            The Vercel project `interligens-dataroom` is already live and
+            has `data.interligens.com` listed as an alias.
+          */}
           <a
-            href="https://data.interligens.com"
+            href="https://interligens-dataroom.vercel.app"
             target="_blank"
             rel="noopener noreferrer"
             style={{
