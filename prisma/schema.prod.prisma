@@ -2370,3 +2370,171 @@ model SecurityAuditLog {
   @@index([targetType, targetId])
   @@index([createdAt(sort: Desc)])
 }
+
+// ─── MM Pattern Engine (release surface) ──────────────────────────────────
+// Scope: scan persistence + cohort baselines only. Registry sub-module
+// (MmEntity, MmAttribution, etc.) is intentionally excluded from this
+// release — see src/lib/mm/index.ts and docs in commit message.
+
+enum MmRiskBand {
+  GREEN
+  YELLOW
+  ORANGE
+  RED
+}
+
+enum MmChain {
+  SOLANA
+  ETHEREUM
+  BASE
+  ARBITRUM
+  OPTIMISM
+  BNB
+  POLYGON
+}
+
+enum MmSubjectType {
+  WALLET
+  TOKEN
+  ENTITY
+}
+
+enum MmTriggerType {
+  CRON
+  API_PUBLIC
+  API_ADMIN
+  TIGERSCORE_INTEGRATION
+  BATCH_SCAN
+}
+
+enum MmDetectorType {
+  WASH_TRADING
+  CLUSTER_COORDINATION
+  CONCENTRATION_ABNORMALITY
+  PRICE_ASYMMETRY
+  POST_LISTING_PUMP
+  KNOWN_ENTITY_FLOOR
+  FAKE_LIQUIDITY
+}
+
+enum MmSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model MmScanRun {
+  id                  String         @id @default(cuid())
+  subjectType         MmSubjectType
+  subjectId           String
+  chain               MmChain
+  engineVersion       String
+  detectorsVersion    Json
+  schemaVersion       Int
+  cohortKey           String
+  cohortPercentiles   Json
+  dataSources         Json
+  rawDataRef          String?
+  registryDrivenScore Int
+  behaviorDrivenScore Int
+  displayScore        Int
+  confidenceLevel     String
+  coverageLevel       String
+  dominantDriver      String
+  displayReason       String
+  signalsCount        Int
+  triggeredBy         MmTriggerType
+  triggeredByRef      String?
+  durationMs          Int
+  errors              Json?
+  createdAt           DateTime       @default(now())
+
+  detectorOutputs MmDetectorOutput[]
+
+  @@index([subjectId, chain])
+  @@index([createdAt])
+}
+
+model MmDetectorOutput {
+  id              String         @id @default(cuid())
+  scanRunId       String
+  detectorType    MmDetectorType
+  detectorVersion String
+  score           Int
+  signalsCount    Int
+  signals         Json
+  evidence        Json
+  durationMs      Int
+
+  scanRun MmScanRun @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
+
+  @@index([scanRunId])
+  @@index([detectorType])
+}
+
+model MmSignal {
+  // Retains mmEntityId as a nullable opaque string so Phase 6 can re-enable
+  // the relation without a data migration. No FK in this release.
+  id           String         @id @default(cuid())
+  subjectType  MmSubjectType
+  subjectId    String
+  chain        MmChain
+  detectorType MmDetectorType
+  severity     MmSeverity
+  scoreImpact  Int
+  evidence     Json
+  description  String         @db.Text
+  detectedAt   DateTime       @default(now())
+  expiresAt    DateTime?
+  scanRunId    String?
+  mmEntityId   String?
+
+  @@index([subjectId, chain])
+  @@index([detectorType])
+  @@index([detectedAt])
+}
+
+model MmScore {
+  id                  String        @id @default(cuid())
+  subjectType         MmSubjectType
+  subjectId           String
+  chain               MmChain
+  registryDrivenScore Int
+  behaviorDrivenScore Int
+  displayScore        Int
+  band                MmRiskBand
+  confidence          String
+  coverage            String
+  dominantDriver      String
+  displayReason       String
+  breakdown           Json
+  signalsCount        Int
+  scanRunId           String
+  computedAt          DateTime      @default(now())
+  expiresAt           DateTime
+  schemaVersion       Int           @default(1)
+
+  @@unique([subjectType, subjectId, chain])
+  @@index([computedAt])
+}
+
+model MmCohortPercentile {
+  id                   String   @id @default(cuid())
+  cohortKey            String
+  metricName           String
+  p50                  Float
+  p75                  Float
+  p90                  Float
+  p95                  Float
+  p99                  Float
+  sampleSize           Int
+  excludedFlaggedCount Int
+  computedAt           DateTime @default(now())
+  schemaVersion        Int      @default(1)
+  notes                String?  @db.Text
+
+  @@unique([cohortKey, metricName, schemaVersion])
+  @@index([cohortKey])
+  @@index([computedAt])
+}

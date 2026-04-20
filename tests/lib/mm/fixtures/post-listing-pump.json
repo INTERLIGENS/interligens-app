@@ -1,0 +1,170 @@
+{
+  "tokenId": "PUMP",
+  "chain": "SOLANA",
+  "listingDate": 1700000000,
+  "priceAtListing": 0.01,
+  "priceAt7Days": 0.025,
+  "volumeByWallet": [
+    {
+      "wallet": "whale-1",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-2",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-3",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-4",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-5",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-6",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-7",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-8",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-9",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "whale-10",
+      "volumeUsd": 80000
+    },
+    {
+      "wallet": "tail-0",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-1",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-2",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-3",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-4",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-5",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-6",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-7",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-8",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-9",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-10",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-11",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-12",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-13",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-14",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-15",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-16",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-17",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-18",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-19",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-20",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-21",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-22",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-23",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-24",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-25",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-26",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-27",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-28",
+      "volumeUsd": 6666.666666666667
+    },
+    {
+      "wallet": "tail-29",
+      "volumeUsd": 6666.666666666667
+    }
+  ],
+  "totalVolumeUsd": 1000000
+}
