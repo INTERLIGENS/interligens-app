@@ -2,19 +2,17 @@
 
 import { useState } from "react";
 
-const ACCENT = "#FF6B00";
-const BG = "#000000";
+type DocCategory = "LEGAL" | "DATA_ROOM" | "OPERATIONAL" | "EDITORIAL";
 
-type DocCategory = "LEGAL" | "DATA_ROOM" | "OPS";
-
-type Doc = {
+type DocCard = {
   title: string;
   description: string;
   category: DocCategory;
   version: string;
+  url?: string;
 };
 
-const DOCS: Doc[] = [
+const DOCS: DocCard[] = [
   {
     title: "NDA Investigators v1.0",
     description:
@@ -24,358 +22,542 @@ const DOCS: Doc[] = [
   },
   {
     title: "Terms of Service v1.0",
-    description: "Conditions d'utilisation du programme investigators",
+    description:
+      "Conditions d'utilisation du programme investigators",
     category: "LEGAL",
     version: "v1.0",
   },
   {
     title: "Publishing Standard v1.0",
-    description: "Standard éditorial — 3 buckets de preuves vérifiées",
-    category: "LEGAL",
+    description:
+      "Standard éditorial — 3 buckets de preuves vérifiées",
+    category: "EDITORIAL",
     version: "v1.0",
   },
   {
     title: "Pitch Deck Pre-seed",
-    description: "Présentation investisseurs — €2M Post-money SAFE",
+    description:
+      "Présentation investisseurs — €2M Post-money SAFE",
     category: "DATA_ROOM",
-    version: "v1.0",
+    version: "2026-Q1",
   },
   {
     title: "Modèle Financier",
-    description: "Projections 3 ans — hypothèses et métriques clés",
+    description:
+      "Projections 3 ans — hypothèses et métriques clés",
     category: "DATA_ROOM",
-    version: "v1.0",
+    version: "2026-Q1",
   },
   {
     title: "Cap Table",
-    description: "Structure de capitalisation — fondateurs + equity",
+    description:
+      "Structure de capitalisation — fondateurs + equity investigators",
     category: "DATA_ROOM",
-    version: "v1.0",
+    version: "2026-Q1",
   },
   {
     title: "Methodology — TigerScore",
-    description: "Documentation du moteur de scoring propriétaire",
-    category: "OPS",
+    description:
+      "Documentation du moteur de scoring propriétaire",
+    category: "OPERATIONAL",
     version: "v1.0",
   },
   {
     title: "Retail Charter v1.0",
-    description: "Charte de communication retail INTERLIGENS",
-    category: "OPS",
+    description:
+      "Charte de communication retail INTERLIGENS",
+    category: "OPERATIONAL",
     version: "v1.0",
   },
   {
     title: "Investigator Handbook",
-    description: "Guide complet du programme Trusted Investigators",
-    category: "OPS",
+    description:
+      "Guide complet du programme Trusted Investigators",
+    category: "OPERATIONAL",
     version: "v1.0",
   },
 ];
 
-const CAT_LABEL: Record<DocCategory, string> = {
+const BG = "#000000";
+const ACCENT = "#FF6B00";
+const TEXT = "#FFFFFF";
+const DIM = "rgba(255,255,255,0.4)";
+const MUTED = "rgba(255,255,255,0.25)";
+const CARD_BG = "rgba(255,255,255,0.02)";
+const CARD_BORDER = "rgba(255,255,255,0.06)";
+
+const CATEGORY_LABEL: Record<DocCategory, string> = {
   LEGAL: "Légal",
-  DATA_ROOM: "Data Room",
-  OPS: "Opérationnel",
+  DATA_ROOM: "Data room",
+  OPERATIONAL: "Opérationnel",
+  EDITORIAL: "Éditorial",
+};
+
+const CATEGORY_COLOR: Record<DocCategory, string> = {
+  LEGAL: ACCENT,
+  DATA_ROOM: "rgba(255,255,255,0.8)",
+  OPERATIONAL: "rgba(255,255,255,0.35)",
+  EDITORIAL: ACCENT,
+};
+
+const SECTION_HEADER: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 900,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  color: ACCENT,
+  marginBottom: 16,
+  marginTop: 36,
 };
 
 const CARD: React.CSSProperties = {
-  background: "rgba(255,255,255,0.02)",
-  border: "1px solid rgba(255,255,255,0.06)",
+  background: CARD_BG,
+  border: "1px solid " + CARD_BORDER,
   borderRadius: 8,
   padding: 20,
-  transition: "border-color 150ms",
 };
 
 export default function AdminDocumentsPage() {
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    category: "LEGAL" as DocCategory,
-    version: "",
-    file: null as File | null,
-  });
+  const [uploadName, setUploadName] = useState("");
+  const [uploadDesc, setUploadDesc] = useState("");
+  const [uploadCategory, setUploadCategory] = useState<DocCategory>("LEGAL");
+  const [uploadVersion, setUploadVersion] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  function handleUploadSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    // Persist wiring to /api/admin/documents/presign + PUT is scheduled for
+    // a follow-up session. For now, log and reset so the form is functional.
+    console.log("[admin/documents] upload submit (not yet wired)", {
+      title: uploadName,
+      description: uploadDesc,
+      category: uploadCategory,
+      version: uploadVersion,
+      fileName: uploadFile?.name,
+      fileSize: uploadFile?.size,
+    });
+    alert(
+      "Metadata captured — R2 upload pipeline will be wired in a later session.",
+    );
+  }
 
   return (
-    <div
+    <main
       style={{
         minHeight: "100vh",
         background: BG,
-        color: "#FFFFFF",
-        padding: "32px 40px 80px",
+        color: TEXT,
+        padding: "40px 40px 80px",
         fontFamily:
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}
     >
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div
           style={{
             fontSize: 11,
+            fontWeight: 900,
+            letterSpacing: "0.18em",
             textTransform: "uppercase",
-            letterSpacing: "0.12em",
             color: ACCENT,
-            fontWeight: 700,
+            marginBottom: 6,
           }}
         >
           DOCUMENTS OFFICIELS
         </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: "rgba(255,255,255,0.45)",
-            marginTop: 6,
-          }}
-        >
+        <div style={{ fontSize: 12, color: DIM }}>
           NDA · Terms · Data Room · Opérationnel
         </div>
 
-        {/* 9 docs grid */}
+        {/* SECTION 1 — Hardcoded document cards */}
+        <div style={SECTION_HEADER}>1 · Bibliothèque</div>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 12,
-            marginTop: 32,
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 14,
           }}
         >
-          {DOCS.map((d) => (
+          {DOCS.map((doc) => (
             <div
-              key={d.title}
+              key={doc.title}
               className="interligens-doc-card"
               style={CARD}
             >
               <div
                 style={{
+                  display: "inline-block",
                   fontSize: 9,
-                  textTransform: "uppercase",
+                  fontWeight: 900,
                   letterSpacing: "0.12em",
-                  color: ACCENT,
-                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  color: CATEGORY_COLOR[doc.category],
+                  padding: "3px 8px",
+                  border: "1px solid " + CATEGORY_COLOR[doc.category] + "55",
+                  borderRadius: 3,
+                  marginBottom: 10,
+                  fontFamily: "monospace",
                 }}
               >
-                {CAT_LABEL[d.category]}
+                {CATEGORY_LABEL[doc.category]}
               </div>
               <div
                 style={{
                   fontSize: 14,
-                  color: "#FFFFFF",
                   fontWeight: 600,
-                  marginTop: 8,
+                  color: TEXT,
+                  lineHeight: 1.35,
+                  marginBottom: 6,
                 }}
               >
-                {d.title}
+                {doc.title}
               </div>
               <div
                 style={{
                   fontSize: 12,
-                  color: "rgba(255,255,255,0.45)",
-                  marginTop: 6,
-                  lineHeight: 1.5,
+                  color: "rgba(255,255,255,0.55)",
+                  lineHeight: 1.55,
+                  marginBottom: 12,
+                  minHeight: 36,
                 }}
               >
-                {d.description}
+                {doc.description}
               </div>
-              <button
-                disabled
+              <div
                 style={{
-                  marginTop: 14,
-                  padding: "8px 12px",
-                  background: "transparent",
-                  color: "rgba(255,255,255,0.3)",
                   fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 4,
-                  cursor: "not-allowed",
+                  color: MUTED,
+                  fontFamily: "monospace",
+                  marginBottom: 12,
                 }}
               >
-                À uploader
-              </button>
+                {doc.version} · status : à uploader
+              </div>
+              {doc.url ? (
+                <a
+                  href={doc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block",
+                    padding: "8px 14px",
+                    background: ACCENT,
+                    color: BG,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    letterSpacing: "0.12em",
+                    fontFamily: "monospace",
+                    textTransform: "uppercase",
+                    borderRadius: 4,
+                    textDecoration: "none",
+                  }}
+                >
+                  Télécharger PDF
+                </a>
+              ) : (
+                <button
+                  disabled
+                  style={{
+                    padding: "8px 14px",
+                    background: "transparent",
+                    color: DIM,
+                    border: "1px solid " + CARD_BORDER,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    letterSpacing: "0.12em",
+                    fontFamily: "monospace",
+                    textTransform: "uppercase",
+                    borderRadius: 4,
+                    cursor: "not-allowed",
+                  }}
+                >
+                  À uploader
+                </button>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Upload */}
-        <div style={{ ...CARD, marginTop: 32 }}>
+        <style>{`
+          .interligens-doc-card {
+            transition: border-color 150ms;
+          }
+          .interligens-doc-card:hover {
+            border-color: rgba(255,107,0,0.3) !important;
+          }
+        `}</style>
+
+        {/* SECTION 2 — Upload new document */}
+        <div style={SECTION_HEADER}>2 · Ajouter un document</div>
+        <form onSubmit={handleUploadSubmit} style={CARD}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 14,
+              marginBottom: 14,
+            }}
+          >
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: DIM,
+                  fontFamily: "monospace",
+                }}
+              >
+                Nom
+              </span>
+              <input
+                type="text"
+                value={uploadName}
+                onChange={(e) => setUploadName(e.target.value)}
+                required
+                style={{
+                  background: "#0d0d0d",
+                  border: "1px solid " + CARD_BORDER,
+                  color: TEXT,
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  outline: "none",
+                  borderRadius: 6,
+                }}
+              />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: DIM,
+                  fontFamily: "monospace",
+                }}
+              >
+                Version
+              </span>
+              <input
+                type="text"
+                value={uploadVersion}
+                onChange={(e) => setUploadVersion(e.target.value)}
+                placeholder="v1.0"
+                style={{
+                  background: "#0d0d0d",
+                  border: "1px solid " + CARD_BORDER,
+                  color: TEXT,
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  outline: "none",
+                  borderRadius: 6,
+                }}
+              />
+            </label>
+          </div>
+          <label
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              marginBottom: 14,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                color: DIM,
+                fontFamily: "monospace",
+              }}
+            >
+              Description
+            </span>
+            <textarea
+              value={uploadDesc}
+              onChange={(e) => setUploadDesc(e.target.value)}
+              rows={3}
+              style={{
+                background: "#0d0d0d",
+                border: "1px solid " + CARD_BORDER,
+                color: TEXT,
+                padding: "10px 12px",
+                fontSize: 13,
+                fontFamily: "inherit",
+                outline: "none",
+                borderRadius: 6,
+                resize: "vertical",
+              }}
+            />
+          </label>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 14,
+              marginBottom: 14,
+            }}
+          >
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: DIM,
+                  fontFamily: "monospace",
+                }}
+              >
+                Catégorie
+              </span>
+              <select
+                value={uploadCategory}
+                onChange={(e) =>
+                  setUploadCategory(e.target.value as DocCategory)
+                }
+                style={{
+                  background: "#0d0d0d",
+                  border: "1px solid " + CARD_BORDER,
+                  color: TEXT,
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  outline: "none",
+                  borderRadius: 6,
+                  appearance: "none",
+                }}
+              >
+                <option value="LEGAL">Légal</option>
+                <option value="DATA_ROOM">Data room</option>
+                <option value="OPERATIONAL">Opérationnel</option>
+                <option value="EDITORIAL">Éditorial</option>
+              </select>
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: DIM,
+                  fontFamily: "monospace",
+                }}
+              >
+                Fichier (.pdf)
+              </span>
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                style={{
+                  background: "#0d0d0d",
+                  border: "1px solid " + CARD_BORDER,
+                  color: DIM,
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                  borderRadius: 6,
+                }}
+              />
+            </label>
+          </div>
+          <button
+            type="submit"
+            style={{
+              padding: "12px 22px",
+              background: ACCENT,
+              color: BG,
+              border: "none",
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: "0.15em",
+              fontFamily: "monospace",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              borderRadius: 6,
+            }}
+          >
+            Uploader
+          </button>
           <div
             style={{
               fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              color: ACCENT,
-              fontWeight: 700,
-              marginBottom: 16,
+              color: MUTED,
+              fontStyle: "italic",
+              marginTop: 10,
             }}
           >
-            Uploader un document
+            Fichiers stockés sur Cloudflare R2. Pipeline d'upload à brancher
+            dans une session dédiée.
           </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              console.log("Upload document:", form);
-            }}
-            style={{ display: "grid", gap: 10 }}
-          >
-            <input
-              type="text"
-              placeholder="Nom"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              style={inputStyle}
-            />
-            <input
-              type="text"
-              placeholder="Description"
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              style={inputStyle}
-            />
-            <select
-              value={form.category}
-              onChange={(e) =>
-                setForm({ ...form, category: e.target.value as DocCategory })
-              }
-              style={inputStyle}
-            >
-              <option value="LEGAL">Légal</option>
-              <option value="DATA_ROOM">Data Room</option>
-              <option value="OPS">Opérationnel</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Version (ex: v1.0)"
-              value={form.version}
-              onChange={(e) => setForm({ ...form, version: e.target.value })}
-              style={inputStyle}
-            />
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(e) =>
-                setForm({ ...form, file: e.target.files?.[0] ?? null })
-              }
-              style={{ ...inputStyle, padding: 8 }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: "10px 16px",
-                background: ACCENT,
-                color: "#000",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-                justifySelf: "start",
-              }}
-            >
-              Uploader
-            </button>
-          </form>
-        </div>
+        </form>
 
-        {/* Quick access */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 12,
-            marginTop: 24,
-          }}
-        >
-          <QuickLink
-            href="#"
-            label="Data Room"
-            note="data.interligens.com — à configurer"
-          />
-          <QuickLink
+        {/* SECTION 3 — Quick access */}
+        <div style={SECTION_HEADER}>3 · Accès rapide</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a
+            href="https://data.interligens.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: "12px 20px",
+              background: CARD_BG,
+              border: "1px solid " + CARD_BORDER,
+              color: TEXT,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              fontFamily: "monospace",
+              textTransform: "uppercase",
+              borderRadius: 6,
+              textDecoration: "none",
+            }}
+          >
+            Data Room →
+          </a>
+          <a
             href="/investigators/box"
-            label="Espace Investigators"
-            external
-          />
-          <QuickLink href="/admin/intel-vault" label="Base documentaire" />
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: "12px 20px",
+              background: CARD_BG,
+              border: "1px solid " + CARD_BORDER,
+              color: TEXT,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              fontFamily: "monospace",
+              textTransform: "uppercase",
+              borderRadius: 6,
+              textDecoration: "none",
+            }}
+          >
+            Espace Investigators →
+          </a>
+          <a
+            href="/admin/intel-vault"
+            style={{
+              padding: "12px 20px",
+              background: CARD_BG,
+              border: "1px solid " + CARD_BORDER,
+              color: TEXT,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              fontFamily: "monospace",
+              textTransform: "uppercase",
+              borderRadius: 6,
+              textDecoration: "none",
+            }}
+          >
+            Base documentaire →
+          </a>
         </div>
       </div>
-
-      <style>{`
-        .interligens-doc-card:hover {
-          border-color: rgba(255,107,0,0.3) !important;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-const inputStyle: React.CSSProperties = {
-  background: "rgba(0,0,0,0.6)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 6,
-  padding: "10px 12px",
-  color: "#fff",
-  fontSize: 12,
-  fontFamily: "inherit",
-};
-
-function QuickLink({
-  href,
-  label,
-  external,
-  note,
-}: {
-  href: string;
-  label: string;
-  external?: boolean;
-  note?: string;
-}) {
-  const style: React.CSSProperties = {
-    display: "block",
-    padding: "14px 18px",
-    background: "rgba(255,107,0,0.06)",
-    border: "1px solid rgba(255,107,0,0.2)",
-    borderRadius: 8,
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.1em",
-    textDecoration: "none",
-    textAlign: "center" as const,
-  };
-  const inner = (
-    <>
-      <div>{label} →</div>
-      {note && (
-        <div
-          style={{
-            fontSize: 9,
-            fontWeight: 500,
-            color: "rgba(255,255,255,0.4)",
-            marginTop: 4,
-            textTransform: "none",
-            letterSpacing: 0,
-          }}
-        >
-          {note}
-        </div>
-      )}
-    </>
-  );
-  if (external) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" style={style}>
-        {inner}
-      </a>
-    );
-  }
-  return (
-    <a href={href} style={style}>
-      {inner}
-    </a>
+    </main>
   );
 }

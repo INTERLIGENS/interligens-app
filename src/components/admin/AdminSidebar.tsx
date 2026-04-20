@@ -30,8 +30,7 @@ const SECTIONS: Section[] = [
     title: "Investigators",
     links: [
       { label: "Liste investigators", href: "/admin/investigators" },
-      { label: "Candidatures", href: "/admin/investigators?tab=applications" },
-      { label: "Inbox", href: "/admin/inbox" },
+      { label: "Candidatures", href: "/admin/investigators" },
       {
         label: "Espace Investigateur",
         href: "/investigators/box",
@@ -47,7 +46,6 @@ const SECTIONS: Section[] = [
       { label: "Corroboration", href: "/admin/corroboration" },
       { label: "Marquage d'adresses", href: "/admin/labels" },
       { label: "Dossiers publies", href: "/admin/cases" },
-      { label: "VINE OSINT", href: "/admin/vine-osint" },
     ],
   },
   {
@@ -56,12 +54,6 @@ const SECTIONS: Section[] = [
       { label: "Handles surveilles", href: "/admin/watch-sources" },
       { label: "Reseau KOL", href: "/admin/kol/network" },
       { label: "QA ASK", href: "/admin/ask-qa" },
-    ],
-  },
-  {
-    title: "Publication",
-    links: [
-      { label: "Threads X", href: "/admin/threads" },
     ],
   },
   {
@@ -76,9 +68,6 @@ const SECTIONS: Section[] = [
     links: [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
       { label: "Documents", href: "/admin/documents" },
-      { label: "CaseFile Generator", href: "/admin/casefile-generator" },
-      { label: "Plainte Generator", href: "/admin/plainte-generator" },
-      { label: "Evidence Vault", href: "/admin/evidence-vault" },
     ],
   },
 ];
