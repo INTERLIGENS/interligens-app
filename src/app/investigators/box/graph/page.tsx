@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SavedGraphsSection from "@/components/vault/SavedGraphsSection";
 
 export const metadata = {
   title: "Graph — INTERLIGENS",
@@ -98,7 +99,7 @@ export default function GraphLandingPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: 16,
             marginTop: 40,
           }}
@@ -117,12 +118,24 @@ export default function GraphLandingPage() {
             <div style={CARD_NUM}>02 · Create</div>
             <div style={CARD_TITLE}>Create your own graph</div>
             <p style={CARD_TEXT}>
-              Start a blank graph tied to one of your cases. Nodes, edges,
-              and evidence tiers are captured under the investigator vault.
+              Start a blank graph and map wallets, tokens, handles, and
+              evidence edges. Payloads are encrypted client-side.
             </p>
             <div style={CARD_CTA}>New graph &rarr;</div>
           </Link>
+
+          <Link href="/investigators/box/graphs" style={CARD_BASE} className="graph-landing-card">
+            <div style={CARD_NUM}>03 · My graphs</div>
+            <div style={CARD_TITLE}>Open saved graphs</div>
+            <p style={CARD_TEXT}>
+              Reopen, rename, or promote any graph you&apos;ve saved. Team-pool
+              shares and PUBLIC review flows live here.
+            </p>
+            <div style={CARD_CTA}>Browse &rarr;</div>
+          </Link>
         </div>
+
+        <SavedGraphsSection />
       </div>
 
       <style>{`
