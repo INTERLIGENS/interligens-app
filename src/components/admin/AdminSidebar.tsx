@@ -8,7 +8,27 @@ type SectionLink = {
   href: string;
   external?: boolean;
   accent?: boolean;
+  icon?: React.ReactNode;
 };
+
+// Inline shield — single-stroke, 12×12, currentColor so it inherits the row
+// colour (muted / accent on hover+active). No icon lib is imported in the
+// admin today; an inline SVG keeps the bundle zero-extra.
+const SHIELD_ICON = (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
 
 type Section = {
   title: string;
@@ -68,6 +88,7 @@ const SECTIONS: Section[] = [
     links: [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
       { label: "Documents", href: "/admin/documents" },
+      { label: "Security Center", href: "/admin/security", icon: SHIELD_ICON },
     ],
   },
 ];
@@ -172,6 +193,16 @@ export default function AdminSidebar() {
                 textDecoration: "none",
                 transition: "color 150ms, background 150ms",
               };
+              const labelBlock = (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  {link.icon && (
+                    <span style={{ display: "inline-flex", opacity: 0.8 }}>
+                      {link.icon}
+                    </span>
+                  )}
+                  <span>{link.label}</span>
+                </span>
+              );
               if (link.external) {
                 return (
                   <a
@@ -182,7 +213,7 @@ export default function AdminSidebar() {
                     className="interligens-admin-sidebar-link"
                     style={baseStyle}
                   >
-                    <span>{link.label}</span>
+                    {labelBlock}
                     <span style={{ fontSize: 11 }}>-&gt;</span>
                   </a>
                 );
@@ -194,7 +225,7 @@ export default function AdminSidebar() {
                   className="interligens-admin-sidebar-link"
                   style={baseStyle}
                 >
-                  <span>{link.label}</span>
+                  {labelBlock}
                 </Link>
               );
             })}
