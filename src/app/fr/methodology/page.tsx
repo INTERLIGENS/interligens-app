@@ -5,7 +5,7 @@ export default function MethodologyPageFR() {
     <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
       <BetaNav />
 
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '60px 24px' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(32px, 6vw, 60px) clamp(24px, 5vw, 48px)' }}>
 
         <div style={{ marginBottom: 40 }}>
           <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>MÉTHODOLOGIE DE PREUVE</div>
