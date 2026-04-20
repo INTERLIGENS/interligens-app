@@ -38,6 +38,9 @@ export type TigerInput = {
   evm_active_chains?: string[];
   evm_known_bad?: boolean;
   evm_in_watchlist?: boolean;
+  // ── Cross-chain signals — pre-computed by async detectors ──
+  /** Address-poisoning lookalike hit (see src/lib/tigerscore/signals/addressPoisoning.ts). */
+  addressPoisoning?: boolean;
 };
 
 // ── Pump-like detection ──────────────────────────────────────────────────────
@@ -98,6 +101,16 @@ export function computeTigerScore(input: TigerInput): TigerResult {
 
   if ((input.confirmedCriticalClaims ?? 0) >= 1)
     add({ id: "confirmed_critical_claims", label: "Confirmed critical claims on file", severity: "critical", delta: 70, why: "Detective-referenced critical evidence found" });
+
+  // ── Cross-chain: address-poisoning lookalike ─────────────────────────────
+  if (input.addressPoisoning === true)
+    add({
+      id: "address_poisoning",
+      label: "Address poisoning lookalike",
+      severity: "critical",
+      delta: 45,
+      why: "First/last 4 characters match a known legitimate address — paste-attack risk",
+    });
 
   // ── EVM-specific signals (ETH / Base / Arbitrum) ─────────────────────────
   const isEvmChain =
