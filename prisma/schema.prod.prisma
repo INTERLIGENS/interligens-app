@@ -1436,8 +1436,9 @@ model VaultWorkspace {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  cases  VaultCase[]
-  audits VaultAuditLog[]
+  cases         VaultCase[]
+  audits        VaultAuditLog[]
+  networkGraphs VaultNetworkGraph[]
 }
 
 model VaultCase {
@@ -2036,6 +2037,47 @@ model FeedbackEntry {
 
   @@index([accessId])
   @@index([status])
+}
+
+// ─── VAULT NETWORK GRAPH ────────────────────────────────────────────────────
+//
+// Investigator-owned graph: nodes, edges, and metadata are serialized client-
+// side as a single JSON blob, encrypted with the investigator's metaKey, and
+// stored here as ciphertext + IV. The server never holds plaintext. Cascades
+// on workspace delete so an investigator offboarding cleans up their graphs
+// with their cases.
+//
+// Migration note: the corresponding SQL lives at /tmp/migration-ready-to-apply.sql
+// and must be pasted in the Neon SQL Editor BEFORE any route querying this
+// table is enabled (see INVESTIGATORS_FINALISATION_AUDIT.md § NEEDS FOLLOW-UP).
+// The schema is committed ahead of the migration so Prisma Client generates
+// the correct types in Vercel builds; no runtime code in this sprint queries
+// the table until Dood confirms the migration has been applied.
+
+enum VaultGraphVisibility {
+  PRIVATE
+  TEAM_POOL
+  PUBLIC
+}
+
+model VaultNetworkGraph {
+  id          String               @id @default(cuid())
+  workspaceId String
+  workspace   VaultWorkspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  visibility  VaultGraphVisibility @default(PRIVATE)
+  nodeCount   Int                  @default(0)
+  edgeCount   Int                  @default(0)
+  payloadEnc  String // ciphertext of the full graph JSON
+  payloadIv   String
+  publishedAt DateTime?
+  reviewedBy  String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([workspaceId])
+  @@index([visibility])
 }
 
 // ─── THREADS X ──────────────────────────────────────────────────────────────
