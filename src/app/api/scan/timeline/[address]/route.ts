@@ -5,15 +5,17 @@ import { lookupAddresses } from '@/lib/labels/lookup'
 export async function GET(req: NextRequest, context: { params: Promise<{ address: string }> }) {
   try {
     const { address } = await context.params
-    const addr = address.toLowerCase()
-
+    // Historically GraphCase.pivotAddress is stored lowercased by the admin
+    // seeder, but some rows pre-date that normalisation. Query case-
+    // insensitively so retail lookups match regardless of input casing
+    // (critical for Solana base58 mints, which are case-sensitive).
     const graphCase = await prisma.graphCase.findFirst({
-      where: { pivotAddress: addr },
+      where: { pivotAddress: { equals: address, mode: "insensitive" } },
       include: { nodes: true, edges: true }
     })
 
     if (!graphCase) {
-      return NextResponse.json({ found: false, address: addr })
+      return NextResponse.json({ found: false, address })
     }
 
     const nodes = graphCase.nodes
