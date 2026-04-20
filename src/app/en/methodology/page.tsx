@@ -115,6 +115,7 @@ export default function MethodologyPage() {
             <a href="/en/correction" style={{ color: '#4b5563', textDecoration: 'none', fontWeight: 700 }}>Request a correction →</a>
             <a href="/en/kol" style={{ color: '#4b5563', textDecoration: 'none', fontWeight: 700 }}>KOL Leaderboard →</a>
             <a href="/en/explorer" style={{ color: '#4b5563', textDecoration: 'none', fontWeight: 700 }}>Explorer →</a>
+            <a href="/en/integrations" style={{ color: '#4b5563', textDecoration: 'none', fontWeight: 700 }}>Integrations →</a>
           </div>
         </div>
       </div>
