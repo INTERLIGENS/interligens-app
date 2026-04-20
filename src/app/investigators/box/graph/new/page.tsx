@@ -1,98 +1,152 @@
-import Link from "next/link";
+"use client";
 
-export const metadata = {
-  title: "New graph — INTERLIGENS",
-  robots: { index: false, follow: false },
-};
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import VaultGate from "@/components/vault/VaultGate";
+import { useVaultSession } from "@/hooks/useVaultSession";
+import { encryptString } from "@/lib/vault/crypto.client";
+import { describeResponse } from "@/lib/investigators/errorMessages";
 
 /**
- * Entry point for creating a new investigator graph.
+ * Entry point for "Create your own graph" on the CONSTELLATION landing.
  *
- * The full editor (EditableGraph, AUTO-populate, vault-encrypted persistence)
- * ships behind the VaultNetworkGraph Prisma model, which is not yet migrated
- * to prod. Until that migration lands, this page explains what is coming so
- * the landing's "Create your own graph" CTA is reachable and honest instead
- * of a dead link.
+ * We encrypt an empty payload with the investigator's metaKey, POST a new
+ * VaultNetworkGraph row, and forward to /investigators/box/graphs/[id] so
+ * the user lands directly on the editor with a blank canvas. Failure modes
+ * (vault locked, network, migration missing) stay on this page with a
+ * recoverable message.
  */
-export default function NewGraphPage() {
+
+function autoTitle(): string {
+  const now = new Date();
+  const d = now.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+  const t = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `Untitled graph · ${d} ${t}`;
+}
+
+function NewGraphInner() {
+  const router = useRouter();
+  const { keys, isLoading } = useVaultSession();
+  const [error, setError] = useState<string | null>(null);
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (isLoading || !keys || firedRef.current) return;
+    firedRef.current = true;
+
+    (async () => {
+      try {
+        const emptyPayload = JSON.stringify({ nodes: [], edges: [] });
+        const ct = await encryptString(emptyPayload, keys.metaKey);
+        const res = await fetch("/api/investigators/graphs", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: autoTitle(),
+            description: null,
+            payloadEnc: ct.enc,
+            payloadIv: ct.iv,
+            nodeCount: 0,
+            edgeCount: 0,
+          }),
+        });
+        if (!res.ok) {
+          setError(describeResponse(res));
+          firedRef.current = false;
+          return;
+        }
+        const data = await res.json();
+        router.replace(`/investigators/box/graphs/${data.graph.id}`);
+      } catch {
+        setError("Encryption failed — please retry.");
+        firedRef.current = false;
+      }
+    })();
+  }, [isLoading, keys, router]);
+
   return (
-    <main style={{ minHeight: "100vh", backgroundColor: "#000", color: "#FFF" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "72px 24px 96px" }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#000",
+        color: "#FFF",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div style={{ maxWidth: 420, padding: "0 24px", textAlign: "center" }}>
         <div
           style={{
             textTransform: "uppercase",
             fontSize: 11,
-            letterSpacing: "0.12em",
-            color: "rgba(255,255,255,0.4)",
+            letterSpacing: "0.14em",
+            color: "#FF6B00",
           }}
         >
-          <Link
-            href="/investigators/box/graph"
-            style={{ color: "rgba(255,255,255,0.4)", textDecoration: "none" }}
-            className="graph-crumb-link"
-          >
-            Graph
-          </Link>{" "}
-          <span style={{ color: "rgba(255,255,255,0.15)" }}>/</span> New
+          CONSTELLATION
         </div>
-
-        <h1
-          style={{
-            fontSize: 30,
-            fontWeight: 700,
-            color: "#FFFFFF",
-            marginTop: 10,
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Create your own graph
-        </h1>
-
-        <p
-          style={{
-            color: "rgba(255,255,255,0.55)",
-            fontSize: 14,
-            lineHeight: 1.6,
-            marginTop: 16,
-          }}
-        >
-          The editor is shipping next. It lets you start a blank graph tied to
-          one of your cases, drop in wallets, tokens, KOL handles, and evidence
-          edges, and persist everything under the investigator vault. While the
-          underlying storage migration completes, new graphs cannot be saved yet.
-        </p>
-
         <div
           style={{
-            marginTop: 24,
-            padding: 16,
-            borderRadius: 6,
-            border: "1px solid rgba(255,107,0,0.24)",
-            background: "rgba(255,107,0,0.06)",
-            color: "rgba(255,255,255,0.8)",
-            fontSize: 13,
+            fontSize: 15,
+            color: "rgba(255,255,255,0.7)",
+            marginTop: 12,
             lineHeight: 1.5,
           }}
         >
-          <strong style={{ color: "#FF6B00" }}>Tip —</strong> want to see the
-          interactive graph style before the editor lands? Open a{" "}
-          <Link
-            href="/investigators/box/graph/demo"
-            style={{
-              color: "#FF6B00",
-              textDecoration: "none",
-              borderBottom: "1px solid rgba(255,107,0,0.4)",
-            }}
-          >
-            demo graph
-          </Link>{" "}
-          — the same canvas the editor will render.
+          {error ? "We couldn't start your graph." : "Preparing a fresh graph…"}
         </div>
+        {error && (
+          <>
+            <div
+              style={{
+                marginTop: 14,
+                color: "#FF9AAB",
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              {error}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                firedRef.current = false;
+                setError(null);
+              }}
+              style={{
+                marginTop: 18,
+                backgroundColor: "#FF6B00",
+                color: "#FFFFFF",
+                border: "none",
+                height: 36,
+                padding: "0 18px",
+                borderRadius: 6,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              Retry
+            </button>
+          </>
+        )}
       </div>
-
-      <style>{`
-        .graph-crumb-link:hover { color: #FFFFFF; }
-      `}</style>
     </main>
+  );
+}
+
+export default function NewGraphPage() {
+  return (
+    <VaultGate>
+      <NewGraphInner />
+    </VaultGate>
   );
 }
