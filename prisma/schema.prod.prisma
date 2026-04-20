@@ -2100,6 +2100,31 @@ model XThread {
   @@index([status])
 }
 
+// ─── EQUITY WATCH ───────────────────────────────────────────────────────────
+// Admin-only signal board: suspected insider equity trades tied to upcoming
+// tweets / public announcements. Fully manual entry for now — no external
+// feed. Kept separate from KOL / scan data so the admin can run parallel
+// intake without polluting retail-facing indices. See
+// prisma/migrations/manual_equity_watch/migration.sql for the DDL to paste
+// in Neon SQL Editor; no runtime code depends on this table until the
+// migration is applied.
+
+model EquitySignal {
+  id           String   @id @default(cuid())
+  ticker       String
+  entityName   String
+  tradeDate    DateTime
+  tweetDate    DateTime?
+  deltaHours   Float?
+  suspectLevel String   @default("LOW")
+  notes        String?
+  source       String
+  createdAt    DateTime @default(now())
+
+  @@index([ticker])
+  @@index([createdAt])
+}
+
 // ─── ADMIN DOCUMENTS ────────────────────────────────────────────────────────
 // Admin-only document library (NDA, Terms, Data Room, operational docs).
 // Files live in R2; this table stores metadata + r2Key.
