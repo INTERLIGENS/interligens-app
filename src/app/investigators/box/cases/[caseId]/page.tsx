@@ -9,7 +9,7 @@ import EntityAddForm from "@/components/vault/EntityAddForm";
 import EntitySuggestionPanel, {
   type Suggestion,
 } from "@/components/vault/EntitySuggestionPanel";
-import CaseGraph from "@/components/vault/CaseGraph";
+import CaseGraphPremium from "@/components/vault/CaseGraphPremium";
 import CaseTwin from "@/components/vault/CaseTwin";
 import CaseExport from "@/components/vault/CaseExport";
 import CaseAssistant from "@/components/vault/CaseAssistant";
@@ -1523,7 +1523,7 @@ function CaseInner({ caseId }: { caseId: string }) {
         )}
 
         {tab === "graph" && (
-          <CaseGraph entities={entities} enrichment={enrichment} />
+          <CaseGraphPremium entities={entities} enrichment={enrichment} />
         )}
 
         {tab === "timeline" && (
