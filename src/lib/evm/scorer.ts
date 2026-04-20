@@ -23,6 +23,7 @@ import {
   getSourceCode,
   isEVMAddress,
 } from "./client";
+import { scanPermitApprovals } from "./permitScanner";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,10 +92,12 @@ export async function computeEVMScore(
   if (!config) return { ...FALLBACK };
 
   try {
-    const [contractFlag, txList, srcData] = await Promise.all([
+    const chainTag = (config.slug ?? "").toUpperCase(); // ETH / BASE / ARBITRUM
+    const [contractFlag, txList, srcData, permitScan] = await Promise.all([
       checkIsContract(config, address),
       getTxList(config, address, 25),
       getSourceCode(config, address),
+      scanPermitApprovals(config, address, { chainTag }),
     ]);
 
     const now = Date.now() / 1000;
@@ -181,6 +184,31 @@ export async function computeEVMScore(
     if (txList.length < 5) {
       signals.push({ kind: "LOW_HISTORY", label: "Very low transaction history", severity: "MEDIUM", delta: 10 });
       score += 10;
+    }
+
+    // MALICIOUS_APPROVAL / UNLIMITED_APPROVAL — from Permit scanner.
+    // `permitScan.skipped === true` means the Etherscan logs call timed
+    // out or returned an error; in that case we add no signal rather than
+    // claim the wallet is clean.
+    if (!permitScan.skipped) {
+      if (permitScan.malicious) {
+        signals.push({
+          kind: "MALICIOUS_APPROVAL",
+          label: "Existing approval to a known drainer spender",
+          severity: "CRITICAL",
+          delta: 40,
+        });
+        score += 40;
+      }
+      if (permitScan.unlimited) {
+        signals.push({
+          kind: "UNLIMITED_APPROVAL",
+          label: "Unlimited (uint256.max) ERC-20 approval on file",
+          severity: "HIGH",
+          delta: 20,
+        });
+        score += 20;
+      }
     }
 
     score = clamp(score);
