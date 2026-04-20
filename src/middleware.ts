@@ -72,15 +72,18 @@ export function middleware(req: NextRequest) {
   // ── Admin founder shortcut on investigator onboarding ──────────────────
   // The founder must never be pushed through the investigator NDA / legal
   // / identity screens. When the admin_session cookie is valid, any GET on
-  // /investigators/onboarding/* bounces straight back to the dashboard.
+  // /investigators/onboarding/* bounces straight to the workspace. The
+  // previous target `/investigators/dashboard` was never shipped to main,
+  // so the redirect landed on a 404 — send admin to `/investigators/box`
+  // instead, which is the actual investigator workspace landing.
   if (
     pathname.startsWith("/investigators/onboarding") &&
     verifyAdminSession(req)
   ) {
-    const dashboardUrl = req.nextUrl.clone();
-    dashboardUrl.pathname = "/investigators/dashboard";
-    dashboardUrl.search = "";
-    return NextResponse.redirect(dashboardUrl);
+    const workspaceUrl = req.nextUrl.clone();
+    workspaceUrl.pathname = "/investigators/box";
+    workspaceUrl.search = "";
+    return NextResponse.redirect(workspaceUrl);
   }
 
   // ── Admin routes — cookie session (pages) / basic-or-cookie (APIs) ─────
