@@ -50,6 +50,19 @@ function isBetaExempt(pathname: string): boolean {
   // Next.js internals & static assets
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
+  // Top-level static asset folders under /public — these must stay reachable
+  // without the beta cookie, otherwise Cloudflare caches the 307→/access
+  // redirect for anonymous hits and then serves that stale redirect to
+  // authenticated visitors, breaking the tiger avatar, app icons, etc.
+  if (pathname.startsWith("/tiger/")) return true;
+  if (pathname.startsWith("/icons/")) return true;
+  if (pathname.startsWith("/legal/")) return true;
+  // Generic catch-all: any path whose last segment looks like a static file
+  // (has a conventional asset extension). Keeps /page.tsx routes gated while
+  // letting images, videos, fonts, manifests and PDFs through.
+  if (/\.(?:png|jpe?g|gif|svg|ico|webp|avif|mp4|webm|mp3|wav|ogg|woff2?|ttf|otf|eot|pdf|json|txt|xml|html|map|css|js)$/i.test(pathname)) {
+    return true;
+  }
   // Health check
   if (pathname === "/health") return true;
   // SEO: sitemap + robots must be crawler-accessible (P1)
@@ -168,7 +181,10 @@ export const config = {
     "/",
     "/en/:path*",
     "/fr/:path*",
-    // Dynamic locale
-    "/((?!_next|favicon|access|api|admin|health|sitemap.xml|robots.txt).*)",
+    // Dynamic locale — excludes _next internals, favicon, access, api, admin,
+    // health, sitemap/robots, /tiger/*, /icons/*, /legal/*, AND any path with
+    // a conventional static-asset extension. Keeps Cloudflare from caching a
+    // 307→/access response on static files (SEC-2026-04 regression).
+    "/((?!_next|favicon|access|api|admin|health|sitemap.xml|robots.txt|tiger/|icons/|legal/|.*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|mp4|webm|mp3|woff2?|ttf|otf|pdf|json|txt|xml|html|map|css|js)$).*)",
   ],
 };
