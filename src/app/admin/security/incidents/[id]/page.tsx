@@ -23,7 +23,12 @@ type Params = Promise<{ id: string }>;
 
 export default async function IncidentDetailPage({ params }: { params: Params }) {
   const { id } = await params;
-  const inc = await getIncidentDetail(id);
+  let inc: Awaited<ReturnType<typeof getIncidentDetail>> = null;
+  try {
+    inc = await getIncidentDetail(id);
+  } catch (err) {
+    console.warn("[admin/security/incident] load failed — migration pending?", err);
+  }
   if (!inc) return notFound();
 
   const assessment = inc.assessments[0] ?? null;

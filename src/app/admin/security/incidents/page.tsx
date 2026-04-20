@@ -18,7 +18,12 @@ const SEVERITY_COLOR: Record<string, string> = {
 };
 
 export default async function SecurityIncidentsPage() {
-  const rows = await listIncidents({ limit: 100 });
+  let rows: Awaited<ReturnType<typeof listIncidents>> = [];
+  try {
+    rows = await listIncidents({ limit: 100 });
+  } catch (err) {
+    console.warn("[admin/security/incidents] load failed — migration pending?", err);
+  }
   return (
     <main style={{ minHeight: "100vh", background: BG, color: "#FFF" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 80px" }}>

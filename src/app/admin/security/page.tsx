@@ -117,13 +117,61 @@ const Section = ({
 );
 
 export default async function SecurityCenterPage() {
-  const [overview, incidents, vendors, actions, threats] = await Promise.all([
-    getSecurityOverview(),
-    listIncidents({ limit: 10 }),
-    listVendors(),
-    listOpenActionItems(10),
-    listThreats(),
-  ]);
+  // Fail-soft if the migration hasn't been applied yet: render a bootstrap
+  // state instead of crashing on the first Prisma query.
+  let overview: Awaited<ReturnType<typeof getSecurityOverview>> | null = null;
+  let incidents: Awaited<ReturnType<typeof listIncidents>> = [];
+  let vendors: Awaited<ReturnType<typeof listVendors>> = [];
+  let actions: Awaited<ReturnType<typeof listOpenActionItems>> = [];
+  let threats: Awaited<ReturnType<typeof listThreats>> = [];
+  let migrationPending = false;
+
+  try {
+    [overview, incidents, vendors, actions, threats] = await Promise.all([
+      getSecurityOverview(),
+      listIncidents({ limit: 10 }),
+      listVendors(),
+      listOpenActionItems(10),
+      listThreats(),
+    ]);
+  } catch (err) {
+    console.warn("[admin/security] data load failed — migration pending?", err);
+    migrationPending = true;
+  }
+
+  if (migrationPending || !overview) {
+    return (
+      <main style={{ minHeight: "100vh", background: BG, color: "#FFF" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", padding: "56px 24px" }}>
+          <div
+            style={{
+              textTransform: "uppercase",
+              fontSize: 11,
+              letterSpacing: "0.14em",
+              color: MUTED,
+            }}
+          >
+            INTERLIGENS · ADMIN · SECURITY CENTER
+          </div>
+          <h1 style={{ fontSize: 30, fontWeight: 700, marginTop: 8 }}>
+            Migration pending
+          </h1>
+          <p style={{ color: MUTED, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
+            The Security Center data layer is shipped but the Neon migration
+            hasn&rsquo;t been applied yet. Paste the contents of{" "}
+            <code style={{ color: ACCENT }}>
+              prisma/migrations/manual_security_center/migration.sql
+            </code>{" "}
+            in the Neon SQL Editor (after taking a branch snapshot), then run{" "}
+            <code style={{ color: ACCENT }}>pnpm security:center:seed</code> to
+            populate vendors, threats, and the Vercel-breach reference incident.
+            See <code style={{ color: ACCENT }}>docs/security-center-runbook.md</code>{" "}
+            §0 for the full checklist.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   const heroTint =
     overview.criticalOpenIncidentCount > 0
