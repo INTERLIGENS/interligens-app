@@ -575,7 +575,7 @@ export default function TigerScanPage() {
       <main className="max-w-5xl mx-auto">
         {/* HERO */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase">
+          <h1 className="text-4xl sm:text-5xl md:text-8xl font-black italic tracking-tighter mb-6 uppercase break-words">
             Check your <span className="text-[#F85B05] not-italic">Exposure.</span>
           </h1>
           <p className="text-zinc-500 max-w-2xl mx-auto text-sm md:text-base font-medium">

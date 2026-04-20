@@ -149,16 +149,23 @@ export default function KolLeaderboardEN() {
             }}>{t.label}</button>
           ))}
           <div style={{ flex: 1 }} />
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="kol-search-row" style={{ display: 'flex', gap: 6 }}>
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && doSearch()}
               placeholder="Search handle..."
-              style={{ background: '#111', border: '1px solid #1e2330', borderRadius: 4, padding: '6px 12px', color: '#f9fafb', fontSize: 12, fontFamily: 'monospace', outline: 'none', width: 180 }}
+              className="kol-search-input"
+              style={{ background: '#111', border: '1px solid #1e2330', borderRadius: 4, padding: '6px 12px', color: '#f9fafb', fontSize: 12, fontFamily: 'monospace', outline: 'none', width: 180, minWidth: 0 }}
             />
-            <button onClick={doSearch} style={{ background: '#1e2330', border: 'none', borderRadius: 4, padding: '6px 12px', color: '#6b7280', fontSize: 9, fontWeight: 900, cursor: 'pointer', letterSpacing: '0.1em' }}>SEARCH</button>
+            <button onClick={doSearch} style={{ background: '#1e2330', border: 'none', borderRadius: 4, padding: '6px 12px', color: '#6b7280', fontSize: 9, fontWeight: 900, cursor: 'pointer', letterSpacing: '0.1em', flexShrink: 0 }}>SEARCH</button>
           </div>
         </div>
+        <style>{`
+          @media (max-width: 640px) {
+            .kol-search-row { width: 100%; }
+            .kol-search-input { flex: 1; width: auto !important; }
+          }
+        `}</style>
 
         {/* TABLE */}
         {loading ? (
@@ -166,7 +173,8 @@ export default function KolLeaderboardEN() {
         ) : profiles.length === 0 ? (
           <div style={{ color: '#374151', fontSize: 12, fontFamily: 'monospace', padding: '60px 0', textAlign: 'center' }}>NO PUBLISHED PROFILES</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', margin: '0 -16px', padding: '0 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 760 }}>
             {/* HEADER ROW */}
             <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 160px 80px 90px 60px 60px 70px', gap: 8, padding: '8px 16px', color: '#4b5563', fontSize: 9, fontFamily: 'monospace', letterSpacing: '0.1em', alignItems: 'center' }}>
               <div>#</div>
@@ -257,6 +265,7 @@ export default function KolLeaderboardEN() {
                 </a>
               )
             })}
+          </div>
           </div>
         )}
 

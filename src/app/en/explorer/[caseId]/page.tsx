@@ -101,7 +101,7 @@ export default function CaseDossierPage() {
             <Badge label="CASE CLUSTER" color="#ef4444" />
             {dossier?.documentationStatus && <Badge label={dossier.documentationStatus.toUpperCase()} color={dossier.documentationStatus === 'documented' ? '#10b981' : '#f59e0b'} />}
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>{caseId}</h1>
+          <h1 style={{ fontSize: 'clamp(22px, 6vw, 32px)', fontWeight: 900, margin: 0, letterSpacing: '-0.02em', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{caseId}</h1>
           {dossier?.summary && <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>{dossier.summary}</p>}
         </div>
 

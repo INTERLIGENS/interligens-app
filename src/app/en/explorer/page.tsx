@@ -141,13 +141,21 @@ export default function ExplorerEN() {
             background: hasFlags ? '#f9731615' : '#111', color: hasFlags ? '#f97316' : '#4b5563',
           }}>HAS FLAGS</button>
           <div style={{ flex: 1 }} />
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="explorer-search-row" style={{ display: 'flex', gap: 6 }}>
             <input value={search} onChange={e => setSearch(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && load()}
-              placeholder="Search case or actor..." style={{ background: '#111', border: '1px solid #1e2330', borderRadius: 4, padding: '6px 12px', color: '#f9fafb', fontSize: 12, fontFamily: 'monospace', outline: 'none', width: 180 }} />
-            <button onClick={load} style={{ background: '#1e2330', border: 'none', borderRadius: 4, padding: '6px 12px', color: '#6b7280', fontSize: 9, fontWeight: 900, cursor: 'pointer' }}>SEARCH</button>
+              placeholder="Search case or actor..."
+              className="explorer-search-input"
+              style={{ background: '#111', border: '1px solid #1e2330', borderRadius: 4, padding: '6px 12px', color: '#f9fafb', fontSize: 12, fontFamily: 'monospace', outline: 'none', width: 180, minWidth: 0 }} />
+            <button onClick={load} style={{ background: '#1e2330', border: 'none', borderRadius: 4, padding: '6px 12px', color: '#6b7280', fontSize: 9, fontWeight: 900, cursor: 'pointer', flexShrink: 0 }}>SEARCH</button>
           </div>
         </div>
+        <style>{`
+          @media (max-width: 640px) {
+            .explorer-search-row { width: 100%; }
+            .explorer-search-input { flex: 1; width: auto !important; }
+          }
+        `}</style>
 
         {/* DOSSIER CARDS */}
         {loading ? (
