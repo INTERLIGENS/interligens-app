@@ -104,8 +104,10 @@ export async function enforceInvestigatorAccess(): Promise<{
  */
 export async function enforcePendingScreen(): Promise<void> {
   // Admin founder bypass — same rationale as enforceInvestigatorAccess.
+  // `/investigators/dashboard` never shipped to main; the admin's home in
+  // the investigator area is the workspace `/investigators/box`.
   if (await isAdminSessionFromCookies()) {
-    redirect("/investigators/dashboard");
+    redirect("/investigators/box");
   }
 
   const cookieStore = await cookies();

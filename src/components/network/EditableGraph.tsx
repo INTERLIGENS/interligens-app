@@ -2,19 +2,21 @@
 
 /**
  * EditableGraph — investigator-grade D3 network graph with an optional edit
- * mode, unified from two prior components:
+ * mode. Read-only path (editable=false) powers the premium Constellation
+ * view at /investigators/box/graph/demo/[slug]. Edit mode is wired but
+ * inactive on main: the persistence layer (VaultNetworkGraph model + API
+ * routes) is pending the migration documented in
+ * docs/MIGRATION_vault_network_graph.sql.
  *
- *   • ScamUniverseGraph (/investigators/box/network) — the read-only view
- *     the investigators loved: 240 | 1fr | 320 full-viewport layout,
- *     group/tier filter pills, radial-around-selection mode, watermarked
- *     PNG export, auto-focus.
- *   • InvestigatorGraphEditor (old /graphs/[id] editor) — editable: add
- *     nodes via form, connect mode, delete key, double-click rotation,
- *     auto-populate via /api/investigators/lookup.
+ * Features (shared across modes):
+ *   - 240 | 1fr | 320 full-viewport layout
+ *   - group / tier filter pills with ALL / NONE shortcuts
+ *   - radial-around-selection mode
+ *   - watermarked PNG export
+ *   - double-click canvas rotation
  *
- * One component, two modes (`editable` prop). The read-only path stays
- * byte-compatible with the scam-universe page; the editable path is what
- * /investigators/box/graphs/[id] now renders.
+ * Editor-only affordances (editable=true): add node via form, connect-mode,
+ * Delete key, auto-populate via /api/investigators/lookup.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

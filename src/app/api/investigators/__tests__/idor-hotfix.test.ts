@@ -1,7 +1,7 @@
 /**
  * IDOR hotfix regression tests.
  *
- * Covers /api/investigators/activity and /api/investigators/terms/accept.
+ * Covers /api/investigators/activity, /terms/accept, and /nda/accept.
  * Each endpoint must:
  *   (1) 401 when no valid investigator session is presented
  *   (2) 403 when a mismatching profileId is supplied in the body
@@ -29,6 +29,9 @@ vi.mock("@/lib/prisma", () => ({
     investigatorBetaTermsAcceptance: {
       create: vi.fn().mockResolvedValue({ acceptedAt: new Date("2026-04-19T22:00:00Z") }),
     },
+    investigatorNdaAcceptance: {
+      create: vi.fn().mockResolvedValue({ signedAt: new Date("2026-04-20T00:00:00Z") }),
+    },
     investigatorProgramAuditLog: { create: vi.fn().mockResolvedValue({}) },
   },
 }));
@@ -37,8 +40,13 @@ vi.mock("@/lib/investigators/legalDocs", () => ({
   getLegalDoc: vi.fn().mockResolvedValue({ hash: "doc-hash-ok" }),
 }));
 
+// All three endpoints use fetch-like JSON parsing; no other external deps
+// need to be mocked for this test pass. Each test seeds the session via
+// mockedSession and asserts status + (where it matters) the DB payload.
+
 import { POST as activityPOST } from "../activity/route";
 import { POST as termsPOST } from "../terms/accept/route";
+import { POST as ndaPOST } from "../nda/accept/route";
 import { getInvestigatorSessionContext } from "@/lib/investigators/session";
 
 const mockedSession = vi.mocked(getInvestigatorSessionContext);
@@ -209,6 +217,84 @@ describe("POST /api/investigators/terms/accept — IDOR hotfix", () => {
       profileId: null,
     });
     const res = await termsPOST(
+      makeReq({ ...okBody, profileId: "prof_victim" }),
+    );
+    expect(res.status).toBe(403);
+  });
+});
+
+// ── /api/investigators/nda/accept ────────────────────────────────────
+
+describe("POST /api/investigators/nda/accept — IDOR hotfix", () => {
+  const okBody = {
+    accepted: true,
+    signerName: "Jane Doe",
+    ndaVersion: "1.0",
+    ndaLanguage: "en",
+    ndaDocHash: "doc-hash-ok",
+  };
+
+  it("401 when no session", async () => {
+    mockedSession.mockResolvedValueOnce(null);
+    const res = await ndaPOST(
+      makeReq({ ...okBody, profileId: "prof_victim" }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("403 when body profileId mismatches session profileId", async () => {
+    mockedSession.mockResolvedValueOnce({
+      accessId: "acc_1",
+      profileId: "prof_session",
+    });
+    const res = await ndaPOST(
+      makeReq({ ...okBody, profileId: "prof_victim" }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("200 uses session accessId as betaCodeId, ignoring any client value", async () => {
+    mockedSession.mockResolvedValueOnce({
+      accessId: "acc_session",
+      profileId: "prof_session",
+    });
+    const { prisma } = await import("@/lib/prisma");
+    vi.mocked(prisma.investigatorNdaAcceptance.create).mockClear();
+
+    const res = await ndaPOST(
+      makeReq({
+        ...okBody,
+        profileId: "prof_session",
+        betaCodeId: "acc_attacker_injected",
+      }),
+    );
+    expect(res.status).toBe(200);
+    const call = vi.mocked(prisma.investigatorNdaAcceptance.create).mock.calls[0][0];
+    expect(call.data.betaCodeId).toBe("acc_session");
+    expect(call.data.profileId).toBe("prof_session");
+  });
+
+  it("200 during legacy onboarding — session with no profile, body omits profileId", async () => {
+    mockedSession.mockResolvedValueOnce({
+      accessId: "acc_legacy",
+      profileId: null,
+    });
+    const { prisma } = await import("@/lib/prisma");
+    vi.mocked(prisma.investigatorNdaAcceptance.create).mockClear();
+
+    const res = await ndaPOST(makeReq(okBody));
+    expect(res.status).toBe(200);
+    const call = vi.mocked(prisma.investigatorNdaAcceptance.create).mock.calls[0][0];
+    expect(call.data.profileId).toBeNull();
+    expect(call.data.betaCodeId).toBe("acc_legacy");
+  });
+
+  it("403 during legacy onboarding if body injects a profileId", async () => {
+    mockedSession.mockResolvedValueOnce({
+      accessId: "acc_legacy",
+      profileId: null,
+    });
+    const res = await ndaPOST(
       makeReq({ ...okBody, profileId: "prof_victim" }),
     );
     expect(res.status).toBe(403);
