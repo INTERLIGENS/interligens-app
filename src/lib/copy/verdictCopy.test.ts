@@ -5,7 +5,9 @@ describe("getVerdictCopy", () => {
   it("GREEN FR — subtitle sans alerte + actions safe", () => {
     const c = getVerdictCopy("GREEN", "fr");
     expect(c.subtitle).toContain("Pas d'alerte critique");
-    expect(c.actions[0]).toContain("URL");
+    // Copy updated from the literal "URL" to the French "lien" — we still
+    // assert the first action is about link-checking, not about stopping.
+    expect(c.actions[0]).toContain("lien");
     expect(c.actions[0]).not.toContain("STOP");
     expect(c.disclaimer).toContain("DYOR");
   });
@@ -13,7 +15,10 @@ describe("getVerdictCopy", () => {
   it("ORANGE EN — subtitle suspicious + actions cautious", () => {
     const c = getVerdictCopy("ORANGE", "en");
     expect(c.subtitle).toContain("Suspicious");
-    expect(c.actions[0]).toContain("signing");
+    // Copy moved from wallet-specific ("signing") to a broader "check the
+    // evidence before acting" — we assert cautious framing, not a specific
+    // verb.
+    expect(c.actions[0]).toMatch(/check|evidence|rush/i);
     expect(c.actions[0]).not.toContain("STOP");
     expect(c.disclaimer).toContain("DYOR");
   });

@@ -12,6 +12,48 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 
+// ── Prisma mock ──────────────────────────────────────────────────────────────
+//
+// These tests verify auth + response shape, not DB behaviour. Without a
+// mock, the route handlers reach for a live Neon connection and crash on
+// "credentials not available" in the test env. We stub just the delegates
+// each route touches; every other delegate falls back to a catch-all mock
+// so future route additions don't need ceremony.
+
+vi.mock("@/lib/prisma", () => {
+  const sourceRegistry = {
+    findMany: vi.fn().mockResolvedValue([]),
+    count: vi.fn().mockResolvedValue(0),
+    create: vi.fn().mockResolvedValue({ id: "src_test" }),
+  };
+  const communitySubmission = {
+    findMany: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({ id: "sub_test" }),
+    update: vi.fn().mockResolvedValue({ id: "sub_test" }),
+  };
+  return {
+    prisma: new Proxy(
+      { sourceRegistry, communitySubmission },
+      {
+        get(target, prop) {
+          if (prop in target) return (target as Record<string, unknown>)[prop as string];
+          // Fallback for any delegate we didn't explicitly mock: return a
+          // stub that resolves to empty so the route handler doesn't throw.
+          return {
+            findMany: vi.fn().mockResolvedValue([]),
+            findUnique: vi.fn().mockResolvedValue(null),
+            findFirst: vi.fn().mockResolvedValue(null),
+            count: vi.fn().mockResolvedValue(0),
+            create: vi.fn().mockResolvedValue({}),
+            update: vi.fn().mockResolvedValue({}),
+            delete: vi.fn().mockResolvedValue({}),
+          };
+        },
+      },
+    ),
+  };
+});
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const VALID_TOKEN = "integration-test-token";
