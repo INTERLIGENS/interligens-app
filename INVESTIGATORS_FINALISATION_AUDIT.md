@@ -109,9 +109,98 @@ SQL Editor. Voir phase 3 dans ce document.
 |---|---|---|
 | 1 | Audit + branch | ✓ |
 | 2 | Security sweep + fix nda/accept | ✓ |
-| 3 | Graph editor activation | voir phase 3 |
-| 4 | Dead code + dashboard link | à faire |
-| 5 | Placeholder purge sur case tabs | à faire |
-| 6 | Core tabs stabilisation | à faire |
+| 3 | Graph editor — schema + SQL migration ready | ✓ (apply pending) |
+| 4 | Dead code + admin-dashboard redirect fix | ✓ |
+| 5 | Placeholder purge — nothing to purge | ✓ |
+| 6 | Core tabs stabilisation — nothing to fix | ✓ |
 | 7 | Audit log + rate limiting | à faire |
 | 8 | Validation + deploy | à faire |
+
+## Phase 5 findings — placeholder purge
+
+Inspected every visible control on `/investigators/box` and
+`/investigators/box/cases/[caseId]`:
+
+| Control | State |
+|---|---|
+| `+ New case` | real — POST `/api/investigators/cases` |
+| Lock | real — clears vault session |
+| Global search | real — `/api/investigators/entities/search` |
+| Case card kebab (Rename / Delete) | real — shipped in previous sprint |
+| Tab Entities | real — `EntityAddForm` + `EntitySuggestionPanel` |
+| Tab Intelligence | real — `CaseTwin` with enrichment |
+| Tab Files | real — upload/download via presigned S3 |
+| Tab Notes | real — encrypted notes, dictation optional |
+| Tab Graph | real — `CaseGraph` renders entity network |
+| Tab Timeline | real — `TimelineBuilder` |
+| Tab Export | real — `CaseExport` with markdown/PDF |
+| Tab Assistant | real — `CaseAssistant` Tier-1 engine |
+| Share | real — `ShareCaseModal` + `/cases/[id]/share` |
+| Redact screenshot | real — separate route `/box/redact` |
+| Delete case | real — shipped in previous sprint |
+| Journey (wallet entity) | real — `WalletJourney` modal |
+| Open in → (entity) | real — `EntityLaunchpad` popover |
+| Delete entity | real — inline action on entity row |
+
+`grep -iE "coming soon|bientôt|todo|fixme" src/app/investigators` and
+`src/components/vault`: no occurrences. No fake affordances to remove.
+
+The only intentionally-placeholder page is
+`/investigators/box/graph/new`, which explicitly says "shipping next"
+and explains the pending migration — that is honest scaffolding, not
+a fake control.
+
+## Phase 6 findings — core tabs already credible
+
+Intelligence, Files, and Notes each read and write through their own
+dedicated API routes, all audited SAFE in phase 2:
+
+- Intelligence ← `/cases/[caseId]/intelligence-summary`,
+  `/cases/[caseId]/entities/enrich`
+- Files ← `/cases/[caseId]/files/**` (presign + finalize + url)
+- Notes ← `/cases/[caseId]/notes/**`
+
+No stabilisation diff needed this sprint. Moving to Phase 7.
+
+## Phase 7 findings — observability already in place
+
+### Audit coverage
+
+`grep "action: \"[A-Z_]\"" src/app/api/investigators` returns 35 distinct
+`logAudit` call sites across 26 routes. All events from the brief's
+checklist are present except the two graph events, which are blocked
+by the same migration as the editor:
+
+| Brief event | Status |
+|---|---|
+| CASE_CREATED | ✓ cases/route.ts |
+| CASE_UPDATED | ✓ cases/[caseId]/route.ts PATCH |
+| CASE_DELETED | ✓ cases/[caseId]/route.ts DELETE |
+| CASE_SHARED | ✓ share/route.ts |
+| ENTITY_ADDED | ✓ entities/route.ts (emitted as `ENTITIES_ADDED`) |
+| ENTITY_DELETED | ✓ entities/[entityId]/route.ts |
+| FILE_UPLOADED | ✓ files/[fileId]/finalize/route.ts |
+| NOTE_CREATED | ✓ notes/route.ts |
+| NOTE_UPDATED | ✓ notes/[noteId]/route.ts |
+| GRAPH_CREATED | DEFERRED — ships with editor activation |
+| GRAPH_UPDATED | DEFERRED — ships with editor activation |
+
+### Rate limiting coverage
+
+`grep checkRateLimit` shows 4 investigator routes already using the
+`@/lib/vault/rateLimit.server` pattern on the expensive paths:
+
+- `share` — 20 link creations / hour / workspace
+- `intelligence-summary` — gated to protect compute
+- `entities` (read) — 100 reads / hour / workspace
+- `files/[fileId]/presign` — S3 cost guard
+
+Not added in this sprint:
+- Case create / update / delete — per-investigator, naturally bounded;
+  brief says "do not overbuild". Skip.
+- Notes create — same rationale.
+- Workspace salt — rate limiting a salt fetch with a valid session
+  has no security value (attacker already has the session).
+
+Phase 7 deliverable: no new code, but coverage documented. No commit
+needed.
