@@ -2144,3 +2144,229 @@ model AdminDocument {
   @@index([category])
   @@index([createdAt(sort: Desc)])
 }
+
+// ─── SECURITY CENTER ────────────────────────────────────────────────────────
+// Admin-only module. Vendor watchlist + incident registry + exposure
+// qualification + weekly email digest + comms drafts.
+//
+// All models below are additive. The corresponding SQL lives at
+// prisma/migrations/manual_security_center/migration.sql and MUST be pasted
+// in the Neon SQL Editor (after taking a branch snapshot) before any code
+// that queries these tables is activated. Project rule: migrations via Neon
+// Console only, no `prisma db push`, no `prisma migrate dev` against prod.
+
+model SecurityVendor {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  category         String // hosting | database | repo | dependency | auth | monitoring | social | storage | infra | ci_cd | package_registry | other
+  isActive         Boolean  @default(true)
+  websiteUrl       String?
+  statusPageUrl    String?
+  rssUrl           String?
+  atomUrl          String?
+  webhookSupported Boolean  @default(false)
+  emailSupported   Boolean  @default(false)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  sources       SecuritySource[]
+  incidents     SecurityIncident[]
+  exposureLinks SecurityVendorExposureLink[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model SecuritySource {
+  id                  String   @id @default(cuid())
+  vendorId            String?
+  sourceType          String // statuspage | advisory_db | rss | webhook | manual | internal_audit | vendor_blog | github_advisory
+  name                String
+  url                 String
+  isActive            Boolean  @default(true)
+  pollIntervalMinutes Int?
+  lastPolledAt        DateTime?
+  lastStatus          String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  vendor    SecurityVendor?    @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  incidents SecurityIncident[]
+
+  @@index([vendorId])
+  @@index([sourceType])
+  @@index([isActive])
+}
+
+model SecurityIncident {
+  id           String    @id @default(cuid())
+  vendorId     String?
+  sourceId     String?
+  externalId   String?
+  title        String
+  summaryShort String
+  summaryLong  String?
+  incidentType String // outage | security_incident | breach | unauthorized_access | supply_chain | malware | secret_leak | dependency_cve | phishing | account_takeover | data_exposure | ddos | abuse | intimidation | internal_suspicion | other
+  severity     String // info | low | medium | high | critical
+  status       String    @default("open") // open | investigating | monitoring | identified | mitigated | resolved | archived
+  detectedAt   DateTime
+  occurredAt   DateTime?
+  resolvedAt   DateTime?
+  sourceUrl    String?
+  rawPayload   Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  vendor      SecurityVendor?              @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  source      SecuritySource?              @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  assessments SecurityExposureAssessment[]
+  actionItems SecurityActionItem[]
+  comms       SecurityCommsDraft[]
+
+  @@unique([vendorId, externalId])
+  @@index([status])
+  @@index([severity])
+  @@index([detectedAt(sort: Desc)])
+  @@index([vendorId])
+}
+
+model SecurityExposureAssessment {
+  id                       String   @id @default(cuid())
+  incidentId               String
+  exposureLevel            String // none | unlikely | possible | probable | confirmed
+  affectedSurface          Json
+  requiresKeyRotation      Boolean  @default(false)
+  requiresAccessReview     Boolean  @default(false)
+  requiresInfraLogReview   Boolean  @default(false)
+  requiresPublicStatement  Boolean  @default(false)
+  actionChecklist          Json
+  analystNote              String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  incident SecurityIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@index([exposureLevel])
+}
+
+model SecurityAsset {
+  id          String   @id @default(cuid())
+  assetType   String // vercel_project | github_repo | neon_project | cloudflare_zone | r2_bucket | api_integration | email_provider | x_account | device | other
+  name        String
+  externalRef String?
+  environment String   @default("prod") // prod | staging | preview | local | shared | unknown
+  isCritical  Boolean  @default(false)
+  owner       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendorLinks SecurityVendorExposureLink[]
+
+  @@index([assetType])
+  @@index([environment])
+  @@index([isCritical])
+}
+
+model SecurityVendorExposureLink {
+  id               String @id @default(cuid())
+  vendorId         String
+  assetId          String
+  relationshipType String // hosts | deploys | stores | authenticates | builds | monitors | publishes | other
+
+  vendor SecurityVendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  asset  SecurityAsset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, assetId, relationshipType])
+  @@index([vendorId])
+  @@index([assetId])
+}
+
+model SecurityActionItem {
+  id          String    @id @default(cuid())
+  incidentId  String?
+  title       String
+  description String
+  priority    String    @default("p3") // p1 | p2 | p3 | p4
+  status      String    @default("todo") // todo | in_progress | done | dismissed
+  owner       String?
+  dueAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  incident SecurityIncident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([priority])
+  @@index([incidentId])
+}
+
+model SecurityWeeklyDigest {
+  id                    String   @id @default(cuid())
+  periodStart           DateTime
+  periodEnd             DateTime
+  generatedAt           DateTime @default(now())
+  subject               String
+  bodyHtml              String
+  bodyText              String
+  includedIncidentCount Int      @default(0)
+  includedCriticalCount Int      @default(0)
+  deliveryStatus        String   @default("pending") // pending | sent | failed
+  deliveryMeta          Json?
+  sentAt                DateTime?
+
+  @@index([generatedAt(sort: Desc)])
+  @@index([deliveryStatus])
+}
+
+model SecurityThreatCatalog {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  description   String
+  category      String
+  targetSurface String
+  examples      Json?
+  mitigation    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+}
+
+model SecurityCommsDraft {
+  id         String   @id @default(cuid())
+  incidentId String?
+  channel    String // x | internal | public_status | investor | legal
+  tone       String // neutral | defensive | factual | hardline
+  title      String?
+  body       String
+  status     String   @default("draft") // draft | approved | rejected | published
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  incident SecurityIncident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId])
+  @@index([status])
+  @@index([channel])
+}
+
+model SecurityAuditLog {
+  id         String   @id @default(cuid())
+  actorType  String // system | admin | user
+  actorId    String?
+  eventType  String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorType])
+  @@index([eventType])
+  @@index([targetType, targetId])
+  @@index([createdAt(sort: Desc)])
+}
