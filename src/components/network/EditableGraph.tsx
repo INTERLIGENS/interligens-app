@@ -1311,6 +1311,20 @@ export default function EditableGraph({
     return () => clearTimeout(t);
   }, [editable, focusOnMount, focusNode]);
 
+  // Auto-fit on mount when no specific node is being focused and the graph
+  // has enough nodes to warrant framing. Keeps the CONSTELLATION demo
+  // (focusOnMount="bkokoski") on its curated landing node while giving
+  // sparse editor/case graphs a sensible centred starting view.
+  useEffect(() => {
+    if (focusOnMount) return;
+    if (nodes.length < 3) return;
+    const t = setTimeout(() => {
+      zoomToFit();
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusOnMount]);
+
   function zoomToFit() {
     if (!svgRef.current || !zoomRef.current) return;
     const groupFilterOn = activeGroups.size > 0;
