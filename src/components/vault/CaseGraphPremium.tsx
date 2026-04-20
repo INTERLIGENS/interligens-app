@@ -148,12 +148,25 @@ export default function CaseGraphPremium({
     [entities, enrichment],
   );
 
-  const sparse = data.nodes.length < 3;
+  if (entities.length < 2) {
+    return (
+      <div
+        className="text-white/40 text-sm"
+        style={{
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 6,
+          padding: 40,
+          textAlign: "center",
+        }}
+      >
+        Add at least 2 entities to see the graph.
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
-        position: "relative",
         border: "1px solid rgba(255,255,255,0.06)",
         borderRadius: 6,
         overflow: "hidden",
@@ -166,51 +179,6 @@ export default function CaseGraphPremium({
         focusOnMount={null}
         investigatorHandle={investigatorHandle}
       />
-      {sparse && (
-        <div
-          aria-live="polite"
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-            padding: 24,
-          }}
-        >
-          <div
-            style={{
-              maxWidth: 360,
-              textAlign: "center",
-              color: "rgba(255,255,255,0.5)",
-              fontSize: 13,
-              fontFamily: "Inter, system-ui, sans-serif",
-              lineHeight: 1.55,
-              background: "rgba(0,0,0,0.55)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 8,
-              padding: "14px 18px",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-            }}
-          >
-            <div
-              style={{
-                textTransform: "uppercase",
-                fontSize: 10,
-                letterSpacing: "0.14em",
-                color: "#FF6B00",
-                marginBottom: 6,
-              }}
-            >
-              Constellation · {data.nodes.length} node
-              {data.nodes.length === 1 ? "" : "s"}
-            </div>
-            Add more entities to build your constellation.
-          </div>
-        </div>
-      )}
     </div>
   );
 }

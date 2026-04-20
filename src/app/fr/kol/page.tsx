@@ -112,7 +112,7 @@ export default function KolLeaderboardFR() {
     <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
       <BetaNav />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(24px, 4vw, 48px) clamp(24px, 5vw, 64px)' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px' }}>
         {/* TITLE */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ color: '#F85B05', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>REGISTRE PUBLIC</div>

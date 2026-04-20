@@ -95,7 +95,7 @@ export default function ExplorerFR() {
     <div style={{ minHeight: '100vh', background: '#000000', color: '#f9fafb', fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
       <BetaNav />
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(24px, 4vw, 48px) clamp(24px, 5vw, 64px)' }}>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px' }}>
         <div style={{ marginBottom: 32 }}>
           <div style={{ color: '#FF6B00', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 8 }}>EXPLORATEUR DE L'INTELLIGENCE SCAM</div>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Explorateur<span style={{ color: '#FF6B00' }}>.</span></h1>

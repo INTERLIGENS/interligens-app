@@ -26,7 +26,7 @@ interface LaundryTrailData {
 
 const SIGNAL_COLORS: Record<string, string> = {
   FRAG: '#FFB800',
-  BRIDGE: '#FFFFFF',
+  BRIDGE: '#00E5FF',
   MIXER: '#FF3B5C',
   PRIV: '#FF3B5C',
   DEG: '#FFB800',

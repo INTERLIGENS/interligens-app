@@ -96,7 +96,7 @@ const DEMO_TAG: React.CSSProperties = {
 export default function DemoGraphsIndex() {
   return (
     <main style={{ minHeight: "100vh", backgroundColor: "#000", color: "#FFF" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "clamp(32px, 5vw, 56px) clamp(24px, 5vw, 64px) clamp(48px, 8vw, 96px)" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px 96px" }}>
         <div style={BREADCRUMB}>
           <Link href="/investigators/box/graph" style={BREADCRUMB_LINK} className="graph-crumb-link">
             Graph

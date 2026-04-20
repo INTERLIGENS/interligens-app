@@ -63,7 +63,7 @@ export default function AdminHubHome() {
         minHeight: "100vh",
         background: BG,
         color: TEXT,
-        padding: "clamp(32px, 5vw, 48px) clamp(24px, 5vw, 64px) clamp(48px, 8vw, 80px)",
+        padding: "48px 40px 80px",
       }}
     >
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
