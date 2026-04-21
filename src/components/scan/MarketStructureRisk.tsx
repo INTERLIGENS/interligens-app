@@ -146,15 +146,18 @@ export default function MarketStructureRisk({ result, locale = "en" }: Props) {
   const { displayScore, band, freshness } = overall;
 
   // Hide the block entirely when there's nothing meaningful to surface.
-  // <20 + GREEN means no detectors fired and the cohort is unremarkable —
-  // rendering an empty-ish card is more noise than signal.
-  if (displayScore < 20 && band === "GREEN") return null;
+  // GPT-architect gate: render ONLY when displayScore >= 20 AND at least
+  // one detector fired with a non-zero score. Anything quieter would
+  // produce an accusatory empty state ("no manipulation detected"),
+  // which is explicitly forbidden UX.
+  const signals = topDetectors(result, 5);
+  if (displayScore < 20 || band === "GREEN" || signals.length === 0) {
+    return null;
+  }
 
   const color = bandColor(band);
   const isPartial =
     engine.coverage === "low" || freshness.staleness === "stale";
-
-  const signals = topDetectors(result, 5);
 
   return (
     <section

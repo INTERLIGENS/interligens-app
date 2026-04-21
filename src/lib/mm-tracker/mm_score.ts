@@ -142,10 +142,9 @@ export function computeMMScore(input: MMScoreInput): MMScoreResult {
   const mmScore = Math.max(0, Math.min(100, Math.round(rawScore)));
   const verdict: MMVerdict = mmScore >= 70 ? "MANIPULATED" : mmScore >= 40 ? "SUSPICIOUS" : "CLEAN";
 
-  if (signals.length === 0) {
-    signals.push("No market-manipulation signals detected");
-    signalsFr.push("Aucun signal de manipulation de marché détecté");
-  }
+  // Intentionally leave `signals` empty when nothing fires. MMScoreBadge
+  // treats an empty signals array as "render nothing" — surfacing a "no
+  // manipulation detected" copy would be accusatory in either direction.
 
   return { mmScore, verdict, drivers, wash, cluster, knownMMHit, signals, signalsFr };
 }

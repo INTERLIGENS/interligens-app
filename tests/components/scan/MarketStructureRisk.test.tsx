@@ -175,4 +175,80 @@ describe("MarketStructureRisk", () => {
     expect(text.toLowerCase()).not.toContain("manipulation confirmed");
     expect(text.toLowerCase()).not.toContain("fraud");
   });
+
+  // GPT-architect stricter gate: render ONLY when displayScore >= 20 AND
+  // signals fire. These four tests guard against regressions.
+
+  it("returns null when signals array is empty even if score is non-zero", () => {
+    const { container } = render(
+      <MarketStructureRisk
+        result={assessment({
+          engine: {
+            behaviorDrivenScore: 35,
+            rawBehaviorScore: 35,
+            confidence: "medium",
+            coverage: "medium",
+            signals: [],
+            // All detectors null → topDetectors() returns empty → render nothing.
+            detectorBreakdown: {
+              washTrading: null,
+              cluster: null,
+              concentration: null,
+              fakeLiquidity: null,
+              priceAsymmetry: null,
+              postListingPump: null,
+            },
+            capsApplied: [],
+            coOccurrence: { admitted: [], gatedOut: [] },
+            cohortKey: null,
+            cohortPercentiles: null,
+          },
+          displayScore: 35,
+          band: "YELLOW",
+          dominantDriver: "BEHAVIORAL",
+          displayReason: "BEHAVIORAL_INSUFFICIENT",
+        })}
+        locale="en"
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("returns null when displayScore < 20 regardless of band or signals", () => {
+    const { container } = render(
+      <MarketStructureRisk
+        result={assessment({ displayScore: 12, band: "YELLOW" })}
+        locale="en"
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders the block when displayScore >= 40 with signals", () => {
+    render(
+      <MarketStructureRisk
+        result={assessment({ displayScore: 55, band: "ORANGE" })}
+        locale="en"
+      />,
+    );
+    expect(screen.getByText("Market Structure Risk")).toBeDefined();
+    expect(screen.getByLabelText(/Market Structure Risk — 55\/100/)).toBeDefined();
+  });
+
+  it("never surfaces 'No market' / 'No cluster' / 'limited on-chain' empty-state copy", () => {
+    const { container: full } = render(
+      <MarketStructureRisk result={assessment()} locale="en" />,
+    );
+    const fullText = full.textContent ?? "";
+    expect(fullText.toLowerCase()).not.toContain("no market");
+    expect(fullText.toLowerCase()).not.toContain("no cluster");
+    expect(fullText.toLowerCase()).not.toContain("limited on-chain");
+
+    // FR locale too — same block, same copy rule.
+    const { container: fr } = render(
+      <MarketStructureRisk result={assessment()} locale="fr" />,
+    );
+    const frText = fr.textContent ?? "";
+    expect(frText.toLowerCase()).not.toContain("aucun signal de manipulation");
+  });
 });
