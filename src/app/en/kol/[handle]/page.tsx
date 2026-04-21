@@ -8,6 +8,7 @@ import RetailCounter from '@/components/kol/RetailCounter'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { kolHandleToMint } from "@/lib/kol/handleToMint";
 
 interface KolWallet {
   id: string; address: string; chain: string; label?: string; status: string
@@ -206,14 +207,32 @@ export default function KOLPage() {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
               <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Est. Investor Losses</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
-                  ↓ PUBLIC REPORT
-                </a>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=lawyer`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
-                  ↓ LEGAL VERSION
-                </a>
-              </div>
+              {/* Two distinct retail downloads:                                */}
+              {/*   1. "Report" → wallet-level forensic PDF. If this KOL has a   */}
+              {/*      linked case mint we route through the token-level         */}
+              {/*      /api/report/v2 (richer, case-contextual). Otherwise fall  */}
+              {/*      back to the existing KOL wallet PDF so the button always  */}
+              {/*      resolves to something meaningful.                         */}
+              {/*   2. "CaseFile" → /api/casefile?handle=… (narrative + claims). */}
+              {/*      Endpoint accepts ?handle as of this commit; resolution    */}
+              {/*      lives in @/lib/kol/handleToMint.                          */}
+              {(() => {
+                const mint = kolHandleToMint(kol.handle);
+                const reportHref = mint
+                  ? `/api/report/v2?mint=${encodeURIComponent(mint)}&mock=1&lang=en`
+                  : `/api/pdf/kol?handle=${encodeURIComponent(kol.handle)}&mode=retail`;
+                const casefileHref = `/api/casefile/pdf?handle=${encodeURIComponent(kol.handle)}&template=public&lang=en&mock=1`;
+                return (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <a href={reportHref} target="_blank" rel="noreferrer" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
+                      ↓ REPORT
+                    </a>
+                    <a href={casefileHref} target="_blank" rel="noreferrer" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
+                      ↓ CASEFILE
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

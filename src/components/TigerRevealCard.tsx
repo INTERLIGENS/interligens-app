@@ -103,9 +103,17 @@ export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
 
           <button
             onClick={toggleReveal}
-            className="mb-6 w-full h-12 bg-[#F85B05] rounded-xl flex items-center justify-center gap-3 shadow-[0_0_24px_rgba(248,91,5,0.4)] hover:bg-[#ff6a1a] hover:shadow-[0_0_36px_rgba(248,91,5,0.65)] transition-all duration-200"
+            className="mb-6 w-full h-14 bg-[#F85B05] rounded-xl flex items-center justify-center gap-3 shadow-[0_0_24px_rgba(248,91,5,0.4)] hover:bg-[#ff6a1a] hover:shadow-[0_0_36px_rgba(248,91,5,0.65)] transition-all duration-200"
           >
-            <img src="/tiger/analyst.png" alt="" className="w-6 h-6 rounded-full object-cover border border-black/30" />
+            <img
+              src="/tiger/analyst.png?v=3"
+              alt="Tiger Analyst"
+              width={40}
+              height={40}
+              loading="eager"
+              decoding="async"
+              className="w-10 h-10 rounded-full object-contain bg-black shrink-0 block"
+            />
             <span className="text-[11px] font-black uppercase tracking-[0.25em] leading-none text-black">Ask Tiger Analyst</span>
           </button>
 

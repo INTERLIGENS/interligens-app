@@ -27,6 +27,8 @@ import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/Recid
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
+import MarketStructureRisk from "@/components/scan/MarketStructureRisk";
+import type { MmRiskAssessment } from "@/lib/mm/adapter/types";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 
@@ -254,6 +256,7 @@ export default function TigerScanPageFR() {
   const [error, setError]               = useState<string | null>(null);
   const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
   const [mmResult, setMmResult] = useState<MMScanResult | null>(null);
+  const [mmRisk, setMmRisk] = useState<MmRiskAssessment | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
@@ -442,6 +445,7 @@ export default function TigerScanPageFR() {
     setResult(null);
     setClusterResult(null);
     setMmResult(null);
+    setMmRisk(null);
     setIntelSignal(null);
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
@@ -468,6 +472,24 @@ export default function TigerScanPageFR() {
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setMmResult(d) })
         .catch(() => {})
+    }
+
+    // MM Pattern Engine risk — flag-gated server-side, fail-silent.
+    {
+      const chainKey =
+        chain === "SOL" ? "sol" :
+        chain === "ETH" ? "eth" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" :
+        chain === "BSC" ? "bsc" : null;
+      if (chainKey) {
+        fetch(`/api/scan/mm-risk?address=${encodeURIComponent(address.trim())}&chain=${chainKey}`, {
+          signal: AbortSignal.timeout(11000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d && d.assessment) setMmRisk(d.assessment) })
+          .catch(() => {})
+      }
     }
 
     for (let i = 0; i < 3; i++) {
@@ -875,6 +897,9 @@ export default function TigerScanPageFR() {
 
               {/* 5. TOP ON-CHAIN PROOFS + ASK TIGER ANALYST — flip card */}
               <TigerRevealCard tier={finalTier} proofs={result.proofs} />
+
+              {/* 5b. RISQUE DE STRUCTURE DE MARCHÉ — MM Pattern Engine (flag-gated) */}
+              <MarketStructureRisk result={mmRisk} locale="fr" />
 
               {/* ── SCAM FAMILY GRAPH ── */}
               {result.chain === "SOL" && (

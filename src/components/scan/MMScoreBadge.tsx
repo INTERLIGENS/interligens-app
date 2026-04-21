@@ -41,44 +41,27 @@ const WaveIcon = ({ color }: { color: string }) => (
 );
 
 export default function MMScoreBadge({ result, locale }: Props) {
+  // MM block must be INVISIBLE when it has nothing to say. The legacy
+  // "No MM signal (limited on-chain data)" copy is suppressed entirely —
+  // CLEAN / fallback / empty → render nothing.
   if (!result) return null;
+  if (result.verdict === "CLEAN") return null;
 
   const isFr = locale === "fr";
   const verdict = result.verdict;
   const color = COLORS[verdict];
   const signalList = isFr ? result.signalsFr : result.signals;
-  const firstSignal = signalList[0] ?? (isFr ? "Aucun signal" : "No signal");
+  if (!signalList || signalList.length === 0) return null;
+  const firstSignal = signalList[0];
 
-  // CLEAN (with or without fallback) → single muted line, discreet.
-  if (verdict === "CLEAN") {
-    const muted = "#6B7280";
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 0",
-        }}
-      >
-        <WaveIcon color={muted} />
-        <span style={{ fontSize: 11, color: muted, fontFamily: "monospace" }}>
-          {result.fallback
-            ? isFr
-              ? "Signal MM indisponible"
-              : "No MM signal (limited on-chain data)"
-            : firstSignal}
-        </span>
-      </div>
-    );
-  }
-
-  // SUSPICIOUS (amber) / MANIPULATED (red) → card with colored border.
+  // SUSPICIOUS (amber) / non-clean severe (red) → card with colored border.
+  // Wording avoids "manipulated / manipulation / fraud" per the forbidden-
+  // vocabulary rule; the UI describes patterns, not accusations.
   const eyebrow =
     verdict === "MANIPULATED"
       ? isFr
-        ? "MARCHE MANIPULE"
-        : "MARKET MANIPULATION"
+        ? "PATTERN DE MARCHÉ ÉLEVÉ"
+        : "MARKET PATTERN · HIGH"
       : isFr
         ? "ACTIVITE SUSPECTE"
         : "SUSPICIOUS MM ACTIVITY";

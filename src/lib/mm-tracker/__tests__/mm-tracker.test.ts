@@ -101,7 +101,12 @@ describe("mm_score", () => {
     });
     expect(res.verdict).toBe("CLEAN");
     expect(res.mmScore).toBe(0);
-    expect(res.signals[0]).toMatch(/No market-manipulation/i);
+    // CLEAN + no signals → signals array stays empty. The old "No
+    // market-manipulation signals detected" placeholder is gone: MMScoreBadge
+    // now returns null when the array is empty, so there is no UI text to
+    // assert on here. Contract: no entry means nothing fired.
+    expect(res.signals).toHaveLength(0);
+    expect(res.signalsFr).toHaveLength(0);
   });
 
   it("falls back cleanly on empty transfer sample", () => {
