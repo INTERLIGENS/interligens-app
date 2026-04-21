@@ -16,6 +16,7 @@ import type {
 } from "../types";
 
 const SCHEMA_VERSION = 1;
+const HIGH_CONFIDENCE_THRESHOLD = 0.85;
 
 export const CALIBRATOR_METRICS: CalibratorMetric[] = [
   "avgVolPerBuyer",
@@ -73,14 +74,18 @@ export function computePercentiles(
 // ─── Flagged-wallet exclusion ─────────────────────────────────────────────
 
 export async function flaggedWallets(
-  _allWallets: string[],
+  allWallets: string[],
 ): Promise<Set<string>> {
-  // Registry sub-module (MmAttribution) is excluded from this release, so
-  // there's no known-bad wallet set to exclude from cohort calibration.
-  // Returning an empty Set keeps the calibrator working — cohort baselines
-  // will include all wallets, a small quality trade-off documented in
-  // src/lib/mm/index.ts.
-  return new Set();
+  if (allWallets.length === 0) return new Set();
+  const attributions = await prisma.mmAttribution.findMany({
+    where: {
+      walletAddress: { in: Array.from(new Set(allWallets)) },
+      revokedAt: null,
+      confidence: { gte: HIGH_CONFIDENCE_THRESHOLD },
+    },
+    select: { walletAddress: true },
+  });
+  return new Set(attributions.map((a) => a.walletAddress));
 }
 
 function excludeFlagged(

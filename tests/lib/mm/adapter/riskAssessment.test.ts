@@ -85,10 +85,22 @@ describe("computeMmRiskAssessment", () => {
     persistScanRun.mockResolvedValue({ id: "run-persisted-1" });
   });
 
-  // Registry-only, MIXED, and ENTITY-subject tests are intentionally skipped
-  // on this release surface: the Registry sub-module is excluded, and the
-  // adapter always returns registryDrivenScore=0 / entity=null. See
-  // src/lib/mm/adapter/riskAssessment.ts (loadRegistryComponent).
+  it("REGISTRY-only wallet → dominantDriver REGISTRY + ENTITY_CONVICTED_ATTRIBUTED", async () => {
+    mmScoreFindUnique.mockResolvedValue(null);
+    lookupAttribution.mockResolvedValue(HIGH_CONV_ATTR);
+    const r = await computeMmRiskAssessment({
+      subjectType: "WALLET",
+      subjectId: "0xabc",
+      chain: "ETHEREUM",
+    });
+    expect(r.registry.entity?.slug).toBe("gotbit");
+    expect(r.registry.registryDrivenScore).toBe(95);
+    expect(r.engine.behaviorDrivenScore).toBe(0);
+    expect(r.overall.dominantDriver).toBe("REGISTRY");
+    expect(r.overall.displayReason).toBe("ENTITY_CONVICTED_ATTRIBUTED");
+    expect(r.overall.band).toBe("RED");
+    expect(r.source).toBe("compute");
+  });
 
   it("BEHAVIORAL-only wallet → dominantDriver BEHAVIORAL", async () => {
     mmScoreFindUnique.mockResolvedValue(null);
@@ -107,6 +119,25 @@ describe("computeMmRiskAssessment", () => {
     expect(r.overall.dominantDriver).toBe("BEHAVIORAL");
   });
 
+  it("MIXED when both Registry and behavioral are close", async () => {
+    mmScoreFindUnique.mockResolvedValue(null);
+    lookupAttribution.mockResolvedValue({
+      ...HIGH_CONV_ATTR,
+      mmEntity: { ...HIGH_CONV_ATTR.mmEntity, status: "DOCUMENTED", defaultScore: 60 },
+      confidence: 0.85,
+    });
+    const r = await computeMmRiskAssessment({
+      subjectType: "WALLET",
+      subjectId: "0xmixed",
+      chain: "ETHEREUM",
+      walletAgeDays: 90,
+      washTrading: washPattern({ pairCount: 10, volumeUsd: 100_000 }),
+      concentration: concentratedToken({ wallets: 20, topDominance: 0.95 }),
+    });
+    expect(r.overall.dominantDriver).toBe("MIXED");
+    expect(r.overall.displayReason).toBe("MIXED_REGISTRY_AND_PATTERN");
+  });
+
   it("NO_SIGNAL when nothing fires on either path", async () => {
     mmScoreFindUnique.mockResolvedValue(null);
     lookupAttribution.mockResolvedValue(null);
@@ -119,6 +150,28 @@ describe("computeMmRiskAssessment", () => {
     expect(r.overall.displayReason).toBe("NO_SIGNAL");
     expect(r.overall.band).toBe("GREEN");
     expect(r.overall.displayScore).toBe(0);
+  });
+
+  it("ENTITY subject loads defaultScore from the entity record", async () => {
+    mmScoreFindUnique.mockResolvedValue(null);
+    findEntityBySlug.mockResolvedValue({
+      id: "ent-2",
+      slug: "gotbit",
+      name: "Gotbit",
+      status: "CONVICTED",
+      riskBand: "RED",
+      jurisdiction: "US",
+      workflow: "DRAFT",
+      defaultScore: 95,
+    });
+    const r = await computeMmRiskAssessment({
+      subjectType: "ENTITY",
+      subjectId: "gotbit",
+      chain: "ETHEREUM",
+    });
+    expect(r.registry.entity?.slug).toBe("gotbit");
+    expect(r.registry.registryDrivenScore).toBe(95);
+    expect(r.overall.disclaimer).toContain("Fiche éditoriale");
   });
 
   it("returns source=cache when MmScore is fresh", async () => {

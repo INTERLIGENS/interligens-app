@@ -2474,8 +2474,6 @@ model MmDetectorOutput {
 }
 
 model MmSignal {
-  // Retains mmEntityId as a nullable opaque string so Phase 6 can re-enable
-  // the relation without a data migration. No FK in this release.
   id           String         @id @default(cuid())
   subjectType  MmSubjectType
   subjectId    String
@@ -2489,6 +2487,8 @@ model MmSignal {
   expiresAt    DateTime?
   scanRunId    String?
   mmEntityId   String?
+
+  mmEntity MmEntity? @relation(fields: [mmEntityId], references: [id])
 
   @@index([subjectId, chain])
   @@index([detectorType])
@@ -2537,4 +2537,251 @@ model MmCohortPercentile {
   @@unique([cohortKey, metricName, schemaVersion])
   @@index([cohortKey])
   @@index([computedAt])
+}
+
+// ─── MM_TRACKER — PHASE 1 ───────────────────────────────────────────────────
+// 11 modèles isolés du reste du schéma. Rollback = drop these 11 tables.
+
+model MmEntity {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  name            String
+  legalName       String?
+  jurisdiction    String?
+  foundedYear     Int?
+  founders        String[]
+  status          MmStatus
+  riskBand        MmRiskBand
+  defaultScore    Int
+  publicSummary   String    @db.Text
+  publicSummaryFr String?   @db.Text
+  knownAliases    String[]
+  officialDomains String[]
+  workflow        MmWorkflow @default(DRAFT)
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  attributions MmAttribution[]
+  claims       MmClaim[]
+  signals      MmSignal[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([workflow])
+}
+
+enum MmStatus {
+  CONVICTED
+  CHARGED
+  SETTLED
+  INVESTIGATED
+  DOCUMENTED
+  OBSERVED
+}
+
+enum MmWorkflow {
+  DRAFT
+  REVIEWED
+  PUBLISHED
+  CHALLENGED
+  UNPUBLISHED
+}
+
+model MmSource {
+  id              String         @id @default(cuid())
+  publisher       String
+  sourceType      MmSourceType
+  url             String
+  archivedUrl     String?
+  archivalStatus  MmArchivalStatus @default(PENDING)
+  archivalError   String?
+  localSnapshot   String?
+  title           String
+  author          String?
+  publishedAt     DateTime?
+  fetchedAt       DateTime       @default(now())
+  credibilityTier MmCredTier
+  language        String         @default("en")
+  notes           String?        @db.Text
+
+  claims MmClaim[]
+
+  @@index([sourceType])
+  @@index([credibilityTier])
+  @@index([archivalStatus])
+}
+
+enum MmSourceType {
+  DOJ
+  CFTC
+  SEC
+  COURT
+  REGULATOR
+  MEDIA_TIER1
+  MEDIA_TIER2
+  MEDIA_TIER3
+  OSINT
+  OFFICIAL
+  HACK_LEAK
+}
+
+enum MmCredTier {
+  TIER_1
+  TIER_2
+  TIER_3
+}
+
+enum MmArchivalStatus {
+  PENDING
+  SUCCESS
+  WAYBACK_FAIL
+  R2_FAIL
+  RETRY
+}
+
+model MmClaim {
+  id            String        @id @default(cuid())
+  mmEntityId    String
+  claimType     MmClaimType
+  text          String        @db.Text
+  textFr        String?       @db.Text
+  sourceId      String
+  jurisdiction  String?
+  publishStatus MmPubStatus   @default(DRAFT)
+  publishedAt   DateTime?
+  orderIndex    Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
+  source   MmSource @relation(fields: [sourceId], references: [id])
+
+  @@index([mmEntityId])
+  @@index([claimType])
+  @@index([publishStatus])
+}
+
+enum MmClaimType {
+  FACT
+  ALLEGATION
+  INFERENCE
+  RESPONSE
+}
+
+enum MmPubStatus {
+  DRAFT
+  REVIEWED
+  PUBLISHED
+  RETRACTED
+}
+
+model MmAttribution {
+  id                String          @id @default(cuid())
+  walletAddress     String
+  chain             MmChain
+  mmEntityId        String
+  attributionMethod MmAttribMethod
+  confidence        Float
+  evidenceRefs      Json
+  reviewerUserId    String?
+  reviewedAt        DateTime?
+  challengedAt      DateTime?
+  challengeReason   String?         @db.Text
+  revokedAt         DateTime?
+  revokedReason     String?         @db.Text
+  createdAt         DateTime        @default(now())
+
+  mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
+
+  @@index([walletAddress, chain])
+  @@index([mmEntityId])
+  @@index([confidence])
+}
+
+enum MmAttribMethod {
+  ARKHAM
+  HACK_LEAK
+  OFFICIAL
+  OSINT
+  INFERRED_CLUSTER
+  COURT_FILING
+}
+
+model MmReviewLog {
+  id             String         @id @default(cuid())
+  targetType     MmTargetType
+  targetId       String
+  action         MmReviewAction
+  actorUserId    String
+  actorRole      String
+  notes          String?        @db.Text
+  snapshotBefore Json?
+  snapshotAfter  Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([targetType, targetId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+enum MmTargetType {
+  ENTITY
+  CLAIM
+  ATTRIBUTION
+  SOURCE
+  CHALLENGE
+  SCAN_RUN
+}
+
+enum MmReviewAction {
+  CREATED
+  EDITED
+  REVIEWED
+  PUBLISHED
+  UNPUBLISHED
+  CHALLENGED
+  CHALLENGE_VERIFIED
+  CHALLENGE_REJECTED
+  CORRECTED
+  RETRACTED
+}
+
+model MmChallenge {
+  id                 String            @id @default(cuid())
+  targetType         MmTargetType
+  targetId           String
+  challengerEmail    String
+  challengerName     String
+  challengerRole     String?
+  challengerEntity   String
+  claimedText        String            @db.Text
+  responseText       String            @db.Text
+  verificationStatus MmVerifStatus     @default(PENDING)
+  verificationMethod MmVerifMethod?
+  verifiedAt         DateTime?
+  verifiedBy         String?
+  publishStatus      MmPubStatus       @default(DRAFT)
+  publishedAt        DateTime?
+  rejectionReason    String?           @db.Text
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([verificationStatus])
+  @@index([publishStatus])
+}
+
+enum MmVerifStatus {
+  PENDING
+  EMAIL_VERIFIED
+  LEGAL_VERIFIED
+  REJECTED
+}
+
+enum MmVerifMethod {
+  EMAIL_DKIM
+  LEGAL_SIGNATURE
+  OFFICIAL_CHANNEL
 }

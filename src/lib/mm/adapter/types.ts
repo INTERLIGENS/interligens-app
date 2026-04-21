@@ -4,16 +4,12 @@
 // object consumed by the assess API endpoint and the UI.
 
 import type {
+  MmAttribMethod,
   MmChain,
   MmRiskBand,
+  MmStatus,
   MmSubjectType,
 } from "../types";
-
-// Placeholder string types for registry-only enums. In this release the
-// registry path always returns null/empty, so these fields are never
-// populated — narrowing to plain strings keeps the interface stable.
-type MmStatus = string;
-type MmAttribMethod = string;
 import type {
   CohortPercentiles,
   ConfidenceLevel,

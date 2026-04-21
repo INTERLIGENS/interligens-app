@@ -3,9 +3,7 @@
 // the Registry attribution object) and return opaque string enums consumed
 // by the UI and the copy layer.
 
-// Registry status is opaque on this release surface (always null). Typed as
-// string so the historical code-path still compiles without the registry.
-type MmStatus = string;
+import type { MmStatus } from "../types";
 import type { ConfidenceLevel } from "../engine/types";
 import type { AttributionSummary, DisplayReason, DominantDriver } from "./types";
 
