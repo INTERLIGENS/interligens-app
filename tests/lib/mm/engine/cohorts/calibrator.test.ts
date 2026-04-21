@@ -88,10 +88,26 @@ describe("calibrateCohort", () => {
     expect(upsert).toHaveBeenCalledTimes(CALIBRATOR_METRICS.length);
   });
 
-  // Flagged-wallet exclusion depends on the Registry (MmAttribution), which
-  // is intentionally excluded from this release surface. See
-  // src/lib/mm/engine/cohorts/calibrator.ts — flaggedWallets() is a no-op.
-  // When the Registry lands, re-enable this test with the same fixture.
+  it("excludes tokens with any flagged wallet (confidence ≥ 0.85)", async () => {
+    findMany.mockResolvedValueOnce([{ walletAddress: "flagged-1" }]);
+    const inputs: CalibratorInput[] = [
+      {
+        tokenId: "A",
+        chain: "SOLANA",
+        activeWallets: ["flagged-1", "normal"],
+        metrics: { hhi: 9_999 },
+      },
+      {
+        tokenId: "B",
+        chain: "SOLANA",
+        activeWallets: ["clean-1"],
+        metrics: { hhi: 1_000 },
+      },
+    ];
+    const r = await calibrateCohort("sol:micro:new", inputs, { dryRun: true });
+    expect(r.excludedFlaggedCount).toBe(1);
+    expect(r.sampleSize).toBe(1); // only B remains
+  });
 
   it("dryRun mode does not touch the database", async () => {
     const r = await calibrateCohort(

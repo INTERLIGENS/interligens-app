@@ -1,13 +1,11 @@
-// ─── MM Pattern Engine — release surface ──────────────────────────────────
-// Registry / discovery / reporting / email / integration hooks are
-// intentionally excluded from this release. Only the behavioral sub-modules
-// ship:
-//   - engine: detectors, scoring, cohorts, scanRun
-//   - adapter: displayScore, displayReason, disclaimer, freshness,
-//              riskAssessment (engine-only — no registry lookup)
-//   - data:    on-chain adapters (etherscan, helius, birdeye) + scanner
+// ─── MM Tracker — public surface ──────────────────────────────────────────
+// Registry (Produit A) and Engine (Produit B) share the types module. The
+// adapter (Phase 5) is the only place where they are consolidated.
 
 export * from "./types";
+export * as registry from "./registry";
 export * as engine from "./engine";
 export * as adapter from "./adapter";
+export * as integration from "./integration";
 export * as data from "./data";
+export * as discovery from "./discovery";

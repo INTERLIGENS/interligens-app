@@ -22,9 +22,15 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type {
   MmChain,
+  MmStatus,
   MmSubjectType,
 } from "../types";
 import { MM_SCHEMA_VERSION } from "../types";
+import {
+  lookupAttribution,
+} from "../registry/attributions";
+import { findEntityBySlug, findEntityById } from "../registry/entities";
+import { computeRegistryDrivenScore } from "../registry/scoring";
 import { runScan, runScanWithCohort } from "../engine/scanRun/runner";
 import { persistScanRun } from "../engine/scanRun/persist";
 import { ENGINE_VERSION } from "../engine/scoring/weights";
@@ -47,9 +53,11 @@ import { classifyDisplayReason, classifyDominantDriver } from "./displayReason";
 import { computeFreshness } from "./freshness";
 import { generateDisclaimer } from "./disclaimer";
 import type {
+  AttributionSummary,
   EngineComponent,
   MmRiskAssessment,
   RegistryComponent,
+  RegistryEntitySummary,
 } from "./types";
 
 const TRANSIENT_RUN_PREFIX = "transient_";
@@ -85,17 +93,78 @@ export interface AdapterInput {
   maxAgeHours?: number;
 }
 
-// ─── Registry path (engine-only mode) ─────────────────────────────────────
-// The Registry sub-module (Produit A) is intentionally excluded from this
-// release surface. The adapter therefore always returns an empty registry
-// component: registryDrivenScore = 0, entity/attribution = null. Downstream,
-// classifyDominantDriver collapses this to "BEHAVIORAL" or "NONE" depending
-// on the engine score — no UI path references a registry entity.
+// ─── Registry path ────────────────────────────────────────────────────────
 
 async function loadRegistryComponent(
-  _input: AdapterInput,
+  input: AdapterInput,
 ): Promise<RegistryComponent> {
+  if (input.subjectType === "WALLET") {
+    const attribution = await lookupAttribution(input.subjectId, input.chain);
+    if (!attribution) {
+      return { entity: null, attribution: null, registryDrivenScore: 0 };
+    }
+    const registryDrivenScore = computeRegistryDrivenScore({
+      entity: attribution.mmEntity,
+      attribution: {
+        attributionMethod: attribution.attributionMethod,
+        confidence: attribution.confidence,
+        revokedAt: attribution.revokedAt,
+      },
+    });
+    return {
+      entity: summariseEntity(attribution.mmEntity),
+      attribution: {
+        id: attribution.id,
+        confidence: attribution.confidence,
+        method: attribution.attributionMethod,
+        attributedAt: (attribution.reviewedAt ?? attribution.createdAt).toISOString(),
+        reviewerUserId: attribution.reviewerUserId,
+      },
+      registryDrivenScore,
+    };
+  }
+
+  if (input.subjectType === "ENTITY") {
+    // Allow callers to pass either the slug or the id.
+    const entity =
+      (await findEntityBySlug(input.subjectId)) ??
+      (await findEntityById(input.subjectId));
+    if (!entity) {
+      return { entity: null, attribution: null, registryDrivenScore: 0 };
+    }
+    return {
+      entity: summariseEntity(entity),
+      attribution: null,
+      registryDrivenScore: entity.defaultScore,
+    };
+  }
+
+  // TOKEN subjects have no direct registry attribution in Phase 5. Phase 6
+  // will query "any attributed wallet active on this token" via the data
+  // layer. For now the registry contribution is zero.
   return { entity: null, attribution: null, registryDrivenScore: 0 };
+}
+
+function summariseEntity(entity: {
+  id: string;
+  slug: string;
+  name: string;
+  status: MmStatus;
+  riskBand: import("@prisma/client").MmRiskBand;
+  jurisdiction: string | null;
+  workflow: string;
+  defaultScore: number;
+}): RegistryEntitySummary {
+  return {
+    id: entity.id,
+    slug: entity.slug,
+    name: entity.name,
+    status: entity.status,
+    riskBand: entity.riskBand,
+    jurisdiction: entity.jurisdiction,
+    workflow: entity.workflow,
+    defaultScore: entity.defaultScore,
+  };
 }
 
 // ─── Engine path ──────────────────────────────────────────────────────────
