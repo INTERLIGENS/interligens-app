@@ -4,7 +4,7 @@ export type CaseFileParams = {
 };
 
 export function buildCaseFileUrl({ id, lang }: CaseFileParams): string {
-  return `/api/casefile/pdf?mint=${encodeURIComponent(id)}&template=public&lang=${lang}&mock=1&t=${Date.now()}`;
+  return `/api/casefile/public?mint=${encodeURIComponent(id)}&lang=${lang}&t=${Date.now()}`;
 }
 
 export function buildCaseFileFilename(id: string): string {
