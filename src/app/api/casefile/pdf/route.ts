@@ -1,6 +1,6 @@
 // src/app/api/casefile/pdf/route.ts
 //
-// GET /api/casefile/pdf?handle=<kolHandle>&template=<public|internal>&lang=<en|fr>&mock=1
+// GET /api/casefile/pdf?handle=<kolHandle>&template=<public|internal>&lang=<en|fr>
 //
 // Two-template PDF endpoint:
 //   template=public   → public-safe, printable, 9-section diffamation-safe
@@ -11,9 +11,10 @@
 //                       + buildBotifyInput). Shares the data with POST
 //                       /api/casefile/generate.
 //
-// Auth: ?mock=1 bypasses ADMIN_TOKEN (same pattern as /api/report/v2).
-// Handle → preset resolution via kolHandleToCasefilePreset (BOTIFY-linked
-// handles resolve; everything else → 404).
+// Auth: ADMIN_TOKEN is always required (SEC P0 — the previous ?mock=1
+// retail bypass has been removed). Handle → preset resolution via
+// kolHandleToCasefilePreset (BOTIFY-linked handles resolve; everything
+// else → 404).
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -54,13 +55,12 @@ function parseLang(raw: string | null): PublicReportLang {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const isMock = searchParams.get("mock") === "1";
-  if (!isMock) {
-    const auth = await checkAuth(req);
-    if (!auth.authorized) return auth.response!;
-  }
+  // SEC P0 — auth is ALWAYS required. Previous ?mock=1 retail bypass
+  // removed; this endpoint is admin-only.
+  const auth = await checkAuth(req);
+  if (!auth.authorized) return auth.response!;
 
+  const { searchParams } = new URL(req.url);
   const handle = (searchParams.get("handle") ?? "").trim();
   const mint = (searchParams.get("mint") ?? "").trim();
   const presetOverride = searchParams.get("preset");
