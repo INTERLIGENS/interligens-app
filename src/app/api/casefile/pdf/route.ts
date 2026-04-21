@@ -35,6 +35,14 @@ export const dynamic = "force-dynamic";
 
 type Template = "public" | "internal";
 
+// Direct mint → preset map. Callers that already hold the token mint
+// (scan page, share links, OG previews) can bypass the KOL handle lookup
+// entirely. Keep narrow; every entry ships in step with a casefile
+// published under the matching preset.
+const MINT_TO_PRESET: Record<string, "botify" | "vine"> = {
+  BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb: "botify",
+};
+
 function parseTemplate(raw: string | null): Template {
   if (raw === "internal") return "internal";
   return "public"; // default to public — it's the retail surface
@@ -54,21 +62,34 @@ export async function GET(req: NextRequest) {
   }
 
   const handle = (searchParams.get("handle") ?? "").trim();
+  const mint = (searchParams.get("mint") ?? "").trim();
   const presetOverride = searchParams.get("preset");
   const template = parseTemplate(searchParams.get("template"));
   const lang = parseLang(searchParams.get("lang"));
 
-  if (!handle && !presetOverride) {
+  if (!handle && !mint && !presetOverride) {
     return NextResponse.json(
-      { error: "handle or preset required" },
+      { error: "handle, mint or preset required" },
       { status: 400 }
     );
   }
 
-  const preset =
-    presetOverride === "vine" || presetOverride === "botify"
-      ? presetOverride
-      : kolHandleToCasefilePreset(handle);
+  // Mint takes precedence when provided — it's the most specific anchor.
+  // handle/presetOverride are still supported for the KOL-page button.
+  let preset: "botify" | "vine" | null = null;
+  if (presetOverride === "vine" || presetOverride === "botify") {
+    preset = presetOverride;
+  } else if (mint) {
+    preset = MINT_TO_PRESET[mint] ?? null;
+    if (!preset) {
+      return NextResponse.json(
+        { error: "mint has no linked case file" },
+        { status: 400 }
+      );
+    }
+  } else {
+    preset = kolHandleToCasefilePreset(handle);
+  }
   if (!preset) {
     return NextResponse.json(
       { error: "handle has no linked case file" },
