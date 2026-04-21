@@ -6,6 +6,7 @@ import ProceedsCard from '@/components/kol/ProceedsCard'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { kolHandleToMint } from "@/lib/kol/handleToMint";
 
 interface KolPortefeuille {
   id: string; address: string; chain: string; label?: string; status: string
@@ -218,14 +219,27 @@ export default function KOLPageFR() {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
               <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Pertes estimees investisseurs</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail&lang=fr`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
-                  ↓ RAPPORT PUBLIC
-                </a>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=lawyer&lang=fr`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
-                  ↓ VERSION JURIDIQUE
-                </a>
-              </div>
+              {/* Deux téléchargements distincts :
+                   1. « Rapport » → PDF forensic niveau wallet (fallback) ou
+                      /api/report/v2 si le KOL a un mint lié (riche, contextuel).
+                   2. « CaseFile » → /api/casefile?handle=… (narratif + claims). */}
+              {(() => {
+                const mint = kolHandleToMint(kol.handle);
+                const reportHref = mint
+                  ? `/api/report/v2?mint=${encodeURIComponent(mint)}&mock=1&lang=fr`
+                  : `/api/pdf/kol?handle=${encodeURIComponent(kol.handle)}&mode=retail&lang=fr`;
+                const casefileHref = `/api/casefile?handle=${encodeURIComponent(kol.handle)}&mock=1`;
+                return (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <a href={reportHref} target="_blank" rel="noreferrer" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
+                      ↓ RAPPORT
+                    </a>
+                    <a href={casefileHref} target="_blank" rel="noreferrer" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
+                      ↓ CASEFILE
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
