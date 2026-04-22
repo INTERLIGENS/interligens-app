@@ -13,6 +13,9 @@ const CEX_ADDRESSES = new Set([
   "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
 ]);
 
+const JUPITER_PROGRAM = "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB";
+const RAYDIUM_PROGRAM = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8";
+
 const CA_MAP: Record<string, string> = {
   "BOTIFY":        "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
   "BOTIFY-MAIN":   "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
@@ -31,6 +34,64 @@ async function helius(method: string, params: any[]) {
   });
   const j = await res.json();
   return j.result ?? null;
+}
+
+async function fetchWalletGeneralSwaps(
+  walletAddress: string,
+  knownWalletAddresses: Set<string>
+): Promise<any[]> {
+  const events: any[] = [];
+  const sigs = await helius("getSignaturesForAddress", [walletAddress, { limit: 20 }]);
+  if (!sigs?.length) return events;
+
+  for (const sigInfo of sigs.slice(0, 10)) {
+    try {
+      const tx = await helius("getTransaction", [
+        sigInfo.signature,
+        { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
+      ]);
+      if (!tx || tx.meta?.err) continue;
+
+      const accountKeys: any[] = tx.transaction?.message?.accountKeys ?? [];
+      const programIds = accountKeys.map((k: any) => k.pubkey ?? k);
+      const isJupiter = programIds.includes(JUPITER_PROGRAM);
+      const isRaydium = programIds.includes(RAYDIUM_PROGRAM);
+      if (!isJupiter && !isRaydium) continue;
+
+      const walletIndex = accountKeys.findIndex((k: any) => (k.pubkey ?? k) === walletAddress);
+      if (walletIndex < 0) continue;
+
+      const preSol = (tx.meta?.preBalances?.[walletIndex] ?? 0) / 1e9;
+      const postSol = (tx.meta?.postBalances?.[walletIndex] ?? 0) / 1e9;
+      const solDiff = postSol - preSol;
+      if (solDiff < 0.01) continue;
+
+      const destination = programIds[1] ?? "";
+      if (knownWalletAddresses.has(destination)) continue;
+
+      const blockTime = tx.blockTime;
+      if (!blockTime) continue;
+      const eventDate = new Date(blockTime * 1000).toISOString();
+
+      const { price, source } = await getPriceAtDate("SOL", eventDate);
+      if (price <= 0) continue;
+
+      const amountUsd = parseFloat((solDiff * price).toFixed(2));
+      if (amountUsd < 10) continue;
+
+      const isCex = CEX_ADDRESSES.has(destination);
+      events.push({
+        walletAddress, chain: "SOL",
+        txHash: sigInfo.signature, eventDate,
+        tokenSymbol: null, tokenAddress: null,
+        amountTokens: null, amountUsd,
+        priceUsdAtTime: price, pricingSource: source,
+        eventType: isCex ? "cex_deposit" : (isJupiter ? "jupiter_swap" : "raydium_swap"),
+        ambiguous: false, caseId: null,
+      });
+    } catch { continue; }
+  }
+  return events;
 }
 
 async function fetchSOLEventsForCA(
@@ -150,7 +211,10 @@ export async function computeProceedsForHandle(handle: string): Promise<{
 
     const knownAddresses = new Set(activeWallets.map((w: any) => w.address));
 
-    await prisma.$executeRawUnsafe(`DELETE FROM "KolProceedsEvent" WHERE "kolHandle" = $1`, handle);
+    await prisma.$executeRawUnsafe(
+      `DELETE FROM "KolProceedsEvent" WHERE "kolHandle" = $1 AND "eventType" != 'SUMMARY_ARKHAM'`,
+      handle,
+    );
 
     const caseIds = profile.kolCases.map((c: any) => c.caseId);
     const caseCAs = caseIds
@@ -170,6 +234,19 @@ export async function computeProceedsForHandle(handle: string): Promise<{
           allEvents.push(...events);
         }
       }
+    }
+
+    // General Jupiter/Raydium scan for wallets that produced no CA-specific events.
+    // Cap at 10 wallets per handle — MM clusters (Myrrha: 113 wallets) would timeout.
+    const walletsWithEvents = new Set(allEvents.map((e) => e.walletAddress));
+    const walletsToScan = activeWallets
+      .filter((w) => w.chain?.toUpperCase() === "SOL" && !walletsWithEvents.has(w.address))
+      .slice(0, 5);
+    for (const wallet of walletsToScan) {
+      console.log(`  wallet ${wallet.address.slice(0, 8)}... — general swap scan`);
+      const swapEvents = await fetchWalletGeneralSwaps(wallet.address, knownAddresses);
+      console.log(`  → ${swapEvents.length} swap events`);
+      allEvents.push(...swapEvents);
     }
 
     const seen = new Set<string>();
@@ -228,16 +305,22 @@ export async function computeProceedsForHandle(handle: string): Promise<{
     topWalletProceedsUsd, largest?.amountUsd ?? null, largest?.txHash ?? null,
     largest?.eventDate ?? null, activeWallets.length, profile.kolCases.length, dedupedEvents.length, confidence);
 
-    // Keep KolProfile.totalDocumented in lockstep with the authoritative
-    // KolProceedsEvent sum. The public Explorer reads this column, so any
-    // drift here leaves retail-facing counters stale.
+    // Query the authoritative sum from DB — includes preserved SUMMARY_ARKHAM events
+    // that were not deleted above, so totalDocumented reflects the full picture.
+    const sumRows = await prisma.$queryRaw<{ total: number }[]>`
+      SELECT COALESCE(SUM("amountUsd"), 0)::float AS total
+      FROM "KolProceedsEvent"
+      WHERE "kolHandle" = ${handle} AND "amountUsd" > 0 AND "ambiguous" = false
+    `;
+    const fullTotal = sumRows[0]?.total ?? 0;
+
     await prisma.$executeRawUnsafe(
       `UPDATE "KolProfile" SET "totalDocumented" = $1 WHERE handle = $2`,
-      Math.round(totalProceedsUsd),
+      Math.round(fullTotal),
       handle,
     );
 
-    return { success: true, totalProceedsUsd, eventCount: dedupedEvents.length };
+    return { success: true, totalProceedsUsd: fullTotal, eventCount: dedupedEvents.length };
   } catch (err: any) {
     console.error("[computeProceeds]", err);
     return { success: false, totalProceedsUsd: 0, eventCount: 0, error: err.message };
