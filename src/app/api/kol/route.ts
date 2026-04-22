@@ -4,6 +4,11 @@ import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 
 export async function GET() {
   try {
+    // totalDocumented is kept in lockstep with SUM(KolProceedsEvent.amountUsd)
+    // by the Helius scan + /api/admin/kol/sync-proceeds. Read it straight from
+    // KolProfile rather than re-aggregating — prior enrichment summed
+    // KolEvidence.amountUsd, which ignored on-chain events and left the
+    // Explorer stuck at historical values.
     const kols = await prisma.kolProfile.findMany({
       select: {
         handle: true,
@@ -12,6 +17,7 @@ export async function GET() {
         riskFlag: true,
         rugCount: true,
         totalScammed: true,
+        totalDocumented: true,
         verified: true,
         confidence: true,
         followerCount: true,
@@ -27,16 +33,9 @@ export async function GET() {
       orderBy: { totalScammed: 'desc' },
     })
 
-    // Enrichir avec totalDocumented depuis KolEvidence
-    const enriched = await Promise.all(kols.map(async (kol) => {
-      const evs = await prisma.kolEvidence.aggregate({
-        where: { kolHandle: kol.handle },
-        _sum: { amountUsd: true },
-      })
-      return {
-        ...kol,
-        totalDocumented: evs._sum.amountUsd || 0,
-      }
+    const enriched = kols.map((kol) => ({
+      ...kol,
+      totalDocumented: kol.totalDocumented ?? 0,
     }))
 
     return NextResponse.json({ kols: enriched })

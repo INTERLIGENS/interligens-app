@@ -228,6 +228,15 @@ export async function computeProceedsForHandle(handle: string): Promise<{
     topWalletProceedsUsd, largest?.amountUsd ?? null, largest?.txHash ?? null,
     largest?.eventDate ?? null, activeWallets.length, profile.kolCases.length, dedupedEvents.length, confidence);
 
+    // Keep KolProfile.totalDocumented in lockstep with the authoritative
+    // KolProceedsEvent sum. The public Explorer reads this column, so any
+    // drift here leaves retail-facing counters stale.
+    await prisma.$executeRawUnsafe(
+      `UPDATE "KolProfile" SET "totalDocumented" = $1 WHERE handle = $2`,
+      Math.round(totalProceedsUsd),
+      handle,
+    );
+
     return { success: true, totalProceedsUsd, eventCount: dedupedEvents.length };
   } catch (err: any) {
     console.error("[computeProceeds]", err);

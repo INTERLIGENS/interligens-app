@@ -11,7 +11,7 @@
     { "path": "/api/cron/weekly-digest", "schedule": "0 8 * * 1" },
     { "path": "/api/cron/intel-rss", "schedule": "0 7 * * *" },
     { "path": "/api/cron/intel-summarize", "schedule": "30 7 * * *" },
-    { "path": "/api/cron/helius-scan", "schedule": "0 4 */3 * *" },
+    { "path": "/api/cron/helius-scan", "schedule": "0 */12 * * *" },
     { "path": "/api/cron/security-weekly-digest", "schedule": "0 8 * * 1" }
   ]
 }
