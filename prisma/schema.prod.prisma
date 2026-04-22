@@ -2785,3 +2785,268 @@ enum MmVerifMethod {
   LEGAL_SIGNATURE
   OFFICIAL_CHANNEL
 }
+
+// ─────────────────────────────────────────────────────────────
+// RWA ISSUER REGISTRY — AUTHENTICITY LAYER
+// Migration: rwa_registry_v1
+// ─────────────────────────────────────────────────────────────
+
+enum RwaIssuerType {
+  ASSET_MANAGER
+  PLATFORM
+  SPV
+  REAL_ESTATE_ISSUER
+  BANK
+  OTHER
+}
+
+enum RwaIssuerStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  DEPRECATED
+}
+
+enum RwaAssetClass {
+  STOCKS
+  TREASURIES
+  REAL_ESTATE
+  CREDIT
+  COMMODITY
+  YIELD
+  MONEY_MARKET
+}
+
+enum RwaChainFamily {
+  EVM
+  SOLANA
+  OTHER
+}
+
+enum RwaContractVerificationStatus {
+  VERIFIED_OFFICIAL
+  SUSPECTED_OLD
+  DEPRECATED
+  REVOKED
+}
+
+enum RwaAliasType {
+  PROXY
+  IMPLEMENTATION
+  BRIDGE_REPRESENTATION
+  LEGACY_CONTRACT
+  WRAPPED_FORM
+}
+
+enum RwaSourceType {
+  OFFICIAL_DOCS
+  ISSUER_SITE
+  REGULATORY_FILING
+  BLOCK_EXPLORER
+  PRESS_RELEASE
+  GITHUB
+  ORACLE
+  INTERNAL_VERIFICATION
+}
+
+enum RwaVerificationEventType {
+  CREATED
+  VERIFIED
+  MIGRATED
+  DEPRECATED
+  REVALIDATED
+  SOURCE_ADDED
+}
+
+enum RwaMatchVerdict {
+  EXACT_VERIFIED
+  EXACT_ALIAS_VERIFIED
+  LEGACY_VERIFIED
+  PROBABLE_FAMILY_MISMATCH
+  UNKNOWN
+}
+
+model RwaIssuer {
+  id                String          @id @default(cuid())
+  slug              String          @unique
+  displayName       String
+  legalEntityName   String?
+  issuerType        RwaIssuerType
+  jurisdictionCode  String?
+  regulatoryStatus  String?
+  websiteUrl        String?
+  status            RwaIssuerStatus @default(DRAFT)
+  riskNotesInternal String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  assets            RwaAsset[]
+  aliases           RwaIssuerAlias[]
+  sources           RwaVerificationSource[]
+
+  @@index([slug])
+  @@index([status])
+}
+
+model RwaIssuerAlias {
+  id        String    @id @default(cuid())
+  issuerId  String
+  alias     String
+  createdAt DateTime  @default(now())
+
+  issuer    RwaIssuer @relation(fields: [issuerId], references: [id])
+
+  @@unique([issuerId, alias])
+  @@index([alias])
+}
+
+model RwaAsset {
+  id                  String        @id @default(cuid())
+  issuerId            String
+  symbol              String
+  name                String
+  assetClass          RwaAssetClass
+  underlyingReference String?
+  isinOrEquivalent    String?
+  cusipOrEquivalent   String?
+  officialProductUrl  String?
+  isActive            Boolean       @default(true)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  issuer              RwaIssuer     @relation(fields: [issuerId], references: [id])
+  contracts           RwaContract[]
+  aliases             RwaAssetAlias[]
+  sources             RwaVerificationSource[]
+
+  @@unique([issuerId, symbol])
+  @@index([symbol])
+  @@index([assetClass])
+  @@index([issuerId])
+}
+
+model RwaAssetAlias {
+  id        String   @id @default(cuid())
+  assetId   String
+  alias     String
+  createdAt DateTime @default(now())
+
+  asset     RwaAsset @relation(fields: [assetId], references: [id])
+
+  @@unique([assetId, alias])
+  @@index([alias])
+}
+
+model RwaContract {
+  id                     String                        @id @default(cuid())
+  assetId                String
+  chainFamily            RwaChainFamily
+  chainKey               String
+  contractAddressRaw     String
+  contractAddressNorm    String
+  tokenStandard          String?
+  isPrimary              Boolean                       @default(false)
+  isDeprecated           Boolean                       @default(false)
+  verificationStatus     RwaContractVerificationStatus @default(VERIFIED_OFFICIAL)
+  verificationDate       DateTime?
+  supersededByContractId String?
+  firstSeenAt            DateTime                      @default(now())
+  lastCheckedAt          DateTime?
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
+
+  asset                  RwaAsset                      @relation(fields: [assetId], references: [id])
+  supersededBy           RwaContract?                  @relation("ContractMigration", fields: [supersededByContractId], references: [id])
+  supersedes             RwaContract[]                 @relation("ContractMigration")
+  aliases                RwaContractAlias[]
+  sources                RwaVerificationSource[]
+  verificationEvents     RwaVerificationEvent[]
+  scanCacheEntries       RwaScanCache[]
+
+  @@unique([chainKey, contractAddressNorm])
+  @@index([contractAddressNorm])
+  @@index([chainKey])
+  @@index([verificationStatus])
+  @@index([assetId])
+  @@index([supersededByContractId])
+}
+
+model RwaContractAlias {
+  id                 String                        @id @default(cuid())
+  contractId         String
+  aliasType          RwaAliasType
+  addressNorm        String
+  chainKey           String
+  verificationStatus RwaContractVerificationStatus @default(VERIFIED_OFFICIAL)
+  createdAt          DateTime                      @default(now())
+
+  contract           RwaContract                   @relation(fields: [contractId], references: [id])
+
+  @@unique([chainKey, addressNorm])
+  @@index([addressNorm])
+  @@index([chainKey])
+}
+
+model RwaVerificationSource {
+  id                String        @id @default(cuid())
+  issuerId          String?
+  assetId           String?
+  contractId        String?
+  sourceType        RwaSourceType
+  sourceUrl         String
+  capturedAt        DateTime      @default(now())
+  contentHash       String?
+  snapshotR2Key     String?
+  isPrimaryEvidence Boolean       @default(false)
+  notes             String?
+
+  issuer            RwaIssuer?    @relation(fields: [issuerId], references: [id])
+  asset             RwaAsset?     @relation(fields: [assetId], references: [id])
+  contract          RwaContract?  @relation(fields: [contractId], references: [id])
+
+  @@index([issuerId])
+  @@index([assetId])
+  @@index([contractId])
+}
+
+model RwaVerificationEvent {
+  id         String                   @id @default(cuid())
+  contractId String
+  eventType  RwaVerificationEventType
+  summary    String
+  actor      String
+  metadata   Json?
+  createdAt  DateTime                 @default(now())
+
+  contract   RwaContract              @relation(fields: [contractId], references: [id])
+
+  @@index([contractId])
+  @@index([createdAt])
+}
+
+model RwaScanCache {
+  id                String          @id @default(cuid())
+  inputAddressNorm  String
+  chainKey          String
+  registryVersion   Int
+  matchVerdict      RwaMatchVerdict
+  matchedContractId String?
+  matchedAssetId    String?
+  matchedIssuerId   String?
+  confidence        Float
+  explanationJson   Json
+  cachedUntil       DateTime
+  createdAt         DateTime        @default(now())
+
+  matchedContract   RwaContract?    @relation(fields: [matchedContractId], references: [id])
+
+  @@unique([inputAddressNorm, chainKey])
+  @@index([cachedUntil])
+  @@index([registryVersion])
+}
+
+model RwaRegistryMeta {
+  id        Int      @id @default(1)
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
