@@ -66,6 +66,7 @@ const SECTIONS: Section[] = [
       { label: "Corroboration", href: "/admin/corroboration" },
       { label: "Marquage d'adresses", href: "/admin/labels" },
       { label: "Dossiers publies", href: "/admin/cases" },
+      { label: "RWA Registry", href: "/admin/rwa-registry" },
     ],
   },
   {
