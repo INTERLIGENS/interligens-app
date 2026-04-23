@@ -48,3 +48,10 @@
 - Commandes : `/scan {adresse}`, `/kol {handle}`, `/help`
 - Config webhook : `https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://{DOMAIN}/api/telegram/webhook`
 - `TELEGRAM_BOT_TOKEN` requis en env Vercel
+
+## Monitoring
+- Better Stack : https://uptime.betterstack.com
+- 10 monitors définis dans `betterstack-monitors-to-create.json`
+- Setup script : `npx tsx src/scripts/setup-betterstack.ts`
+- Nécessite `BETTERSTACK_API_TOKEN` en env local
+- Status page : status.interligens.com (à activer dans dashboard Better Stack)

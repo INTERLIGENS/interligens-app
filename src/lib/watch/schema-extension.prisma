@@ -1,0 +1,32 @@
+// ─────────────────────────────────────────────────────────────
+// WATCH ENGINE — Schema extension
+// Add to prisma/schema.prod.prisma via Neon SQL Editor
+// ─────────────────────────────────────────────────────────────
+//
+// SQL:
+// CREATE TABLE "WatchedToken" (
+//   "id"          TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+//   "userEmail"   TEXT NOT NULL,
+//   "mint"        TEXT NOT NULL,
+//   "chain"       TEXT NOT NULL,
+//   "symbol"      TEXT,
+//   "lastScore"   INTEGER,
+//   "lastChecked" TIMESTAMPTZ,
+//   "createdAt"   TIMESTAMPTZ DEFAULT now() NOT NULL,
+//   UNIQUE ("userEmail", "mint", "chain")
+// );
+// CREATE INDEX "WatchedToken_userEmail_idx" ON "WatchedToken"("userEmail");
+
+model WatchedToken {
+  id          String    @id @default(cuid())
+  userEmail   String
+  mint        String
+  chain       String
+  symbol      String?
+  lastScore   Int?
+  lastChecked DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([userEmail, mint, chain])
+  @@index([userEmail])
+}
