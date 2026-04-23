@@ -24,6 +24,8 @@ import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
+import FreshnessStrip from "@/components/scan/FreshnessStrip";
+import type { FreshnessResult } from "@/lib/freshness/engine";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
@@ -258,6 +260,7 @@ export default function TigerScanPageFR() {
   const [mmResult, setMmResult] = useState<MMScanResult | null>(null);
   const [mmRisk, setMmRisk] = useState<MmRiskAssessment | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
+  const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -447,6 +450,7 @@ export default function TigerScanPageFR() {
     setMmResult(null);
     setMmRisk(null);
     setIntelSignal(null);
+    setFreshnessResult(null);
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
@@ -488,6 +492,26 @@ export default function TigerScanPageFR() {
         })
           .then(r => r.ok ? r.json() : null)
           .then(d => { if (d && d.assessment) setMmRisk(d.assessment) })
+          .catch(() => {})
+      }
+    }
+
+    // Freshness signals — non-bloquant, 15s timeout
+    {
+      const freshnessChain =
+        chain === "SOL" ? "solana" :
+        chain === "ETH" ? "ethereum" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" : null;
+      if (freshnessChain) {
+        fetch("/api/v1/freshness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chain: freshnessChain, mint: address.trim() }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d && d.severity !== "NONE") setFreshnessResult(d) })
           .catch(() => {})
       }
     }
@@ -885,6 +909,11 @@ export default function TigerScanPageFR() {
                   <CaseFileCTA id={address.trim() || null} lang="fr" />
                 </div>
               </div>
+
+              {/* ── FRESHNESS SIGNALS ── */}
+              {freshnessResult && (
+                <FreshnessStrip result={freshnessResult} lang="fr" />
+              )}
 
               {/* 4. MINI SIGNAL CARDS */}
               <MiniSignalRow
