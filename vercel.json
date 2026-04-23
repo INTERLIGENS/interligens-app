@@ -13,7 +13,7 @@
     { "path": "/api/cron/intel-summarize", "schedule": "30 7 * * *" },
     { "path": "/api/cron/helius-scan", "schedule": "0 4 * * *" },
     { "path": "/api/cron/security-weekly-digest", "schedule": "0 8 * * 1" },
-    { "path": "/api/cron/watch-alerts", "schedule": "0 */6 * * *" },
+    { "path": "/api/cron/watch-alerts", "schedule": "0 8 * * *" },
     { "path": "/api/cron/digest", "schedule": "0 9 * * 1" }
   ]
 }
