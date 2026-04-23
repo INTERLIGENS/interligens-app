@@ -5,7 +5,9 @@ import CashoutProof from '@/components/kol/CashoutProof'
 import ShillToExitCard from '@/components/kol/ShillToExitCard'
 import ShillToExitTimeline from '@/components/kol/ShillToExitTimeline'
 import ProceedsCard from '@/components/kol/ProceedsCard'
+import NarrativeBlock from '@/components/scan/NarrativeBlock'
 import type { ShillToExitResult } from '@/lib/shill-to-exit/engine'
+import type { NarrativeResult } from '@/lib/narrative/generator'
 import RetailCounter from '@/components/kol/RetailCounter'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
@@ -106,6 +108,7 @@ export default function KOLPage() {
   const [coordination, setCoordination] = useState<any>(null)
   const [transparency, setTransparency] = useState<any[]>([])
   const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null)
+  const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null)
 
   useEffect(() => {
     if (!handle) return
@@ -132,7 +135,25 @@ export default function KOLPage() {
       .catch(() => {})
     fetch('/api/v1/shill-to-exit?handle=' + encodeURIComponent(handle))
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.detected) setShillResult(d) })
+      .then((d: ShillToExitResult | null) => {
+        if (d?.detected) {
+          setShillResult(d)
+          // Trigger narrative after shill data is available
+          fetch('/api/v1/narrative', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              kolHandle: handle,
+              tokenSymbol: d.tokenSymbol,
+              totalProceedsUsd: d.total_proceeds_usd,
+              deltaHours: d.max_delta_minutes ? d.max_delta_minutes / 60 : undefined,
+            }),
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
+            .catch(() => {})
+        }
+      })
       .catch(() => {})
   }, [handle])
 
@@ -423,6 +444,9 @@ export default function KOLPage() {
 
         {/* ── SHILL-TO-EXIT TIMELINE ── */}
         {shillResult && <ShillToExitTimeline result={shillResult} lang="en" />}
+
+        {/* ── NARRATIVE ── */}
+        {narrativeResult && <NarrativeBlock result={narrativeResult} lang="en" />}
 
         {laundryTrail && <LaundryTrailCard laundryTrail={laundryTrail} lang="en" />}
 

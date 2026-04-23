@@ -25,7 +25,9 @@ import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import FreshnessStrip from "@/components/scan/FreshnessStrip";
+import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import type { FreshnessResult } from "@/lib/freshness/engine";
+import type { NarrativeResult } from "@/lib/narrative/generator";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
@@ -261,6 +263,7 @@ export default function TigerScanPageFR() {
   const [mmRisk, setMmRisk] = useState<MmRiskAssessment | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
   const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
+  const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -451,6 +454,7 @@ export default function TigerScanPageFR() {
     setMmRisk(null);
     setIntelSignal(null);
     setFreshnessResult(null);
+    setNarrativeResult(null);
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
@@ -511,7 +515,19 @@ export default function TigerScanPageFR() {
           signal: AbortSignal.timeout(15000),
         })
           .then(r => r.ok ? r.json() : null)
-          .then(d => { if (d && d.severity !== "NONE") setFreshnessResult(d) })
+          .then(d => {
+            if (d && d.severity !== "NONE") {
+              setFreshnessResult(d)
+              fetch("/api/v1/narrative", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tokenMint: address.trim(), chain: freshnessChain ?? undefined }),
+              })
+                .then(r => r.ok ? r.json() : null)
+                .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
+                .catch(() => {})
+            }
+          })
           .catch(() => {})
       }
     }
@@ -913,6 +929,11 @@ export default function TigerScanPageFR() {
               {/* ── FRESHNESS SIGNALS ── */}
               {freshnessResult && (
                 <FreshnessStrip result={freshnessResult} lang="fr" />
+              )}
+
+              {/* ── NARRATIVE ── */}
+              {narrativeResult && (
+                <NarrativeBlock result={narrativeResult} lang="fr" />
               )}
 
               {/* 4. MINI SIGNAL CARDS */}
