@@ -26,6 +26,8 @@ import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import FreshnessStrip from "@/components/scan/FreshnessStrip";
 import NarrativeBlock from "@/components/scan/NarrativeBlock";
+import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
+import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
 import type { FreshnessResult } from "@/lib/freshness/engine";
 import type { NarrativeResult } from "@/lib/narrative/generator";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
@@ -264,6 +266,7 @@ export default function TigerScanPageFR() {
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
   const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
   const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null);
+  const [offChainResult, setOffChainResult] = useState<OffChainResult | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -455,6 +458,7 @@ export default function TigerScanPageFR() {
     setIntelSignal(null);
     setFreshnessResult(null);
     setNarrativeResult(null);
+    setOffChainResult(null);
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
@@ -582,6 +586,24 @@ export default function TigerScanPageFR() {
         .catch(() => {})
       setResult(normalizedResult);
       setAnalysisStatus("done");
+
+      // Off-chain credibility: fire if website URL is detectable from rawSummary
+      const websiteUrl: string | undefined =
+        normalizedResult.rawSummary?.website ??
+        normalizedResult.rawSummary?.ext?.website ??
+        normalizedResult.rawSummary?.meta?.website ??
+        undefined;
+      if (websiteUrl) {
+        fetch("/api/v1/off-chain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ websiteUrl, tokenMint: address.trim() }),
+          signal: AbortSignal.timeout(30_000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d?.signals?.length) setOffChainResult(d) })
+          .catch(() => {})
+      }
 
       try {
         const heatRes = await fetch("/api/social/heat", {
@@ -929,6 +951,11 @@ export default function TigerScanPageFR() {
               {/* ── FRESHNESS SIGNALS ── */}
               {freshnessResult && (
                 <FreshnessStrip result={freshnessResult} lang="fr" />
+              )}
+
+              {/* ── OFF-CHAIN CREDIBILITY ── */}
+              {offChainResult && (
+                <OffChainCredibilityBlock result={offChainResult} lang="fr" />
               )}
 
               {/* ── NARRATIVE ── */}
