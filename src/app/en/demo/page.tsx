@@ -34,6 +34,8 @@ import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
+import FreshnessStrip from "@/components/scan/FreshnessStrip";
+import type { FreshnessResult } from "@/lib/freshness/engine";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -257,6 +259,7 @@ export default function TigerScanPage() {
   const [mmResult, setMmResult] = useState<MMScanResult | null>(null);
   const [mmRisk, setMmRisk] = useState<MmRiskAssessment | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
+  const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -462,6 +465,7 @@ export default function TigerScanPage() {
     setMmResult(null);
     setMmRisk(null);
     setIntelSignal(null);
+    setFreshnessResult(null);
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
@@ -504,6 +508,26 @@ export default function TigerScanPage() {
         })
           .then(r => r.ok ? r.json() : null)
           .then(d => { if (d && d.assessment) setMmRisk(d.assessment) })
+          .catch(() => {})
+      }
+    }
+
+    // Fire freshness signal fetch in parallel (non-blocking, 15s timeout)
+    {
+      const freshnessChain =
+        chain === "SOL" ? "solana" :
+        chain === "ETH" ? "ethereum" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" : null;
+      if (freshnessChain) {
+        fetch("/api/v1/freshness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chain: freshnessChain, mint: address.trim() }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d && d.severity !== "NONE") setFreshnessResult(d) })
           .catch(() => {})
       }
     }
@@ -933,6 +957,11 @@ export default function TigerScanPage() {
                   <CaseFileCTA id={address.trim() || null} lang="en" />
                 </div>
               </div>
+
+              {/* ── FRESHNESS SIGNALS ── */}
+              {freshnessResult && (
+                <FreshnessStrip result={freshnessResult} lang="en" />
+              )}
 
               {/* 3. MINI SIGNAL CARDS */}
               <MiniSignalRow
