@@ -49,25 +49,15 @@ export default function MMScoreBadge({ result, locale }: Props) {
   const signalList = isFr ? result.signalsFr : result.signals;
   const firstSignal = signalList[0] ?? (isFr ? "Aucun signal" : "No signal");
 
-  // CLEAN (with or without fallback) → single muted line, discreet.
+  // CLEAN → silent. Only surface if fallback (data unavailable).
   if (verdict === "CLEAN") {
+    if (!result.fallback) return null;
     const muted = "#6B7280";
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 0",
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0" }}>
         <WaveIcon color={muted} />
         <span style={{ fontSize: 11, color: muted, fontFamily: "monospace" }}>
-          {result.fallback
-            ? isFr
-              ? "Signal MM indisponible"
-              : "No MM signal (limited on-chain data)"
-            : firstSignal}
+          {isFr ? "Signal MM indisponible" : "No MM signal (limited on-chain data)"}
         </span>
       </div>
     );

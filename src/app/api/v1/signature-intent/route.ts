@@ -1,0 +1,65 @@
+// src/app/api/v1/signature-intent/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { analyzeSignatureIntent, type IntentChain } from "@/lib/signature-intent/analyzer";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  getClientIp,
+  RATE_LIMIT_PRESETS,
+} from "@/lib/security/rateLimit";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const VALID_CHAINS = new Set<IntentChain>(["solana", "ethereum", "base", "arbitrum"]);
+
+export async function POST(req: NextRequest) {
+  const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
+  if (!rl.allowed) return rateLimitResponse(rl);
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Body required" }, { status: 400 });
+  }
+
+  const b = body as Record<string, unknown>;
+  const chain = (typeof b.chain === "string" ? b.chain.toLowerCase() : "") as IntentChain;
+
+  if (!VALID_CHAINS.has(chain)) {
+    return NextResponse.json(
+      { error: "chain must be one of: solana, ethereum, base, arbitrum" },
+      { status: 400 },
+    );
+  }
+
+  const raw_tx = typeof b.raw_tx === "string" ? b.raw_tx : undefined;
+  const decoded_data =
+    b.decoded_data &&
+    typeof b.decoded_data === "object" &&
+    "method" in (b.decoded_data as object)
+      ? (b.decoded_data as { method: string; params: Record<string, string> })
+      : undefined;
+
+  if (!raw_tx && !decoded_data) {
+    return NextResponse.json(
+      { error: "raw_tx or decoded_data required" },
+      { status: 400 },
+    );
+  }
+
+  const result = analyzeSignatureIntent({
+    raw_tx,
+    decoded_data,
+    chain,
+    from_address: typeof b.from_address === "string" ? b.from_address : undefined,
+    to_address:   typeof b.to_address   === "string" ? b.to_address   : undefined,
+  });
+
+  return NextResponse.json(result);
+}
