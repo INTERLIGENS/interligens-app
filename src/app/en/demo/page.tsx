@@ -37,6 +37,7 @@ import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/Recid
 import FreshnessStrip from "@/components/scan/FreshnessStrip";
 import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
+import WatchButton from "@/components/scan/WatchButton";
 import type { FreshnessResult } from "@/lib/freshness/engine";
 import type { NarrativeResult } from "@/lib/narrative/generator";
 import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
@@ -1008,6 +1009,16 @@ export default function TigerScanPage() {
               {/* ── OFF-CHAIN CREDIBILITY ── */}
               {offChainResult && (
                 <OffChainCredibilityBlock result={offChainResult} lang="en" />
+              )}
+
+              {/* ── WATCH THIS TOKEN ── */}
+              {result && (
+                <WatchButton
+                  mint={address.trim()}
+                  chain={chain ?? "SOL"}
+                  symbol={result.rawSummary?.symbol}
+                  lang="en"
+                />
               )}
 
               {/* ── NARRATIVE ── */}

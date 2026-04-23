@@ -1,0 +1,102 @@
+[
+  {
+    "name": "Homepage EN",
+    "url": "https://app.interligens.com/en/demo",
+    "check_frequency_minutes": 3,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "Homepage FR",
+    "url": "https://app.interligens.com/fr/demo",
+    "check_frequency_minutes": 3,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "API Score",
+    "url": "https://app.interligens.com/api/v1/score?mint=health",
+    "check_frequency_minutes": 1,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "API Freshness",
+    "url": "https://app.interligens.com/api/v1/freshness?address=health",
+    "check_frequency_minutes": 1,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "API Wallet Scan",
+    "url": "https://app.interligens.com/api/v1/wallet-scan",
+    "check_frequency_minutes": 5,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "Scan page",
+    "url": "https://app.interligens.com/en/scan",
+    "check_frequency_minutes": 5,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "KOL Registry",
+    "url": "https://app.interligens.com/en/kol",
+    "check_frequency_minutes": 5,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "Investigators",
+    "url": "https://app.interligens.com/investigators",
+    "check_frequency_minutes": 5,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "Admin",
+    "url": "https://app.interligens.com/admin",
+    "check_frequency_minutes": 5,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  },
+  {
+    "name": "Cron Watch Alerts",
+    "url": "https://app.interligens.com/api/cron/watch-alerts",
+    "check_frequency_minutes": 30,
+    "regions": [
+      "us",
+      "eu",
+      "ap"
+    ]
+  }
+]
