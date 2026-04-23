@@ -3,7 +3,9 @@ import BetaNav from "@/components/beta/BetaNav";
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
 import ShillToExitCard from '@/components/kol/ShillToExitCard'
+import ShillToExitTimeline from '@/components/kol/ShillToExitTimeline'
 import ProceedsCard from '@/components/kol/ProceedsCard'
+import type { ShillToExitResult } from '@/lib/shill-to-exit/engine'
 import RetailCounter from '@/components/kol/RetailCounter'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
@@ -103,6 +105,7 @@ export default function KOLPage() {
   const [cluster, setCluster] = useState<any>(null)
   const [coordination, setCoordination] = useState<any>(null)
   const [transparency, setTransparency] = useState<any[]>([])
+  const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null)
 
   useEffect(() => {
     if (!handle) return
@@ -126,6 +129,10 @@ export default function KOLPage() {
     fetch('/api/transparency/wallets?handle=' + handle)
       .then(r => r.json())
       .then(d => { if (d?.wallets?.length > 0) setTransparency(d.wallets) })
+      .catch(() => {})
+    fetch('/api/v1/shill-to-exit?handle=' + encodeURIComponent(handle))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.detected) setShillResult(d) })
       .catch(() => {})
   }, [handle])
 
@@ -413,6 +420,9 @@ export default function KOLPage() {
 
         {/* ── DOCUMENTED CASE HISTORY ── */}
         <ProceedsCard handle={kol.handle} lang="en" />
+
+        {/* ── SHILL-TO-EXIT TIMELINE ── */}
+        {shillResult && <ShillToExitTimeline result={shillResult} lang="en" />}
 
         {laundryTrail && <LaundryTrailCard laundryTrail={laundryTrail} lang="en" />}
 
