@@ -1,8 +1,18 @@
 // src/lib/kol/proceeds.ts
 // Observed Proceeds computation engine — v1 methodology
+//
+// Recompute policy:
+//   Immediate  : scan result, TigerScore (called directly from scan routes)
+//   Async 5min : proceeds aggregate + snapshot rebuild (via cron/process-events)
+//   Nightly 04h: full historical recompute (cron/helius-scan)
 
 import { PrismaClient } from "@prisma/client";
 import { getPriceAtDate, clearPriceCache } from "@/lib/kol/pricing";
+
+// Debounce: skip recompute if same handle was computed < 5min ago.
+// Module-level — survives across requests within the same Lambda instance.
+const _lastRecompute = new Map<string, number>();
+const DEBOUNCE_MS = 5 * 60_000;
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
 const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`;
@@ -194,8 +204,14 @@ export async function computeProceedsForHandle(handle: string): Promise<{
   success: boolean;
   totalProceedsUsd: number;
   eventCount: number;
+  skipped?: boolean;
   error?: string;
 }> {
+  const lastMs = _lastRecompute.get(handle);
+  if (lastMs !== undefined && Date.now() - lastMs < DEBOUNCE_MS) {
+    return { success: true, totalProceedsUsd: 0, eventCount: 0, skipped: true };
+  }
+
   clearPriceCache();
 
   try {
@@ -320,6 +336,7 @@ export async function computeProceedsForHandle(handle: string): Promise<{
       handle,
     );
 
+    _lastRecompute.set(handle, Date.now());
     return { success: true, totalProceedsUsd: fullTotal, eventCount: dedupedEvents.length };
   } catch (err: any) {
     console.error("[computeProceeds]", err);
