@@ -7,6 +7,41 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
 
+// ── Helius DAS: getAsset ─────────────────────────────────────────────────────
+// Returns rich token metadata (name, symbol, website, image) from the
+// Digital Asset Standard API. Fail-open: returns null if key absent or error.
+
+interface HeliusAsset {
+  content?: {
+    metadata?: { name?: string; symbol?: string; description?: string };
+    links?: { external_url?: string; image?: string };
+    json_uri?: string;
+  };
+  token_info?: { symbol?: string; decimals?: number; supply?: number };
+}
+
+async function fetchTokenMetadata(mint: string): Promise<HeliusAsset | null> {
+  const key = process.env.HELIUS_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      `https://mainnet.helius-rpc.com/?api-key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: "scan", method: "getAsset", params: { id: mint } }),
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (j.error || !j.result) return null;
+    return j.result as HeliusAsset;
+  } catch {
+    return null;
+  }
+}
+
 export type ScanResult = {
   mint: string;
   chain: "solana";
@@ -102,7 +137,11 @@ export async function GET(request: NextRequest) {
     rpcDataSource = "unknown";
   }
 
-  const caseFile = loadCaseByMint(mint_clean);
+  // Fire Helius getAsset in parallel — fail-open, non-blocking
+  const [caseFile, heliusAsset] = await Promise.all([
+    Promise.resolve(loadCaseByMint(mint_clean)),
+    fetchTokenMetadata(mint_clean),
+  ]);
 
   const off_chain: ScanResult["off_chain"] = {
     status: "Unknown",
@@ -241,5 +280,26 @@ export async function GET(request: NextRequest) {
     const _vr = await vaultLookup("solana", mint_clean);
     intelVault = { ..._vr, explainAvailable: _vr.match };
   } catch {}
-  return NextResponse.json({ ...result, intelVault });
+
+  // ── Merge Helius metadata into rawSummary-compatible shape ───────────────
+  // The demo page reads websiteUrl from several paths on rawSummary.
+  // We expose the most common ones so OffChainCredibilityBlock fires correctly.
+  const tokenMeta = heliusAsset ? {
+    name:    heliusAsset.content?.metadata?.name    ?? heliusAsset.token_info?.symbol ?? null,
+    symbol:  heliusAsset.token_info?.symbol         ?? heliusAsset.content?.metadata?.symbol ?? null,
+    description: heliusAsset.content?.metadata?.description ?? null,
+    image:   heliusAsset.content?.links?.image      ?? null,
+    // Primary website paths — demo page checks all of these
+    website: heliusAsset.content?.links?.external_url ?? null,
+    extensions: {
+      website: heliusAsset.content?.links?.external_url ?? null,
+    },
+    content: {
+      links: {
+        external_url: heliusAsset.content?.links?.external_url ?? null,
+      },
+    },
+  } : null;
+
+  return NextResponse.json({ ...result, intelVault, rawSummary: tokenMeta });
 }
