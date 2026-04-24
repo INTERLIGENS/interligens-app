@@ -1104,7 +1104,15 @@ export default function TigerScanPage() {
                     <div className="mt-4">
                       <ShillToExitTimeline result={shillResult} lang="en" />
                       {!shillResult.detected && (
-                        <p className="text-xs text-zinc-600 mt-2 text-center">No shill-to-exit detected for @{shillResult.kolHandle} on this token.</p>
+                        <p className="text-xs text-zinc-600 mt-2 text-center">
+                          No on-chain evidence linked to this token yet.{" "}
+                          <a
+                            href={`/en/kol/${shillResult.kolHandle}`}
+                            className="text-[#FF6B00] hover:underline font-semibold"
+                          >
+                            View full KOL profile →
+                          </a>
+                        </p>
                       )}
                     </div>
                   )}
