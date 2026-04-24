@@ -8,6 +8,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { getPriceAtDate, clearPriceCache } from "@/lib/kol/pricing";
+import { isCashoutDocumented, isCashoutObserved, getExclusionReason, PROCEEDS_POLICY } from "@/lib/proceeds/policy";
 
 // Debounce: skip recompute if same handle was computed < 5min ago.
 // Module-level — survives across requests within the same Lambda instance.
@@ -273,11 +274,22 @@ export async function computeProceedsForHandle(handle: string): Promise<{
     });
 
     for (const ev of dedupedEvents) {
+      const isDocumented = isCashoutDocumented(ev.eventType, ev.amountUsd);
+      const isObserved = !isDocumented && isCashoutObserved(ev.eventType, ev.amountUsd);
+
+      if (!isDocumented && !isObserved) {
+        console.log(`[proceeds][policy] skip ${ev.txHash?.slice(0, 12)} — ${getExclusionReason(ev.eventType, ev.amountUsd)} (policy v${PROCEEDS_POLICY.version})`);
+        continue;
+      }
+
+      // Observed events are stored but marked ambiguous so they're excluded from totalDocumented.
+      const ambiguous = ev.ambiguous || isObserved;
+
       await prisma.$executeRawUnsafe(`
         INSERT INTO "KolProceedsEvent" (id, "kolHandle", "walletAddress", chain, "txHash", "eventDate", "tokenSymbol", "tokenAddress", "amountTokens", "amountUsd", "priceUsdAtTime", "pricingSource", "eventType", "ambiguous", "caseId")
         VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5::timestamptz, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         ON CONFLICT ("txHash") DO NOTHING
-      `, handle, ev.walletAddress, ev.chain, ev.txHash, ev.eventDate, ev.tokenSymbol, ev.tokenAddress, ev.amountTokens, ev.amountUsd, ev.priceUsdAtTime, ev.pricingSource, ev.eventType, ev.ambiguous, ev.caseId);
+      `, handle, ev.walletAddress, ev.chain, ev.txHash, ev.eventDate, ev.tokenSymbol, ev.tokenAddress, ev.amountTokens, ev.amountUsd, ev.priceUsdAtTime, ev.pricingSource, ev.eventType, ambiguous, ev.caseId);
     }
 
     const validEvents = dedupedEvents.filter((e) => e.amountUsd && e.amountUsd > 0 && !e.ambiguous);
