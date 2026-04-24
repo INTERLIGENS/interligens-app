@@ -38,6 +38,7 @@ async function syncHandle(handle: string): Promise<Row> {
            COUNT(*)::bigint AS events
     FROM "KolProceedsEvent"
     WHERE "kolHandle" = ${handle}
+      AND "ambiguous" = false AND "amountUsd" > 0
   `;
   const after = Number(rows[0]?.total ?? 0);
   const events = Number(rows[0]?.events ?? 0n);
@@ -127,6 +128,7 @@ export async function GET(req: NextRequest) {
            COUNT(e.id)::bigint AS events
     FROM "KolProfile" k
     JOIN "KolProceedsEvent" e ON e."kolHandle" = k.handle
+    WHERE e."ambiguous" = false AND e."amountUsd" > 0
     GROUP BY k.handle, k."totalDocumented"
     ORDER BY after DESC NULLS LAST
   `;
