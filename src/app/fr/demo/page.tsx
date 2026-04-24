@@ -32,6 +32,9 @@ import ExplainabilityBlock from "@/components/scan/ExplainabilityBlock";
 import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
 import type { FreshnessResult } from "@/lib/freshness/engine";
 import type { NarrativeResult } from "@/lib/narrative/generator";
+import ShillToExitTimeline from "@/components/kol/ShillToExitTimeline";
+import type { ShillToExitResult } from "@/lib/shill-to-exit/engine";
+import DemoFeedbackButton from "@/components/demo/DemoFeedbackButton";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
@@ -269,6 +272,9 @@ export default function TigerScanPageFR() {
   const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
   const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null);
   const [offChainResult, setOffChainResult] = useState<OffChainResult | null>(null);
+  const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null);
+  const [shillHandle, setShillHandle] = useState("");
+  const [shillLoading, setShillLoading] = useState(false);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -461,6 +467,8 @@ export default function TigerScanPageFR() {
     setFreshnessResult(null);
     setNarrativeResult(null);
     setOffChainResult(null);
+    setShillResult(null);
+    setShillHandle("");
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
@@ -682,6 +690,24 @@ export default function TigerScanPageFR() {
               className="ml-auto text-[9px] font-black uppercase tracking-widest text-zinc-700 hover:text-[#F85B05] transition-colors"
             >{copyDone ? "✓ Copié" : "Copier le lien"}</button>
           </div>
+        </div>
+
+        {/* CHAIN SELECTOR — change le preset mock actif */}
+        <div className="flex justify-center gap-2 flex-wrap mb-3">
+          {(["SOL","ETH","BASE","ARBITRUM","TRON"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => { setMockChain(c); setSelectedScenario(null); }}
+              className={[
+                "px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
+                mockChain === c
+                  ? "border-[#FF6B00] text-[#FF6B00] bg-[#FF6B00]/8"
+                  : "border-zinc-800 text-zinc-600 hover:border-zinc-600 hover:text-zinc-400",
+              ].join(" ")}
+            >
+              {c}
+            </button>
+          ))}
         </div>
 
         <QuickDemoBar
@@ -983,6 +1009,60 @@ export default function TigerScanPageFR() {
                 <NarrativeBlock result={narrativeResult} lang="fr" />
               )}
 
+              {/* ── SHILL INTELLIGENCE — vérification KOL (SOL uniquement) ── */}
+              {chain === "SOL" && (
+                <div className="w-full rounded-xl border border-zinc-800 bg-black p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">
+                    SHILL INTELLIGENCE
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={shillHandle}
+                      onChange={(e) => setShillHandle(e.target.value.replace(/^@/, ""))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && shillHandle.trim()) {
+                          setShillLoading(true);
+                          setShillResult(null);
+                          fetch(`/api/v1/shill-to-exit?handle=${encodeURIComponent(shillHandle.trim())}&mint=${encodeURIComponent(address.trim())}`)
+                            .then(r => r.ok ? r.json() : null)
+                            .then(d => { if (d) setShillResult(d); })
+                            .catch(() => {})
+                            .finally(() => setShillLoading(false));
+                        }
+                      }}
+                      placeholder="Entrez un handle KOL pour croiser les données…"
+                      className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 placeholder-zinc-700 outline-none focus:border-zinc-600"
+                    />
+                    <button
+                      type="button"
+                      disabled={!shillHandle.trim() || shillLoading}
+                      onClick={() => {
+                        if (!shillHandle.trim()) return;
+                        setShillLoading(true);
+                        setShillResult(null);
+                        fetch(`/api/v1/shill-to-exit?handle=${encodeURIComponent(shillHandle.trim())}&mint=${encodeURIComponent(address.trim())}`)
+                          .then(r => r.ok ? r.json() : null)
+                          .then(d => { if (d) setShillResult(d); })
+                          .catch(() => {})
+                          .finally(() => setShillLoading(false));
+                      }}
+                      className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-400 text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 disabled:opacity-40 transition-colors"
+                    >
+                      {shillLoading ? "…" : "Vérifier"}
+                    </button>
+                  </div>
+                  {shillResult && (
+                    <div className="mt-4">
+                      <ShillToExitTimeline result={shillResult} lang="fr" />
+                      {!shillResult.detected && (
+                        <p className="text-xs text-zinc-600 mt-2 text-center">Aucun shill-to-exit détecté pour @{shillResult.kolHandle} sur ce token.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 4. MINI SIGNAL CARDS */}
               <MiniSignalRow
                 lang="fr"
@@ -1022,7 +1102,7 @@ export default function TigerScanPageFR() {
 
                 {showEvidence && (
                   <>
-                    <TechnicalEvidence lang="fr" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
+                    <TechnicalEvidence lang="fr" chain={(result.chain === "ETH" || result.chain === "BASE" || result.chain === "ARBITRUM") ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
                     {debug && (
                     <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
                       <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-orange-400 hover:text-orange-300">
@@ -1058,6 +1138,7 @@ export default function TigerScanPageFR() {
         </div>
       </main>
       </div>
+      <DemoFeedbackButton />
     </div>
   );
 }
