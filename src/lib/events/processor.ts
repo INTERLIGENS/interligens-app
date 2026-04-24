@@ -11,6 +11,12 @@ const MAX_RETRIES = 3;
 // Exponential backoff: 2min, 10min, 30min
 const RETRY_DELAYS_MS = [2 * 60_000, 10 * 60_000, 30 * 60_000];
 
+// Coalesce kol.updated: if ≥3 events for the same handle within 2min,
+// process only once and fast-ack the rest.
+const _kolUpdatedCoalesce = new Map<string, { firstMs: number; count: number }>();
+const COALESCE_WINDOW_MS = 2 * 60_000;
+const COALESCE_THRESHOLD = 3;
+
 type DomainEventRow = {
   id: string;
   type: string;
@@ -78,7 +84,21 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
 
       case "kol.updated": {
         const handle = String(payload.handle ?? "");
-        if (handle) await buildKolCanonicalSnapshot(handle);
+        if (!handle) break;
+
+        const now = Date.now();
+        const entry = _kolUpdatedCoalesce.get(handle);
+        if (entry && now - entry.firstMs < COALESCE_WINDOW_MS) {
+          entry.count++;
+          if (entry.count >= COALESCE_THRESHOLD) {
+            // Already processed once in this window — fast-ack without rebuild
+            break;
+          }
+        } else {
+          _kolUpdatedCoalesce.set(handle, { firstMs: now, count: 1 });
+        }
+
+        await buildKolCanonicalSnapshot(handle);
         break;
       }
 
