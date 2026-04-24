@@ -6,6 +6,7 @@ import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
+import { emitScanCompleted } from "@/lib/events/producer";
 
 // ── Helius DAS: getAsset ─────────────────────────────────────────────────────
 // Returns rich token metadata (name, symbol, website, image) from the
@@ -238,6 +239,8 @@ export async function GET(request: NextRequest) {
       knownBadAddresses: 0,
     },
   });
+
+  emitScanCompleted(mint_clean, "solana", tigerScan.score);
 
   const result: ScanResult = {
     mint: mint_clean,
