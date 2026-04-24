@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminApi } from "@/lib/security/adminAuth"
+import { computeProceedsForHandle } from "@/lib/kol/proceeds"
 
 const HELIUS_KEY = process.env.HELIUS_API_KEY!
 const BOTIFY_CA = "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb"
@@ -210,13 +211,9 @@ export async function POST(req: NextRequest) {
     created.push(ev.label)
   }
 
-  // ── Update totalDocumented ──
-  const allEvidences = await prisma.kolEvidence.findMany({ where: { kolHandle: handle } })
-  const totalDocumented = allEvidences.reduce((s, e) => s + (e.amountUsd ?? 0), 0)
-  await prisma.kolProfile.update({
-    where: { handle },
-    data: { totalDocumented }
-  })
+  // ── Recalculate totalDocumented from KolProceedsEvent (authoritative source) ──
+  const proceedsResult = await computeProceedsForHandle(handle)
+  const totalDocumented = proceedsResult.totalProceedsUsd
 
   return NextResponse.json({
     handle,
