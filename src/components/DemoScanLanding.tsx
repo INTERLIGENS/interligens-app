@@ -255,7 +255,7 @@ export default function DemoScanLanding() {
         : `/api/wallet/scan?address=${encodeURIComponent(a)}`;
       const res = await fetch(url);
       const json = await res.json().catch(() => ({}));
-      const fixed = (chain === "SOL") ? normalizeSol(json) : json;
+      const fixed = (c === "SOL") ? normalizeSol(json) : json;
       if (!res.ok) throw new Error(json?.detail || json?.error || `Error ${res.status}`);
       setResult(fixed);
     } catch (e: any) {
