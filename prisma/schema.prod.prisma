@@ -3070,3 +3070,22 @@ model DomainEvent {
   @@index([type, status])
   @@index([nextRetryAt])
 }
+
+model IngestionJob {
+  id                   String    @id @default(cuid())
+  source               String
+  rawInput             String
+  normalizedEntity     Json?
+  resolveResult        Json?
+  status               String    @default("pending")
+  sourceChecksum       String
+  dryRun               Boolean   @default(false)
+  errorReport          String?
+  manualReviewRequired Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([source, status])
+  @@index([sourceChecksum])
+}
