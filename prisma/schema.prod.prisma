@@ -3050,3 +3050,16 @@ model RwaRegistryMeta {
   version   Int      @default(1)
   updatedAt DateTime @updatedAt
 }
+
+model DomainEvent {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+  error       String?
+
+  @@index([status, createdAt])
+  @@index([type, status])
+}
