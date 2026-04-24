@@ -7,6 +7,9 @@ import type { Prisma } from "@prisma/client";
 
 export type KolSnapshotFreshness = "fresh" | "stale" | "unknown";
 
+export type WalletIdentityConfidence = "exact" | "strong" | "probable" | "candidate";
+export type WalletAttributionMode = "manual" | "inferred";
+
 /** Core contract — guaranteed fields on every snapshot */
 export type KolCanonicalSnapshot = {
   handle: string;
@@ -21,6 +24,9 @@ export type KolCanonicalSnapshot = {
   lastScannedAt: Date | null;
   proceedsSource: "KolProceedsEvent";
   freshness: KolSnapshotFreshness;
+  identityConfidence: WalletIdentityConfidence;
+  walletAttributionMode: WalletAttributionMode;
+  walletDataFreshAt: Date | null;
 };
 
 /** Extended row — includes all fields needed by API routes (superset of core) */
@@ -50,6 +56,26 @@ export type KolProfileRow = KolCanonicalSnapshot & {
 };
 
 const FRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
+type WalletRow = { confidence: string; attributionSource: string | null; attributionStatus: string; discoveredAt: Date | null };
+
+function computeIdentityConfidence(wallets: WalletRow[]): WalletIdentityConfidence {
+  if (!wallets.length) return "candidate";
+  if (wallets.some(w => w.attributionStatus === "confirmed" && w.attributionSource === "manual")) return "exact";
+  if (wallets.some(w => w.confidence === "high" || w.attributionStatus === "confirmed")) return "strong";
+  if (wallets.some(w => w.confidence === "medium")) return "probable";
+  return "candidate";
+}
+
+function computeAttributionMode(wallets: WalletRow[]): WalletAttributionMode {
+  return wallets.some(w => w.attributionSource === "manual") ? "manual" : "inferred";
+}
+
+function computeWalletDataFreshAt(wallets: WalletRow[]): Date | null {
+  const dates = wallets.map(w => w.discoveredAt).filter((d): d is Date => d !== null);
+  if (!dates.length) return null;
+  return new Date(Math.max(...dates.map(d => d.getTime())));
+}
 
 function computeFreshness(lastHeliusScan: Date | null): KolSnapshotFreshness {
   if (!lastHeliusScan) return "unknown";
@@ -91,6 +117,15 @@ const KOL_SELECT = {
       tokenLinks: true,
     },
   },
+  kolWallets: {
+    where: { status: "active" },
+    select: {
+      confidence: true,
+      attributionSource: true,
+      attributionStatus: true,
+      discoveredAt: true,
+    },
+  },
 } as const;
 
 type RawRow = Prisma.KolProfileGetPayload<{ select: typeof KOL_SELECT }>;
@@ -109,6 +144,9 @@ function toSnapshot(row: RawRow): KolProfileRow {
     lastScannedAt: row.lastHeliusScan,
     proceedsSource: "KolProceedsEvent",
     freshness: computeFreshness(row.lastHeliusScan),
+    identityConfidence: computeIdentityConfidence(row.kolWallets),
+    walletAttributionMode: computeAttributionMode(row.kolWallets),
+    walletDataFreshAt: computeWalletDataFreshAt(row.kolWallets),
     platform: row.platform,
     confidence: row.confidence,
     evidenceDepth: row.evidenceDepth,
