@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical";
 
+const MAX_RETRIES = 3;
+// Exponential backoff: 2min, 10min, 30min
+const RETRY_DELAYS_MS = [2 * 60_000, 10 * 60_000, 30 * 60_000];
+
 type DomainEventRow = {
   id: string;
   type: string;
@@ -14,6 +18,12 @@ type DomainEventRow = {
   createdAt: Date;
   processedAt: Date | null;
   error: string | null;
+  retryCount: number;
+  nextRetryAt: Date | null;
+  deadLetteredAt: Date | null;
+  correlationId: string | null;
+  causationId: string | null;
+  idempotencyKey: string | null;
 };
 
 export async function processEvent(event: DomainEventRow): Promise<void> {
@@ -24,7 +34,6 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
       case "scan.completed": {
         const address = String(payload.address ?? "");
         if (!address) break;
-        // Find if this address belongs to a tracked KOL
         const wallet = await prisma.kolWallet.findFirst({
           where: { address: { equals: address, mode: "insensitive" } },
           select: { kolHandle: true },
@@ -75,13 +84,30 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    await prisma.domainEvent.update({
-      where: { id: event.id },
-      data: {
-        status: "failed",
-        processedAt: new Date(),
-        error: msg.slice(0, 500),
-      },
-    }).catch(() => {});
+    const nextRetry = event.retryCount + 1;
+
+    if (nextRetry > MAX_RETRIES) {
+      await prisma.domainEvent.update({
+        where: { id: event.id },
+        data: {
+          status: "dead_letter",
+          processedAt: new Date(),
+          deadLetteredAt: new Date(),
+          error: msg.slice(0, 500),
+          retryCount: nextRetry,
+        },
+      }).catch(() => {});
+    } else {
+      const delayMs = RETRY_DELAYS_MS[nextRetry - 1] ?? 30 * 60_000;
+      await prisma.domainEvent.update({
+        where: { id: event.id },
+        data: {
+          status: "pending",
+          error: msg.slice(0, 500),
+          retryCount: nextRetry,
+          nextRetryAt: new Date(Date.now() + delayMs),
+        },
+      }).catch(() => {});
+    }
   }
 }

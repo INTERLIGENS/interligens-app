@@ -16,8 +16,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const now = new Date();
   const pending = await prisma.domainEvent.findMany({
-    where: { status: "pending" },
+    where: {
+      status: "pending",
+      OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
+    },
     orderBy: { createdAt: "asc" },
     take: BATCH_SIZE,
   });

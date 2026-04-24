@@ -3052,14 +3052,21 @@ model RwaRegistryMeta {
 }
 
 model DomainEvent {
-  id          String    @id @default(cuid())
-  type        String
-  payload     Json
-  status      String    @default("pending")
-  createdAt   DateTime  @default(now())
-  processedAt DateTime?
-  error       String?
+  id             String    @id @default(cuid())
+  type           String
+  payload        Json
+  status         String    @default("pending")
+  createdAt      DateTime  @default(now())
+  processedAt    DateTime?
+  error          String?
+  retryCount     Int       @default(0)
+  nextRetryAt    DateTime?
+  deadLetteredAt DateTime?
+  correlationId  String?
+  causationId    String?
+  idempotencyKey String?   @unique
 
   @@index([status, createdAt])
   @@index([type, status])
+  @@index([nextRetryAt])
 }

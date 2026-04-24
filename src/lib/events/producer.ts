@@ -13,10 +13,36 @@ type EventType =
   | "kol.updated"
   | "casefile.ingested";
 
-async function emit(type: EventType, payload: Record<string, unknown>): Promise<void> {
+interface EmitOptions {
+  idempotencyKey?: string;
+  correlationId?: string;
+  causationId?: string;
+}
+
+async function emit(
+  type: EventType,
+  payload: Record<string, unknown>,
+  opts: EmitOptions = {}
+): Promise<void> {
   try {
+    // Idempotency: skip if a matching key already exists
+    if (opts.idempotencyKey) {
+      const existing = await prisma.domainEvent.findUnique({
+        where: { idempotencyKey: opts.idempotencyKey },
+        select: { id: true },
+      });
+      if (existing) return;
+    }
+
     const event = await prisma.domainEvent.create({
-      data: { type, payload: payload as Prisma.InputJsonValue, status: "pending" },
+      data: {
+        type,
+        payload: payload as Prisma.InputJsonValue,
+        status: "pending",
+        idempotencyKey: opts.idempotencyKey ?? null,
+        correlationId: opts.correlationId ?? null,
+        causationId: opts.causationId ?? null,
+      },
     });
     // Background — do not await, do not let failure propagate to caller
     void processEvent(event).catch(() => {});
@@ -30,7 +56,11 @@ export function emitScanCompleted(
   chain: string,
   tigerscore: number
 ): void {
-  void emit("scan.completed", { address, chain, tigerscore });
+  void emit(
+    "scan.completed",
+    { address, chain, tigerscore },
+    { idempotencyKey: `scan.completed:${address}:${chain}:${Date.now()}` }
+  );
 }
 
 export function emitWalletLinked(
@@ -56,5 +86,9 @@ export function emitCasefileIngested(
   caseId: string,
   handle: string
 ): void {
-  void emit("casefile.ingested", { caseId, handle });
+  void emit(
+    "casefile.ingested",
+    { caseId, handle },
+    { idempotencyKey: `casefile.ingested:${caseId}` }
+  );
 }
