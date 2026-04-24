@@ -224,7 +224,7 @@ function WatchCard({
   onToggle: () => void
 }) {
   const e = entry
-  const headlineMin = fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)
+  const headlineMin = fmtUsd(e.totalProceeds) ?? fmtUsd(e.cashout.total)
   const followers = fmtFollowers(e.followerCount)
   const lastSig = timeAgo(e.lastSignalAt)
   const initial = (e.displayName || e.handle).slice(0, 1).toUpperCase()
@@ -339,7 +339,7 @@ function WatchCard({
               <Bucket label="Cette année" value={fmtUsd(e.cashout.ytd)} />
               <Bucket
                 label="Total"
-                value={fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)}
+                value={fmtUsd(e.totalProceeds) ?? fmtUsd(e.cashout.total)}
                 strong
               />
             </div>

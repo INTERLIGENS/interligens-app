@@ -3,6 +3,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+async function getCanonicalTotalDocumented(handle: string): Promise<number | null> {
+  const row = await prisma.kolProfile.findFirst({
+    where: { handle: { equals: handle, mode: "insensitive" } },
+    select: { totalDocumented: true },
+  });
+  return row?.totalDocumented ?? null;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ handle: string }> }
@@ -33,10 +41,13 @@ export async function GET(
 
     const s = summary[0];
     const toNum = (v: any) => (v == null ? 0 : Number(v));
+    // Pin totalProceedsUsd to KolProfile.totalDocumented (authoritative Writer A value).
+    // KolProceedsSummary may lag if computeProceedsForHandle ran while summary was stale.
+    const canonicalTotal = await getCanonicalTotalDocumented(handle);
     return NextResponse.json({
       found: true,
       handle,
-      totalProceedsUsd: s.totalProceedsUsd,
+      totalProceedsUsd: canonicalTotal ?? s.totalProceedsUsd,
       proceedsByYear: typeof s.proceedsByYear === 'string' ? JSON.parse(s.proceedsByYear) : s.proceedsByYear,
       topWalletLabel: s.topWalletLabel ?? null,
       topWalletProceedsUsd: s.topWalletProceedsUsd ?? null,
