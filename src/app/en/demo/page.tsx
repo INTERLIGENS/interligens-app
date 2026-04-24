@@ -38,6 +38,7 @@ import FreshnessStrip from "@/components/scan/FreshnessStrip";
 import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
+import ExplainabilityBlock from "@/components/scan/ExplainabilityBlock";
 import type { FreshnessResult } from "@/lib/freshness/engine";
 import type { NarrativeResult } from "@/lib/narrative/generator";
 import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
@@ -521,7 +522,7 @@ export default function TigerScanPage() {
       }
     }
 
-    // Fire freshness signal fetch in parallel (non-blocking, 15s timeout)
+    // Freshness + narrative — parallel, non-blocking
     {
       const freshnessChain =
         chain === "SOL" ? "solana" :
@@ -536,23 +537,16 @@ export default function TigerScanPage() {
           signal: AbortSignal.timeout(15000),
         })
           .then(r => r.ok ? r.json() : null)
-          .then(d => {
-            if (d && d.severity !== "NONE") {
-              setFreshnessResult(d)
-              // Trigger narrative once freshness data is available
-              fetch("/api/v1/narrative", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  tokenMint: address.trim(),
-                  chain: freshnessChain ?? undefined,
-                }),
-              })
-                .then(r => r.ok ? r.json() : null)
-                .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
-                .catch(() => {})
-            }
-          })
+          .then(d => { if (d) setFreshnessResult(d) })
+          .catch(() => {})
+        fetch("/api/v1/narrative", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tokenMint: address.trim(), chain: freshnessChain }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
           .catch(() => {})
       }
     }
@@ -613,6 +607,9 @@ export default function TigerScanPage() {
         normalizedResult.rawSummary?.website ??
         normalizedResult.rawSummary?.ext?.website ??
         normalizedResult.rawSummary?.meta?.website ??
+        normalizedResult.rawSummary?.content?.links?.external_url ??
+        normalizedResult.rawSummary?.info?.website ??
+        normalizedResult.rawSummary?.extensions?.website ??
         undefined;
       if (websiteUrl) {
         fetch("/api/v1/off-chain", {
@@ -622,7 +619,7 @@ export default function TigerScanPage() {
           signal: AbortSignal.timeout(30_000),
         })
           .then(r => r.ok ? r.json() : null)
-          .then(d => { if (d?.signals?.length) setOffChainResult(d) })
+          .then(d => { if (d) setOffChainResult(d) })
           .catch(() => {})
       }
 
@@ -1001,6 +998,16 @@ export default function TigerScanPage() {
                 </div>
               </div>
 
+              {/* ── WATCH THIS TOKEN ── */}
+              {result && (
+                <WatchButton
+                  mint={address.trim()}
+                  chain={chain ?? "SOL"}
+                  symbol={result.rawSummary?.symbol}
+                  lang="en"
+                />
+              )}
+
               {/* ── FRESHNESS SIGNALS ── */}
               {freshnessResult && (
                 <FreshnessStrip result={freshnessResult} lang="en" />
@@ -1011,12 +1018,10 @@ export default function TigerScanPage() {
                 <OffChainCredibilityBlock result={offChainResult} lang="en" />
               )}
 
-              {/* ── WATCH THIS TOKEN ── */}
-              {result && (
-                <WatchButton
-                  mint={address.trim()}
-                  chain={chain ?? "SOL"}
-                  symbol={result.rawSummary?.symbol}
+              {/* ── EXPLAINABILITY — evidence-tier badges per driver ── */}
+              {result?.rawSummary?.tiger_drivers?.length > 0 && (
+                <ExplainabilityBlock
+                  drivers={result.rawSummary.tiger_drivers}
                   lang="en"
                 />
               )}

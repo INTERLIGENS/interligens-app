@@ -33,17 +33,7 @@ function detectLocale(pathname: string): Locale {
 export default function BetaNav() {
   const pathname = usePathname();
   const locale = detectLocale(pathname);
-  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    function onScroll() {
-      setScrolled(window.scrollY > 20);
-    }
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // Close the mobile menu when the route changes.
   useEffect(() => {
@@ -119,14 +109,8 @@ export default function BetaNav() {
           alignItems: "center",
           padding: "0 32px",
           fontFamily: "Inter, system-ui, sans-serif",
-          background: scrolled || menuOpen ? "rgba(0,0,0,0.92)" : "transparent",
-          backdropFilter: scrolled || menuOpen ? "blur(12px)" : "none",
-          WebkitBackdropFilter: scrolled || menuOpen ? "blur(12px)" : "none",
-          borderBottom:
-            scrolled || menuOpen
-              ? "1px solid rgba(255,107,0,0.10)"
-              : "1px solid transparent",
-          transition: "background 200ms ease, border-bottom 200ms ease",
+          background: "#000000",
+          borderBottom: "1px solid rgba(255,107,0,0.10)",
         }}
       >
         {/* Logo */}
