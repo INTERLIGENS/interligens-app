@@ -1,6 +1,7 @@
 // src/app/api/watchlist/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { buildKolCanonicalSnapshotBatch, type KolProfileRow } from '@/lib/kol/canonical'
 import { handlesV2 } from '@/lib/watcher/handles'
 import { parseBehaviorFlags } from '@/lib/kol/behaviorFlags'
 
@@ -20,39 +21,12 @@ export async function GET() {
     const uniqueHandles = Array.from(handleMap.values())
     const handleKeys = uniqueHandles.map(h => h.handle)
 
-    // 2. Batch-fetch KOL profiles for matching handles
-    const kolProfiles = await prisma.kolProfile.findMany({
-      where: { handle: { in: handleKeys, mode: 'insensitive' } },
-      select: {
-        handle: true,
-        displayName: true,
-        tier: true,
-        riskFlag: true,
-        totalDocumented: true,
-        totalScammed: true,
-        proceedsCoverage: true,
-        evidenceDepth: true,
-        completenessLevel: true,
-        behaviorFlags: true,
-        followerCount: true,
-        bio: true,
-        rugCount: true,
-        publishStatus: true,
-        publishable: true,
-        verified: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            evidences: true,
-            kolWallets: true,
-            kolCases: true,
-            tokenLinks: true,
-          },
-        },
-      },
+    // 2. Batch-fetch KOL profiles for matching handles via canonical snapshot
+    const kolProfiles = await buildKolCanonicalSnapshotBatch({
+      handle: { in: handleKeys, mode: 'insensitive' },
     })
 
-    const kolMap = new Map<string, (typeof kolProfiles)[number]>()
+    const kolMap = new Map<string, KolProfileRow>()
     for (const kp of kolProfiles) {
       kolMap.set(kp.handle.toLowerCase(), kp)
     }
