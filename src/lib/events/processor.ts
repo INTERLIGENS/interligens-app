@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical";
+import { resolveWalletToKol } from "@/lib/kol/identity";
 
 const MAX_RETRIES = 3;
 // Exponential backoff: 2min, 10min, 30min
@@ -33,17 +34,33 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
     switch (event.type) {
       case "scan.completed": {
         const address = String(payload.address ?? "");
+        const chain = String(payload.chain ?? "");
         if (!address) break;
-        const wallet = await prisma.kolWallet.findFirst({
-          where: { address: { equals: address, mode: "insensitive" } },
-          select: { kolHandle: true },
-        });
-        if (wallet?.kolHandle) {
-          await computeProceedsForHandle(wallet.kolHandle);
-          await buildKolCanonicalSnapshot(wallet.kolHandle);
+
+        const match = await resolveWalletToKol(address, chain);
+
+        if (match.confidence === "exact" && match.handle) {
+          await computeProceedsForHandle(match.handle);
+          await buildKolCanonicalSnapshot(match.handle);
+        } else {
+          console.log(`[processor] scan.completed: no KOL match for ${address} (${chain})`);
+        }
+
+        if (match.requiresHumanReview) {
+          await prisma.domainEvent.create({
+            data: {
+              type: "identity.review_required",
+              payload: { address, chain, confidence: match.confidence, evidence: match.evidence },
+              status: "pending",
+            },
+          }).catch(() => {});
         }
         break;
       }
+
+      case "identity.review_required":
+        // Consumed by admin tooling — no automated action taken
+        break;
 
       case "wallet.linked": {
         const handle = String(payload.handle ?? "");
