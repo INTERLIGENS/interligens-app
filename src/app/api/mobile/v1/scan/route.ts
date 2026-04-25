@@ -22,6 +22,7 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBad } from "@/lib/entities/knownBad";
 import { buildKolAlertSafe } from "@/lib/kol/alert";
+import { buildMobileScanSnapshot } from "@/lib/kol/snapshots";
 import { timingSafeEqual } from "crypto";
 
 // SEC-006 — timing-safe compare on the mobile API token.
@@ -104,6 +105,19 @@ export async function POST(request: NextRequest) {
     // Direct module call (no HTTP self-fetch) — see src/lib/kol/alert.ts.
     const kolAlert = await buildKolAlertSafe(chain, address);
 
+    // Mobile snapshot — if KOL resolved, merge totalDocumented / freshness / topWallets.
+    let kolSnapshot: { totalDocumented: number; freshness: string; topWallets: { address: string; chain: string; label: string | null }[] } | null = null;
+    if (kolAlert.hasAlert && kolAlert.kols.length > 0) {
+      const snap = await buildMobileScanSnapshot(kolAlert.kols[0].handle).catch(() => null);
+      if (snap) {
+        kolSnapshot = {
+          totalDocumented: snap.totalDocumented,
+          freshness: snap.freshness,
+          topWallets: snap.topWallets,
+        };
+      }
+    }
+
     return NextResponse.json({
       address,
       chain,
@@ -114,6 +128,7 @@ export async function POST(request: NextRequest) {
       confidence: tiger.confidence,
       scannedAt: new Date().toISOString(),
       kolAlert,
+      kolSnapshot,
     });
   } catch (err: any) {
     console.error(`[mobile/scan] chain=${chain} address=${address} error=`, err?.message);
