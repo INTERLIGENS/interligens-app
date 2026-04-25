@@ -109,7 +109,7 @@ export default function MiniSignalRow({
       </div>
       {/* Row 2 */}
       <div className={card}>
-        <div className={title}>{lang === "fr" ? "RISQUE CABAL" : "CABAL RISK"}</div>
+        <div className={title}>{lang === "fr" ? "RISQUE COORDINATION" : "COORDINATION RISK"}</div>
         <div className={row}>
           <span className={val}>{cabalVal}</span>
           <Chip text={cabalBadge} level={cabalLvl} />
