@@ -32,6 +32,7 @@ interface WatchEntry {
   isPublished: boolean
   recentSignals: number
   lastSignalAt: string | null
+  proceedsComputedAt: string | null
   tickers: string[]
   cashout: Cashout
 }
@@ -280,6 +281,19 @@ function WatchCard({
                 <span className="text-zinc-700">Sous surveillance, pas de signal récent</span>
               )}
             </div>
+
+            {/* Freshness badge */}
+            {e.proceedsComputedAt && (() => {
+              const ageMs = Date.now() - new Date(e.proceedsComputedAt).getTime();
+              const ageDays = Math.floor(ageMs / 86_400_000);
+              if (ageMs < 24 * 3_600_000) return null;
+              const isStale = ageMs > 7 * 24 * 3_600_000;
+              return (
+                <span className="mt-1.5 inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded" style={{ color: '#FFB800', background: '#FFB80015', border: '1px solid #FFB80040' }}>
+                  {isStale ? 'Données potentiellement obsolètes' : `Mis à jour il y a ${ageDays}j`}
+                </span>
+              );
+            })()}
 
             {/* Tickers row */}
             {e.tickers.length > 0 && (
