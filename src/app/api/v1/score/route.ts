@@ -14,6 +14,23 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 
+async function fetchTopHolderPct(mint: string): Promise<number | null> {
+  try {
+    const res = await fetch(
+      `https://public-api.solscan.io/token/holders?tokenAddress=${mint}&limit=10&offset=0`,
+      { headers: { "User-Agent": "interligens/1.0" }, signal: AbortSignal.timeout(4_000) }
+    );
+    if (!res.ok) return null;
+    const d = await res.json();
+    const holders: { amount?: unknown }[] = d?.data ?? [];
+    if (holders.length === 0 || typeof d?.total !== "number" || d.total <= 0) return null;
+    const top10 = holders.slice(0, 10).reduce((s, h) => s + Number(h.amount ?? 0), 0);
+    return Math.round((top10 / d.total) * 100 * 10) / 10;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchTokenWebsite(mint: string): Promise<string | null> {
   const key = process.env.HELIUS_API_KEY;
   if (!key) return null;
@@ -161,10 +178,11 @@ export async function GET(request: NextRequest) {
     // 1. Check case DB for existing off-chain data
     const caseFile = loadCaseByMint(mint);
 
-    // 2. Fetch market snapshot + token website in parallel
-    const [market, website] = await Promise.all([
+    // 2. Fetch market snapshot, token website, and top holders in parallel
+    const [market, website, topHolderPct] = await Promise.all([
       getMarketSnapshot("solana", mint),
       fetchTokenWebsite(mint),
+      fetchTopHolderPct(mint),
     ]);
 
     // 3. Determine scam lineage (fail-open)
@@ -263,6 +281,7 @@ export async function GET(request: NextRequest) {
       website: website ?? null,
       pairAgeDays: market.pair_age_days ?? null,
       liquidityUsd: market.liquidity_usd ?? null,
+      topHolderPct: topHolderPct ?? null,
     };
 
     console.log(

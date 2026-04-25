@@ -27,6 +27,7 @@ export type PublicScoreResponse = {
   website?: string | null;
   pairAgeDays?: number | null;
   liquidityUsd?: number | null;
+  topHolderPct?: number | null;
 };
 
 export function derivePhantomWarning(verdict: PublicVerdict): {
