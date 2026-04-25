@@ -1,12 +1,23 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 
+type DeadLetter = {
+  id: string;
+  type: string;
+  error: string | null;
+  retryCount: number;
+  deadLetteredAt: string | null;
+  createdAt: string;
+  payloadPreview: string;
+};
+
 type OpsData = {
   domainEvents: { pending: number; processing: number; failed: number; dead_letter: number; last24h: number };
   ingestionJobs: { pending: number; computed: number; published: number; failed: number; last24h: number };
   lastRecomputes: { handle: string; lastRecomputeAt: string | null; totalDocumented: number }[];
   snapshotHealth: { fresh: number; stale: number };
   proceedsTotal: number;
+  deadLetters: DeadLetter[];
   generatedAt: string;
 };
 
@@ -30,10 +41,65 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function DeadLetterRow({
+  dl,
+  onAction,
+}: {
+  dl: DeadLetter;
+  onAction: (action: string, eventId: string) => Promise<void>;
+}) {
+  const [loading, setLoading] = useState<string | null>(null);
+
+  async function act(action: string) {
+    setLoading(action);
+    await onAction(action, dl.id);
+    setLoading(null);
+  }
+
+  return (
+    <tr className="border-b border-white/5 hover:bg-white/5 text-xs">
+      <td className="py-2 pr-3 text-[#FF6B00] font-mono font-black">{dl.type}</td>
+      <td className="py-2 pr-3 text-white/50 font-mono max-w-[220px] truncate" title={dl.error ?? ""}>
+        {dl.error ? dl.error.slice(0, 60) : "—"}
+      </td>
+      <td className="py-2 pr-3 text-white/40 tabular-nums">{dl.retryCount}</td>
+      <td className="py-2 pr-3 text-white/30 whitespace-nowrap">
+        {dl.deadLetteredAt ? new Date(dl.deadLetteredAt).toLocaleString() : "—"}
+      </td>
+      <td className="py-2">
+        <div className="flex gap-1">
+          <button
+            onClick={() => act("requeue_event")}
+            disabled={!!loading}
+            className="px-2 py-0.5 bg-[#00FF94]/20 text-[#00FF94] font-black rounded hover:bg-[#00FF94]/30 disabled:opacity-40 transition-colors"
+          >
+            {loading === "requeue_event" ? "…" : "REQUEUE"}
+          </button>
+          <button
+            onClick={() => act("archive_event")}
+            disabled={!!loading}
+            className="px-2 py-0.5 bg-[#FFB800]/20 text-[#FFB800] font-black rounded hover:bg-[#FFB800]/30 disabled:opacity-40 transition-colors"
+          >
+            {loading === "archive_event" ? "…" : "ARCHIVE"}
+          </button>
+          <button
+            onClick={() => act("ignore_event")}
+            disabled={!!loading}
+            className="px-2 py-0.5 bg-white/5 text-white/40 font-black rounded hover:bg-white/10 disabled:opacity-40 transition-colors"
+          >
+            {loading === "ignore_event" ? "…" : "IGNORE"}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export default function OpsPage() {
   const [data, setData] = useState<OpsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [batchType, setBatchType] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +133,36 @@ export default function OpsPage() {
     const j = await res.json();
     setActionMsg(res.ok ? `Revived ${j.revived} events.` : "Error — check logs.");
     setTimeout(() => { setActionMsg(null); load(); }, 3000);
+  }
+
+  async function handleDeadLetterAction(action: string, eventId: string) {
+    const res = await fetch("/api/admin/ops", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, eventId }),
+    });
+    if (res.ok) {
+      setActionMsg(`${action} OK — ${eventId.slice(0, 8)}…`);
+      setTimeout(() => { setActionMsg(null); load(); }, 2000);
+    } else {
+      setActionMsg(`Error on ${action}`);
+      setTimeout(() => setActionMsg(null), 3000);
+    }
+  }
+
+  async function requeueBatch() {
+    const res = await fetch("/api/admin/ops", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "requeue_batch", eventType: batchType || undefined, limit: 10 }),
+    });
+    const j = await res.json();
+    if (j.requiresConfirmation) {
+      setActionMsg(`Preview: ${j.count} events. Send again to confirm.`);
+    } else {
+      setActionMsg(res.ok ? `Requeued ${j.requeued} events.` : "Error — check logs.");
+    }
+    setTimeout(() => { setActionMsg(null); load(); }, 4000);
   }
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white/40 text-sm">Loading...</div>;
@@ -142,6 +238,49 @@ export default function OpsPage() {
         </div>
       </Section>
 
+      {/* Dead Letters */}
+      <Section title={`Dead Letters (${data.domainEvents.dead_letter})`}>
+        {/* Batch requeue */}
+        <div className="flex gap-2 items-center">
+          <input
+            value={batchType}
+            onChange={e => setBatchType(e.target.value)}
+            placeholder="event type filter (optional)"
+            className="bg-black border border-white/20 rounded px-3 py-1.5 text-xs text-white font-mono outline-none focus:border-[#FF6B00] w-48"
+          />
+          <button
+            onClick={requeueBatch}
+            disabled={data.domainEvents.dead_letter === 0}
+            className="px-3 py-1.5 border border-[#00FF94] text-[#00FF94] text-xs font-black uppercase tracking-widest rounded hover:bg-[#00FF94]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            Requeue Batch (max 10)
+          </button>
+        </div>
+
+        {data.deadLetters.length === 0 ? (
+          <p className="text-xs text-white/30 font-black tracking-widest">NO DEAD LETTERS</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-white/30 uppercase tracking-widest border-b border-white/10">
+                  <th className="text-left pb-2 font-black">Type</th>
+                  <th className="text-left pb-2 font-black">Error</th>
+                  <th className="text-left pb-2 font-black">Retries</th>
+                  <th className="text-left pb-2 font-black">Dead At</th>
+                  <th className="text-left pb-2 font-black">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.deadLetters.map(dl => (
+                  <DeadLetterRow key={dl.id} dl={dl} onAction={handleDeadLetterAction} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
+
       <div className="flex gap-3">
         <button
           onClick={triggerRecompute}
@@ -154,7 +293,7 @@ export default function OpsPage() {
           disabled={data.domainEvents.dead_letter === 0}
           className="px-4 py-2 border border-[#FF3B5C] text-[#FF3B5C] text-xs font-black uppercase tracking-widest rounded hover:bg-[#FF3B5C]/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          Process Dead Letters ({data.domainEvents.dead_letter})
+          Revive All Dead Letters ({data.domainEvents.dead_letter})
         </button>
       </div>
     </div>
