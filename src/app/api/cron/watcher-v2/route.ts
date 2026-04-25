@@ -13,7 +13,8 @@ import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
-import { sendWatcherDigest } from "@/lib/alerts/watcherDigest";
+import { sendWatcherDigest, type BatchSignal, type CampaignSummary } from "@/lib/alerts/watcherDigest";
+import { clusterSignals, type SignalInput } from "@/lib/watcher/campaignClusterer";
 
 // Vercel cron route config — force dynamic execution and extend the default
 // 10s serverless timeout to accommodate the per-handle sleep(1000) loop.
@@ -34,15 +35,9 @@ async function ensureInfluencer(handle: string): Promise<string> {
   return created.id;
 }
 
-type BatchSignal = {
-  handle: string;
-  signalCount: number;
-  tokens: string[];
-  snippet: string;
-};
-
 async function scanAll() {
   const emailMode = (process.env.WATCHER_EMAIL_MODE ?? "digest").toLowerCase();
+  const scanStart = new Date();
 
   const stats = {
     scanned: 0,
@@ -56,6 +51,8 @@ async function scanAll() {
 
   // Accumulates per-handle signal summaries for the batch digest.
   const batchSignals: BatchSignal[] = [];
+  // Accumulates full signal data for campaign clustering.
+  const newSignals: SignalInput[] = [];
 
   for (const entry of handlesV2) {
     const handle = entry.handle;
@@ -95,7 +92,7 @@ async function scanAll() {
       });
       if (existing) { stats.skipped++; continue; }
 
-      await prisma.socialPostCandidate.create({
+      const candidate = await prisma.socialPostCandidate.create({
         data: {
           influencerId,
           postId: tweet.id,
@@ -107,9 +104,20 @@ async function scanAll() {
           detectedAddresses: JSON.stringify(detection.detectedAddresses),
           signalTypes: JSON.stringify(detection.signalTypes),
           signalScore: detection.signalScore,
+          rawText: tweet.text,
           dedupKey,
           profileSnapshot,
         },
+      });
+      // Accumulate for campaign clustering
+      newSignals.push({
+        id: candidate.id,
+        kolHandle: handle,
+        detectedTokens: candidate.detectedTokens,
+        detectedAddresses: candidate.detectedAddresses,
+        rawText: tweet.text,
+        discoveredAtUtc: candidate.discoveredAtUtc,
+        signalScore: candidate.signalScore,
       });
       stats.candidates++;
       handleNewCandidates++;
@@ -160,9 +168,38 @@ async function scanAll() {
     await sleep(1_000);
   }
 
-  // Send one digest email after the full scan completes (digest mode).
+  // ── Campaign clustering + digest (after full scan) ──────────────────────
+  let clusterResult = { campaignsCreated: 0, signalsLinked: 0, highPriority: 0, critical: 0 };
+  let campaignSummaries: CampaignSummary[] = [];
+
+  if (newSignals.length > 0) {
+    try {
+      clusterResult = await clusterSignals(newSignals);
+
+      // Fetch created campaigns for digest summary
+      const campaigns = await prisma.watcherCampaign.findMany({
+        where: { createdAt: { gte: scanStart } },
+        include: { campaignKols: { select: { kolHandle: true } } },
+        orderBy: [{ priority: "asc" }, { signalCount: "desc" }],
+        take: 20,
+      });
+      campaignSummaries = campaigns.map((c) => ({
+        id: c.id,
+        primaryTokenSymbol: c.primaryTokenSymbol,
+        primaryContractAddress: c.primaryContractAddress,
+        priority: c.priority,
+        kolHandles: c.campaignKols.map((k) => k.kolHandle),
+        signalCount: c.signalCount,
+        claimPatterns: (() => { try { return JSON.parse(c.claimPatterns); } catch { return []; } })(),
+      }));
+    } catch (err) {
+      console.error("[watcher-v2] clustering failed", err);
+    }
+  }
+
+  // Send one digest email after the full scan
   if (emailMode === "digest" && batchSignals.length > 0) {
-    sendWatcherDigest(batchSignals).catch((err) =>
+    sendWatcherDigest(batchSignals, campaignSummaries, scanStart, new Date()).catch((err) =>
       console.error("[watcher-v2] digest send crashed", err)
     );
   }
@@ -172,6 +209,9 @@ async function scanAll() {
     ...stats,
     emailMode,
     digestBatched: batchSignals.length,
+    campaignsCreated: clusterResult.campaignsCreated,
+    highPriority: clusterResult.highPriority,
+    critical: clusterResult.critical,
     quotaEstimate: `~${(stats.tweetsFetched * 30).toLocaleString()} tweets/month`,
   };
 }
