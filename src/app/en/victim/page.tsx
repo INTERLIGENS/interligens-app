@@ -53,7 +53,7 @@ export default function VictimPage() {
             Was your wallet involved in a scam?
           </h1>
           <p style={{ fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.6 }}>
-            Enter any wallet address or contract. We check if it appears in our database of known scammers, mixers, and complicit exchanges.
+            Enter any wallet address or contract. We check if it appears in our database of flagged high-risk addresses, mixers, and complicit exchanges.
           </p>
         </div>
 

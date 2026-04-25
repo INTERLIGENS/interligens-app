@@ -115,7 +115,7 @@ export default function DestinationCheckPage() {
             Destination Risk Scanner
           </h1>
           <p style={{ color: "#6b7280", fontSize: 13, marginTop: 8 }}>
-            Check a wallet address before sending funds. Detects scammers, mixers, OFAC-listed wallets, and fresh addresses.
+            Check a wallet address before sending funds. Detects flagged high-risk actors, mixers, OFAC-listed wallets, and fresh addresses.
           </p>
         </div>
 
