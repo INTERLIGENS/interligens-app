@@ -173,6 +173,7 @@ export async function GET() {
         linkedTokensCount: kol?._count.tokenLinks ?? 0,
         isPublished: kol?.publishStatus === 'published' || (kol?.publishable === true && kol?.publishStatus === 'draft'),
         lastUpdated: kol?.updatedAt ?? null,
+        proceedsComputedAt: kol?.proceedsComputedAt ?? null,
 
         // Signal activity (from watcher v2)
         recentSignals: signals?.count ?? 0,
