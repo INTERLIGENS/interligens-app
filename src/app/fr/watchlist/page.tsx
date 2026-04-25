@@ -64,7 +64,7 @@ const FLAG_LINE: Record<string, string> = {
   MULTI_HOP_TRANSFER: "Cache la trace de l'argent par transferts multi-sauts",
   CROSS_CASE_RECURRENCE: "Réapparaît sur plusieurs enquêtes",
   MULTI_LAUNCH_LINKED: "Lié à plusieurs lancements",
-  LAUNDERING_INDICATORS: "Indicateurs de blanchiment au dossier",
+  LAUNDERING_INDICATORS: "Flux financiers complexes au dossier",
   KNOWN_LINKED_WALLETS: "Wallets liés identifiés",
   COORDINATED_PROMOTION: "Promotion coordonnée",
 }
