@@ -20,7 +20,6 @@ import TokenPicker, { type TokenCandidate } from "@/components/scan/TokenPicker"
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
-import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
@@ -975,6 +974,10 @@ export default function TigerScanPageFR() {
                 <div className="mt-3">
                   <CaseFileCTA id={address.trim() || null} lang="fr" />
                 </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <WatchButton mint={address.trim()} chain={chain ?? "SOL"} symbol={result.rawSummary?.symbol} lang="fr" />
+                  <span style={{ fontSize: 9, color: "#4b5563" }}>Soyez alerté si le risque change</span>
+                </div>
               </div>
 
               {/* ── ADVANCED SIGNALS ── */}
@@ -986,17 +989,11 @@ export default function TigerScanPageFR() {
                 freezeAuthority={result.freezeAuthority ?? null}
                 topHolderPct={result.rawSummary?.top10_pct ?? result.rawSummary?.holder_top10_pct ?? null}
                 signals={(result.rawSummary?.signals ?? []).map((s: any) => ({ id: s.id, label: s.label, severity: s.severity }))}
+                lang="fr"
+                tier={finalTier}
+                manipulationLevel={weather?.manipulation?.level ?? null}
+                rawSummary={result.rawSummary}
               />
-
-              {/* ── WATCH THIS TOKEN ── */}
-              {result && (
-                <WatchButton
-                  mint={address.trim()}
-                  chain={chain ?? "SOL"}
-                  symbol={result.rawSummary?.symbol}
-                  lang="fr"
-                />
-              )}
 
               {/* ── FRESHNESS SIGNALS ── */}
               {freshnessResult && (
@@ -1074,15 +1071,6 @@ export default function TigerScanPageFR() {
                   )}
                 </div>
               )}
-
-              {/* 4. MINI SIGNAL CARDS */}
-              <MiniSignalRow
-                lang="fr"
-                tier={finalTier.toLowerCase() as any}
-                weather={weather}
-                show={true}
-                rawSummary={result.rawSummary}
-              />
 
               {/* 5. TOP ON-CHAIN PROOFS + ASK TIGER ANALYST — flip card */}
               <TigerRevealCard tier={finalTier} proofs={result.proofs} />
