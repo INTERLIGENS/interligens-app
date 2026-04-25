@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import ScoreCard from "@/components/scan/ScoreCard";
+import AdvancedSignals from "@/components/scan/AdvancedSignals";
 import type { PublicScoreResponse } from "@/lib/publicScore/schema";
 
 type FeedbackType = "false_positive" | "missing_info" | "scam_report";
@@ -323,6 +324,17 @@ export default function ScanPage() {
               </div>
             );
           })()}
+
+          {/* ADVANCED SIGNALS */}
+          <AdvancedSignals
+            website={result.website}
+            pairAgeDays={result.pairAgeDays}
+            liquidityUsd={result.liquidityUsd}
+            mintAuthority={result.mintAuthority}
+            freezeAuthority={result.freezeAuthority}
+            topHolderPct={result.topHolderPct}
+            signals={result.signals.map((s) => ({ id: s.id, label: s.label, severity: s.severity }))}
+          />
 
           {/* B3 — Swap anyway CTA */}
           <div
