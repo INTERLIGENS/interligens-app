@@ -39,6 +39,7 @@ import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
 import ExplainabilityBlock from "@/components/scan/ExplainabilityBlock";
+import AdvancedSignals from "@/components/scan/AdvancedSignals";
 import type { FreshnessResult } from "@/lib/freshness/engine";
 import type { NarrativeResult } from "@/lib/narrative/generator";
 import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
@@ -1053,6 +1054,29 @@ export default function TigerScanPage() {
                   <CaseFileCTA id={address.trim() || null} lang="en" />
                 </div>
               </div>
+
+              {/* ── ADVANCED SIGNALS ── */}
+              {(() => {
+                const rs = result.rawSummary as any;
+                const site = rs?.website ?? rs?.extensions?.website ?? rs?.ext?.website ?? rs?.meta?.website ?? rs?.info?.website ?? null;
+                const domainAgeSig = offChainResult?.signals?.find((s: any) => s.id === "domain_age");
+                const drivers: { label: string; severity?: string }[] = Array.isArray(rs?.tiger_drivers)
+                  ? rs.tiger_drivers.map((d: any) => ({ label: d.label ?? d.id ?? String(d), severity: d.severity ?? undefined }))
+                  : [];
+                return (
+                  <AdvancedSignals
+                    website={site}
+                    websiteActive={offChainResult ? offChainResult.score > 0 : site ? true : null}
+                    websiteAgeLabelEn={domainAgeSig?.label_en ?? null}
+                    pairAgeDays={rs?.pair_age_days ?? null}
+                    liquidityUsd={rs?.liquidity_usd ?? null}
+                    mintAuthority={result.mintAuthority ?? null}
+                    freezeAuthority={result.freezeAuthority ?? null}
+                    topHolderPct={null}
+                    signals={drivers}
+                  />
+                );
+              })()}
 
               {/* ── WATCH THIS TOKEN ── */}
               {result && (

@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from "react";
 import ScoreCard from "@/components/scan/ScoreCard";
 import type { PublicScoreResponse } from "@/lib/publicScore/schema";
+import AdvancedSignals from "@/components/scan/AdvancedSignals";
 
 type FeedbackType = "false_positive" | "missing_info" | "scam_report";
 
@@ -323,6 +324,11 @@ export default function ScanPage() {
               </div>
             );
           })()}
+
+          {/* ADVANCED SIGNALS */}
+          <AdvancedSignals
+            signals={result.signals.map((s) => ({ label: s.label, severity: s.severity }))}
+          />
 
           {/* B3 — Swap anyway CTA */}
           <div
