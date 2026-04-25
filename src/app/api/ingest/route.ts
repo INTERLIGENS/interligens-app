@@ -8,6 +8,7 @@ import { requireAdminApi } from "@/lib/security/adminAuth";
 import { checkRateLimit, getClientIp } from "@/lib/security/rateLimit";
 import { ingest } from "@/lib/ingestion/pipeline";
 import type { IngestionSource } from "@/lib/ingestion/types";
+import { validateArkhamCsv } from "@/lib/ingestion/csv-validator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +51,55 @@ export async function POST(req: NextRequest) {
       ? (body.source as IngestionSource)
       : "manual";
 
-  const dryRun = body.dryRun === true;
+  // CSV Arkham: validate first, default dryRun=true
+  const dryRun = source === "csv_arkham"
+    ? body.dryRun !== false  // default true unless explicitly false
+    : body.dryRun === true;
+
+  if (source === "csv_arkham") {
+    try {
+      const validation = await validateArkhamCsv(input);
+
+      if (validation.valid.length === 0) {
+        return NextResponse.json({
+          error: "No valid rows in CSV",
+          preview: validation.preview,
+          errors: validation.errors,
+          duplicates: validation.duplicates,
+        }, { status: 422 });
+      }
+
+      // dryRun=true → return preview without insert
+      if (dryRun) {
+        return NextResponse.json({
+          dryRun: true,
+          validRows: validation.valid.length,
+          errors: validation.errors,
+          duplicates: validation.duplicates,
+          preview: validation.preview,
+        }, { status: 200 });
+      }
+
+      // dryRun=false → run pipeline per valid row
+      const jobs = [];
+      for (const row of validation.valid) {
+        const csvLine = [row.txHash, row.walletAddress ?? "", "SOL", row.eventDate.toISOString(), String(row.amountUsd), row.kolHandle ?? "", row.tokenSymbol ?? ""].join(",");
+        const job = await ingest(csvLine, "csv_arkham", false);
+        jobs.push({ jobId: job.id, status: job.status, txHash: row.txHash });
+      }
+      return NextResponse.json({
+        dryRun: false,
+        inserted: jobs.length,
+        errors: validation.errors,
+        duplicates: validation.duplicates,
+        preview: validation.preview,
+        jobs,
+      }, { status: 200 });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
 
   try {
     const job = await ingest(input, source, dryRun);
