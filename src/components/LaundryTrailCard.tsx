@@ -50,7 +50,7 @@ const LABELS = {
   en: {
     signals: 'SIGNALS',
     trailType: 'TRAIL TYPE',
-    laundryRisk: 'LAUNDRY RISK',
+    laundryRisk: 'FUND MOVEMENT RISK',
     recoveryDifficulty: 'RECOVERY DIFFICULTY',
     recovery: 'RECOVERY',
     trailBreak: (hop: number) => `— trail breaks at hop ${hop}`,
@@ -58,7 +58,7 @@ const LABELS = {
   fr: {
     signals: 'SIGNAUX',
     trailType: 'TYPE DE TRACE',
-    laundryRisk: 'RISQUE DE BLANCHIMENT',
+    laundryRisk: 'RISQUE DE FLUX FINANCIER',
     recoveryDifficulty: 'DIFFICULTÉ DE RÉCUPÉRATION',
     recovery: 'RÉCUPÉRATION',
     trailBreak: (hop: number) => `— la trace se perd au hop ${hop}`,
