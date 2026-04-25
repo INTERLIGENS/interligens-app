@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate"
+import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical"
+
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
@@ -8,16 +9,30 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
   const { handle } = await params
   const h = decodeURIComponent(handle).trim().toLowerCase().replace(/^@/, "")
   try {
-    const directCount = await prisma.kolEvidence.count({ where: { kolHandle: h } })
-    const kol = await prisma.kolProfile.findFirst({
-      where: { handle: { equals: h, mode: "insensitive" }, ...PUBLIC_KOL_FILTER },
-      include: { evidences: true, kolWallets: true, kolCases: true }
+    const snapshot = await buildKolCanonicalSnapshot(h)
+    if (!snapshot) return NextResponse.json({ found: false }, { status: 404 })
+
+    // Enforce publish gate (equivalent to PUBLIC_KOL_FILTER)
+    const isPublic =
+      snapshot.publishStatus !== "restricted" &&
+      (snapshot.publishStatus === "published" ||
+        (snapshot.publishable && snapshot.publishStatus === "draft"))
+    if (!isPublic) return NextResponse.json({ found: false }, { status: 404 })
+
+    // Fetch full relations for backward compat — evidences/wallets/cases
+    const relations = await prisma.kolProfile.findFirst({
+      where: { handle: { equals: h, mode: "insensitive" } },
+      select: { handle: true, evidences: true, kolWallets: true, kolCases: true },
     })
-    if (!kol) return NextResponse.json({ found: false }, { status: 404 })
-    const { kolWallets, kolCases, evidences, ...rest } = kol as any
+
     return NextResponse.json({
       found: true,
-      kol: { ...rest, wallets: kolWallets, caseLinks: kolCases, evidences }
+      kol: {
+        ...snapshot,
+        wallets: relations?.kolWallets ?? [],
+        caseLinks: relations?.kolCases ?? [],
+        evidences: relations?.evidences ?? [],
+      },
     })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
