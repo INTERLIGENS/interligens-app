@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeProceedsForHandle } from "@/lib/kol/proceeds";
+import { emitProceedsRecomputed } from "@/lib/events/producer";
 import { generateCasePdf } from "@/lib/pdf/engine";
 
 export const runtime = "nodejs";
@@ -62,6 +63,7 @@ export async function GET(req: NextRequest) {
       const r = await computeProceedsForHandle(handle);
       totalProceedsUsd = r.totalProceedsUsd;
       if (!r.success && r.error) scanError = r.error;
+      emitProceedsRecomputed(handle, totalProceedsUsd);
     } catch (e) {
       scanError = e instanceof Error ? e.message : String(e);
     }
