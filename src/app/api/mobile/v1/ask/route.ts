@@ -105,6 +105,7 @@ CONTENT RULES:
 - Answer ONLY from the scan data above. No outside knowledge.
 - Mirror verdict exactly. Never escalate or downgrade.
 - Respond in ${lang} only.
+- This is signal-based risk analysis, not a legal finding or financial advice. Never imply legal guilt or investment recommendation.
 
 RAW DATA RULE:
 Never dump raw scan data directly. No wallet addresses. No backtick formatting.
