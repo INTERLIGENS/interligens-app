@@ -10,6 +10,9 @@ export type KolSnapshotFreshness = "fresh" | "stale" | "unknown";
 export type WalletIdentityConfidence = "exact" | "strong" | "probable" | "candidate";
 export type WalletAttributionMode = "manual" | "inferred";
 
+export const SNAPSHOT_VERSION = "1.0.0" as const;
+export const IDENTITY_RESOLUTION_VERSION = "1.0.0" as const;
+
 /** Core contract — guaranteed fields on every snapshot */
 export type KolCanonicalSnapshot = {
   handle: string;
@@ -27,6 +30,11 @@ export type KolCanonicalSnapshot = {
   identityConfidence: WalletIdentityConfidence;
   walletAttributionMode: WalletAttributionMode;
   walletDataFreshAt: Date | null;
+  // Versioning
+  snapshotVersion: typeof SNAPSHOT_VERSION;
+  proceedsComputedAt: Date | null;
+  identityResolutionVersion: typeof IDENTITY_RESOLUTION_VERSION;
+  builtFromEventId: string | null;
 };
 
 /** Extended row — includes all fields needed by API routes (superset of core) */
@@ -147,6 +155,10 @@ function toSnapshot(row: RawRow): KolProfileRow {
     identityConfidence: computeIdentityConfidence(row.kolWallets),
     walletAttributionMode: computeAttributionMode(row.kolWallets),
     walletDataFreshAt: computeWalletDataFreshAt(row.kolWallets),
+    snapshotVersion: SNAPSHOT_VERSION,
+    proceedsComputedAt: row.lastHeliusScan,
+    identityResolutionVersion: IDENTITY_RESOLUTION_VERSION,
+    builtFromEventId: null,
     platform: row.platform,
     confidence: row.confidence,
     evidenceDepth: row.evidenceDepth,

@@ -15,6 +15,8 @@ import {
 // ── KolPublicSnapshot ────────────────────────────────────────────────────────
 // Used by Explorer / Registry / Watchlist.
 
+export type DataFreshnessLevel = "fresh" | "aging" | "stale";
+
 export type KolPublicSnapshot = {
   handle: string;
   displayName: string | null;
@@ -29,9 +31,27 @@ export type KolPublicSnapshot = {
   freshness: KolSnapshotFreshness;
   snapshotBuiltAt: Date;
   proceedsSource: "KolProceedsEvent";
+  dataFreshness: {
+    walletData: DataFreshnessLevel;
+    proceeds: DataFreshnessLevel;
+    identity: DataFreshnessLevel;
+    snapshotBuiltAt: Date;
+  };
 };
 
+const FRESH_MS = 24 * 60 * 60 * 1000;
+const AGING_MS = 7 * 24 * 60 * 60 * 1000;
+
+function toDataFreshness(date: Date | null): DataFreshnessLevel {
+  if (!date) return "stale";
+  const age = Date.now() - date.getTime();
+  if (age < FRESH_MS) return "fresh";
+  if (age < AGING_MS) return "aging";
+  return "stale";
+}
+
 function toPublicSnapshot(row: KolProfileRow): KolPublicSnapshot {
+  const snapshotBuiltAt = new Date();
   return {
     handle: row.handle,
     displayName: row.displayName,
@@ -44,8 +64,14 @@ function toPublicSnapshot(row: KolProfileRow): KolPublicSnapshot {
     identityConfidence: row.identityConfidence,
     walletAttributionMode: row.walletAttributionMode,
     freshness: row.freshness,
-    snapshotBuiltAt: new Date(),
+    snapshotBuiltAt,
     proceedsSource: "KolProceedsEvent",
+    dataFreshness: {
+      walletData: toDataFreshness(row.walletDataFreshAt),
+      proceeds: toDataFreshness(row.proceedsComputedAt),
+      identity: toDataFreshness(row.walletDataFreshAt),
+      snapshotBuiltAt,
+    },
   };
 }
 
