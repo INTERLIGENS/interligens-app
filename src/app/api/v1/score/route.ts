@@ -14,6 +14,24 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 
+async function fetchTokenWebsite(mint: string): Promise<string | null> {
+  const key = process.env.HELIUS_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: "v1", method: "getAsset", params: { id: mint } }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return (j.result?.content?.links?.external_url as string) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function getClientIp(req: NextRequest): string {
   return (
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -143,8 +161,11 @@ export async function GET(request: NextRequest) {
     // 1. Check case DB for existing off-chain data
     const caseFile = loadCaseByMint(mint);
 
-    // 2. Fetch market snapshot
-    const market = await getMarketSnapshot("solana", mint);
+    // 2. Fetch market snapshot + token website in parallel
+    const [market, website] = await Promise.all([
+      getMarketSnapshot("solana", mint),
+      fetchTokenWebsite(mint),
+    ]);
 
     // 3. Determine scam lineage (fail-open)
     let scamLineage: "CONFIRMED" | "REFERENCED" | "NONE" = "NONE";
@@ -239,6 +260,9 @@ export async function GET(request: NextRequest) {
       cached: market.cache_hit,
       timestamp: new Date().toISOString(),
       api_version: "v1",
+      website: website ?? null,
+      pairAgeDays: market.pair_age_days ?? null,
+      liquidityUsd: market.liquidity_usd ?? null,
     };
 
     console.log(

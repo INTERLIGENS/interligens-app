@@ -24,6 +24,9 @@ export type PublicScoreResponse = {
   cached: boolean;
   timestamp: string;
   api_version: "v1";
+  website?: string | null;
+  pairAgeDays?: number | null;
+  liquidityUsd?: number | null;
 };
 
 export function derivePhantomWarning(verdict: PublicVerdict): {
