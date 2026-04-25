@@ -3089,3 +3089,27 @@ model IngestionJob {
   @@index([source, status])
   @@index([sourceChecksum])
 }
+
+// ─── PUBLIC RETAIL FEEDBACK ─────────────────────────────────────────────────
+//
+// Anonymous reports submitted from /scan and /demo by retail visitors —
+// no auth, IP-rate-limited at the route layer. Distinct from FeedbackEntry
+// (which requires a beta investigator session).
+//
+// Migration applied separately via Neon SQL Editor (see CLAUDE.md DB rule).
+
+model FeedbackReport {
+  id        String   @id @default(cuid())
+  type      String   @default("feedback")
+  address   String?
+  handle    String?
+  message   String
+  ip        String?
+  userAgent String?
+  page      String?
+  status    String   @default("unread")
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@index([type])
+}
