@@ -28,6 +28,7 @@ import FreshnessStrip from "@/components/scan/FreshnessStrip";
 import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
+import AdvancedSignals from "@/components/scan/AdvancedSignals";
 import ExplainabilityBlock from "@/components/scan/ExplainabilityBlock";
 import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
 import type { FreshnessResult } from "@/lib/freshness/engine";
@@ -975,6 +976,17 @@ export default function TigerScanPageFR() {
                   <CaseFileCTA id={address.trim() || null} lang="fr" />
                 </div>
               </div>
+
+              {/* ── ADVANCED SIGNALS ── */}
+              <AdvancedSignals
+                website={result.rawSummary?.website ?? result.rawSummary?.content?.links?.external_url ?? result.rawSummary?.extensions?.website ?? null}
+                pairAgeDays={result.rawSummary?.pair_age_days ?? result.rawSummary?.markets?.pair_age_days ?? null}
+                liquidityUsd={result.rawSummary?.markets?.liquidity_usd ?? result.rawSummary?.liquidity_usd ?? null}
+                mintAuthority={result.mintAuthority ?? null}
+                freezeAuthority={result.freezeAuthority ?? null}
+                topHolderPct={result.rawSummary?.top10_pct ?? result.rawSummary?.holder_top10_pct ?? null}
+                signals={(result.rawSummary?.signals ?? []).map((s: any) => ({ id: s.id, label: s.label, severity: s.severity }))}
+              />
 
               {/* ── WATCH THIS TOKEN ── */}
               {result && (
