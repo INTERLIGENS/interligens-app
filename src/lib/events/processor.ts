@@ -7,6 +7,8 @@ import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical";
 import { resolveWalletToKol } from "@/lib/kol/identity";
 import { alertDeadLetter } from "@/lib/ops/alerting";
+import { findCrossLinks, persistCrossLinks, type CrossLink } from "@/lib/intelligence/crossCaseLinker";
+import { emitKolUpdated } from "@/lib/events/producer";
 
 const MAX_RETRIES = 3;
 // Exponential backoff: 2min, 10min, 30min
@@ -108,6 +110,22 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
         if (handle) {
           await computeProceedsForHandle(handle);
           await buildKolCanonicalSnapshot(handle);
+
+          // Cross-case linking: detect shared wallets / tokens with other KOLs
+          try {
+            const links = await findCrossLinks(handle);
+            if (links.length > 0) {
+              await persistCrossLinks(links);
+              console.log(`[processor] cross-case link detected: ${links.length} link(s) for @${handle}`);
+              const affectedHandles = new Set<string>(links.map((l: CrossLink) => l.targetHandle));
+              for (const target of affectedHandles) {
+                emitKolUpdated(target);
+              }
+            }
+          } catch (err) {
+            // Non-fatal: cross-linking failure must not block the main casefile flow
+            console.error("[processor] cross-case linking failed", err);
+          }
         }
         break;
       }
