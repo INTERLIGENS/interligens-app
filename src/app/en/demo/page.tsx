@@ -1087,11 +1087,11 @@ export default function TigerScanPage() {
                 <NarrativeBlock result={narrativeResult} lang="en" />
               )}
 
-              {/* ── SHILL INTELLIGENCE — KOL cross-reference (SOL only) ── */}
+              {/* ── PROMOTION INTELLIGENCE — KOL cross-reference (SOL only) ── */}
               {chain === "SOL" && (
                 <div className="w-full rounded-xl border border-zinc-800 bg-black p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">
-                    SHILL INTELLIGENCE
+                    PROMOTION INTELLIGENCE
                   </p>
                   <div className="flex gap-2">
                     <input

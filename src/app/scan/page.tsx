@@ -208,6 +208,11 @@ export default function ScanPage() {
         <div style={{ width: "100%", maxWidth: 520, marginBottom: 32 }}>
           <ScoreCard data={result} locale="en" />
 
+          {/* Legal disclaimer */}
+          <div style={{ fontSize: 10, color: "#444", textAlign: "center", marginTop: 8, fontFamily: "monospace", letterSpacing: "0.05em" }}>
+            Signal-based risk analysis. Not a legal finding or financial advice.
+          </div>
+
           {/* PROJECT INFO DROPDOWN */}
           {(() => {
             const r = result as Record<string, unknown> & {

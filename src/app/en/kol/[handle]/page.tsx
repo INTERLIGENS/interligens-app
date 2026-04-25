@@ -87,7 +87,7 @@ const FLAG_LABELS: Record<string, string> = {
   MULTI_HOP_TRANSFER:     'Multi-hop transfer obfuscation',
   CROSS_CASE_RECURRENCE:  'Recurrence across multiple cases',
   MULTI_LAUNCH_LINKED:    'Linked to multiple token launches',
-  LAUNDERING_INDICATORS:  'Laundering indicators detected',
+  LAUNDERING_INDICATORS:  'Complex fund movement pattern detected',
   KNOWN_LINKED_WALLETS:   'Known linked wallets identified',
   COORDINATED_PROMOTION:  'Coordinated promotion activity',
 }

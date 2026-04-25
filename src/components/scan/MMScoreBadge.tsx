@@ -68,7 +68,7 @@ export default function MMScoreBadge({ result, locale }: Props) {
     verdict === "MANIPULATED"
       ? isFr
         ? "MARCHE MANIPULE"
-        : "MARKET MANIPULATION"
+        : "ABNORMAL MARKET ACTIVITY"
       : isFr
         ? "ACTIVITE SUSPECTE"
         : "SUSPICIOUS MM ACTIVITY";

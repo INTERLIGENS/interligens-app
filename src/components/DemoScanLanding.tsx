@@ -67,7 +67,7 @@ const MOCKS: Record<string, any> = {
     chain: "SOL", addr: "DrFtxPb9qLvGNqgrZVm5bFh8c8qSLvxXjE2wDzY7KkMN",
     score: 89, tier: "RED",
     headline: "High-risk — scam indicators found",
-    sub: "This wallet matches known scammer profiles. Multiple on-chain evidence points to rug-pull coordination.",
+    sub: "This wallet matches high-risk actor profiles. Multiple on-chain evidence points to exit-liquidity risk patterns.",
     drivers: [
       { icon: "⚠", type: "neg", signal: "Dev-withdrawal stealth path", detail: "$240K extracted via proxy wallet 3 min after liquidity lock expiry", weight: "+32 pts", wt: "high" },
       { icon: "⚠", type: "neg", signal: "Multi-wallet sybil cluster", detail: "Controls 23 shadow wallets used to simulate organic buying pressure", weight: "+28 pts", wt: "high" },
@@ -76,7 +76,7 @@ const MOCKS: Record<string, any> = {
     holdings: [
       { sym: "SOL", val: "$310", risk: "g" }, { sym: "RUGX", val: "$0", risk: "r" }, { sym: "PUMP99", val: "$12", risk: "r" },
     ],
-    action: { icon: "🚨", title: "AVOID — Do not interact", desc: "Linked to confirmed rug-pull operations. Block all incoming requests." },
+    action: { icon: "🚨", title: "AVOID — Do not interact", desc: "Linked to severe exit-liquidity risk patterns. Block all incoming requests." },
     warnings: [
       "INTERLIGENS threat file IL-THREAT-0041 — confirmed rug operator (2025-11-14)",
       "INTERLIGENS threat file IL-THREAT-0089 — cross-chain migration pattern",
@@ -329,7 +329,7 @@ export default function DemoScanLanding() {
                   <button key={t} onClick={() => loadMock(t)}
                     style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, cursor: "pointer", borderWidth: 1, borderStyle: "solid", borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", fontSize: 12, fontFamily: "inherit", color: "rgba(255,255,255,.68)", fontWeight: 600 }}>
                     <span style={{ width: 7, height: 7, borderRadius: 999, background: t === "green" ? "#22c55e" : t === "orange" ? "#F85B05" : "#ef4444" }} />
-                    {t === "green" ? "Safe wallet" : t === "orange" ? "Suspicious activity" : "Known scammer"}
+                    {t === "green" ? "Safe wallet" : t === "orange" ? "Suspicious activity" : "High-risk actor"}
                   </button>
                 ))}
               </div>

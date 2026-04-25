@@ -54,7 +54,7 @@ const FLAG_LABEL: Record<string, string> = {
   MULTI_HOP_TRANSFER:     'Multi-sauts',
   CROSS_CASE_RECURRENCE:  'Recurrence multi-cas',
   MULTI_LAUNCH_LINKED:    'Multi-lancements',
-  LAUNDERING_INDICATORS:  'Indicateurs blanchiment',
+  LAUNDERING_INDICATORS:  'Flux financiers complexes',
   KNOWN_LINKED_WALLETS:   'Wallets lies',
   COORDINATED_PROMOTION:  'Promotion coordonnee',
 }

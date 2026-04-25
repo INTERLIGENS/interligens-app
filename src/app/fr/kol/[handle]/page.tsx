@@ -88,7 +88,7 @@ const FLAG_LABELS: Record<string, string> = {
   MULTI_HOP_TRANSFER:     'Transferts multi-sauts (obfuscation)',
   CROSS_CASE_RECURRENCE:  'Recurrence sur plusieurs affaires',
   MULTI_LAUNCH_LINKED:    'Lie a plusieurs lancements de tokens',
-  LAUNDERING_INDICATORS:  'Indicateurs de blanchiment detectes',
+  LAUNDERING_INDICATORS:  'Flux financiers complexes detectes',
   KNOWN_LINKED_WALLETS:   'Wallets lies identifies',
   COORDINATED_PROMOTION:  'Activite de promotion coordonnee',
 }
@@ -306,7 +306,7 @@ export default function KOLPageFR() {
             )}
             {hasLaundry && (
               <span style={{ background: '#ef444415', border: '1px solid #ef444444', color: '#ef4444', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
-                PISTE DE BLANCHIMENT DETECTEE
+                FLUX FINANCIERS COMPLEXES DETECTES
               </span>
             )}
             {(() => {

@@ -246,7 +246,7 @@ export function renderKolPdfLegal(kol: any): string {
       </div>
     </div>
     <p style="font-size:9.5px;color:var(--ink-light);line-height:1.75">
-      ${kol.exitNarrative ?? `@${kol.handle} is a confirmed serial crypto scammer with ${kol.rugCount} rug-pull events documented across multiple projects. On-chain investigation has identified ${cashouts.length} associated wallet (public-source-linked) cashout events totaling ${fmtUsd(totalDocumented)} in documented proceeds, plus ${fmtUsd(evmEv?.amountUsd)} in unrealized EVM holdings.`}
+      ${kol.exitNarrative ?? `@${kol.handle} is a high-risk actor with ${kol.rugCount} suspected exit-liquidity risk events documented across multiple projects. On-chain investigation has identified ${cashouts.length} associated wallet (public-source-linked) cashout events totaling ${fmtUsd(totalDocumented)} in documented proceeds, plus ${fmtUsd(evmEv?.amountUsd)} in unrealized EVM holdings.`}
     </p>
     ${exitEv ? `
     <div class="exit-box" style="margin-top:16px">
