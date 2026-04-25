@@ -36,6 +36,7 @@ interface KOL {
   completenessLevel?: string; profileStrength?: string
   proceedsCoverage?: string; walletAttributionStrength?: string
   totalDocumented?: number
+  lastHeliusScan?: string | null
   aliases?: { id: string; alias: string; type: string }[]
   tokenLinks?: { id: string; contractAddress: string; chain: string; tokenSymbol?: string; role: string }[]
   evidences?: { id: string; type: string; label: string; description?: string; sourceUrl?: string; dateFirst?: string }[]
@@ -302,6 +303,18 @@ export default function KOLPage() {
                 LAUNDRY TRAIL DETECTED
               </span>
             )}
+            {(() => {
+              if (!kol.lastHeliusScan) return null;
+              const ageMs = Date.now() - new Date(kol.lastHeliusScan).getTime();
+              const ageDays = Math.floor(ageMs / 86_400_000);
+              if (ageMs < 24 * 3_600_000) return null;
+              const isStale = ageMs > 7 * 24 * 3_600_000;
+              return (
+                <span style={{ background: '#FFB80015', border: '1px solid #FFB80044', color: '#FFB800', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+                  {isStale ? 'DATA MAY BE OUTDATED' : `LAST UPDATED ${ageDays}D AGO`}
+                </span>
+              );
+            })()}
           </div>
 
           {kol.notes && (
