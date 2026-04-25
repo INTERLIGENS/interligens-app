@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 const BATCH = 10;
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 
 const SYSTEM_PROMPT =
   "Tu es un assistant de veille crypto pour un founder. Résume en exactement 2-3 bullet points en français, ultra-concis. Chaque bullet commence par '• '. Aucun titre, aucune intro. Max 150 caractères par bullet.";

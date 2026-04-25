@@ -92,6 +92,7 @@ export default function FounderIntelPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [filterCategory, setFilterCategory] = useState<Category | "ALL">("ALL");
@@ -152,6 +153,27 @@ export default function FounderIntelPage() {
   useEffect(() => {
     loadPage({ reset: true, cursor: null });
   }, [loadPage]);
+
+  async function handleRetryFailed() {
+    setRetrying(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/intel/retry-failed", {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(`Retry failed (${res.status}): ${body?.error ?? "unknown"}`);
+        return;
+      }
+      setError(`Retry OK — ${body?.reset ?? 0} article(s) remis en file`);
+    } catch {
+      setError("Retry network error.");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   async function handleSync() {
     setSyncing(true);
@@ -246,13 +268,22 @@ export default function FounderIntelPage() {
             </h1>
             <p className="text-gray-400 text-sm">Signal feed · internal</p>
           </div>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black transition"
-          >
-            {syncing ? "Syncing..." : "Sync"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRetryFailed}
+              disabled={retrying}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 transition"
+            >
+              {retrying ? "Retry..." : "Retry failed"}
+            </button>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black transition"
+            >
+              {syncing ? "Syncing..." : "Sync"}
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -571,7 +602,7 @@ function Card({
           })}
         </div>
       )}
-      {!item.summaryDone && item.summaryAttempts < 3 && !summaryBullets.length && (
+      {!item.summaryDone && item.summaryAttempts < 5 && !summaryBullets.length && (
         <div
           style={{
             fontSize: 11,
