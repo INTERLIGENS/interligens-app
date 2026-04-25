@@ -31,6 +31,29 @@ async function fetchTopHolderPct(mint: string): Promise<number | null> {
   }
 }
 
+async function fetchMintFreeze(mint: string): Promise<{ mintAuthority: boolean | null; freezeAuthority: boolean | null }> {
+  const key = process.env.HELIUS_API_KEY;
+  if (!key) return { mintAuthority: null, freezeAuthority: null };
+  try {
+    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: "mf", method: "getParsedAccountInfo", params: [mint, { encoding: "jsonParsed" }] }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return { mintAuthority: null, freezeAuthority: null };
+    const j = await res.json();
+    const info = j.result?.value?.data?.parsed?.info as { mintAuthority?: string | null; freezeAuthority?: string | null } | undefined;
+    if (!info) return { mintAuthority: null, freezeAuthority: null };
+    return {
+      mintAuthority: info.mintAuthority != null ? true : false,
+      freezeAuthority: info.freezeAuthority != null ? true : false,
+    };
+  } catch {
+    return { mintAuthority: null, freezeAuthority: null };
+  }
+}
+
 async function fetchTokenWebsite(mint: string): Promise<string | null> {
   const key = process.env.HELIUS_API_KEY;
   if (!key) return null;
@@ -178,11 +201,12 @@ export async function GET(request: NextRequest) {
     // 1. Check case DB for existing off-chain data
     const caseFile = loadCaseByMint(mint);
 
-    // 2. Fetch market snapshot, token website, and top holders in parallel
-    const [market, website, topHolderPct] = await Promise.all([
+    // 2. Fetch market snapshot, token website, top holders, and mint/freeze in parallel
+    const [market, website, topHolderPct, mintFreeze] = await Promise.all([
       getMarketSnapshot("solana", mint),
       fetchTokenWebsite(mint),
       fetchTopHolderPct(mint),
+      fetchMintFreeze(mint),
     ]);
 
     // 3. Determine scam lineage (fail-open)
@@ -282,6 +306,8 @@ export async function GET(request: NextRequest) {
       pairAgeDays: market.pair_age_days ?? null,
       liquidityUsd: market.liquidity_usd ?? null,
       topHolderPct: topHolderPct ?? null,
+      mintAuthority: mintFreeze.mintAuthority,
+      freezeAuthority: mintFreeze.freezeAuthority,
     };
 
     console.log(

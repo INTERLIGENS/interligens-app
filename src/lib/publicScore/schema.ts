@@ -28,6 +28,8 @@ export type PublicScoreResponse = {
   pairAgeDays?: number | null;
   liquidityUsd?: number | null;
   topHolderPct?: number | null;
+  mintAuthority?: boolean | null;
+  freezeAuthority?: boolean | null;
 };
 
 export function derivePhantomWarning(verdict: PublicVerdict): {

@@ -43,6 +43,29 @@ async function fetchTokenMetadata(mint: string): Promise<HeliusAsset | null> {
   }
 }
 
+async function fetchMintFreeze(mint: string): Promise<{ mintAuthority: boolean | null; freezeAuthority: boolean | null }> {
+  const key = process.env.HELIUS_API_KEY;
+  if (!key) return { mintAuthority: null, freezeAuthority: null };
+  try {
+    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: "mf", method: "getParsedAccountInfo", params: [mint, { encoding: "jsonParsed" }] }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return { mintAuthority: null, freezeAuthority: null };
+    const j = await res.json();
+    const info = j.result?.value?.data?.parsed?.info as { mintAuthority?: string | null; freezeAuthority?: string | null } | undefined;
+    if (!info) return { mintAuthority: null, freezeAuthority: null };
+    return {
+      mintAuthority: info.mintAuthority != null ? true : false,
+      freezeAuthority: info.freezeAuthority != null ? true : false,
+    };
+  } catch {
+    return { mintAuthority: null, freezeAuthority: null };
+  }
+}
+
 export type ScanResult = {
   mint: string;
   chain: "solana";
@@ -138,10 +161,11 @@ export async function GET(request: NextRequest) {
     rpcDataSource = "unknown";
   }
 
-  // Fire Helius getAsset in parallel — fail-open, non-blocking
-  const [caseFile, heliusAsset] = await Promise.all([
+  // Fire Helius getAsset + getParsedAccountInfo in parallel — fail-open, non-blocking
+  const [caseFile, heliusAsset, mintFreeze] = await Promise.all([
     Promise.resolve(loadCaseByMint(mint_clean)),
     fetchTokenMetadata(mint_clean),
+    fetchMintFreeze(mint_clean),
   ]);
 
   const off_chain: ScanResult["off_chain"] = {
@@ -304,5 +328,5 @@ export async function GET(request: NextRequest) {
     },
   } : null;
 
-  return NextResponse.json({ ...result, intelVault, rawSummary: tokenMeta });
+  return NextResponse.json({ ...result, intelVault, rawSummary: tokenMeta, mintAuthority: mintFreeze.mintAuthority, freezeAuthority: mintFreeze.freezeAuthority });
 }
