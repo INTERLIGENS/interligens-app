@@ -229,7 +229,7 @@ function EntitiesTab() {
           }}
           placeholder="Search value…"
           style={{
-            background: "#1e293b",
+            background: "#1a1a1a",
             border: "1px solid #334155",
             borderRadius: 6,
             padding: "6px 12px",
@@ -245,7 +245,7 @@ function EntitiesTab() {
             setPage(1);
           }}
           style={{
-            background: "#1e293b",
+            background: "#1a1a1a",
             border: "1px solid #334155",
             borderRadius: 6,
             padding: "6px 10px",
@@ -266,7 +266,7 @@ function EntitiesTab() {
             setPage(1);
           }}
           style={{
-            background: "#1e293b",
+            background: "#1a1a1a",
             border: "1px solid #334155",
             borderRadius: 6,
             padding: "6px 10px",
@@ -287,13 +287,13 @@ function EntitiesTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["TYPE", "VALUE", "CHAIN", "RISK", "SOURCES", "CASES", "LAST SEEN", "SAFETY"].map(
                 (h) => (
                   <th
@@ -330,12 +330,12 @@ function EntitiesTab() {
               data.map((e: any) => (
                 <tr
                   key={e.id}
-                  style={{ borderBottom: "1px solid #0f172a" }}
+                  style={{ borderBottom: "1px solid #111111" }}
                 >
                   <td style={{ padding: "10px 12px" }}>
                     <span
                       style={{
-                        background: "#1e293b",
+                        background: "#1a1a1a",
                         borderRadius: 4,
                         padding: "2px 6px",
                         fontSize: 10,
@@ -377,7 +377,7 @@ function EntitiesTab() {
                           key={o.id}
                           title={`${o.sourceSlug} — ${o.riskClass}`}
                           style={{
-                            background: o.sourceTier === 1 ? "#7c3aed22" : "#1e293b",
+                            background: o.sourceTier === 1 ? "#7c3aed22" : "#1a1a1a",
                             border: `1px solid ${o.sourceTier === 1 ? "#7c3aed44" : "#334155"}`,
                             borderRadius: 4,
                             padding: "1px 5px",
@@ -409,7 +409,7 @@ function EntitiesTab() {
                             ? "#22c55e22"
                             : e.displaySafety === "ANALYST_REVIEWED"
                             ? "#eab30822"
-                            : "#1e293b",
+                            : "#1a1a1a",
                         color:
                           e.displaySafety === "RETAIL_SAFE"
                             ? "#4ade80"
@@ -452,7 +452,7 @@ function SourcesTab({
           key={src.slug}
           style={{
             background: "#111827",
-            border: "1px solid #1e293b",
+            border: "1px solid #1a1a1a",
             borderRadius: 12,
             padding: 20,
             display: "flex",
@@ -472,7 +472,7 @@ function SourcesTab({
             </div>
             <span
               style={{
-                background: src.tier === 1 ? "#7c3aed22" : "#1e293b",
+                background: src.tier === 1 ? "#7c3aed22" : "#1a1a1a",
                 border: `1px solid ${src.tier === 1 ? "#7c3aed44" : "#334155"}`,
                 borderRadius: 6,
                 padding: "3px 8px",
@@ -502,7 +502,7 @@ function SourcesTab({
           {src.lastBatch && (
             <div
               style={{
-                background: "#0f172a",
+                background: "#111111",
                 borderRadius: 8,
                 padding: "10px 12px",
                 fontSize: 11,
@@ -594,13 +594,13 @@ function IngestionTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["", "SOURCE", "STATUS", "STARTED", "COMPLETED", "FETCHED", "NEW", "UPDATED", "REMOVED", "TRIGGERED BY"].map(
                 (h) => (
                   <th
@@ -635,7 +635,7 @@ function IngestionTab() {
               </tr>
             ) : (
               data.map((b: any) => (
-                <tr key={b.id} style={{ borderBottom: "1px solid #0f172a" }}>
+                <tr key={b.id} style={{ borderBottom: "1px solid #111111" }}>
                   <td style={{ padding: "8px 10px" }}>
                     <StatusIcon status={b.status} />
                   </td>
@@ -716,13 +716,13 @@ function CasesTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["TITLE", "TYPE", "STATUS", "SOURCE", "ENTITIES", "EVIDENCE", "REPORTED", "REF"].map(
                 (h) => (
                   <th
@@ -757,7 +757,7 @@ function CasesTab() {
               </tr>
             ) : (
               data.map((c: any) => (
-                <tr key={c.id} style={{ borderBottom: "1px solid #0f172a" }}>
+                <tr key={c.id} style={{ borderBottom: "1px solid #111111" }}>
                   <td style={{ padding: "10px 12px", fontWeight: 700, color: "#e2e8f0", maxWidth: 200 }}>
                     {truncate(c.title, 40)}
                   </td>
@@ -851,13 +851,13 @@ function AuditTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["TIME", "ACTOR", "ACTION", "TARGET", "DETAIL"].map((h) => (
                 <th
                   key={h}
@@ -890,7 +890,7 @@ function AuditTab() {
               </tr>
             ) : (
               data.map((a: any) => (
-                <tr key={a.id} style={{ borderBottom: "1px solid #0f172a" }}>
+                <tr key={a.id} style={{ borderBottom: "1px solid #111111" }}>
                   <td style={{ padding: "8px 12px", color: "#64748b", fontSize: 11, whiteSpace: "nowrap" }}>
                     {fmt(a.createdAt)}
                   </td>
@@ -904,7 +904,7 @@ function AuditTab() {
                           ? "#22c55e22"
                           : a.action.includes("completed")
                           ? "#3b82f622"
-                          : "#1e293b",
+                          : "#1a1a1a",
                         color: a.action.includes("created")
                           ? "#4ade80"
                           : a.action.includes("completed")
