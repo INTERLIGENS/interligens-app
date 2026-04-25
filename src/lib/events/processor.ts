@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical";
 import { resolveWalletToKol } from "@/lib/kol/identity";
+import { alertDeadLetter } from "@/lib/ops/alerting";
 
 const MAX_RETRIES = 3;
 // Exponential backoff: 2min, 10min, 30min
@@ -134,6 +135,7 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
           retryCount: nextRetry,
         },
       }).catch(() => {});
+      void alertDeadLetter(event.id, event.type, msg.slice(0, 300));
     } else {
       const delayMs = RETRY_DELAYS_MS[nextRetry - 1] ?? 30 * 60_000;
       await prisma.domainEvent.update({

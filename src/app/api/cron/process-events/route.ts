@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processEvent } from "@/lib/events/processor";
+import { alertEventBacklog, alertIdentityBacklog } from "@/lib/ops/alerting";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -41,5 +42,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ processed, failed, total: pending.length });
+  // Backlog check: count remaining pending events after this batch
+  const remainingPending = await prisma.domainEvent.count({
+    where: { status: "pending", OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date() } }] },
+  });
+  if (remainingPending > 50) {
+    void alertEventBacklog(remainingPending);
+  }
+
+  // Identity queue check
+  const identityPending = await prisma.domainEvent.count({
+    where: { type: "identity.review_required", status: "pending" },
+  });
+  if (identityPending > 20) {
+    void alertIdentityBacklog(identityPending);
+  }
+
+  return NextResponse.json({ processed, failed, total: pending.length, remainingPending, identityPending });
 }
