@@ -932,7 +932,7 @@ export default function TigerScanPage() {
               )}
 
               {/* 6. MARKET CONTEXT */}
-              <div className="mt-4">
+              <div className="mt-4 w-full">
                 <MarketContext locale="en" />
               </div>
             </div>
