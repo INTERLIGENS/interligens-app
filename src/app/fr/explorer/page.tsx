@@ -36,7 +36,7 @@ const DEPTH: Record<string, { l: string; c: string }> = {
 const FLAG_L: Record<string, string> = {
   REPEATED_CASHOUT: 'Cashout repete', MULTI_HOP_TRANSFER: 'Multi-sauts',
   CROSS_CASE_RECURRENCE: 'Recurrence multi-cas', MULTI_LAUNCH_LINKED: 'Multi-lancements',
-  LAUNDERING_INDICATORS: 'Indicateurs blanchiment', KNOWN_LINKED_WALLETS: 'Wallets lies',
+  LAUNDERING_INDICATORS: 'Flux financiers complexes', KNOWN_LINKED_WALLETS: 'Wallets lies',
   COORDINATED_PROMOTION: 'Promotion coordonnee',
 }
 const KIND_TABS: { key: Kind; label: string }[] = [
