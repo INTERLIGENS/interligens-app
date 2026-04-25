@@ -275,6 +275,7 @@ export default function TigerScanPage() {
   const [shillHandle, setShillHandle] = useState("");
   const [shillLoading, setShillLoading] = useState(false);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
 
   const chain = useMemo(() => detectChain(address), [address]);
   const analysisSummary = useMemo(() => result ? normalizeToAnalysisSummary({ ...result, address: address.trim() }) : null, [result, address]);
@@ -979,6 +980,35 @@ export default function TigerScanPage() {
               {mmResult && <MMScoreBadge result={mmResult} locale="en" />}
               <USDTBlacklistBadge visible={!!(result?.rawSummary?.usdt_blacklisted)} locale="en" />
               <IntelligenceBadge signal={intelSignal} locale="en" />
+
+              {/* ── PROJECT INFO DROPDOWN ── */}
+              {(() => {
+                const rs = result.rawSummary as any
+                const site = rs?.website ?? rs?.ext?.website ?? rs?.meta?.website ?? rs?.info?.website ?? rs?.extensions?.website ?? null
+                const wp   = rs?.whitepaper ?? rs?.ext?.whitepaper ?? rs?.meta?.whitepaper ?? null
+                const tw   = rs?.twitter ?? rs?.ext?.twitter ?? rs?.meta?.twitter ?? rs?.twitter_username ?? null
+                const tg   = rs?.telegram ?? rs?.ext?.telegram ?? rs?.meta?.telegram ?? null
+                if (!(site || wp || tw || tg)) return null
+                return (
+                  <div className="bg-[#080808] border border-zinc-800/60 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setShowProjectInfo(v => !v)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left group"
+                    >
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-zinc-400 transition-colors">Project Info</span>
+                      <span className="text-zinc-600 group-hover:text-zinc-400 text-[10px]" style={{ transform: showProjectInfo ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block', transition: 'transform 200ms ease' }}>▾</span>
+                    </button>
+                    <div style={{ maxHeight: showProjectInfo ? '200px' : '0px', overflow: 'hidden', transition: 'max-height 220ms ease' }}>
+                      <div className="px-4 pb-4 flex flex-col gap-2">
+                        {site && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">Website</span><a href={site.startsWith('http') ? site : `https://${site}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors truncate max-w-[180px]">{site.replace(/^https?:\/\//, '')}</a></div>)}
+                        {wp   && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">Whitepaper</span><a href={wp.startsWith('http') ? wp : `https://${wp}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors">View →</a></div>)}
+                        {tw   && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">X / Twitter</span><a href={tw.startsWith('http') ? tw : `https://x.com/${tw.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors truncate max-w-[180px]">{tw.replace(/^https?:\/\/(x\.com|twitter\.com)\//, '@')}</a></div>)}
+                        {tg   && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">Telegram</span><a href={tg.startsWith('http') ? tg : `https://t.me/${tg.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors truncate max-w-[180px]">{tg}</a></div>)}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
               <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>
