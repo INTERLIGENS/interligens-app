@@ -51,7 +51,7 @@ export default function CasesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-400">Cases</h1>
@@ -59,11 +59,11 @@ export default function CasesPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5">
           <div className="flex gap-2 flex-wrap">
             {["", "danger", "warn", "info"].map(s => (
               <button key={s} onClick={() => { setFilter(s); setPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filter === s ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filter === s ? "bg-orange-500 text-black" : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"}`}>
                 {s || "ALL"}
               </button>
             ))}
@@ -74,12 +74,12 @@ export default function CasesPage() {
         {loading ? (
           <div className="text-gray-500 text-sm">Loading...</div>
         ) : signals.length === 0 ? (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
             No signals detected yet.<br/>
             <span className="text-xs mt-2 block">Signals are generated when a wallet sells a token shortly after a post mentioning its contract address.</span>
           </div>
         ) : (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
@@ -90,10 +90,10 @@ export default function CasesPage() {
               </thead>
               <tbody>
                 {signals.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                  <tr key={s.id} className="border-b border-gray-800 hover:bg-[#0a0a0a]/50 transition">
                     <td className="py-2 px-3 text-white font-semibold">{s.influencer?.handle}</td>
                     <td className="py-2 px-3">
-                      <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-orange-400 font-semibold">
+                      <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-orange-400 font-semibold">
                         {BUCKET_LABEL[s.windowBucket ?? ""] ?? s.windowBucket ?? "—"}
                       </span>
                     </td>
@@ -113,7 +113,7 @@ export default function CasesPage() {
                     </td>
                     <td className="py-2 px-3">
                       <button onClick={() => generateCasefile(s.id)} disabled={generating === s.id}
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">
                         {generating === s.id ? "..." : "Generate PDF"}
                       </button>
                     </td>
@@ -128,10 +128,10 @@ export default function CasesPage() {
         {total > 25 && (
           <div className="flex gap-2 justify-end">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">Prev</button>
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">Prev</button>
             <span className="py-1.5 text-gray-500 text-sm">Page {page}</span>
             <button onClick={() => setPage(p => p + 1)} disabled={signals.length < 25}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">Next</button>
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition">Next</button>
           </div>
         )}
       </div>
