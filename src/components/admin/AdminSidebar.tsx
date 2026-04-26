@@ -44,12 +44,14 @@ const SECTIONS: Section[] = [
       { label: "Répertoire KOL", href: "/admin/kol" },
       { label: "Logs ASK", href: "/admin/ask-logs" },
       { label: "Alertes", href: "/admin/alerts" },
+      { label: "Watcher", href: "/admin/watcher" },
     ],
   },
   {
     title: "Investigators",
     links: [
       { label: "Liste investigators", href: "/admin/investigators" },
+      { label: "Identity Queue", href: "/admin/identity" },
       {
         label: "Espace Investigateur",
         href: "/investigators/box",
@@ -89,6 +91,7 @@ const SECTIONS: Section[] = [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
       { label: "Documents", href: "/admin/documents" },
       { label: "Sécurité", href: "/admin/security", icon: SHIELD_ICON },
+      { label: "Ops Dashboard", href: "/admin/ops" },
     ],
   },
 ];
