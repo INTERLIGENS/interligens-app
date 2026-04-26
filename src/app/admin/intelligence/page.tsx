@@ -16,7 +16,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit";
+type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit" | "contradictions";
 
 interface DashboardStats {
   entities: { total: number; sanction: number; high: number };
@@ -937,6 +937,157 @@ function AuditTab() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// CONTRADICTIONS TAB
+// ═════════════════════════════════════════════════════════════════════════════
+
+const SEVERITY_COLOR: Record<string, string> = {
+  CRITICAL: "#ef4444",
+  HIGH: "#f97316",
+  MEDIUM: "#eab308",
+};
+
+const CONTRADICTION_STATUS_COLOR: Record<string, string> = {
+  new: "#f97316",
+  reviewed: "#22c55e",
+  dismissed: "#6b7280",
+};
+
+function ContradictionsTab() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterHandle, setFilterHandle] = useState("");
+  const [filterSeverity, setFilterSeverity] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filterHandle) params.set("handle", filterHandle);
+    if (filterSeverity) params.set("severity", filterSeverity);
+    if (filterStatus) params.set("status", filterStatus);
+    const res = await fetch(`/api/admin/intelligence/contradictions?${params}`, {
+      credentials: "include",
+    });
+    const json = await res.json();
+    setData(Array.isArray(json) ? json : []);
+    setLoading(false);
+  }, [filterHandle, filterSeverity, filterStatus]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateStatus = async (id: string, status: "reviewed" | "dismissed") => {
+    await fetch("/api/admin/intelligence/contradictions", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    load();
+  };
+
+  const fmtDelay = (mins: number) => {
+    if (mins < 60) return `${mins}m`;
+    if (mins < 1440) return `${(mins / 60).toFixed(1)}h`;
+    return `${(mins / 1440).toFixed(1)}d`;
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <input
+          value={filterHandle}
+          onChange={(e) => setFilterHandle(e.target.value)}
+          placeholder="Filter by handle…"
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 12px", color: "#f1f5f9", fontSize: 12, width: 180 }}
+        />
+        <select
+          value={filterSeverity}
+          onChange={(e) => setFilterSeverity(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "CRITICAL", "HIGH", "MEDIUM"].map((s) => (
+            <option key={s} value={s}>{s || "All severities"}</option>
+          ))}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "new", "reviewed", "dismissed"].map((s) => (
+            <option key={s} value={s}>{s || "All statuses"}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1a1a1a", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
+              {["HANDLE", "TOKEN", "TWEET DATE", "SELL DATE", "DELAY", "SEVERITY", "CONF", "STATUS", "ACTIONS"].map((h) => (
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 10, letterSpacing: "0.05em" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>No contradiction alerts found</td></tr>
+            ) : (
+              data.map((a: any) => (
+                <tr key={a.id} style={{ borderBottom: "1px solid #111111" }}>
+                  <td style={{ padding: "10px 12px", color: "#f97316", fontFamily: "monospace", fontSize: 11 }}>@{a.kolHandle}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#e2e8f0" }}>
+                    {a.tokenSymbol ?? truncate(a.tokenMint, 12)}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>
+                    {a.tweetUrl ? (
+                      <a href={a.tweetUrl} target="_blank" rel="noopener" style={{ color: "#818cf8" }}>
+                        {fmt(a.tweetAt)} <ExternalLink size={10} style={{ display: "inline" }} />
+                      </a>
+                    ) : fmt(a.tweetAt)}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>{fmt(a.sellAt)}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#f1f5f9" }}>{fmtDelay(a.delayMinutes)}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: SEVERITY_COLOR[a.severity] ?? "#6b7280", fontWeight: 800, fontSize: 11 }}>{a.severity}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#94a3b8" }}>{a.confidenceScore}%</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: CONTRADICTION_STATUS_COLOR[a.status] ?? "#6b7280", fontWeight: 700, fontSize: 10 }}>{a.status}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    {a.status === "new" && (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          onClick={() => updateStatus(a.id, "reviewed")}
+                          style={{ background: "#22c55e22", border: "1px solid #22c55e44", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: "#4ade80", cursor: "pointer" }}
+                        >
+                          REVIEWED
+                        </button>
+                        <button
+                          onClick={() => updateStatus(a.id, "dismissed")}
+                          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: "#94a3b8", cursor: "pointer" }}
+                        >
+                          DISMISS
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -1055,6 +1206,12 @@ export default function IntelligencePage() {
           icon={ScrollText}
           onClick={() => setTab("audit")}
         />
+        <TabBtn
+          active={tab === "contradictions"}
+          label="Contradiction Alerts"
+          icon={AlertTriangle}
+          onClick={() => setTab("contradictions")}
+        />
       </div>
 
       {/* Tab content */}
@@ -1069,6 +1226,7 @@ export default function IntelligencePage() {
       {tab === "ingestion" && <IngestionTab />}
       {tab === "cases" && <CasesTab />}
       {tab === "audit" && <AuditTab />}
+      {tab === "contradictions" && <ContradictionsTab />}
       </div>
     </div>
   );

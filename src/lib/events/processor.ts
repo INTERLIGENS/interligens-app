@@ -8,6 +8,7 @@ import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical";
 import { resolveWalletToKol } from "@/lib/kol/identity";
 import { alertDeadLetter } from "@/lib/ops/alerting";
 import { findCrossLinks, persistCrossLinks, type CrossLink } from "@/lib/intelligence/crossCaseLinker";
+import { detectAndPersistContradictions } from "@/lib/intelligence/contradictionDetector";
 import { emitKolUpdated } from "@/lib/events/producer";
 
 const MAX_RETRIES = 3;
@@ -102,6 +103,8 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
         }
 
         await buildKolCanonicalSnapshot(handle);
+        // Contradiction detection: non-fatal, fire after snapshot rebuild
+        void detectAndPersistContradictions(handle);
         break;
       }
 
