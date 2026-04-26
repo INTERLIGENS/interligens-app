@@ -49,7 +49,7 @@ export default function IntakeDetail() {
           <div>
             <h1 className="text-2xl font-bold text-orange-400 font-mono">{id}</h1>
             <div className="flex gap-2 items-center mt-2">
-              <span className={`inline-block px-2 py-0.5 rounded text-xs bg-gray-800 font-semibold ${classColor[record.classification] ?? "text-gray-400"}`}>
+              <span className={`inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] font-semibold ${classColor[record.classification] ?? "text-gray-400"}`}>
                 {record.classification?.toUpperCase()}
               </span>
               <span className="text-gray-500 text-xs">v{record.extractVersion} · {new Date(record.createdAt).toLocaleString()}</span>
@@ -57,7 +57,7 @@ export default function IntakeDetail() {
           </div>
           <div className="flex gap-2">
             <button onClick={() => action("rerun_extract")} disabled={acting}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 transition">
               ↻ Rerun Extract
             </button>
             {record.pendingBatch && (
@@ -67,7 +67,7 @@ export default function IntakeDetail() {
               </button>
             )}
             <button onClick={() => action("archive")} disabled={acting}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 transition">
               Archive
             </button>
           </div>

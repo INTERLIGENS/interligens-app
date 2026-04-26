@@ -42,12 +42,12 @@ export default function SubmissionsPage() {
   };
 
   return (
-    <div className="p-6 text-white min-h-screen bg-zinc-950">
+    <div className="p-6 text-white min-h-screen bg-black">
       <h1 className="text-2xl font-black mb-4">Community Submissions</h1>
       <div className="flex gap-2 mb-6">
         {["pending","approved","rejected","needs_info"].map(s => (
           <button key={s} onClick={() => setFilter(s)}
-            className={`px-3 py-1 rounded text-xs font-bold uppercase ${filter === s ? "bg-orange-500" : "bg-zinc-800 hover:bg-zinc-700"}`}>
+            className={`px-3 py-1 rounded text-xs font-bold uppercase ${filter === s ? "bg-orange-500" : "bg-[#1a1a1a] hover:bg-zinc-700"}`}>
             {s}
           </button>
         ))}
@@ -61,7 +61,7 @@ export default function SubmissionsPage() {
               <span className={`text-xs font-black uppercase ${SEV_COLOR[s.severityDerived]}`}>{s.severityDerived}</span>
               <span className="text-xs text-zinc-400">{s.chain}</span>
               <code className="text-xs text-zinc-300 font-mono">{s.address}</code>
-              <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded">{s.labelType}</span>
+              <span className="text-xs bg-[#1a1a1a] px-2 py-0.5 rounded">{s.labelType}</span>
             </div>
             {s.message && <p className="text-xs text-zinc-400 mb-1">"{s.message}"</p>}
             {s.txHash && <p className="text-xs text-zinc-500 mb-1">tx: {s.txHash}</p>}
@@ -70,7 +70,7 @@ export default function SubmissionsPage() {
             {s.status === "pending" && (
               <div className="flex gap-2 items-center">
                 <input
-                  className="text-xs bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-white w-48"
+                  className="text-xs bg-[#1a1a1a] border border-zinc-700 rounded px-2 py-1 text-white w-48"
                   placeholder="Admin note (optional)"
                   value={note[s.id] ?? ""}
                   onChange={e => setNote(n => ({ ...n, [s.id]: e.target.value }))}
