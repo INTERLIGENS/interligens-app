@@ -17,7 +17,7 @@ export default function CorroborationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-400">Corroboration Engine</h1>
@@ -25,7 +25,7 @@ export default function CorroborationPage() {
         </div>
 
         {msg && (
-          <div className={`rounded-lg p-3 text-sm ${msg.startsWith("✓") ? "bg-gray-900 border border-gray-800 text-green-400" : "bg-red-900/30 border border-red-700 text-red-400"}`}>
+          <div className={`rounded-lg p-3 text-sm ${msg.startsWith("✓") ? "bg-[#0a0a0a] border border-gray-800 text-green-400" : "bg-red-900/30 border border-red-700 text-red-400"}`}>
             {msg}
           </div>
         )}
@@ -43,7 +43,7 @@ export default function CorroborationPage() {
                 ["Labels Elevated",        data.labelsElevated],
                 ["Top Evidence",           data.top10?.[0]?.evidenceCount ?? 0],
               ].map(([l,v]) => (
-                <div key={l as string} className="bg-gray-900 rounded-xl border border-gray-800 p-5 text-center">
+                <div key={l as string} className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 text-center">
                   <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">{l}</div>
                   <div className="text-3xl font-bold text-orange-400">{v}</div>
                 </div>
@@ -51,7 +51,7 @@ export default function CorroborationPage() {
             </div>
 
             {data.top10?.length > 0 && (
-              <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+              <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-3">
                 <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Top Corroborated Addresses</h2>
                 <table className="w-full text-sm">
                   <thead>
@@ -63,11 +63,11 @@ export default function CorroborationPage() {
                   </thead>
                   <tbody>
                     {data.top10.map((r: any, i: number) => (
-                      <tr key={i} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                      <tr key={i} className="border-b border-gray-800 hover:bg-[#0a0a0a]/50 transition">
                         <td className="py-2 px-3 text-gray-400 font-mono text-xs">{r.address}</td>
                         <td className="py-2 px-3 text-gray-500">{r.chain}</td>
                         <td className="py-2 px-3">
-                          <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-orange-400 font-semibold">{r.evidenceCount}</span>
+                          <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-orange-400 font-semibold">{r.evidenceCount}</span>
                         </td>
                         <td className="py-2 px-3">
                           <span className={`font-semibold ${r.confidence === "high" ? "text-green-400" : r.confidence === "medium" ? "text-orange-400" : "text-gray-500"}`}>{r.confidence}</span>

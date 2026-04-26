@@ -33,7 +33,7 @@ export default function ExportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-400">Export</h1>
@@ -43,7 +43,7 @@ export default function ExportPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
           {/* CSV Export */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-4">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">CSV Download</h2>
             <p className="text-gray-400 text-sm">Download all active address labels as CSV. Instant, no setup required.</p>
             <button onClick={exportCsv}
@@ -53,11 +53,11 @@ export default function ExportPage() {
           </div>
 
           {/* Google Sheets Export */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-4">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Google Sheets</h2>
 
             {!process.env.NEXT_PUBLIC_SHEETS_CONFIGURED && (
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-300">
+              <div className="bg-[#1a1a1a] border border-gray-700 rounded-lg p-3 text-sm text-gray-300">
                 ⚙ Setup: add <code>GOOGLE_APPS_SCRIPT_URL</code> in Vercel env.<br/>
                 <a href="https://developers.google.com/apps-script/guides/web" target="_blank" className="text-orange-400 hover:text-orange-300 transition">Apps Script guide →</a>
               </div>
@@ -73,7 +73,7 @@ export default function ExportPage() {
                   <label className="text-xs text-gray-500 mb-1 block">{label as string} (optional)</label>
                   <input value={val as string} onChange={e => (setter as Function)(e.target.value)}
                     placeholder={placeholder as string}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+                    className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
                 </div>
               ))}
             </div>
@@ -85,7 +85,7 @@ export default function ExportPage() {
 
             {error && <div className="text-red-400 text-sm">✗ {error}</div>}
             {result && (
-              <div className="bg-gray-800 rounded-lg p-3 text-sm text-green-400">
+              <div className="bg-[#1a1a1a] rounded-lg p-3 text-sm text-green-400">
                 ✓ {result.rowsExported} rows exported
                 {result.sheetUrl && <><br/><a href={result.sheetUrl} target="_blank" className="text-orange-400 hover:text-orange-300 transition">Open Sheet →</a></>}
               </div>
@@ -94,14 +94,14 @@ export default function ExportPage() {
         </div>
 
         {/* Apps Script setup instructions */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Google Apps Script Setup</h2>
           <ol className="text-gray-400 text-sm leading-loose list-decimal pl-5">
             <li>Crée un Google Sheet vide</li>
             <li>Extensions → Apps Script</li>
             <li>Colle ce code et déploie comme "Web App" (accès : Anyone) :</li>
           </ol>
-          <pre className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-xs text-gray-400 overflow-auto">{`function doPost(e) {
+          <pre className="bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 text-xs text-gray-400 overflow-auto">{`function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(data.sheetName);
