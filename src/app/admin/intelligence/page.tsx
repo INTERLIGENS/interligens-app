@@ -113,7 +113,7 @@ function TabBtn({
       <Icon size={14} />
       {label}
       {count !== undefined && (
-        <span className={`inline-block px-2 py-0.5 rounded text-xs ${active ? "bg-black/20" : "bg-gray-700"}`}>
+        <span className={`inline-block px-2 py-0.5 rounded text-xs ${active ? "bg-black/20" : "bg-[#222]"}`}>
           {count}
         </span>
       )}
