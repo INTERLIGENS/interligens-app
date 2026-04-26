@@ -26,7 +26,7 @@ export default function ReviewPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -38,7 +38,7 @@ export default function ReviewPage() {
         {loading ? (
           <p className="text-gray-400 text-sm">Chargement…</p>
         ) : batches.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center text-gray-500 text-sm">
+          <div className="bg-[#0a0a0a] border border-gray-800 rounded-xl p-8 text-center text-gray-500 text-sm">
             Aucun batch en attente.<br />
             <button onClick={() => router.push("/admin/intel-vault")} className="mt-3 text-orange-400 hover:text-orange-300">
               Importer une source →
@@ -50,7 +50,7 @@ export default function ReviewPage() {
               <div
                 key={b.id}
                 onClick={() => router.push(`/admin/intel-vault/batch/${b.id}`)}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:border-orange-500/50 transition"
+                className="bg-[#0a0a0a] border border-gray-800 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:border-orange-500/50 transition"
               >
                 <div>
                   <p className="font-mono text-sm text-gray-300">{b.id.slice(0, 16)}…</p>
