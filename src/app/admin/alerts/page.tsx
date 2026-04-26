@@ -42,7 +42,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -52,15 +52,15 @@ export default function AlertsPage() {
         </div>
 
         {/* Add subscription */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">New subscription</h2>
           <div className="flex gap-2 flex-wrap">
             <input placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              className="flex-1 min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+              className="flex-1 min-w-[200px] bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
             <input placeholder="Webhook URL" value={form.webhookUrl} onChange={e => setForm(f => ({ ...f, webhookUrl: e.target.value }))}
-              className="flex-[2] min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+              className="flex-[2] min-w-[200px] bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
             <select value={form.severityThreshold} onChange={e => setForm(f => ({ ...f, severityThreshold: e.target.value }))}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
+              className="bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
               <option value="POSSIBLE">POSSIBLE+</option>
               <option value="PROBABLE">PROBABLE+</option>
               <option value="BLATANT">BLATANT only</option>
@@ -76,11 +76,11 @@ export default function AlertsPage() {
         {loading ? (
           <div className="text-gray-500 text-sm">Loading...</div>
         ) : subs.length === 0 ? (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
             No subscriptions yet.
           </div>
         ) : (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
@@ -91,12 +91,12 @@ export default function AlertsPage() {
               </thead>
               <tbody>
                 {subs.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                  <tr key={s.id} className="border-b border-gray-800 hover:bg-[#0a0a0a]/50 transition">
                     <td className="py-2 px-3 text-gray-400">{s.webhookUrl ? "Webhook" : "Email"}</td>
                     <td className="py-2 px-3 text-white">{s.webhookUrl || s.email}</td>
                     <td className="py-2 px-3 text-orange-400">{s.severityThreshold}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs ${s.status === "active" ? "bg-gray-800 text-green-400" : "bg-gray-800 text-red-400"}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs ${s.status === "active" ? "bg-[#1a1a1a] text-green-400" : "bg-[#1a1a1a] text-red-400"}`}>
                         {s.status.toUpperCase()}
                       </span>
                     </td>
@@ -111,7 +111,7 @@ export default function AlertsPage() {
         {/* Test button */}
         <div>
           <button onClick={testDeliver}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 transition">
             Trigger delivery now
           </button>
         </div>

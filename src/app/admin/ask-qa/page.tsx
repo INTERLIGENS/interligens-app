@@ -73,7 +73,7 @@ function FlagBadge({ flag }: { flag: string }) {
     DEAD_END: 'bg-red-900/60 text-red-300',
   }
   return (
-    <span className={['font-mono text-[9px] px-1.5 py-0.5 rounded', colors[flag] ?? 'bg-zinc-800 text-zinc-400'].join(' ')}>
+    <span className={['font-mono text-[9px] px-1.5 py-0.5 rounded', colors[flag] ?? 'bg-[#1a1a1a] text-zinc-400'].join(' ')}>
       {flag}
     </span>
   )
@@ -82,7 +82,7 @@ function FlagBadge({ flag }: { flag: string }) {
 function TurnCard({ turn, index }: { turn: TurnResult; index: number }) {
   const hasFlags = turn.flags.length > 0
   return (
-    <div className={['rounded-xl border p-5 mb-2', hasFlags ? 'border-red-700 bg-red-900/30' : 'border-zinc-800 bg-zinc-900'].join(' ')}>
+    <div className={['rounded-xl border p-5 mb-2', hasFlags ? 'border-red-700 bg-red-900/30' : 'border-zinc-800 bg-[#0a0a0a]'].join(' ')}>
       <div className="flex items-start gap-2 mb-2">
         <span className="text-xs text-[#FF6B00] uppercase mt-0.5 w-16 flex-shrink-0">Turn {index + 1} / User</span>
         <span className="text-xs text-zinc-400 italic">"{turn.user}"</span>
@@ -152,12 +152,12 @@ export default function AskQAPage() {
   if (!authed) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-6">
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 space-y-4 w-80">
+        <div className="bg-[#0a0a0a] rounded-xl border border-zinc-800 p-5 space-y-4 w-80">
           <h2 className="text-xs font-black uppercase tracking-widest text-[#FF6B00]">ASK Interligens · QA</h2>
           <input
             type="password" placeholder="Admin token" value={token}
             onChange={e => setToken(e.target.value)} onKeyDown={e => e.key === 'Enter' && auth()}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
+            className="w-full bg-[#1a1a1a] border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
           />
           <button onClick={auth} className="w-full bg-[#FF6B00] hover:bg-orange-400 text-black font-bold py-3 rounded-xl transition text-sm">
             Enter
@@ -180,7 +180,7 @@ export default function AskQAPage() {
         </div>
         <div className="flex items-center gap-2">
           {runningAll ? (
-            <button onClick={stopAll} className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-zinc-800 text-red-400 hover:bg-zinc-700 transition">Stop</button>
+            <button onClick={stopAll} className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#1a1a1a] text-red-400 hover:bg-zinc-700 transition">Stop</button>
           ) : (
             <button onClick={runAll} className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#FF6B00] hover:bg-orange-400 text-black transition">Run All</button>
           )}
@@ -189,7 +189,7 @@ export default function AskQAPage() {
 
       <div className="flex h-[calc(100vh-49px)]">
         {/* Sidebar */}
-        <div className="w-72 border-r border-zinc-800 overflow-y-auto flex-shrink-0 bg-zinc-900">
+        <div className="w-72 border-r border-zinc-800 overflow-y-auto flex-shrink-0 bg-[#0a0a0a]">
           {QA_FIXTURES.map(fixture => {
             const result = results[fixture.id]
             const flags = totalFlags(fixture.id)
@@ -197,7 +197,7 @@ export default function AskQAPage() {
             return (
               <button key={fixture.id} onClick={() => setSelected(fixture.id)}
                 className={['w-full text-left px-4 py-3 border-b border-zinc-800 transition',
-                  selected === fixture.id ? 'bg-zinc-800 border-l-2 border-l-[#FF6B00]' : 'hover:bg-white/5',
+                  selected === fixture.id ? 'bg-[#1a1a1a] border-l-2 border-l-[#FF6B00]' : 'hover:bg-white/5',
                 ].join(' ')}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -228,7 +228,7 @@ export default function AskQAPage() {
           )}
           {selected && selectedFixture && (
             <div className="max-w-4xl mx-auto space-y-4">
-              <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 space-y-3">
+              <div className="bg-[#0a0a0a] rounded-xl border border-zinc-800 p-5 space-y-3">
                 <h2 className="text-sm font-semibold text-[#FF6B00]">{selectedFixture.label}</h2>
                 <div className="flex gap-6 text-xs text-zinc-500 flex-wrap">
                   <span>Verdict: <strong className="text-zinc-300">{selectedFixture.summary.verdict}</strong></span>
