@@ -30,6 +30,7 @@ export type PublicScoreResponse = {
   topHolderPct?: number | null;
   mintAuthority?: boolean | null;
   freezeAuthority?: boolean | null;
+  communityScans?: number | null;
 };
 
 export function derivePhantomWarning(verdict: PublicVerdict): {

@@ -274,6 +274,7 @@ export default function TigerScanPage() {
   const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null);
   const [shillHandle, setShillHandle] = useState("");
   const [shillLoading, setShillLoading] = useState(false);
+  const [communityScans, setCommunityScans] = useState<number | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
 
@@ -485,6 +486,22 @@ export default function TigerScanPage() {
     setOffChainResult(null);
     setShillResult(null);
     setShillHandle("");
+    setCommunityScans(null);
+
+    // Fire community scan count fetch in parallel (non-blocking, 6s timeout)
+    {
+      const scanTarget = (overrideAddr ?? address).trim();
+      const isEvm = /^0x[a-fA-F0-9]{40}$/.test(scanTarget);
+      const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
+      if (isEvm || isSol) {
+        fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}`, {
+          signal: AbortSignal.timeout(6000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (typeof d?.communityScans === "number") setCommunityScans(d.communityScans); })
+          .catch(() => {});
+      }
+    }
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
@@ -980,6 +997,21 @@ export default function TigerScanPage() {
               {mmResult && <MMScoreBadge result={mmResult} locale="en" />}
               <USDTBlacklistBadge visible={!!(result?.rawSummary?.usdt_blacklisted)} locale="en" />
               <IntelligenceBadge signal={intelSignal} locale="en" />
+              {communityScans !== null && communityScans > 1 && (
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "5px 10px",
+                  background: "rgba(255,107,0,0.06)",
+                  border: "1px solid rgba(255,107,0,0.18)",
+                  borderRadius: 6,
+                  marginTop: 4,
+                }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,107,0,0.7)" }}>Community</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#FF6B00" }}>{communityScans.toLocaleString()} scans</span>
+                </div>
+              )}
 
               {/* ── PROJECT INFO DROPDOWN ── */}
               {(() => {
