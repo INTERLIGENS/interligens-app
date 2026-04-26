@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit" | "contradictions" | "serial_patterns";
+type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit" | "contradictions" | "serial_patterns" | "corrections";
 
 interface DashboardStats {
   entities: { total: number; sanction: number; high: number };
@@ -1200,6 +1200,199 @@ function SerialPatternsTab() {
 }
 
 
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CORRECTIONS TAB
+// ═════════════════════════════════════════════════════════════════════════════
+
+const RETRACTION_STATUS_COLOR: Record<string, string> = {
+  pending: "#eab308",
+  applied: "#22c55e",
+  rejected: "#ef4444",
+};
+
+const RETRACTION_SEVERITY_COLOR: Record<string, string> = {
+  minor: "#64748b",
+  major: "#f97316",
+  critical: "#ef4444",
+};
+
+const INITIAL_FORM = {
+  entityType: "kol_profile",
+  entityId: "",
+  kolHandle: "",
+  reason: "",
+  previousValue: "",
+  correctedValue: "",
+  severity: "minor",
+  initiatedBy: "admin",
+};
+
+function CorrectionsTab() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/intelligence/retractions", { credentials: "include" });
+    const json = await res.json();
+    setData(Array.isArray(json) ? json : []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/admin/intelligence/retraction", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          kolHandle: form.kolHandle || null,
+          previousValue: form.previousValue || null,
+          correctedValue: form.correctedValue || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json();
+        setSubmitError(j.details?.join(", ") ?? j.error ?? "Error");
+      } else {
+        setShowModal(false);
+        setForm(INITIAL_FORM);
+        load();
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    await fetch("/api/admin/intelligence/retractions", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action: "reject" }),
+    });
+    load();
+  };
+
+  const inputStyle = {
+    background: "#1a1a1a",
+    border: "1px solid #334155",
+    borderRadius: 6,
+    padding: "6px 10px",
+    color: "#f1f5f9",
+    fontSize: 12,
+    width: "100%",
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+        <button
+          onClick={() => setShowModal(true)}
+          style={{ background: "#FF6B00", color: "#000", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+        >
+          + NEW CORRECTION
+        </button>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#111", border: "1px solid #334155", borderRadius: 12, padding: 24, width: 480, maxWidth: "90vw" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 16 }}>New Correction</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <select value={form.entityType} onChange={(e) => setForm({ ...form, entityType: e.target.value })} style={inputStyle}>
+                {["kol_profile", "casefile", "score", "proceeds"].map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input placeholder="Entity ID (handle / txHash / caseId)" value={form.entityId} onChange={(e) => setForm({ ...form, entityId: e.target.value })} style={inputStyle} />
+              <input placeholder="KOL handle (optional)" value={form.kolHandle} onChange={(e) => setForm({ ...form, kolHandle: e.target.value })} style={inputStyle} />
+              <input placeholder="Reason (required, min 5 chars)" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} style={inputStyle} />
+              <input placeholder="Previous value (optional)" value={form.previousValue} onChange={(e) => setForm({ ...form, previousValue: e.target.value })} style={inputStyle} />
+              <input placeholder="Corrected value (optional)" value={form.correctedValue} onChange={(e) => setForm({ ...form, correctedValue: e.target.value })} style={inputStyle} />
+              <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} style={inputStyle}>
+                {["minor", "major", "critical"].map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              {submitError && <div style={{ color: "#ef4444", fontSize: 11 }}>{submitError}</div>}
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                <button onClick={() => setShowModal(false)} style={{ background: "#1a1a1a", color: "#94a3b8", border: "1px solid #334155", borderRadius: 6, padding: "6px 14px", fontSize: 11, cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={handleSubmit} disabled={submitting} style={{ background: "#FF6B00", color: "#000", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: submitting ? "wait" : "pointer" }}>
+                  {submitting ? "Applying…" : "Apply Correction"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1a1a1a", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
+              {["DATE", "ENTITY", "KOL", "REASON", "PREV", "CORRECTED", "SEVERITY", "BY", "STATUS", ""].map((h) => (
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 10, letterSpacing: "0.05em" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>No corrections yet</td></tr>
+            ) : (
+              data.map((r: any) => (
+                <tr key={r.id} style={{ borderBottom: "1px solid #111111" }}>
+                  <td style={{ padding: "10px 12px", color: "#64748b", fontSize: 11, whiteSpace: "nowrap" }}>{fmt(r.createdAt)}</td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 10 }}>
+                    <span style={{ background: "#1a1a1a", borderRadius: 4, padding: "2px 5px" }}>{r.entityType}</span>
+                    <span style={{ display: "block", color: "#64748b", fontFamily: "monospace", fontSize: 9, marginTop: 1 }}>{truncate(r.entityId, 16)}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#f97316", fontFamily: "monospace", fontSize: 11 }}>{r.kolHandle ? `@${r.kolHandle}` : "—"}</td>
+                  <td style={{ padding: "10px 12px", color: "#e2e8f0", fontSize: 11, maxWidth: 200 }}>{truncate(r.reason, 40)}</td>
+                  <td style={{ padding: "10px 12px", color: "#ef444499", fontFamily: "monospace", fontSize: 10 }}>{r.previousValue ?? "—"}</td>
+                  <td style={{ padding: "10px 12px", color: "#22c55e99", fontFamily: "monospace", fontSize: 10 }}>{r.correctedValue ?? "—"}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: RETRACTION_SEVERITY_COLOR[r.severity] ?? "#64748b", fontWeight: 700, fontSize: 10 }}>{r.severity}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#64748b", fontSize: 10 }}>{r.initiatedBy}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: RETRACTION_STATUS_COLOR[r.status] ?? "#64748b", fontWeight: 700, fontSize: 10 }}>{r.status}</span>
+                    {r.status === "applied" && r.appliedAt && (
+                      <span style={{ display: "block", color: "#64748b", fontSize: 9 }}>{fmt(r.appliedAt)}</span>
+                    )}
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    {r.status === "pending" && (
+                      <button
+                        onClick={() => handleReject(r.id)}
+                        style={{ background: "#ef444422", border: "1px solid #ef444444", borderRadius: 4, padding: "2px 8px", fontSize: 9, fontWeight: 700, color: "#f87171", cursor: "pointer" }}
+                      >
+                        REJECT
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1331,6 +1524,12 @@ export default function IntelligencePage() {
           icon={AlertTriangle}
           onClick={() => setTab("serial_patterns")}
         />
+        <TabBtn
+          active={tab === "corrections"}
+          label="Corrections"
+          icon={CheckCircle}
+          onClick={() => setTab("corrections")}
+        />
       </div>
 
       {/* Tab content */}
@@ -1347,6 +1546,7 @@ export default function IntelligencePage() {
       {tab === "audit" && <AuditTab />}
       {tab === "contradictions" && <ContradictionsTab />}
         {tab === "serial_patterns" && <SerialPatternsTab />}
+      {tab === "corrections" && <CorrectionsTab />}
       </div>
     </div>
   );
