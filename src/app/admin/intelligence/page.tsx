@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-
-type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit" | "contradictions";
+type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit" | "contradictions" | "serial_patterns";
 
 interface DashboardStats {
   entities: { total: number; sanction: number; high: number };
@@ -1088,6 +1087,120 @@ function ContradictionsTab() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// SERIAL PATTERNS TAB
+// ═════════════════════════════════════════════════════════════════════════════
+
+const PATTERN_COLOR: Record<string, string> = {
+  pump_dump: "#ef4444",
+  coordinated_shill: "#f97316",
+  exit_liquidity: "#eab308",
+  wallet_cluster: "#8b5cf6",
+};
+
+const PATTERN_LABEL: Record<string, string> = {
+  pump_dump: "OBSERVED PATTERN",
+  coordinated_shill: "OBSERVED PATTERN",
+  exit_liquidity: "OBSERVED PATTERN",
+  wallet_cluster: "OBSERVED PATTERN",
+};
+
+function SerialPatternsTab() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterChain, setFilterChain] = useState("");
+  const [filterType, setFilterType] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filterChain) params.set("chain", filterChain);
+    if (filterType) params.set("patternType", filterType);
+    const res = await fetch(`/api/admin/intelligence/serial-patterns?${params}`, {
+      credentials: "include",
+    });
+    const json = await res.json();
+    setData(Array.isArray(json) ? json : []);
+    setLoading(false);
+  }, [filterChain, filterType]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <select
+          value={filterChain}
+          onChange={(e) => setFilterChain(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "solana", "ethereum", "bsc"].map((c) => (
+            <option key={c} value={c}>{c || "All chains"}</option>
+          ))}
+        </select>
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "pump_dump", "coordinated_shill", "exit_liquidity", "wallet_cluster"].map((t) => (
+            <option key={t} value={t}>{t || "All types"}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1a1a1a", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
+              {["DEPLOYER", "CHAIN", "TOKENS", "RUGS", "TYPE", "BADGE", "CONF", "LINKED KOLs", "CASES", "LAST SEEN"].map((h) => (
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 10, letterSpacing: "0.05em" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>No serial patterns found</td></tr>
+            ) : (
+              data.map((p: any) => (
+                <tr key={p.id} style={{ borderBottom: "1px solid #111111" }}>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 10, color: "#e2e8f0" }}>
+                    {truncate(p.deployerAddress, 16)}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>{p.chain}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontWeight: 700, color: "#f1f5f9" }}>{p.tokenCount}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", color: p.rugCount > 0 ? "#ef4444" : "#64748b" }}>{p.rugCount}</td>
+                  <td style={{ padding: "10px 12px", color: PATTERN_COLOR[p.patternType] ?? "#94a3b8", fontSize: 10, fontWeight: 700 }}>
+                    {p.patternType.replace(/_/g, " ").toUpperCase()}
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ background: "#f9731622", border: "1px solid #f9731644", borderRadius: 4, padding: "2px 6px", fontSize: 9, fontWeight: 700, color: "#fb923c" }}>
+                      {PATTERN_LABEL[p.patternType] ?? "OBSERVED PATTERN"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#94a3b8" }}>{p.confidence}%</td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>
+                    {Array.isArray(p.linkedKolHandles) ? p.linkedKolHandles.length : 0}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>
+                    {Array.isArray(p.linkedCaseIds) ? p.linkedCaseIds.length : 0}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#64748b", fontSize: 11 }}>{fmt(p.lastSeenAt)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -1212,6 +1325,12 @@ export default function IntelligencePage() {
           icon={AlertTriangle}
           onClick={() => setTab("contradictions")}
         />
+        <TabBtn
+          active={tab === "serial_patterns"}
+          label="Serial Patterns"
+          icon={AlertTriangle}
+          onClick={() => setTab("serial_patterns")}
+        />
       </div>
 
       {/* Tab content */}
@@ -1227,6 +1346,7 @@ export default function IntelligencePage() {
       {tab === "cases" && <CasesTab />}
       {tab === "audit" && <AuditTab />}
       {tab === "contradictions" && <ContradictionsTab />}
+        {tab === "serial_patterns" && <SerialPatternsTab />}
       </div>
     </div>
   );
