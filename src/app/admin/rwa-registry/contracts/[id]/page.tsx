@@ -232,7 +232,7 @@ export default function ContractDetail() {
 
       <Card title={`Verification events (${contract.verificationEvents.length})`}>
         <table className="w-full text-sm">
-          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-gray-900/50">
+          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-[#0a0a0a]">
             <tr>
               <th className="text-left px-5 py-3">When</th>
               <th className="text-left px-5 py-3">Type</th>
@@ -266,7 +266,7 @@ export default function ContractDetail() {
 
       <Card title={`Sources (${contract.sources.length})`}>
         <table className="w-full text-sm">
-          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-gray-900/50">
+          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-[#0a0a0a]">
             <tr>
               <th className="text-left px-5 py-3">Type</th>
               <th className="text-left px-5 py-3">URL</th>
