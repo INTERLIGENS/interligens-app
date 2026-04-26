@@ -3113,3 +3113,13 @@ model FeedbackReport {
   @@index([status, createdAt])
   @@index([type])
 }
+
+// Anonymous scan aggregation — incremented on every /api/v1/score call.
+// No PII stored. Migration applied via Neon SQL Editor.
+model TokenScanAggregate {
+  mint          String   @id
+  scanCount     Int      @default(1)
+  lastScannedAt DateTime @default(now())
+
+  @@index([scanCount(sort: Desc)])
+}

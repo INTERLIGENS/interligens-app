@@ -13,6 +13,20 @@ import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
+import { prisma } from "@/lib/prisma";
+
+async function upsertScanAggregate(mint: string): Promise<number | null> {
+  try {
+    const row = await prisma.tokenScanAggregate.upsert({
+      where: { mint },
+      create: { mint, scanCount: 1 },
+      update: { scanCount: { increment: 1 }, lastScannedAt: new Date() },
+    });
+    return row.scanCount;
+  } catch {
+    return null;
+  }
+}
 
 async function fetchTopHolderPct(mint: string): Promise<number | null> {
   try {
@@ -165,6 +179,8 @@ export async function GET(request: NextRequest) {
 
       const phantom = derivePhantomWarning(finalVerdict);
 
+      const communityScans = await upsertScanAggregate(normalized);
+
       const response: PublicScoreResponse = {
         mint: normalized,
         symbol: knownBad?.label,
@@ -177,6 +193,7 @@ export async function GET(request: NextRequest) {
         cached: false,
         timestamp: new Date().toISOString(),
         api_version: "v1",
+        communityScans,
       };
 
       console.log(
@@ -289,6 +306,8 @@ export async function GET(request: NextRequest) {
 
     const phantom = derivePhantomWarning(finalVerdict);
 
+    const communityScans = await upsertScanAggregate(mint);
+
     const response: PublicScoreResponse = {
       mint,
       symbol: caseFile?.case_meta.ticker,
@@ -308,6 +327,7 @@ export async function GET(request: NextRequest) {
       topHolderPct: topHolderPct ?? null,
       mintAuthority: mintFreeze.mintAuthority,
       freezeAuthority: mintFreeze.freezeAuthority,
+      communityScans,
     };
 
     console.log(
