@@ -48,7 +48,7 @@ export default function RwaRegistryDashboard() {
   const published = issuers.filter((i) => i.status === "PUBLISHED").length;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-baseline justify-between">
           <div>
@@ -89,7 +89,7 @@ export default function RwaRegistryDashboard() {
           </Link>
         </div>
 
-        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
               Recent issuers
@@ -97,7 +97,7 @@ export default function RwaRegistryDashboard() {
             {loading && <span className="text-xs text-gray-500">Loading…</span>}
           </div>
           <table className="w-full text-sm">
-            <thead className="text-xs uppercase tracking-wider text-gray-500 bg-gray-900/50">
+            <thead className="text-xs uppercase tracking-wider text-gray-500 bg-[#0a0a0a]/50">
               <tr>
                 <th className="text-left px-5 py-3">Name</th>
                 <th className="text-left px-5 py-3">Type</th>
@@ -110,7 +110,7 @@ export default function RwaRegistryDashboard() {
               {issuers.slice(0, 20).map((i) => (
                 <tr
                   key={i.id}
-                  className="border-t border-gray-800/70 hover:bg-gray-900/50"
+                  className="border-t border-gray-800/70 hover:bg-[#0a0a0a]/50"
                 >
                   <td className="px-5 py-3">
                     <Link
@@ -150,7 +150,7 @@ export default function RwaRegistryDashboard() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div className="bg-[#0a0a0a] border border-gray-800 rounded-xl p-4">
       <div className="text-xs uppercase tracking-wider text-gray-500">{label}</div>
       <div className="text-2xl font-bold text-white mt-1">{value}</div>
     </div>

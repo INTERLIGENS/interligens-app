@@ -67,12 +67,12 @@ export default function IssuersList() {
         placeholder="Filter by name or slug"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
       />
 
       <Card title={`${filtered.length} issuer${filtered.length === 1 ? "" : "s"}`}>
         <table className="w-full text-sm">
-          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-gray-900/50">
+          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-[#0a0a0a]/50">
             <tr>
               <th className="text-left px-5 py-3">Name</th>
               <th className="text-left px-5 py-3">Type</th>
@@ -86,7 +86,7 @@ export default function IssuersList() {
             {filtered.map((i) => (
               <tr
                 key={i.id}
-                className="border-t border-gray-800/70 hover:bg-gray-900/50"
+                className="border-t border-gray-800/70 hover:bg-[#0a0a0a]/50"
               >
                 <td className="px-5 py-3">
                   <Link
