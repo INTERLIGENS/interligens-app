@@ -111,7 +111,7 @@ export default function IntakeDetail() {
                 ["Confidence", record.routerConfidence ? (record.routerConfidence*100).toFixed(0)+"%" : "—"],
                 ["Pending Batch", record.pendingBatch ? "YES" : "no"],
               ].map(([l,v]) => (
-                <div key={l as string} className="bg-gray-800 rounded-lg p-3">
+                <div key={l as string} className="bg-zinc-900 rounded-lg p-3">
                   <div className="text-xs text-gray-500 mb-1">{l}</div>
                   <div className="text-lg font-bold text-white">{v}</div>
                 </div>
