@@ -72,11 +72,11 @@ export default function LabelsAdminPage() {
     (!search || l.address.includes(search.toLowerCase()) || l.label.toLowerCase().includes(search.toLowerCase()))
   )
 
-  const inpCls = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+  const inpCls = "w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
   const lbl = (t: string) => <label className="text-xs text-gray-500 mb-1 block">{t}</label>
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* Header */}
@@ -93,7 +93,7 @@ export default function LabelsAdminPage() {
 
         {/* Form */}
         {showForm && (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-4">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">{editId ? 'Edit Label' : 'New Label'}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>{lbl('Address')}<input className={inpCls} value={form.address} onChange={e => setForm(p=>({...p,address:e.target.value}))} placeholder="0x... or wallet" /></div>
@@ -119,21 +119,21 @@ export default function LabelsAdminPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-3">
           <div className="flex gap-2 flex-wrap items-center">
-            <input className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 w-56" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search address or name..." onKeyDown={e => e.key==='Enter' && fetchLabels()} />
-            <button onClick={fetchLabels} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition">Search</button>
+            <input className="bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 w-56" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search address or name..." onKeyDown={e => e.key==='Enter' && fetchLabels()} />
+            <button onClick={fetchLabels} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 transition">Search</button>
           </div>
           <div className="flex gap-2 flex-wrap">
             {['all',...CATEGORIES].map(c => (
               <button key={c} onClick={() => setFilterCat(c)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterCat===c ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>{c}</button>
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterCat===c ? "bg-orange-500 text-black" : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"}`}>{c}</button>
             ))}
           </div>
           <div className="flex gap-2 flex-wrap">
             {['all','true','false'].map(v => (
               <button key={v} onClick={() => setFilterVerified(v)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterVerified===v ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterVerified===v ? "bg-orange-500 text-black" : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"}`}>
                 {v==='all'?'All':v==='true'?'✓ Verified':'⏳ Pending'}
               </button>
             ))}
@@ -144,7 +144,7 @@ export default function LabelsAdminPage() {
         {loading ? (
           <div className="text-center py-10 text-gray-500">Loading...</div>
         ) : (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
@@ -155,26 +155,26 @@ export default function LabelsAdminPage() {
               </thead>
               <tbody>
                 {filtered.map(l => (
-                  <tr key={l.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                  <tr key={l.id} className="border-b border-gray-800 hover:bg-[#0a0a0a]/50 transition">
                     <td className="py-2 px-3">
-                      <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-300 font-semibold">{l.category}</span>
+                      <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-gray-300 font-semibold">{l.category}</span>
                     </td>
                     <td className="py-2 px-3 font-semibold">{l.label}</td>
                     <td className="py-2 px-3 font-mono text-xs text-gray-500">{l.address.slice(0,12)}...{l.address.slice(-6)}</td>
                     <td className="py-2 px-3 text-xs text-gray-500">{l.chain}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs bg-gray-800 font-semibold ${l.confidence==='HIGH'?'text-green-400':l.confidence==='MEDIUM'?'text-orange-400':'text-red-400'}`}>{l.confidence}</span>
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] font-semibold ${l.confidence==='HIGH'?'text-green-400':l.confidence==='MEDIUM'?'text-orange-400':'text-red-400'}`}>{l.confidence}</span>
                     </td>
                     <td className="py-2 px-3 text-xs text-gray-500">{l.source}</td>
                     <td className="py-2 px-3">
                       <button onClick={() => toggleVerified(l)}
-                        className={`inline-block px-2 py-0.5 rounded text-xs bg-gray-800 font-semibold ${l.verified?'text-green-400':'text-orange-400'} hover:bg-gray-700 transition`}>
+                        className={`inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] font-semibold ${l.verified?'text-green-400':'text-orange-400'} hover:bg-gray-700 transition`}>
                         {l.verified ? '✓ Verified' : '⏳ Pending'}
                       </button>
                     </td>
                     <td className="py-2 px-3 flex gap-1">
-                      <button onClick={() => edit(l)} className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 transition">Edit</button>
-                      <button onClick={() => del(l.id)} className="px-2 py-1 rounded text-xs bg-gray-800 text-red-400 hover:bg-gray-700 transition">✕</button>
+                      <button onClick={() => edit(l)} className="px-2 py-1 rounded text-xs bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 transition">Edit</button>
+                      <button onClick={() => del(l.id)} className="px-2 py-1 rounded text-xs bg-[#1a1a1a] text-red-400 hover:bg-gray-700 transition">✕</button>
                     </td>
                   </tr>
                 ))}

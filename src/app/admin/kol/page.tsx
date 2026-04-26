@@ -38,10 +38,10 @@ export default function KolDirectory() {
         <input
           value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search @handle..."
-          className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
+          className="w-full max-w-md bg-[#0a0a0a] border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
         />
 
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
+        <div className="bg-[#0a0a0a] rounded-xl border border-zinc-800 p-5">
           <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="text-xs text-zinc-500 uppercase tracking-wider border-b border-zinc-800">
@@ -62,7 +62,7 @@ export default function KolDirectory() {
                   <tr key={p.id} className="border-b border-zinc-800 hover:bg-white/5 transition">
                     <td className="py-2 px-3 text-[#FF6B00] font-semibold">{p.handle}</td>
                     <td className="py-2 px-3">
-                      {p.tier ? <span className="inline-block px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-300 font-semibold">{p.tier}</span> : <span className="text-zinc-500">—</span>}
+                      {p.tier ? <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-zinc-300 font-semibold">{p.tier}</span> : <span className="text-zinc-500">—</span>}
                     </td>
                     <td className="py-2 px-3 text-green-400 font-semibold">{p.pricePerPost ? `$${p.pricePerPost.toLocaleString()}` : "—"}</td>
                     <td className="py-2 px-3 text-zinc-400">{p.platform}</td>
@@ -88,10 +88,10 @@ export default function KolDirectory() {
 
         <div className="flex gap-2 justify-end">
           <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">← Prev</button>
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#1a1a1a] text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">← Prev</button>
           <span className="text-zinc-500 text-sm py-1.5">Page {page}</span>
           <button onClick={() => setPage(p => p+1)} disabled={profiles.length < 25}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">Next →</button>
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#1a1a1a] text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">Next →</button>
         </div>
       </div>
     </div>
