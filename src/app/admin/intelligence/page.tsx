@@ -108,7 +108,7 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${active ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${active ? "bg-orange-500 text-black" : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"}`}
     >
       <Icon size={14} />
       {label}
@@ -133,7 +133,7 @@ function Stat({
   color?: string;
 }) {
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 flex-1 min-w-[140px]">
+    <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 flex-1 min-w-[140px]">
       <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
         {label.toUpperCase()}
       </div>
@@ -164,7 +164,7 @@ function Pagination({
       <button
         onClick={() => onPage(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
       >
         ← Prev
       </button>
@@ -174,7 +174,7 @@ function Pagination({
       <button
         onClick={() => onPage(Math.min(totalPages, page + 1))}
         disabled={page >= totalPages}
-        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
       >
         Next →
       </button>
@@ -974,7 +974,7 @@ export default function IntelligencePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div>
@@ -1000,7 +1000,7 @@ export default function IntelligencePage() {
 
       {/* Ingest result banner */}
       {ingestResult && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-3 text-sm flex justify-between items-center">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-3 text-sm flex justify-between items-center">
           <span>
             <strong>{ingestResult.sourceSlug}</strong> ingest{" "}
             <span className="font-semibold text-orange-400">
