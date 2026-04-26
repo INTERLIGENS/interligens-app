@@ -123,7 +123,7 @@ export default function AssetDetail() {
 
       <Card title={`Contracts (${asset.contracts.length})`}>
         <table className="w-full text-sm">
-          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-gray-900/50">
+          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-[#0a0a0a]">
             <tr>
               <th className="text-left px-5 py-3">Chain</th>
               <th className="text-left px-5 py-3">Address</th>
@@ -136,7 +136,7 @@ export default function AssetDetail() {
             {asset.contracts.map((c) => (
               <tr
                 key={c.id}
-                className="border-t border-gray-800/70 hover:bg-gray-900/50"
+                className="border-t border-gray-800/70 hover:bg-[#0a0a0a]"
               >
                 <td className="px-5 py-3 font-mono text-gray-400">
                   {c.chainKey}

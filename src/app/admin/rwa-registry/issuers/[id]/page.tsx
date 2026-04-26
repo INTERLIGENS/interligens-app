@@ -282,7 +282,7 @@ export default function IssuerDetail() {
 
       <Card title={`Assets (${issuer.assets.length})`}>
         <table className="w-full text-sm">
-          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-gray-900/50">
+          <thead className="text-xs uppercase tracking-wider text-gray-500 bg-[#0a0a0a]">
             <tr>
               <th className="text-left px-5 py-3">Symbol</th>
               <th className="text-left px-5 py-3">Name</th>
@@ -295,7 +295,7 @@ export default function IssuerDetail() {
             {issuer.assets.map((a) => (
               <tr
                 key={a.id}
-                className="border-t border-gray-800/70 hover:bg-gray-900/50"
+                className="border-t border-gray-800/70 hover:bg-[#0a0a0a]"
               >
                 <td className="px-5 py-3">
                   <Link
