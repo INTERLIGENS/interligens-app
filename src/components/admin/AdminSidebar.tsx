@@ -37,11 +37,11 @@ type Section = {
 
 const SECTIONS: Section[] = [
   {
-    title: "Operations",
+    title: "Opérations",
     links: [
       { label: "Revue de presse", href: "/admin/intel" },
       { label: "Victimes & signalements", href: "/admin/intake" },
-      { label: "Repertoire KOL", href: "/admin/kol" },
+      { label: "Répertoire KOL", href: "/admin/kol" },
       { label: "Logs ASK", href: "/admin/ask-logs" },
       { label: "Alertes", href: "/admin/alerts" },
     ],
@@ -50,7 +50,6 @@ const SECTIONS: Section[] = [
     title: "Investigators",
     links: [
       { label: "Liste investigators", href: "/admin/investigators" },
-      { label: "Candidatures", href: "/admin/investigators" },
       {
         label: "Espace Investigateur",
         href: "/investigators/box",
@@ -65,31 +64,31 @@ const SECTIONS: Section[] = [
       { label: "Base documentaire", href: "/admin/intel-vault" },
       { label: "Corroboration", href: "/admin/corroboration" },
       { label: "Marquage d'adresses", href: "/admin/labels" },
-      { label: "Dossiers publies", href: "/admin/cases" },
+      { label: "Dossiers publiés", href: "/admin/cases" },
       { label: "RWA Registry", href: "/admin/rwa-registry" },
     ],
   },
   {
     title: "Veille",
     links: [
-      { label: "Handles surveilles", href: "/admin/watch-sources" },
-      { label: "Reseau KOL", href: "/admin/kol/network" },
+      { label: "Handles surveillés", href: "/admin/watch-sources" },
+      { label: "Réseau KOL", href: "/admin/kol/network" },
       { label: "QA ASK", href: "/admin/ask-qa" },
     ],
   },
   {
-    title: "Donnees",
+    title: "Données",
     links: [
       { label: "Export", href: "/admin/export" },
       { label: "Stats plateforme", href: "/admin/stats" },
     ],
   },
   {
-    title: "Systeme",
+    title: "Système",
     links: [
       { label: "Moteur intelligence", href: "/admin/intelligence" },
       { label: "Documents", href: "/admin/documents" },
-      { label: "Security Center", href: "/admin/security", icon: SHIELD_ICON },
+      { label: "Sécurité", href: "/admin/security", icon: SHIELD_ICON },
     ],
   },
 ];
@@ -107,13 +106,7 @@ const SECTION_TITLE: React.CSSProperties = {
 };
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === pathname) return true;
-  // Exact match for investigators root but not its child pages (to avoid
-  // false positives on /admin/investigators/[id])
-  if (href === "/admin/investigators") {
-    return pathname === "/admin/investigators";
-  }
-  return pathname.startsWith(href + "/");
+  return href === pathname;
 }
 
 export default function AdminSidebar() {
@@ -195,13 +188,13 @@ export default function AdminSidebar() {
                 transition: "color 150ms, background 150ms",
               };
               const labelBlock = (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0, overflow: "hidden" }}>
                   {link.icon && (
-                    <span style={{ display: "inline-flex", opacity: 0.8 }}>
+                    <span style={{ display: "inline-flex", opacity: 0.8, flexShrink: 0 }}>
                       {link.icon}
                     </span>
                   )}
-                  <span>{link.label}</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{link.label}</span>
                 </span>
               );
               if (link.external) {
