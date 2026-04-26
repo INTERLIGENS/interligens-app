@@ -253,7 +253,7 @@ export default function FounderIntelPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white p-6">
+    <main className="min-h-screen bg-black text-white p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -272,7 +272,7 @@ export default function FounderIntelPage() {
             <button
               onClick={handleRetryFailed}
               disabled={retrying}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 transition"
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 transition"
             >
               {retrying ? "Retry..." : "Retry failed"}
             </button>
@@ -287,7 +287,7 @@ export default function FounderIntelPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3 sticky top-0 z-10">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-3 sticky top-0 z-10">
           <div className="flex gap-2 flex-wrap">
             {CATEGORIES.map((c) => (
               <FilterPill
@@ -330,7 +330,7 @@ export default function FounderIntelPage() {
         {/* Feed */}
         <div className="flex flex-col gap-4">
           {items.length === 0 && !loading && (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
+            <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
               No items. Click SYNC to ingest.
             </div>
           )}
@@ -358,7 +358,7 @@ export default function FounderIntelPage() {
             <button
               onClick={() => loadPage({ cursor: nextCursor })}
               disabled={loading}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
             >
               {loading ? "Loading..." : "Charger plus"}
             </button>
@@ -386,7 +386,7 @@ function FilterPill({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${active ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${active ? "bg-orange-500 text-black" : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"}`}
     >
       {label}
     </button>
@@ -485,7 +485,7 @@ function Card({
 
   return (
     <article
-      className={`bg-gray-900 rounded-xl border border-gray-800 p-5 relative ${isUnread ? "border-l-2 border-l-orange-500" : ""}`}
+      className={`bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 relative ${isUnread ? "border-l-2 border-l-orange-500" : ""}`}
       onClick={() => {
         if (starEditing) onStopEdit();
       }}

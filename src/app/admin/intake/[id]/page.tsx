@@ -34,14 +34,14 @@ export default function IntakeDetail() {
 
   useEffect(() => { load(); }, [id]);
 
-  if (loading) return <div className="min-h-screen bg-gray-950 text-white p-6">Loading...</div>;
-  if (!record)  return <div className="min-h-screen bg-gray-950 text-white p-6">Not found</div>;
+  if (loading) return <div className="min-h-screen bg-black text-white p-6">Loading...</div>;
+  if (!record)  return <div className="min-h-screen bg-black text-white p-6">Not found</div>;
 
   const classColor: Record<string,string> = { ioc: "text-red-400", kol: "text-orange-300", mixed: "text-orange-400", rawdoc: "text-gray-400" };
   const ex = record.extracted ?? {};
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <Link href="/admin/intake" className="text-sm text-gray-400 hover:text-orange-400 transition">← Inbox</Link>
 
@@ -74,7 +74,7 @@ export default function IntakeDetail() {
         </div>
 
         {msg && (
-          <div className={`rounded-lg p-3 text-sm ${msg.startsWith("✓") ? "bg-gray-900 border border-gray-800 text-green-400" : "bg-red-900/30 border border-red-700 text-red-400"}`}>
+          <div className={`rounded-lg p-3 text-sm ${msg.startsWith("✓") ? "bg-[#0a0a0a] border border-gray-800 text-green-400" : "bg-red-900/30 border border-red-700 text-red-400"}`}>
             {msg}
           </div>
         )}
@@ -82,7 +82,7 @@ export default function IntakeDetail() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Provenance */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-3">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Provenance</h2>
             {[
               ["Source",     record.sourceRef ?? "—"],
@@ -100,7 +100,7 @@ export default function IntakeDetail() {
           </div>
 
           {/* Stats */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-3">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Extraction Stats</h2>
             <div className="grid grid-cols-2 gap-2">
               {[
@@ -111,7 +111,7 @@ export default function IntakeDetail() {
                 ["Confidence", record.routerConfidence ? (record.routerConfidence*100).toFixed(0)+"%" : "—"],
                 ["Pending Batch", record.pendingBatch ? "YES" : "no"],
               ].map(([l,v]) => (
-                <div key={l as string} className="bg-zinc-900 rounded-lg p-3">
+                <div key={l as string} className="bg-[#0a0a0a] rounded-lg p-3">
                   <div className="text-xs text-gray-500 mb-1">{l}</div>
                   <div className="text-lg font-bold text-white">{v}</div>
                 </div>
@@ -127,7 +127,7 @@ export default function IntakeDetail() {
 
           {/* Sample addresses */}
           {ex.addresses?.length > 0 && (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-2">
+            <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-2">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Sample Addresses ({ex.addressCount ?? ex.addresses.length})</h2>
               {ex.addresses.slice(0,10).map((a: any, i: number) => (
                 <div key={i} className="text-xs text-gray-400 font-mono">
@@ -139,7 +139,7 @@ export default function IntakeDetail() {
 
           {/* Sample handles */}
           {ex.handles?.length > 0 && (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-2">
+            <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-2">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Handles ({ex.handleCount ?? ex.handles.length})</h2>
               {ex.handles.slice(0,15).map((h: any, i: number) => (
                 <div key={i} className="text-sm text-gray-300">{h.handle}</div>
