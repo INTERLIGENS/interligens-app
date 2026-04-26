@@ -21,7 +21,7 @@ function fmt(dt: string | null): string {
 }
 
 function scoreBadgeClasses(score: number | null): string {
-  if (score == null) return "bg-gray-800 text-gray-400";
+  if (score == null) return "bg-[#1a1a1a] text-gray-400";
   if (score >= 60) return "bg-green-900/40 text-green-300 border border-green-800";
   if (score >= 30) return "bg-orange-900/40 text-orange-300 border border-orange-800";
   return "bg-red-900/40 text-red-300 border border-red-800";
@@ -89,7 +89,7 @@ export default function AdminPdfPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -153,7 +153,7 @@ export default function AdminPdfPage() {
                     <tr key={r.handle} className="border-b border-gray-800 hover:bg-gray-900/50 transition">
                       <td className="py-2 px-3 font-mono text-orange-400">@{r.handle}</td>
                       <td className="py-2 px-3">
-                        <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-300">
+                        <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-gray-300">
                           {r.tier || "—"}
                         </span>
                       </td>
@@ -173,7 +173,7 @@ export default function AdminPdfPage() {
                               href={r.pdfUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition"
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 transition"
                             >
                               PDF ↗
                             </a>
