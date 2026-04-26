@@ -12,7 +12,7 @@ export interface Signal {
 
 export interface AdvancedSignalsProps {
   website?: string | null;
-  websiteAgeLabelEn?: string | null;
+  websiteAgeDays?: number | null;
   pairAgeDays?: number | null;
   liquidityUsd?: number | null;
   mintAuthority?: boolean | null;
@@ -164,7 +164,7 @@ const bVal: React.CSSProperties = {
 export default function AdvancedSignals(props: AdvancedSignalsProps) {
   const [open, setOpen] = useState(false);
   const {
-    website, websiteAgeLabelEn, pairAgeDays, liquidityUsd,
+    website, websiteAgeDays, pairAgeDays, liquidityUsd,
     mintAuthority, freezeAuthority, topHolderPct, signals,
     lang = "en", tier, manipulationLevel, rawSummary,
   } = props;
@@ -263,9 +263,15 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
             </Card>
 
             <Card title="Website age">
-              {websiteAgeLabelEn
-                ? <span style={{ fontSize: 12, color: "#ccc" }}>{websiteAgeLabelEn}</span>
-                : <Badge label="Unavailable" palette={GRAY} />
+              {websiteAgeDays == null
+                ? <Badge label="Unavailable" palette={GRAY} />
+                : websiteAgeDays < 30
+                  ? <Badge label="< 30 days" palette={RED} />
+                  : websiteAgeDays < 180
+                    ? <Badge label="< 6 months" palette={ORANGE} />
+                    : websiteAgeDays < 365
+                      ? <Badge label="< 1 year" palette={ORANGE} />
+                      : <Badge label="> 1 year" palette={GREEN} />
               }
             </Card>
 

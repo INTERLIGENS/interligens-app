@@ -33,6 +33,7 @@ export interface OffChainResult {
   summary_fr: string;
   computed_at: Date;
   cache_until: Date;
+  domainAgeDays?: number | null;
 }
 
 // ── In-memory cache (TTL 24h) ─────────────────────────────────────────────────
@@ -442,6 +443,7 @@ export async function computeOffChainCredibility(
     summary_fr: summaryFr(totalScore),
     computed_at: new Date(),
     cache_until: new Date(Date.now() + TTL_MS),
+    domainAgeDays: ageDays,
   };
 
   CACHE.set(key, { result, expiresAt: Date.now() + TTL_MS });
