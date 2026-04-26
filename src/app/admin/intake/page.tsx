@@ -3,11 +3,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const STATUS_PILL: Record<string,string> = {
-  pending:      "bg-zinc-800 text-yellow-400",
-  routed:       "bg-zinc-800 text-green-400",
-  needs_manual: "bg-zinc-800 text-orange-400",
-  archived:     "bg-zinc-800 text-zinc-400",
-  failed:       "bg-zinc-800 text-red-400",
+  pending:      "bg-[#1a1a1a] text-yellow-400",
+  routed:       "bg-[#1a1a1a] text-green-400",
+  needs_manual: "bg-[#1a1a1a] text-orange-400",
+  archived:     "bg-[#1a1a1a] text-zinc-400",
+  failed:       "bg-[#1a1a1a] text-red-400",
 };
 const CLASS_PILL: Record<string,string> = {
   ioc:    "text-red-400",
@@ -52,11 +52,11 @@ export default function IntakeInbox() {
         </div>
 
         {/* Filters */}
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 space-y-3">
+        <div className="bg-[#0a0a0a] rounded-xl border border-zinc-800 p-5 space-y-3">
           <div className="flex gap-2 flex-wrap">
             {["","pending","routed","needs_manual","archived","failed"].map(s => (
               <button key={s} onClick={() => { setStatus(s); setPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${status === s ? "bg-[#FF6B00] text-black" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${status === s ? "bg-[#FF6B00] text-black" : "bg-[#1a1a1a] text-zinc-300 hover:bg-zinc-700"}`}>
                 {s || "All"}
               </button>
             ))}
@@ -64,7 +64,7 @@ export default function IntakeInbox() {
           <div className="flex gap-2 flex-wrap">
             {["","ioc","kol","mixed","rawdoc"].map(c => (
               <button key={c} onClick={() => { setCls(c); setPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${classification === c ? "bg-[#FF6B00] text-black" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${classification === c ? "bg-[#FF6B00] text-black" : "bg-[#1a1a1a] text-zinc-300 hover:bg-zinc-700"}`}>
                 {c || "All types"}
               </button>
             ))}
@@ -72,7 +72,7 @@ export default function IntakeInbox() {
         </div>
 
         {/* Table */}
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
+        <div className="bg-[#0a0a0a] rounded-xl border border-zinc-800 p-5">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-zinc-500 uppercase tracking-wider border-b border-zinc-800">
@@ -91,7 +91,7 @@ export default function IntakeInbox() {
                 return (
                   <tr key={r.id} className="border-b border-zinc-800 hover:bg-white/5 transition">
                     <td className="py-2 px-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs ${STATUS_PILL[r.status] ?? "bg-zinc-800 text-zinc-400"}`}>{r.status}</span>
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs ${STATUS_PILL[r.status] ?? "bg-[#1a1a1a] text-zinc-400"}`}>{r.status}</span>
                     </td>
                     <td className="py-2 px-3 text-zinc-400">{r.inputType}</td>
                     <td className="py-2 px-3 text-zinc-300 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{r.sourceRef ?? "—"}</td>
@@ -119,10 +119,10 @@ export default function IntakeInbox() {
         {/* Pagination */}
         <div className="flex gap-2 justify-end">
           <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">← Prev</button>
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#1a1a1a] text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">← Prev</button>
           <span className="text-zinc-500 text-sm py-1.5">Page {page}</span>
           <button onClick={() => setPage(p => p+1)} disabled={records.length < 25}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">Next →</button>
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#1a1a1a] text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition">Next →</button>
         </div>
       </div>
     </div>
