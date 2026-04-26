@@ -1061,6 +1061,7 @@ export default function TigerScanPage() {
               {/* ── ADVANCED SIGNALS ── */}
               <AdvancedSignals
                 website={result.rawSummary?.website ?? result.rawSummary?.content?.links?.external_url ?? result.rawSummary?.extensions?.website ?? null}
+                websiteAgeDays={offChainResult?.domainAgeDays ?? null}
                 pairAgeDays={result.rawSummary?.pair_age_days ?? result.rawSummary?.markets?.pair_age_days ?? null}
                 liquidityUsd={result.rawSummary?.markets?.liquidity_usd ?? result.rawSummary?.liquidity_usd ?? null}
                 mintAuthority={result.mintAuthority ?? null}
