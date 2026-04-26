@@ -35,7 +35,7 @@ type Profile = {
 
 function Badge({ value }: { value: string }) {
   return (
-    <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-300 font-mono uppercase">
+    <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-gray-300 font-mono uppercase">
       {value.replace(/_/g, " ")}
     </span>
   );
@@ -101,7 +101,7 @@ export default function AdminInvestigatorsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white p-6">
+    <main className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-400">Trusted Investigator Program</h1>
@@ -109,13 +109,13 @@ export default function AdminInvestigatorsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+        <div className="bg-[#111] rounded-xl border border-gray-800 p-5">
           <div className="flex gap-2 flex-wrap">
             {(["apps", "profiles"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${tab === t ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${tab === t ? "bg-orange-500 text-black" : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"}`}
               >
                 {t === "apps" ? `Applications (${applications.length})` : `Investigators (${profiles.length})`}
               </button>
@@ -135,7 +135,7 @@ export default function AdminInvestigatorsPage() {
         {tab === "apps" && !loading && (
           <div>
             {applications.length === 0 ? (
-              <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
+              <div className="bg-[#111] rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
                 No applications yet.
               </div>
             ) : (
@@ -143,7 +143,7 @@ export default function AdminInvestigatorsPage() {
                 {applications.map((app) => (
                   <div
                     key={app.id}
-                    className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3"
+                    className="bg-[#111] rounded-xl border border-gray-800 p-5 space-y-3"
                   >
                     <div className="flex justify-between items-start gap-4 flex-wrap">
                       <div>
@@ -166,7 +166,7 @@ export default function AdminInvestigatorsPage() {
                       {app.languages.map((l) => (
                         <span
                           key={l}
-                          className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 font-mono uppercase"
+                          className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-gray-400 font-mono uppercase"
                         >
                           {l}
                         </span>
@@ -174,7 +174,7 @@ export default function AdminInvestigatorsPage() {
                       {app.specialties.map((s) => (
                         <span
                           key={s}
-                          className="inline-block px-2 py-0.5 rounded text-xs bg-gray-800 text-orange-400 font-mono"
+                          className="inline-block px-2 py-0.5 rounded text-xs bg-[#1a1a1a] text-orange-400 font-mono"
                         >
                           {s}
                         </span>
@@ -206,7 +206,7 @@ export default function AdminInvestigatorsPage() {
                       }
                       placeholder="Internal review note..."
                       rows={2}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                      className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
                     />
 
                     <div className="flex gap-2 flex-wrap">
@@ -220,14 +220,14 @@ export default function AdminInvestigatorsPage() {
                       <button
                         onClick={() => reviewApp(app.id, "NEEDS_REVIEW")}
                         disabled={pendingAction === app.id}
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 transition"
                       >
                         Needs Review
                       </button>
                       <button
                         onClick={() => reviewApp(app.id, "REJECTED")}
                         disabled={pendingAction === app.id}
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-red-400 hover:bg-gray-700 transition"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-red-400 hover:bg-gray-700 transition"
                       >
                         Reject
                       </button>
@@ -243,7 +243,7 @@ export default function AdminInvestigatorsPage() {
         {tab === "profiles" && !loading && (
           <div>
             {profiles.length === 0 ? (
-              <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
+              <div className="bg-[#111] rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
                 No investigators yet.
               </div>
             ) : (
@@ -252,7 +252,7 @@ export default function AdminInvestigatorsPage() {
                   <Link
                     key={p.id}
                     href={`/admin/investigators/${p.id}`}
-                    className="block bg-gray-900 rounded-xl border border-gray-800 hover:border-orange-500 p-4 transition"
+                    className="block bg-[#111] rounded-xl border border-gray-800 hover:border-orange-500 p-4 transition"
                   >
                     <div className="flex justify-between items-center gap-4 flex-wrap">
                       <div>
