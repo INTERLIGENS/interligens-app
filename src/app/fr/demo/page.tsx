@@ -299,7 +299,7 @@ export default function TigerScanPageFR() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode = selectedScenario;
+  const mockMode = null;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -338,30 +338,27 @@ export default function TigerScanPageFR() {
   const [tickers, setTickers] = React.useState<{ok:boolean,btc?:{price_usd:number,change_24h_pct:number},eth?:{price_usd:number,change_24h_pct:number},sol?:{price_usd:number,change_24h_pct:number}}|null>(null);
 
   const DEMO_CHIPS = [
-    { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
-    { label: "⚠️ Attention", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
-    { label: "🚨 Arnaque", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
+    { label: "✅ Sûr",       addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
+    { label: "⚠️ Attention", addr: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
+    { label: "🚨 Arnaque",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
   ];
 
-  React.useEffect(() => {
-    if (selectedScenario) {
-      const preset = DEMO_PRESETS[mockChain][selectedScenario];
-      setAddress(preset.addr);
-      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const REAL_CHIPS: Record<DemoScenario, string> = {
+    green:  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+    orange: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+    red:    "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+  };
 
-  const storyline = selectedScenario ? DEMO_PRESETS[mockChain][selectedScenario].storyline.fr : null;
+  const storyline = null;
 
   const handleSelectScenario = (scenario: DemoScenario) => {
-    const preset = DEMO_PRESETS[mockChain][scenario];
+    const addr = REAL_CHIPS[scenario];
     setSelectedScenario(scenario);
-    setAddress(preset.addr);
+    setAddress(addr);
     const url = new URL(window.location.href);
-    url.searchParams.set("mock", scenario);
+    url.searchParams.delete("mock");
     window.history.replaceState({}, "", url.toString());
-    runScan(preset.addr, scenario);
+    runScan(addr, undefined);
   };
 
   React.useEffect(() => {

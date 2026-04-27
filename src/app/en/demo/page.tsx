@@ -301,7 +301,7 @@ export default function TigerScanPage() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode = selectedScenario;
+  const mockMode = null;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -347,32 +347,27 @@ export default function TigerScanPage() {
   } | null>(null);
 
   const DEMO_CHIPS = [
-    { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
-    { label: "⚠️ Warning", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
-    { label: "🚨 Scam", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
+    { label: "✅ Safe",    addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
+    { label: "⚠️ Warning", addr: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
+    { label: "🚨 Scam",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
   ];
 
-  // Auto-trigger on mount if ?mock= param present
-  React.useEffect(() => {
-    if (selectedScenario) {
-      const preset = DEMO_PRESETS[mockChain][selectedScenario];
-      setAddress(preset.addr);
-      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const REAL_CHIPS: Record<DemoScenario, string> = {
+    green:  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+    orange: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+    red:    "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+  };
 
-  const storyline = selectedScenario ? DEMO_PRESETS[mockChain][selectedScenario].storyline.en : null;
+  const storyline = null;
 
   const handleSelectScenario = (scenario: DemoScenario) => {
-    const preset = DEMO_PRESETS[mockChain][scenario];
+    const addr = REAL_CHIPS[scenario];
     setSelectedScenario(scenario);
-    setAddress(preset.addr);
-    // Update URL without reload
+    setAddress(addr);
     const url = new URL(window.location.href);
-    url.searchParams.set("mock", scenario);
+    url.searchParams.delete("mock");
     window.history.replaceState({}, "", url.toString());
-    runScan(preset.addr, scenario);
+    runScan(addr, undefined);
   };
 
   React.useEffect(() => {
