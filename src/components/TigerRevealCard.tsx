@@ -142,7 +142,6 @@ export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
           <video
             ref={videoRef}
             src={videoSrc}
-            loop
             muted={isMuted}
             playsInline
             className="w-full h-full object-cover"

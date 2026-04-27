@@ -41,6 +41,7 @@ export interface ExplainabilityBlockProps {
   } | null;
   version: string;
   locale?: "fr" | "en";
+  showScore?: boolean;
 }
 
 const TIER_COLOR: Record<TigerTier, string> = {
@@ -136,6 +137,7 @@ export function ExplainabilityBlock(props: ExplainabilityBlockProps) {
   const tierColor = TIER_COLOR[props.tier];
   const gov = props.governedStatus;
   const isDominant = gov && gov.status !== "none";
+  const showScore = props.showScore !== false;
 
   return (
     <section
@@ -164,83 +166,85 @@ export function ExplainabilityBlock(props: ExplainabilityBlockProps) {
           marginTop: isDominant ? 14 : 0,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 20,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                gap: 10,
-              }}
-            >
-              <span
-                data-testid="tiger-score-value"
-                style={{
-                  fontSize: isDominant ? 40 : 52,
-                  fontWeight: 900,
-                  color: tierColor,
-                  letterSpacing: -1,
-                  lineHeight: 1,
-                }}
-              >
-                {Math.max(0, Math.min(100, Math.round(props.score)))}
-              </span>
-              <span
-                data-testid="tiger-score-tier"
-                style={{
-                  fontSize: 13,
-                  letterSpacing: 3,
-                  fontWeight: 900,
-                  textTransform: "uppercase",
-                  color: tierColor,
-                }}
-              >
-                {props.tier}
-              </span>
-            </div>
-            <div
-              style={{
-                marginTop: 6,
-                fontSize: 11,
-                color: "#888",
-                letterSpacing: 2,
-                fontWeight: 700,
-                textTransform: "uppercase",
-              }}
-            >
-              {copy.confidence}:{" "}
-              <span data-testid="confidence-level" style={{ color: "#FFFFFF" }}>
-                {props.confidence}
-              </span>
-            </div>
-          </div>
+        {showScore && (
           <div
             style={{
-              textAlign: "right",
-              fontSize: 10,
-              color: "#555",
-              letterSpacing: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 20,
+              flexWrap: "wrap",
             }}
           >
             <div>
-              {copy.version}{" "}
-              <code
-                data-testid="engine-version"
-                style={{ color: "#FF6B00", fontSize: 10 }}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 10,
+                }}
               >
-                v{props.version}
-              </code>
+                <span
+                  data-testid="tiger-score-value"
+                  style={{
+                    fontSize: isDominant ? 40 : 52,
+                    fontWeight: 900,
+                    color: tierColor,
+                    letterSpacing: -1,
+                    lineHeight: 1,
+                  }}
+                >
+                  {Math.max(0, Math.min(100, Math.round(props.score)))}
+                </span>
+                <span
+                  data-testid="tiger-score-tier"
+                  style={{
+                    fontSize: 13,
+                    letterSpacing: 3,
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    color: tierColor,
+                  }}
+                >
+                  {props.tier}
+                </span>
+              </div>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 11,
+                  color: "#888",
+                  letterSpacing: 2,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                }}
+              >
+                {copy.confidence}:{" "}
+                <span data-testid="confidence-level" style={{ color: "#FFFFFF" }}>
+                  {props.confidence}
+                </span>
+              </div>
+            </div>
+            <div
+              style={{
+                textAlign: "right",
+                fontSize: 10,
+                color: "#555",
+                letterSpacing: 1,
+              }}
+            >
+              <div>
+                {copy.version}{" "}
+                <code
+                  data-testid="engine-version"
+                  style={{ color: "#FF6B00", fontSize: 10 }}
+                >
+                  v{props.version}
+                </code>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <TopReasons
           topReasons={props.topReasons.slice(0, 3)}

@@ -1014,6 +1014,7 @@ export default function TigerScanPageFR() {
                   topReasons={result.rawSummary.tiger_drivers}
                   version="1.0.0"
                   locale="fr"
+                  showScore={false}
                 />
               )}
 
