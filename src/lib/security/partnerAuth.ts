@@ -22,9 +22,9 @@ async function timingSafeEqual(a: string, b: string): Promise<boolean> {
 }
 
 export async function validatePartnerKey(req: NextRequest): Promise<boolean> {
-  const expected = process.env.PARTNER_API_KEY ?? "";
+  const expected = process.env.PARTNER_API_KEY_V2 || process.env.PARTNER_API_KEY || "";
   if (expected.length === 0) {
-    console.error("[partnerAuth] PARTNER_API_KEY is not set — blocking request");
+    console.error("[partnerAuth] PARTNER_API_KEY_V2 / PARTNER_API_KEY not set — blocking request");
     return false;
   }
   const provided = req.headers.get("x-partner-key")?.trim() ?? "";
