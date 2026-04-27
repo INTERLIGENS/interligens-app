@@ -250,7 +250,7 @@ export default function KOLPage() {
                 const reportHref = mint
                   ? `/api/report/v2?mint=${encodeURIComponent(mint)}&lang=en`
                   : `/api/pdf/kol?handle=${encodeURIComponent(kol.handle)}&mode=retail`;
-                const casefileHref = `/api/casefile/pdf?handle=${encodeURIComponent(kol.handle)}&template=public&lang=en`;
+                const casefileHref = `/api/casefile/public?handle=${encodeURIComponent(kol.handle)}&lang=en`;
                 return (
                   <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                     <a href={reportHref} target="_blank" rel="noreferrer" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
