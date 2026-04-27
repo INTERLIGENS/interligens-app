@@ -1,6 +1,11 @@
 /**
  * src/app/api/cron/watcher-v2/route.ts
  * WatcherV2 — X API Native KOL scan (daily cron)
+ *
+ * Email mode: controlled by WATCHER_EMAIL_MODE env var
+ *   "off"       — no emails sent
+ *   "immediate" — one email per handle (legacy behaviour)
+ *   "digest"    — one batch digest email after the full scan (default)
  */
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
@@ -8,6 +13,7 @@ import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
+import { sendWatcherDigest } from "@/lib/alerts/watcherDigest";
 
 // Vercel cron route config — force dynamic execution and extend the default
 // 10s serverless timeout to accommodate the per-handle sleep(1000) loop.
@@ -28,7 +34,16 @@ async function ensureInfluencer(handle: string): Promise<string> {
   return created.id;
 }
 
+type BatchSignal = {
+  handle: string;
+  signalCount: number;
+  tokens: string[];
+  snippet: string;
+};
+
 async function scanAll() {
+  const emailMode = (process.env.WATCHER_EMAIL_MODE ?? "digest").toLowerCase();
+
   const stats = {
     scanned: 0,
     failed: 0,
@@ -38,6 +53,9 @@ async function scanAll() {
     enriched: 0,
     promoted: 0,
   };
+
+  // Accumulates per-handle signal summaries for the batch digest.
+  const batchSignals: BatchSignal[] = [];
 
   for (const entry of handlesV2) {
     const handle = entry.handle;
@@ -104,14 +122,27 @@ async function scanAll() {
       }
     }
 
-    // Fire-and-forget alert if this handle produced any new candidates in
-    // this run. Never blocks or crashes the scan.
     if (handleNewCandidates > 0) {
-      const signalText =
+      const tokens = handleSignalSamples
+        .flatMap((s) => {
+          const m = s.match(/^\$[A-Z]+/);
+          return m ? [m[0]] : [];
+        })
+        .filter((v, i, a) => a.indexOf(v) === i);
+
+      const snippet =
         handleSignalSamples.join(" · ") || `${handleNewCandidates} new signals`;
-      sendKolAlert(handle, handleNewCandidates, signalText).catch((err) => {
-        console.error("[watcher-v2] kol alert crashed", err);
-      });
+
+      if (emailMode === "immediate") {
+        // Legacy: one email per handle
+        sendKolAlert(handle, handleNewCandidates, snippet).catch((err) =>
+          console.error("[watcher-v2] kol alert crashed", err)
+        );
+      } else if (emailMode === "digest") {
+        // Accumulate for batch digest sent after the full loop
+        batchSignals.push({ handle, signalCount: handleNewCandidates, tokens, snippet });
+      }
+      // emailMode === "off" → do nothing
     }
 
     // Enrich existing KolProfile
@@ -129,9 +160,18 @@ async function scanAll() {
     await sleep(1_000);
   }
 
+  // Send one digest email after the full scan completes (digest mode).
+  if (emailMode === "digest" && batchSignals.length > 0) {
+    sendWatcherDigest(batchSignals).catch((err) =>
+      console.error("[watcher-v2] digest send crashed", err)
+    );
+  }
+
   return {
     ok: true,
     ...stats,
+    emailMode,
+    digestBatched: batchSignals.length,
     quotaEstimate: `~${(stats.tweetsFetched * 30).toLocaleString()} tweets/month`,
   };
 }

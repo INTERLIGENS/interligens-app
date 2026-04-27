@@ -552,11 +552,22 @@ model SocialPostCandidate {
   signalScore        Int        @default(0)
   dedupKey           String?    @unique
   profileSnapshot    String?
+  // Watcher V2 extended fields (added 2026-04-25)
+  rawText            String?
+  normalizedText     String?
+  chain              String?
+  screenshotUrl      String?
+  severity           String?
+  kolProfileId       String?
+  campaignId         String?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   influencer         Influencer @relation(fields: [influencerId], references: [id])
+  campaign           WatcherCampaign? @relation(fields: [campaignId], references: [id])
 
   @@unique([postId, influencerId])
+  @@index([campaignId])
+  @@index([discoveredAtUtc(sort: Desc)])
   @@map("social_post_candidates")
 }
 
@@ -3122,4 +3133,63 @@ model TokenScanAggregate {
   lastScannedAt DateTime @default(now())
 
   @@index([scanCount(sort: Desc)])
+}
+
+// ── Watcher Campaign Intelligence (added 2026-04-25) ────────────────────────
+
+model WatcherCampaign {
+  id                     String               @id @default(cuid())
+  primaryTokenSymbol     String?
+  primaryContractAddress String?
+  chain                  String?
+  status                 String               @default("ACTIVE")
+  priority               String               @default("MEDIUM")
+  firstSeenAt            DateTime             @default(now())
+  lastSeenAt             DateTime             @default(now())
+  signalCount            Int                  @default(0)
+  kolCount               Int                  @default(0)
+  summary                String?
+  claimPatterns          String               @default("[]")
+  metadata               Json?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  signals                SocialPostCandidate[]
+  campaignKols           WatcherCampaignKOL[]
+
+  @@index([status, priority])
+  @@index([lastSeenAt(sort: Desc)])
+  @@map("WatcherCampaign")
+}
+
+model WatcherCampaignKOL {
+  id           String          @id @default(cuid())
+  campaignId   String
+  kolHandle    String
+  kolProfileId String?
+  signalCount  Int             @default(1)
+  firstSeenAt  DateTime        @default(now())
+  lastSeenAt   DateTime        @default(now())
+  campaign     WatcherCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, kolHandle])
+  @@index([kolHandle])
+  @@map("WatcherCampaignKOL")
+}
+
+model WatcherDigest {
+  id                String    @id @default(cuid())
+  windowStart       DateTime
+  windowEnd         DateTime
+  signalCount       Int       @default(0)
+  kolCount          Int       @default(0)
+  campaignCount     Int       @default(0)
+  highPriorityCount Int       @default(0)
+  emailSentAt       DateTime?
+  emailStatus       String    @default("pending")
+  htmlSnapshot      String?
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+
+  @@index([emailStatus, createdAt(sort: Desc)])
+  @@map("WatcherDigest")
 }
