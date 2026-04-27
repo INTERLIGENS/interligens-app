@@ -1,25 +1,19 @@
 /**
- * Tigre video manifest — interligens-static R2 bucket, tigre/ folder.
- *
- * Base URL is read from NEXT_PUBLIC_TIGRE_BASE_URL at build time.
- * Add that env var in Vercel → Production with the public R2 URL for the
- * interligens-static bucket (e.g. https://pub-XXXX.r2.dev or a custom domain).
+ * Tigre video manifest — interligens-static R2 bucket, TIGRE/ folder.
  *
  * Naming convention on R2:
- *   tigre/GREEN/1_GREEN_VIDEO.mp4  … 7_GREEN_VIDEO.mp4
- *   tigre/ORANGE/2_ORANGE_VIDEO.mp4 … 6_ORANGE_VIDEO.mp4
- *   tigre/RED/1_RED_VIDEO.mp4     … 6_RED_VIDEO.mp4
+ *   TIGRE/GREEN/1_GREEN_VIDEO.mp4  … 7_GREEN_VIDEO.mp4
+ *   TIGRE/ORANGE/2_ORANGE_VIDEO.mp4 … 6_ORANGE_VIDEO.mp4
+ *   TIGRE/RED/1_RED_VIDEO.mp4     … 6_RED_VIDEO.mp4
  */
 
 export type TigreTier = "GREEN" | "ORANGE" | "RED";
 
-const BASE =
-  process.env.NEXT_PUBLIC_TIGRE_BASE_URL ??
-  "https://pub-interligens.r2.dev";
+const BASE = "https://pub-bbfbc08b4f584a1a91027b0ca9b696fd.r2.dev";
 
 function urls(tier: TigreTier, indices: number[]): string[] {
   return indices.map(
-    (n) => `${BASE}/tigre/${tier}/${n}_${tier}_VIDEO.mp4`
+    (n) => `${BASE}/TIGRE/${tier}/${n}_${tier}_VIDEO.mp4`
   );
 }
 
