@@ -10,7 +10,6 @@ import TechnicalEvidence from "@/components/TechnicalEvidence";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 import CaseIntelBadge from "@/components/intelligence/CaseIntelBadge";
-import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
 import BetaNav from "@/components/beta/BetaNav";
 import WatchButton from "@/components/watch/WatchButton";
@@ -599,16 +598,6 @@ function TigerScanPageInner() {
                   </div>
                 </div>
               )}
-
-              {/* ── RETAIL VERDICT BANNER ── */}
-              <RetailVerdictBanner
-                tier={result.tier}
-                score={result.score}
-                proofs={result.proofs}
-                address={address.trim()}
-                chain={result.chain}
-                lang={locale === 'fr' ? 'fr' : 'en'}
-              />
 
               {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
               <MiniSignalRow

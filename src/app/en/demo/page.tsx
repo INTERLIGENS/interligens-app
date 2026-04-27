@@ -29,7 +29,6 @@ import type { MmRiskAssessment } from "@/lib/mm/adapter/types";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
@@ -955,18 +954,6 @@ export default function TigerScanPage() {
 
             {/* ════ RIGHT COLUMN ════ */}
             <div className="lg:col-span-7 flex flex-col gap-5">
-
-              {/* 1. DO NOT BUY — with What to do now integrated */}
-              <RetailVerdictBanner
-                tier={finalTier}
-                score={result.score}
-                proofs={result.proofs}
-                address={address.trim()}
-                chain={result.chain}
-                lang="en"
-                actions={[...finalActions]}
-                disclaimer={finalDisclaimer}
-              />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
               {addressLabel?.found && (

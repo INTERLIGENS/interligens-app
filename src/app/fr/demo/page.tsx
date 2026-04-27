@@ -4,7 +4,6 @@ import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useRef, useMemo } from "react";
-import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
@@ -870,18 +869,6 @@ export default function TigerScanPageFR() {
 
             {/* ════ RIGHT COLUMN ════ */}
             <div className="lg:col-span-7 flex flex-col gap-5">
-
-              {/* 1. DO NOT BUY — with What to do now integrated */}
-              <RetailVerdictBanner
-                tier={finalTier}
-                score={result.score}
-                proofs={result.proofs}
-                address={address.trim()}
-                chain={result.chain}
-                lang="fr"
-                actions={[...finalActions]}
-                disclaimer={finalDisclaimer}
-              />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
               {addressLabel?.found && (
