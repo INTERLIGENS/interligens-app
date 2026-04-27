@@ -29,7 +29,6 @@ import type { MmRiskAssessment } from "@/lib/mm/adapter/types";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
@@ -44,6 +43,7 @@ import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
 import ShillToExitTimeline from "@/components/kol/ShillToExitTimeline";
 import type { ShillToExitResult } from "@/lib/shill-to-exit/engine";
 import DemoFeedbackButton from "@/components/demo/DemoFeedbackButton";
+import TigreVideoPlayer from "@/components/scan/TigreVideoPlayer";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -489,6 +489,7 @@ export default function TigerScanPage() {
       const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
       if (isEvm || isSol) {
         fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}`, {
+          cache: "no-store",
           signal: AbortSignal.timeout(6000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -499,6 +500,7 @@ export default function TigerScanPage() {
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
+      cache: "no-store",
       signal: AbortSignal.timeout(5000),
     })
       .then(r => r.ok ? r.json() : null)
@@ -508,6 +510,7 @@ export default function TigerScanPage() {
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
     if (chain === "SOL") {
       fetch(`/api/scan/cluster?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+        cache: "no-store",
         signal: AbortSignal.timeout(4000),
       })
         .then(r => r.ok ? r.json() : null)
@@ -516,6 +519,7 @@ export default function TigerScanPage() {
 
       // Fire MM score fetch in parallel (non-blocking, 4.5s timeout)
       fetch(`/api/scan/mm?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+        cache: "no-store",
         signal: AbortSignal.timeout(4500),
       })
         .then(r => r.ok ? r.json() : null)
@@ -534,6 +538,7 @@ export default function TigerScanPage() {
         chain === "BSC" ? "bsc" : null;
       if (chainKey) {
         fetch(`/api/scan/mm-risk?address=${encodeURIComponent(address.trim())}&chain=${chainKey}`, {
+          cache: "no-store",
           signal: AbortSignal.timeout(11000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -611,11 +616,11 @@ export default function TigerScanPage() {
       setAddressLabel(null)
       setCorrobData(null)
       const trimmed = address.trim()
-      fetch('/api/scan/label?address=' + trimmed)
+      fetch('/api/scan/label?address=' + trimmed, { cache: "no-store" })
         .then(r => r.json())
         .then(d => { if (d.found) setAddressLabel(d) })
         .catch(() => {})
-      fetch('/api/scan/corroboration?address=' + trimmed)
+      fetch('/api/scan/corroboration?address=' + trimmed, { cache: "no-store" })
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
@@ -908,6 +913,22 @@ export default function TigerScanPage() {
               {/* 1. TigerScore ring */}
               <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
+              {/* Token name */}
+              {(() => {
+                const rs = result.rawSummary as any;
+                const sym = rs?.symbol ?? rs?.meta?.symbol ?? rs?.content?.metadata?.symbol ?? null;
+                const nm  = rs?.name   ?? rs?.meta?.name   ?? rs?.content?.metadata?.name   ?? null;
+                if (!sym && !nm) return null;
+                return (
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "#CCCCCC", letterSpacing: "0.05em", marginTop: 4, marginBottom: 0 }}>
+                    {nm ? `${nm}${sym ? ` (${sym})` : ""}` : sym}
+                  </p>
+                );
+              })()}
+
+              {/* Tigre video */}
+              <TigreVideoPlayer tier={finalTier} />
+
               {/* 2. AVOID — verdict collé au score */}
               <h2
                 className="text-5xl font-black uppercase italic tracking-tighter mt-0 mb-1"
@@ -950,18 +971,6 @@ export default function TigerScanPage() {
 
             {/* ════ RIGHT COLUMN ════ */}
             <div className="lg:col-span-7 flex flex-col gap-5">
-
-              {/* 1. DO NOT BUY — with What to do now integrated */}
-              <RetailVerdictBanner
-                tier={finalTier}
-                score={result.score}
-                proofs={result.proofs}
-                address={address.trim()}
-                chain={result.chain}
-                lang="en"
-                actions={[...finalActions]}
-                disclaimer={finalDisclaimer}
-              />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
               {addressLabel?.found && (
