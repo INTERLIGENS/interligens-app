@@ -1052,7 +1052,7 @@ export default function TigerScanPage() {
                   <button
                     onClick={async () => {
                       if (!result) return;
-                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en&mock=1`);
+                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en`);
                       if (!res.ok) return;
                       const blob = await res.blob();
                       const url  = URL.createObjectURL(blob);
