@@ -4,6 +4,7 @@ import React, { useState, useCallback } from "react";
 import ScoreCard from "@/components/scan/ScoreCard";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
 import type { PublicScoreResponse } from "@/lib/publicScore/schema";
+import AdvancedSignals from "@/components/scan/AdvancedSignals";
 
 type FeedbackType = "false_positive" | "missing_info" | "scam_report";
 
