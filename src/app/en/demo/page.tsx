@@ -29,10 +29,12 @@ import type { MmRiskAssessment } from "@/lib/mm/adapter/types";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import FreshnessStrip from "@/components/scan/FreshnessStrip";
+import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
@@ -43,7 +45,6 @@ import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
 import ShillToExitTimeline from "@/components/kol/ShillToExitTimeline";
 import type { ShillToExitResult } from "@/lib/shill-to-exit/engine";
 import DemoFeedbackButton from "@/components/demo/DemoFeedbackButton";
-import TigreVideoPlayer from "@/components/scan/TigreVideoPlayer";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -301,7 +302,7 @@ export default function TigerScanPage() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode = null;
+  const mockMode = selectedScenario;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -347,27 +348,32 @@ export default function TigerScanPage() {
   } | null>(null);
 
   const DEMO_CHIPS = [
-    { label: "✅ Safe",    addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
-    { label: "⚠️ Warning", addr: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
-    { label: "🚨 Scam",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+    { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
+    { label: "⚠️ Warning", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
+    { label: "🚨 Scam", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
   ];
 
-  const REAL_CHIPS: Record<DemoScenario, string> = {
-    green:  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
-    orange: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-    red:    "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-  };
+  // Auto-trigger on mount if ?mock= param present
+  React.useEffect(() => {
+    if (selectedScenario) {
+      const preset = DEMO_PRESETS[mockChain][selectedScenario];
+      setAddress(preset.addr);
+      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const storyline = null;
+  const storyline = selectedScenario ? DEMO_PRESETS[mockChain][selectedScenario].storyline.en : null;
 
   const handleSelectScenario = (scenario: DemoScenario) => {
-    const addr = REAL_CHIPS[scenario];
+    const preset = DEMO_PRESETS[mockChain][scenario];
     setSelectedScenario(scenario);
-    setAddress(addr);
+    setAddress(preset.addr);
+    // Update URL without reload
     const url = new URL(window.location.href);
-    url.searchParams.delete("mock");
+    url.searchParams.set("mock", scenario);
     window.history.replaceState({}, "", url.toString());
-    runScan(addr, undefined);
+    runScan(preset.addr, scenario);
   };
 
   React.useEffect(() => {
@@ -489,7 +495,6 @@ export default function TigerScanPage() {
       const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
       if (isEvm || isSol) {
         fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}`, {
-          cache: "no-store",
           signal: AbortSignal.timeout(6000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -500,7 +505,6 @@ export default function TigerScanPage() {
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
-      cache: "no-store",
       signal: AbortSignal.timeout(5000),
     })
       .then(r => r.ok ? r.json() : null)
@@ -510,7 +514,6 @@ export default function TigerScanPage() {
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
     if (chain === "SOL") {
       fetch(`/api/scan/cluster?address=${encodeURIComponent(address.trim())}&chain=sol`, {
-        cache: "no-store",
         signal: AbortSignal.timeout(4000),
       })
         .then(r => r.ok ? r.json() : null)
@@ -519,7 +522,6 @@ export default function TigerScanPage() {
 
       // Fire MM score fetch in parallel (non-blocking, 4.5s timeout)
       fetch(`/api/scan/mm?address=${encodeURIComponent(address.trim())}&chain=sol`, {
-        cache: "no-store",
         signal: AbortSignal.timeout(4500),
       })
         .then(r => r.ok ? r.json() : null)
@@ -538,7 +540,6 @@ export default function TigerScanPage() {
         chain === "BSC" ? "bsc" : null;
       if (chainKey) {
         fetch(`/api/scan/mm-risk?address=${encodeURIComponent(address.trim())}&chain=${chainKey}`, {
-          cache: "no-store",
           signal: AbortSignal.timeout(11000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -616,11 +617,11 @@ export default function TigerScanPage() {
       setAddressLabel(null)
       setCorrobData(null)
       const trimmed = address.trim()
-      fetch('/api/scan/label?address=' + trimmed, { cache: "no-store" })
+      fetch('/api/scan/label?address=' + trimmed)
         .then(r => r.json())
         .then(d => { if (d.found) setAddressLabel(d) })
         .catch(() => {})
-      fetch('/api/scan/corroboration?address=' + trimmed, { cache: "no-store" })
+      fetch('/api/scan/corroboration?address=' + trimmed)
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
@@ -913,22 +914,6 @@ export default function TigerScanPage() {
               {/* 1. TigerScore ring */}
               <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
-              {/* Token name */}
-              {(() => {
-                const rs = result.rawSummary as any;
-                const sym = rs?.symbol ?? rs?.meta?.symbol ?? rs?.content?.metadata?.symbol ?? null;
-                const nm  = rs?.name   ?? rs?.meta?.name   ?? rs?.content?.metadata?.name   ?? null;
-                if (!sym && !nm) return null;
-                return (
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "#CCCCCC", letterSpacing: "0.05em", marginTop: 4, marginBottom: 0 }}>
-                    {nm ? `${nm}${sym ? ` (${sym})` : ""}` : sym}
-                  </p>
-                );
-              })()}
-
-              {/* Tigre video */}
-              <TigreVideoPlayer tier={finalTier} />
-
               {/* 2. AVOID — verdict collé au score */}
               <h2
                 className="text-5xl font-black uppercase italic tracking-tighter mt-0 mb-1"
@@ -971,6 +956,18 @@ export default function TigerScanPage() {
 
             {/* ════ RIGHT COLUMN ════ */}
             <div className="lg:col-span-7 flex flex-col gap-5">
+
+              {/* 1. DO NOT BUY — with What to do now integrated */}
+              <RetailVerdictBanner
+                tier={finalTier}
+                score={result.score}
+                proofs={result.proofs}
+                address={address.trim()}
+                chain={result.chain}
+                lang="en"
+                actions={[...finalActions]}
+                disclaimer={finalDisclaimer}
+              />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
               {addressLabel?.found && (
@@ -1055,7 +1052,7 @@ export default function TigerScanPage() {
                   <button
                     onClick={async () => {
                       if (!result) return;
-                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en`);
+                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en&mock=1`);
                       if (!res.ok) return;
                       const blob = await res.blob();
                       const url  = URL.createObjectURL(blob);
@@ -1130,6 +1127,11 @@ export default function TigerScanPage() {
                   locale="en"
                   showScore={false}
                 />
+              )}
+
+              {/* ── NARRATIVE ── */}
+              {narrativeResult && (
+                <NarrativeBlock result={narrativeResult} lang="en" />
               )}
 
               {/* ── PROMOTION INTELLIGENCE — KOL cross-reference (SOL only) ── */}

@@ -24,6 +24,7 @@ import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import FreshnessStrip from "@/components/scan/FreshnessStrip";
+import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
@@ -299,7 +300,7 @@ export default function TigerScanPageFR() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode = null;
+  const mockMode = selectedScenario;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -338,27 +339,30 @@ export default function TigerScanPageFR() {
   const [tickers, setTickers] = React.useState<{ok:boolean,btc?:{price_usd:number,change_24h_pct:number},eth?:{price_usd:number,change_24h_pct:number},sol?:{price_usd:number,change_24h_pct:number}}|null>(null);
 
   const DEMO_CHIPS = [
-    { label: "✅ Sûr",       addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
-    { label: "⚠️ Attention", addr: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
-    { label: "🚨 Arnaque",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+    { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
+    { label: "⚠️ Attention", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
+    { label: "🚨 Arnaque", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
   ];
 
-  const REAL_CHIPS: Record<DemoScenario, string> = {
-    green:  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
-    orange: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-    red:    "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
-  };
+  React.useEffect(() => {
+    if (selectedScenario) {
+      const preset = DEMO_PRESETS[mockChain][selectedScenario];
+      setAddress(preset.addr);
+      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const storyline = null;
+  const storyline = selectedScenario ? DEMO_PRESETS[mockChain][selectedScenario].storyline.fr : null;
 
   const handleSelectScenario = (scenario: DemoScenario) => {
-    const addr = REAL_CHIPS[scenario];
+    const preset = DEMO_PRESETS[mockChain][scenario];
     setSelectedScenario(scenario);
-    setAddress(addr);
+    setAddress(preset.addr);
     const url = new URL(window.location.href);
-    url.searchParams.delete("mock");
+    url.searchParams.set("mock", scenario);
     window.history.replaceState({}, "", url.toString());
-    runScan(addr, undefined);
+    runScan(preset.addr, scenario);
   };
 
   React.useEffect(() => {
@@ -937,7 +941,7 @@ export default function TigerScanPageFR() {
                   <button
                     onClick={async () => {
                       if (!result) return;
-                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=fr`);
+                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=fr&mock=1`);
                       if (!res.ok) return;
                       const blob = await res.blob();
                       const url  = URL.createObjectURL(blob);
@@ -1012,6 +1016,11 @@ export default function TigerScanPageFR() {
                   locale="fr"
                   showScore={false}
                 />
+              )}
+
+              {/* ── NARRATIVE ── */}
+              {narrativeResult && (
+                <NarrativeBlock result={narrativeResult} lang="fr" />
               )}
 
               {/* ── PROMOTION INTELLIGENCE — vérification KOL (SOL uniquement) ── */}

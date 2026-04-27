@@ -528,7 +528,7 @@ function TigerScanPageInner() {
               <button
                 onClick={async () => {
                   if (!result) return;
-                  const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en`);
+                  const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=en&mock=1`);
                   if (!res.ok) return;
                   const blob = await res.blob();
                   const url  = URL.createObjectURL(blob);
@@ -545,7 +545,7 @@ function TigerScanPageInner() {
               <button
                   onClick={async () => {
                     if (!result) return;
-                    const res = await fetch(`/api/casefile/public?mint=${encodeURIComponent(address.trim())}`);
+                    const res = await fetch(`/api/report/casefile?mint=${encodeURIComponent(address.trim())}&mock=1`);
                     if (!res.ok) return;
                     const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
