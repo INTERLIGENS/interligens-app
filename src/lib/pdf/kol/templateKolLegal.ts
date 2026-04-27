@@ -31,7 +31,7 @@ export function renderKolPdfLegal(kol: any): string {
   const evidences = kol.evidences ?? []
   const wallets = kol.kolWallets ?? []
   const cases = kol.kolCases ?? []
-  const totalDocumented = evidences.reduce((s: number, e: any) => s + (e.amountUsd ?? 0), 0)
+  const totalDocumented = kol.totalDocumented ?? evidences.reduce((s: number, e: any) => s + (e.amountUsd ?? 0), 0)
   const exitEv = evidences.find((e: any) => e.type === "coordinated_exit")
   const evmEv = evidences.find((e: any) => e.type === "evm_wallet")
   const cashouts = evidences.filter((e: any) => e.type === "onchain_cashout")
