@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from "react";
 import ScoreCard from "@/components/scan/ScoreCard";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
+import TigreVideoPlayer from "@/components/scan/TigreVideoPlayer";
 import type { PublicScoreResponse } from "@/lib/publicScore/schema";
 
 type FeedbackType = "false_positive" | "missing_info" | "scam_report";
@@ -207,6 +208,9 @@ export default function ScanPage() {
       {result && (
         <div style={{ width: "100%", maxWidth: 520, marginBottom: 32 }}>
           <ScoreCard data={result} locale="en" />
+
+          {/* Tigre video — random clip matching the verdict tier */}
+          <TigreVideoPlayer tier={result.verdict} />
 
           {/* Legal disclaimer */}
           <div style={{ fontSize: 10, color: "#444", textAlign: "center", marginTop: 8, fontFamily: "monospace", letterSpacing: "0.05em" }}>
