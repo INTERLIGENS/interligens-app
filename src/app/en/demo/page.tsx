@@ -34,7 +34,6 @@ import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import FreshnessStrip from "@/components/scan/FreshnessStrip";
-import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
@@ -1127,11 +1126,6 @@ export default function TigerScanPage() {
                   locale="en"
                   showScore={false}
                 />
-              )}
-
-              {/* ── NARRATIVE ── */}
-              {narrativeResult && (
-                <NarrativeBlock result={narrativeResult} lang="en" />
               )}
 
               {/* ── PROMOTION INTELLIGENCE — KOL cross-reference (SOL only) ── */}
