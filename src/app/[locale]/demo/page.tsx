@@ -8,6 +8,7 @@ import TigerRevealCard from "@/components/TigerRevealCard";
 import WhatToDoNow from "@/components/WhatToDoNow";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
 import MiniSignalRow from "@/components/scan/MiniSignalRow";
+import { ExplainabilityBlock } from "@/components/scan/ExplainabilityBlock";
 import { OsintSectionClient } from "@/components/osint/OsintSectionClient";
 import CaseIntelBadge from "@/components/intelligence/CaseIntelBadge";
 import { ExplanationLayer } from "@/components/explanation/ExplanationLayer";
@@ -608,6 +609,19 @@ function TigerScanPageInner() {
               />
 
               <WhatToDoNow lang="en" tier={result.tier} show={true} />
+
+              {/* ── EXPLAINABILITY — evidence-tier badges per driver ── */}
+              {result?.rawSummary?.tiger_drivers?.length > 0 && (
+                <ExplainabilityBlock
+                  score={result.score}
+                  tier={result.tier as import("@/lib/tigerscore/engine").TigerTier}
+                  confidence={result.confidence as import("@/lib/tigerscore/confidence").ConfidenceLevel}
+                  topReasons={result.rawSummary.tiger_drivers}
+                  version="1.0.0"
+                  locale={locale === "fr" ? "fr" : "en"}
+                  showScore={false}
+                />
+              )}
 
               <MarketWeather
                 lang="en"
