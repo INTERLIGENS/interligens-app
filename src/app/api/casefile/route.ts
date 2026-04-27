@@ -185,14 +185,11 @@ function computeScore(claims: any[], linking: any[], onChain: any, mint: string)
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
-  // Retail entry points (KOL page CaseFile button) pass ?mock=1 and expect
-  // the case narrative without an ADMIN_TOKEN. Admin callers (curl, ops)
-  // still go through checkAuth. Same pattern as /api/report/v2.
-  const isMock = req.nextUrl.searchParams.get("mock") === "1";
-  if (!isMock) {
-    const _auth = await checkAuth(req);
-    if (!_auth.authorized) return _auth.response!;
-  }
+  // SEC P0 — auth is ALWAYS required. The previous ?mock=1 retail
+  // bypass allowed unauth'd callers to pull the full casefile JSON
+  // (claims, notable wallets, wash-trading signals). Gate closed.
+  const _auth = await checkAuth(req);
+  if (!_auth.authorized) return _auth.response!;
 
   // Accept either ?mint= (canonical) or ?handle= (KOL page CaseFile button).
   // The handle→mint resolution lives in @/lib/kol/handleToMint so there is
