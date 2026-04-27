@@ -34,11 +34,9 @@ import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
 import FreshnessStrip from "@/components/scan/FreshnessStrip";
-import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
-import { ExplainabilityBlock } from "@/components/scan/ExplainabilityBlock";
 import type { FreshnessResult } from "@/lib/freshness/engine";
 import type { NarrativeResult } from "@/lib/narrative/generator";
 import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
@@ -1114,24 +1112,6 @@ export default function TigerScanPage() {
               {/* ── OFF-CHAIN CREDIBILITY ── */}
               {offChainResult && (
                 <OffChainCredibilityBlock result={offChainResult} lang="en" />
-              )}
-
-              {/* ── EXPLAINABILITY — evidence-tier badges per driver ── */}
-              {result?.rawSummary?.tiger_drivers?.length > 0 && (
-                <ExplainabilityBlock
-                  score={finalScore}
-                  tier={finalTier as import("@/lib/tigerscore/engine").TigerTier}
-                  confidence={result.confidence as import("@/lib/tigerscore/confidence").ConfidenceLevel}
-                  topReasons={result.rawSummary.tiger_drivers}
-                  version="1.0.0"
-                  locale="en"
-                  showScore={false}
-                />
-              )}
-
-              {/* ── NARRATIVE ── */}
-              {narrativeResult && (
-                <NarrativeBlock result={narrativeResult} lang="en" />
               )}
 
               {/* ── PROMOTION INTELLIGENCE — KOL cross-reference (SOL only) ── */}
