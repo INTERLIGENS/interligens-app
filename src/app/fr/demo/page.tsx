@@ -28,7 +28,6 @@ import NarrativeBlock from "@/components/scan/NarrativeBlock";
 import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
 import WatchButton from "@/components/scan/WatchButton";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
-import { ExplainabilityBlock } from "@/components/scan/ExplainabilityBlock";
 import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
 import type { FreshnessResult } from "@/lib/freshness/engine";
 import type { NarrativeResult } from "@/lib/narrative/generator";
@@ -1003,19 +1002,6 @@ export default function TigerScanPageFR() {
               {/* ── OFF-CHAIN CREDIBILITY ── */}
               {offChainResult && (
                 <OffChainCredibilityBlock result={offChainResult} lang="fr" />
-              )}
-
-              {/* ── EXPLAINABILITY — evidence-tier badges per driver ── */}
-              {result?.rawSummary?.tiger_drivers?.length > 0 && (
-                <ExplainabilityBlock
-                  score={finalScore}
-                  tier={finalTier as import("@/lib/tigerscore/engine").TigerTier}
-                  confidence={result.confidence as import("@/lib/tigerscore/confidence").ConfidenceLevel}
-                  topReasons={result.rawSummary.tiger_drivers}
-                  version="1.0.0"
-                  locale="fr"
-                  showScore={false}
-                />
               )}
 
               {/* ── NARRATIVE ── */}
