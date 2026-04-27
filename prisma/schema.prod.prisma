@@ -3193,3 +3193,949 @@ model WatcherDigest {
   @@index([emailStatus, createdAt(sort: Desc)])
   @@map("WatcherDigest")
 }
+
+// Retail Vision — additive models (feat/retail-vision)
+// See MIGRATION_RETAILVISION.md for raw SQL and decisions.
+// =========================================================================
+
+model WalletFundingEdge {
+  id               String   @id @default(cuid())
+  chain            String
+  fromWalletId     String?
+  toWalletId       String
+  fromAddress      String
+  toAddress        String
+  source           String
+  observedAt       DateTime
+  confidence       Int      @default(60)
+  projectTokenMint String?
+  isProjectLinked  Boolean  @default(false)
+  raw              Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  fromWallet        KolWallet?            @relation("FundingEdgeFrom", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWallet          KolWallet             @relation("FundingEdgeTo", fields: [toWalletId], references: [id], onDelete: Cascade)
+  tokenInvolvements KolTokenInvolvement[]
+
+  @@index([toWalletId, observedAt])
+  @@index([chain, toAddress])
+  @@index([projectTokenMint, chain])
+}
+
+model KolPromotionMention {
+  id             String   @id @default(cuid())
+  kolHandle      String
+  walletId       String?
+  chain          String
+  tokenMint      String
+  tokenSymbol    String?
+  sourcePlatform String
+  sourcePostId   String
+  sourceUrl      String?
+  postedAt       DateTime
+  contentSnippet String?
+  watcherRunId   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  kol    KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+  wallet KolWallet? @relation(fields: [walletId], references: [id], onDelete: SetNull)
+
+  @@unique([sourcePlatform, sourcePostId])
+  @@index([kolHandle, postedAt])
+  @@index([chain, tokenMint, postedAt])
+}
+
+model TokenLaunchMetric {
+  id                 String    @id @default(cuid())
+  chain              String
+  tokenMint          String
+  launchAt           DateTime?
+  totalSupply        Decimal?  @db.Decimal(38, 0)
+  top3Pct            Decimal?  @db.Decimal(7, 4)
+  top10Pct           Decimal?  @db.Decimal(7, 4)
+  holderCount        Int?
+  concentrationScore Int?
+  source             String
+  computedAt         DateTime  @default(now())
+  raw                Json?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tokenInvolvements KolTokenInvolvement[]
+
+  @@unique([chain, tokenMint])
+  @@index([chain, concentrationScore])
+}
+
+model KolTokenInvolvement {
+  id                    String    @id @default(cuid())
+  kolHandle             String
+  walletId              String?
+  chain                 String
+  tokenMint             String
+  firstPromotionAt      DateTime?
+  firstBuyAt            DateTime?
+  firstSellAt           DateTime?
+  avgDumpDelayMinutes   Int?
+  soldPct               Decimal?  @db.Decimal(7, 4)
+  proceedsUsd           Decimal?  @db.Decimal(20, 2)
+  retailLossEstimateUsd Decimal?  @db.Decimal(20, 2)
+  isPromoted            Boolean   @default(false)
+  isFundedByProject     Boolean   @default(false)
+  isFrontRun            Boolean   @default(false)
+  projectFundingEdgeId  String?
+  launchMetricId        String?
+  lastComputedAt        DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  kol                KolProfile         @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
+  wallet             KolWallet?         @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  projectFundingEdge WalletFundingEdge? @relation(fields: [projectFundingEdgeId], references: [id], onDelete: SetNull)
+  launchMetric       TokenLaunchMetric? @relation(fields: [launchMetricId], references: [id], onDelete: SetNull)
+
+  @@unique([kolHandle, chain, tokenMint])
+  @@index([chain, tokenMint])
+  @@index([kolHandle, lastComputedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INVESTIGATORS VAULT — Case Workspace (client-side encrypted)
+// Naming: Vault* prefix to avoid collisions with existing CaseFile /
+// InvestigatorAuditLog models. Auth pivots on InvestigatorAccess (existing).
+// All content fields are opaque ciphertext produced client-side.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum VaultVisibility {
+  PRIVATE
+  SEMI_PUBLIC
+  PUBLIC
+}
+
+enum VaultCaseStatus {
+  PRIVATE
+  SHARED_INTERNAL
+  SUBMITTED
+  ARCHIVED
+}
+
+enum VaultEntityType {
+  WALLET
+  TX_HASH
+  HANDLE
+  URL
+  DOMAIN
+  ALIAS
+  EMAIL
+  IP
+  CONTRACT
+  OTHER
+}
+
+enum VaultParseStatus {
+  PENDING
+  PARSED
+  PARTIAL
+  MANUAL_REQUIRED
+  FAILED
+}
+
+model VaultInvite {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  email     String
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+}
+
+model VaultProfile {
+  id                   String             @id @default(cuid())
+  investigatorAccessId String             @unique
+  access               InvestigatorAccess @relation(fields: [investigatorAccessId], references: [id])
+  handle               String             @unique
+  displayName          String?
+  bio                  String?
+  avatarUrl            String?
+  languages            String[]
+  specialties          String[]
+  coverageZones        String[]
+  websiteUrl           String?
+  twitterHandle        String?
+  telegramHandle       String?
+  contactEmail         String?
+  visibility           VaultVisibility    @default(PRIVATE)
+  isFeatured           Boolean            @default(false)
+  isVerified           Boolean            @default(false)
+  badges               String[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  nda       VaultNdaAcceptance?
+  workspace VaultWorkspace?
+  audits    VaultAuditLog[]
+}
+
+model VaultNdaAcceptance {
+  id                   String             @id @default(cuid())
+  investigatorAccessId String             @unique
+  access               InvestigatorAccess @relation(fields: [investigatorAccessId], references: [id])
+  profileId            String?            @unique
+  profile              VaultProfile?      @relation(fields: [profileId], references: [id])
+  ndaVersion           String
+  ndaDocHash           String // SHA-256 hex digest
+  signerName           String
+  signedAt             DateTime           @default(now())
+  ipAddress            String?
+}
+
+model VaultWorkspace {
+  id            String       @id @default(cuid())
+  profileId     String       @unique
+  profile       VaultProfile @relation(fields: [profileId], references: [id])
+  kdfSalt       String // hex 32 chars = 16 bytes
+  kdfAlgo       String       @default("PBKDF2-SHA256")
+  kdfIterations Int          @default(310000)
+  encMode       String       @default("CLIENT_SIDE_AES256GCM")
+  assistantTokensUsed  Int   @default(0)
+  assistantTokensLimit Int   @default(100000)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  cases         VaultCase[]
+  audits        VaultAuditLog[]
+  networkGraphs VaultNetworkGraph[]
+}
+
+model VaultCase {
+  id          String          @id @default(cuid())
+  workspaceId String
+  workspace   VaultWorkspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  titleEnc    String
+  titleIv     String
+  tagsEnc     String
+  tagsIv      String
+  status      VaultCaseStatus @default(PRIVATE)
+  caseTemplate String?        @default("blank")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  archivedAt  DateTime?
+
+  entities          VaultCaseEntity[]
+  files             VaultCaseFile[]
+  notes             VaultCaseNote[]
+  timeline          VaultCaseTimeline[]
+  hypotheses        VaultHypothesis[]
+  timelineEvents    VaultTimelineEvent[]
+  publishCandidates VaultPublishCandidate[]
+
+  @@index([workspaceId])
+  @@index([status])
+}
+
+enum VaultHypothesisStatus {
+  OPEN
+  CONFIRMED
+  REFUTED
+  NEEDS_VERIFICATION
+}
+
+model VaultHypothesis {
+  id                  String                @id @default(cuid())
+  caseId              String
+  case                VaultCase             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title               String
+  status              VaultHypothesisStatus @default(OPEN)
+  confidence          Int                   @default(50)
+  supportingEntityIds String[]
+  notes               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([caseId])
+}
+
+model VaultTimelineEvent {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  eventDate   DateTime
+  entityIds   String[]
+  eventType   String    @default("MANUAL")
+  createdAt   DateTime  @default(now())
+
+  @@index([caseId])
+  @@index([eventDate])
+}
+
+model VaultPublishCandidate {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entityIds   String[]
+  summary     String
+  status      String    @default("PENDING")
+  submittedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+  reviewNote  String?
+
+  @@index([caseId])
+  @@index([status])
+}
+
+model VaultFeedback {
+  id          String   @id @default(cuid())
+  workspaceId String
+  caseId      String?
+  handle      String
+  message     String
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+}
+
+model VaultCaseShare {
+  id                 String   @id @default(cuid())
+  caseId             String
+  token              String   @unique
+  expiresAt          DateTime
+  workspaceId        String
+  entitySnapshot     Json
+  titleSnapshot      String
+  hypothesisSnapshot Json?
+  createdAt          DateTime @default(now())
+
+  @@index([token])
+  @@index([caseId])
+}
+
+model VaultCaseEntity {
+  id               String          @id @default(cuid())
+  caseId           String
+  case             VaultCase       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  type             VaultEntityType
+  value            String
+  label            String?
+  confidence       Float?
+  extractionMethod String?
+  sourceFileId     String?
+  tigerScore       Int?
+  tigerVerdict     String?
+  enrichedAt       DateTime?
+  createdAt        DateTime        @default(now())
+
+  @@unique([caseId, type, value])
+  @@index([caseId])
+  @@index([type, value])
+}
+
+model VaultCaseFile {
+  id            String           @id @default(cuid())
+  caseId        String
+  case          VaultCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  filenameEnc   String
+  filenameIv    String
+  mimeType      String
+  sizeBytes     Int
+  uploadedAt    DateTime         @default(now())
+  r2Key         String           @unique // INTERNAL ONLY — never in API responses
+  r2Bucket      String           @default("interligens-vaults")
+  parseStatus   VaultParseStatus @default(PENDING)
+  parsedAt      DateTime?
+  entitiesFound Int              @default(0)
+  parseMode     String?
+  parseError    String?
+
+  @@index([caseId])
+}
+
+model VaultCaseNote {
+  id         String    @id @default(cuid())
+  caseId     String
+  case       VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  contentEnc String // opaque ciphertext — server never decrypts
+  contentIv  String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([caseId])
+}
+
+model VaultCaseTimeline {
+  id        String    @id @default(cuid())
+  caseId    String
+  case      VaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  eventType String
+  payload   Json?
+  actor     String
+  createdAt DateTime  @default(now())
+
+  @@index([caseId])
+}
+
+model VaultAuditLog {
+  id                   String              @id @default(cuid())
+  investigatorAccessId String?
+  access               InvestigatorAccess? @relation(fields: [investigatorAccessId], references: [id])
+  profileId            String?
+  profile              VaultProfile?       @relation(fields: [profileId], references: [id])
+  workspaceId          String?
+  workspace            VaultWorkspace?     @relation(fields: [workspaceId], references: [id])
+  caseId               String?
+  action               String
+  actor                String
+  ipAddress            String?
+  userAgent            String?
+  metadata             Json?
+  createdAt            DateTime            @default(now())
+
+  @@index([investigatorAccessId])
+  @@index([profileId])
+  @@index([workspaceId])
+  @@index([caseId])
+  @@index([action])
+}
+
+// ── User watch list (post-scan continuous tracking) ──────────────────────────
+// Users who scan an address and want to be notified of score/tier/status
+// changes can opt in via POST /api/watch. The daily cron re-scans active rows
+// and emits WatchAlert records when a material change is detected.
+//
+// NOTE: `ownerAccessId` stores the InvestigatorAccess.id (not an email) — the
+// beta auth system is code-based and has no email field on session.
+
+model WatchedAddress {
+  id                 String   @id @default(cuid())
+  address            String
+  chain              String   // "solana" | "ethereum" | "base" | "arbitrum"
+  label              String?
+  ownerAccessId      String
+  lastScore          Int?
+  lastTier           String?
+  lastGovernedStatus String?
+  lastScannedAt      DateTime?
+  alertOnChange      Boolean  @default(true)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  alerts WatchAlert[]
+
+  @@unique([address, chain, ownerAccessId])
+  @@index([ownerAccessId])
+  @@index([active, lastScannedAt])
+}
+
+model WatchAlert {
+  id               String         @id @default(cuid())
+  watchedAddressId String
+  watchedAddress   WatchedAddress @relation(fields: [watchedAddressId], references: [id], onDelete: Cascade)
+  previousScore    Int?
+  newScore         Int
+  previousTier     String?
+  newTier          String
+  changeType       String         // "tier_change" | "score_change" | "governed_status_change"
+  changeDetail     String?
+  notifiedAt       DateTime?
+  emailSent        Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+
+  @@index([watchedAddressId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRUSTED INVESTIGATOR PROGRAM — additive models
+// CC-DECISION: InvestigatorAuditLog already exists for login/session events
+// (investigatorAccessId + eventType string). To avoid breaking that use, the
+// program audit trail lives in InvestigatorProgramAuditLog with a typed enum.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum InvestigatorVerificationStatus {
+  PENDING
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  VERIFIED
+  TRUSTED
+  SUSPENDED
+  REVOKED
+}
+
+enum InvestigatorAccessLevel {
+  APPLICANT
+  BETA
+  VERIFIED
+  TRUSTED_CONTRIBUTOR
+}
+
+enum InvestigatorAccessState {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum InvestigatorApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVIEW
+}
+
+enum InvestigatorAuditEvent {
+  INVESTIGATOR_APPLICATION_SUBMITTED
+  INVESTIGATOR_APPLICATION_APPROVED
+  INVESTIGATOR_APPLICATION_REJECTED
+  INVESTIGATOR_APPLICATION_NEEDS_REVIEW
+  NDA_SIGNED
+  BETA_TERMS_ACCEPTED
+  INVESTIGATOR_IDENTITY_COMPLETED
+  WORKSPACE_ACTIVATED
+  ACCESS_SUSPENDED
+  ACCESS_REVOKED
+  ACCESS_RESTORED
+  TRUSTED_CONTRIBUTOR_GRANTED
+  TRUSTED_CONTRIBUTOR_REVOKED
+}
+
+enum InvestigatorActivityEvent {
+  LOGIN
+  WORKSPACE_OPENED
+  CASE_CREATED
+  CASE_OPENED
+  CASE_UPDATED
+  ENTITY_ADDED
+  ENTITY_COUNT_SNAPSHOT
+  EXPORT_TRIGGERED
+  SHARE_ACTIVATED
+  SHARE_DEACTIVATED
+  PUBLISH_SUBMITTED
+  ASSISTANT_QUERIED
+  IDENTITY_UPDATED
+  SETTINGS_UPDATED
+}
+
+model InvestigatorProfile {
+  id        String @id @default(cuid())
+  handle    String @unique
+  accessId  String? @unique
+
+  // Identity (filled after onboarding)
+  legalFirstName   String?
+  legalLastName    String?
+  primaryEmail     String?
+  country          String?
+  organizationName String?
+
+  // State machine
+  verificationStatus InvestigatorVerificationStatus @default(PENDING)
+  accessLevel        InvestigatorAccessLevel        @default(APPLICANT)
+  accessState        InvestigatorAccessState        @default(ACTIVE)
+
+  // Eligibility flags
+  isEligibleForPublishing Boolean @default(false)
+  isEligibleForSharing    Boolean @default(false)
+  substantiveContribution Boolean @default(false)
+
+  // Admin trust operations
+  internalReviewNote String?
+  approvedAt         DateTime?
+  approvedBy         String?
+  suspendedAt        DateTime?
+  revokedAt          DateTime?
+  suspensionReason   String?
+  revokedReason      String?
+
+  workspaceActivatedAt DateTime?
+  lastActiveAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  ndaAcceptance       InvestigatorNdaAcceptance?
+  betaTermsAcceptance InvestigatorBetaTermsAcceptance?
+  programAuditLogs    InvestigatorProgramAuditLog[]
+  activityLogs        InvestigatorActivityLog[]
+
+  @@index([accessState])
+  @@index([accessLevel])
+  @@index([verificationStatus])
+}
+
+model InvestigatorApplication {
+  id           String                        @id @default(cuid())
+  handle       String
+  displayName  String?
+  email        String
+  country      String
+  languages    String[]
+  specialties  String[]
+  publicLinks  Json
+  background   String
+  motivation   String
+  status       InvestigatorApplicationStatus @default(PENDING)
+  submittedAt  DateTime                      @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  internalNote String?
+
+  @@index([status])
+  @@index([email])
+}
+
+model InvestigatorNdaAcceptance {
+  id          String               @id @default(cuid())
+  profileId   String?              @unique
+  profile     InvestigatorProfile? @relation(fields: [profileId], references: [id])
+  betaCodeId  String?              // free ref, no FK
+  signerName  String
+  ndaVersion  String
+  ndaLanguage String
+  ndaDocHash  String
+  accepted    Boolean              @default(true)
+  signedAt    DateTime             @default(now())
+  ipAddress   String?
+
+  @@index([betaCodeId])
+}
+
+model InvestigatorBetaTermsAcceptance {
+  id            String               @id @default(cuid())
+  profileId     String?              @unique
+  profile       InvestigatorProfile? @relation(fields: [profileId], references: [id])
+  betaCodeId    String?              // free ref, no FK
+  signerName    String
+  termsVersion  String
+  termsLanguage String
+  termsDocHash  String
+  accepted      Boolean              @default(true)
+  acceptedAt    DateTime             @default(now())
+  ipAddress     String?
+
+  @@index([betaCodeId])
+}
+
+model InvestigatorProgramAuditLog {
+  id        String                 @id @default(cuid())
+  profileId String?
+  profile   InvestigatorProfile?   @relation(fields: [profileId], references: [id])
+  event     InvestigatorAuditEvent
+  actorId   String?
+  metadata  Json?
+  createdAt DateTime               @default(now())
+
+  @@index([profileId])
+  @@index([event])
+  @@index([createdAt])
+}
+
+model InvestigatorActivityLog {
+  id        String                    @id @default(cuid())
+  profileId String
+  profile   InvestigatorProfile       @relation(fields: [profileId], references: [id])
+  event     InvestigatorActivityEvent
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime                  @default(now())
+
+  @@index([profileId])
+  @@index([event])
+  @@index([createdAt])
+}
+
+// ─── FOUNDER INTEL FEED ─────────────────────────────────────────────────────
+// Private intelligence feed under /admin/intel. Founder-only, never public.
+
+enum IntelCategory {
+  SCAM
+  COMPETITOR
+  AI
+  REGULATORY
+  ECOSYSTEM
+}
+
+enum IntelPriority {
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum IntelSourceType {
+  RSS
+  X_HANDLE
+  WEBHOOK
+}
+
+enum IntelRunStatus {
+  RUNNING
+  DONE
+  FAILED
+}
+
+model FounderIntelSource {
+  id         String             @id @default(cuid())
+  name       String
+  type       IntelSourceType
+  url        String?            @unique
+  handle     String?            @unique
+  category   IntelCategory
+  trustScore Int                @default(3)
+  enabled    Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  items      FounderIntelItem[]
+}
+
+model FounderIntelItem {
+  id               String        @id @default(cuid())
+  dedupKey         String        @unique
+  title            String
+  excerpt          String?
+  summary          String?
+  summaryDone      Boolean       @default(false)
+  summaryAttempts  Int           @default(0)
+  lastSummaryError String?
+  url              String
+  canonicalUrl     String?
+  sourceItemId     String?
+  contentHash      String?
+  author           String?
+  imageUrl         String?
+  lang             String?
+  chain            String?
+  source           String
+  sourceId         String?
+  category         IntelCategory
+  priority         IntelPriority @default(NORMAL)
+  tags             String[]      @default([])
+  starRating       Int           @default(0)
+  starOverride     Int?
+  read             Boolean       @default(false)
+  starred          Boolean       @default(false)
+  publishedAt      DateTime
+  fetchedAt        DateTime      @default(now())
+
+  intelSource FounderIntelSource? @relation(fields: [sourceId], references: [id])
+
+  @@index([contentHash])
+  @@index([category, publishedAt])
+  @@index([starRating, publishedAt])
+  @@index([read, publishedAt])
+  @@index([summaryDone, summaryAttempts])
+}
+
+model FounderIntelIngestRun {
+  id            String         @id @default(cuid())
+  startedAt     DateTime       @default(now())
+  completedAt   DateTime?
+  sourceCount   Int            @default(0)
+  itemsIngested Int            @default(0)
+  errors        String[]
+  status        IntelRunStatus @default(RUNNING)
+}
+
+// ─── MESSAGING — Investigator ↔ Founder ─────────────────────────────────────
+
+model Conversation {
+  id            String                    @id @default(cuid())
+  scopeType     String                    @default("direct")
+  scopeId       String?
+  status        String                    @default("open")
+  lastMessageAt DateTime?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  participants  ConversationParticipant[]
+  messages      Message[]
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  accessId       String
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+
+  @@unique([conversationId, accessId])
+  @@index([accessId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderAccessId String
+  senderName     String
+  senderEmail    String?
+  kind           String       @default("message")
+  body           String
+  priority       String       @default("normal")
+  readBy         MessageRead[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([conversationId])
+  @@index([senderAccessId])
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  accessId  String
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, accessId])
+}
+
+model FeedbackEntry {
+  id               String   @id @default(cuid())
+  accessId         String
+  investigatorName String
+  investigatorEmail String?
+  workspaceId      String?
+  type             String   @default("feedback")
+  body             String
+  status           String   @default("unread")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([accessId])
+  @@index([status])
+}
+
+// ─── VAULT NETWORK GRAPH ────────────────────────────────────────────────────
+//
+// Investigator-owned graph: nodes, edges, and metadata are serialized client-
+// side as a single JSON blob, encrypted with the investigator's metaKey, and
+// stored here as ciphertext + IV. The server never holds plaintext. Cascades
+// on workspace delete so an investigator offboarding cleans up their graphs
+// with their cases.
+//
+// Migration note: the corresponding SQL lives at /tmp/migration-ready-to-apply.sql
+// and must be pasted in the Neon SQL Editor BEFORE any route querying this
+// table is enabled (see INVESTIGATORS_FINALISATION_AUDIT.md § NEEDS FOLLOW-UP).
+// The schema is committed ahead of the migration so Prisma Client generates
+// the correct types in Vercel builds; no runtime code in this sprint queries
+// the table until Dood confirms the migration has been applied.
+
+enum VaultGraphVisibility {
+  PRIVATE
+  TEAM_POOL
+  PUBLIC
+}
+
+model VaultNetworkGraph {
+  id          String               @id @default(cuid())
+  workspaceId String
+  workspace   VaultWorkspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  visibility  VaultGraphVisibility @default(PRIVATE)
+  nodeCount   Int                  @default(0)
+  edgeCount   Int                  @default(0)
+  payloadEnc  String // ciphertext of the full graph JSON
+  payloadIv   String
+  publishedAt DateTime?
+  reviewedBy  String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([workspaceId])
+  @@index([visibility])
+}
+
+// ─── THREADS X ──────────────────────────────────────────────────────────────
+
+model XThread {
+  id          String    @id @default(cuid())
+  title       String
+  target      String?
+  status      String    @default("draft")
+  body        String    @db.Text
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  tweetUrl    String?
+  impressions Int?
+  retweets    Int?
+  likes       Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+}
+
+
+// ── TigerScore Hardening — EntityGovernedStatus + ScoreSnapshot ─────────────
+
+model EntityGovernedStatus {
+  id                        String                        @id @default(cuid())
+  entityType                String
+  entityValue               String
+  chain                     String?
+  status                    GovernedStatusEnum
+  basis                     GovernedStatusBasisEnum?
+  reason                    String?                       @db.Text
+  setByUserId               String
+  setByUserRole             String                        @default("admin")
+  setAt                     DateTime                      @default(now())
+  reviewState               GovernedStatusReviewStateEnum @default(draft)
+  evidenceRefs              Json                          @default("[]")
+  revokedAt                 DateTime?
+  revokedByUserId           String?
+  revokedReason             String?                       @db.Text
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+
+  @@unique([entityType, entityValue])
+  @@index([status])
+  @@index([reviewState])
+  @@index([setAt])
+}
+
+enum GovernedStatusEnum {
+  none
+  watchlisted
+  suspected
+  corroborated_high_risk
+  confirmed_known_bad
+  authority_flagged
+}
+
+enum GovernedStatusBasisEnum {
+  manual_internal_confirmation
+  external_authority_source
+  multi_source_corroboration
+  legacy_case_linkage
+}
+
+enum GovernedStatusReviewStateEnum {
+  draft
+  reviewed
+  approved
+}
+
+model ScoreSnapshot {
+  id             String   @id @default(cuid())
+  entityType     String
+  entityValue    String
+  chain          String
+  score          Int
+  tier           String
+  confidenceLevel String
+  version        String
+  topReasons     Json
+  provenanceData Json?
+  governedStatus Json?
+  rawInput       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([entityType, entityValue, createdAt])
+  @@index([chain])
+  @@index([version])
+  @@index([tier])
+  @@index([createdAt])
+}

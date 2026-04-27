@@ -42,7 +42,41 @@ export default function ExplainabilityBlock({ drivers, lang }: ExplainabilityBlo
             </span>
           );
         })}
-      </div>
+
+function Disclaimer({ locale }: { locale: "fr" | "en" }) {
+  const txt =
+    locale === "fr"
+      ? "Analyse éditoriale et algorithmique. Ne constitue pas un conseil juridique, financier ou fiscal. Le statut gouverné est appliqué séparément du score numérique."
+      : "Editorial and algorithmic analysis. Not legal, financial or tax advice. A governed status is applied separately from the numeric score.";
+  return (
+    <div
+      data-testid="explain-disclaimer"
+      style={{
+        marginTop: 14,
+        padding: "10px 14px",
+        color: "#666",
+        fontSize: 11,
+        lineHeight: 1.6,
+        letterSpacing: 0.3,
+      }}
+    >
+      {txt}
     </div>
   );
 }
+
+const LABEL: React.CSSProperties = {
+  fontSize: 10,
+  letterSpacing: 2,
+  fontWeight: 900,
+  textTransform: "uppercase",
+  color: "#FF6B00",
+  marginBottom: 6,
+};
+
+const TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+  color: "#CCCCCC",
+};
