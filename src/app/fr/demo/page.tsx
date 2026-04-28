@@ -466,7 +466,7 @@ export default function TigerScanPageFR() {
     setAnalysisStatus("running");
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
-    fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
+    fetch(`/api/scan/intelligence?value=${encodeURIComponent(scanAddr)}`, {
       signal: AbortSignal.timeout(5000),
     })
       .then(r => r.ok ? r.json() : null)
@@ -475,7 +475,7 @@ export default function TigerScanPageFR() {
 
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
     if (chain === "SOL") {
-      fetch(`/api/scan/cluster?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+      fetch(`/api/scan/cluster?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
         signal: AbortSignal.timeout(4000),
       })
         .then(r => r.ok ? r.json() : null)
@@ -483,7 +483,7 @@ export default function TigerScanPageFR() {
         .catch(() => {})
 
       // Fire MM score fetch in parallel (non-blocking, 4.5s timeout)
-      fetch(`/api/scan/mm?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+      fetch(`/api/scan/mm?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
         signal: AbortSignal.timeout(4500),
       })
         .then(r => r.ok ? r.json() : null)
@@ -500,7 +500,7 @@ export default function TigerScanPageFR() {
         chain === "ARBITRUM" ? "arbitrum" :
         chain === "BSC" ? "bsc" : null;
       if (chainKey) {
-        fetch(`/api/scan/mm-risk?address=${encodeURIComponent(address.trim())}&chain=${chainKey}`, {
+        fetch(`/api/scan/mm-risk?address=${encodeURIComponent(scanAddr)}&chain=${chainKey}`, {
           signal: AbortSignal.timeout(11000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -520,7 +520,7 @@ export default function TigerScanPageFR() {
         fetch("/api/v1/freshness", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chain: freshnessChain, mint: address.trim() }),
+          body: JSON.stringify({ chain: freshnessChain, mint: scanAddr }),
           signal: AbortSignal.timeout(15000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -529,7 +529,7 @@ export default function TigerScanPageFR() {
         fetch("/api/v1/narrative", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tokenMint: address.trim(), chain: freshnessChain }),
+          body: JSON.stringify({ tokenMint: scanAddr, chain: freshnessChain }),
           signal: AbortSignal.timeout(15000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -544,11 +544,11 @@ export default function TigerScanPageFR() {
     }
 
     try {
-      const url = buildScanUrl(address, chain, isDeep);
+      const url = buildScanUrl(scanAddr, chain, isDeep);
 
       // Scan + graph en PARALLÈLE — temps total = max(scan, graph)
       const graphUrl = chain === "SOL"
-        ? `/api/scan/solana/graph?mint=${encodeURIComponent(address.trim())}&hops=1&days=14`
+        ? `/api/scan/solana/graph?mint=${encodeURIComponent(scanAddr)}&hops=1&days=14`
         : null;
 
       const [res, gData] = await Promise.all([
@@ -577,7 +577,7 @@ export default function TigerScanPageFR() {
       setGraphData(gData);
       setAddressLabel(null)
       setCorrobData(null)
-      const trimmed = address.trim()
+      const trimmed = scanAddr
       fetch('/api/scan/label?address=' + trimmed)
         .then(r => r.json())
         .then(d => { if (d.found) setAddressLabel(d) })
@@ -602,7 +602,7 @@ export default function TigerScanPageFR() {
         fetch("/api/v1/off-chain", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ websiteUrl, tokenMint: address.trim() }),
+          body: JSON.stringify({ websiteUrl, tokenMint: scanAddr }),
           signal: AbortSignal.timeout(30_000),
         })
           .then(r => r.ok ? r.json() : null)
@@ -614,7 +614,7 @@ export default function TigerScanPageFR() {
         const heatRes = await fetch("/api/social/heat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: address.trim(), chain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
+          body: JSON.stringify({ address: scanAddr, chain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
         });
         setWeather(heatRes.ok ? await heatRes.json() : null);
       } catch { setWeather(null); }
