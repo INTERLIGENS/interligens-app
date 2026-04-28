@@ -456,10 +456,18 @@ export default function TigerScanPage() {
   const runScan = async (overrideAddr?: string, overrideMock?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
     const useMock = overrideMock ?? mockMode;
+    // Reset complet immédiat — efface l'ancien résultat avant tout fetch
+    setResult(null); setError(null); setWeather(null);
+    setScanContextData(null); setScanContextLoading(false);
+    setGraphData(null); setClusterResult(null); setMmResult(null);
+    setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
+    setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
+    setShillHandle(""); setCommunityScans(null);
+    setCorrobData(null); setAddressLabel(null);
+    setRecidivismDetected(false); setRecidivismConfidence("LOW");
+
     if (useMock) {
-      setLoading(true); setError(null); setResult(null);
-      setScanContextData(null); setScanContextLoading(false);
-      setAnalysisStatus("running");
+      setLoading(true); setAnalysisStatus("running");
       await new Promise(r => setTimeout(r, 800));
       try {
         const res = await fetch(`/api/mock/scan?mode=${useMock}`, { cache: "no-store" });
@@ -475,22 +483,6 @@ export default function TigerScanPage() {
     if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
     setAnalysisStatus("running");
-    setGraphData(null);
-    setRecidivismDetected(false);
-    setRecidivismConfidence("LOW");
-    setError(null);
-    setResult(null);
-    setClusterResult(null);
-    setMmResult(null);
-    setMmRisk(null);
-    setIntelSignal(null);
-    setFreshnessResult(null);
-    setNarrativeResult(null);
-    setOffChainResult(null);
-    setShillResult(null);
-    setShillHandle("");
-    setCommunityScans(null);
-    setScanContextData(null);
     setScanContextLoading(true);
 
     // Fire scan-context in parallel (non-blocking, 8s timeout)
