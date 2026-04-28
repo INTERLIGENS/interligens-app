@@ -489,7 +489,8 @@ export default function TigerScanPage() {
     setScanContextLoading(true);
 
     // Fire scan-context in parallel (non-blocking, 8s timeout)
-    fetch(`/api/v1/scan-context?target=${encodeURIComponent(scanAddr)}`, {
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(scanAddr)}&_t=${Date.now()}`, {
+      cache: "no-store",
       signal: AbortSignal.timeout(8_000),
     })
       .then(r => r.ok ? r.json() : null)
@@ -503,7 +504,7 @@ export default function TigerScanPage() {
       const isEvm = /^0x[a-fA-F0-9]{40}$/.test(scanTarget);
       const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
       if (isEvm || isSol) {
-        fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}`, {
+        fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}&_t=${Date.now()}`, {
           cache: "no-store",
           signal: AbortSignal.timeout(6000),
         })

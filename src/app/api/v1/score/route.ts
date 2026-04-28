@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/publicScore/rateLimit";
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 import {
   isValidMint,
   isValidEvmAddress,
@@ -99,7 +103,7 @@ function corsHeaders(rl: { remaining: number }) {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Cache-Control": "no-store",
+    "Cache-Control": "no-store, no-cache, must-revalidate",
     "X-RateLimit-Limit": "60",
     "X-RateLimit-Remaining": String(rl.remaining),
   };

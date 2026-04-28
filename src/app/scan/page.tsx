@@ -83,7 +83,8 @@ export default function ScanPage() {
     setScanContextLoading(true);
 
     // Fire scan-context in parallel (non-blocking, 8s timeout)
-    fetch(`/api/v1/scan-context?target=${encodeURIComponent(mint)}`, {
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(mint)}&_t=${Date.now()}`, {
+      cache: "no-store",
       signal: AbortSignal.timeout(8_000),
     })
       .then(r => r.ok ? r.json() : null)
@@ -92,7 +93,7 @@ export default function ScanPage() {
       .finally(() => setScanContextLoading(false));
 
     try {
-      const res = await fetch(`/api/v1/score?mint=${encodeURIComponent(mint)}`);
+      const res = await fetch(`/api/v1/score?mint=${encodeURIComponent(mint)}&_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
 
       if (!res.ok) {

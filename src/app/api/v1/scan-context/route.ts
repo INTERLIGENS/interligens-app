@@ -3,6 +3,8 @@ import { loadCaseByMint } from "@/lib/caseDb";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 type Chain = "SOL" | "ETH" | "TRON" | "BSC" | "BASE" | "ARBITRUM";
 type EntityType = "token" | "wallet";
@@ -240,7 +242,7 @@ export async function GET(req: NextRequest) {
       };
       setCache(cacheKey, result, WALLET_TTL_MS);
       return NextResponse.json(result, {
-        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" },
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
       });
     }
 
@@ -287,7 +289,7 @@ export async function GET(req: NextRequest) {
     };
     setCache(cacheKey, result, MARKET_TTL_MS);
     return NextResponse.json(result, {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
     });
   }
 
@@ -306,7 +308,7 @@ export async function GET(req: NextRequest) {
     };
     setCache(cacheKey, result, WALLET_TTL_MS);
     return NextResponse.json(result, {
-      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" },
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
     });
   }
 
@@ -352,6 +354,6 @@ export async function GET(req: NextRequest) {
   };
   setCache(cacheKey, result, MARKET_TTL_MS);
   return NextResponse.json(result, {
-    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
+    headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
   });
 }
