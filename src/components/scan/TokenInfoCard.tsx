@@ -11,210 +11,160 @@ export interface TokenInfoCardProps {
 
 function truncateAddress(addr: string): string {
   if (addr.length <= 12) return addr;
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 }
 
-function formatUsd(value: number | null): string {
-  if (value === null) return "—";
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000)     return `$${(value / 1_000_000).toFixed(2)}M`;
-  if (value >= 1_000)         return `$${(value / 1_000).toFixed(2)}K`;
-  if (value < 0.01)           return `$${value.toExponential(2)}`;
-  return `$${value.toFixed(4)}`;
+function formatUsd(v: number | null): string {
+  if (v === null) return "—";
+  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1)}B`;
+  if (v >= 1_000_000)     return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000)         return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
 }
 
-function formatPrice(value: number | null): string {
-  if (value === null) return "—";
-  if (value < 0.0001) return `$${value.toExponential(2)}`;
-  if (value < 1)      return `$${value.toFixed(6)}`;
-  return `$${value.toFixed(2)}`;
+function formatPrice(v: number | null): string {
+  if (v === null) return "";
+  if (v < 0.00001) return `$${v.toExponential(2)}`;
+  if (v < 0.01)    return `$${v.toFixed(6)}`;
+  if (v < 1)       return `$${v.toFixed(4)}`;
+  return `$${v.toFixed(2)}`;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Copy button ──────────────────────────────────────────────────────────────
 
-function ChainBadge({ chain }: { chain: string }) {
+function CopyIcon({ copied }: { copied: boolean }) {
+  if (copied) {
+    return (
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+        <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="#FF6B00" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
   return (
-    <span
-      className="shrink-0 rounded border border-[#FF6B00]/40 bg-[#FF6B00]/10 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#FF6B00]"
-    >
-      {chain}
-    </span>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+      <rect x="3.5" y="3.5" width="5.5" height="5.5" rx="1" stroke="#666" strokeWidth="1" />
+      <path d="M3.5 3.5V2a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H7" stroke="#666" strokeWidth="1" strokeLinecap="round" />
+    </svg>
   );
 }
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
   return (
     <button
-      onClick={handleCopy}
+      onClick={() => {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        });
+      }}
       aria-label="Copy address"
-      className="ml-1 shrink-0 text-[#FF6B00] opacity-60 hover:opacity-100 transition-opacity"
+      className="ml-1 opacity-50 hover:opacity-100 transition-opacity"
     >
-      {copied ? (
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-          <path d="M2 6l3 3 5-5" stroke="#FF6B00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ) : (
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-          <rect x="4" y="4" width="7" height="7" rx="1" stroke="#FF6B00" strokeWidth="1.2" />
-          <path d="M4 4V2a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H8" stroke="#FF6B00" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-      )}
+      <CopyIcon copied={copied} />
     </button>
   );
 }
 
-function WalletIcon() {
+// ─── Chain badge ──────────────────────────────────────────────────────────────
+
+function ChainBadge({ chain }: { chain: string }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <rect x="1" y="5" width="18" height="12" rx="2" stroke="#A8A8A8" strokeWidth="1.4" />
-      <path d="M1 8h18" stroke="#A8A8A8" strokeWidth="1.4" />
-      <circle cx="14.5" cy="12" r="1.5" fill="#A8A8A8" />
-      <path d="M5 5V4a3 3 0 016 0v1" stroke="#A8A8A8" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
+    <span className="text-[9px] font-black uppercase tracking-widest text-[#FF6B00] border border-[#FF6B00]/30 rounded px-1 py-px leading-none">
+      {chain}
+    </span>
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton() {
   return (
-    <div className="w-full rounded border border-[#1F1F1F] bg-[#000000] p-3 animate-pulse">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-[#111]" />
-          <div className="h-4 w-32 rounded bg-[#111]" />
-        </div>
-        <div className="h-5 w-10 rounded bg-[#111]" />
-      </div>
-      <div className="mt-2.5 flex gap-4">
-        <div className="h-3 w-16 rounded bg-[#111]" />
-        <div className="h-3 w-20 rounded bg-[#111]" />
-        <div className="h-3 w-12 rounded bg-[#111]" />
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <div className="h-3 w-24 rounded bg-[#111]" />
-        <div className="h-3 w-32 rounded bg-[#111]" />
-      </div>
+    <div className="flex items-center gap-3 py-1 animate-pulse">
+      <div className="h-6 w-6 rounded-full bg-[#1a1a1a] shrink-0" />
+      <div className="h-3 w-28 rounded bg-[#1a1a1a]" />
+      <div className="h-3 w-16 rounded bg-[#1a1a1a] ml-auto" />
     </div>
   );
 }
 
-// ─── Token variant ────────────────────────────────────────────────────────────
+// ─── TOKEN variant — 2 rows, compact ─────────────────────────────────────────
 
 function TokenVariant({ data }: { data: ScanContextResponse }) {
-  const { tokenInfo, marketData, chain } = data;
-  const address = tokenInfo?.address ?? "";
+  const { tokenInfo: t, marketData: m, chain } = data;
+  const addr = t?.address ?? data.target;
 
   return (
-    <div className="w-full rounded border border-[#1F1F1F] bg-[#000000] p-3">
-      {/* Row 1 — logo + name + chain */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          {tokenInfo?.logoUrl ? (
-            <img
-              src={tokenInfo.logoUrl}
-              alt=""
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full object-cover shrink-0 bg-[#111]"
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-            />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-[#111] shrink-0" />
+    <div className="py-1.5 space-y-0.5">
+      {/* Row 1 — logo · name · symbol · chain · price */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        {t?.logoUrl ? (
+          <img
+            src={t.logoUrl}
+            alt=""
+            width={20}
+            height={20}
+            className="h-5 w-5 rounded-full object-cover shrink-0 bg-[#111]"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <div className="h-5 w-5 rounded-full bg-[#1a1a1a] shrink-0" />
+        )}
+
+        <span className="text-[13px] font-bold text-white truncate">
+          {t?.name ?? "Unknown"}
+          {t?.symbol && (
+            <span className="text-[#A8A8A8] font-normal"> · ${t.symbol}</span>
           )}
-          <span className="truncate text-sm font-bold text-[#FFFFFF]">
-            {tokenInfo?.name ?? "Unavailable"}
-            {tokenInfo?.symbol && (
-              <span className="ml-1 text-[#FF6B00]"> · ${tokenInfo.symbol}</span>
-            )}
-          </span>
-        </div>
+        </span>
+
         <ChainBadge chain={chain} />
-      </div>
 
-      {/* Row 2 — price · mcap · age */}
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#A8A8A8]">
-        <span>
-          <span className="text-[#FFFFFF]">{formatPrice(marketData?.priceUsd ?? null)}</span>
-          {" "}price
-        </span>
-        <span>
-          <span className="text-[#FFFFFF]">{formatUsd(marketData?.marketCapUsd ?? null)}</span>
-          {" "}mcap
-        </span>
-        <span>
-          <span className="text-[#FFFFFF]">
-            {tokenInfo?.tokenAgeDays !== null && tokenInfo?.tokenAgeDays !== undefined
-              ? `${tokenInfo.tokenAgeDays}d`
-              : "—"}
+        {m?.priceUsd != null && (
+          <span className="ml-auto shrink-0 text-[13px] font-bold text-[#FF6B00]">
+            {formatPrice(m.priceUsd)}
           </span>
-          {" "}age
-        </span>
+        )}
       </div>
 
-      {/* Row 3 — vol · address */}
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#A8A8A8]">
-        <span>
-          <span className="text-[#FFFFFF]">{formatUsd(marketData?.volume24hUsd ?? null)}</span>
-          {" "}vol 24h
-        </span>
-        <span className="flex items-center gap-0.5">
-          <span className="font-mono text-[#A8A8A8]">{truncateAddress(address)}</span>
-          <CopyButton text={address} />
+      {/* Row 2 — mcap · vol · age · address */}
+      <div className="flex items-center gap-2 text-[10px] text-[#A8A8A8] pl-6">
+        {m?.marketCapUsd != null && (
+          <span>MCap <span className="text-[#FFFFFF]">{formatUsd(m.marketCapUsd)}</span></span>
+        )}
+        {m?.volume24hUsd != null && (
+          <span>Vol <span className="text-[#FFFFFF]">{formatUsd(m.volume24hUsd)}</span></span>
+        )}
+        {t?.tokenAgeDays != null && (
+          <span>Age <span className="text-[#FFFFFF]">{t.tokenAgeDays}d</span></span>
+        )}
+        <span className="ml-auto flex items-center font-mono">
+          {truncateAddress(addr)}
+          <CopyButton text={addr} />
         </span>
       </div>
     </div>
   );
 }
 
-// ─── Wallet variant ───────────────────────────────────────────────────────────
+// ─── WALLET variant — 1 row, minimal ─────────────────────────────────────────
 
 function WalletVariant({ data }: { data: ScanContextResponse }) {
-  const { walletInfo, chain, target } = data;
-  const address = target;
-
-  const label =
-    walletInfo?.linkedKOL
-      ? `KOL-linked · ${walletInfo.linkedKOL}`
-      : walletInfo?.walletType ?? "Unlabeled";
-
+  const addr = data.target;
   return (
-    <div className="w-full rounded border border-[#1F1F1F] bg-[#000000] p-3">
-      {/* Row 1 — icon + label + chain */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <WalletIcon />
-          <span className="text-xs font-black uppercase tracking-widest text-[#FFFFFF]">
-            WALLET
-          </span>
-        </div>
-        <ChainBadge chain={chain} />
-      </div>
-
-      {/* Row 2 — label */}
-      <div className="mt-2 text-[11px] text-[#A8A8A8]">
-        <span className="font-black uppercase tracking-widest">Label</span>
-        {"  "}
-        <span className="text-[#FFFFFF]">{label}</span>
-      </div>
-
-      {/* Row 3 — address */}
-      <div className="mt-1.5 flex items-center text-[11px]">
-        <span className="font-mono text-[#A8A8A8]">{truncateAddress(address)}</span>
-        <CopyButton text={address} />
-      </div>
+    <div className="flex items-center gap-2 py-1.5 text-[10px] text-[#A8A8A8]">
+      <span className="font-black uppercase tracking-widest text-[#A8A8A8]">Wallet</span>
+      <span className="text-[#444]">·</span>
+      <ChainBadge chain={data.chain} />
+      <span className="ml-auto flex items-center font-mono">
+        {truncateAddress(addr)}
+        <CopyButton text={addr} />
+      </span>
     </div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function TokenInfoCard({ data, loading = false }: TokenInfoCardProps) {
   if (loading) return <Skeleton />;

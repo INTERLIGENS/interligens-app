@@ -45,9 +45,8 @@ export interface ScanContextResponse {
 
 interface CacheEntry { data: ScanContextResponse; expiresAt: number }
 const _cache = new Map<string, CacheEntry>();
-const META_TTL_MS   = 900_000; // 15 min — token metadata
-const MARKET_TTL_MS =  60_000; // 60 sec — market data
-const WALLET_TTL_MS = 300_000; //  5 min — wallet
+const MARKET_TTL_MS =  60_000; // 60s — market data (shortest, drives TTL)
+const WALLET_TTL_MS = 300_000; //  5min — wallet
 
 function getCache(key: string): ScanContextResponse | null {
   const entry = _cache.get(key);
@@ -81,15 +80,50 @@ function normalizeAddress(raw: string, chain: Chain): string {
 }
 
 const DEX_CHAIN: Record<Chain, string> = {
-  SOL:      "solana",
-  ETH:      "ethereum",
-  BSC:      "bsc",
-  BASE:     "base",
-  ARBITRUM: "arbitrum",
-  TRON:     "tron",
+  SOL: "solana", ETH: "ethereum", BSC: "bsc",
+  BASE: "base",  ARBITRUM: "arbitrum", TRON: "tron",
 };
 
-// ─── Enrichment functions ─────────────────────────────────────────────────────
+// ─── Enrichment ───────────────────────────────────────────────────────────────
+
+interface HeliusMeta {
+  name: string | null;
+  symbol: string | null;
+  logoUrl: string | null;
+}
+
+async function fetchHeliusMetadata(address: string): Promise<HeliusMeta | null> {
+  const apiKey = process.env.HELIUS_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      `https://api.helius.xyz/v0/token-metadata?api-key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": "interligens/1.0" },
+        body: JSON.stringify({ mintAccounts: [address] }),
+        signal: AbortSignal.timeout(5_000),
+      },
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const token = Array.isArray(json) ? json[0] : null;
+    if (!token) return null;
+    const onChain  = token.onChainMetadata?.metadata?.data ?? {};
+    const offChain = token.offChainMetadata?.metadata      ?? {};
+    const name   = onChain.name   ?? offChain.name   ?? null;
+    const symbol = onChain.symbol ?? offChain.symbol ?? null;
+    // Only return metadata if we have at least a name or symbol (real token signal)
+    if (!name && !symbol) return null;
+    return {
+      name,
+      symbol,
+      logoUrl: offChain.image ?? token.offChainMetadata?.uri ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
 
 async function fetchDexScreener(address: string, chain: Chain) {
   try {
@@ -118,51 +152,21 @@ async function fetchDexScreener(address: string, chain: Chain) {
   }
 }
 
-async function fetchHeliusMetadata(address: string) {
-  const apiKey = process.env.HELIUS_API_KEY;
-  if (!apiKey) return null;
-  try {
-    const res = await fetch(
-      `https://api.helius.xyz/v0/token-metadata?api-key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "User-Agent": "interligens/1.0" },
-        body: JSON.stringify({ mintAccounts: [address] }),
-        signal: AbortSignal.timeout(5_000),
-      },
-    );
-    if (!res.ok) return null;
-    const json = await res.json();
-    const token = Array.isArray(json) ? json[0] : null;
-    if (!token) return null;
-    const onChain  = token.onChainMetadata?.metadata?.data ?? {};
-    const offChain = token.offChainMetadata?.metadata      ?? {};
-    return {
-      name:    onChain.name   ?? offChain.name   ?? null,
-      symbol:  onChain.symbol ?? offChain.symbol ?? null,
-      logoUrl: offChain.image ?? token.offChainMetadata?.uri ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
-
 async function fetchCoinGeckoPrice(address: string, chain: Chain): Promise<number | null> {
   const CG_CHAIN: Partial<Record<Chain, string>> = {
-    ETH:      "ethereum",
-    BSC:      "binance-smart-chain",
-    BASE:     "base",
-    ARBITRUM: "arbitrum-one",
-    SOL:      "solana",
+    ETH: "ethereum", BSC: "binance-smart-chain",
+    BASE: "base", ARBITRUM: "arbitrum-one", SOL: "solana",
   };
   const cgChain = CG_CHAIN[chain];
   if (!cgChain) return null;
   try {
-    const url = `https://api.coingecko.com/api/v3/coins/${cgChain}/contract/${address}`;
-    const res = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "interligens/1.0" },
-      signal: AbortSignal.timeout(5_000),
-    });
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${cgChain}/contract/${address}`,
+      {
+        headers: { Accept: "application/json", "User-Agent": "interligens/1.0" },
+        signal: AbortSignal.timeout(5_000),
+      },
+    );
     if (!res.ok) return null;
     const json = await res.json();
     return json?.market_data?.current_price?.usd ?? null;
@@ -207,25 +211,93 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } });
   }
 
-  // Parallel enrichment
-  const [dexSettled, heliusSettled] = await Promise.allSettled([
-    fetchDexScreener(address, chain),
-    chain === "SOL" ? fetchHeliusMetadata(address) : Promise.resolve(null),
-  ]);
+  // ── SOL: Helius is the primary token signal ───────────────────────────────
+  // Helius returns metadata for mint accounts; wallets return null.
+  // DexScreener runs in parallel for market data regardless.
+  if (chain === "SOL") {
+    const [heliusSettled, dexSettled] = await Promise.allSettled([
+      fetchHeliusMetadata(address),
+      fetchDexScreener(address, chain),
+    ]);
 
-  const dex    = dexSettled.status    === "fulfilled" ? dexSettled.value    : null;
-  const helius = heliusSettled.status === "fulfilled" ? heliusSettled.value : null;
+    const helius = heliusSettled.status === "fulfilled" ? heliusSettled.value : null;
+    const dex    = dexSettled.status    === "fulfilled" ? dexSettled.value    : null;
 
-  const isToken    = dex !== null;
-  const entityType: EntityType = isToken ? "token" : "wallet";
+    // Helius returning name/symbol is the authoritative token signal for SOL
+    const isToken = helius !== null || dex !== null;
 
-  if (entityType === "wallet") {
+    if (!isToken) {
+      const result: ScanContextResponse = {
+        target, chain, entityType: "wallet",
+        tokenInfo: null,
+        marketData: null,
+        walletInfo: { label: null, linkedKOL: null, walletType: null, lastActivityAt: null },
+        missingFields: [],
+        confidence: "low",
+      };
+      setCache(cacheKey, result, WALLET_TTL_MS);
+      return NextResponse.json(result, {
+        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" },
+      });
+    }
+
+    const name    = helius?.name    ?? dex?.name    ?? null;
+    const symbol  = helius?.symbol  ?? dex?.symbol  ?? null;
+    const logoUrl = helius?.logoUrl ?? dex?.logoUrl ?? null;
+    const tokenAgeDays = dex?.pairCreatedAt
+      ? Math.floor((Date.now() - dex.pairCreatedAt) / 86_400_000)
+      : null;
+
+    let priceUsd     = dex?.priceUsd     ?? null;
+    let marketCapUsd = dex?.marketCapUsd ?? null;
+    let volume24hUsd = dex?.volume24hUsd ?? null;
+    let liquidityUsd = dex?.liquidityUsd ?? null;
+    let marketSource: "dexscreener" | "coingecko" | null = dex ? "dexscreener" : null;
+
+    if (priceUsd === null) {
+      priceUsd = await fetchCoinGeckoPrice(address, chain);
+      if (priceUsd !== null) marketSource = "coingecko";
+    }
+
+    const missingFields: string[] = [];
+    if (!name)             missingFields.push("name");
+    if (!symbol)           missingFields.push("symbol");
+    if (!logoUrl)          missingFields.push("logoUrl");
+    if (priceUsd     === null) missingFields.push("price");
+    if (marketCapUsd === null) missingFields.push("marketCap");
+    if (volume24hUsd === null) missingFields.push("volume");
+    if (liquidityUsd === null) missingFields.push("liquidity");
+    if (tokenAgeDays === null) missingFields.push("tokenAgeDays");
+
+    const filledCount = [name, symbol, priceUsd, marketCapUsd, volume24hUsd, liquidityUsd]
+      .filter((v) => v !== null).length;
+    const confidence: Confidence = filledCount >= 5 ? "high" : filledCount >= 3 ? "medium" : "low";
+
+    const result: ScanContextResponse = {
+      target, chain, entityType: "token",
+      tokenInfo:  { name, symbol, logoUrl, tokenAgeDays, address },
+      marketData: { priceUsd, marketCapUsd, volume24hUsd, liquidityUsd, source: marketSource },
+      walletInfo: null,
+      missingFields,
+      confidence,
+    };
+    setCache(cacheKey, result, MARKET_TTL_MS);
+    return NextResponse.json(result, {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
+    });
+  }
+
+  // ── EVM chains: DexScreener is the token signal ───────────────────────────
+  const dex = await fetchDexScreener(address, chain);
+  const isToken = dex !== null;
+
+  if (!isToken) {
     const result: ScanContextResponse = {
       target, chain, entityType: "wallet",
       tokenInfo: null,
       marketData: null,
-      walletInfo: { label: null, linkedKOL: null, walletType: "Unlabeled", lastActivityAt: null },
-      missingFields: ["label", "linkedKOL", "walletType", "lastActivityAt"],
+      walletInfo: { label: null, linkedKOL: null, walletType: null, lastActivityAt: null },
+      missingFields: [],
       confidence: "low",
     };
     setCache(cacheKey, result, WALLET_TTL_MS);
@@ -234,21 +306,19 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Token: merge dex + helius
-  const name         = dex?.name    ?? helius?.name    ?? null;
-  const symbol       = dex?.symbol  ?? helius?.symbol  ?? null;
-  const logoUrl      = dex?.logoUrl ?? helius?.logoUrl ?? null;
-  const tokenAgeDays = dex?.pairCreatedAt
+  const name         = dex.name    ?? null;
+  const symbol       = dex.symbol  ?? null;
+  const logoUrl      = dex.logoUrl ?? null;
+  const tokenAgeDays = dex.pairCreatedAt
     ? Math.floor((Date.now() - dex.pairCreatedAt) / 86_400_000)
     : null;
 
-  let priceUsd     = dex?.priceUsd     ?? null;
-  let marketCapUsd = dex?.marketCapUsd ?? null;
-  let volume24hUsd = dex?.volume24hUsd ?? null;
-  let liquidityUsd = dex?.liquidityUsd ?? null;
-  let marketSource: "dexscreener" | "coingecko" | null = dex ? "dexscreener" : null;
+  let priceUsd     = dex.priceUsd     ?? null;
+  let marketCapUsd = dex.marketCapUsd ?? null;
+  let volume24hUsd = dex.volume24hUsd ?? null;
+  let liquidityUsd = dex.liquidityUsd ?? null;
+  let marketSource: "dexscreener" | "coingecko" | null = "dexscreener";
 
-  // CoinGecko fallback price only
   if (priceUsd === null) {
     priceUsd = await fetchCoinGeckoPrice(address, chain);
     if (priceUsd !== null) marketSource = "coingecko";
@@ -276,10 +346,7 @@ export async function GET(req: NextRequest) {
     missingFields,
     confidence,
   };
-
-  // Market data drives TTL (shortest: 60s)
   setCache(cacheKey, result, MARKET_TTL_MS);
-
   return NextResponse.json(result, {
     headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
   });
