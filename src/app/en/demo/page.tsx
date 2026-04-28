@@ -504,6 +504,7 @@ export default function TigerScanPage() {
       const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
       if (isEvm || isSol) {
         fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}`, {
+          cache: "no-store",
           signal: AbortSignal.timeout(6000),
         })
           .then(r => r.ok ? r.json() : null)

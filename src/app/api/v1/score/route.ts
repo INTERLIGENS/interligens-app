@@ -99,7 +99,7 @@ function corsHeaders(rl: { remaining: number }) {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Cache-Control": "public, max-age=300",
+    "Cache-Control": "no-store",
     "X-RateLimit-Limit": "60",
     "X-RateLimit-Remaining": String(rl.remaining),
   };
@@ -230,7 +230,7 @@ export async function GET(request: NextRequest) {
     let scamLineage: "CONFIRMED" | "REFERENCED" | "NONE" = "NONE";
     try {
       const graphUrl = new URL(`/api/scan/solana/graph?mint=${mint}`, request.url);
-      const graphRes = await fetch(graphUrl.toString(), { signal: AbortSignal.timeout(6000) });
+      const graphRes = await fetch(graphUrl.toString(), { cache: "no-store", signal: AbortSignal.timeout(6000) });
       if (graphRes.ok) {
         const graphData = await graphRes.json();
         const status = graphData?.overall_status as string | undefined;
