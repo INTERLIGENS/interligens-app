@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { loadCaseByMint } from "@/lib/caseDb";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -223,8 +224,10 @@ export async function GET(req: NextRequest) {
     const helius = heliusSettled.status === "fulfilled" ? heliusSettled.value : null;
     const dex    = dexSettled.status    === "fulfilled" ? dexSettled.value    : null;
 
-    // Helius returning name/symbol is the authoritative token signal for SOL
-    const isToken = helius !== null || dex !== null;
+    // Fallback: static case DB (covers rugged tokens with burned on-chain metadata)
+    const caseFile = (helius === null && dex === null) ? loadCaseByMint(address) : null;
+
+    const isToken = helius !== null || dex !== null || caseFile !== null;
 
     if (!isToken) {
       const result: ScanContextResponse = {
@@ -241,8 +244,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const name    = helius?.name    ?? dex?.name    ?? null;
-    const symbol  = helius?.symbol  ?? dex?.symbol  ?? null;
+    const caseSymbol = caseFile?.case_meta.ticker?.replace(/^\$/, "") ?? null;
+    const name    = helius?.name    ?? dex?.name    ?? caseFile?.case_meta.token_name ?? null;
+    const symbol  = helius?.symbol  ?? dex?.symbol  ?? caseSymbol                    ?? null;
     const logoUrl = helius?.logoUrl ?? dex?.logoUrl ?? null;
     const tokenAgeDays = dex?.pairCreatedAt
       ? Math.floor((Date.now() - dex.pairCreatedAt) / 86_400_000)
