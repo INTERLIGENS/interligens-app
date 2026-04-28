@@ -930,7 +930,7 @@ export default function TigerScanPage() {
 
               {/* TOKEN IDENTITY STRIP */}
               <div className="flex justify-center w-full mt-5 mb-4">
-                <div className="w-full max-w-[188px] sm:max-w-[264px]">
+                <div className="w-full max-w-[288px]">
                   <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
                 </div>
               </div>
