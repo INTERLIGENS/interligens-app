@@ -43,6 +43,8 @@ import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
 import ShillToExitTimeline from "@/components/kol/ShillToExitTimeline";
 import type { ShillToExitResult } from "@/lib/shill-to-exit/engine";
 import DemoFeedbackButton from "@/components/demo/DemoFeedbackButton";
+import TokenInfoCard from "@/components/scan/TokenInfoCard";
+import type { ScanContextResponse } from "@/app/api/v1/scan-context/route";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -275,6 +277,8 @@ export default function TigerScanPage() {
   const [communityScans, setCommunityScans] = useState<number | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [scanContextData, setScanContextData] = React.useState<ScanContextResponse | null>(null);
+  const [scanContextLoading, setScanContextLoading] = React.useState(false);
 
   const chain = useMemo(() => detectChain(address), [address]);
   const analysisSummary = useMemo(() => result ? normalizeToAnalysisSummary({ ...result, address: address.trim() }) : null, [result, address]);
@@ -454,6 +458,7 @@ export default function TigerScanPage() {
     const useMock = overrideMock ?? mockMode;
     if (useMock) {
       setLoading(true); setError(null); setResult(null);
+      setScanContextData(null); setScanContextLoading(false);
       setAnalysisStatus("running");
       await new Promise(r => setTimeout(r, 800));
       try {
@@ -485,6 +490,17 @@ export default function TigerScanPage() {
     setShillResult(null);
     setShillHandle("");
     setCommunityScans(null);
+    setScanContextData(null);
+    setScanContextLoading(true);
+
+    // Fire scan-context in parallel (non-blocking, 8s timeout)
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(scanAddr)}`, {
+      signal: AbortSignal.timeout(8_000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setScanContextData(d); })
+      .catch(() => {})
+      .finally(() => setScanContextLoading(false));
 
     // Fire community scan count fetch in parallel (non-blocking, 6s timeout)
     {
@@ -911,6 +927,11 @@ export default function TigerScanPage() {
 
               {/* 1. TigerScore ring */}
               <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+
+              {/* TOKEN INFO */}
+              <div className="w-full mt-3">
+                <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
+              </div>
 
               {/* 2. AVOID — verdict collé au score */}
               <h2

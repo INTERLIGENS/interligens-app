@@ -5,6 +5,8 @@ import ScoreCard from "@/components/scan/ScoreCard";
 import AdvancedSignals from "@/components/scan/AdvancedSignals";
 import TigreVideoPlayer from "@/components/scan/TigreVideoPlayer";
 import type { PublicScoreResponse } from "@/lib/publicScore/schema";
+import TokenInfoCard from "@/components/scan/TokenInfoCard";
+import type { ScanContextResponse } from "@/app/api/v1/scan-context/route";
 
 type FeedbackType = "false_positive" | "missing_info" | "scam_report";
 
@@ -14,6 +16,8 @@ export default function ScanPage() {
   const [result, setResult] = useState<PublicScoreResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [scanContextData, setScanContextData] = useState<ScanContextResponse | null>(null);
+  const [scanContextLoading, setScanContextLoading] = useState(false);
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>("scam_report");
@@ -75,6 +79,17 @@ export default function ScanPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setScanContextData(null);
+    setScanContextLoading(true);
+
+    // Fire scan-context in parallel (non-blocking, 8s timeout)
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(mint)}`, {
+      signal: AbortSignal.timeout(8_000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setScanContextData(d); })
+      .catch(() => {})
+      .finally(() => setScanContextLoading(false));
 
     try {
       const res = await fetch(`/api/v1/score?mint=${encodeURIComponent(mint)}`);
@@ -208,6 +223,11 @@ export default function ScanPage() {
       {result && (
         <div style={{ width: "100%", maxWidth: 520, marginBottom: 32 }}>
           <ScoreCard data={result} locale="en" />
+
+          {/* TOKEN INFO */}
+          <div style={{ marginTop: 12 }}>
+            <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
+          </div>
 
           {/* Tigre video — random clip matching the verdict tier */}
           <TigreVideoPlayer tier={result.verdict} />
