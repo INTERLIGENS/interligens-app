@@ -4,6 +4,7 @@ import { pushScanHistory } from "@/app/history/page";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { flushSync } from 'react-dom';
 import { getTier, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
 import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import MarketWeather from "@/components/MarketWeather";
@@ -456,15 +457,17 @@ export default function TigerScanPage() {
   const runScan = async (overrideAddr?: string, overrideMock?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
     const useMock = overrideMock ?? mockMode;
-    // Reset complet immédiat — efface l'ancien résultat avant tout fetch
-    setResult(null); setError(null); setWeather(null);
-    setScanContextData(null); setScanContextLoading(false);
-    setGraphData(null); setClusterResult(null); setMmResult(null);
-    setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
-    setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
-    setShillHandle(""); setCommunityScans(null);
-    setCorrobData(null); setAddressLabel(null);
-    setRecidivismDetected(false); setRecidivismConfidence("LOW");
+    // Reset complet immédiat — flushSync force le commit visuel avant les fetches async
+    flushSync(() => {
+      setResult(null); setError(null); setWeather(null);
+      setScanContextData(null); setScanContextLoading(false);
+      setGraphData(null); setClusterResult(null); setMmResult(null);
+      setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
+      setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
+      setShillHandle(""); setCommunityScans(null);
+      setCorrobData(null); setAddressLabel(null);
+      setRecidivismDetected(false); setRecidivismConfidence("LOW");
+    });
 
     if (useMock) {
       setLoading(true); setAnalysisStatus("running");
@@ -918,7 +921,7 @@ export default function TigerScanPage() {
               </div>
 
               {/* 1. TigerScore ring */}
-              <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
               {/* TOKEN IDENTITY STRIP */}
               <div className="flex justify-center w-full mt-5 mb-4">

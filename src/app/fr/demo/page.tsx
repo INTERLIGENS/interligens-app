@@ -4,6 +4,7 @@ import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useRef, useMemo } from "react";
+import { flushSync } from 'react-dom';
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
@@ -436,13 +437,15 @@ export default function TigerScanPageFR() {
   const runScan = async (overrideAddr?: string, overrideMock?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
     const useMock = overrideMock ?? mockMode;
-    // Reset complet immédiat — efface l'ancien résultat avant tout fetch
-    setResult(null); setError(null); setWeather(null);
-    setGraphData(null); setClusterResult(null); setMmResult(null);
-    setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
-    setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
-    setShillHandle(""); setCorrobData(null); setAddressLabel(null);
-    setRecidivismDetected(false); setRecidivismConfidence("LOW");
+    // Reset complet immédiat — flushSync force le commit visuel avant les fetches async
+    flushSync(() => {
+      setResult(null); setError(null); setWeather(null);
+      setGraphData(null); setClusterResult(null); setMmResult(null);
+      setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
+      setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
+      setShillHandle(""); setCorrobData(null); setAddressLabel(null);
+      setRecidivismDetected(false); setRecidivismConfidence("LOW");
+    });
 
     if (useMock) {
       setLoading(true); setAnalysisStatus("running");
@@ -819,7 +822,7 @@ export default function TigerScanPageFR() {
               </div>
 
               {/* 1. TigerScore ring */}
-              <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
               {/* 2. ÉVITER — verdict collé au score */}
               <h2
