@@ -928,9 +928,11 @@ export default function TigerScanPage() {
               {/* 1. TigerScore ring */}
               <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
-              {/* TOKEN INFO */}
-              <div className="w-full mt-3">
-                <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
+              {/* TOKEN IDENTITY STRIP */}
+              <div className="flex justify-center w-full mt-5 mb-4">
+                <div className="w-full max-w-[188px] sm:max-w-[264px]">
+                  <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
+                </div>
               </div>
 
               {/* 2. AVOID — verdict collé au score */}
