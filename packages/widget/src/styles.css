@@ -1,0 +1,9 @@
+/* @interligens/widget — base styles */
+/* All styles are inlined in the components. This file is kept for future use. */
+.interligens-widget {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+}
