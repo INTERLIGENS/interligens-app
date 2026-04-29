@@ -8,7 +8,7 @@ function url(tier: TigreTier, filename: string): string {
 
 export const TIGRE_VIDEOS: Record<TigreTier, string[]> = {
   GREEN: [
-    url("GREEN", '1_GREEN_VIDEO_"Good news...this is in the green. No major warnings in the proofs_"Good news...this is in the green. No major warnings in the proofs_V2.mp4'),
+    url("GREEN", '1_GREEN_VIDEO_"Good news...this is in the green. No major warnings in the proofs"_V2.mp4'),
     url("GREEN", "2_GREEN_VIDEO_(Alright... this looks solid)_V2.mp4"),
     url("GREEN", "3_GREEN_VIDEO_(OKAY,this one lokspretty clean)_V2.mp4"),
     url("GREEN", "4_GREEEN_VIDEO_(Alright — this one's looking legit)_V2..mp4"),
