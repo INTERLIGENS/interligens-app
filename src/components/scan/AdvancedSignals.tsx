@@ -109,13 +109,13 @@ function formatAge(days: number): string {
   return `${(days / 365).toFixed(1)}y`;
 }
 
-function buildTeaser(props: AdvancedSignalsProps): string {
+function buildTeaser(props: AdvancedSignalsProps, effectiveSignals: Signal[]): string {
   const parts: string[] = [];
   if (props.pairAgeDays != null) parts.push(`Pair age: ${formatAge(props.pairAgeDays)}`);
   if (props.liquidityUsd != null) parts.push(`Liq: ${formatLiquidity(props.liquidityUsd)}`);
   if (props.mintAuthority === true) parts.push("Mint active");
   if (props.freezeAuthority === true) parts.push("Freeze active");
-  if (parts.length === 0 && props.signals?.length) parts.push(`${props.signals.length} signal(s)`);
+  if (parts.length === 0 && effectiveSignals.length > 0) parts.push(`${effectiveSignals.length} signal(s)`);
   return parts.join(" · ") || "Token structure analysis";
 }
 
@@ -168,6 +168,20 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
     mintAuthority, freezeAuthority, topHolderPct, signals,
     lang = "en", tier, manipulationLevel, rawSummary,
   } = props;
+
+  // Fallback: use tiger_drivers when signals prop is empty (e.g. rugged tokens with burned metadata)
+  const effectiveSignals: Signal[] = (signals && signals.length > 0)
+    ? signals
+    : (rawSummary?.tiger_drivers ?? []).map((d: any) => ({
+        id: d.id,
+        label: d.label,
+        severity: d.severity === "critical" ? "CRITICAL" : d.severity === "high" ? "HIGH" : d.severity === "med" ? "MEDIUM" : "LOW",
+      }));
+
+  // Check if any on-chain structural data is available
+  const hasOnChainData = website != null || pairAgeDays != null || liquidityUsd != null
+    || mintAuthority != null || freezeAuthority != null || topHolderPct != null
+    || effectiveSignals.length > 0;
 
   const hasSectionB = rawSummary != null;
   const tierNorm = (tier ?? "").toLowerCase();
@@ -226,7 +240,7 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
           <span style={{ fontSize: 11, color: "#666", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>
             ADVANCED SIGNALS
           </span>
-          <span style={{ fontSize: 11, color: "#444" }}>{buildTeaser(props)}</span>
+          <span style={{ fontSize: 11, color: "#444" }}>{buildTeaser(props, effectiveSignals)}</span>
         </div>
         <span style={{
           display: "inline-block",
@@ -244,7 +258,25 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
           <div style={sectionLabel}>
             {lang === "fr" ? "Structure du token" : "Token Structure"}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+
+          {/* Metadata-unavailable fallback */}
+          {!hasOnChainData && (
+            <div style={{
+              background: "#0a0a12",
+              border: "1px solid #1a1a24",
+              borderRadius: 8,
+              padding: "12px 14px",
+              color: "#555",
+              fontSize: 11,
+              textAlign: "center",
+            }}>
+              {lang === "fr"
+                ? "Métadonnées on-chain indisponibles — le token a peut-être été brûlé."
+                : "On-chain metadata unavailable — token metadata may have been burned."}
+            </div>
+          )}
+
+          <div style={{ display: hasOnChainData ? "grid" : "none", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
 
             <Card title="Website">
               {website
@@ -342,10 +374,10 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
             </Card>
 
             <Card title="Structural signals">
-              {signals?.length
+              {effectiveSignals.length > 0
                 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {signals.slice(0, 3).map((s, i) => (
+                    {effectiveSignals.slice(0, 3).map((s, i) => (
                       <div key={i} style={{
                         fontSize: 11,
                         color: s.severity === "CRITICAL" || s.severity === "HIGH"
@@ -357,8 +389,8 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
                         {s.label}
                       </div>
                     ))}
-                    {signals.length > 3 && (
-                      <div style={{ fontSize: 10, color: "#444" }}>+{signals.length - 3} more</div>
+                    {effectiveSignals.length > 3 && (
+                      <div style={{ fontSize: 10, color: "#444" }}>+{effectiveSignals.length - 3} more</div>
                     )}
                   </div>
                 )
