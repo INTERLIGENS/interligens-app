@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadCaseByMint } from "@/lib/caseDb";
+import { checkRateLimit } from "@/lib/publicScore/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -182,6 +183,15 @@ async function fetchCoinGeckoPrice(address: string, chain: Chain): Promise<numbe
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = checkRateLimit(ip);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limit_exceeded" },
+      { status: 429, headers: { "X-RateLimit-Remaining": "0", "Retry-After": "60" } }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const target = searchParams.get("target")?.trim() ?? "";
 
