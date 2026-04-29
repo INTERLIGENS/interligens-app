@@ -39,6 +39,19 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function fmtPrice(v: number): string {
+  if (v >= 1) return `$${v.toFixed(2)}`;
+  if (v >= 0.01) return `$${v.toFixed(3)}`;
+  return `$${v.toFixed(6)}`;
+}
+
+function fmtCompact(v: number): string {
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
 function ChainBadge({ chain }: { chain: string }) {
   return (
     <span className="shrink-0 text-[9px] font-black uppercase tracking-widest text-[#FF6B00] border border-[#FF6B00]/30 rounded px-1.5 py-px leading-none opacity-80">
@@ -67,7 +80,7 @@ function Skeleton() {
 }
 
 function TokenVariant({ data }: { data: ScanContextResponse }) {
-  const { tokenInfo: t, chain } = data;
+  const { tokenInfo: t, chain, marketData: m } = data;
   const addr = t?.address ?? data.target;
 
   return (
@@ -86,6 +99,23 @@ function TokenVariant({ data }: { data: ScanContextResponse }) {
 
       {/* Chain badge */}
       <ChainBadge chain={chain} />
+
+      {/* Market data — compact inline stats */}
+      {m?.priceUsd != null && (
+        <span className="shrink-0 text-[10px] text-[#888] leading-none tabular-nums">
+          {fmtPrice(m.priceUsd)}
+        </span>
+      )}
+      {m?.marketCapUsd != null && (
+        <span className="shrink-0 text-[10px] text-[#888] leading-none tabular-nums">
+          {fmtCompact(m.marketCapUsd)}
+        </span>
+      )}
+      {m?.volume24hUsd != null && (
+        <span className="shrink-0 text-[10px] text-[#666] leading-none tabular-nums">
+          Vol {fmtCompact(m.volume24hUsd)}
+        </span>
+      )}
 
       {/* Separator */}
       <span className="shrink-0 text-[#333] text-xs select-none leading-none">|</span>

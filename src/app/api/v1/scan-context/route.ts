@@ -137,7 +137,8 @@ async function fetchDexScreener(address: string, chain: Chain) {
     });
     if (!res.ok) return null;
     const json = await res.json();
-    const pairs: any[] = json?.pairs ?? [];
+    // tokens/v1 returns a direct array; older /latest/dex/tokens wraps in { pairs: [] }
+    const pairs: any[] = Array.isArray(json) ? json : (json?.pairs ?? []);
     if (pairs.length === 0) return null;
     const top = pairs[0];
     return {
