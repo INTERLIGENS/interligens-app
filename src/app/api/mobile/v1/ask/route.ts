@@ -144,8 +144,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  console.log("[mobile/ask] body received:", JSON.stringify(body).slice(0, 500));
-
   const question = body.question?.trim();
   const address = body.address?.trim();
   const ctx = body.scanContext;
