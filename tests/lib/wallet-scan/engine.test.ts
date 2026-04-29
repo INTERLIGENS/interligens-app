@@ -66,11 +66,13 @@ describe("computeWalletScan", () => {
     const heliusItems = [
       {
         id: "MintAAAA1111111111111111111111111111111111",
+        interface: "FungibleToken",
         token_info: { symbol: "BONK", balance: 1_000_000, decimals: 5, price_info: { total_price: 2.5 } },
         content: { metadata: { name: "Bonk", symbol: "BONK" } },
       },
       {
         id: "MintBBBB2222222222222222222222222222222222",
+        interface: "FungibleToken",
         token_info: { symbol: "SCAM", balance: 100_000, decimals: 6, price_info: { total_price: 0.01 } },
         content: { metadata: { name: "free airdrop token", symbol: "SCAM" } },
       },
@@ -99,16 +101,18 @@ describe("computeWalletScan", () => {
       {
         contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
         tokenName: "USD Coin",
-        symbol: "USDC",
+        tokenSymbol: "USDC",
         tokenDecimal: "6",
         value: "1000000",
+        to: "0x1234567890abcdef1234567890abcdef12345678",
       },
       {
         contractAddress: "0xDeadBeef000000000000000000000000DeadBeef",
         tokenName: "rug pull coin",
-        symbol: "RUG",
+        tokenSymbol: "RUG",
         tokenDecimal: "18",
         value: "500000000000000000000",
+        to: "0x1234567890abcdef1234567890abcdef12345678",
       },
     ];
     const mockFetch = vi.fn(() => ok(makeEtherscanResponse(ethTokens)));

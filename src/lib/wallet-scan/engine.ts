@@ -102,9 +102,12 @@ async function scanSolana(address: string, fetchFn: typeof fetch): Promise<Token
     if (!res.ok) return [];
     const data = (await res.json()) as { result?: { items?: DasItem[]; total?: number } };
     const items = (data.result?.items ?? []).filter(
-      (i) => i.token_info !== undefined,
+      (i) => i.token_info !== undefined && (i.interface === "FungibleToken" || i.interface === "FungibleAsset"),
     );
-    return items.slice(0, 10).map((item) => {
+    return items.slice(0, 10).filter((item) => {
+      const sym = item.token_info?.symbol ?? item.content?.metadata?.symbol ?? "";
+      return sym.trim().length > 0;
+    }).map((item) => {
       const symbol =
         item.token_info?.symbol ?? item.content?.metadata?.symbol ?? "";
       const name = item.content?.metadata?.name ?? "";
@@ -135,18 +138,20 @@ const EVM_EXPLORER: Record<Exclude<WalletChain, "solana">, string> = {
   arbitrum: "https://arbiscan.io",
 };
 
-const EVM_API: Record<Exclude<WalletChain, "solana">, string> = {
-  ethereum: "https://api.etherscan.io",
-  base: "https://api.basescan.org",
-  arbitrum: "https://api.arbiscan.io",
+// Etherscan V2 uses a unified endpoint with chainid parameter
+const EVM_CHAIN_ID: Record<Exclude<WalletChain, "solana">, number> = {
+  ethereum: 1,
+  base: 8453,
+  arbitrum: 42161,
 };
 
-interface EtherscanToken {
+interface EtherscanTx {
   contractAddress: string;
   tokenName?: string;
-  symbol?: string;
+  tokenSymbol?: string;
   tokenDecimal?: string;
   value?: string;
+  to?: string;
 }
 
 async function scanEvm(
@@ -155,27 +160,44 @@ async function scanEvm(
   fetchFn: typeof fetch,
 ): Promise<TokenHolding[]> {
   const key = process.env.ETHERSCAN_API_KEY ?? "";
+  const chainId = EVM_CHAIN_ID[chain];
   const params = new URLSearchParams({
+    chainid: String(chainId),
     module: "account",
-    action: "tokenlist",
+    action: "tokentx",
     address,
+    page: "1",
+    offset: "50",
+    sort: "desc",
     apikey: key || "YourApiKeyToken",
   });
   try {
-    const res = await fetchFn(`${EVM_API[chain]}/api?${params.toString()}`, {
+    const res = await fetchFn(`https://api.etherscan.io/v2/api?${params.toString()}`, {
       signal: AbortSignal.timeout(12_000),
     });
     if (!res.ok) return [];
     const data = (await res.json()) as {
       status: string;
-      result?: EtherscanToken[];
+      result?: EtherscanTx[];
     };
     if (data.status !== "1" || !Array.isArray(data.result)) return [];
-    return data.result.slice(0, 10).map((t) => {
+
+    // Deduplicate by contract — keep first occurrence (most recent)
+    const seen = new Set<string>();
+    const unique: EtherscanTx[] = [];
+    for (const t of data.result) {
+      const contract = (t.contractAddress ?? "").toLowerCase();
+      if (contract && !seen.has(contract)) {
+        seen.add(contract);
+        unique.push(t);
+      }
+    }
+
+    return unique.slice(0, 10).map((t) => {
       const decimals = parseInt(t.tokenDecimal ?? "18", 10);
       const raw = Number(t.value ?? "0");
       const balance = raw / Math.pow(10, Math.min(decimals, 18));
-      const symbol = t.symbol ?? "";
+      const symbol = t.tokenSymbol ?? "";
       const name = t.tokenName ?? "";
       return {
         mint: t.contractAddress,
