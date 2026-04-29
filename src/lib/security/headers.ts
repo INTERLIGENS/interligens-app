@@ -29,11 +29,11 @@ export interface HeadersOptions {
 export function buildCsp(): string {
   const directives: Record<string, string[]> = {
     "default-src":    ["'self'"],
-    "script-src":     ["'self'", "'unsafe-inline'", "'unsafe-eval'"],   // TODO: remplacer par nonce — unsafe-eval requis par webpack dev
+    "script-src":     ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://terminal.jup.ag"],   // TODO: remplacer par nonce — unsafe-eval requis par webpack dev
     "style-src":      ["'self'", "'unsafe-inline'"],   // TODO: remplacer par nonce (Tailwind)
     "img-src":        ["'self'", "data:", "https:"],   // data: pour avatars base64, https: pour market icons
     "font-src":       ["'self'", "data:"],
-    "connect-src":    ["'self'"],                      // API calls same-origin uniquement
+    "connect-src":    ["'self'", "https://*.jup.ag", "https://*.solana.com", "wss://*.solana.com", "https://mainnet.helius-rpc.com"],
     "frame-ancestors": ["'none'"],                     // remplace X-Frame-Options
     "object-src":     ["'none'"],
     "base-uri":       ["'self'"],
