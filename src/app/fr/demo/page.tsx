@@ -41,6 +41,8 @@ import MarketStructureRisk from "@/components/scan/MarketStructureRisk";
 import type { MmRiskAssessment } from "@/lib/mm/adapter/types";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
+import TokenInfoCard from "@/components/scan/TokenInfoCard";
+import type { ScanContextResponse } from "@/app/api/v1/scan-context/route";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -274,6 +276,10 @@ export default function TigerScanPageFR() {
   const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null);
   const [shillHandle, setShillHandle] = useState("");
   const [shillLoading, setShillLoading] = useState(false);
+  const [communityScans, setCommunityScans] = useState<number | null>(null);
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [scanContextData, setScanContextData] = React.useState<ScanContextResponse | null>(null);
+  const [scanContextLoading, setScanContextLoading] = React.useState(false);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -461,9 +467,36 @@ export default function TigerScanPageFR() {
       setLoading(false);
       return;
     }
-    if (!chain) return;
+    if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
     setAnalysisStatus("running");
+    setScanContextLoading(true);
+
+    // Fire scan-context in parallel (non-blocking, 8s timeout)
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(scanAddr)}&_t=${Date.now()}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setScanContextData(d); })
+      .catch(() => {})
+      .finally(() => setScanContextLoading(false));
+
+    // Fire community scan count fetch in parallel (non-blocking, 6s timeout)
+    {
+      const scanTarget = (overrideAddr ?? address).trim();
+      const isEvm = /^0x[a-fA-F0-9]{40}$/.test(scanTarget);
+      const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
+      if (isEvm || isSol) {
+        fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}&_t=${Date.now()}`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(6000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (typeof d?.communityScans === "number") setCommunityScans(d.communityScans); })
+          .catch(() => {});
+      }
+    }
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
     fetch(`/api/scan/intelligence?value=${encodeURIComponent(scanAddr)}`, {
@@ -823,6 +856,13 @@ export default function TigerScanPageFR() {
 
               {/* 1. TigerScore ring */}
               <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+
+              {/* TOKEN IDENTITY STRIP */}
+              <div className="flex justify-center w-full mt-5 mb-4">
+                <div className="w-full max-w-[288px]">
+                  <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
+                </div>
+              </div>
 
               {/* 2. ÉVITER — verdict collé au score */}
               <h2
