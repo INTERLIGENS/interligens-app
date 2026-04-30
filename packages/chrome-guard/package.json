@@ -1,0 +1,11 @@
+{
+  "name": "@interligens/chrome-guard",
+  "version": "0.1.0",
+  "description": "INTERLIGENS Guard — Chrome extension for forensic risk warnings on DEX platforms",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}

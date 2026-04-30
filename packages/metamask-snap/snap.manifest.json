@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "description": "INTERLIGENS Guard — forensic risk check before you sign",
+  "proposedName": "INTERLIGENS Guard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/interligens/interligens-web"
+  },
+  "source": {
+    "shasum": "",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "iconPath": "images/icon.svg",
+        "packageName": "@interligens/metamask-snap",
+        "registry": "https://registry.npmjs.org/"
+      }
+    }
+  },
+  "initialPermissions": {
+    "endowment:network-access": {},
+    "endowment:transaction-insight": {
+      "allowTransactionOrigin": true
+    },
+    "snap_notify": {}
+  },
+  "manifestVersion": "0.1"
+}
