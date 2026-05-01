@@ -32,6 +32,8 @@ export type TigerInput = {
   liquidity_usd?: number | null;
   fdv_usd?: number | null;
   volume_24h_usd?: number | null;
+  // ── On-chain holder data ──
+  top10_holder_pct?: number | null;
   // ── EVM-specific signals (ETH / Base / Arbitrum) ──
   evm_is_contract?: boolean;
   evm_balance_eth?: number;
@@ -231,6 +233,67 @@ export function computeTigerScore(input: TigerInput): TigerResult {
     // Cap booster à +50
     const cappedBooster = Math.min(50, booster);
     score += cappedBooster;
+
+    // ── On-chain risk signals (uncapped, separate block) ─────────────────
+    let onChainRisk = 0;
+    let strongSignals = 0;
+
+    if (input.top10_holder_pct != null) {
+      if (input.top10_holder_pct > 80) {
+        const delta = 15;
+        onChainRisk += delta;
+        strongSignals++;
+        drivers.push({ id: "holders_concentrated_80", label: "Top 10 holders control >80% of supply", severity: "high", delta, why: `Top 10 holders own ${input.top10_holder_pct.toFixed(1)}% — extreme concentration risk` });
+      } else if (input.top10_holder_pct > 60) {
+        const delta = 10;
+        onChainRisk += delta;
+        strongSignals++;
+        drivers.push({ id: "holders_concentrated_60", label: "Top 10 holders control >60% of supply", severity: "med", delta, why: `Top 10 holders own ${input.top10_holder_pct.toFixed(1)}% — high concentration risk` });
+      }
+    }
+
+    if (input.liquidity_usd != null) {
+      if (input.liquidity_usd < 10_000) {
+        const delta = 12;
+        onChainRisk += delta;
+        strongSignals++;
+        drivers.push({ id: "liquidity_very_low", label: "Very low liquidity pool", severity: "high", delta, why: `Liquidity pool = $${input.liquidity_usd.toLocaleString("en-US", { maximumFractionDigits: 0 })} — high exit-risk` });
+      } else if (input.liquidity_usd < 50_000) {
+        const delta = 8;
+        onChainRisk += delta;
+        strongSignals++;
+        drivers.push({ id: "liquidity_low", label: "Low liquidity pool", severity: "med", delta, why: `Liquidity pool = $${input.liquidity_usd.toLocaleString("en-US", { maximumFractionDigits: 0 })} — thin market` });
+      }
+    }
+
+    // pair_age_days ≤ 3 is already caught by fresh_pool above; this covers 3-7 and 7-30
+    if (input.pair_age_days != null) {
+      if (input.pair_age_days > 3 && input.pair_age_days <= 7) {
+        const delta = 15;
+        onChainRisk += delta;
+        strongSignals++;
+        drivers.push({ id: "token_young_7d", label: "Token younger than 7 days", severity: "high", delta, why: `Pool created ${input.pair_age_days}d ago — very young token` });
+      } else if (input.pair_age_days > 7 && input.pair_age_days <= 30) {
+        const delta = 10;
+        onChainRisk += delta;
+        strongSignals++;
+        drivers.push({ id: "token_young_30d", label: "Token younger than 30 days", severity: "med", delta, why: `Pool created ${input.pair_age_days}d ago — young token` });
+      }
+    }
+
+    if (input.volume_24h_usd != null && input.volume_24h_usd < 1_000) {
+      const delta = 5;
+      onChainRisk += delta;
+      drivers.push({ id: "volume_very_low", label: "24h volume extremely low", severity: "low", delta, why: `24h volume = $${input.volume_24h_usd.toFixed(0)} — near-zero trading activity` });
+    }
+
+    // Cluster risk: ≥3 strong signals firing simultaneously
+    if (strongSignals >= 3) {
+      onChainRisk += 10;
+      drivers.push({ id: "cluster_risk", label: "Multiple concurrent risk signals", severity: "high", delta: 10, why: `${strongSignals} on-chain risk factors active simultaneously — compound risk` });
+    }
+
+    score += onChainRisk;
   }
 
   const clampedScore = Math.min(100, Math.max(0, score));

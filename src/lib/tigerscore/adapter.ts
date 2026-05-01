@@ -18,6 +18,7 @@ export type ScanNormalized = {
   liquidity_usd?: number | null;
   fdv_usd?: number | null;
   volume_24h_usd?: number | null;
+  top10_holder_pct?: number | null;
   scam_lineage?: "CONFIRMED" | "REFERENCED" | "NONE";
   signals?: {
     unlimitedApprovals?: number;
@@ -65,6 +66,7 @@ export function computeTigerScoreFromScan(input: ScanNormalized): TigerScanResul
     liquidity_usd: input.liquidity_usd,
     fdv_usd: input.fdv_usd,
     volume_24h_usd: input.volume_24h_usd,
+    top10_holder_pct: input.top10_holder_pct,
   };
 
   const tigerResult = computeTigerScore(tigerInput);

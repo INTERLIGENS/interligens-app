@@ -255,6 +255,7 @@ export async function GET(request: NextRequest) {
       liquidity_usd: market.liquidity_usd,
       fdv_usd: market.fdv_usd,
       volume_24h_usd: market.volume_24h_usd,
+      top10_holder_pct: topHolderPct,
       scam_lineage: scamLineage,
       signals: {
         confirmedCriticalClaims: rawClaims.filter(
