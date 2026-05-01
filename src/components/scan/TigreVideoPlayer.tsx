@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getRandomTigreVideo, type TigreTier } from "@/lib/tigre/videoManifest";
+import { TIGRE_VIDEOS, type TigreTier } from "@/lib/tigre/videoManifest";
 
 interface TigreVideoPlayerProps {
   tier: TigreTier;
@@ -9,15 +9,34 @@ interface TigreVideoPlayerProps {
 
 export default function TigreVideoPlayer({ tier }: TigreVideoPlayerProps) {
   const [src, setSrc] = useState<string>("");
+  const [hidden, setHidden] = useState(false);
   const [opacity, setOpacity] = useState(1);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const triedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    setSrc(getRandomTigreVideo(tier));
+    triedRef.current = new Set();
+    const pool = TIGRE_VIDEOS[tier];
+    const initial = pool[Math.floor(Math.random() * pool.length)];
+    triedRef.current.add(initial);
+    setSrc(initial);
     setOpacity(1);
+    setHidden(false);
   }, [tier]);
 
-  if (!src) return null;
+  const handleError = () => {
+    const pool = TIGRE_VIDEOS[tier];
+    const untried = pool.filter((v) => !triedRef.current.has(v));
+    if (untried.length > 0) {
+      const next = untried[Math.floor(Math.random() * untried.length)];
+      triedRef.current.add(next);
+      setSrc(next);
+    } else {
+      setHidden(true);
+    }
+  };
+
+  if (!src || hidden) return null;
 
   return (
     <div
@@ -53,9 +72,7 @@ export default function TigreVideoPlayer({ tier }: TigreVideoPlayerProps) {
           }
         }}
         onEnded={() => setOpacity(0)}
-        onError={() => {
-          if (videoRef.current) videoRef.current.style.display = "none";
-        }}
+        onError={handleError}
       />
     </div>
   );
