@@ -1,0 +1,24 @@
+{
+  "version": "0.1.0",
+  "description": "INTERLIGENS risk preflight for MetaMask transactions",
+  "proposedName": "INTERLIGENS Guard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/INTERLIGENS/interligens-app.git"
+  },
+  "source": {
+    "shasum": "PLACEHOLDER",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "iconPath": "images/icon.svg",
+        "packageName": "@interligens/metamask-snap-v2",
+        "registry": "https://registry.npmjs.org/"
+      }
+    }
+  },
+  "initialPermissions": {
+    "endowment:transaction-insight": {}
+  },
+  "manifestVersion": "0.1"
+}

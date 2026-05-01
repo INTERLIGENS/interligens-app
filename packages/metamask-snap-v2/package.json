@@ -1,0 +1,16 @@
+{
+  "name": "@interligens/metamask-snap-v2",
+  "version": "0.1.0",
+  "private": true,
+  "description": "INTERLIGENS risk preflight MetaMask Snap v2",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "test": "jest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@metamask/snaps-sdk": "^6.0.0",
+    "typescript": "^5.0.0"
+  }
+}
