@@ -5,7 +5,7 @@
     "ticker": "$BOTIFY",
     "mint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
     "chain": "solana",
-    "status": "Referenced",
+    "status": "Confirmed",
     "severity": "RED",
     "opened_at": "2024-11-01T00:00:00Z",
     "updated_at": "2025-01-15T12:00:00Z",
@@ -76,7 +76,7 @@
       "claim_id": "C1",
       "title": "Coordinated Shill Campaign",
       "severity": "HIGH",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "Multiple bot accounts posted identical promotional content within minutes of each other, displaying classic coordinated pump behaviour.",
       "evidence_refs": [
         "SRC-001"
@@ -90,7 +90,7 @@
       "claim_id": "C2",
       "title": "Insider Pre-Launch Pump Signal",
       "severity": "HIGH",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "Telegram group messages show buy signals distributed to insiders 45 minutes before public token listing, enabling front-running.",
       "evidence_refs": [
         "SRC-002"
@@ -104,7 +104,7 @@
       "claim_id": "C3",
       "title": "Liquidity Withdrawal < 30 min Post-Peak",
       "severity": "CRITICAL",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "On-chain data confirms the deployer wallet removed 100% of liquidity from the primary Raydium pool within 28 minutes of the price peak, causing a 97% collapse.",
       "evidence_refs": [
         "SRC-003"
@@ -118,7 +118,7 @@
       "claim_id": "C4",
       "title": "Pre-funded Wallet Cluster (Sybil)",
       "severity": "HIGH",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "Seven wallets received identical SOL amounts from a single source wallet 2 hours before launch. All seven sold at peak within a 90-second window.",
       "evidence_refs": [
         "SRC-004"
@@ -132,7 +132,7 @@
       "claim_id": "C5",
       "title": "Mint & Freeze Authority Not Revoked",
       "severity": "CRITICAL",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "Rugcheck.xyz confirms mint authority and freeze authority both remain active on the token contract, allowing the deployer to mint unlimited supply or freeze any holder wallet.",
       "evidence_refs": [
         "SRC-005"
@@ -146,7 +146,7 @@
       "claim_id": "C6",
       "title": "Anonymous Team / Same-Day Domain",
       "severity": "MEDIUM",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "Project website domain was registered on the same day as token launch. No team identities, CVs, or verifiable social accounts exist. WHOIS data is privacy-protected.",
       "evidence_refs": [
         "SRC-006"
@@ -160,7 +160,7 @@
       "claim_id": "C7",
       "title": "Whale Concentration — Top 3 Wallets Hold 62%",
       "severity": "HIGH",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "At peak, the top 3 holder wallets controlled 62% of circulating supply, indicating extreme insider accumulation and the ability to crash price at will.",
       "evidence_refs": [
         "SRC-007"
@@ -174,7 +174,7 @@
       "claim_id": "C8",
       "title": "Social Media Abandonment Post-Launch",
       "severity": "HIGH",
-      "status": "REFERENCED",
+      "status": "CONFIRMED",
       "description": "All official BOTIFY social channels (Twitter, Telegram, Discord) went completely silent on day 5 after launch. No developer responses to community distress signals.",
       "evidence_refs": [
         "SRC-008"
