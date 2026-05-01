@@ -25,11 +25,15 @@ export interface RateLimitResult {
 
 export const RATE_LIMIT_PRESETS = {
   /** Puppeteer PDF — 10 req / 5 min / IP */
-  pdf:   { windowMs: 5 * 60 * 1000, max: 10, keyPrefix: "rl:pdf"   },
+  pdf:     { windowMs: 5 * 60 * 1000, max: 10,  keyPrefix: "rl:pdf"     },
   /** Scans on-chain — 20 req / 1 min / IP */
-  scan:  { windowMs:     60 * 1000, max: 20, keyPrefix: "rl:scan"  },
+  scan:    { windowMs:     60 * 1000, max: 20,  keyPrefix: "rl:scan"    },
   /** OSINT / watchlist — 30 req / 1 min / IP */
-  osint: { windowMs:     60 * 1000, max: 30, keyPrefix: "rl:osint" },
+  osint:   { windowMs:     60 * 1000, max: 30,  keyPrefix: "rl:osint"   },
+  /** Partner API — 120 req / 1 min / IP */
+  partner: { windowMs:     60 * 1000, max: 120, keyPrefix: "rl:partner" },
+  /** Public info endpoints — 120 req / 1 min / IP */
+  public:  { windowMs:     60 * 1000, max: 120, keyPrefix: "rl:public"  },
 } satisfies Record<string, RateLimitConfig>;
 
 // ── In-memory store (dev / CI) ───────────────────────────────────────────────

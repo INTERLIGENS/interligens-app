@@ -1,11 +1,14 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit"
 import { prisma } from "@/lib/prisma"
 import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function GET(_req: Request, { params }: { params: Promise<{ handle: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ handle: string }> }) {
+  const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.public)
+  if (!rl.allowed) return rateLimitResponse(rl)
   const { handle } = await params
   const h = decodeURIComponent(handle).trim().toLowerCase().replace(/^@/, "")
   try {

@@ -12,6 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { computeMMScore, type MMScoreResult } from "@/lib/mm-tracker";
 import type { FundingEvent } from "@/lib/mm-tracker/cluster_mapper";
 import type { WashTransfer } from "@/lib/mm-tracker/wash_detector";
@@ -174,6 +175,9 @@ function extractFundingEvents(txs: HeliusTx[], targetSet: Set<string>): FundingE
 
 // ── Handler ──────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const url = new URL(req.url);
   const address = (url.searchParams.get("address") ?? "").trim();
   const chainParam = (url.searchParams.get("chain") ?? "sol").toLowerCase();

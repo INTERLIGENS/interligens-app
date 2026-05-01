@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validatePartnerKey, unauthorizedPartnerResponse } from "@/lib/security/partnerAuth";
+import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { computeTigerScoreWithIntel, type TigerInput } from "@/lib/tigerscore/engine";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
@@ -88,6 +89,9 @@ async function scoreAddress(
 // ── POST handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.partner);
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const valid = await validatePartnerKey(req);
   if (!valid) return unauthorizedPartnerResponse();
 
