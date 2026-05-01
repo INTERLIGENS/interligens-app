@@ -149,6 +149,7 @@ export default function ScanPage() {
       >
         <input
           type="text"
+          aria-label="Token address or name"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -303,6 +304,7 @@ export default function ScanPage() {
               >
                 <button
                   onClick={() => setShowProjectInfo((v) => !v)}
+                  aria-expanded={showProjectInfo}
                   style={{
                     width: "100%",
                     background: "transparent",
@@ -529,6 +531,7 @@ export default function ScanPage() {
             ) : (
               <>
                 <label
+                  htmlFor="feedback-type"
                   style={{
                     display: "block",
                     fontSize: 10,
@@ -542,6 +545,7 @@ export default function ScanPage() {
                   Type
                 </label>
                 <select
+                  id="feedback-type"
                   value={feedbackType}
                   onChange={(e) => setFeedbackType(e.target.value as FeedbackType)}
                   disabled={feedbackSubmitting}
@@ -564,6 +568,7 @@ export default function ScanPage() {
                 </select>
 
                 <label
+                  htmlFor="feedback-message"
                   style={{
                     display: "block",
                     fontSize: 10,
@@ -577,6 +582,7 @@ export default function ScanPage() {
                   Message
                 </label>
                 <textarea
+                  id="feedback-message"
                   value={feedbackMessage}
                   onChange={(e) => setFeedbackMessage(e.target.value)}
                   disabled={feedbackSubmitting}

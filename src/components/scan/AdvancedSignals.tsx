@@ -224,6 +224,7 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
     <div style={{ marginTop: 16, background: "#111118", border: "1px solid #2a2a34", borderRadius: 8, overflow: "hidden" }}>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         style={{
           width: "100%",
           background: "transparent",
