@@ -22,7 +22,9 @@
     "watcher:v2": "tsx scripts/watcher/watcherV2.ts",
     "watcher:v2:dry": "DRY_RUN=true tsx scripts/watcher/watcherV2.ts",
     "security:center:seed": "tsx scripts/seed/securityCenter.ts",
-    "security:center:check": "tsx scripts/securityCenterCheck.ts"
+    "security:center:check": "tsx scripts/securityCenterCheck.ts",
+    "legal:wording": "bash scripts/legal-wording-check.sh",
+    "prefreeze:check": "bash scripts/prefreeze-check.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
