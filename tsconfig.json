@@ -43,6 +43,7 @@
     "**/*.backup.ts",
     "**/*.backup.tsx",
     "packages/metamask-snap",
+    "packages/metamask-snap-v2",
     "packages/chrome-guard"
   ]
 }
