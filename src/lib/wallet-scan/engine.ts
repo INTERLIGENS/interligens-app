@@ -43,14 +43,13 @@ const SCAM_PATTERN = /\b(rug|pump\.fun|dump|free\s*airdrop|claim\s*reward|100x|1
 
 const RISK_ORDER: Array<RiskLevel | "NONE"> = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN", "NONE"];
 
-export function scoreRisk(symbol: string, name: string, balanceUsd: number | null): RiskLevel {
+export function scoreRisk(symbol: string, name: string, _balanceUsd: number | null): RiskLevel {
   if (!symbol && !name) return "UNKNOWN";
   if (SCAM_PATTERN.test(name) || SCAM_PATTERN.test(symbol)) return "CRITICAL";
   const sym = symbol.toUpperCase().trim();
   if (KNOWN_SAFE.has(sym)) return "LOW";
   if (!sym || sym.length > 20 || /^\d+$/.test(sym)) return "HIGH";
-  if (balanceUsd !== null && balanceUsd > 500) return "MEDIUM";
-  return "MEDIUM";
+  return "UNKNOWN";
 }
 
 export function computeTopRiskLevel(tokens: TokenHolding[]): RiskLevel | "NONE" {

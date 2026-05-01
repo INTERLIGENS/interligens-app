@@ -314,7 +314,7 @@ export default function WalletScanPageEN() {
                         <span style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>
                           {token.symbol || "—"}
                         </span>
-                        <RiskChip level={token.riskLevel} />
+                        {token.riskLevel !== "UNKNOWN" && <RiskChip level={token.riskLevel} />}
                       </div>
                       <div style={{ color: "#6b7280", fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {token.name || token.mint.slice(0, 20) + "…"}
@@ -359,7 +359,7 @@ export default function WalletScanPageEN() {
                 letterSpacing: "0.06em",
               }}
             >
-              Scanned at {new Date(result.computed_at).toLocaleTimeString("en-US")} · Quick scan — no TigerScore
+              Scanned at {new Date(result.computed_at).toLocaleTimeString("en-US")} · Quick scan — not yet scored
             </div>
           </>
         )}
