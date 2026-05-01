@@ -40,7 +40,7 @@ export default function CharterEN() {
               tier="SAFE"
               color="#10b981"
               line="No critical alerts found."
-              detail="Looks clean — but not guaranteed safe. Verify the link, start small, watchlist it. Things change fast."
+              detail="No critical signal surfaced — lower observed risk, not zero risk. Verify the link, start small, watchlist it. Things change fast."
             />
             <TierBlock
               range="40 — 69"
