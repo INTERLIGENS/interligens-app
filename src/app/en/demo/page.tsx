@@ -305,7 +305,7 @@ export default function TigerScanPage() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode = selectedScenario;
+  const mockMode: DemoScenario | null = null;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -351,9 +351,9 @@ export default function TigerScanPage() {
   } | null>(null);
 
   const DEMO_CHIPS = [
-    { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
-    { label: "⚠️ Warning", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
-    { label: "🚨 Scam", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
+    { label: "✅ Safe",    addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
+    { label: "⚠️ Warning", addr: "7WRX5QGuRLhGCJszpQjYmw6ihb6z8KRdAEHQUhGJpump" },
+    { label: "🚨 Scam",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
   ];
 
   // Auto-trigger on mount if ?mock= param present
@@ -361,7 +361,7 @@ export default function TigerScanPage() {
     if (selectedScenario) {
       const preset = DEMO_PRESETS[mockChain][selectedScenario];
       setAddress(preset.addr);
-      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
+      setTimeout(() => runScan(preset.addr), 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -376,7 +376,7 @@ export default function TigerScanPage() {
     const url = new URL(window.location.href);
     url.searchParams.set("mock", scenario);
     window.history.replaceState({}, "", url.toString());
-    runScan(preset.addr, scenario);
+    runScan(preset.addr);
   };
 
   React.useEffect(() => {

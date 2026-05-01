@@ -11,19 +11,19 @@ export const SOL_PRESETS: Record<DemoScenario, DemoPreset> = {
   green: {
     scenario: "green",
     mockParam: "green",
-    addr: "SAFE111111111111111111111111111111111111111",
+    addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
     storyline: {
-      en: "Routine swap on an official router — low risk pattern.",
-      fr: "Swap classique via routeur officiel — profil à faible risque.",
+      en: "WIF — established Solana meme token, high liquidity, clean signals.",
+      fr: "WIF — token Solana établi, haute liquidité, signaux propres.",
     },
   },
   orange: {
     scenario: "orange",
     mockParam: "orange",
-    addr: "WARN2222222222222222222222222222222222222222",
+    addr: "7WRX5QGuRLhGCJszpQjYmw6ihb6z8KRdAEHQUhGJpump",
     storyline: {
-      en: "Unusual approvals or weak signals — proceed with caution.",
-      fr: "Signaux mitigés — prudence avant signature.",
+      en: "Pump.fun launch, 8 days old — concentration and age signals present.",
+      fr: "Lancement pump.fun, 8 jours — signaux de concentration et d'âge détectés.",
     },
   },
   red: {
@@ -31,8 +31,8 @@ export const SOL_PRESETS: Record<DemoScenario, DemoPreset> = {
     mockParam: "red",
     addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
     storyline: {
-      en: "Unlimited approval to an unknown spender — high drain risk.",
-      fr: "Approval illimité vers un spender inconnu — risque élevé de drain.",
+      en: "BOTIFY — 8 referenced claims: shill campaign, rug pull, sybil cluster.",
+      fr: "BOTIFY — 8 signalements : shill coordonné, rug pull, cluster sybil.",
     },
   },
 };
