@@ -305,7 +305,6 @@ export default function TigerScanPage() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode: DemoScenario | null = null;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -324,7 +323,7 @@ export default function TigerScanPage() {
         const newP = new URLSearchParams(window.location.search);
         newP.delete("auto");
         window.history.replaceState(null, "", window.location.pathname + (newP.toString() ? "?" + newP.toString() : ""));
-        setTimeout(() => runScan(addr, undefined), 80);
+        setTimeout(() => runScan(addr), 80);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -390,12 +389,8 @@ export default function TigerScanPage() {
 
 
   React.useEffect(() => {
-    if (mockMode) {
-      setTickers({ ok: true, btc: { price_usd: 95000, change_24h_pct: 1.2 }, eth: { price_usd: 3200, change_24h_pct: 0.8 }, sol: { price_usd: 180, change_24h_pct: -0.5 } });
-      return;
-    }
     fetch("/api/market/tickers").then(r => r.json()).then(d => setTickers(d)).catch(() => setTickers({ ok: false }));
-  }, [mockMode]);
+  }, []);
 
   const isHyperTokenId = chain === "HYPER_TOKEN_ID";
 
@@ -454,9 +449,8 @@ export default function TigerScanPage() {
     runScan(formatted)
   }
 
-  const runScan = async (overrideAddr?: string, overrideMock?: string) => {
+  const runScan = async (overrideAddr?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
-    const useMock = overrideMock ?? mockMode;
     // Reset complet immédiat — flushSync force le commit visuel avant les fetches async
     flushSync(() => {
       setResult(null); setError(null); setWeather(null);
@@ -469,20 +463,6 @@ export default function TigerScanPage() {
       setRecidivismDetected(false); setRecidivismConfidence("LOW");
     });
 
-    if (useMock) {
-      setLoading(true); setAnalysisStatus("running");
-      await new Promise(r => setTimeout(r, 800));
-      try {
-        const res = await fetch(`/api/mock/scan?mode=${useMock}`, { cache: "no-store" });
-        const data = await res.json();
-        setResult(normalizeScanData(data, "SOL"));
-        setWeather(null);
-        setAnalysisStatus("done");
-        setTimeout(() => document.getElementById("result-anchor")?.scrollIntoView({ behavior: "smooth" }), 200);
-      } catch(e: any) { setError(`Scan mock failed: ${e?.message ?? String(e)}`); setAnalysisStatus("error"); }
-      setLoading(false);
-      return;
-    }
     if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
     setAnalysisStatus("running");
@@ -718,7 +698,7 @@ export default function TigerScanPage() {
                   setActivePreset(p.id);
                   setSelectedScenario(null);
                   setAddress(p.addr);
-                  setTimeout(() => runScan(p.addr, undefined), 60);
+                  setTimeout(() => runScan(p.addr), 60);
                 }}
                 className={[
                   "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",

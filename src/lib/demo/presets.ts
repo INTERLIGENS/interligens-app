@@ -2,7 +2,6 @@ export type DemoScenario = "green" | "orange" | "red";
 
 export type DemoPreset = {
   scenario: DemoScenario;
-  mockParam: DemoScenario;
   addr: string;
   storyline: { en: string; fr: string };
 };
@@ -10,7 +9,7 @@ export type DemoPreset = {
 export const SOL_PRESETS: Record<DemoScenario, DemoPreset> = {
   green: {
     scenario: "green",
-    mockParam: "green",
+
     addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
     storyline: {
       en: "WIF — established Solana meme token, high liquidity, clean signals.",
@@ -19,7 +18,7 @@ export const SOL_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   orange: {
     scenario: "orange",
-    mockParam: "orange",
+
     addr: "7WRX5QGuRLhGCJszpQjYmw6ihb6z8KRdAEHQUhGJpump",
     storyline: {
       en: "Pump.fun launch, 8 days old — concentration and age signals present.",
@@ -28,7 +27,7 @@ export const SOL_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   red: {
     scenario: "red",
-    mockParam: "red",
+
     addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
     storyline: {
       en: "BOTIFY — 8 referenced claims: shill campaign, rug pull, sybil cluster.",
@@ -40,7 +39,7 @@ export const SOL_PRESETS: Record<DemoScenario, DemoPreset> = {
 export const ETH_PRESETS: Record<DemoScenario, DemoPreset> = {
   green: {
     scenario: "green",
-    mockParam: "green",
+
     addr: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
     storyline: {
       en: "Routine swap on an official router — low risk pattern.",
@@ -49,7 +48,7 @@ export const ETH_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   orange: {
     scenario: "orange",
-    mockParam: "orange",
+
     addr: "",
     storyline: {
       en: "Unusual approvals or weak signals — proceed with caution.",
@@ -58,7 +57,7 @@ export const ETH_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   red: {
     scenario: "red",
-    mockParam: "red",
+
     addr: "",
     storyline: {
       en: "Unlimited approval to an unknown spender — high drain risk.",
@@ -70,7 +69,7 @@ export const ETH_PRESETS: Record<DemoScenario, DemoPreset> = {
 export const TRON_PRESETS: Record<DemoScenario, DemoPreset> = {
   green: {
     scenario: "green",
-    mockParam: "green",
+
     addr: "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m6",
     storyline: {
       en: "Clean TRON wallet with normal activity — low risk pattern.",
@@ -79,7 +78,7 @@ export const TRON_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   orange: {
     scenario: "orange",
-    mockParam: "orange",
+
     addr: "",
     storyline: {
       en: "Recent TRON account with limited history — proceed with caution.",
@@ -88,7 +87,7 @@ export const TRON_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   red: {
     scenario: "red",
-    mockParam: "red",
+
     addr: "",
     storyline: {
       en: "USDT-TRC20 blacklisted address — frozen by Tether. Critical risk.",
@@ -100,7 +99,7 @@ export const TRON_PRESETS: Record<DemoScenario, DemoPreset> = {
 export const BASE_PRESETS: Record<DemoScenario, DemoPreset> = {
   green: {
     scenario: "green",
-    mockParam: "green",
+
     addr: "base:0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
     storyline: {
       en: "Clean Base wallet with normal activity — low risk pattern.",
@@ -109,7 +108,7 @@ export const BASE_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   orange: {
     scenario: "orange",
-    mockParam: "orange",
+
     addr: "",
     storyline: {
       en: "Unverified contract on Base — proceed with caution.",
@@ -118,7 +117,7 @@ export const BASE_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   red: {
     scenario: "red",
-    mockParam: "red",
+
     addr: "",
     storyline: {
       en: "Honeypot token detected on Base — sell impossible. Critical risk.",
@@ -130,7 +129,7 @@ export const BASE_PRESETS: Record<DemoScenario, DemoPreset> = {
 export const ARBITRUM_PRESETS: Record<DemoScenario, DemoPreset> = {
   green: {
     scenario: "green",
-    mockParam: "green",
+
     addr: "arb:0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
     storyline: {
       en: "Clean Arbitrum wallet with normal DeFi activity — low risk.",
@@ -139,7 +138,7 @@ export const ARBITRUM_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   orange: {
     scenario: "orange",
-    mockParam: "orange",
+
     addr: "",
     storyline: {
       en: "Fresh contract on Arbitrum with limited history — caution advised.",
@@ -148,7 +147,7 @@ export const ARBITRUM_PRESETS: Record<DemoScenario, DemoPreset> = {
   },
   red: {
     scenario: "red",
-    mockParam: "red",
+
     addr: "",
     storyline: {
       en: "Bridge exploit pattern detected on Arbitrum — known bad deployer. Critical risk.",
