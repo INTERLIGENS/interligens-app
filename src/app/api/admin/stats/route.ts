@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
           date_trunc('day', "createdAt")::date AS day,
           COUNT(*) AS scans,
           COUNT(*) FILTER (WHERE "answerType" <> 'refusal') AS ask
-        FROM "AskLog"
+        FROM "ask_logs"
         WHERE "createdAt" >= ${monthAgo}
         GROUP BY day
         ORDER BY day ASC
