@@ -226,11 +226,11 @@ export default function KOLPageFR() {
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 24 }}>
             <div style={{ width: 72, height: 72, borderRadius: 12, background: 'linear-gradient(135deg, #ef444433, #0f0202)', border: '2px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontFamily: 'monospace', fontWeight: 900, color: '#ef4444', flexShrink: 0 }}>
-              {displayName[0].toUpperCase()}
+              {(displayName?.[0] ?? '?').toUpperCase()}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 6 }}>
-                ACTEUR A HAUT RISQUE · {kol.platform.toUpperCase()} · {kol.status.toUpperCase()}
+                ACTEUR A HAUT RISQUE · {(kol.platform ?? '').toUpperCase()} · {(kol.status ?? '').toUpperCase()}
               </div>
               <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 4 }}>{displayName}</div>
               <div style={{ fontSize: 12, color: '#4b5563', fontFamily: 'monospace', marginBottom: 8 }}>@{kol.handle}</div>
