@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validatePartnerKey, unauthorizedPartnerResponse } from "@/lib/security/partnerAuth";
+import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
@@ -17,22 +18,6 @@ const CORS_HEADERS = {
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
-}
-
-// ── Rate limit (separate store from public API) ────────────────────────────
-
-const WINDOW_MS = 60_000;
-const MAX_REQ = 60;
-const rlStore = new Map<string, number[]>();
-
-function checkPartnerRateLimit(ip: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const cutoff = now - WINDOW_MS;
-  const ts = (rlStore.get(ip) ?? []).filter((t) => t > cutoff);
-  const allowed = ts.length < MAX_REQ;
-  if (allowed) ts.push(now);
-  ts.length > 0 ? rlStore.set(ip, ts) : rlStore.delete(ip);
-  return { allowed, remaining: Math.max(0, MAX_REQ - ts.length) };
 }
 
 // ── Result cache (TTL 5 min) ───────────────────────────────────────────────
@@ -89,16 +74,8 @@ export async function GET(req: NextRequest) {
   const valid = await validatePartnerKey(req);
   if (!valid) return unauthorizedPartnerResponse();
 
-  // Rate limit
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rl = checkPartnerRateLimit(ip);
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: "rate_limit_exceeded", retry_after: 60 },
-      { status: 429, headers: { ...CORS_HEADERS, "X-RateLimit-Remaining": "0" } }
-    );
-  }
+  const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.partner);
+  if (!rl.allowed) return rateLimitResponse(rl);
 
   // Validate address
   const address = req.nextUrl.searchParams.get("address")?.trim() ?? "";
