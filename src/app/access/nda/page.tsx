@@ -78,8 +78,7 @@ export default function BetaAccessNDA() {
         setError("Access denied.");
         return;
       }
-      // Redirect to the main demo
-      window.location.href = "/en/demo";
+      window.location.href = "/investigators/box";
     } catch {
       setError("Network error. Please try again.");
     } finally {

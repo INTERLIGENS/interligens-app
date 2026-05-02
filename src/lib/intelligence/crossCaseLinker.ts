@@ -1,6 +1,6 @@
 // src/lib/intelligence/crossCaseLinker.ts
 // Detects KOL-to-KOL overlap signals: shared wallets, deployers, or tokens.
-// Persists results in KolCrossLink via raw SQL (table not yet in Prisma schema).
+// Persists results in KolCrossLink (model in schema.prod.prisma, migration 20260502_kol_crosslink).
 // Run after casefile.ingested event or on-demand from admin route.
 
 import { prisma } from "@/lib/prisma";
@@ -126,8 +126,7 @@ export async function findCrossLinks(kolHandle: string): Promise<CrossLink[]> {
 }
 
 /**
- * Persist cross links into KolCrossLink table (raw SQL — not yet in Prisma schema).
- * Uses INSERT ON CONFLICT DO NOTHING (idempotent).
+ * Persist cross links into KolCrossLink table (idempotent via ON CONFLICT DO NOTHING).
  */
 export async function persistCrossLinks(links: CrossLink[]): Promise<void> {
   if (links.length === 0) return;

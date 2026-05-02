@@ -19,6 +19,7 @@ import { useVaultToast } from "@/components/vault/VaultToast";
 import TimelineBuilder from "@/components/vault/TimelineBuilder";
 import WalletJourney from "@/components/vault/WalletJourney";
 import ShareCaseModal from "@/components/vault/ShareCaseModal";
+import EvidenceSnapshotsSection from "@/components/vault/EvidenceSnapshotsSection";
 import NextBestStepToast, {
   buildNextBestStep,
   type NextBestStep,
@@ -40,6 +41,7 @@ type Tab =
   | "notes"
   | "graph"
   | "timeline"
+  | "evidence"
   | "export"
   | "assistant";
 
@@ -538,6 +540,7 @@ function CaseInner({ caseId }: { caseId: string }) {
     "notes",
     "graph",
     "timeline",
+    "evidence",
     "export",
     "assistant",
   ];
@@ -1528,6 +1531,10 @@ function CaseInner({ caseId }: { caseId: string }) {
 
         {tab === "timeline" && (
           <TimelineBuilder caseId={caseId} entities={entities} />
+        )}
+
+        {tab === "evidence" && (
+          <EvidenceSnapshotsSection caseId={caseId} entities={entities} />
         )}
 
         {tab === "export" && (
