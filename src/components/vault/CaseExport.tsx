@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type Entity = {
   id: string;
@@ -20,6 +20,41 @@ type Props = {
   noteCount?: number;
   onSaveToNotes?: (content: string) => Promise<void> | void;
 };
+
+type IocExportResult = {
+  exportId: string;
+  format: string;
+  generatedAt: string;
+  exportHashSha256: string;
+  iocCount: number;
+  snapshotCount: number;
+  privateExcluded: number;
+  includedCounts: Record<string, number>;
+  contentText?: string;
+  contentBase64?: string;
+  encoding: "utf8" | "base64";
+  mimeType: string;
+  filename: string;
+};
+
+type ExportRecord = {
+  id: string;
+  exportFormat: string;
+  exportedBy: string;
+  iocCount: number;
+  snapshotCount: number;
+  privateExcluded: number;
+  contentHashSha256: string;
+  createdAt: string;
+};
+
+const IOC_FORMATS = [
+  { value: "CSV_FULL", label: "CSV — full indicator list" },
+  { value: "JSON_STRUCTURED", label: "JSON — structured export (internal)" },
+  { value: "STIX_LIKE_JSON", label: "STIX-like JSON — threat intel bundle" },
+  { value: "POLICE_ANNEX_PDF", label: "Police Annex — investigative PDF" },
+  { value: "THREAT_INTEL_CSV", label: "Threat Intel Feed — publishable CSV" },
+] as const;
 
 type RetailSummary = {
   summary: string;
@@ -75,6 +110,83 @@ export default function CaseExport({
   noteCount,
   onSaveToNotes,
 }: Props) {
+  // ── IOC Export state ───────────────────────────────────────────────────────
+  const [iocFormat, setIocFormat] = useState<string>("CSV_FULL");
+  const [iocLoading, setIocLoading] = useState(false);
+  const [iocError, setIocError] = useState<string | null>(null);
+  const [iocResult, setIocResult] = useState<IocExportResult | null>(null);
+  const [exportHistory, setExportHistory] = useState<ExportRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/investigators/cases/${caseId}/exports`);
+      if (res.ok) {
+        const data = await res.json();
+        setExportHistory(data.exports ?? []);
+      }
+    } catch {}
+    setHistoryLoading(false);
+  }, [caseId]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  async function generateIocExport() {
+    if (iocLoading) return;
+    setIocLoading(true);
+    setIocError(null);
+    setIocResult(null);
+    try {
+      const res = await fetch(`/api/investigators/cases/${caseId}/exports`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          format: iocFormat,
+          caseTitle: title || "Investigator Casefile",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setIocError(data.error ?? "Export failed");
+        return;
+      }
+      setIocResult(data as IocExportResult);
+      loadHistory();
+      triggerDownload(data as IocExportResult);
+    } catch {
+      setIocError("Network error");
+    } finally {
+      setIocLoading(false);
+    }
+  }
+
+  function triggerDownload(result: IocExportResult) {
+    let blob: Blob;
+    if (result.encoding === "base64" && result.contentBase64) {
+      const bytes = Uint8Array.from(atob(result.contentBase64), (c) =>
+        c.charCodeAt(0)
+      );
+      blob = new Blob([bytes], { type: result.mimeType });
+    } else {
+      blob = new Blob([result.contentText ?? ""], { type: result.mimeType });
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = result.filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── Entity counts for preview ──────────────────────────────────────────────
+  const entityCountsByType: Record<string, number> = {};
+  for (const e of entities) {
+    entityCountsByType[e.type] = (entityCountsByType[e.type] ?? 0) + 1;
+  }
+
+  // ── Existing state ─────────────────────────────────────────────────────────
   const [savedToNotes, setSavedToNotes] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(false);
   const [retail, setRetail] = useState<RetailSummary | null>(null);
@@ -273,6 +385,128 @@ export default function CaseExport({
 
   return (
     <div>
+      {/* ── IOC EXPORT CENTER ────────────────────────────────────────────── */}
+      <div style={SECTION_TITLE}>IOC export center</div>
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 14, lineHeight: 1.6 }}>
+        Generate an investigative export of documented indicators and evidence snapshots.
+        Private material is excluded from shareable exports by default.
+      </div>
+
+      {/* Format selector */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+          Export format
+        </div>
+        <div className="flex flex-col gap-2">
+          {IOC_FORMATS.map((f) => (
+            <label key={f.value} className="flex items-center gap-3" style={{ cursor: "pointer" }}>
+              <input
+                type="radio"
+                name="iocFormat"
+                value={f.value}
+                checked={iocFormat === f.value}
+                onChange={() => { setIocFormat(f.value); setIocResult(null); setIocError(null); }}
+                style={{ accentColor: "#FF6B00" }}
+              />
+              <span style={{ fontSize: 13, color: iocFormat === f.value ? "#FF6B00" : "rgba(255,255,255,0.7)" }}>
+                {f.label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Publishability notice */}
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 14, lineHeight: 1.5, background: "rgba(255,107,0,0.04)", border: "1px solid rgba(255,107,0,0.1)", borderRadius: 4, padding: "8px 10px" }}>
+        {iocFormat === "THREAT_INTEL_CSV"
+          ? "Only PUBLISHABLE indicators are included in the Threat Intel Feed."
+          : iocFormat === "JSON_STRUCTURED"
+          ? "Internal export: includes PRIVATE, SHAREABLE, PUBLISHABLE, and REDACTED indicators."
+          : "Private material is excluded. SHAREABLE and PUBLISHABLE indicators only."}
+        {" "}Not a legal determination. Not financial advice.
+      </div>
+
+      {/* Entity preview counts */}
+      {entities.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+            Entities in casefile
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(entityCountsByType).map(([type, count]) => (
+              <span key={type} style={{ fontSize: 11, background: "#111", border: "1px solid #2a2a2a", borderRadius: 4, padding: "2px 8px", color: "#FF6B00", fontFamily: "ui-monospace, monospace" }}>
+                {type} ×{count}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Generate button */}
+      <div className="flex gap-3 flex-wrap" style={{ marginBottom: 14 }}>
+        <button
+          onClick={generateIocExport}
+          disabled={iocLoading}
+          className="disabled:opacity-50"
+          style={PRIMARY_BTN}
+        >
+          {iocLoading ? "Generating…" : "Generate investigative export"}
+        </button>
+        {iocResult && (
+          <button
+            onClick={() => triggerDownload(iocResult)}
+            style={SECONDARY_BTN}
+          >
+            Re-download
+          </button>
+        )}
+      </div>
+
+      {iocError && (
+        <div style={{ color: "#FF3B5C", fontSize: 12, marginBottom: 10 }}>{iocError}</div>
+      )}
+
+      {/* Export result */}
+      {iocResult && !iocLoading && (
+        <div style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,107,0,0.2)", borderRadius: 6, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#FF6B00", marginBottom: 10 }}>
+            Export generated
+          </div>
+          <div className="flex flex-col gap-1" style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+            <div><span style={{ color: "rgba(255,255,255,0.3)" }}>Format:</span> {iocResult.format}</div>
+            <div><span style={{ color: "rgba(255,255,255,0.3)" }}>Generated:</span> {iocResult.generatedAt.slice(0, 19).replace("T", " ")} UTC</div>
+            <div><span style={{ color: "rgba(255,255,255,0.3)" }}>Indicators:</span> {iocResult.iocCount} ({iocResult.snapshotCount} snapshots)</div>
+            {iocResult.privateExcluded > 0 && (
+              <div><span style={{ color: "rgba(255,255,255,0.3)" }}>Private excluded:</span> {iocResult.privateExcluded}</div>
+            )}
+            <div style={{ marginTop: 6, fontFamily: "ui-monospace, monospace", fontSize: 10, color: "#FF6B00", wordBreak: "break-all" }}>
+              SHA-256: {iocResult.exportHashSha256}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export history */}
+      {!historyLoading && exportHistory.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+            Recent exports ({exportHistory.length})
+          </div>
+          <div className="flex flex-col gap-1">
+            {exportHistory.slice(0, 5).map((rec) => (
+              <div key={rec.id} style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ color: "#FF6B00", fontFamily: "ui-monospace, monospace", fontSize: 10 }}>{rec.exportFormat}</span>
+                <span>{rec.iocCount} indicators</span>
+                {rec.privateExcluded > 0 && <span style={{ color: "rgba(255,59,92,0.7)" }}>{rec.privateExcluded} excluded</span>}
+                <span style={{ color: "rgba(255,255,255,0.2)" }}>{rec.createdAt.slice(0, 10)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={SEPARATOR} />
+
       {/* INVESTIGATOR EXPORT */}
       <div style={SECTION_TITLE}>Investigator export</div>
       <div
