@@ -363,6 +363,7 @@ export default function TigerScanPageFR() {
     const preset = DEMO_PRESETS[mockChain][scenario];
     setSelectedScenario(scenario);
     setAddress(preset.addr);
+    setResult(null);
     const url = new URL(window.location.href);
     url.searchParams.set("mock", scenario);
     window.history.replaceState({}, "", url.toString());
@@ -419,6 +420,7 @@ export default function TigerScanPageFR() {
         const c = results[0]
         const formatted = formatAddressForChain(c.address, c.chain)
         setAddress(formatted)
+        setResult(null)
         runScan(formatted)
         return
       }
@@ -431,6 +433,7 @@ export default function TigerScanPageFR() {
   const handleTickerPick = (c: TokenCandidate) => {
     const formatted = formatAddressForChain(c.address, c.chain)
     setAddress(formatted)
+    setResult(null)
     setTickerState(null)
     runScan(formatted)
   }
@@ -438,7 +441,7 @@ export default function TigerScanPageFR() {
   const runScan = async (overrideAddr?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
     flushSync(() => {
-      setError(null); setWeather(null);
+      setResult(null); setError(null); setWeather(null);
       setGraphData(null); setClusterResult(null); setMmResult(null);
       setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
       setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
@@ -671,6 +674,7 @@ export default function TigerScanPageFR() {
                   setActivePreset(p.id);
                   setSelectedScenario(null);
                   setAddress(p.addr);
+                  setResult(null);
                   setTimeout(() => runScan(p.addr), 60);
                 }}
                 className={[
@@ -737,7 +741,7 @@ export default function TigerScanPageFR() {
               <input
                 type="text"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => { setAddress(e.target.value); setResult(null); setAnalysisStatus("idle"); }}
                 placeholder="Colle une adresse ou tape un $TICKER (SOL, ETH, BSC, Base, Arbitrum, TRON)"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScanSubmit(); } }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
@@ -795,8 +799,8 @@ export default function TigerScanPageFR() {
 
         {/* Crossfade skeleton → contenu */}
         <div className="relative">
-          <div style={{ opacity: loading && !result ? 1 : 0, transition: "opacity 250ms ease-out", pointerEvents: loading && !result ? "auto" : "none" }}>
-            {loading && !result && (
+          <div style={{ opacity: loading ? 1 : 0, transition: "opacity 250ms ease-out", pointerEvents: loading ? "auto" : "none" }}>
+            {loading && (
               <div className="mb-4">
                 <ScanLoadingSteps locale="fr" />
               </div>
@@ -834,19 +838,10 @@ export default function TigerScanPageFR() {
               </div>
 
               {/* 1. TigerScore ring */}
-              <div className="relative">
-                <div className={loading ? "opacity-30" : ""}>
-                  <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
-                </div>
-                {loading && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-[#F85B05] border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
+              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
 
               {/* TOKEN IDENTITY STRIP */}
-              <div className={`flex justify-center w-full mt-5 mb-4${loading ? " opacity-30" : ""}`}>
+              <div className="flex justify-center w-full mt-5 mb-4">
                 <div className="w-full max-w-[288px]">
                   <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
                 </div>
@@ -896,18 +891,16 @@ export default function TigerScanPageFR() {
             <div className="lg:col-span-7 flex flex-col gap-5">
 
               {/* 1. DO NOT BUY — with What to do now integrated */}
-              <div className={loading ? "opacity-30 pointer-events-none" : ""}>
-                <RetailVerdictBanner
-                  tier={finalTier}
-                  score={result.score}
-                  proofs={result.proofs}
-                  address={address.trim()}
-                  chain={result.chain}
-                  lang="fr"
-                  actions={[...finalActions]}
-                  disclaimer={finalDisclaimer}
-                />
-              </div>
+              <RetailVerdictBanner
+                tier={finalTier}
+                score={result.score}
+                proofs={result.proofs}
+                address={address.trim()}
+                chain={result.chain}
+                lang="fr"
+                actions={[...finalActions]}
+                disclaimer={finalDisclaimer}
+              />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
               {addressLabel?.found && (

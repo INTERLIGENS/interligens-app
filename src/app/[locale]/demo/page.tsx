@@ -272,7 +272,7 @@ function TigerScanPageInner() {
     const scanAddr = address.trim();
 
     flushSync(() => {
-      setError(null); setWeather(null);
+      setResult(null); setError(null); setWeather(null);
     });
 
     setLoading(true);
@@ -460,6 +460,7 @@ function TigerScanPageInner() {
                 onClick={() => {
                   setActivePreset(p.id);
                   setAddress(p.address);
+                  setResult(null);
                   setIsDeep(false);
                   setTimeout(() => document.querySelector<HTMLButtonElement>("[data-scan-btn]")?.click(), 80);
                 }}
@@ -506,7 +507,7 @@ function TigerScanPageInner() {
               <input
                 type="text"
                 value={address}
-                onChange={(e) => { setAddress(e.target.value); setLoading(false); setError(null); }}
+                onChange={(e) => { setAddress(e.target.value); setResult(null); setLoading(false); setError(null); }}
                 placeholder="Paste address (SOL / ETH / TRON / base:0x… / arb:0x… / bsc:0x… / hyper:0x…)"
                 onKeyDown={(e) => { if (e.key === "Enter") runScan(); }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
@@ -597,22 +598,17 @@ function TigerScanPageInner() {
               </div>
 
               <div className="relative w-56 h-56 mb-10 mt-4 group-hover:scale-105 transition-transform duration-500">
-                <svg className={`w-full h-full -rotate-90${loading ? " opacity-30" : ""}`}>
+                <svg className="w-full h-full -rotate-90">
                   <circle cx="112" cy="112" r="100" stroke="#111" strokeWidth="12" fill="transparent" />
                   <circle cx="112" cy="112" r="100" stroke={getTierColor(result.tier)} strokeWidth="14" fill="transparent"
                     strokeDasharray={628} strokeDashoffset={628 - (628 * result.score) / 100}
                     strokeLinecap="round" className="transition-all duration-1000 ease-out"
                   />
                 </svg>
-                <div className={`absolute inset-0 flex flex-col items-center justify-center${loading ? " opacity-30" : ""}`}>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-7xl font-black italic leading-none">{result.score}</span>
                   <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em] mt-2">TigerScore</span>
                 </div>
-                {loading && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-[#F85B05] border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
               </div>
 
               <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{result.verdict}</h2>
