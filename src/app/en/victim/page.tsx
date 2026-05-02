@@ -119,7 +119,7 @@ export default function VictimPage() {
                     style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 8, color: '#f9fafb', padding: '12px 16px', fontSize: 13, textDecoration: 'none', display: 'block' }}>
                     Report to FINMA (Swiss Financial Authority)
                   </a>
-                  <a href={'/en/scan/timeline/auto?address=' + address}
+                  <a href={'/en/scan/' + address.trim() + '/timeline'}
                     style={{ background: '#4f46e5', border: 'none', borderRadius: 8, color: '#fff', padding: '12px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'block', textAlign: 'center' as const }}>
                     See full investigation →
                   </a>
