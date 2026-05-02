@@ -22,6 +22,33 @@ vi.mock("@/lib/entities/knownBad", () => ({
   isKnownBadEvm: vi.fn().mockReturnValue(null),
 }));
 
+vi.mock("@/lib/caseDb", () => ({
+  loadCaseByMint: vi.fn().mockReturnValue(null),
+}));
+
+vi.mock("@/lib/marketProviders", () => ({
+  getMarketSnapshot: vi.fn().mockResolvedValue({
+    url: null,
+    source: "dexscreener",
+    liquidity_usd: null,
+    volume_24h_usd: null,
+    fdv_usd: null,
+    pair_age_days: null,
+    cache_hit: false,
+  }),
+}));
+
+vi.mock("@/lib/tigerscore/adapter", () => ({
+  computeTigerScoreFromScan: vi.fn().mockReturnValue({
+    score: 0,
+    tier: "GREEN",
+    drivers: [],
+    confidence: "Low",
+    evidence: [],
+    meta: { version: "p1", chain: "SOL" },
+  }),
+}));
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const VALID_KEY = "test-partner-key-abc123";

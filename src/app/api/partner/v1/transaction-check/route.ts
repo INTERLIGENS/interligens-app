@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { validatePartnerKey, unauthorizedPartnerResponse } from "@/lib/security/partnerAuth";
 import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { computeTigerScoreWithIntel, type TigerInput } from "@/lib/tigerscore/engine";
+import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
+import { loadCaseByMint } from "@/lib/caseDb";
+import { getMarketSnapshot } from "@/lib/marketProviders";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -65,10 +68,59 @@ async function scoreAddress(
     const normalized = isEvm ? address.toLowerCase() : address;
     const knownBad = isEvm ? isKnownBadEvm(normalized) : null;
 
-    const input: TigerInput = isEvm
-      ? { chain, evm_known_bad: knownBad !== null, evm_is_contract: false }
-      : { chain, scan_type: "token" };
+    if (!isEvm) {
+      // SOL: full enrichment — same pipeline as /api/v1/score
+      const caseFile = loadCaseByMint(normalized);
+      const [market, intel] = await Promise.race([
+        Promise.all([
+          getMarketSnapshot("solana", normalized),
+          computeTigerScoreWithIntel(
+            { chain: "SOL", scan_type: "token", no_casefile: !caseFile, mint_address: normalized },
+            normalized
+          ),
+        ]),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 10_000)
+        ),
+      ]);
 
+      const rawClaims = caseFile?.claims ?? [];
+      const tigerScan = computeTigerScoreFromScan({
+        chain: "SOL",
+        scan_type: "token",
+        no_casefile: !caseFile,
+        mint_address: normalized,
+        market_url: market.url,
+        pair_age_days: market.pair_age_days,
+        liquidity_usd: market.liquidity_usd,
+        fdv_usd: market.fdv_usd,
+        volume_24h_usd: market.volume_24h_usd,
+        scam_lineage: "NONE",
+        signals: {
+          confirmedCriticalClaims: rawClaims.filter(
+            (cl) =>
+              cl.severity === "CRITICAL" &&
+              (cl.status === "CONFIRMED" || cl.status === "DISPUTED")
+          ).length,
+          knownBadAddresses: 0,
+        },
+      });
+
+      const finalScore = Math.max(tigerScan.score, intel.finalScore);
+      return {
+        score: finalScore,
+        verdict: toVerdict(finalScore),
+        signals_count:
+          tigerScan.drivers.length +
+          intel.drivers.filter((d) => d.id === "intelligence_overlay").length,
+      };
+    }
+
+    const input: TigerInput = {
+      chain,
+      evm_known_bad: knownBad !== null,
+      evm_is_contract: false,
+    };
     const intel = await Promise.race([
       computeTigerScoreWithIntel(input, normalized),
       new Promise<never>((_, reject) =>
