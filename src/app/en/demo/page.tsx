@@ -451,9 +451,8 @@ export default function TigerScanPage() {
 
   const runScan = async (overrideAddr?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
-    // Reset complet immédiat — flushSync force le commit visuel avant les fetches async
     flushSync(() => {
-      setResult(null); setError(null); setWeather(null);
+      setError(null); setWeather(null);
       setScanContextData(null); setScanContextLoading(false);
       setGraphData(null); setClusterResult(null); setMmResult(null);
       setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
@@ -859,7 +858,7 @@ export default function TigerScanPage() {
           <div id="result-anchor" />
 
           {/* RUNNING: scan loading steps */}
-          {analysisStatus === "running" && (
+          {analysisStatus === "running" && !result && (
             <div className="grid lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">
                 <ScanLoadingSteps locale="en" />
@@ -871,7 +870,7 @@ export default function TigerScanPage() {
           )}
 
           {/* DONE: résultat final uniquement */}
-          <div style={{ opacity: analysisStatus === "done" && result && !loading ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: analysisStatus === "done" && result && !loading ? "auto" : "none" }}>
+          <div style={{ opacity: result ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: result && !loading ? "auto" : "none" }}>
             {result && (() => {
               // Source de vérité : result OU graphData (pour éviter race condition)
               const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
@@ -903,10 +902,19 @@ export default function TigerScanPage() {
               </div>
 
               {/* 1. TigerScore ring */}
-              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+              <div className="relative">
+                <div className={loading ? "opacity-30" : ""}>
+                  <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+                </div>
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-[#F85B05] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
 
               {/* TOKEN IDENTITY STRIP */}
-              <div className="flex justify-center w-full mt-5 mb-4">
+              <div className={`flex justify-center w-full mt-5 mb-4${loading ? " opacity-30" : ""}`}>
                 <div className="w-full max-w-[288px]">
                   <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
                 </div>
@@ -956,16 +964,18 @@ export default function TigerScanPage() {
             <div className="lg:col-span-7 flex flex-col gap-5">
 
               {/* 1. DO NOT BUY — with What to do now integrated */}
-              <RetailVerdictBanner
-                tier={finalTier}
-                score={result.score}
-                proofs={result.proofs}
-                address={address.trim()}
-                chain={result.chain}
-                lang="en"
-                actions={[...finalActions]}
-                disclaimer={finalDisclaimer}
-              />
+              <div className={loading ? "opacity-30 pointer-events-none" : ""}>
+                <RetailVerdictBanner
+                  tier={finalTier}
+                  score={result.score}
+                  proofs={result.proofs}
+                  address={address.trim()}
+                  chain={result.chain}
+                  lang="en"
+                  actions={[...finalActions]}
+                  disclaimer={finalDisclaimer}
+                />
+              </div>
 
               {/* ── KNOWN ADDRESS BADGE ── */}
               {addressLabel?.found && (

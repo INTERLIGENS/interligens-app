@@ -272,7 +272,7 @@ function TigerScanPageInner() {
     const scanAddr = address.trim();
 
     flushSync(() => {
-      setResult(null); setError(null); setWeather(null);
+      setError(null); setWeather(null);
     });
 
     setLoading(true);
@@ -566,7 +566,7 @@ function TigerScanPageInner() {
         </div>
 
         {/* LOADING */}
-        {loading && (
+        {loading && !result && (
           <div className="max-w-md mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
             <div className="flex justify-between items-end">
               <span className="text-[10px] font-black uppercase text-[#F85B05] tracking-[0.4em]">Intelligence Pipeline</span>
@@ -582,7 +582,7 @@ function TigerScanPageInner() {
         )}
 
         {/* RESULTS */}
-        {result && !loading && (
+        {result && (
           <div className="grid lg:grid-cols-12 gap-8 animate-in zoom-in-95 duration-700 ease-out">
 
             {/* LEFT: VERDICT */}
@@ -597,17 +597,22 @@ function TigerScanPageInner() {
               </div>
 
               <div className="relative w-56 h-56 mb-10 mt-4 group-hover:scale-105 transition-transform duration-500">
-                <svg className="w-full h-full -rotate-90">
+                <svg className={`w-full h-full -rotate-90${loading ? " opacity-30" : ""}`}>
                   <circle cx="112" cy="112" r="100" stroke="#111" strokeWidth="12" fill="transparent" />
                   <circle cx="112" cy="112" r="100" stroke={getTierColor(result.tier)} strokeWidth="14" fill="transparent"
                     strokeDasharray={628} strokeDashoffset={628 - (628 * result.score) / 100}
                     strokeLinecap="round" className="transition-all duration-1000 ease-out"
                   />
                 </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className={`absolute inset-0 flex flex-col items-center justify-center${loading ? " opacity-30" : ""}`}>
                   <span className="text-7xl font-black italic leading-none">{result.score}</span>
                   <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em] mt-2">TigerScore</span>
                 </div>
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-[#F85B05] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
 
               <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{result.verdict}</h2>
