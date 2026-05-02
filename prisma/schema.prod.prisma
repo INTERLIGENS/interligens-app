@@ -1473,9 +1473,40 @@ model VaultCase {
   hypotheses        VaultHypothesis[]
   timelineEvents    VaultTimelineEvent[]
   publishCandidates VaultPublishCandidate[]
+  evidenceSnapshots VaultEvidenceSnapshot[]
+  exports           CaseExport[]
 
   @@index([workspaceId])
   @@index([status])
+}
+
+enum CaseExportFormat {
+  CSV_FULL
+  JSON_STRUCTURED
+  STIX_LIKE_JSON
+  POLICE_ANNEX_PDF
+  THREAT_INTEL_CSV
+}
+
+model CaseExport {
+  id                   String           @id @default(cuid())
+  caseId               String
+  case                 VaultCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  workspaceId          String
+  investigatorAccessId String
+  exportFormat         CaseExportFormat
+  exportedBy           String
+  includedCounts       Json             @default("{}")
+  publishabilityFilter String[]         @default([])
+  contentHashSha256    String
+  iocCount             Int              @default(0)
+  snapshotCount        Int              @default(0)
+  privateExcluded      Int              @default(0)
+  createdAt            DateTime         @default(now())
+
+  @@index([caseId])
+  @@index([workspaceId])
+  @@index([investigatorAccessId])
 }
 
 enum VaultHypothesisStatus {
@@ -1641,6 +1672,56 @@ model VaultAuditLog {
   @@index([workspaceId])
   @@index([caseId])
   @@index([action])
+}
+
+// ── Vault Evidence Snapshots ─────────────────────────────────────────────────
+
+enum VaultEvidenceSourceType {
+  WEBSITE
+  X_POST
+  TELEGRAM
+  DISCORD
+  GITHUB
+  MEDIUM
+  WHITEPAPER
+  EXPLORER
+  ARKHAM
+  METASLEUTH
+  DUNE
+  CHAINABUSE
+  GOPLUS
+  SCAMSNIFFER
+  OTHER
+}
+
+enum VaultEvidencePublishability {
+  PRIVATE
+  SHAREABLE
+  PUBLISHABLE
+  REDACTED
+}
+
+model VaultEvidenceSnapshot {
+  id                   String                      @id @default(cuid())
+  caseId               String
+  case                 VaultCase                   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  workspaceId          String
+  investigatorAccessId String
+  url                  String?
+  title                String
+  sourceType           VaultEvidenceSourceType     @default(OTHER)
+  note                 String?
+  tags                 String[]
+  relatedEntityId      String?
+  publishability       VaultEvidencePublishability @default(PRIVATE)
+  contentHashSha256    String
+  capturedAt           DateTime
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+
+  @@index([caseId])
+  @@index([workspaceId])
+  @@index([publishability])
 }
 
 // ── User watch list (post-scan continuous tracking) ──────────────────────────
@@ -3261,4 +3342,19 @@ model ScoreSnapshot {
   @@index([version])
   @@index([tier])
   @@index([createdAt])
+}
+
+model KolCrossLink {
+  id            String   @id @default(cuid())
+  sourceHandle  String
+  targetHandle  String
+  linkType      String
+  confidence    String
+  evidence      Json
+  detectedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@unique([sourceHandle, targetHandle, linkType])
+  @@index([sourceHandle])
+  @@index([targetHandle])
 }
