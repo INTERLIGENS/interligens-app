@@ -200,6 +200,7 @@ function TigerScanPageInner() {
   const [loading, setLoading]           = useState(false);
   const [loadStep, setLoadStep]         = useState(0);
   const [result, setResult]             = useState<NormalizedScan | null>(null);
+  const [currentScanAddress, setCurrentScanAddress] = useState("");
   const [corrobData, setCorrobData] = useState<any>(null);
   const [addressLabel, setAddressLabel] = useState<any>(null);
   const [weather, setWeather]           = useState<any | null>(null);
@@ -411,6 +412,7 @@ function TigerScanPageInner() {
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
+      setCurrentScanAddress(scanAddr);
       setResult(normalizeScanData(enrichedData, chain));
 
       try {
@@ -507,7 +509,7 @@ function TigerScanPageInner() {
               <input
                 type="text"
                 value={address}
-                onChange={(e) => { setAddress(e.target.value); setResult(null); setLoading(false); setError(null); }}
+                onChange={(e) => { setAddress(e.target.value); setError(null); }}
                 placeholder="Paste address (SOL / ETH / TRON / base:0x… / arb:0x… / bsc:0x… / hyper:0x…)"
                 onKeyDown={(e) => { if (e.key === "Enter") runScan(); }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
@@ -583,7 +585,7 @@ function TigerScanPageInner() {
         )}
 
         {/* RESULTS */}
-        {result && (
+        {result && currentScanAddress === address.trim() && (
           <div className="grid lg:grid-cols-12 gap-8 animate-in zoom-in-95 duration-700 ease-out">
 
             {/* LEFT: VERDICT */}

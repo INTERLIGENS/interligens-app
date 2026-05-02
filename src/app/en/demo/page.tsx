@@ -261,6 +261,7 @@ export default function TigerScanPage() {
   const [analysisStatus, setAnalysisStatus] = useState<"idle"|"running"|"done"|"error">("idle");
   const [graphData, setGraphData] = useState<any>(null);
   const [result, setResult]             = useState<NormalizedScan | null>(null);
+  const [currentScanAddress, setCurrentScanAddress] = useState("");
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
@@ -618,6 +619,7 @@ export default function TigerScanPage() {
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
+      setCurrentScanAddress(scanAddr);
       setResult(normalizedResult);
       setAnalysisStatus("done");
 
@@ -758,7 +760,7 @@ export default function TigerScanPage() {
               <input
                 type="text"
                 value={address}
-                onChange={(e) => { setAddress(e.target.value); setResult(null); setAnalysisStatus("idle"); }}
+                onChange={(e) => setAddress(e.target.value)}
                 placeholder="Paste address or type $TICKER (SOL, ETH, BSC, Base, Arbitrum, TRON)"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScanSubmit(); } }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
@@ -874,8 +876,8 @@ export default function TigerScanPage() {
           )}
 
           {/* DONE: résultat final uniquement */}
-          <div style={{ opacity: result ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: result && !loading ? "auto" : "none" }}>
-            {result && (() => {
+          <div style={{ opacity: result && currentScanAddress === address.trim() ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: result && currentScanAddress === address.trim() && !loading ? "auto" : "none" }}>
+            {result && currentScanAddress === address.trim() && (() => {
               // Source de vérité : result OU graphData (pour éviter race condition)
               const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
               const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
@@ -1252,7 +1254,7 @@ export default function TigerScanPage() {
         </div>
 
         {/* ── GO DEEPER ── */}
-        {result && (
+        {result && currentScanAddress === address.trim() && (
           <div className="mt-14 mb-6 border-t border-[#1a1a1a] pt-6 flex items-center gap-6 flex-wrap">
             <span className="text-[10px] font-bold text-zinc-700 uppercase tracking-[0.2em]">Go deeper</span>
             <a href="/en/kol" className="text-[12px] font-semibold text-zinc-500 hover:text-[#FF6B00] transition-colors no-underline">KOL Registry &rarr;</a>

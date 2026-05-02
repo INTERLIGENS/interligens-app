@@ -255,6 +255,7 @@ export default function TigerScanPageFR() {
   const [graphData, setGraphData] = useState<any>(null);
   const SCAN_STEPS = ['Analyse…', 'Marché…', 'Preuves…'];
   const [result, setResult]             = useState<NormalizedScan | null>(null);
+  const [currentScanAddress, setCurrentScanAddress] = useState("");
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
@@ -601,6 +602,7 @@ export default function TigerScanPageFR() {
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
+      setCurrentScanAddress(scanAddr);
       setResult(normalizedResult);
       setAnalysisStatus("done");
 
@@ -741,7 +743,7 @@ export default function TigerScanPageFR() {
               <input
                 type="text"
                 value={address}
-                onChange={(e) => { setAddress(e.target.value); setResult(null); setAnalysisStatus("idle"); }}
+                onChange={(e) => setAddress(e.target.value)}
                 placeholder="Colle une adresse ou tape un $TICKER (SOL, ETH, BSC, Base, Arbitrum, TRON)"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScanSubmit(); } }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
@@ -808,8 +810,8 @@ export default function TigerScanPageFR() {
           </div>
 
           <div id="result-anchor" />
-          <div style={{ opacity: result ? 1 : 0, transition: 'opacity 300ms ease-in, transform 350ms ease-out', transform: result ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(6px)', pointerEvents: result && !loading ? 'auto' : 'none' }}>
-            {result && (() => {
+          <div style={{ opacity: result && currentScanAddress === address.trim() ? 1 : 0, transition: 'opacity 300ms ease-in, transform 350ms ease-out', transform: result && currentScanAddress === address.trim() ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(6px)', pointerEvents: result && currentScanAddress === address.trim() && !loading ? 'auto' : 'none' }}>
+            {result && currentScanAddress === address.trim() && (() => {
               // Source de vérité : result OU graphData (pour éviter race condition)
               const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
               const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
