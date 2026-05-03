@@ -91,7 +91,7 @@ async function scanSolana(address: string, fetchFn: typeof fetch): Promise<Token
           params: {
             ownerAddress: address,
             page: 1,
-            limit: 10,
+            limit: 50,
             displayOptions: { showFungible: true },
           },
         }),
@@ -101,9 +101,12 @@ async function scanSolana(address: string, fetchFn: typeof fetch): Promise<Token
     if (!res.ok) return [];
     const data = (await res.json()) as { result?: { items?: DasItem[]; total?: number } };
     const items = (data.result?.items ?? []).filter(
-      (i) => i.token_info !== undefined && (i.interface === "FungibleToken" || i.interface === "FungibleAsset"),
+      (i) =>
+        i.token_info !== undefined &&
+        (i.interface === "FungibleToken" || i.interface === "FungibleAsset") &&
+        (i.token_info?.balance ?? 0) > 0,
     );
-    return items.slice(0, 10).filter((item) => {
+    return items.slice(0, 50).filter((item) => {
       const sym = item.token_info?.symbol ?? item.content?.metadata?.symbol ?? "";
       return sym.trim().length > 0;
     }).map((item) => {
@@ -149,8 +152,11 @@ interface EtherscanTx {
   tokenName?: string;
   tokenSymbol?: string;
   tokenDecimal?: string;
-  value?: string;
-  to?: string;
+}
+
+interface EtherscanBalanceResp {
+  status: string;
+  result?: string;
 }
 
 async function scanEvm(
@@ -160,31 +166,34 @@ async function scanEvm(
 ): Promise<TokenHolding[]> {
   const key = process.env.ETHERSCAN_API_KEY ?? "";
   const chainId = EVM_CHAIN_ID[chain];
-  const params = new URLSearchParams({
+  const base = `https://api.etherscan.io/v2/api`;
+
+  // Step 1: discover token contracts via recent transfer history
+  const histParams = new URLSearchParams({
     chainid: String(chainId),
     module: "account",
     action: "tokentx",
     address,
     page: "1",
-    offset: "50",
+    offset: "200",
     sort: "desc",
     apikey: key || "YourApiKeyToken",
   });
   try {
-    const res = await fetchFn(`https://api.etherscan.io/v2/api?${params.toString()}`, {
+    const histRes = await fetchFn(`${base}?${histParams.toString()}`, {
       signal: AbortSignal.timeout(12_000),
     });
-    if (!res.ok) return [];
-    const data = (await res.json()) as {
+    if (!histRes.ok) return [];
+    const histData = (await histRes.json()) as {
       status: string;
       result?: EtherscanTx[];
     };
-    if (data.status !== "1" || !Array.isArray(data.result)) return [];
+    if (histData.status !== "1" || !Array.isArray(histData.result)) return [];
 
-    // Deduplicate by contract — keep first occurrence (most recent)
+    // Deduplicate by contract — keep first occurrence for metadata
     const seen = new Set<string>();
     const unique: EtherscanTx[] = [];
-    for (const t of data.result) {
+    for (const t of histData.result) {
       const contract = (t.contractAddress ?? "").toLowerCase();
       if (contract && !seen.has(contract)) {
         seen.add(contract);
@@ -192,22 +201,53 @@ async function scanEvm(
       }
     }
 
-    return unique.slice(0, 10).map((t) => {
-      const decimals = parseInt(t.tokenDecimal ?? "18", 10);
-      const raw = Number(t.value ?? "0");
-      const balance = raw / Math.pow(10, Math.min(decimals, 18));
-      const symbol = t.tokenSymbol ?? "";
-      const name = t.tokenName ?? "";
-      return {
-        mint: t.contractAddress,
-        symbol,
-        name,
-        balanceFormatted: balance.toLocaleString("en-US", { maximumFractionDigits: 4 }),
-        balanceUsd: null,
-        riskLevel: scoreRisk(symbol, name, null),
-        explorerUrl: `${EVM_EXPLORER[chain]}/token/${t.contractAddress}`,
-      };
-    });
+    // Step 2: check CURRENT balance for each discovered contract
+    const candidates = unique.slice(0, 20);
+    const balanceResults = await Promise.all(
+      candidates.map(async (t) => {
+        const balParams = new URLSearchParams({
+          chainid: String(chainId),
+          module: "account",
+          action: "tokenbalance",
+          contractaddress: t.contractAddress,
+          address,
+          tag: "latest",
+          apikey: key || "YourApiKeyToken",
+        });
+        try {
+          const balRes = await fetchFn(`${base}?${balParams.toString()}`, {
+            signal: AbortSignal.timeout(8_000),
+          });
+          if (!balRes.ok) return null;
+          const balData = (await balRes.json()) as EtherscanBalanceResp;
+          if (balData.status !== "1" || !balData.result) return null;
+          const rawBalance = BigInt(balData.result);
+          if (rawBalance === 0n) return null;
+          const decimals = parseInt(t.tokenDecimal ?? "18", 10);
+          const balance = Number(rawBalance) / Math.pow(10, Math.min(decimals, 18));
+          return { t, balance };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    return balanceResults
+      .filter((r): r is { t: EtherscanTx; balance: number } => r !== null)
+      .slice(0, 10)
+      .map(({ t, balance }) => {
+        const symbol = t.tokenSymbol ?? "";
+        const name = t.tokenName ?? "";
+        return {
+          mint: t.contractAddress,
+          symbol,
+          name,
+          balanceFormatted: balance.toLocaleString("en-US", { maximumFractionDigits: 4 }),
+          balanceUsd: null,
+          riskLevel: scoreRisk(symbol, name, null),
+          explorerUrl: `${EVM_EXPLORER[chain]}/token/${t.contractAddress}`,
+        };
+      });
   } catch {
     return [];
   }

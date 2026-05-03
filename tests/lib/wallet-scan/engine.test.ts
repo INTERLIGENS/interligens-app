@@ -103,19 +103,21 @@ describe("computeWalletScan", () => {
         tokenName: "USD Coin",
         tokenSymbol: "USDC",
         tokenDecimal: "6",
-        value: "1000000",
-        to: "0x1234567890abcdef1234567890abcdef12345678",
       },
       {
         contractAddress: "0xDeadBeef000000000000000000000000DeadBeef",
         tokenName: "rug pull coin",
         tokenSymbol: "RUG",
         tokenDecimal: "18",
-        value: "500000000000000000000",
-        to: "0x1234567890abcdef1234567890abcdef12345678",
       },
     ];
-    const mockFetch = vi.fn(() => ok(makeEtherscanResponse(ethTokens)));
+    // Call 1: tokentx history (contract discovery)
+    // Calls 2-3: tokenbalance per contract (current holdings check, run in parallel)
+    // Must use mockImplementation (not mockResolvedValue) so each parallel call gets
+    // a fresh Response — a single Response body can only be consumed once.
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(ok(makeEtherscanResponse(ethTokens)))
+      .mockImplementation(() => ok({ status: "1", result: "1000000" }));
 
     const result = await computeWalletScan({
       address: "0x1234567890abcdef1234567890abcdef12345678",
@@ -125,7 +127,7 @@ describe("computeWalletScan", () => {
 
     expect(result.chain).toBe("ethereum");
     expect(result.tokens).toHaveLength(2);
-    expect(result.tokens[0].riskLevel).toBe("LOW");   // USDC
+    expect(result.tokens[0].riskLevel).toBe("LOW");      // USDC
     expect(result.tokens[1].riskLevel).toBe("CRITICAL"); // rug pull
     expect(result.topRiskLevel).toBe("CRITICAL");
     expect(result.revokeRecommended).toBe(true);
