@@ -1,5 +1,7 @@
 // src/lib/wallet-scan/engine.ts
 
+import { getTokenBalancesAlchemy } from "@/lib/evm/alchemyTokenBalances";
+
 export type WalletChain = "solana" | "ethereum" | "base" | "arbitrum";
 export type RiskLevel = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
 
@@ -159,7 +161,7 @@ interface EtherscanBalanceResp {
   result?: string;
 }
 
-async function scanEvm(
+async function scanEvmEtherscan(
   address: string,
   chain: Exclude<WalletChain, "solana">,
   fetchFn: typeof fetch,
@@ -168,7 +170,6 @@ async function scanEvm(
   const chainId = EVM_CHAIN_ID[chain];
   const base = `https://api.etherscan.io/v2/api`;
 
-  // Step 1: discover token contracts via recent transfer history
   const histParams = new URLSearchParams({
     chainid: String(chainId),
     module: "account",
@@ -190,7 +191,6 @@ async function scanEvm(
     };
     if (histData.status !== "1" || !Array.isArray(histData.result)) return [];
 
-    // Deduplicate by contract — keep first occurrence for metadata
     const seen = new Set<string>();
     const unique: EtherscanTx[] = [];
     for (const t of histData.result) {
@@ -201,7 +201,6 @@ async function scanEvm(
       }
     }
 
-    // Step 2: check CURRENT balance for each discovered contract
     const candidates = unique.slice(0, 20);
     const balanceResults = await Promise.all(
       candidates.map(async (t) => {
@@ -251,6 +250,18 @@ async function scanEvm(
   } catch {
     return [];
   }
+}
+
+async function scanEvm(
+  address: string,
+  chain: Exclude<WalletChain, "solana">,
+  fetchFn: typeof fetch,
+): Promise<TokenHolding[]> {
+  if (process.env.ALCHEMY_API_KEY) {
+    const result = await getTokenBalancesAlchemy(address, chain, fetchFn);
+    if (result !== null) return result;
+  }
+  return scanEvmEtherscan(address, chain, fetchFn);
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
