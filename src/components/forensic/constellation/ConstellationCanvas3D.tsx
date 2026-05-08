@@ -70,12 +70,17 @@ const EDGE_KIND_COLOR: Record<GraphEdge["kind"], string> = {
   kol_relation: CAUTION,
 };
 
-// Autopilot rotation — 1 turn / 60 s.
-const AUTOPILOT_TURN_MS = 60_000;
+// Autopilot rotation — 1 turn / 90 s. Slowed from 60 s for a calmer pan.
+const AUTOPILOT_TURN_MS = 90_000;
 // Inactivity before autopilot picks back up.
 const AUTOPILOT_RESUME_DELAY_MS = 3_000;
 // Ease-in length when resuming.
 const AUTOPILOT_EASE_MS = 1_500;
+// Deployer hub halo pulse period (sin wave, opacity 0.08 ↔ 0.18).
+const HALO_PULSE_PERIOD_MS = 4_000;
+// three.js AdditiveBlending = 2 (numeric constant kept inline so we don't
+// have to expand the in-tree type stubs in src/types/three.d.ts).
+const ADDITIVE_BLENDING = 2;
 
 // Orbit-camera helper — compute (x, z) for a given angle and distance.
 function orbit(
@@ -118,6 +123,22 @@ export default function ConstellationCanvas3D({
     easeStartAt: 0,
   });
 
+  // Camera orbit parameters. Seeded with sane defaults; rewritten once
+  // by handleEngineStop after zoomToFit settles, so autopilot picks up
+  // at the same radius the fit chose (no yo-yo against a hardcoded 700).
+  const orbitDistanceRef = useRef(700);
+  const orbitHeightRef = useRef(140);
+
+  // Single-shot zoomToFit guard + transient flag that suppresses
+  // autopilot's per-frame cameraPosition() while the fit transition
+  // is animating, so the camera doesn't fight itself.
+  const hasFitRef = useRef(false);
+  const fittingRef = useRef(false);
+
+  // Live reference to the deployer halo material so the pulse loop
+  // can mutate its opacity without rebuilding the mesh.
+  const haloMaterialRef = useRef<MeshBasicMaterial | null>(null);
+
   const setAutopilotRunning = useCallback((running: boolean) => {
     autopilotRef.current.running = running;
     autopilotOverrideCallback?.(running);
@@ -141,7 +162,8 @@ export default function ConstellationCanvas3D({
 
   // Node object — a coloured sphere. Kept tiny: no lighting, no materials
   // that need the renderer to update per frame. Colour alpha is mirrored
-  // off hover state.
+  // off hover state. The deployer hub gets an additional additive halo
+  // child (pulse driven by the autopilot rAF below).
   const nodeThreeObject = useCallback(
     (node: DemoConstellationNode) => {
       const base = ROLE_COLOR[node.demoRole];
@@ -161,7 +183,30 @@ export default function ConstellationCanvas3D({
         24,
         24,
       );
-      return new Mesh(geometry, material);
+      const mesh = new Mesh(geometry, material);
+
+      // Single hub halo — only the deployer gets it. The pulse is wired
+      // in the autopilot rAF loop via haloMaterialRef.
+      if (node.demoRole === "deployer") {
+        const haloMaterial = new MeshBasicMaterial({
+          color: new Color(0xff6b00),
+          transparent: true,
+          opacity: 0.1,
+        });
+        // AdditiveBlending isn't surfaced by our minimal in-tree type
+        // stubs, so set it via a numeric cast. Equivalent to
+        // `haloMaterial.blending = THREE.AdditiveBlending`.
+        (haloMaterial as unknown as { blending: number }).blending =
+          ADDITIVE_BLENDING;
+
+        const haloGeometry = new SphereGeometry(size * 2.2, 24, 24);
+        const halo = new Mesh(haloGeometry, haloMaterial);
+        mesh.add(halo);
+
+        haloMaterialRef.current = haloMaterial;
+      }
+
+      return mesh;
     },
     [hoveredId],
   );
@@ -214,8 +259,20 @@ export default function ConstellationCanvas3D({
 
     const tick = (now: number) => {
       if (cancelled) return;
-      const dt = 16; // logical step, keeps rotation independent of fps
-      if (state.running) {
+
+      // Hub halo pulse — runs irrespective of camera state so the
+      // breathing keeps going while the user is panning manually.
+      const haloMat = haloMaterialRef.current;
+      if (haloMat) {
+        const phase = (now / HALO_PULSE_PERIOD_MS) * Math.PI * 2;
+        // Oscillates between 0.08 and 0.18.
+        haloMat.opacity = 0.13 + 0.05 * Math.sin(phase);
+      }
+
+      if (fittingRef.current) {
+        // zoomToFit transition is animating the camera; don't fight it.
+      } else if (state.running) {
+        const dt = 16; // logical step, keeps rotation independent of fps
         // Re-engage easing from 0 → 1 if we just resumed.
         const sinceEase = now - state.easeStartAt;
         const easeFactor =
@@ -227,7 +284,11 @@ export default function ConstellationCanvas3D({
 
         const fg = fgRef.current;
         if (fg) {
-          const cam = orbit(700, state.angle, 140);
+          const cam = orbit(
+            orbitDistanceRef.current,
+            state.angle,
+            orbitHeightRef.current,
+          );
           fg.cameraPosition(cam, { x: 0, y: 0, z: 0 }, 0);
         }
       } else {
@@ -262,6 +323,42 @@ export default function ConstellationCanvas3D({
       el.removeEventListener("touchstart", onInteract);
     };
   }, [reducedMotion, autopilotOverrideCallback]);
+
+  // First time the force sim cools down, fit the whole graph in frame
+  // (~70% of canvas) and rebase autopilot's orbit radius on whatever
+  // the fit chose, so the auto-rotation doesn't yank the camera back
+  // to a hardcoded distance.
+  const handleEngineStop = useCallback(() => {
+    if (hasFitRef.current) return;
+    hasFitRef.current = true;
+    const fg = fgRef.current;
+    if (!fg || typeof fg.zoomToFit !== "function") return;
+
+    fittingRef.current = true;
+    fg.zoomToFit(1500, 80);
+
+    // After the fit transition settles, sample the camera and reseed
+    // the autopilot orbit. atan2 keeps the angle continuous so the
+    // pan resumes from the fit's vantage point with no snap.
+    window.setTimeout(() => {
+      try {
+        const cam =
+          typeof fg.cameraPosition === "function" ? fg.cameraPosition() : null;
+        if (cam && typeof cam.x === "number") {
+          const dist = Math.sqrt(
+            cam.x * cam.x + cam.y * cam.y + cam.z * cam.z,
+          );
+          if (Number.isFinite(dist) && dist > 1) {
+            orbitDistanceRef.current = dist;
+            orbitHeightRef.current = cam.y;
+            autopilotRef.current.angle = Math.atan2(cam.x, cam.z);
+          }
+        }
+      } finally {
+        fittingRef.current = false;
+      }
+    }, 1600);
+  }, []);
 
   // react-force-graph-3d expects `{ nodes, links }` — our contract shape
   // uses `edges`. Map in-place without mutating the source.
@@ -346,6 +443,9 @@ export default function ConstellationCanvas3D({
             linkWidth={linkWidth}
             linkOpacity={0.8}
             linkDirectionalParticles={0}
+            cooldownTicks={200}
+            cooldownTime={12000}
+            onEngineStop={handleEngineStop}
             enableNodeDrag
             enableNavigationControls
             onNodeHover={(n) => setHoveredId((n as DemoConstellationNode | null)?.id ?? null)}

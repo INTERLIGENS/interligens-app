@@ -144,8 +144,17 @@ export default function DemoConstellationPage() {
           }}
         >
           <style>{`
-            .constellation-3d-shell { height: 420px; }
-            @media (min-width: 768px) { .constellation-3d-shell { height: 680px; } }
+            .constellation-3d-shell {
+              height: 70vh;
+              min-height: 480px;
+            }
+            @media (min-width: 960px) {
+              .constellation-3d-shell {
+                height: calc(100vh - 360px);
+                min-height: 680px;
+                max-height: 900px;
+              }
+            }
           `}</style>
           <div className="constellation-3d-shell">
             <ConstellationCanvas3D
