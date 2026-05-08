@@ -7,7 +7,7 @@ const SURFACE = "#111318";
 const SURFACE2 = "#161920";
 const BORDER = "#1E2028";
 const AMBER = "#FFB800";
-const CYAN = "#FF6B00";
+const ACCENT = "#FF6B00";
 const RED = "#FF3B5C";
 const GREEN = "#22C55E";
 const TEXT = "#F9FAFB";
@@ -245,7 +245,7 @@ function CaseFilesSection() {
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
             <div>
-              <div style={{ color: CYAN, fontSize: 10, fontFamily: "monospace", fontWeight: 700 }}>
+              <div style={{ color: ACCENT, fontSize: 10, fontFamily: "monospace", fontWeight: 700 }}>
                 {c.caseCode}
               </div>
               <h3 style={{ margin: "4px 0 0", fontSize: 17, fontWeight: 700, color: TEXT }}>
@@ -254,7 +254,7 @@ function CaseFilesSection() {
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               <Badge text={c.riskTier} color={tierColor(c.riskTier)} />
-              <Badge text={c.chain} color={CYAN} />
+              <Badge text={c.chain} color={ACCENT} />
               <Badge text={c.status} color={c.status === "Published" ? GREEN : AMBER} />
             </div>
           </div>
@@ -299,7 +299,7 @@ function CaseFilesSection() {
                     fontWeight: 600,
                     background: SURFACE2,
                     border: `1px solid ${BORDER}`,
-                    color: CYAN,
+                    color: ACCENT,
                   }}
                 >
                   PDF: {p.title}
@@ -335,7 +335,7 @@ function classifyRisk(k: KolData): { label: string; color: string } {
   if (flag.includes("confirmed")) return { label: "CONFIRMED SCAMMER", color: RED };
   if (flag.includes("high")) return { label: "HIGH RISK", color: "#F97316" };
   if (flag.includes("medium")) return { label: "MEDIUM RISK", color: AMBER };
-  if (flag.includes("victim")) return { label: "VICTIM POOL", color: CYAN };
+  if (flag.includes("victim")) return { label: "VICTIM POOL", color: ACCENT };
   return { label: "UNVERIFIED", color: MUTED };
 }
 
@@ -388,7 +388,7 @@ function KolNetworkSection() {
                   <a
                     href={`/en/kol/${k.handle}`}
                     onClick={(e) => e.stopPropagation()}
-                    style={{ color: CYAN, textDecoration: "none", fontWeight: 600 }}
+                    style={{ color: ACCENT, textDecoration: "none", fontWeight: 600 }}
                   >
                     @{k.handle}
                   </a>
@@ -445,7 +445,7 @@ function signalColor(type: string) {
   switch (type) {
     case "CTA_DANGEROUS": return RED;
     case "CA_DETECTED": return "#F97316";
-    case "DOMAIN_RISK": return CYAN;
+    case "DOMAIN_RISK": return ACCENT;
     case "NARRATIVE_SPIKE": return AMBER;
     case "SELL_WHILE_SHILL": return RED;
     default: return MUTED;
@@ -517,7 +517,7 @@ function WatcherAlertsSection() {
             {/* Right side */}
             <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
               {a.linkedCaseId && (
-                <span style={{ color: CYAN, fontSize: 9, fontFamily: "monospace", fontWeight: 700 }}>
+                <span style={{ color: ACCENT, fontSize: 9, fontFamily: "monospace", fontWeight: 700 }}>
                   CASE
                 </span>
               )}
@@ -549,7 +549,7 @@ function WatcherAlertsSection() {
                 {a.linkedKolHandle && (
                   <a
                     href={`/en/kol/${a.linkedKolHandle}`}
-                    style={{ color: CYAN, textDecoration: "none" }}
+                    style={{ color: ACCENT, textDecoration: "none" }}
                   >
                     View KOL Profile →
                   </a>
@@ -664,7 +664,7 @@ function LegalPdfSection() {
                 </div>
 
                 {/* Download */}
-                <span style={{ color: CYAN, fontSize: 11, fontWeight: 700, fontFamily: "monospace", flexShrink: 0 }}>
+                <span style={{ color: ACCENT, fontSize: 11, fontWeight: 700, fontFamily: "monospace", flexShrink: 0 }}>
                   OPEN &rarr;
                 </span>
               </a>
@@ -747,7 +747,7 @@ function ObservedProceedsSection() {
                 </span>
                 <Badge
                   text={p.entityType.toUpperCase()}
-                  color={p.entityType === "kol" ? CYAN : p.entityType === "cluster" ? "#F97316" : AMBER}
+                  color={p.entityType === "kol" ? ACCENT : p.entityType === "cluster" ? "#F97316" : AMBER}
                 />
                 {p.caseId && (
                   <span style={{ color: DIMMED, fontSize: 9, fontFamily: "monospace" }}>
@@ -774,7 +774,7 @@ function ObservedProceedsSection() {
 
             {/* Meta row */}
             <div style={{ display: "flex", gap: 16, fontSize: 10, color: DIMMED, fontFamily: "monospace", flexWrap: "wrap" }}>
-              <span>CHAIN <span style={{ color: CYAN }}>{p.chain}</span></span>
+              <span>CHAIN <span style={{ color: ACCENT }}>{p.chain}</span></span>
               <span>WALLET <span style={{ color: AMBER }}>{p.walletShort}</span></span>
               <span>OBSERVED <span style={{ color: TEXT }}>{fmtDate(p.observedAt)}</span></span>
               <span>EVIDENCE <span style={{ color: TEXT }}>{p.evidenceCount}</span></span>
@@ -830,7 +830,7 @@ export default function InvestigatorDashboard() {
             INTERLIGENS
           </span>
           <span style={{ color: BORDER }}>|</span>
-          <span style={{ color: CYAN, fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", fontFamily: "monospace" }}>
+          <span style={{ color: ACCENT, fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", fontFamily: "monospace" }}>
             INVESTIGATOR DASHBOARD
           </span>
         </div>

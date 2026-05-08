@@ -6,7 +6,7 @@ const SURFACE = "#111318";
 const SURFACE2 = "#161920";
 const BORDER = "#1E2028";
 const BRAND = "#F85B05";
-const CYAN = "#FF6B00";
+const ACCENT = "#FF6B00";
 const TEXT = "#F9FAFB";
 const MUTED = "#6B7280";
 const DIMMED = "#3B3F4A";
@@ -225,7 +225,7 @@ export default function BetaAccessNDA() {
             transition: "border-color 0.15s",
             marginBottom: 14,
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = CYAN)}
+          onFocus={(e) => (e.currentTarget.style.borderColor = ACCENT)}
           onBlur={(e) => (e.currentTarget.style.borderColor = "#1A1A1A")}
         />
 
@@ -262,7 +262,7 @@ export default function BetaAccessNDA() {
             transition: "border-color 0.15s",
             marginBottom: 18,
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = CYAN)}
+          onFocus={(e) => (e.currentTarget.style.borderColor = ACCENT)}
           onBlur={(e) => (e.currentTarget.style.borderColor = "#1A1A1A")}
         />
 

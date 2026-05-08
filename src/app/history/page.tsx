@@ -6,7 +6,7 @@ const BG = "#0A0C10";
 const SURFACE = "#111318";
 const BORDER = "#1E2028";
 const BRAND = "#F85B05";
-const CYAN = "#FF6B00";
+const ACCENT = "#FF6B00";
 const RED = "#FF3B5C";
 const GREEN = "#22C55E";
 const TEXT = "#F9FAFB";
@@ -199,11 +199,11 @@ export default function HistoryPage() {
                         fontWeight: 700,
                         letterSpacing: "0.1em",
                         fontFamily: "monospace",
-                        color: CYAN,
+                        color: ACCENT,
                         padding: "1px 6px",
                         borderRadius: 2,
-                        border: `1px solid ${CYAN}25`,
-                        background: CYAN + "08",
+                        border: `1px solid ${ACCENT}25`,
+                        background: ACCENT + "08",
                         flexShrink: 0,
                       }}
                     >
