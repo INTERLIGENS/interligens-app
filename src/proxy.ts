@@ -1,8 +1,6 @@
-// src/middleware.ts
+// src/proxy.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/security/adminAuth";
-
-export const runtime = "nodejs";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -79,7 +77,7 @@ function isLocalizedAdminRoute(pathname: string): boolean {
   return /^\/[a-z]{2}\/admin(\/|$)/.test(pathname);
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ── Admin founder shortcut on investigator onboarding ──────────────────
