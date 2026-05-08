@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
-describe("middleware Basic Auth", () => {
+describe("proxy Basic Auth", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it("laisse passer en dev sans Basic Auth", async () => {
@@ -9,9 +9,9 @@ describe("middleware Basic Auth", () => {
     vi.stubEnv("ADMIN_BASIC_USER", "admin");
     vi.stubEnv("ADMIN_BASIC_PASS", "pass");
     vi.resetModules();
-    const { middleware } = await import("../../middleware");
+    const { proxy } = await import("../../proxy");
     const req = new NextRequest("http://localhost/api/admin/sources");
-    const res = middleware(req);
+    const res = proxy(req);
     expect(res.status).not.toBe(401);
   });
 
@@ -20,9 +20,9 @@ describe("middleware Basic Auth", () => {
     vi.stubEnv("ADMIN_BASIC_USER", "admin");
     vi.stubEnv("ADMIN_BASIC_PASS", "pass");
     vi.resetModules();
-    const { middleware } = await import("../../middleware");
+    const { proxy } = await import("../../proxy");
     const req = new NextRequest("http://localhost/api/admin/sources");
-    const res = middleware(req);
+    const res = proxy(req);
     expect(res.status).toBe(401);
   });
 
@@ -31,12 +31,12 @@ describe("middleware Basic Auth", () => {
     vi.stubEnv("ADMIN_BASIC_USER", "admin");
     vi.stubEnv("ADMIN_BASIC_PASS", "pass");
     vi.resetModules();
-    const { middleware } = await import("../../middleware");
+    const { proxy } = await import("../../proxy");
     const creds = Buffer.from("admin:pass").toString("base64");
     const req = new NextRequest("http://localhost/api/admin/sources", {
       headers: { authorization: `Basic ${creds}` },
     });
-    const res = middleware(req);
+    const res = proxy(req);
     expect(res.status).not.toBe(401);
   });
 });
