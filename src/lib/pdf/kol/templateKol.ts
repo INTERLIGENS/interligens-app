@@ -219,7 +219,7 @@ export function renderKolPdf(kol: any, mode: string, laundryTrail?: any, lang: s
     <div style="margin-bottom:10px;">
       <span style="font-size:8px;color:#374151;letter-spacing:0.15em;">SIGNALS DETECTED: </span>
       ${laundryTrail.signals.map((s: any) => {
-        const colors: Record<string, string> = { FRAG: '#f59e0b', BRIDGE: '#00E5FF', MIXER: '#ef4444', PRIV: '#ef4444', DEG: '#f59e0b', CASH: '#f59e0b' }
+        const colors: Record<string, string> = { FRAG: '#f59e0b', BRIDGE: '#FF6B00', MIXER: '#ef4444', PRIV: '#ef4444', DEG: '#f59e0b', CASH: '#f59e0b' }
         const color = colors[s.family] ?? '#6b7280'
         const label = s.confirmed ? s.family : ('~' + s.family)
         const desc = !s.confirmed && s.family === 'MIXER' ? 'mixer-adjacent routing observed' : ''
