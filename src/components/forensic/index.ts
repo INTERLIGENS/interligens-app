@@ -67,3 +67,12 @@ export { ConstellationCanvas } from "./constellation/ConstellationCanvas";
 export { ScanIntake } from "./scan/ScanIntake";
 export { ScanFlow } from "./scan/ScanFlow";
 export { ConfidenceLayer } from "./scan/ConfidenceLayer";
+
+// Guard (live distribution)
+export { GuardHero } from "./guard/GuardHero";
+export { GuardScenarioGrid } from "./guard/GuardScenarioGrid";
+export { GuardSystemLink } from "./guard/GuardSystemLink";
+export { GuardMockPanel } from "./guard/GuardMockPanel";
+export { GuardDifferenceTable } from "./guard/GuardDifferenceTable";
+export { GuardChainRail } from "./guard/GuardChainRail";
+export { EarlyAccessBlock } from "./guard/EarlyAccessBlock";

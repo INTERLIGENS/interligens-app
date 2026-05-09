@@ -4,11 +4,16 @@ import Link from "next/link";
 // dossiers live at `/kol/[handle]`. `/about` sits last as the institutional
 // entry point — discipline pages (methodology, charter, takedown, legal)
 // stay in the LegalStrip footer.
+//
+// `/guard` is a level-1 surface: Phantom Guard is the live distribution
+// layer of the engine, not a sub-tool, so it sits in the Masthead next to
+// the public registry surfaces rather than the LegalStrip footer.
 const NAV = [
   { href: "/", label: "Home" },
   { href: "/scan", label: "Scan" },
   { href: "/cases", label: "Cases" },
   { href: "/kol", label: "KOL" },
+  { href: "/guard", label: "Guard" },
   { href: "/constellation", label: "Constellation" },
   { href: "/about", label: "About" },
 ] as const;
