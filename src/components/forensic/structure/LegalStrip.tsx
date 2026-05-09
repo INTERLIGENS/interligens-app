@@ -5,6 +5,7 @@ const LEGAL_ITEMS = [
   { href: "/charter",     label: "Charter" },
   { href: "/takedown",    label: "Takedown" },
   { href: "/legal",       label: "Legal notice" },
+  { href: "/press",       label: "Press" },
 ] as const;
 
 export function LegalStrip() {
