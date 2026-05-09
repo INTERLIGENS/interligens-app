@@ -1,13 +1,16 @@
 import Link from "next/link";
 
-// Scoped to in-scope Phase 1-4 routes. `/kol` is the dossier registry index;
-// individual dossiers live at `/kol/[handle]`.
+// Primary public surfaces. `/kol` is the dossier registry index; individual
+// dossiers live at `/kol/[handle]`. `/about` sits last as the institutional
+// entry point — discipline pages (methodology, charter, takedown, legal)
+// stay in the LegalStrip footer.
 const NAV = [
   { href: "/", label: "Home" },
   { href: "/scan", label: "Scan" },
   { href: "/cases", label: "Cases" },
   { href: "/kol", label: "KOL" },
   { href: "/constellation", label: "Constellation" },
+  { href: "/about", label: "About" },
 ] as const;
 
 export function Masthead({ active }: { active?: string }) {
