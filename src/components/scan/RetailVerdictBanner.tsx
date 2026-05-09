@@ -19,6 +19,7 @@ interface Props {
   lang?: 'en' | 'fr'
   actions?: string[]
   disclaimer?: string
+  hasCasefile?: boolean
 }
 
 const VERDICTS = {
@@ -74,9 +75,10 @@ function toPlainLanguage(proof: Proof, lang: 'en' | 'fr'): string | null {
   return null
 }
 
-export default function RetailVerdictBanner({ tier, score, proofs, address, chain, lang = 'en', actions, disclaimer }: Props) {
+export default function RetailVerdictBanner({ tier, score, proofs, address, chain, lang = 'en', actions, disclaimer, hasCasefile }: Props) {
   const v = VERDICTS[lang][tier]
   const isSolana = chain === 'SOL' || chain === 'solana'
+  const showCasefileCta = tier === 'RED' || !!hasCasefile
 
   const reasons = proofs
     .filter(p => p.level !== 'low')
@@ -144,7 +146,7 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
-        {isSolana && address && (
+        {isSolana && address && showCasefileCta && (
           <a href={timelineBase + address + '/timeline'} style={{ background: v.color, color: '#fff', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'monospace', letterSpacing: '0.03em' }}>
             {ctaLabel}
           </a>
