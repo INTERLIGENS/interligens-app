@@ -902,6 +902,7 @@ export default function TigerScanPageFR() {
                 lang="fr"
                 actions={[...finalActions]}
                 disclaimer={finalDisclaimer}
+                hasCasefile={!!corrobData?.found}
               />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
@@ -952,6 +953,7 @@ export default function TigerScanPageFR() {
               <IntelligenceBadge signal={intelSignal} locale="fr" />
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
+              {(finalTier === "RED" || corrobData?.found) && (
               <div className="bg-[#080808] border border-zinc-800/80 rounded-xl p-4" style={{ borderTop: '2px solid #F85B0540' }}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F85B05]">Proof Pack</span>
@@ -999,6 +1001,7 @@ export default function TigerScanPageFR() {
                   <span style={{ fontSize: 9, color: "#4b5563" }}>Soyez alerté si le risque change</span>
                 </div>
               </div>
+              )}
 
               {/* ── ADVANCED SIGNALS ── */}
               <AdvancedSignals

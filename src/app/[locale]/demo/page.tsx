@@ -657,6 +657,7 @@ function TigerScanPageInner() {
               >
                 Generate Full Report (PDF)
               </button>
+              {(result.tier === "RED" || corrobData?.found) && (
               <button
                   onClick={async () => {
                     if (!result) return;
@@ -672,6 +673,7 @@ function TigerScanPageInner() {
                 >
                   Generate Case File (PDF) — Detective Referenced
                 </button>
+              )}
             </div>
 
             {/* RIGHT: SIGNALS + CARDS */}
@@ -723,6 +725,7 @@ function TigerScanPageInner() {
                 address={address.trim()}
                 chain={result.chain}
                 lang={locale === 'fr' ? 'fr' : 'en'}
+                hasCasefile={!!corrobData?.found}
               />
 
               {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
