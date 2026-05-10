@@ -19,6 +19,8 @@ export interface TokenHolding {
   balanceUsd: number | null;
   riskLevel: RiskLevel;
   explorerUrl: string;
+  isNative?: boolean;
+  priceKnown?: boolean;
 }
 
 export interface WalletScanResult {
@@ -65,6 +67,10 @@ export function computeTopRiskLevel(tokens: TokenHolding[]): RiskLevel | "NONE" 
 
 // ── Helius DAS (Solana) ───────────────────────────────────────────────────────
 
+const SOL_MINT = "So11111111111111111111111111111111111111112";
+const STABLE_SYMBOLS = new Set(["USDC", "USDT", "DAI"]);
+const SPAM_DUST_USD = 0.01;
+
 interface DasItem {
   id: string;
   interface?: string;
@@ -77,7 +83,40 @@ interface DasItem {
   content?: { metadata?: { name?: string; symbol?: string } };
 }
 
-async function scanSolana(address: string, fetchFn: typeof fetch): Promise<TokenHolding[]> {
+async function fetchSolNativeBalance(
+  address: string,
+  fetchFn: typeof fetch,
+): Promise<number> {
+  const key = process.env.HELIUS_API_KEY ?? "";
+  if (!key) return 0;
+  try {
+    const res = await fetchFn(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "balance",
+        method: "getBalance",
+        params: [address],
+      }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return 0;
+    const data = (await res.json()) as { result?: number | { value?: number } };
+    const lamports =
+      typeof data.result === "number"
+        ? data.result
+        : data.result?.value ?? 0;
+    return lamports / 1e9;
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchSolDasTokens(
+  address: string,
+  fetchFn: typeof fetch,
+): Promise<TokenHolding[]> {
   const key = process.env.HELIUS_API_KEY ?? "";
   if (!key) return [];
   try {
@@ -127,11 +166,72 @@ async function scanSolana(address: string, fetchFn: typeof fetch): Promise<Token
         balanceUsd,
         riskLevel: scoreRisk(symbol, name, balanceUsd),
         explorerUrl: `https://solscan.io/token/${item.id}`,
+        priceKnown: balanceUsd !== null,
       };
     });
   } catch {
     return [];
   }
+}
+
+async function scanSolana(address: string, fetchFn: typeof fetch): Promise<TokenHolding[]> {
+  const key = process.env.HELIUS_API_KEY ?? "";
+  if (!key) return [];
+
+  const [solBalance, dasTokens] = await Promise.all([
+    fetchSolNativeBalance(address, fetchFn),
+    fetchSolDasTokens(address, fetchFn),
+  ]);
+
+  const tokens: TokenHolding[] = [];
+  if (solBalance > 0) {
+    tokens.push({
+      mint: SOL_MINT,
+      symbol: "SOL",
+      name: "Solana",
+      balanceFormatted: solBalance.toLocaleString("en-US", { maximumFractionDigits: 4 }),
+      balanceUsd: null,
+      riskLevel: "LOW",
+      explorerUrl: `https://solscan.io/account/${address}`,
+      isNative: true,
+      priceKnown: false,
+    });
+  }
+  for (const t of dasTokens) {
+    if (t.mint === SOL_MINT) continue; // never duplicate native SOL via wSOL
+    tokens.push(t);
+  }
+  return sortAndFilterTokens(tokens);
+}
+
+// ── Sort & spam-filter ────────────────────────────────────────────────────────
+
+function sortAndFilterTokens(tokens: TokenHolding[]): TokenHolding[] {
+  // Spam filter: drop priced dust below $0.01, unless flagged CRITICAL/HIGH
+  // (CRITICAL/HIGH stay visible as evidence). Tokens with unknown price are
+  // kept (could be a legit token without a feed) and grouped at the bottom.
+  const filtered = tokens.filter((t) => {
+    if (t.isNative) return true;
+    if (t.balanceUsd !== null && t.balanceUsd < SPAM_DUST_USD) {
+      return t.riskLevel === "CRITICAL" || t.riskLevel === "HIGH";
+    }
+    return true;
+  });
+
+  return filtered.sort((a, b) => {
+    if (a.isNative && !b.isNative) return -1;
+    if (!a.isNative && b.isNative) return 1;
+    const aStable = STABLE_SYMBOLS.has(a.symbol.toUpperCase());
+    const bStable = STABLE_SYMBOLS.has(b.symbol.toUpperCase());
+    if (aStable && !bStable) return -1;
+    if (!aStable && bStable) return 1;
+    const aPriced = a.balanceUsd !== null;
+    const bPriced = b.balanceUsd !== null;
+    if (aPriced && !bPriced) return -1;
+    if (!aPriced && bPriced) return 1;
+    if (aPriced && bPriced) return (b.balanceUsd ?? 0) - (a.balanceUsd ?? 0);
+    return 0;
+  });
 }
 
 // ── Etherscan-compatible (EVM) ────────────────────────────────────────────────
@@ -257,11 +357,16 @@ async function scanEvm(
   chain: Exclude<WalletChain, "solana">,
   fetchFn: typeof fetch,
 ): Promise<TokenHolding[]> {
+  let tokens: TokenHolding[];
   if (process.env.ALCHEMY_API_KEY) {
     const result = await getTokenBalancesAlchemy(address, chain, fetchFn);
-    if (result !== null) return result;
+    tokens = result !== null ? result : await scanEvmEtherscan(address, chain, fetchFn);
+  } else {
+    tokens = await scanEvmEtherscan(address, chain, fetchFn);
   }
-  return scanEvmEtherscan(address, chain, fetchFn);
+  return sortAndFilterTokens(
+    tokens.map((t) => ({ ...t, priceKnown: t.balanceUsd !== null })),
+  );
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

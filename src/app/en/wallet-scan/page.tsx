@@ -294,12 +294,13 @@ export default function WalletScanPageEN() {
                 No token holdings found.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {result.tokens.map((token, i) => (
+              (() => {
+                const verified = result.tokens.filter((t) => t.isNative || t.priceKnown !== false);
+                const unverified = result.tokens.filter((t) => !t.isNative && t.priceKnown === false);
+                const Row = ({ token, muted }: { token: typeof result.tokens[number]; muted: boolean }) => (
                   <div
-                    key={token.mint + i}
                     style={{
-                      background: "rgba(255,255,255,0.02)",
+                      background: muted ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.02)",
                       border: "1px solid rgba(255,255,255,0.06)",
                       borderRadius: 8,
                       padding: "12px 16px",
@@ -307,21 +308,27 @@ export default function WalletScanPageEN() {
                       alignItems: "center",
                       justifyContent: "space-between",
                       gap: 12,
+                      opacity: muted ? 0.65 : 1,
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>
+                        <span style={{ fontWeight: muted ? 600 : 700, fontSize: muted ? 12 : 14, color: muted ? "#94a3b8" : "#fff" }}>
                           {token.symbol || "—"}
                         </span>
+                        {token.isNative && (
+                          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: O, border: `1px solid ${O}44`, background: `${O}12`, borderRadius: 999, padding: "2px 6px", textTransform: "uppercase" }}>
+                            Native
+                          </span>
+                        )}
                         {token.riskLevel !== "UNKNOWN" && <RiskChip level={token.riskLevel} />}
                       </div>
-                      <div style={{ color: "#6b7280", fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ color: muted ? "#475569" : "#6b7280", fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {token.name || token.mint.slice(0, 20) + "…"}
                       </div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#d1d5db" }}>
+                      <div style={{ fontSize: muted ? 12 : 13, fontWeight: 600, color: muted ? "#94a3b8" : "#d1d5db" }}>
                         {token.balanceFormatted}
                       </div>
                       {token.balanceUsd !== null && (
@@ -346,8 +353,23 @@ export default function WalletScanPageEN() {
                       ↗
                     </a>
                   </div>
-                ))}
-              </div>
+                );
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {verified.map((token, i) => <Row key={token.mint + i} token={token} muted={false} />)}
+                    {unverified.length > 0 && (
+                      <details style={{ marginTop: 6 }}>
+                        <summary style={{ cursor: "pointer", color: "#6b7280", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", padding: "6px 4px" }}>
+                          {unverified.length} unverified token{unverified.length !== 1 ? "s" : ""} (no price feed)
+                        </summary>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                          {unverified.map((token, i) => <Row key={token.mint + i} token={token} muted={true} />)}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                );
+              })()
             )}
 
             <div
