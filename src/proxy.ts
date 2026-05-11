@@ -54,7 +54,11 @@ function isBetaExempt(pathname: string): boolean {
   // authenticated visitors, breaking the tiger avatar, app icons, etc.
   if (pathname.startsWith("/tiger/")) return true;
   if (pathname.startsWith("/icons/")) return true;
-  if (pathname.startsWith("/legal/")) return true;
+  // Legal pages must be reachable without a beta session (compliance):
+  // disclaimer, mentions légales, KOL data doctrine. Matches both the
+  // un-prefixed form (/legal/...) and any locale-prefixed form
+  // (/en/legal/..., /fr/legal/..., etc.).
+  if (/^(?:\/[a-z]{2})?\/legal\//.test(pathname)) return true;
   // Generic catch-all: any path whose last segment looks like a static file
   // (has a conventional asset extension). Keeps /page.tsx routes gated while
   // letting images, videos, fonts, manifests and PDFs through.
