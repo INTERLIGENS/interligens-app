@@ -178,7 +178,7 @@ export default function ScamTimeline({ data, lang = 'en' }: Props) {
                     )}
                     <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
                       <button
-                        onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(`${title}\n${desc}\n\nvia INTERLIGENS — app.interligens.com`) }}
+                        onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(`🔴 ${title} — Evidence documented by INTERLIGENS\n\n${pageUrl}`) }}
                         style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 5, color: '#94a3b8', padding: '4px 10px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}
                       >
                         📋 {isFr ? 'Copier' : 'Copy'}
