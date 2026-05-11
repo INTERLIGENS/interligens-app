@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 const RISK_COLORS: Record<string, string> = {
   low: '#10b981',
@@ -47,6 +47,8 @@ function ellip(s: string, max = 20) { return s && s.length > max ? s.slice(0,10)
 
 export default function ScamTimeline({ data, lang = 'en' }: Props) {
   const [activeChapter, setActiveChapter] = useState<string | null>(null)
+  const [pageUrl, setPageUrl] = useState('')
+  useEffect(() => { setPageUrl(window.location.href) }, [])
   const isFr = lang === 'fr'
 
   if (!data.found || !data.chapters) {
@@ -181,7 +183,7 @@ export default function ScamTimeline({ data, lang = 'en' }: Props) {
                       >
                         📋 {isFr ? 'Copier' : 'Copy'}
                       </button>
-                      <a href={"https://twitter.com/intent/tweet?text=" + encodeURIComponent("INTERLIGENS: " + title + " - " + desc)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 5, color: '#94a3b8', padding: '4px 10px', fontSize: 10, cursor: 'pointer', fontWeight: 600, textDecoration: 'none' }}>X {isFr ? 'Partager' : 'Share'}</a>
+                      <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🔴 ${title} — Evidence documented by INTERLIGENS\n\n${pageUrl}`)}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ background: '#1e293b', border: '1px solid #374151', borderRadius: 5, color: '#94a3b8', padding: '4px 10px', fontSize: 10, cursor: 'pointer', fontWeight: 600, textDecoration: 'none' }}>X {isFr ? 'Partager' : 'Share'}</a>
                     </div>
                   </div>
                 )}
