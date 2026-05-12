@@ -17,7 +17,10 @@ function sleep(ms: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  // The /api/admin/* middleware already enforces Basic Auth (or admin
+  // session cookie). The Authorization header is consumed there, so route
+  // handlers use x-admin-token for the second layer.
+  const token = req.headers.get("x-admin-token") ?? "";
   if (!token || token !== process.env.ADMIN_TOKEN) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
