@@ -54,7 +54,13 @@ async function scanAll() {
   // Accumulates full signal data for campaign clustering.
   const newSignals: SignalInput[] = [];
 
-  for (const entry of handlesV2) {
+  // Budget guard: cap the number of handles scanned per run.
+  // Default 50 keeps monthly X API usage well under the $50 ceiling.
+  const maxHandles = parseInt(process.env.WATCHER_MAX_HANDLES ?? "50", 10);
+  const watchlist = handlesV2.slice(0, maxHandles);
+  console.log(`[watcher-v2] Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles (WATCHER_MAX_HANDLES=${maxHandles})`);
+
+  for (const entry of watchlist) {
     const handle = entry.handle;
 
     const xUser = await getUserByUsername(handle);
@@ -67,7 +73,10 @@ async function scanAll() {
       fetchedAt: new Date().toISOString(),
     });
 
-    const tweets = await getUserTweets(xUser.id, 10);
+    // GordonGekko: 100 tweets/run (high-volume case under active investigation).
+    // All other handles: 10 tweets/run (budget).
+    const maxResults = handle === "GordonGekko" ? 100 : 10;
+    const tweets = await getUserTweets(xUser.id, maxResults);
     stats.tweetsFetched += tweets.length;
 
     const influencerId = await ensureInfluencer(handle);
