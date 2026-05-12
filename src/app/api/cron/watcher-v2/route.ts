@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
-import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
+import { handlesV2 } from "@/lib/watcher/handles";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
 import { sendWatcherDigest, type BatchSignal, type CampaignSummary } from "@/lib/alerts/watcherDigest";
 import { clusterSignals, type SignalInput } from "@/lib/watcher/campaignClusterer";

@@ -1,5 +1,8 @@
-// Watcher V2 handles — mirrored from scripts/watcher/handles-v2.ts for app import
-// Keep in sync with source of truth in scripts/watcher/handles-v2.ts
+// Watcher V2 handles — source of truth.
+// Imported by:
+//   - src/app/api/cron/watcher-v2/route.ts
+//   - src/app/api/watchlist/route.ts
+//   - scripts/watcher/handles-v2.ts (re-export for legacy CLI)
 
 export interface WatchHandle {
   handle: string
@@ -31,6 +34,16 @@ export const handlesV2: WatchHandle[] = [
   { handle: 'planted',        category: 'interligens_case',      priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-04-04', source: 'interligens_db' },
   { handle: 'DonWedge',       category: 'interligens_case',      priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-04-04', source: 'interligens_db' },
   { handle: 'lynk0x',         category: 'interligens_case',      priority: 'high', followerCount: 35_000, chainFocus: 'SOL', addedAt: '2026-04-04', source: 'interligens_db' },
+  { handle: 'samjoleary',     category: 'interligens_case',      priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005', notes: 'botify cluster — migrated from V1' },
+
+  // HIGH — Watcher V1 (Host-005 migration, May 2026)
+  { handle: 'ghostwareos',     category: 'ghost_cluster',  priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005' },
+  { handle: 'orbitape',        category: 'high_risk_kols', priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005' },
+  { handle: 'DegnBen',         category: 'high_risk_kols', priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005' },
+  { handle: 'JammaPelson',     category: 'high_risk_kols', priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005' },
+  { handle: 'AnonymousCFS',    category: 'high_risk_kols', priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005' },
+  { handle: 'Cheatcoiner',     category: 'high_risk_kols', priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005' },
+  { handle: 'UnitedTradersComm', category: 'high_risk_kols', priority: 'high', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'watcher_v1_host005' },
 
   // MEDIUM — community callouts / active pump.fun
   { handle: '0xVonGogh',       category: 'community_callout',    priority: 'medium', followerCount: 100_000, chainFocus: 'SOL',       addedAt: '2026-04-04', source: 'community_callout' },
