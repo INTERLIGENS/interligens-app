@@ -107,4 +107,32 @@ export const handlesV2: WatchHandle[] = [
   { handle: 'Empire_sol1',     category: 'community_callout',    priority: 'low', followerCount: 25_000,  chainFocus: 'SOL', addedAt: '2026-04-04', source: 'community_callout' },
   { handle: 'florkcto',        category: 'community_callout',    priority: 'low', followerCount: 25_000,  chainFocus: 'SOL', addedAt: '2026-04-04', source: 'community_callout' },
   { handle: 'A1lon9',          category: 'pump_fun_cofounder',   priority: 'low', followerCount: 300_000, chainFocus: 'SOL', addedAt: '2026-04-04', source: 'pump_fun_cofounder' },
+
+  // MEDIUM — GPT watchlist batch 1 (2026-05-12)
+  // 21 large-reach SOL callers added from GPT-generated watchlist; existence
+  // verified against X API. 4 of the original 25 (blknoiz06, CrashiusClay69,
+  // TedPillows, theunipcs) were already in the file under other categories
+  // and are NOT duplicated here. These sit beyond position 50 in the array,
+  // so they are queued but NOT scanned while WATCHER_MAX_HANDLES=50.
+  { handle: 'MustStopMurad',   category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'notthreadguy',    category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'ZssBecker',       category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'Cupseyy',         category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'RookieXBT',       category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'CryptoGodJohn',   category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'XMaximist',       category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'AltcoinSherpa',   category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'machibigbrother', category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'farokh',          category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'beaniemaxi',      category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'dingalingts',     category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'CryptowithAmber', category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'SolanaNewton',    category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'LordCendra',      category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'cryptomorgz',     category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'kiwiprincess0x',  category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'SolportTom',      category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'CryptoKaleo',     category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'milesdeutscher',  category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+  { handle: 'MasonVersluis',   category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
 ]
