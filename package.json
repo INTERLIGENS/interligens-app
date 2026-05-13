@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "db:deploy": "prisma migrate deploy --schema=prisma/schema.prod.prisma",
     "db:status": "prisma migrate status",
+    "prisma:generate": "prisma generate --schema prisma/schema.prod.prisma",
     "vercel-build": "prisma generate --schema prisma/schema.prod.prisma && next build",
     "seed:sources": "tsx scripts/seed-sources.ts",
     "seed:kol": "tsx scripts/seed/run.ts",

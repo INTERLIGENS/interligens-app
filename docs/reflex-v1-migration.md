@@ -63,11 +63,31 @@ Indexes drop automatically with their parent table.
 
 ## After the migration
 
-- The local Prisma client was already regenerated during Commit 4
-  (`npx prisma generate` is part of that commit). No additional local
-  step is required.
+- **Regenerate the local Prisma client with the prod schema flag**:
+
+  ```
+  pnpm prisma:generate
+  ```
+
+  ...which is an alias for `prisma generate --schema prisma/schema.prod.prisma`.
+
+  Do NOT run plain `npx prisma generate` — it reads `prisma/schema.prisma`
+  (the dev SQLite schema) by default, so the regenerated client will NOT
+  expose `prisma.reflexAnalysis`, `prisma.narrativeScript`, or
+  `prisma.reflexWatch`. The seed will then fail with
+  `Cannot read properties of undefined (reading 'upsert')`.
+
+  Verify the regeneration worked:
+
+  ```
+  pnpm tsx -e "import { prisma } from './src/lib/prisma'; \
+    console.log('narrativeScript:', typeof prisma.narrativeScript)"
+  ```
+
+  Must print `narrativeScript: object`.
+
 - Commit 5 (`feat(reflex): narrative library + matcher`) will run
-  `npm run seed:narrative-scripts` against `ep-square-band` to insert
+  `pnpm seed:narrative-scripts` against `ep-square-band` to insert
   the 15 scripts. That step requires the tables to exist, which is why
   this migration must be applied **before** Commit 5 lands.
 
