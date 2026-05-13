@@ -1,0 +1,3314 @@
+{
+  "cases": [
+    {
+      "id": "VERIFY-TRUST-001",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.45 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.45,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-002",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.48 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.48,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-003",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.5 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-004",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.52 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.52,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-005",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.55 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.55,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-006",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.56 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.56,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-007",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.58 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.58,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-008",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.47 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.47,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-009",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.53 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.53,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-010",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_AUDIT",
+      "notes": "Narrative FAKE_AUDIT TRUST_HIJACK conf 0.49 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.49,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-011",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.45 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.45,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-012",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.48 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.48,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-013",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.5 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-014",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.52 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.52,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-015",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.55 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.55,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-016",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.56 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.56,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-017",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.58 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.58,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-018",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.47 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.47,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-019",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.53 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.53,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-020",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-FAKE_PARTNERSHIP",
+      "notes": "Narrative FAKE_PARTNERSHIP TRUST_HIJACK conf 0.49 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "MODERATE",
+              "confidence": 0.49,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-021",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-AI_RWA_NARRATIVE_HIJACK",
+      "notes": "Narrative AI_RWA_NARRATIVE_HIJACK TRUST_HIJACK conf 0.45 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AI_RWA_NARRATIVE_HIJACK",
+              "severity": "MODERATE",
+              "confidence": 0.45,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AI_RWA_NARRATIVE_HIJACK",
+                "scriptLabel": "AI_RWA_NARRATIVE_HIJACK",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-022",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-AI_RWA_NARRATIVE_HIJACK",
+      "notes": "Narrative AI_RWA_NARRATIVE_HIJACK TRUST_HIJACK conf 0.48 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AI_RWA_NARRATIVE_HIJACK",
+              "severity": "MODERATE",
+              "confidence": 0.48,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AI_RWA_NARRATIVE_HIJACK",
+                "scriptLabel": "AI_RWA_NARRATIVE_HIJACK",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-023",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-AI_RWA_NARRATIVE_HIJACK",
+      "notes": "Narrative AI_RWA_NARRATIVE_HIJACK TRUST_HIJACK conf 0.5 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AI_RWA_NARRATIVE_HIJACK",
+              "severity": "MODERATE",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AI_RWA_NARRATIVE_HIJACK",
+                "scriptLabel": "AI_RWA_NARRATIVE_HIJACK",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-024",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-AI_RWA_NARRATIVE_HIJACK",
+      "notes": "Narrative AI_RWA_NARRATIVE_HIJACK TRUST_HIJACK conf 0.52 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AI_RWA_NARRATIVE_HIJACK",
+              "severity": "MODERATE",
+              "confidence": 0.52,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AI_RWA_NARRATIVE_HIJACK",
+                "scriptLabel": "AI_RWA_NARRATIVE_HIJACK",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-025",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-AI_RWA_NARRATIVE_HIJACK",
+      "notes": "Narrative AI_RWA_NARRATIVE_HIJACK TRUST_HIJACK conf 0.55 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AI_RWA_NARRATIVE_HIJACK",
+              "severity": "MODERATE",
+              "confidence": 0.55,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AI_RWA_NARRATIVE_HIJACK",
+                "scriptLabel": "AI_RWA_NARRATIVE_HIJACK",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-026",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-CHARITY_CLAIM",
+      "notes": "Narrative CHARITY_CLAIM TRUST_HIJACK conf 0.45 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.CHARITY_CLAIM",
+              "severity": "MODERATE",
+              "confidence": 0.45,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "CHARITY_CLAIM",
+                "scriptLabel": "CHARITY_CLAIM",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-027",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-CHARITY_CLAIM",
+      "notes": "Narrative CHARITY_CLAIM TRUST_HIJACK conf 0.48 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.CHARITY_CLAIM",
+              "severity": "MODERATE",
+              "confidence": 0.48,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "CHARITY_CLAIM",
+                "scriptLabel": "CHARITY_CLAIM",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-028",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-CHARITY_CLAIM",
+      "notes": "Narrative CHARITY_CLAIM TRUST_HIJACK conf 0.5 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.CHARITY_CLAIM",
+              "severity": "MODERATE",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "CHARITY_CLAIM",
+                "scriptLabel": "CHARITY_CLAIM",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-029",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-CHARITY_CLAIM",
+      "notes": "Narrative CHARITY_CLAIM TRUST_HIJACK conf 0.52 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.CHARITY_CLAIM",
+              "severity": "MODERATE",
+              "confidence": 0.52,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "CHARITY_CLAIM",
+                "scriptLabel": "CHARITY_CLAIM",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-TRUST-030",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-CHARITY_CLAIM",
+      "notes": "Narrative CHARITY_CLAIM TRUST_HIJACK conf 0.55 (below WAIT threshold 0.6)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.CHARITY_CLAIM",
+              "severity": "MODERATE",
+              "confidence": 0.55,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "CHARITY_CLAIM",
+                "scriptLabel": "CHARITY_CLAIM",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-001",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.45",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.45,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-002",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.48",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.48,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-003",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.5",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-004",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.52",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.52,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-005",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.55",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.55,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-006",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.56",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.56,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-007",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.58",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.58,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-008",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.47",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.47,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-009",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.53",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.53,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-AUTHORITY-010",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "authority-insider-call",
+      "notes": "Narrative KOL_INSIDER_CALL AUTHORITY conf 0.49",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "MODERATE",
+              "confidence": 0.49,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-001",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.45 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.45,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 40
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-002",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.5 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-003",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.55 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.55,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 40
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-004",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.48 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.48,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-005",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.52 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.52,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 40
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-006",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.56 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.56,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-007",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.58 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.58,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 40
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-008",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.47 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.47,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-009",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.53 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.53,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.5,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 40
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "VERIFY-MIX-010",
+      "expectedVerdict": "VERIFY",
+      "bucket": "verify",
+      "category": "trust-hijack-plus-weak",
+      "notes": "TRUST_HIJACK conf 0.49 + 1 weak signal (total < 3 weak/moderate, so no WAIT convergence)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "MODERATE",
+              "confidence": 0.49,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    }
+  ]
+}
