@@ -1,19 +1,38 @@
 /**
  * REFLEX V1 — global confidence.
  *
- * For each engine that RAN, the confidence "contribution" is:
- *   - max(signal.confidence) if any signals fired
- *   - ENGINE_CLEAN_DEFAULT (0.5) otherwise (engine ran-clean — useful
- *     coverage but not full confidence)
- *   - skipped entirely if ran=false (engine didn't apply or errored)
+ * Global confidence reflects the quality of the signals we found, NOT the
+ * coverage of engines that ran clean. An engine that ran and produced no
+ * signals (knownBad with no hit, casefileMatch with no exact match, etc.)
+ * is INFORMATIVE about absence-of-risk but does not contribute to the
+ * "how sure are we about the signals we found" question — so it is
+ * skipped from the average.
  *
- * The final score is the unweighted mean across contributing engines.
- * V1 chooses simplicity over per-engine weighting; the shadow phase
- * will tell us whether tuning is needed.
+ * Pre-Commit-8a, ran-clean engines contributed a flat 0.5. That diluted
+ * the global confidence below the STOP_CONVERGENCE_CONFIDENCE_THRESHOLD
+ * (0.7) even when the firing engines reported max-confidence signals,
+ * because the average dragged down toward 0.5. Calibration discovered
+ * the bug: STOP-convergence became mathematically unreachable in
+ * production (5+ engines, max average ≈ 0.667).
  *
- * Discretization into HIGH/MEDIUM/LOW uses the thresholds in
- * constants.ts (GLOBAL_CONFIDENCE_HIGH_THRESHOLD,
- * GLOBAL_CONFIDENCE_MEDIUM_THRESHOLD).
+ * Per-engine contribution rule (post-Commit-8a):
+ *   - !ran                    → skipped entirely
+ *   - ran && signals.length=0 → skipped (clean engine, no claim to be
+ *                                        "confident" about — absence-of-
+ *                                        signal informs the verdict layer
+ *                                        directly via the branch logic, not
+ *                                        through confidence)
+ *   - ran && signals.length>0 → max(signal.confidence)
+ *
+ * Edge case — every engine ran clean: contributions is empty. We return
+ * { score: 0, label: "LOW" }. The verdict layer's NO_CRITICAL_SIGNAL
+ * branch handles a LOW score by surfacing the disclaimer with the
+ * caveat that coverage was the only thing we could vouch for.
+ *
+ * Discretization into HIGH/MEDIUM/LOW uses the thresholds in constants.ts
+ * (GLOBAL_CONFIDENCE_HIGH_THRESHOLD, GLOBAL_CONFIDENCE_MEDIUM_THRESHOLD).
+ * The final score is rounded to 3 decimals so JS float non-associativity
+ * doesn't leak determinism across permutations of input order.
  */
 import {
   GLOBAL_CONFIDENCE_HIGH_THRESHOLD,
@@ -29,11 +48,12 @@ export interface GlobalConfidence {
   label: ReflexConfidence;
 }
 
-const ENGINE_CLEAN_DEFAULT = 0.5;
-
 function engineContribution(e: ReflexEngineOutput): number | null {
   if (!e.ran) return null;
-  if (e.signals.length === 0) return ENGINE_CLEAN_DEFAULT;
+  // Clean engines (ran with no signals) contribute nothing — see file
+  // header for the rationale. Pre-8a this returned 0.5, which made
+  // STOP-convergence unreachable.
+  if (e.signals.length === 0) return null;
   return Math.max(...e.signals.map((s) => s.confidence));
 }
 
@@ -46,10 +66,6 @@ export function computeGlobalConfidence(
 
   if (contributions.length === 0) return { score: 0, label: "LOW" };
 
-  // Round to 3 decimal places: removes floating-point variance across
-  // permutations of input order (sum-of-floats isn't associative), so the
-  // verdict layer's confidenceScore is bit-stable. Three decimals are
-  // finer than any threshold band, so discretization is unaffected.
   const raw =
     contributions.reduce((a, b) => a + b, 0) / contributions.length;
   const score = Math.round(raw * 1000) / 1000;

@@ -557,15 +557,41 @@ describe("verdict.matrix — confidence label discretization", () => {
     expect(r.confidence).toBe("HIGH");
   });
 
-  it("MEDIUM label when global score ≥ 0.5 and < 0.75", () => {
+  it("MEDIUM label when contributing engines average between 0.5 and 0.75", () => {
+    // Post-Commit-8a: clean engines do NOT contribute. Only engines that
+    // emitted signals are averaged. A single off-chain MODERATE signal at
+    // 0.6 confidence yields score=0.6 → MEDIUM band.
+    const r = decide([
+      eng("offchain", [
+        sig({
+          source: "offchain",
+          code: "offchain.band.low",
+          severity: "MODERATE",
+          confidence: 0.6,
+        }),
+      ]),
+      // Clean engines included to prove they are now skipped, not blended.
+      eng("knownBad", []),
+      eng("coordination", []),
+    ]);
+    expect(r.confidence).toBe("MEDIUM");
+    expect(r.confidenceScore).toBe(0.6);
+  });
+
+  it("LOW label when every engine ran clean (no signals to be confident about)", () => {
+    // Post-Commit-8a semantic: confidence reflects the QUALITY of signals
+    // found, not the COVERAGE of engines that ran. Clean engines = empty
+    // contributions = score 0 / LOW. The verdict layer still emits
+    // NO_CRITICAL_SIGNAL with the disclaimer for the user-facing message.
     const r = decide([
       eng("tigerscore", []),
       eng("offchain", []),
       eng("coordination", []),
+      eng("knownBad", []),
     ]);
-    expect(r.confidence).toBe("MEDIUM");
-    expect(r.confidenceScore).toBeGreaterThanOrEqual(0.5);
-    expect(r.confidenceScore).toBeLessThan(0.75);
+    expect(r.verdict).toBe("NO_CRITICAL_SIGNAL");
+    expect(r.confidence).toBe("LOW");
+    expect(r.confidenceScore).toBe(0);
   });
 
   it("LOW label when no engines ran (empty input)", () => {
