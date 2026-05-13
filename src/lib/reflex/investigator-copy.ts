@@ -143,7 +143,14 @@ export const INVESTIGATOR_COPY = {
       notFound: "Cet ID d'analyse n'existe pas ou a été redacté.",
     },
   },
-} as const;
+};
+// NOTE: no `as const` here on purpose. With `as const`, every nested
+// string would be its own literal type, so `typeof INVESTIGATOR_COPY.en`
+// and `.fr` would not be assignable to each other — copyFor()'s return
+// type would reject the FR branch. Inferring `string` for the leaves
+// keeps both locales structurally identical without losing the narrow
+// "en" | "fr" inference of the top-level keys (keyof typeof works
+// regardless of `as const`).
 
 export type InvestigatorLocale = keyof typeof INVESTIGATOR_COPY;
 

@@ -12,6 +12,7 @@
  *
  * All read paths inflate a Prisma row back into a ReflexAnalysisResult.
  */
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type {
   ReflexAnalysisResult,
@@ -169,7 +170,12 @@ export async function persistAnalysis(
       actionFr: input.verdictResult.actionFr,
       confidence: input.verdictResult.confidence,
       confidenceScore: input.verdictResult.confidenceScore,
-      signalsManifest: input.signalsManifest,
+      // Cast at the Prisma boundary: PersistInput keeps the broader
+      // Record<string, unknown> shape (orchestrator-friendly) but Prisma's
+      // generated InputJsonValue rejects `unknown` leaves. The manifest
+      // is by construction JSON-safe — buildSignalsManifest filters out
+      // anything else — so the cast is sound.
+      signalsManifest: input.signalsManifest as Prisma.InputJsonValue,
       signalsHash: input.signalsHash,
       tigerScoreSnapshot: input.tigerScoreSnapshot ?? null,
       mode,
