@@ -111,6 +111,60 @@ Three commits, in order, after REFLEX V1 leaves shadow mode:
   `ReflexEngineOutput` for `runReflex`'s adapter array.
 - Add the missing 5+5 coherence fixtures.
 
+## Known bugs (Day-1 shadow ledger)
+
+### Bug #1 — TigerScore informational drivers leaking into REFLEX signals (CLOSED)
+
+- **Status:** fixed in `224b4e1` (Day-1 shadow hot-fix).
+- **Symptom:** purely informational TigerScore drivers (market-context,
+  liquidity color, metadata flavour) were being promoted to REFLEX
+  signals by the `tigerscore` adapter, inflating signal counts on
+  otherwise clean EVM blue-chips (USDC, USDT, DAI, wBTC).
+- **Fix:** adapter now filters drivers by severity class before
+  emitting `ReflexSignal[]`. Anti-regression covered by the 5/5 EVM
+  NO_CRITICAL_SIGNAL replay run.
+
+### Bug #2 — Narrative matcher dark for URL / X inputs (OPEN, V1.1)
+
+- **Status:** open, scheduled for V1.1.
+- **Where:** `src/app/api/reflex/route.ts:137` —
+  `// narrativeText: deferred until a URL/X fetcher exists (post-V1).`
+- **Symptom:** the `narrative` engine is wired into the orchestrator
+  (`src/lib/reflex/orchestrator.ts:126-131`) and the 15 seeded scripts
+  in `narrativeScripts.ts` are loaded, but for `URL` and `X_HANDLE`
+  inputs the route never populates `enrichment.narrativeText`, so
+  `runNarrative` short-circuits to `NOOP_ENGINE("narrative")` with
+  `ran: false`. Effectively the engine is dark on exactly the two
+  input types it was designed to cover — only TigerScore corpora
+  (which the EVM/SOL builders set internally) currently hit the
+  matcher.
+- **Impact:** known scam scripts ("airdrop claim", "wallet drainer
+  signature", "presale guaranteed 100x", etc.) cannot fire on a
+  raw URL or `@handle` submission. Verdict for those inputs leans
+  entirely on `knownBad`, `intelligenceOverlay`, `casefileMatch`,
+  `coordination`, `recidivism`. STOP controls (`@bkokoski`,
+  `@GordonGekko`) still trigger via `knownBad` — see 2/2 replay run —
+  so this is a recall gap on **new** handles/URLs, not a regression
+  on already-investigated ones.
+- **Fix path (V1.1):**
+  1. Add `src/lib/reflex/fetchers/url.ts` — short-timeout HTML fetch
+     + readability extract + 24h cache (mirror the OffChain cache
+     pattern). Hard cap on body size, follow ≤2 redirects, drop
+     scripts/styles before extraction.
+  2. Add `src/lib/reflex/fetchers/xHandle.ts` — bio + pinned-tweet
+     corpus. Can piggyback on the watcher's existing X session if
+     present; fall back to the `nitter`/public-snapshot path otherwise.
+  3. Populate `enrichment.narrativeText` in `route.ts` after `classify`
+     when `resolved.type` is `URL` or `X_HANDLE`. Failures degrade
+     gracefully (same pattern as the existing `try { buildTigerInput }`
+     block: warn, continue without).
+  4. Calibration: extend the harness with ≥20 URL/X fixtures (10 known
+     scam-script hits, 10 clean) before flipping `REFLEX_PUBLIC_ENABLED`.
+- **Workaround until then:** none on the user-facing path. Investigator
+  UI users who want narrative coverage on a URL can still feed the
+  raw text via the (internal) `runReflex({ enrichment: { narrativeText } })`
+  entry point.
+
 ## Inventory of routes NOT covered by REFLEX V1
 
 These routes also build `TigerInput` (or call `computeTigerScore*`)
