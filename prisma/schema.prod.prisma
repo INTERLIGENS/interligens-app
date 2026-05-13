@@ -3358,3 +3358,78 @@ model KolCrossLink {
   @@index([sourceHandle])
   @@index([targetHandle])
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// REFLEX V1 — additive models (Commit 4/15)
+//
+// Migration applied manually via Neon SQL Editor on ep-square-band (see
+// docs/reflex-v1-migration.md). Never via `prisma db push`.
+// ─────────────────────────────────────────────────────────────────────────
+
+model ReflexAnalysis {
+  id                   String   @id @default(cuid())
+  createdAt            DateTime @default(now())
+  inputRaw             String
+  inputType            String
+  inputChain           String?
+  inputResolvedAddress String?
+  inputResolvedHandle  String?
+  verdict              String
+  verdictReasonEn      Json
+  verdictReasonFr      Json
+  actionEn             String
+  actionFr             String
+  confidence           String
+  confidenceScore      Float
+  signalsManifest      Json
+  signalsHash          String
+  tigerScoreSnapshot   Int?
+  mode                 String   @default("SHADOW")
+  investigatorId       String?
+  latencyMs            Int
+  enginesVersion       String
+
+  @@index([inputResolvedAddress])
+  @@index([inputResolvedHandle])
+  @@index([verdict])
+  @@index([createdAt])
+  @@index([mode])
+}
+
+model NarrativeScript {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  label             String
+  category          String
+  keywords          Json
+  regexes           Json
+  derivedFrom       Json
+  defaultConfidence Float
+  severity          String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([active])
+  @@index([category])
+}
+
+model ReflexWatch {
+  id               String    @id @default(cuid())
+  reflexAnalysisId String
+  target           String
+  targetType       String
+  chain            String?
+  createdAt        DateTime  @default(now())
+  lastCheckedAt    DateTime?
+  nextCheckAt      DateTime?
+  status           String    @default("ACTIVE")
+  triggerReason    String?
+  expiresAt        DateTime?
+
+  @@index([reflexAnalysisId])
+  @@index([target])
+  @@index([status])
+  @@index([nextCheckAt])
+}
