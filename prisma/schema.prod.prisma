@@ -3390,11 +3390,17 @@ model ReflexAnalysis {
   latencyMs            Int
   enginesVersion       String
 
+  // ── Commit 13 — admin false-positive flag (calibration tool) ────────
+  falsePositiveFlag       Boolean   @default(false)
+  falsePositiveFlaggedAt  DateTime?
+  falsePositiveFlaggedBy  String?
+
   @@index([inputResolvedAddress])
   @@index([inputResolvedHandle])
   @@index([verdict])
   @@index([createdAt])
   @@index([mode])
+  @@index([falsePositiveFlag])
 }
 
 model NarrativeScript {
