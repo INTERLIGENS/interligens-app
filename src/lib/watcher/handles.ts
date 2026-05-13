@@ -17,7 +17,6 @@ export interface WatchHandle {
 
 export const handlesV2: WatchHandle[] = [
   // HIGH — ZachXBT documented / large reach
-  { handle: 'atitty_',        category: 'paid_undisclosed',      priority: 'high', followerCount: 218_000, chainFocus: 'SOL',       addedAt: '2026-04-04', source: 'zachxbt_leak' },
   { handle: 'CookerFlips',    category: 'pump_fun_caller',       priority: 'high', followerCount: 134_000, chainFocus: 'SOL',       addedAt: '2026-04-04', source: 'zachxbt_leak', notes: 'Wallet 8deJ9xe...XhU6 reported via public Solscan label' },
   { handle: 'Blknoiz06',      category: 'legendary_meme_caller', priority: 'high', followerCount: 800_000, chainFocus: 'SOL',       addedAt: '2026-04-04', source: 'community_callout' },
   { handle: 'CryptoWendyO',   category: 'high_risk_memes',       priority: 'high', followerCount: 200_000, chainFocus: 'SOL/multi', addedAt: '2026-04-04', source: 'community_callout' },
