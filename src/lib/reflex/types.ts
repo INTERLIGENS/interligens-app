@@ -13,10 +13,12 @@ export type ReflexInputType =
   | "WALLET"
   | "URL"
   | "X_HANDLE"
+  | "TICKER"
   | "UNKNOWN";
 
 export type ReflexChain =
   | "sol"
+  | "evm"
   | "eth"
   | "base"
   | "bsc"
@@ -57,6 +59,9 @@ export interface ReflexResolvedInput {
   address?: string;
   handle?: string;
   url?: string;
+  /** Uppercased ticker symbol, $-prefix stripped (e.g. "BOTIFY"). Resolved
+   *  to candidate addresses downstream via /api/scan/resolve. */
+  ticker?: string;
   raw: string;
 }
 
