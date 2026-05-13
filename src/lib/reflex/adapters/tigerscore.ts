@@ -22,6 +22,7 @@ import {
   type TigerResult,
   type TigerResultWithIntel,
 } from "@/lib/tigerscore/engine";
+import { NON_RISK_TIGERSCORE_DRIVER_IDS } from "../constants";
 import type {
   ReflexEngineOutput,
   ReflexResolvedInput,
@@ -48,20 +49,28 @@ function driversToSignals(
   result: TigerResult | TigerResultWithIntel,
 ): ReflexSignal[] {
   const confNum = confidenceNumeric(result.confidence);
-  return result.drivers.map((d) => ({
-    source: "tigerscore" as const,
-    code: `tigerscore.${d.id}`,
-    severity: mapDriverSeverity(d.severity),
-    confidence: confNum,
-    stopTrigger: false,
-    payload: {
-      id: d.id,
-      label: d.label,
-      delta: d.delta,
-      why: d.why,
-      severity: d.severity,
-    },
-  }));
+  // Filter informational/contextual drivers (see
+  // NON_RISK_TIGERSCORE_DRIVER_IDS doc in constants.ts). They are still
+  // present in the underlying TigerResult — the TigerScore engine and
+  // /api/v1/score consumers see them unchanged. Only REFLEX skips them
+  // from its signal layer so that contextual facts (e.g. "USDC is a
+  // contract") do not feed the WAIT-convergence count.
+  return result.drivers
+    .filter((d) => !NON_RISK_TIGERSCORE_DRIVER_IDS.has(d.id))
+    .map((d) => ({
+      source: "tigerscore" as const,
+      code: `tigerscore.${d.id}`,
+      severity: mapDriverSeverity(d.severity),
+      confidence: confNum,
+      stopTrigger: false,
+      payload: {
+        id: d.id,
+        label: d.label,
+        delta: d.delta,
+        why: d.why,
+        severity: d.severity,
+      },
+    }));
 }
 
 export type RunTigerScoreOpts = {

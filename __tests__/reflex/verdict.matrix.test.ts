@@ -599,3 +599,49 @@ describe("verdict.matrix — confidence label discretization", () => {
     expect(r.confidence).toBe("LOW");
   });
 });
+
+// ─── Hot-fix #1 — informational TigerScore drivers shape integration ─────
+// Verifies the verdict layer correctly produces NO_CRITICAL_SIGNAL when
+// the ONLY signals are TigerScore "contextual" drivers. The tigerscore
+// ADAPTER filters those drivers out before they reach decide(), so this
+// test reproduces the post-adapter shape: an empty tigerscore signals
+// array. Day-1 shadow finding: 5/5 EVM top-cap clean inputs (USDC ETH,
+// USDT ETH, wBTC, DAI, random EOA) fired WAIT pre-filter, NO_CRITICAL
+// post-filter.
+
+describe("verdict.matrix — informational TigerScore drivers (post-hot-fix)", () => {
+  it("clean EVM token (no risk signals after filter) → NO_CRITICAL_SIGNAL", () => {
+    // Post-filter shape: tigerscore engine ran but its informational
+    // drivers were filtered out by the adapter. Other engines ran clean.
+    const r = decide([
+      eng("tigerscore", []),         // informational drivers filtered out
+      eng("knownBad", []),
+      eng("intelligenceOverlay", []),
+      eng("casefileMatch", []),
+      eng("coordination", []),
+    ]);
+    expect(r.verdict).toBe("NO_CRITICAL_SIGNAL");
+  });
+
+  it("risk-bearing TigerScore signal alongside contextual filter still surfaces", () => {
+    // A real risk driver (unlimited_approvals CRITICAL) is not filtered.
+    // No casefile/knownBad/sanction stopTrigger here, but the CRITICAL
+    // signal alone is not enough to fire STOP (TigerScore stopTrigger
+    // is always false in V1). It just sits as one CRITICAL signal which
+    // does NOT trigger WAIT-convergence (which needs ≥3 weak/moderate)
+    // nor narrative-WAIT nor coordination-WAIT. Falls through to
+    // NO_CRITICAL_SIGNAL — exactly the V1 matrix.
+    const r = decide([
+      eng("tigerscore", [
+        sig({
+          source: "tigerscore",
+          code: "tigerscore.unlimited_approvals",
+          severity: "CRITICAL",
+          confidence: 0.9,
+        }),
+      ]),
+      eng("knownBad", []),
+    ]);
+    expect(r.verdict).toBe("NO_CRITICAL_SIGNAL");
+  });
+});

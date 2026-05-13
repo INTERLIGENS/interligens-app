@@ -35,6 +35,45 @@ export const STOP_CONVERGENCE_MIN_CRITICAL_DRIVERS = 2;
 /** WAIT via "convergent weak signals" needs at least this many. */
 export const WAIT_MIN_CONVERGENT_SIGNALS = 3;
 
+/**
+ * TigerScore drivers that are INFORMATIONAL/CONTEXTUAL, not actual risk
+ * signals. The REFLEX adapter skips them entirely — they neither appear
+ * in the manifest's signals array nor contribute to convergence WAIT.
+ *
+ * Why each one is here (discovered Day 1 of shadow on 5 real EVM top-cap
+ * inputs — USDC ETH, USDT ETH, wBTC, DAI, random EOA):
+ *
+ *  - evm_contract_interaction : "this address is a contract" — a neutral
+ *    structural fact, not a risk. Fires on every token contract.
+ *  - evm_dormant_wallet        : "wallet has no ETH balance + low
+ *    activity". Token contracts always hold 0 ETH (they hold ERC-20
+ *    tokens by mapping, not native ETH), so this drives a guaranteed
+ *    false positive on every legitimate token. Also false-positives on
+ *    fresh EOAs that haven't transacted yet.
+ *  - evm_multi_chain_active    : "address active on multiple EVM chains".
+ *    Multi-chain presence is the norm for legitimate tokens (USDC, USDT,
+ *    wBTC are all on 5+ chains). Often a *positive* signal, never a risk.
+ *  - low_tx_count              : "very low transaction history". On a
+ *    token contract, the nonce reflects outgoing contract calls (~0 for
+ *    most ERC-20s). On a fresh EOA, nonce=0 is normal. False positive in
+ *    both common cases.
+ *
+ * TigerScore's score numérique is unaffected (these drivers' deltas
+ * still apply to the score the engine returns to /api/v1/score). The
+ * filter is REFLEX-side only — anti-regression snapshots on the scan
+ * routes are preserved.
+ *
+ * If shadow reveals additional informational drivers (candidates being
+ * watched: evm_high_tx_count, volume_very_low), add their ids to this
+ * set — no code change beyond the constant.
+ */
+export const NON_RISK_TIGERSCORE_DRIVER_IDS: ReadonlySet<string> = new Set([
+  "evm_contract_interaction",
+  "evm_dormant_wallet",
+  "evm_multi_chain_active",
+  "low_tx_count",
+]);
+
 // ─────────────────────────────────────────────────────────────────────────
 // Output shaping
 // ─────────────────────────────────────────────────────────────────────────

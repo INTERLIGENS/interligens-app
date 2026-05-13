@@ -109,4 +109,50 @@ describe("tigerscore adapter", () => {
     expect(r.error).toBe("boom");
     expect(r.signals).toHaveLength(0);
   });
+
+  // ── Filter NON_RISK_TIGERSCORE_DRIVER_IDS (Day-1 shadow hot-fix) ──────
+  it("skips informational drivers (NON_RISK_TIGERSCORE_DRIVER_IDS)", async () => {
+    mockSync.mockReturnValue({
+      score: 0, tier: "GREEN", confidence: "Medium",
+      drivers: [
+        // These 4 ids are in NON_RISK_TIGERSCORE_DRIVER_IDS and must be skipped.
+        { id: "evm_contract_interaction", label: "x", severity: "low", delta: 0, why: "x" },
+        { id: "evm_dormant_wallet", label: "x", severity: "med", delta: 0, why: "x" },
+        { id: "evm_multi_chain_active", label: "x", severity: "low", delta: 0, why: "x" },
+        { id: "low_tx_count", label: "x", severity: "med", delta: 10, why: "x" },
+        // This one is a real risk driver and MUST pass through.
+        { id: "unlimited_approvals", label: "y", severity: "critical", delta: 70, why: "y" },
+      ],
+    });
+    const r = await runTigerScore({ resolvedInput: SAMPLE_INPUT, tigerInput: SAMPLE_TIGER_INPUT });
+    expect(r.ran).toBe(true);
+    expect(r.signals).toHaveLength(1);
+    expect(r.signals[0].code).toBe("tigerscore.unlimited_approvals");
+  });
+
+  it("emits ALL signals when none are informational (clean risk-only scenario)", async () => {
+    mockSync.mockReturnValue({
+      score: 105, tier: "RED", confidence: "High",
+      drivers: [
+        { id: "unlimited_approvals", label: "x", severity: "critical", delta: 70, why: "x" },
+        { id: "freeze_authority", label: "x", severity: "critical", delta: 70, why: "x" },
+      ],
+    });
+    const r = await runTigerScore({ resolvedInput: SAMPLE_INPUT, tigerInput: SAMPLE_TIGER_INPUT });
+    expect(r.signals).toHaveLength(2);
+  });
+
+  it("emits zero signals when ALL drivers are informational (USDC ETH scenario)", async () => {
+    mockSync.mockReturnValue({
+      score: 0, tier: "GREEN", confidence: "Medium",
+      drivers: [
+        { id: "evm_contract_interaction", label: "x", severity: "low", delta: 0, why: "x" },
+        { id: "evm_dormant_wallet", label: "x", severity: "med", delta: 0, why: "x" },
+        { id: "evm_multi_chain_active", label: "x", severity: "low", delta: 0, why: "x" },
+        { id: "low_tx_count", label: "x", severity: "med", delta: 10, why: "x" },
+      ],
+    });
+    const r = await runTigerScore({ resolvedInput: SAMPLE_INPUT, tigerInput: SAMPLE_TIGER_INPUT });
+    expect(r.signals).toHaveLength(0);
+  });
 });
