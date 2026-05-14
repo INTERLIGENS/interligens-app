@@ -3359,6 +3359,119 @@ model KolCrossLink {
   @@index([targetHandle])
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Token price tracker — additive (2026-05-13)
+//
+// Per-token current/peak snapshot used by the suspicion-scoring pipeline.
+// Distinct from PriceCache (which is a (symbol, dateOnly) historical
+// SOL/USD cache used by KOL proceeds valuation).
+//
+// Migration: exports/migrations_pricecache_2026-05-13.sql — apply manually
+// via Neon SQL Editor on ep-square-band. Never via `prisma db push`.
+// ─────────────────────────────────────────────────────────────────────────
+
+model TokenPriceTracker {
+  id              String    @id @default(cuid())
+  ticker          String?
+  chain           String
+  contractAddress String
+  currentPrice    Decimal?  @db.Decimal(40, 18)
+  currentDate     DateTime? @db.Timestamptz(6)
+  peakPrice       Decimal?  @db.Decimal(40, 18)
+  peakDate        DateTime? @db.Timestamptz(6)
+  dumpPct         Decimal?  @db.Decimal(10, 4)
+  source          String?
+  lastRefreshAt   DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@unique([chain, contractAddress])
+  @@index([chain])
+  @@index([ticker])
+  @@index([lastRefreshAt])
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// REFLEX V1 — additive models (Commit 4/15)
+//
+// Migration applied manually via Neon SQL Editor on ep-square-band (see
+// docs/reflex-v1-migration.md). Never via `prisma db push`.
+// ─────────────────────────────────────────────────────────────────────────
+
+model ReflexAnalysis {
+  id                   String   @id @default(cuid())
+  createdAt            DateTime @default(now())
+  inputRaw             String
+  inputType            String
+  inputChain           String?
+  inputResolvedAddress String?
+  inputResolvedHandle  String?
+  verdict              String
+  verdictReasonEn      Json
+  verdictReasonFr      Json
+  actionEn             String
+  actionFr             String
+  confidence           String
+  confidenceScore      Float
+  signalsManifest      Json
+  signalsHash          String
+  tigerScoreSnapshot   Int?
+  mode                 String   @default("SHADOW")
+  investigatorId       String?
+  latencyMs            Int
+  enginesVersion       String
+
+  // ── Commit 13 — admin false-positive flag (calibration tool) ────────
+  falsePositiveFlag       Boolean   @default(false)
+  falsePositiveFlaggedAt  DateTime?
+  falsePositiveFlaggedBy  String?
+
+  @@index([inputResolvedAddress])
+  @@index([inputResolvedHandle])
+  @@index([verdict])
+  @@index([createdAt])
+  @@index([mode])
+  @@index([falsePositiveFlag])
+}
+
+model NarrativeScript {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  label             String
+  category          String
+  keywords          Json
+  regexes           Json
+  derivedFrom       Json
+  defaultConfidence Float
+  severity          String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([active])
+  @@index([category])
+}
+
+model ReflexWatch {
+  id               String    @id @default(cuid())
+  reflexAnalysisId String
+  target           String
+  targetType       String
+  chain            String?
+  createdAt        DateTime  @default(now())
+  lastCheckedAt    DateTime?
+  nextCheckAt      DateTime?
+  status           String    @default("ACTIVE")
+  triggerReason    String?
+  expiresAt        DateTime?
+
+  @@index([reflexAnalysisId])
+  @@index([target])
+  @@index([status])
+  @@index([nextCheckAt])
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // BILLING — Beta Founder Access 1 € (Phase 1, behind BILLING_ENABLED flag)
 // Spec: docs/brief-billing-v3.md ; Audit: docs/audit-billing.md
