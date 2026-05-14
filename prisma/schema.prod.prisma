@@ -533,24 +533,24 @@ model SocialWatchlist {
 }
 
 model SocialPostCandidate {
-  id                 String     @id @default(cuid())
+  id                 String           @id @default(cuid())
   influencerId       String
   watchlistId        String?
   postUrl            String
   postId             String
-  discoveredAtUtc    DateTime   @default(now())
+  discoveredAtUtc    DateTime         @default(now())
   postedAtUtc        DateTime?
   sourceProvider     String
-  status             String     @default("new")
-  attempts           Int        @default(0)
+  status             String           @default("new")
+  attempts           Int              @default(0)
   lastAttemptAtUtc   DateTime?
   errorMessage       String?
   linkedSocialPostId String?
-  detectedTokens     String     @default("[]")
-  detectedAddresses  String     @default("[]")
-  signalTypes        String     @default("[]")
-  signalScore        Int        @default(0)
-  dedupKey           String?    @unique
+  detectedTokens     String           @default("[]")
+  detectedAddresses  String           @default("[]")
+  signalTypes        String           @default("[]")
+  signalScore        Int              @default(0)
+  dedupKey           String?          @unique
   profileSnapshot    String?
   // Watcher V2 extended fields (added 2026-04-25)
   rawText            String?
@@ -560,9 +560,9 @@ model SocialPostCandidate {
   severity           String?
   kolProfileId       String?
   campaignId         String?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-  influencer         Influencer @relation(fields: [influencerId], references: [id])
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  influencer         Influencer       @relation(fields: [influencerId], references: [id])
   campaign           WatcherCampaign? @relation(fields: [campaignId], references: [id])
 
   @@unique([postId, influencerId])
@@ -1435,17 +1435,17 @@ model VaultNdaAcceptance {
 }
 
 model VaultWorkspace {
-  id            String       @id @default(cuid())
-  profileId     String       @unique
-  profile       VaultProfile @relation(fields: [profileId], references: [id])
-  kdfSalt       String // hex 32 chars = 16 bytes
-  kdfAlgo       String       @default("PBKDF2-SHA256")
-  kdfIterations Int          @default(310000)
-  encMode       String       @default("CLIENT_SIDE_AES256GCM")
-  assistantTokensUsed  Int   @default(0)
-  assistantTokensLimit Int   @default(100000)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                   String       @id @default(cuid())
+  profileId            String       @unique
+  profile              VaultProfile @relation(fields: [profileId], references: [id])
+  kdfSalt              String // hex 32 chars = 16 bytes
+  kdfAlgo              String       @default("PBKDF2-SHA256")
+  kdfIterations        Int          @default(310000)
+  encMode              String       @default("CLIENT_SIDE_AES256GCM")
+  assistantTokensUsed  Int          @default(0)
+  assistantTokensLimit Int          @default(100000)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   cases         VaultCase[]
   audits        VaultAuditLog[]
@@ -1453,18 +1453,18 @@ model VaultWorkspace {
 }
 
 model VaultCase {
-  id          String          @id @default(cuid())
-  workspaceId String
-  workspace   VaultWorkspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  titleEnc    String
-  titleIv     String
-  tagsEnc     String
-  tagsIv      String
-  status      VaultCaseStatus @default(PRIVATE)
-  caseTemplate String?        @default("blank")
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  archivedAt  DateTime?
+  id           String          @id @default(cuid())
+  workspaceId  String
+  workspace    VaultWorkspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  titleEnc     String
+  titleIv      String
+  tagsEnc      String
+  tagsIv       String
+  status       VaultCaseStatus @default(PRIVATE)
+  caseTemplate String?         @default("blank")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  archivedAt   DateTime?
 
   entities          VaultCaseEntity[]
   files             VaultCaseFile[]
@@ -1733,19 +1733,19 @@ model VaultEvidenceSnapshot {
 // beta auth system is code-based and has no email field on session.
 
 model WatchedAddress {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   address            String
-  chain              String   // "solana" | "ethereum" | "base" | "arbitrum"
+  chain              String // "solana" | "ethereum" | "base" | "arbitrum"
   label              String?
   ownerAccessId      String
   lastScore          Int?
   lastTier           String?
   lastGovernedStatus String?
   lastScannedAt      DateTime?
-  alertOnChange      Boolean  @default(true)
-  active             Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  alertOnChange      Boolean   @default(true)
+  active             Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   alerts WatchAlert[]
 
@@ -1762,7 +1762,7 @@ model WatchAlert {
   newScore         Int
   previousTier     String?
   newTier          String
-  changeType       String         // "tier_change" | "score_change" | "governed_status_change"
+  changeType       String // "tier_change" | "score_change" | "governed_status_change"
   changeDetail     String?
   notifiedAt       DateTime?
   emailSent        Boolean        @default(false)
@@ -1843,9 +1843,9 @@ enum InvestigatorActivityEvent {
 }
 
 model InvestigatorProfile {
-  id        String @id @default(cuid())
-  handle    String @unique
-  accessId  String? @unique
+  id       String  @id @default(cuid())
+  handle   String  @unique
+  accessId String? @unique
 
   // Identity (filled after onboarding)
   legalFirstName   String?
@@ -1915,7 +1915,7 @@ model InvestigatorNdaAcceptance {
   id          String               @id @default(cuid())
   profileId   String?              @unique
   profile     InvestigatorProfile? @relation(fields: [profileId], references: [id])
-  betaCodeId  String?              // free ref, no FK
+  betaCodeId  String? // free ref, no FK
   signerName  String
   ndaVersion  String
   ndaLanguage String
@@ -1931,7 +1931,7 @@ model InvestigatorBetaTermsAcceptance {
   id            String               @id @default(cuid())
   profileId     String?              @unique
   profile       InvestigatorProfile? @relation(fields: [profileId], references: [id])
-  betaCodeId    String?              // free ref, no FK
+  betaCodeId    String? // free ref, no FK
   signerName    String
   termsVersion  String
   termsLanguage String
@@ -2088,18 +2088,18 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderAccessId String
   senderName     String
   senderEmail    String?
-  kind           String       @default("message")
+  kind           String        @default("message")
   body           String
-  priority       String       @default("normal")
+  priority       String        @default("normal")
   readBy         MessageRead[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([conversationId])
   @@index([senderAccessId])
@@ -2116,16 +2116,16 @@ model MessageRead {
 }
 
 model FeedbackEntry {
-  id               String   @id @default(cuid())
-  accessId         String
-  investigatorName String
+  id                String   @id @default(cuid())
+  accessId          String
+  investigatorName  String
   investigatorEmail String?
-  workspaceId      String?
-  type             String   @default("feedback")
-  body             String
-  status           String   @default("unread")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  workspaceId       String?
+  type              String   @default("feedback")
+  body              String
+  status            String   @default("unread")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([accessId])
   @@index([status])
@@ -2202,16 +2202,16 @@ model XThread {
 // migration is applied.
 
 model EquitySignal {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   ticker       String
   entityName   String
   tradeDate    DateTime
   tweetDate    DateTime?
   deltaHours   Float?
-  suspectLevel String   @default("LOW")
+  suspectLevel String    @default("LOW")
   notes        String?
   source       String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([ticker])
   @@index([createdAt])
@@ -2272,17 +2272,17 @@ model SecurityVendor {
 }
 
 model SecuritySource {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   vendorId            String?
   sourceType          String // statuspage | advisory_db | rss | webhook | manual | internal_audit | vendor_blog | github_advisory
   name                String
   url                 String
-  isActive            Boolean  @default(true)
+  isActive            Boolean   @default(true)
   pollIntervalMinutes Int?
   lastPolledAt        DateTime?
   lastStatus          String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   vendor    SecurityVendor?    @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   incidents SecurityIncident[]
@@ -2325,18 +2325,18 @@ model SecurityIncident {
 }
 
 model SecurityExposureAssessment {
-  id                       String   @id @default(cuid())
-  incidentId               String
-  exposureLevel            String // none | unlikely | possible | probable | confirmed
-  affectedSurface          Json
-  requiresKeyRotation      Boolean  @default(false)
-  requiresAccessReview     Boolean  @default(false)
-  requiresInfraLogReview   Boolean  @default(false)
-  requiresPublicStatement  Boolean  @default(false)
-  actionChecklist          Json
-  analystNote              String?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  incidentId              String
+  exposureLevel           String // none | unlikely | possible | probable | confirmed
+  affectedSurface         Json
+  requiresKeyRotation     Boolean  @default(false)
+  requiresAccessReview    Boolean  @default(false)
+  requiresInfraLogReview  Boolean  @default(false)
+  requiresPublicStatement Boolean  @default(false)
+  actionChecklist         Json
+  analystNote             String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   incident SecurityIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
 
@@ -2397,16 +2397,16 @@ model SecurityActionItem {
 }
 
 model SecurityWeeklyDigest {
-  id                    String   @id @default(cuid())
+  id                    String    @id @default(cuid())
   periodStart           DateTime
   periodEnd             DateTime
-  generatedAt           DateTime @default(now())
+  generatedAt           DateTime  @default(now())
   subject               String
   bodyHtml              String
   bodyText              String
-  includedIncidentCount Int      @default(0)
-  includedCriticalCount Int      @default(0)
-  deliveryStatus        String   @default("pending") // pending | sent | failed
+  includedIncidentCount Int       @default(0)
+  includedCriticalCount Int       @default(0)
+  deliveryStatus        String    @default("pending") // pending | sent | failed
   deliveryMeta          Json?
   sentAt                DateTime?
 
@@ -2517,7 +2517,7 @@ enum MmSeverity {
 }
 
 model MmScanRun {
-  id                  String         @id @default(cuid())
+  id                  String        @id @default(cuid())
   subjectType         MmSubjectType
   subjectId           String
   chain               MmChain
@@ -2540,7 +2540,7 @@ model MmScanRun {
   triggeredByRef      String?
   durationMs          Int
   errors              Json?
-  createdAt           DateTime       @default(now())
+  createdAt           DateTime      @default(now())
 
   detectorOutputs MmDetectorOutput[]
 
@@ -2635,8 +2635,8 @@ model MmCohortPercentile {
 // 11 modèles isolés du reste du schéma. Rollback = drop these 11 tables.
 
 model MmEntity {
-  id              String    @id @default(cuid())
-  slug            String    @unique
+  id              String     @id @default(cuid())
+  slug            String     @unique
   name            String
   legalName       String?
   jurisdiction    String?
@@ -2645,14 +2645,14 @@ model MmEntity {
   status          MmStatus
   riskBand        MmRiskBand
   defaultScore    Int
-  publicSummary   String    @db.Text
-  publicSummaryFr String?   @db.Text
+  publicSummary   String     @db.Text
+  publicSummaryFr String?    @db.Text
   knownAliases    String[]
   officialDomains String[]
   workflow        MmWorkflow @default(DRAFT)
   publishedAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   attributions MmAttribution[]
   claims       MmClaim[]
@@ -2681,7 +2681,7 @@ enum MmWorkflow {
 }
 
 model MmSource {
-  id              String         @id @default(cuid())
+  id              String           @id @default(cuid())
   publisher       String
   sourceType      MmSourceType
   url             String
@@ -2692,10 +2692,10 @@ model MmSource {
   title           String
   author          String?
   publishedAt     DateTime?
-  fetchedAt       DateTime       @default(now())
+  fetchedAt       DateTime         @default(now())
   credibilityTier MmCredTier
-  language        String         @default("en")
-  notes           String?        @db.Text
+  language        String           @default("en")
+  notes           String?          @db.Text
 
   claims MmClaim[]
 
@@ -2733,18 +2733,18 @@ enum MmArchivalStatus {
 }
 
 model MmClaim {
-  id            String        @id @default(cuid())
+  id            String      @id @default(cuid())
   mmEntityId    String
   claimType     MmClaimType
-  text          String        @db.Text
-  textFr        String?       @db.Text
+  text          String      @db.Text
+  textFr        String?     @db.Text
   sourceId      String
   jurisdiction  String?
-  publishStatus MmPubStatus   @default(DRAFT)
+  publishStatus MmPubStatus @default(DRAFT)
   publishedAt   DateTime?
-  orderIndex    Int           @default(0)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  orderIndex    Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
   source   MmSource @relation(fields: [sourceId], references: [id])
@@ -2769,7 +2769,7 @@ enum MmPubStatus {
 }
 
 model MmAttribution {
-  id                String          @id @default(cuid())
+  id                String         @id @default(cuid())
   walletAddress     String
   chain             MmChain
   mmEntityId        String
@@ -2779,10 +2779,10 @@ model MmAttribution {
   reviewerUserId    String?
   reviewedAt        DateTime?
   challengedAt      DateTime?
-  challengeReason   String?         @db.Text
+  challengeReason   String?        @db.Text
   revokedAt         DateTime?
-  revokedReason     String?         @db.Text
-  createdAt         DateTime        @default(now())
+  revokedReason     String?        @db.Text
+  createdAt         DateTime       @default(now())
 
   mmEntity MmEntity @relation(fields: [mmEntityId], references: [id], onDelete: Cascade)
 
@@ -2841,24 +2841,24 @@ enum MmReviewAction {
 }
 
 model MmChallenge {
-  id                 String            @id @default(cuid())
+  id                 String         @id @default(cuid())
   targetType         MmTargetType
   targetId           String
   challengerEmail    String
   challengerName     String
   challengerRole     String?
   challengerEntity   String
-  claimedText        String            @db.Text
-  responseText       String            @db.Text
-  verificationStatus MmVerifStatus     @default(PENDING)
+  claimedText        String         @db.Text
+  responseText       String         @db.Text
+  verificationStatus MmVerifStatus  @default(PENDING)
   verificationMethod MmVerifMethod?
   verifiedAt         DateTime?
   verifiedBy         String?
-  publishStatus      MmPubStatus       @default(DRAFT)
+  publishStatus      MmPubStatus    @default(DRAFT)
   publishedAt        DateTime?
-  rejectionReason    String?           @db.Text
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  rejectionReason    String?        @db.Text
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   @@index([targetType, targetId])
   @@index([verificationStatus])
@@ -2972,21 +2972,21 @@ model RwaIssuer {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
-  assets            RwaAsset[]
-  aliases           RwaIssuerAlias[]
-  sources           RwaVerificationSource[]
+  assets  RwaAsset[]
+  aliases RwaIssuerAlias[]
+  sources RwaVerificationSource[]
 
   @@index([slug])
   @@index([status])
 }
 
 model RwaIssuerAlias {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   issuerId  String
   alias     String
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  issuer    RwaIssuer @relation(fields: [issuerId], references: [id])
+  issuer RwaIssuer @relation(fields: [issuerId], references: [id])
 
   @@unique([issuerId, alias])
   @@index([alias])
@@ -3006,10 +3006,10 @@ model RwaAsset {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  issuer              RwaIssuer     @relation(fields: [issuerId], references: [id])
-  contracts           RwaContract[]
-  aliases             RwaAssetAlias[]
-  sources             RwaVerificationSource[]
+  issuer    RwaIssuer               @relation(fields: [issuerId], references: [id])
+  contracts RwaContract[]
+  aliases   RwaAssetAlias[]
+  sources   RwaVerificationSource[]
 
   @@unique([issuerId, symbol])
   @@index([symbol])
@@ -3023,7 +3023,7 @@ model RwaAssetAlias {
   alias     String
   createdAt DateTime @default(now())
 
-  asset     RwaAsset @relation(fields: [assetId], references: [id])
+  asset RwaAsset @relation(fields: [assetId], references: [id])
 
   @@unique([assetId, alias])
   @@index([alias])
@@ -3047,13 +3047,13 @@ model RwaContract {
   createdAt              DateTime                      @default(now())
   updatedAt              DateTime                      @updatedAt
 
-  asset                  RwaAsset                      @relation(fields: [assetId], references: [id])
-  supersededBy           RwaContract?                  @relation("ContractMigration", fields: [supersededByContractId], references: [id])
-  supersedes             RwaContract[]                 @relation("ContractMigration")
-  aliases                RwaContractAlias[]
-  sources                RwaVerificationSource[]
-  verificationEvents     RwaVerificationEvent[]
-  scanCacheEntries       RwaScanCache[]
+  asset              RwaAsset                @relation(fields: [assetId], references: [id])
+  supersededBy       RwaContract?            @relation("ContractMigration", fields: [supersededByContractId], references: [id])
+  supersedes         RwaContract[]           @relation("ContractMigration")
+  aliases            RwaContractAlias[]
+  sources            RwaVerificationSource[]
+  verificationEvents RwaVerificationEvent[]
+  scanCacheEntries   RwaScanCache[]
 
   @@unique([chainKey, contractAddressNorm])
   @@index([contractAddressNorm])
@@ -3072,7 +3072,7 @@ model RwaContractAlias {
   verificationStatus RwaContractVerificationStatus @default(VERIFIED_OFFICIAL)
   createdAt          DateTime                      @default(now())
 
-  contract           RwaContract                   @relation(fields: [contractId], references: [id])
+  contract RwaContract @relation(fields: [contractId], references: [id])
 
   @@unique([chainKey, addressNorm])
   @@index([addressNorm])
@@ -3092,9 +3092,9 @@ model RwaVerificationSource {
   isPrimaryEvidence Boolean       @default(false)
   notes             String?
 
-  issuer            RwaIssuer?    @relation(fields: [issuerId], references: [id])
-  asset             RwaAsset?     @relation(fields: [assetId], references: [id])
-  contract          RwaContract?  @relation(fields: [contractId], references: [id])
+  issuer   RwaIssuer?   @relation(fields: [issuerId], references: [id])
+  asset    RwaAsset?    @relation(fields: [assetId], references: [id])
+  contract RwaContract? @relation(fields: [contractId], references: [id])
 
   @@index([issuerId])
   @@index([assetId])
@@ -3110,7 +3110,7 @@ model RwaVerificationEvent {
   metadata   Json?
   createdAt  DateTime                 @default(now())
 
-  contract   RwaContract              @relation(fields: [contractId], references: [id])
+  contract RwaContract @relation(fields: [contractId], references: [id])
 
   @@index([contractId])
   @@index([createdAt])
@@ -3130,7 +3130,7 @@ model RwaScanCache {
   cachedUntil       DateTime
   createdAt         DateTime        @default(now())
 
-  matchedContract   RwaContract?    @relation(fields: [matchedContractId], references: [id])
+  matchedContract RwaContract? @relation(fields: [matchedContractId], references: [id])
 
   @@unique([inputAddressNorm, chainKey])
   @@index([cachedUntil])
@@ -3164,18 +3164,18 @@ model DomainEvent {
 }
 
 model IngestionJob {
-  id                   String    @id @default(cuid())
+  id                   String   @id @default(cuid())
   source               String
   rawInput             String
   normalizedEntity     Json?
   resolveResult        Json?
-  status               String    @default("pending")
+  status               String   @default("pending")
   sourceChecksum       String
-  dryRun               Boolean   @default(false)
+  dryRun               Boolean  @default(false)
   errorReport          String?
-  manualReviewRequired Boolean   @default(false)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  manualReviewRequired Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@index([status, createdAt])
   @@index([source, status])
@@ -3219,21 +3219,21 @@ model TokenScanAggregate {
 // ── Watcher Campaign Intelligence (added 2026-04-25) ────────────────────────
 
 model WatcherCampaign {
-  id                     String               @id @default(cuid())
+  id                     String                @id @default(cuid())
   primaryTokenSymbol     String?
   primaryContractAddress String?
   chain                  String?
-  status                 String               @default("ACTIVE")
-  priority               String               @default("MEDIUM")
-  firstSeenAt            DateTime             @default(now())
-  lastSeenAt             DateTime             @default(now())
-  signalCount            Int                  @default(0)
-  kolCount               Int                  @default(0)
+  status                 String                @default("ACTIVE")
+  priority               String                @default("MEDIUM")
+  firstSeenAt            DateTime              @default(now())
+  lastSeenAt             DateTime              @default(now())
+  signalCount            Int                   @default(0)
+  kolCount               Int                   @default(0)
   summary                String?
-  claimPatterns          String               @default("[]")
+  claimPatterns          String                @default("[]")
   metadata               Json?
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
   signals                SocialPostCandidate[]
   campaignKols           WatcherCampaignKOL[]
 
@@ -3276,23 +3276,23 @@ model WatcherDigest {
 }
 
 model EntityGovernedStatus {
-  id                        String                        @id @default(cuid())
-  entityType                String
-  entityValue               String
-  chain                     String?
-  status                    GovernedStatusEnum
-  basis                     GovernedStatusBasisEnum?
-  reason                    String?                       @db.Text
-  setByUserId               String
-  setByUserRole             String                        @default("admin")
-  setAt                     DateTime                      @default(now())
-  reviewState               GovernedStatusReviewStateEnum @default(draft)
-  evidenceRefs              Json                          @default("[]")
-  revokedAt                 DateTime?
-  revokedByUserId           String?
-  revokedReason             String?                       @db.Text
-  createdAt                 DateTime                      @default(now())
-  updatedAt                 DateTime                      @updatedAt
+  id              String                        @id @default(cuid())
+  entityType      String
+  entityValue     String
+  chain           String?
+  status          GovernedStatusEnum
+  basis           GovernedStatusBasisEnum?
+  reason          String?                       @db.Text
+  setByUserId     String
+  setByUserRole   String                        @default("admin")
+  setAt           DateTime                      @default(now())
+  reviewState     GovernedStatusReviewStateEnum @default(draft)
+  evidenceRefs    Json                          @default("[]")
+  revokedAt       DateTime?
+  revokedByUserId String?
+  revokedReason   String?                       @db.Text
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
 
   @@unique([entityType, entityValue])
   @@index([status])
@@ -3323,19 +3323,19 @@ enum GovernedStatusReviewStateEnum {
 }
 
 model ScoreSnapshot {
-  id             String   @id @default(cuid())
-  entityType     String
-  entityValue    String
-  chain          String
-  score          Int
-  tier           String
+  id              String   @id @default(cuid())
+  entityType      String
+  entityValue     String
+  chain           String
+  score           Int
+  tier            String
   confidenceLevel String
-  version        String
-  topReasons     Json
-  provenanceData Json?
-  governedStatus Json?
-  rawInput       Json?
-  createdAt      DateTime @default(now())
+  version         String
+  topReasons      Json
+  provenanceData  Json?
+  governedStatus  Json?
+  rawInput        Json?
+  createdAt       DateTime @default(now())
 
   @@index([entityType, entityValue, createdAt])
   @@index([chain])
@@ -3345,18 +3345,50 @@ model ScoreSnapshot {
 }
 
 model KolCrossLink {
-  id            String   @id @default(cuid())
-  sourceHandle  String
-  targetHandle  String
-  linkType      String
-  confidence    String
-  evidence      Json
-  detectedAt    DateTime @default(now())
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  sourceHandle String
+  targetHandle String
+  linkType     String
+  confidence   String
+  evidence     Json
+  detectedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@unique([sourceHandle, targetHandle, linkType])
   @@index([sourceHandle])
   @@index([targetHandle])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Token price tracker — additive (2026-05-13)
+//
+// Per-token current/peak snapshot used by the suspicion-scoring pipeline.
+// Distinct from PriceCache (which is a (symbol, dateOnly) historical
+// SOL/USD cache used by KOL proceeds valuation).
+//
+// Migration: exports/migrations_pricecache_2026-05-13.sql — apply manually
+// via Neon SQL Editor on ep-square-band. Never via `prisma db push`.
+// ─────────────────────────────────────────────────────────────────────────
+
+model TokenPriceTracker {
+  id              String    @id @default(cuid())
+  ticker          String?
+  chain           String
+  contractAddress String
+  currentPrice    Decimal?  @db.Decimal(40, 18)
+  currentDate     DateTime? @db.Timestamptz(6)
+  peakPrice       Decimal?  @db.Decimal(40, 18)
+  peakDate        DateTime? @db.Timestamptz(6)
+  dumpPct         Decimal?  @db.Decimal(10, 4)
+  source          String?
+  lastRefreshAt   DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@unique([chain, contractAddress])
+  @@index([chain])
+  @@index([ticker])
+  @@index([lastRefreshAt])
 }
 
 
@@ -3438,4 +3470,104 @@ model ReflexWatch {
   @@index([target])
   @@index([status])
   @@index([nextCheckAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BILLING — Beta Founder Access 1 € (Phase 1, behind BILLING_ENABLED flag)
+// Spec: docs/brief-billing-v3.md ; Audit: docs/audit-billing.md
+//
+// Note on `userId`: there is no `model User` yet. `userId` is a free String
+// field that, post-payment, holds the value of `InvestigatorAccess.id`
+// (created by the webhook). Pre-payment, BetaFounderAccess.userId is null
+// and we key by `email`. Phase 2 (proxy.ts → Entitlement-aware) is OUT OF
+// SCOPE for this sprint; proxy.ts is unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BillingCustomer {
+  // Maps an INTERLIGENS identity (InvestigatorAccess.id stored in `userId`)
+  // to its Stripe Customer. One row per Stripe Customer; one Stripe Customer
+  // per identity. Created on first checkout-session, never duplicated.
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  stripeCustomerId String   @unique
+  email            String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([email])
+}
+
+model BetaFounderAccess {
+  // Reservation + payment record for the €1 Beta Founder offer.
+  // `userId` is nullable: filled by the webhook AFTER it provisions an
+  // InvestigatorAccess for the payer. Pre-payment lookups use `email`.
+  id                       String    @id @default(cuid())
+  userId                   String?   @unique
+  email                    String
+  stripeCustomerId         String?
+  stripeCheckoutSession    String?   @unique
+  stripeCheckoutSessionUrl String?
+  stripePaymentIntent      String?   @unique
+  amountCents              Int       @default(100)
+  currency                 String    @default("eur")
+  status                   String // pending | paid | failed | expired | refunded | disputed
+  campaign                 String    @default("beta_founder_1eur")
+  reservationExpiresAt     DateTime?
+  grantedAt                DateTime?
+  revokedAt                DateTime?
+  revokeReason             String?
+  taxAmountCents           Int?
+  customerCountry          String?
+  stripeTaxCalculationId   String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@index([status])
+  @@index([campaign])
+  @@index([email, status])
+  @@index([reservationExpiresAt])
+}
+
+model Entitlement {
+  // Generic future-proof access record. Currently feeds nothing in proxy.ts
+  // (Phase 2 will switch the gate to read this). Today the webhook ALSO
+  // provisions an InvestigatorAccess so the legacy gate keeps working.
+  id           String    @id @default(cuid())
+  userId       String
+  type         String // beta_founder_access | beta_private_access | future_subscription_pro
+  source       String // stripe_checkout | grandfathered | manual_admin
+  sourceId     String?
+  status       String // active | revoked | expired | pending
+  startsAt     DateTime  @default(now())
+  endsAt       DateTime?
+  revokedAt    DateTime?
+  revokeReason String?
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, type, status])
+  @@index([source, sourceId])
+}
+
+model BillingEvent {
+  // Stripe webhook event log. Idempotency key = stripeEventId (unique).
+  // Never stores full Stripe payloads — only an opaque hash for tamper
+  // detection. See lib/billing/webhookHandlers.ts.
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  eventType     String
+  payloadHash   String?
+  processedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([eventType])
+}
+
+model WaitlistEntry {
+  // Captured email when cap is reached or BETA_CAP_REACHED override is true.
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("beta_founder_soldout")
+  createdAt DateTime @default(now())
 }

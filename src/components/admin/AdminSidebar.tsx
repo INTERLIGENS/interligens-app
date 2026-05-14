@@ -83,6 +83,7 @@ const SECTIONS: Section[] = [
     links: [
       { label: "Export", href: "/admin/export" },
       { label: "Stats plateforme", href: "/admin/stats" },
+      { label: "Billing (Beta Founder)", href: "/admin/billing" },
     ],
   },
   {

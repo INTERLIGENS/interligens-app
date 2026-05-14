@@ -57,6 +57,7 @@
     "reactflow": "^11.11.4",
     "recharts": "^3.8.1",
     "rss-parser": "^3.13.0",
+    "stripe": "^22.1.1",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
