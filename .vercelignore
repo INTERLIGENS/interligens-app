@@ -1,0 +1,24 @@
+# INTERLIGENS .vercelignore
+# Anything matching these paths is excluded from the Vercel deployment
+# bundle (does NOT affect git tracking).
+
+# Investigation reports, exports, dumps — PRIVATE data, never deploy.
+exports/
+
+# Tests, docs, CLI scripts — not needed at runtime.
+__tests__/
+docs/
+scripts/
+
+# Local env variants that aren't loaded via Vercel project env vars.
+.env.localanthropic
+.env.prod
+.env.vercel.local
+
+# Local DB
+prisma/dev.db
+prisma/migrations_sqlite_backup/
+
+# Misc local artifacts
+*.log
+.DS_Store
