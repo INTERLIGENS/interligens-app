@@ -1,0 +1,154 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`/api/scan/resolve snapshot — 'BONK — curated + mention overlap (cur…' > matches the locked response 1`] = `
+{
+  "count": 1,
+  "query": "BONK",
+  "results": [
+    {
+      "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "chain": "SOL",
+      "kolCount": 1,
+      "source": "curated",
+      "symbol": "BONK",
+    },
+  ],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'BOTIFY — mentions only' > matches the locked response 1`] = `
+{
+  "count": 1,
+  "query": "BOTIFY",
+  "results": [
+    {
+      "address": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+      "chain": "SOL",
+      "kolCount": 2,
+      "source": "mentions",
+      "symbol": "BOTIFY",
+    },
+  ],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'BTC — only coingecko' > matches the locked response 1`] = `
+{
+  "count": 0,
+  "query": "BTC",
+  "results": [],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'ETH — only coingecko (multi-platform)' > matches the locked response 1`] = `
+{
+  "count": 1,
+  "query": "ETH",
+  "results": [
+    {
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "chain": "ETH",
+      "kolCount": 0,
+      "name": "Ethereum",
+      "source": "coingecko",
+      "symbol": "ETH",
+    },
+  ],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'JUP — single curated SOL' > matches the locked response 1`] = `
+{
+  "count": 1,
+  "query": "JUP",
+  "results": [
+    {
+      "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "chain": "SOL",
+      "kolCount": 1,
+      "source": "curated",
+      "symbol": "JUP",
+    },
+  ],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'NORESULT — no internal, coingecko emp…' > matches the locked response 1`] = `
+{
+  "count": 0,
+  "query": "NORESULT",
+  "results": [],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'RAVE — mentions only' > matches the locked response 1`] = `
+{
+  "count": 1,
+  "query": "RAVE",
+  "results": [
+    {
+      "address": "RaveTokenSynthetic111111111111111111111111ab",
+      "chain": "SOL",
+      "kolCount": 1,
+      "source": "mentions",
+      "symbol": "RAVE",
+    },
+  ],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'SOL — only coingecko' > matches the locked response 1`] = `
+{
+  "count": 1,
+  "query": "SOL",
+  "results": [
+    {
+      "address": "So11111111111111111111111111111111111111112",
+      "chain": "SOL",
+      "kolCount": 0,
+      "name": "Solana",
+      "source": "coingecko",
+      "symbol": "SOL",
+    },
+  ],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'USDC — curated SOL (wins over coingec…' > matches the locked response 1`] = `
+{
+  "count": 1,
+  "query": "USDC",
+  "results": [
+    {
+      "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "chain": "SOL",
+      "kolCount": 1,
+      "source": "curated",
+      "symbol": "USDC",
+    },
+  ],
+}
+`;
+
+exports[`/api/scan/resolve snapshot — 'USDT — multiple curated across chains' > matches the locked response 1`] = `
+{
+  "count": 2,
+  "query": "USDT",
+  "results": [
+    {
+      "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "chain": "SOL",
+      "kolCount": 1,
+      "source": "curated",
+      "symbol": "USDT",
+    },
+    {
+      "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "chain": "ETH",
+      "kolCount": 1,
+      "source": "curated",
+      "symbol": "USDT",
+    },
+  ],
+}
+`;

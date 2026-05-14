@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
-import { handlesV2 } from "../../../../../scripts/watcher/handles-v2";
+import { handlesV2 } from "@/lib/watcher/handles";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
 import { sendWatcherDigest, type BatchSignal, type CampaignSummary } from "@/lib/alerts/watcherDigest";
 import { clusterSignals, type SignalInput } from "@/lib/watcher/campaignClusterer";
@@ -54,118 +54,139 @@ async function scanAll() {
   // Accumulates full signal data for campaign clustering.
   const newSignals: SignalInput[] = [];
 
-  for (const entry of handlesV2) {
+  // Budget guard: cap the number of handles scanned per run.
+  // Default 50 keeps monthly X API usage well under the $50 ceiling.
+  const maxHandles = parseInt(process.env.WATCHER_MAX_HANDLES ?? "50", 10);
+  const watchlist = handlesV2.slice(0, maxHandles);
+  console.log(`[watcher-v2] Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles (WATCHER_MAX_HANDLES=${maxHandles})`);
+
+  for (const entry of watchlist) {
     const handle = entry.handle;
 
-    const xUser = await getUserByUsername(handle);
-    if (!xUser) { stats.failed++; await sleep(1_000); continue; }
-    stats.scanned++;
+    try {
+      const xUser = await getUserByUsername(handle);
+      if (!xUser) {
+        console.warn(`[watcher-v2] SKIP @${handle} — not found`);
+        stats.failed++;
+        await sleep(1_000);
+        continue;
+      }
+      stats.scanned++;
 
-    const profileSnapshot = JSON.stringify({
-      followers: xUser.public_metrics?.followers_count ?? 0,
-      bio: xUser.description?.slice(0, 200) ?? "",
-      fetchedAt: new Date().toISOString(),
-    });
-
-    const tweets = await getUserTweets(xUser.id, 10);
-    stats.tweetsFetched += tweets.length;
-
-    const influencerId = await ensureInfluencer(handle);
-
-    // Per-handle tracking for alert fan-out after the inner loop.
-    let handleNewCandidates = 0;
-    const handleSignalSamples: string[] = [];
-
-    for (const tweet of tweets) {
-      const detection = detectSignals(tweet.text);
-      if (!shouldKeep(detection, 20)) continue;
-
-      // Dedup via the real composite unique key (postId, influencerId).
-      // Legacy rows have dedupKey=NULL so a dedupKey-only lookup misses them
-      // and the subsequent create() would collide on (postId, influencerId).
-      // Select only `id` to bypass any field-level decode quirks on legacy
-      // rows (e.g. `detectedTokens` jsonb→String coercion in pooled prod).
-      const dedupKey = `${tweet.id}:${handle}`;
-      const existing = await prisma.socialPostCandidate.findUnique({
-        where: { postId_influencerId: { postId: tweet.id, influencerId } },
-        select: { id: true },
+      const profileSnapshot = JSON.stringify({
+        followers: xUser.public_metrics?.followers_count ?? 0,
+        bio: xUser.description?.slice(0, 200) ?? "",
+        fetchedAt: new Date().toISOString(),
       });
-      if (existing) { stats.skipped++; continue; }
 
-      const candidate = await prisma.socialPostCandidate.create({
-        data: {
-          influencerId,
-          postId: tweet.id,
-          postUrl: `https://x.com/${handle}/status/${tweet.id}`,
-          sourceProvider: "x_api_v2",
-          status: "new",
-          postedAtUtc: tweet.created_at ? new Date(tweet.created_at) : null,
-          detectedTokens: JSON.stringify(detection.detectedTokens),
-          detectedAddresses: JSON.stringify(detection.detectedAddresses),
-          signalTypes: JSON.stringify(detection.signalTypes),
-          signalScore: detection.signalScore,
+      // GordonGekko: 100 tweets/run (high-volume case under active investigation).
+      // All other handles: 10 tweets/run (budget).
+      const maxResults = handle === "GordonGekko" ? 100 : 10;
+      const tweets = await getUserTweets(xUser.id, maxResults);
+      stats.tweetsFetched += tweets.length;
+
+      const influencerId = await ensureInfluencer(handle);
+
+      // Per-handle tracking for alert fan-out after the inner loop.
+      let handleNewCandidates = 0;
+      const handleSignalSamples: string[] = [];
+
+      for (const tweet of tweets) {
+        const detection = detectSignals(tweet.text);
+        if (!shouldKeep(detection, 20)) continue;
+
+        // Dedup via the real composite unique key (postId, influencerId).
+        // Legacy rows have dedupKey=NULL so a dedupKey-only lookup misses them
+        // and the subsequent create() would collide on (postId, influencerId).
+        // Select only `id` to bypass any field-level decode quirks on legacy
+        // rows (e.g. `detectedTokens` jsonb→String coercion in pooled prod).
+        const dedupKey = `${tweet.id}:${handle}`;
+        const existing = await prisma.socialPostCandidate.findUnique({
+          where: { postId_influencerId: { postId: tweet.id, influencerId } },
+          select: { id: true },
+        });
+        if (existing) { stats.skipped++; continue; }
+
+        const candidate = await prisma.socialPostCandidate.create({
+          data: {
+            influencerId,
+            postId: tweet.id,
+            postUrl: `https://x.com/${handle}/status/${tweet.id}`,
+            sourceProvider: "x_api_v2",
+            status: "new",
+            postedAtUtc: tweet.created_at ? new Date(tweet.created_at) : null,
+            detectedTokens: JSON.stringify(detection.detectedTokens),
+            detectedAddresses: JSON.stringify(detection.detectedAddresses),
+            signalTypes: JSON.stringify(detection.signalTypes),
+            signalScore: detection.signalScore,
+            rawText: tweet.text,
+            dedupKey,
+            profileSnapshot,
+          },
+        });
+        // Accumulate for campaign clustering
+        newSignals.push({
+          id: candidate.id,
+          kolHandle: handle,
+          detectedTokens: candidate.detectedTokens,
+          detectedAddresses: candidate.detectedAddresses,
           rawText: tweet.text,
-          dedupKey,
-          profileSnapshot,
-        },
-      });
-      // Accumulate for campaign clustering
-      newSignals.push({
-        id: candidate.id,
-        kolHandle: handle,
-        detectedTokens: candidate.detectedTokens,
-        detectedAddresses: candidate.detectedAddresses,
-        rawText: tweet.text,
-        discoveredAtUtc: candidate.discoveredAtUtc,
-        signalScore: candidate.signalScore,
-      });
-      stats.candidates++;
-      handleNewCandidates++;
-      if (handleSignalSamples.length < 3) {
-        const tokens = detection.detectedTokens?.slice(0, 2).join(", ");
-        const snippet = tweet.text.slice(0, 140);
-        handleSignalSamples.push(
-          tokens ? `${tokens} — ${snippet}` : snippet
-        );
+          discoveredAtUtc: candidate.discoveredAtUtc,
+          signalScore: candidate.signalScore,
+        });
+        stats.candidates++;
+        handleNewCandidates++;
+        if (handleSignalSamples.length < 3) {
+          const tokens = detection.detectedTokens?.slice(0, 2).join(", ");
+          const snippet = tweet.text.slice(0, 140);
+          handleSignalSamples.push(
+            tokens ? `${tokens} — ${snippet}` : snippet
+          );
+        }
       }
-    }
 
-    if (handleNewCandidates > 0) {
-      const tokens = handleSignalSamples
-        .flatMap((s) => {
-          const m = s.match(/^\$[A-Z]+/);
-          return m ? [m[0]] : [];
-        })
-        .filter((v, i, a) => a.indexOf(v) === i);
+      if (handleNewCandidates > 0) {
+        const tokens = handleSignalSamples
+          .flatMap((s) => {
+            const m = s.match(/^\$[A-Z]+/);
+            return m ? [m[0]] : [];
+          })
+          .filter((v, i, a) => a.indexOf(v) === i);
 
-      const snippet =
-        handleSignalSamples.join(" · ") || `${handleNewCandidates} new signals`;
+        const snippet =
+          handleSignalSamples.join(" · ") || `${handleNewCandidates} new signals`;
 
-      if (emailMode === "immediate") {
-        // Legacy: one email per handle
-        sendKolAlert(handle, handleNewCandidates, snippet).catch((err) =>
-          console.error("[watcher-v2] kol alert crashed", err)
-        );
-      } else if (emailMode === "digest") {
-        // Accumulate for batch digest sent after the full loop
-        batchSignals.push({ handle, signalCount: handleNewCandidates, tokens, snippet });
+        if (emailMode === "immediate") {
+          // Legacy: one email per handle
+          sendKolAlert(handle, handleNewCandidates, snippet).catch((err) =>
+            console.error("[watcher-v2] kol alert crashed", err)
+          );
+        } else if (emailMode === "digest") {
+          // Accumulate for batch digest sent after the full loop
+          batchSignals.push({ handle, signalCount: handleNewCandidates, tokens, snippet });
+        }
+        // emailMode === "off" → do nothing
       }
-      // emailMode === "off" → do nothing
-    }
 
-    // Enrich existing KolProfile
-    const kolProfile = await prisma.kolProfile.findUnique({ where: { handle } });
-    if (kolProfile) {
-      const updates: Record<string, unknown> = { lastEnrichedAt: new Date() };
-      if (!kolProfile.followerCount && xUser.public_metrics?.followers_count)
-        updates.followerCount = xUser.public_metrics.followers_count;
-      if (!kolProfile.bio && xUser.description) updates.bio = xUser.description;
-      if (!kolProfile.displayName && xUser.name) updates.displayName = xUser.name;
-      await prisma.kolProfile.update({ where: { handle }, data: updates });
-      stats.enriched++;
-    }
+      // Enrich existing KolProfile
+      const kolProfile = await prisma.kolProfile.findUnique({ where: { handle } });
+      if (kolProfile) {
+        const updates: Record<string, unknown> = { lastEnrichedAt: new Date() };
+        if (!kolProfile.followerCount && xUser.public_metrics?.followers_count)
+          updates.followerCount = xUser.public_metrics.followers_count;
+        if (!kolProfile.bio && xUser.description) updates.bio = xUser.description;
+        if (!kolProfile.displayName && xUser.name) updates.displayName = xUser.name;
+        await prisma.kolProfile.update({ where: { handle }, data: updates });
+        stats.enriched++;
+      }
 
-    await sleep(1_000);
+      await sleep(1_000);
+    } catch (err) {
+      console.error(`[watcher-v2] SKIP @${handle} — error during scan:`, err);
+      stats.failed++;
+      await sleep(1_000);
+      continue;
+    }
   }
 
   // ── Campaign clustering + digest (after full scan) ──────────────────────
