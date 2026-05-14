@@ -9,6 +9,10 @@ exports/
 __tests__/
 docs/
 scripts/
+# Exception: watcher/ is imported by src/app/api/cron/watcher-v2/route.ts
+# (handles-v2.ts is the source of truth per the mirror comment in
+# src/lib/watcher/handles.ts).
+!scripts/watcher/
 
 # Local env variants that aren't loaded via Vercel project env vars.
 .env.localanthropic
