@@ -57,3 +57,9 @@ backups/
 .wrangler/
 /tmp/
 .claude/
+
+# --- Investigation outputs (INTERLIGENS) ---
+# Diagnostic dumps, KOL watchlists, ticker reports, backfill JSON, etc.
+# Private data — never commit. Also excluded from Vercel builds via
+# .vercelignore.
+exports/
