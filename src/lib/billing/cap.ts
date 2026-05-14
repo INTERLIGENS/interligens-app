@@ -22,17 +22,18 @@ export async function checkCap(opts?: { tx?: Pick<typeof prisma, "$queryRaw"> })
   }
 
   const runner = opts?.tx ?? prisma;
-  // Count paid + non-expired pending reservations.
-  // FOR UPDATE locks the matching rows so a concurrent transaction can't
-  // squeeze in an extra reservation past the cap.
-  const rows = await runner.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint AS count
+  // Lock paid + non-expired pending reservations FOR UPDATE so a concurrent
+  // transaction can't squeeze in an extra reservation past the cap. Postgres
+  // refuses FOR UPDATE with aggregates (error 0A000), so we SELECT row ids
+  // and count them in TS — at the cap of 200 this is negligible payload.
+  const rows = await runner.$queryRaw<Array<{ id: string }>>`
+    SELECT id
     FROM "BetaFounderAccess"
     WHERE status = 'paid'
        OR (status = 'pending' AND "reservationExpiresAt" > NOW())
     FOR UPDATE
   `;
-  const currentCount = Number(rows?.[0]?.count ?? 0);
+  const currentCount = rows.length;
   if (currentCount >= cap) {
     return { allowed: false, reason: "sold_out", currentCount, cap };
   }
