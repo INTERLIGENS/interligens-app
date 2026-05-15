@@ -1998,3 +1998,59 @@ confirmed / publicly usable` pour 8 handles investigués (lynk0x,
 eddyxbt, CookerFlips, blknoiz06, thedefiape, noahhcalls, solfistooshort,
 GordonGekko).
 
+---
+
+## BULLISH casefile seed — 2026-05-14
+
+Casefile $BULLISH (memecoin Solana, mint `C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWWkXpump`) reconstitué manuellement par Dood depuis 83 screenshots X (chain of custody SHA-256 conservée hors repo : `~/INTERLIGENS_FORENSIC/BULLISH_2026-05-14/02_metadata/hashes.txt`). Seed exécuté sur `ep-square-band` via `SEED_BULLISH=1 pnpm tsx src/scripts/seed/seedBullish.ts` à partir du JSON canonique `src/scripts/seed/casefiles/bullish_seed.json` (34 promotion_mentions, 5 actors, 15 peripheral OSINT pending).
+
+**Status casefile : NON publié publiquement. Restriction maintenue tant que le dossier procureur BOTIFY n'est pas formellement engagé (secret de l'enquête en cours).**
+
+### Comptes par table
+
+| Table | Opération | Count | Notes |
+|---|---|---|---|
+| `TokenPriceTracker` | upsert | 1 | `(solana, C2omVhcvt…)`, source=`bullish_seed_2026-05-14` |
+| `KolProfile` (créés) | create | 3 | `trade` (pdfScore=95, tier CRITICAL, riskFlag=high_risk_dev), `moonbag` (pdfScore=85, tier CRITICAL, amplifier_cluster), `SolBullishDegen` (tier HIGH, official_project_account, pdfScore null car non spécifié dans JSON) |
+| `KolProfile` (intacts) | none | 2 | `GordonGekko` (botifyDeal preserved, pdfScore=70, notes_len inchangé), `DonWedge` (pdfScore=15, label inchangé) — aucune écriture sur KolProfile pour ces 2 acteurs |
+| `KolPromotionMention` | upsert | 33 | unique `(sourcePlatform='x', sourcePostId)`. 19/33 ont un sourcePostId synthétique préfixé `seed_<sha1>` car le JSON n'avait pas de status_id réel. 1 mention skipped : posté_at `2025-11-XX` (placeholder, date inutilisable). Répartition : GordonGekko 11, moonbag 10, trade 10, DonWedge 2. |
+| `KolTokenLink` | upsert | 5 | role=`dev` pour `trade` + `SolBullishDegen` ; role=`amplifier` pour `GordonGekko` + `moonbag` + `DonWedge`. caseId=`BULLISH`. `note` contient JSON `{firstPromotionAt, lastPromotionAt, mentionCount, seededFrom}`. |
+| `KolProceedsEvent` | — | 0 | aucun event proceeds seedé : pattern BULLISH est dev+bundle (Bubblemaps case #73), pas dump post-promo classique. |
+
+### Schema gaps identifiés (à propose pour ALTER ultérieur — RIEN modifié dans cette session)
+
+Aucune migration de schéma exécutée pendant le seed. Les champs suivants sont absents et ont été contournés par stockage ad-hoc ou skip :
+
+1. **`TokenPriceTracker`** — manque `launchpad` (pump.fun), `launchDate` (2025-10-02), `launchpadCreator` (@trade), `name` (Bullish Degen). Stockés uniquement dans le JSON canonique pour l'instant.
+2. **`TokenPriceTracker`** — pas de champ pour intel externe : `bubblemaps_intel_desk_case_id` (73), `bubblemaps_thread_url`, `bubblemap_url` (`https://v2.bubblemaps.io/map/k2pPIBZ2jh`), `ath_fdv_usd`. Bubblemaps Tier-1 evidence sans home structuré.
+3. **`KolPromotionMention`** — manque `engagement` (views/likes/rt/replies/bookmarks) et `criticality` (P0/P1/P2). Workaround : suffixe `\n[meta] {…}` dans `contentSnippet`. Parseable mais non queryable.
+4. **`KolTokenLink`** — manque `firstPromotionAt`, `lastPromotionAt`, `mentionCount`. Stocké en JSON dans `note` (4 keys, parseable mais non indexé).
+5. **Pas de table `CrossCaseLink`** — `KolCrossLink` existe mais sémantique KOL↔KOL (replies-to / QT'd / alias-of), pas case↔case. La modélisation propre serait `CrossCaseLink(caseA, caseB, sharedKolHandle, evidenceUrl)`.
+6. **Pas de table pour `manipulation_evidence` structuré** — bundle_pattern, pre_launch_funding_pattern, cluster_concentration, dev_concealment, post_exposure_persistence : 5 evidence objects du JSON sans home en DB. Restent uniquement dans le JSON canonique.
+
+### Cross-case links
+
+Loggés comme **MANUAL FOLLOW-UP** (aucune écriture automatique) :
+
+- `Geppetto_88` (JSON) — DB stocke le handle sous `Geppetto` (sans `_88`). Replié-par `@moonbag` sur $BULLISH 2026-01-12 (post_id non capturé). À aligner manuellement le handle ou créer un `KolAlias`.
+- `GordonGekko` — déjà cluster P0 BOTIFY (botifyDeal Json populé). Maintenant aussi tracé en role=`amplifier` sur BULLISH via `KolTokenLink`. Linkage croisé implicite via la double présence.
+- `DonWedge` — déjà cluster P0 BOTIFY (par `notes`, pas par `botifyDeal`). Idem GordonGekko.
+- Cluster infrastructure partagé : `@crypto_crib_` + `@_alphametrics` + `@mcxyz` apparaissent dans bios GordonGekko (founder/co-founder) et moonbag (growing). À investiguer en OSINT.
+
+### Peripheral amplifiers — OSINT en attente (non seedés)
+
+15 handles à investiguer en session OSINT ultérieure, jamais créés ici par règle "ne pas inventer" : `Splashie9`, `Crypto_Crib_`, `_alphametrics`, `mcxyz`, `Geppetto_88` (déjà existant sous `Geppetto`), `momma_`, `MarioNawfal`, `a1lon9` (possiblement Alon Cohen pump.fun co-founder — à vérifier), `DegenHustla`, `WhaleInsider`, `CryptoCowboy_AU` (FRIENDLY — critique bloqué par Patrick), `0xshardy` (FRIENDLY — supporter Bubblemaps), `Qnt20001`, `georgez_crypto`, `Dutchflavours`.
+
+### Validations post-seed
+
+- `SELECT COUNT(*) FROM KolPromotionMention WHERE tokenMint = 'C2omVhcvt…'` = **33** ✓
+- 5 lignes dans `KolTokenLink` pour BULLISH (2 dev + 3 amplifier) ✓
+- `trade`, `moonbag`, `SolBullishDegen` créés avec verified=true ✓
+- GordonGekko `botifyDeal` toujours non-null ✓ — DonWedge fields inchangés (label, notes_len) ✓
+- Aucune `KolProceedsEvent` créée (par design — pattern BULLISH ≠ dump post-promo) ✓
+- 1 mention skipped : posté_at `2025-11-XX` (date placeholder dans JSON) — Patrick "billion target" tweet, à re-capturer manuellement si nécessaire
+
+### Gate humain
+
+Aucun `npx vercel --prod` exécuté. Le seed enrichit uniquement la DB prod ; aucun changement de schema ni de runtime côté Vercel. Le prochain deploy embarquera le fichier `src/scripts/seed/seedBullish.ts` (idempotent par construction grâce aux upsert sur `(sourcePlatform, sourcePostId)` et `(chain, contractAddress)`).
+
