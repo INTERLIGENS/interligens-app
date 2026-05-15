@@ -88,7 +88,8 @@ const BOTIFY_ACTORS: Actor[] = [
       { address: "A8L7hRc3qUbA9JXb4D4NcYtECx9qzpY7KCoz6kAwqqx5", chain: "SOL", label: "swif_pending_verification_1", claimType: "attributed" },
       { address: "EqYGemqo1DeFkKoAvps8baQNqaLEHaTg1EBkXTxa431", chain: "SOL", label: "swif_pending_verification_2", claimType: "attributed" },
     ],
-    proceedsUsd: 485627,
+    // 2026-05-15: 485627 → 40627 après retrait du finding $445K SWIF (non vérifié). Reste = cashouts BOTIFY confirmés.
+    proceedsUsd: 40627,
     cex: "Binance (4XJwd) + OKX DEX — MaestroBots + Temporal MEV",
     note: "KOL BOTIFY 1.665% supply. Actif 4 avril 2026 sur pump.fun. Cluster Arkham 10 wallets. ($SWIF $445K finding retiré 2026-05-15 — non vérifié, cf. MIGRATION_RETAILVISION.md.)",
   },

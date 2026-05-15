@@ -2099,7 +2099,14 @@ Décision Dood, 2026-05-15 : le finding « $SWIF insiders +$445K profit Gordon v
 - `scripts/seed/seedBotifyComplete.ts` — 2 wallets : labels → `swif_pending_verification_1/2`, `claimType` `verified_onchain` → `source_attributed` ; mention $445K retirée du `note`.
 - DB `KolWallet` (2 lignes Gordon) — `attributionStatus` `review` → `unverified`, labels `swif_insider_1/2` → `swif_pending_verification_1/2`. Wallets conservés en DB.
 - `scripts/osint/rebuildRecitPdf.ts:429` — claim $TRUMP $445K sortie du rendu PDF, conservée en commentaire `TO_VERIFY`.
-- `swif_seed.json` — `_meta.linked_to_existing_db_finding` et `manipulation_evidence.rug_admission_by_gordon` supprimés (la charge probatoire de `rug_admission` reposait sur la contradiction on-chain $445K) ; refs $445K nettoyées de `cross_case_links.to_existing_db` et de la `criticality` de la mention #5.
+- `swif_seed.json` — `_meta.linked_to_existing_db_finding` et `manipulation_evidence.rug_admission_by_gordon` supprimés (la charge probatoire de `rug_admission` reposait sur la contradiction on-chain $445K) ; refs $445K nettoyées de `cross_case_links.to_existing_db`, de `actors.core_amplifiers[GordonGekko].existing_db_finding`, de `verification_actions_required` et de la `criticality` de la mention #5.
+- DB `KolPromotionMention` — la mention #5 déjà seedée (id `cmp7beyst000cs65h9czia9mr`, tweet rug-admission Gordon 2025-08-12) a été corrigée par `UPDATE` ciblé : `contentSnippet` ne référence plus « on-chain $445k extraction ». L'aveu public « rugged » et la fausse affirmation « I'm still here and not leaving » sont **conservés** (publics, vérifiables sur X).
+
+**Totaux décrémentés (delta −$445K) :** suite au retrait, les agrégats qui sommaient le $445K SWIF ont été corrigés —
+- `src/data/scamUniverse.json` (node GordonGekko) : `totalScammedUsd` 485627 → **40627** ;
+- `scripts/seed/seedBotifyComplete.ts` (node GordonGekko) : `proceedsUsd` 485627 → **40627** ;
+- `scripts/osint/rebuildRecitPdf.ts` : « $485K+ cashouts prouvés (BOTIFY + $SWIF) » → « $40K+ cashouts BOTIFY confirmés (finding $445K SWIF retiré pour vérification) ».
+Le résiduel **$40,627** = cashouts BOTIFY confirmés, hors SWIF. La DB `KolProfile.GordonGekko.totalDocumented` (=579645) **n'a pas été modifiée** — agrégat DB distinct, calculé hors de ces fichiers statiques, hors périmètre de cette décision.
 
 **Action future :** session OSINT dédiée — Helius RPC sur `A8L7hRc3qUbA9JXb4D4NcYtECx9qzpY7KCoz6kAwqqx5` et `EqYGemqo1DeFkKoAvps8baQNqaLEHaTg1EBkXTxa431` pour établir activité réelle, montants, timing, et **trancher $SWIF vs $TRUMP**. Ne pas réintroduire le finding au dossier tant que non vérifié.
 

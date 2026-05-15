@@ -349,7 +349,7 @@ function buildFullHtml(trace: TraceFile): string {
     <tr><td>OrbitApe (Telegram)</td><td>Inconnu (via Cobo.com)</td><td>PROPRIÉTAIRE Botify.Cloud. $817K+ documentés (Arkham + doc). Utilise Cobo.com (custody institutionnel).</td><td>Inconnu</td></tr>
     <tr><td>@sxyz500<br>@samjoleary<br>SAMBO</td><td>Sam O'Leary. Confirmé Telegram + vol ADL→HK</td><td>Co-fondateur. KOL 2% (8.5m tokens). $209K+ cashouts (Binance + BloFin). 8 wallets F&amp;F identifiés.</td><td>Melbourne/Adélaïde, Australie</td></tr>
     <tr><td>@planted<br>Djordje | Mr S</td><td>Djordje Stupar. Aveu public 19/03/2025</td><td>"Voix publique" BOTIFY (auto-décrit). Spaces host Telegram. Promotion $GHOST.</td><td>Inconnu</td></tr>
-    <tr><td>@GordonGekko</td><td>Inconnu (OKX à requérir en priorité)</td><td>KOL 1.665% supply BOTIFY. $485K+ cashouts prouvés (BOTIFY + $SWIF). Actif le 4 avril 2026. MaestroBots.</td><td>Inconnu</td></tr>
+    <tr><td>@GordonGekko</td><td>Inconnu (OKX à requérir en priorité)</td><td>KOL 1.665% supply BOTIFY. $40K+ cashouts BOTIFY confirmés (finding $445K SWIF retiré pour vérification). Actif le 4 avril 2026. MaestroBots.</td><td>Inconnu</td></tr>
   </tbody>
 </table>
 <p>Au-delà des fondateurs, 50+ KOLs payés en tokens et une équipe de 16 salariés ($13,010/semaine masse salariale) complétaient la structure. La liste complète est dans le dossier technique remis sur clé USB.</p>
