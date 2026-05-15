@@ -37,7 +37,7 @@ if (!dbUrl.includes("ep-square-band")) {
 }
 process.env.DATABASE_URL = dbUrl;
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -196,7 +196,7 @@ async function main() {
   console.log(`  TokenPriceTracker      upsert by (chain='${CHAIN}', contractAddress=${TOKEN_MINT.slice(0, 12)}…)`);
 
   // 2. KolProfile creates
-  const profileCreatePlan: Array<{ handle: string; payload: Record<string, unknown> }> = [];
+  const profileCreatePlan: Array<{ handle: string; payload: Prisma.KolProfileCreateInput }> = [];
   const skippedProfileReasons: string[] = [];
 
   const trade = data.actors.primary_dev;
@@ -423,7 +423,7 @@ async function main() {
     // 2. KolProfile creates only — never overwrite existing
     let profilesCreated = 0;
     for (const p of profileCreatePlan) {
-      await tx.kolProfile.create({ data: p.payload as any });
+      await tx.kolProfile.create({ data: p.payload });
       profilesCreated++;
     }
 
