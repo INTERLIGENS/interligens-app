@@ -2054,3 +2054,91 @@ Loggés comme **MANUAL FOLLOW-UP** (aucune écriture automatique) :
 
 Aucun `npx vercel --prod` exécuté. Le seed enrichit uniquement la DB prod ; aucun changement de schema ni de runtime côté Vercel. Le prochain deploy embarquera le fichier `src/scripts/seed/seedBullish.ts` (idempotent par construction grâce aux upsert sur `(sourcePlatform, sourcePostId)` et `(chain, contractAddress)`).
 
+---
+
+## SWIF casefile seed — 2026-05-15
+
+Casefile $SWIF (Sheep Wif Hat / Sheepwifhat, memecoin Solana, mint `9hdynudAhhWzuNFAnpz7NjvdKMfh9z8mcZKNYHuAUgJQ`, launchpad pump.fun, lancé ~6 août 2025 — antérieur au Watcher V1) reconstitué manuellement par Dood depuis 57 screenshots X (chain of custody SHA-256 hors repo : `~/INTERLIGENS_FORENSIC/SWIF_2026-05-14/02_metadata/hashes.txt`). Seed exécuté sur `ep-square-band` (`DATABASE_URL` → `ep-square-band-ag2lxpz8`, vérifié avant write) via `SEED_SWIF=1 pnpm tsx src/scripts/seed/seedSwif.ts`, source canonique `src/scripts/seed/casefiles/swif_seed.json` (28 promotion_mentions, 6 evidence objects, 4 acteurs traités). Pattern de référence : seed BULLISH (PR #3, mergée 2026-05-15).
+
+$SWIF est le **pendant social/X** d'un finding déjà documenté : « $SWIF insiders $445K » (coordination insider Gordon via 2 wallets). Ce seed ajoute la couche promotion X ; il ne crée ni ne modifie aucune attribution on-chain.
+
+**Status casefile : NON publié publiquement (`publishStatus=draft`). Restriction maintenue tant que le dossier procureur BOTIFY n'est pas formellement engagé (secret de l'enquête).**
+
+### Comptes par table
+
+| Table | Opération | Count | Notes |
+|---|---|---|---|
+| `TokenPriceTracker` | upsert | 1 | `(solana, 9hdynud…)`, ticker=SWIF, source=`swif_seed_2026-05-14` |
+| `KolProfile` (créés) | create | 2 | `sheepwifhatcoin` (tier HIGH, pdfScore 80, riskFlag `official_project_account`, verified=true), `jayxbt2012` (tier CRITICAL, pdfScore 90, riskFlag `team_insider`, verified=false, behaviorFlags `["telegram-admin-confirmed","post_incident_defense_coordinator"]`) |
+| `KolProfile` (intacts) | none | 2 | `GordonGekko` (botifyDeal préservé, totalDocumented=579645, pdfScore=70 — inchangé), `DonWedge` (pdfScore=15, notes inchangées) — aucune écriture KolProfile sur ces 2 acteurs |
+| `KolPromotionMention` | upsert | 28 | unique `(sourcePlatform='x', sourcePostId)`. 21/28 sourcePostId synthétiques préfixés `seed_<sha1>` (X status_id absent). Répartition : GordonGekko 24, DonWedge 4. 0 mention skippée (toutes les dates valides). |
+| `KolTokenLink` | upsert | 4 | `role=official-account` (sheepwifhatcoin), `role=telegram-admin` (jayxbt2012), `role=amplifier` (GordonGekko + DonWedge). caseId=`SWIF`. `note` = JSON `{firstPromotionAt,lastPromotionAt,mentionCount,seededFrom}` (null/0 pour sheepwifhatcoin + jayxbt2012 qui n'ont pas de mention dans le JSON). |
+| `KolProceedsEvent` | — | 0 | aucun event proceeds seedé — voir note discrepancy ci-dessous. |
+
+### Décisions de seed
+
+- **Geppetto NON créé.** La mission évoquait « éventuellement Geppetto ». Le handle est absent de `swif_seed.json` → règle zéro-fabrication → non seedé. `CREATE_ALLOWLIST` limitée à `{sheepwifhatcoin, jayxbt2012}`.
+- **`primary_dev` non seedé.** Le JSON ne donne pas de handle (`handle_unknown: "troll dev"`, identité non établie) → aucun KolProfile créé. À identifier en OSINT (deployer wallet Solana).
+- **pdfScore sheepwifhatcoin = 80** provient du **brief de mission**, pas du JSON (`official_account` n'a pas de `tigerscore_recommended`). Documenté dans le code (`MISSION_PDF_SCORE`) et dans `notes`. jayxbt2012 pdfScore 90 vient bien du JSON (`tigerscore_recommended`).
+- **`linkType` mission → `role` schema.** `KolTokenLink` n'a pas de champ `linkType` ; les valeurs mission (`telegram-admin` / `official-account` / `amplifier`) sont stockées dans `KolTokenLink.role`.
+
+### Discrepancy — finding « $SWIF $445K » introuvable en DB
+
+La mission posait le finding « $SWIF insiders +$445k profit Gordon » comme **déjà en DB**. Vérification exhaustive : `KolProceedsEvent` (0 ligne SWIF / mint / 445), `KolTokenInvolvement` (3 lignes Gordon, aucune sur le mint SWIF), `KolEvidence` (0 ligne SWIF, toutes handles confondues). **Le finding n'est dans aucune table DB.** Il est en réalité dans `src/data/scamUniverse.json:45` (`"notes": "… $SWIF insiders $445K. Cluster Arkham 10 wallets …"`) — **fichier de données statique du repo, pas une table.** Le seed ne touche ni `src/data/` ni les tables proceeds/evidence → le finding est préservé trivialement. À traiter : matérialiser ce finding en `KolProceedsEvent`/`KolTokenInvolvement` lors d'une session on-chain dédiée pour que le social (ce seed) et l'on-chain soient joignables par mint.
+
+### Schema gaps (aucune migration exécutée — RIEN modifié dans cette session)
+
+Mêmes gaps que BULLISH, confirmés sur SWIF, plus 2 nouveaux :
+
+1. **`TokenPriceTracker`** — manque `launchpad` (pump.fun), `launchDate` (~2025-08-06), `name` (Sheep Wif Hat), `dex` (PumpSwap), `officialXAccount`, `officialTelegram`. Stockés uniquement dans le JSON canonique.
+2. **`KolPromotionMention`** — manque `engagement` (views/likes/rt/replies) et `criticality` (P0/P1/P2). Workaround : suffixe `\n[meta] {…}` dans `contentSnippet`. 18/28 mentions SWIF portent un bloc meta. Parseable mais non queryable.
+3. **`KolTokenLink`** — manque `firstPromotionAt`, `lastPromotionAt`, `mentionCount`. Stockés en JSON dans `note`.
+4. **Pas de table `CrossCaseLink`** — `KolCrossLink` existe mais sémantique KOL↔KOL. Les liens case↔case (SWIF↔BOTIFY, SWIF↔BULLISH) sont seulement loggés.
+5. **Pas de table `manipulation_evidence`** — les 6 evidence objects du JSON SWIF (rug_admission, self_incrimination Gordon/Don, fake_blackrock_endorsement, post_incident_defense_coordination, international_targeting) restent sans home DB. Incluent des `legal_qualification_fr` (art. 313-1 CP, L.465-3-1 CMF) sans champ structuré.
+6. **NOUVEAU — pas de pont social↔on-chain par mint.** Le finding $445k (statique) et les `KolPromotionMention` (DB, ce seed) partagent le mint SWIF mais aucune table ne les joint. Cf. discrepancy ci-dessus.
+7. **NOUVEAU — pas de table `TokenInvestigationQueue`.** Les 8 tokens additionnels impliqués (TROLL P1, URANUS/DOLLARCOIN/BOSS/Monke/IOTAI/FAT/Butthole P2) n'ont aucun home DB ; ils ne vivent que dans `cross_case_links.additional_tokens_implicated` du JSON.
+
+### Cross-case links — SWIF ↔ BULLISH (loggés, MANUAL FOLLOW-UP)
+
+- **Cluster Gordon → BULLISH.** `@trade` (dev BULLISH) visible dans le panneau « Who to follow » des tweets $SWIF de Gordon → recoupement de cluster confirmé août 2025 → octobre 2025.
+- **Recidive annoncée.** Catchphrase Gordon « Shall I find another HUGE runner? » (tweet 2025-09-19, 161k vues) précède de ~2 semaines le lancement de $BULLISH (2025-10-02).
+- **Pattern réutilisé.** Le ciblage international (tweet en chinois) employé sur $BULLISH (fév. 2026) avait déjà été utilisé sur $SWIF (août 2025, « The Chinese are buying $SWIF », JayXBT admin Telegram).
+
+### Cross-case links — SWIF ↔ BOTIFY (loggés)
+
+- `GordonGekko` — déjà cluster P0 BOTIFY (`botifyDeal` JSON populé, allocation 1.665% supply, dealAmountUSD 10000). Désormais aussi tracé `role=amplifier` sur SWIF via `KolTokenLink`. Lien croisé implicite par double présence.
+- `DonWedge` — déjà cluster P0 BOTIFY (par `notes`, pas `botifyDeal`). Idem.
+
+### Tokens additionnels à investiguer (8 — NON seedés)
+
+Issus de `cross_case_links.additional_tokens_implicated` + auto-incrimination Don (tweet 2025-08-09 « I called $TROLL $URANUS #DOLLARCOIN $BOSS $SWIF ») et Gordon :
+
+| Token | Priorité | Raison |
+|---|---|---|
+| `TROLL` | **P0/P1** | Même « troll dev » que $SWIF (per bio @sheepwifhatcoin) ; Don admet « I called » — candidat casefile complet |
+| `URANUS` | P2 | Don admet « I called » (2025-08-09) |
+| `DOLLARCOIN` | P2 | Don admet « I called » (2025-08-09) |
+| `BOSS` | P2 | Don admet « I called » (2025-08-09) |
+| `Monke` | P2 | Gordon admet « I gave you at $300K, hit 30X » (2025-08-13) |
+| `IOTAI` | P2 | Gordon admet « I gave you at $300K, hit 15X » (2025-08-13) |
+| `FAT` | P2 | Gordon « best trade $300K to $26M (85X) » (2025-09-19) |
+| `Butthole` | P2 | Gordon « best trade $100k-$140M (1400X) » (2025-09-19) |
+
+### Peripheral amplifiers — OSINT en attente (NON seedés)
+
+10 handles loggés, jamais créés (règle « ne pas inventer ») : `iamdodic`, `momma_` (déjà QT'd par @trade côté BULLISH), `gastonstonks`, `MasScavenger`, `Based_VexaLabs`, `DonRoost`, `5HoursAhead`, `TechDev_52`, `IncomeSharks`, `Fin Grey` (admin Telegram italien Sheepwifhat — pas un handle X propre, à résoudre).
+
+### Validations post-seed
+
+- `SELECT COUNT(*) FROM KolPromotionMention WHERE tokenMint='9hdynud…'` = **28** (GordonGekko 24, DonWedge 4) ✓
+- 4 lignes `KolTokenLink` pour SWIF (official-account + telegram-admin + 2 amplifier) ✓
+- `TokenPriceTracker` : 1 ligne SWIF/solana, source `swif_seed_2026-05-14` ✓
+- `sheepwifhatcoin` créé (HIGH, pdfScore 80, verified=true) + `jayxbt2012` créé (CRITICAL, pdfScore 90, verified=false, behaviorFlags telegram-admin-confirmed) ✓
+- GordonGekko `botifyDeal` toujours non-null, `totalDocumented`=579645 inchangé, pdfScore=70 inchangé ✓
+- DonWedge inchangé (pdfScore=15, notes_len=103) ✓
+- Aucune `KolProceedsEvent` / `KolEvidence` / `KolTokenInvolvement` écrite — finding $445k (scamUniverse.json) intact ✓
+
+### Gate humain
+
+Aucun `npx vercel --prod` exécuté. Le seed enrichit uniquement la DB prod ; aucun changement de schema ni de runtime. Le prochain deploy embarquera `src/scripts/seed/seedSwif.ts` (idempotent par upsert). Branche `feat/swif-casefile-seed` — PR à ouvrir après audit humain, pattern PR #3.
+
