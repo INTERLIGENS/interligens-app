@@ -1,0 +1,423 @@
+{
+  "_meta": {
+    "casefile": "SWIF",
+    "session_date": "2026-05-14",
+    "extracted_from": "Dood screenshot batch via Claude vision",
+    "screenshot_count": 57,
+    "screenshot_count_useful": 57,
+    "chain_of_custody_hash_file": "~/INTERLIGENS_FORENSIC/SWIF_2026-05-14/02_metadata/hashes.txt",
+    "extraction_method": "manual visual inspection by Claude (Opus 4.7), Claude.ai web interface",
+    "warning": "All dates and URLs extracted by visual inspection. Verify each before DB insert."
+  },
+
+  "token": {
+    "symbol": "SWIF",
+    "name": "Sheep Wif Hat (Sheepwifhat)",
+    "mint": "9hdynudAhhWzuNFAnpz7NjvdKMfh9z8mcZKNYHuAUgJQ",
+    "chain": "solana",
+    "launchpad": "pump.fun",
+    "dex": "PumpSwap",
+    "launch_date_approximate": "2025-08-06",
+    "launch_date_evidence": "Gordon tweet 2025-08-13 'was $160k last week' indicates launch ~6-7 August at low MCAP",
+    "official_x_account": "@sheepwifhatcoin",
+    "official_telegram_group": "Sheepwifhat $SWIF",
+    "dev_attribution": "troll dev (per @sheepwifhatcoin bio: 'first token by troll dev')",
+    "dev_cross_link": "Same dev as $TROLL token (per Don's auto-incrimination tweet 2025-08-09)",
+    "ath_observed": {
+      "mc_usd_max": 30000000,
+      "source": "Gordon tweet 2025-09-19 '$SWIF $160K to $30M (180X)'",
+      "alternative_ath_mc": 30000000,
+      "alternative_source": "Gordon tweet 2025-08-12 '$SWIF has gone from $30K to $30M in 7 days'"
+    },
+    "post_rug_observed_mc_usd": 5000000,
+    "rug_admission": "Gordon tweet 2025-08-12 'Currently at $5M after being rugged'"
+  },
+
+  "manipulation_evidence": {
+    "self_incrimination_gordon_180x": {
+      "description": "Gordon publicly claimed $SWIF among 'my 3 best trades of the year' (180x), explicitly admitting financial interest",
+      "evidence_date": "2025-09-19",
+      "evidence_text_quote": "My 3 best trades of the year so far: Butthole: $100k-$140M (1400X), $FAT $300K to $26M (85X), $SWIF $160K to $30M (180X). But the trenches are hungry for more! Shall I find another HUGE runner?",
+      "engagement_views": 161000,
+      "engagement_likes": 1000,
+      "engagement_replies": 493,
+      "engagement_rt": 71,
+      "criticality": "P0 — explicit financial interest admission, contradicts later 'just helping followers' narrative"
+    },
+    "self_incrimination_don_called_swif": {
+      "description": "Don publicly admitted having 'called' $SWIF among other tokens (auto-promotion of track record)",
+      "evidence_date": "2025-08-09",
+      "evidence_url_partial": "x.com/DonWedge/status/1958613942178660759",
+      "evidence_text_quote": "when I make a conviction call and you see me bull posting about a project, just know it will do big numbers. $TROLL $URANUS #DOLLARCOIN $BOSS $SWIF. I called all sub $1M MCAP, they went between $4M MCAP - $300M MCAP. Diamond hands always rewarded",
+      "criticality": "P0 — explicit admission of shilling role + lists 4 OTHER tokens to investigate for same pattern"
+    },
+    "fake_blackrock_endorsement": {
+      "description": "Gordon repeatedly claimed 'Alex from Blackrock' was burning $SWIF supply — fake institutional endorsement (same pattern as fake Bullish Degen ETF on $BULLISH)",
+      "tweet_sep_3_url_partial": "x.com/GordonGekko/status/1963144429314744665",
+      "tweet_sep_3_text": "Alex from Blackrock just burned another 1M of $SWIF tokens",
+      "tweet_sep_14_engagement": {"views": 41000, "likes": 387, "rt": 39, "replies": 132},
+      "tweet_sep_14_text": "I heard from Alex (he's high up at Blackrock) they are burning another 1% of $SWIF supply next week",
+      "tweet_sep_15_engagement": {"views": 57000, "likes": 434, "rt": 81, "replies": 187},
+      "tweet_sep_15_text": "wtf?! Alex from Blackrock has just burned another 16.5M $SWIF tokens. He has burned over 12% ($500k) by himself. Supply shock incoming?",
+      "wallets_used_for_fake_burn": [
+        "G17y1n...AysrEw (1M SWIF burn Sep 3)",
+        "HgAV13...KcxBqH (16.5M SWIF burn Sep 15)"
+      ],
+      "legal_qualification_fr": "Manipulation de marche par diffusion d'informations fausses (art. L. 465-3-1 CMF) + Usurpation d'identite institutionnelle (BlackRock) + Delit d'initie simule",
+      "verification_needed": "Vérifier ownership/control des 2 wallets G17y1n... et HgAV13... — probablement cluster-controlled"
+    },
+    "post_incident_defense_coordination": {
+      "description": "After 12 Aug incident, Don publicly defended Gordon, JayXBT claimed innocence with same catchphrase, dodic+momma supported — coordinated defense network",
+      "don_defense_url": "x.com/DonWedge/status/1955248045773254891",
+      "don_defense_date": "2025-08-12T14:40:00Z",
+      "don_defense_text": "$SWIF will /reverse. you can't blame @gordongekko for what happened, I can assure you it was not him, he is a trench warrior who is actually helping his followers get out of the trenches. Every chaos there is opportunity",
+      "don_defense_engagement": {"views": 33700, "likes": 465, "rt": 46, "replies": 83},
+      "jxbt_defense_text": "Everything is provable on chain and everyone will find me and Gordon innocent. Every chaos there is opportunity, the hat stays on. Lets run it up!",
+      "cluster_catchphrase": "The hat stays on",
+      "other_defenders": ["@iamdodic", "@momma_"]
+    },
+    "international_targeting": {
+      "description": "Chinese-language community targeting via @jayxbt2012 admin of Telegram group",
+      "evidence_date": "2025-08-16",
+      "engagement": {"views": 45000, "likes": 416, "rt": 62, "replies": 196},
+      "claim": "The Chinese are buying $SWIF",
+      "telegram_admin_revealed": "@jayxbt2012 is admin of Sheepwifhat $SWIF Telegram group",
+      "other_telegram_admin": "Fin Grey (Italian, 'Fin Grey 🇮🇹')"
+    }
+  },
+
+  "actors": {
+    "primary_dev": {
+      "handle_unknown": "troll dev",
+      "description": "Per @sheepwifhatcoin bio: 'first token by troll dev'. Identity not yet established. Likely same dev as $TROLL token.",
+      "action_required": "OSINT to identify; check deployer wallet on Solana",
+      "deployer_wallet_required": true
+    },
+    "official_account": {
+      "handle": "sheepwifhatcoin",
+      "x_url": "https://x.com/sheepwifhatcoin",
+      "verified": true,
+      "bio": "sheepwifhat 🐑 first token by troll dev | first sheep on pumpfun | $SWIF CA - 9hdynudAhhWzuNFAnpz7NjvdKMfh9z8mcZKNYHuAUgJQ",
+      "role": "Official project account"
+    },
+    "telegram_admin_critical": {
+      "handle": "jayxbt2012",
+      "display_name": "JXBT",
+      "x_url": "https://x.com/jayxbt2012",
+      "role": "ADMIN of official Sheepwifhat $SWIF Telegram group + post-incident defense coordinator for Gordon",
+      "evidence_admin": "Tweet by Gordon 2025-08-16 shows JayXBT 'added 巨大的泵' message in group (admin action)",
+      "evidence_defense": "Reply to Don's 12 Aug defense tweet: 'Everything is provable on chain and everyone will find me and Gordon innocent. The hat stays on. Lets run it up!'",
+      "tigerscore_recommended": 90,
+      "verdict_color_recommended": "RED",
+      "criticality": "P0 — likely team/insider, not external KOL"
+    },
+    "core_amplifiers": [
+      {
+        "handle": "GordonGekko",
+        "display_name": "Gordon",
+        "x_url": "https://x.com/GordonGekko",
+        "verified": true,
+        "bio": "Founder @crypto_crib_, Co-Founder @_alphametrics",
+        "role": "Primary amplifier — admitted '$SWIF 180X' as one of '3 best trades of the year'",
+        "tigerscore_recommended": 90,
+        "verdict_color_recommended": "RED",
+        "tweet_count_observed": 35,
+        "first_promotion_observed": "2025-08-06 approximate (per 'was $160k last week' on Aug 13)",
+        "last_promotion_observed": "2025-09-19 (vanity post-exit tweet)",
+        "max_engagement_views": 161000,
+        "max_engagement_tweet": "Sep 19 vanity tweet '$SWIF 180X'",
+        "already_in_botify_dossier": true
+      },
+      {
+        "handle": "DonWedge",
+        "display_name": "Don",
+        "x_url": "https://x.com/DonWedge",
+        "verified": true,
+        "role": "Defender + auto-incrimination promoter — admitted having 'called' $SWIF",
+        "tigerscore_recommended": 85,
+        "verdict_color_recommended": "RED",
+        "tweet_count_observed": 3,
+        "already_in_botify_dossier": true
+      }
+    ],
+    "peripheral_amplifiers_to_investigate": [
+      {"handle": "iamdodic", "reason": "Post-incident defender of Gordon (Aug 12): 'wouldn't mess his reputation on something like this. Trust Gordon, trust the process'"},
+      {"handle": "momma_", "reason": "Post-incident defender (Aug 12): 'Wouldn't do this for burger money'. Already QT'd by @trade on $BULLISH context"},
+      {"handle": "gastonstonks", "reason": "Gordon reply Sep 9: 'Let's send $SWIF bro'"},
+      {"handle": "MasScavenger", "reason": "Gordon reply Sep 6: '$SWIF looks good here'"},
+      {"handle": "Based_VexaLabs", "reason": "Gordon reply Aug 15: '$SWIF looks good here'"},
+      {"handle": "DonRoost", "reason": "Parabolic Rooster, QT'd by Gordon Aug 13: 'Gm $SWIF family. Sideways accumulation. Breakout soon'"},
+      {"handle": "5HoursAhead", "reason": "Gordon reply Aug 12: '$SWIF eats red candles for breakfast'"},
+      {"handle": "TechDev_52", "reason": "TechDev appears in 'Who to follow' panel — cluster proximity"},
+      {"handle": "IncomeSharks", "reason": "Appears in 'Who to follow' panel — cluster proximity"},
+      {"handle": "Fin Grey", "reason": "Italian Telegram admin of Sheepwifhat group (visible in JayXBT screenshot)"}
+    ]
+  },
+
+  "cross_case_links": {
+    "to_existing_db": [
+      "GordonGekko: already in DB BOTIFY",
+      "DonWedge: already in DB BOTIFY"
+    ],
+    "to_bullish_casefile": [
+      "Patrick. @trade (BULLISH dev) visible in 'Who to follow' panel of Gordon $SWIF tweets — cluster overlap confirmed Aug 2025 → Oct 2025",
+      "Gordon catchphrase 'Shall I find another HUGE runner?' (Sep 19) immediately precedes $BULLISH launch (Oct 2)",
+      "Don international targeting pattern (Chinese tweet on $BULLISH Feb 2026) was already used on $SWIF Aug 2025"
+    ],
+    "additional_tokens_implicated": [
+      {
+        "symbol": "TROLL",
+        "reason": "Same 'troll dev' as $SWIF (per @sheepwifhatcoin bio); Don admitted 'I called' (2025-08-09)",
+        "priority": "P1 — likely full casefile candidate"
+      },
+      {
+        "symbol": "URANUS",
+        "reason": "Don admitted 'I called' (2025-08-09)",
+        "priority": "P2"
+      },
+      {
+        "symbol": "DOLLARCOIN",
+        "reason": "Don admitted 'I called' (2025-08-09)",
+        "priority": "P2"
+      },
+      {
+        "symbol": "BOSS",
+        "reason": "Don admitted 'I called' (2025-08-09)",
+        "priority": "P2"
+      },
+      {
+        "symbol": "Monke",
+        "reason": "Gordon admitted 'I gave you at $300K, hit 30X' (2025-08-13)",
+        "priority": "P2"
+      },
+      {
+        "symbol": "IOTAI",
+        "reason": "Gordon admitted 'I gave you at $300K, hit 15X' (2025-08-13)",
+        "priority": "P2"
+      },
+      {
+        "symbol": "FAT",
+        "reason": "Gordon claimed 'best trade $300K to $26M (85X)' (2025-09-19)",
+        "priority": "P2"
+      },
+      {
+        "symbol": "Butthole",
+        "reason": "Gordon claimed 'best trade $100k-$140M (1400X)' (2025-09-19)",
+        "priority": "P2"
+      }
+    ]
+  },
+
+  "promotion_mentions": [
+    {
+      "handle": "DonWedge",
+      "url": "https://x.com/DonWedge/status/1958613942178660759",
+      "post_id": "1958613942178660759",
+      "posted_at": "2025-08-09",
+      "claim": "when I make a conviction call and you see me bull posting about a project, just know it will do big numbers. $TROLL $URANUS #DOLLARCOIN $BOSS $SWIF. I called all sub $1M MCAP, they went between $4M MCAP - $300M MCAP. Diamond hands always rewarded",
+      "criticality": "P0 — auto-incrimination + cross-case token list"
+    },
+    {
+      "handle": "DonWedge",
+      "posted_at": "2025-08-10",
+      "claim": "$15M MCAP next for $SWIF (+ token card MC $10.7M, +86.88% 24h, vol $6.7M)",
+      "engagement": {"views": 67000, "likes": 392, "rt": 42, "replies": 37},
+      "criticality": "P0 — pump call at peak"
+    },
+    {
+      "handle": "DonWedge",
+      "url": "https://x.com/DonWedge/status/1955248045773254891",
+      "post_id": "1955248045773254891",
+      "posted_at": "2025-08-12T14:40:00Z",
+      "claim": "$SWIF will /reverse. you can't blame @gordongekko for what happened, I can assure you it was not him, he is a trench warrior who is actually helping his followers get out of the trenches. Every chaos there is opportunity",
+      "engagement": {"views": 33700, "likes": 465, "rt": 46, "replies": 83},
+      "criticality": "P0 — coordinated defense of Gordon post-rug"
+    },
+    {
+      "handle": "DonWedge",
+      "posted_at": "2025-08-16",
+      "claim": "$SWIF good R:R here + chart",
+      "engagement": {"views": 25000, "likes": 277, "rt": 29, "replies": 44},
+      "criticality": "P1 — post-rug persistence"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-12",
+      "claim": "$SWIF has gone from $30K to $30M in 7 days. Currently at $5M after being 'rugged'. People can say whatever they like, but I'm still here and not leaving. $SWIF is alive and well. @sheepwifhatcoin",
+      "criticality": "P0 — RUG ADMISSION publique ('rugged') + fausse affirmation 'still here, not leaving'"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-12",
+      "claim": "This bounce is crazy. The $SWIF community are strong af! @sheepwifhatcoin (+chart MC $11.73M/$20.21M)",
+      "engagement": {"views": 32000, "likes": 434, "rt": 77, "replies": 175}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-12",
+      "claim": "$SWIF eats red candles for breakfast (reply @5HoursAhead)",
+      "engagement": {"views": 2600, "likes": 37, "rt": 4, "replies": 7}
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/1956015772913877338",
+      "post_id": "1956015772913877338",
+      "posted_at": "2025-08-13",
+      "claim": "In the last 4 weeks: I gave you $Monke at $300K that already hit a 30X. I gave you $IOTAI at $300K that already hit 15X. I gave you $SWIF at 160K that hit already hit a 200X. They are ALL still above my initial calls",
+      "criticality": "P0 — self-incrimination as shiller of multiple tokens"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-13",
+      "claim": "They couldn't even keep us below $5M! $SWIF community is like no other! The hat stays on. (QT @DonRoost 'Gm $SWIF family. Sideways accumulation. Breakout soon')",
+      "engagement": {"views": 60000, "likes": 360, "rt": 64, "replies": 184}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-13",
+      "claim": "Ride or die. $SWIF + sheep tractor video",
+      "engagement": {"views": 31000, "likes": 520, "rt": 76, "replies": 160}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-13",
+      "claim": "We are over $5M, was $160k last week, and had half of CT throwing FUD at us...",
+      "criticality": "P1 — confirms initial shill timing ($160K MCAP, week of 6 Aug)"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-15",
+      "claim": "$SWIF looks good here (reply @Based_VexaLabs)",
+      "engagement": {"views": 2900, "likes": 39, "rt": 5, "replies": 10}
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/1956693813562417597",
+      "post_id": "1956693813562417597",
+      "posted_at": "2025-08-16",
+      "claim": "The Chinese are buying $SWIF + screenshot Telegram group showing JayXBT admin action 巨大的泵 and 'Chinese sheep community are arriving'",
+      "engagement": {"views": 45000, "likes": 416, "rt": 62, "replies": 196},
+      "criticality": "P0 — confirms JayXBT as Telegram admin + international targeting"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-17",
+      "claim": "No surrender. $SWIF looking good here + war sheep image",
+      "criticality": "P1 — post-rug persistence narrative"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-19",
+      "claim": "Don't let the matrix win. $SWIF @sheepwifhatcoin"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-22",
+      "claim": "(captured but content not visible in this session, requires re-check)"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-08-31",
+      "claim": "Big week incoming for $SWIF + trading floor image",
+      "engagement": {"views": 94000, "likes": 510, "rt": 86, "replies": 219},
+      "criticality": "P0 — peak engagement Gordon tweet on $SWIF"
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/1963144429314744665",
+      "post_id": "1963144429314744665",
+      "posted_at": "2025-09-03",
+      "claim": "Alex from Blackrock just burned another 1M of $SWIF tokens (+ tx burn G17y1n...AysrEw)",
+      "criticality": "P0 — fake BlackRock endorsement series start"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-03",
+      "claim": "Another 5M $SWIF tokens burned. That's nearly 10% of supply burned in the last few weeks (QT @sheepwifhatcoin)",
+      "engagement": {"views": 52000, "likes": 297, "rt": 59, "replies": 185}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-04",
+      "claim": "Big move coming soon on $SWIF (partial captured)"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-06",
+      "claim": "$SWIF looks good here (reply @MasScavenger)",
+      "engagement": {"views": 1600, "likes": 10, "rt": 2, "replies": 1}
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/1964947068608450696",
+      "post_id": "1964947068608450696",
+      "posted_at": "2025-09-08T09:01:00Z",
+      "claim": "Sheep season. $SWIF looks good here (QT @sheepwifhatcoin 'it's always sheep season' + sheep images)",
+      "engagement": {"views": 40100, "likes": 227, "rt": 36, "replies": 101}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-08",
+      "claim": "Over 100M $SWIF tokens burned and 2M burned today. Supply shock is incoming. The hat stays on! @sheepwifhatcoin",
+      "engagement": {"views": 30000, "likes": 377, "rt": 88, "replies": 130}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-09",
+      "claim": "Another 1M tokens burned 🔥"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-09",
+      "claim": "Let's send $SWIF bro (reply @gastonstonks)",
+      "engagement": {"views": 4300, "likes": 70, "rt": 13, "replies": 12}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-14",
+      "claim": "I heard from Alex (he's high up at Blackrock) they are burning another 1% of $SWIF supply next week",
+      "engagement": {"views": 41000, "likes": 387, "rt": 39, "replies": 132},
+      "criticality": "P0 — fake insider claim with future action prediction"
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/1967464670346039671",
+      "post_id_partial": "1967464670346039671",
+      "posted_at": "2025-09-15",
+      "claim": "wtf?! Alex from Blackrock has just burned another 16.5M $SWIF tokens. He has burned over 12% ($500k) by himself. Supply shock incoming? @sheepwifhatcoin (+ tx burn HgAV13...KcxBqH)",
+      "engagement": {"views": 57000, "likes": 434, "rt": 81, "replies": 187},
+      "criticality": "P0 — fake BlackRock burn confirmation"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2025-09-19",
+      "claim": "My 3 best trades of the year so far: Butthole: $100k-$140M (1400X), $FAT $300K to $26M (85X), $SWIF $160K to $30M (180X). But the trenches are hungry for more! Shall I find another HUGE runner?",
+      "engagement": {"views": 161000, "likes": 1000, "rt": 71, "replies": 493},
+      "criticality": "P0 — post-exit vanity + explicit recidive announcement (preceded $BULLISH launch by 2 weeks)"
+    }
+  ],
+
+  "external_witnesses": [
+    {
+      "category": "post_incident_defenders_aug12",
+      "handles": ["@iamdodic", "@momma_", "@jayxbt2012"],
+      "context": "Coordinated defense of Gordon on Aug 12 post-incident tweet"
+    },
+    {
+      "category": "tagged_in_blackrock_narrative",
+      "context": "Anyone who replied/RT'd the 'Alex from Blackrock' tweets — potential dupes worth contacting"
+    }
+  ],
+
+  "verification_actions_required": [
+    "Identify wallet G17y1n...AysrEw owner — likely cluster-controlled",
+    "Identify wallet HgAV13...KcxBqH owner — likely cluster-controlled",
+    "Resolve the retired '$445K Gordon' finding (flagged unverified 2026-05-15): on-chain check of wallets A8L7hRc3...AUgJQx5 and EqYGemqo1...Xa431 via Helius RPC to establish real activity/amounts/timing, and disambiguate $SWIF vs $TRUMP token attribution",
+    "Identify 'troll dev' — who deployed $SWIF and $TROLL?",
+    "Wayback Machine all listed tweet URLs (high deletion risk on rug-admission tweets)",
+    "Capture full @jayxbt2012 admin history of Sheepwifhat Telegram group",
+    "DM @CryptoCapo_ to confirm no endorsement (parallel to $BULLISH case)",
+    "Identify @Fin Grey (Italian Telegram admin)",
+    "Cross-investigate the 8 implicated additional tokens: TROLL, URANUS, DOLLARCOIN, BOSS, Monke, IOTAI, FAT, Butthole"
+  ]
+}
