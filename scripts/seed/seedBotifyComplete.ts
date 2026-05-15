@@ -83,12 +83,14 @@ const BOTIFY_ACTORS: Actor[] = [
       { address: "4sD4U2aWXZrgbCGXcCYagECV9oajrjudYQqE1B4e6Za6", chain: "SOL", label: 'Gordon KOL 1% (9.18m BOTIFY) — "GG" table', claimType: "verified_onchain" },
       { address: "4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3", chain: "SOL", label: "Gordon KOL 0.665% (2.12m BOTIFY) — knownBad", claimType: "verified_onchain" },
       { address: "3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6", chain: "SOL", label: "Gordon daily release — Arkham confirmé @GordonGekko · actif 4 avr 2026", claimType: "verified_onchain" },
-      { address: "A8L7hRc3qUbA9JXb4D4NcYtECx9qzpY7KCoz6kAwqqx5", chain: "SOL", label: "Gordon $SWIF insider wallet 1 — $445K", claimType: "verified_onchain" },
-      { address: "EqYGemqo1DeFkKoAvps8baQNqaLEHaTg1EBkXTxa431", chain: "SOL", label: "Gordon $SWIF insider wallet 2", claimType: "verified_onchain" },
+      // $SWIF $445K finding retiré du dossier 2026-05-15 (non vérifié — pas de TX hash,
+      // contradiction $SWIF/$TRUMP). Wallets conservés mais attribution dégradée.
+      { address: "A8L7hRc3qUbA9JXb4D4NcYtECx9qzpY7KCoz6kAwqqx5", chain: "SOL", label: "swif_pending_verification_1", claimType: "attributed" },
+      { address: "EqYGemqo1DeFkKoAvps8baQNqaLEHaTg1EBkXTxa431", chain: "SOL", label: "swif_pending_verification_2", claimType: "attributed" },
     ],
     proceedsUsd: 485627,
     cex: "Binance (4XJwd) + OKX DEX — MaestroBots + Temporal MEV",
-    note: "KOL BOTIFY 1.665% supply. $SWIF insiders $445K. Actif 4 avril 2026 sur pump.fun. Cluster Arkham 10 wallets.",
+    note: "KOL BOTIFY 1.665% supply. Actif 4 avril 2026 sur pump.fun. Cluster Arkham 10 wallets. ($SWIF $445K finding retiré 2026-05-15 — non vérifié, cf. MIGRATION_RETAILVISION.md.)",
   },
   {
     handle: "EduRio",

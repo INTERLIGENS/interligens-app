@@ -426,7 +426,8 @@ function buildFullHtml(trace: TraceFile): string {
 <h3>@planted (Djordje Stupar) — l'aveu public du 19 mars 2025</h3>
 <p>Djordje Stupar (@planted), désigné dans le groupe Telegram Botify.Cloud comme "Djordje | Mr S" et "spaces host", a publié sur X le 19 mars 2025 un post admettant son rôle de "voix publique" de BOTIFY. Cet aveu, capturé en screenshot et archivé dans le dossier (pièce E-09), constitue une preuve directe de sa participation consciente à la fraude.</p>
 <h3>@dethective — l'investigateur en ligne</h3>
-<p>@dethective est l'investigateur on-chain qui a premier rendu public le document BOTIFY divulgué par Maria. Il a également exposé le schéma $TRUMP insiders — GordonGekko seul y a réalisé $445,000 de profits pendant 30 tweets de promotion. Bêta-testeur NDA d'INTERLIGENS.</p>
+<p>@dethective est l'investigateur on-chain qui a premier rendu public le document BOTIFY divulgué par Maria. Bêta-testeur NDA d'INTERLIGENS.</p>
+<!-- TO_VERIFY (2026-05-15): claim sortie du rendu PDF — « @dethective a exposé le schéma $TRUMP insiders — GordonGekko seul y a réalisé $445,000 de profits pendant 30 tweets de promotion ». NON VÉRIFIÉE: aucun TX hash Solana, contradiction de token $TRUMP (ici) vs $SWIF (scamUniverse.json / seedBotifyComplete.ts) non tranchée. Ne pas réintégrer aux PDFs sans audit on-chain. Cf. MIGRATION_RETAILVISION.md section 'Finding $445K — retiré'. -->
 
 <h2>VII. Phase 5 — GHOST : la récidive avec les mêmes acteurs (2025–2026)</h2>
 <p>Après l'effondrement de BOTIFY, les mêmes acteurs ont relancé le même schéma avec le token $GHOST (mint Solana : BBKPiLM9KjdJW7oQSKt99RVWcZdhF6sEHRKnwqeBGHST). Cette récidive est documentée et prouvée :</p>

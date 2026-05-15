@@ -7,8 +7,7 @@
     "screenshot_count_useful": 57,
     "chain_of_custody_hash_file": "~/INTERLIGENS_FORENSIC/SWIF_2026-05-14/02_metadata/hashes.txt",
     "extraction_method": "manual visual inspection by Claude (Opus 4.7), Claude.ai web interface",
-    "warning": "All dates and URLs extracted by visual inspection. Verify each before DB insert.",
-    "linked_to_existing_db_finding": "DB INTERLIGENS already documents $SWIF insider coordination +$445k profit via 2 wallets (Gordon). This session adds the SOCIAL/X side that complements the on-chain side."
+    "warning": "All dates and URLs extracted by visual inspection. Verify each before DB insert."
   },
 
   "token": {
@@ -35,13 +34,6 @@
   },
 
   "manipulation_evidence": {
-    "rug_admission_by_gordon": {
-      "description": "Gordon publicly used the word 'rugged' to describe the 12 Aug crash, while simultaneously claiming 'I'm still here and not leaving' — contradicted by on-chain $445k profit",
-      "evidence_url_partial": "x.com/GordonGekko/status/1XXX_aug12",
-      "evidence_date": "2025-08-12",
-      "evidence_text_quote": "$SWIF has gone from $30K to $30M in 7 days. Currently at $5M after being 'rugged'. People can say whatever they like, but I'm still here and not leaving. $SWIF is alive and well.",
-      "legal_qualification_fr": "Tromperie caracterisee (art. 313-1 CP) — declaration publique fausse contredite par preuve on-chain irrefutable"
-    },
     "self_incrimination_gordon_180x": {
       "description": "Gordon publicly claimed $SWIF among 'my 3 best trades of the year' (180x), explicitly admitting financial interest",
       "evidence_date": "2025-09-19",
@@ -134,8 +126,7 @@
         "last_promotion_observed": "2025-09-19 (vanity post-exit tweet)",
         "max_engagement_views": 161000,
         "max_engagement_tweet": "Sep 19 vanity tweet '$SWIF 180X'",
-        "already_in_botify_dossier": true,
-        "existing_db_finding": "+$445k profit via 2 wallets (insider coordination — already documented in INTERLIGENS DB)"
+        "already_in_botify_dossier": true
       },
       {
         "handle": "DonWedge",
@@ -165,7 +156,7 @@
 
   "cross_case_links": {
     "to_existing_db": [
-      "GordonGekko: already in DB BOTIFY + already has on-chain $SWIF $445k profit attribution",
+      "GordonGekko: already in DB BOTIFY",
       "DonWedge: already in DB BOTIFY"
     ],
     "to_bullish_casefile": [
@@ -253,7 +244,7 @@
       "handle": "GordonGekko",
       "posted_at": "2025-08-12",
       "claim": "$SWIF has gone from $30K to $30M in 7 days. Currently at $5M after being 'rugged'. People can say whatever they like, but I'm still here and not leaving. $SWIF is alive and well. @sheepwifhatcoin",
-      "criticality": "P0 — RUG ADMISSION + false 'still here' claim contradicted by on-chain $445k extraction"
+      "criticality": "P0 — RUG ADMISSION publique ('rugged') + fausse affirmation 'still here, not leaving'"
     },
     {
       "handle": "GordonGekko",
@@ -421,7 +412,7 @@
   "verification_actions_required": [
     "Identify wallet G17y1n...AysrEw owner — likely cluster-controlled",
     "Identify wallet HgAV13...KcxBqH owner — likely cluster-controlled",
-    "Cross-check Gordon's $445k on-chain extraction date vs Aug 12 'I'm still here and not leaving' claim — establish material contradiction",
+    "Resolve the retired '$445K Gordon' finding (flagged unverified 2026-05-15): on-chain check of wallets A8L7hRc3...AUgJQx5 and EqYGemqo1...Xa431 via Helius RPC to establish real activity/amounts/timing, and disambiguate $SWIF vs $TRUMP token attribution",
     "Identify 'troll dev' — who deployed $SWIF and $TROLL?",
     "Wayback Machine all listed tweet URLs (high deletion risk on rug-admission tweets)",
     "Capture full @jayxbt2012 admin history of Sheepwifhat Telegram group",

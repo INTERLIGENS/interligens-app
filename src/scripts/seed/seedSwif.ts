@@ -10,13 +10,14 @@
 //   - TokenPriceTracker   upsert by (chain, contractAddress)
 //   - KolProfile          create-only for {sheepwifhatcoin, jayxbt2012}
 //                         GordonGekko + DonWedge are LEFT UNTOUCHED
-//                         (preserve BOTIFY fields + the existing $445k finding)
+//                         (preserve their existing BOTIFY fields)
 //   - KolPromotionMention upsert by (sourcePlatform, sourcePostId)
 //   - KolTokenLink        upsert by (kolHandle, contractAddress, chain)
 //
-// NOT touched: KolProceedsEvent / KolTokenInvolvement / KolEvidence — the
-// pre-existing "$SWIF +$445k Gordon" on-chain finding is preserved as-is and
-// only logged. This is the SOCIAL/X side of an already-documented case.
+// NOT touched: KolProceedsEvent / KolTokenInvolvement / KolEvidence — this is
+// a 100% SOCIAL/X casefile, no on-chain attribution is written here. (The old
+// "$SWIF +$445K Gordon" on-chain finding was retired 2026-05-15 as unverified —
+// see MIGRATION_RETAILVISION.md.)
 //
 // Geppetto is NOT created: it is absent from swif_seed.json (zero-fabrication).
 // Schema gaps recorded in MIGRATION_RETAILVISION.md, schema not modified here.
@@ -207,23 +208,24 @@ async function main() {
   for (const r of trace) console.log(`  ${r.src.padEnd(22)} existing rows: ${r.n}`);
   const conflicts = trace.filter((r) => r.n > 0);
 
-  // ── Step 2b: locate the pre-existing "$SWIF +$445k Gordon" finding ──────
-  // This is EXPECTED to exist. It must be PRESERVED — never a conflict-stop.
-  console.log("\n[pre-flight] locating existing on-chain finding ($445k Gordon) — preserve, do not touch:");
+  // ── Step 2b: confirm no on-chain proceeds rows are affected by this seed ──
+  // SWIF is a 100% social/X casefile — this seed writes no on-chain attribution.
+  // (The old "$SWIF $445K Gordon" finding was retired 2026-05-15 as unverified.)
+  console.log("\n[pre-flight] on-chain proceeds tables (read-only — this seed writes none):");
   const involvement = await prisma.kolTokenInvolvement.findMany({
     where: { tokenMint: TOKEN_MINT },
     select: { kolHandle: true, proceedsUsd: true, isPromoted: true },
   });
   if (involvement.length > 0) {
     for (const iv of involvement)
-      console.log(`  [preserved] KolTokenInvolvement ${iv.kolHandle.padEnd(16)} proceedsUsd=${iv.proceedsUsd ?? "—"} promoted=${iv.isPromoted}`);
+      console.log(`  [read-only] KolTokenInvolvement ${iv.kolHandle.padEnd(16)} proceedsUsd=${iv.proceedsUsd ?? "—"} promoted=${iv.isPromoted}`);
   } else {
     console.log("  KolTokenInvolvement : no row for SWIF mint");
   }
   try {
     const pe = await prisma.$queryRaw<Array<{ n: number }>>`
       SELECT COUNT(*)::int AS n FROM "KolProceedsEvent" WHERE LOWER("tokenAddress") = LOWER(${TOKEN_MINT})`;
-    console.log(`  [preserved] KolProceedsEvent rows for SWIF mint: ${pe[0]?.n ?? 0} (not modified by this seed)`);
+    console.log(`  [read-only] KolProceedsEvent rows for SWIF mint: ${pe[0]?.n ?? 0} (not modified by this seed)`);
   } catch (e) {
     console.log(`  [info] KolProceedsEvent not queryable (${(e as Error).message.slice(0, 60)})`);
   }
@@ -231,20 +233,20 @@ async function main() {
     const ev = await prisma.$queryRaw<Array<{ n: number }>>`
       SELECT COUNT(*)::int AS n FROM "KolEvidence"
       WHERE "kolHandle" ILIKE 'GordonGekko' AND (COALESCE("token",'') ILIKE '%SWIF%' OR COALESCE("description",'') ILIKE '%SWIF%')`;
-    console.log(`  [preserved] KolEvidence rows (Gordon×SWIF): ${ev[0]?.n ?? 0}`);
+    console.log(`  [read-only] KolEvidence rows (Gordon×SWIF): ${ev[0]?.n ?? 0}`);
   } catch (e) {
     console.log(`  [info] KolEvidence probe skipped (${(e as Error).message.slice(0, 60)})`);
   }
   const gordonRows = await prisma.$queryRaw<Array<{ handle: string; botifyDeal: unknown; totalDocumented: number | null }>>`
     SELECT handle, "botifyDeal", "totalDocumented" FROM "KolProfile" WHERE LOWER(handle) = LOWER('GordonGekko') LIMIT 1`;
   if (gordonRows[0]) {
-    console.log(`  [preserved] GordonGekko botifyDeal=${gordonRows[0].botifyDeal ? "present" : "null"} totalDocumented=${gordonRows[0].totalDocumented ?? 0}`);
+    console.log(`  [read-only] GordonGekko botifyDeal=${gordonRows[0].botifyDeal ? "present" : "null"} totalDocumented=${gordonRows[0].totalDocumented ?? 0}`);
   } else {
     console.log("  [warning] GordonGekko not found in KolProfile — expected to exist (BOTIFY P0)");
   }
   console.log(
-    "  [note] '$SWIF insiders $445K' is recorded in src/data/scamUniverse.json (static data file),\n" +
-      "         not in a DB proceeds/evidence table — this seed touches neither, the finding is untouched.",
+    "  [note] the '$SWIF insiders $445K' finding was retired from the casefile 2026-05-15\n" +
+      "         (unverified — no TX hash, $SWIF/$TRUMP token contradiction); see MIGRATION_RETAILVISION.md.",
   );
 
   // ── Step 3: actor presence map ──────────────────────────────────────────
@@ -338,7 +340,7 @@ async function main() {
 
   for (const amp of data.actors.core_amplifiers) {
     if (presence.get(amp.handle)) {
-      skipped.push(`${amp.handle}: exists in DB → KolProfile UNTOUCHED (preserve BOTIFY + $445k finding), links + mentions only`);
+      skipped.push(`${amp.handle}: exists in DB → KolProfile UNTOUCHED (preserve BOTIFY fields), links + mentions only`);
     } else {
       skipped.push(`${amp.handle}: not in DB and not in create allowlist → SKIP, will not invent`);
     }
@@ -536,7 +538,7 @@ async function main() {
   console.log(`  KolProfile (new)      : ${result.profilesCreated} created (GordonGekko/DonWedge left untouched)`);
   console.log(`  KolPromotionMention   : ${result.mentionsUpserted} upserted`);
   console.log(`  KolTokenLink          : ${result.linksUpserted} upserted`);
-  console.log(`  KolProceedsEvent      : 0 written (existing $445k finding preserved)`);
+  console.log(`  KolProceedsEvent      : 0 written (SWIF is a 100% social casefile)`);
 
   await prisma.$disconnect();
 }

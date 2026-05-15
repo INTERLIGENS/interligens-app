@@ -2058,9 +2058,9 @@ Aucun `npx vercel --prod` exécuté. Le seed enrichit uniquement la DB prod ; au
 
 ## SWIF casefile seed — 2026-05-15
 
-Casefile $SWIF (Sheep Wif Hat / Sheepwifhat, memecoin Solana, mint `9hdynudAhhWzuNFAnpz7NjvdKMfh9z8mcZKNYHuAUgJQ`, launchpad pump.fun, lancé ~6 août 2025 — antérieur au Watcher V1) reconstitué manuellement par Dood depuis 57 screenshots X (chain of custody SHA-256 hors repo : `~/INTERLIGENS_FORENSIC/SWIF_2026-05-14/02_metadata/hashes.txt`). Seed exécuté sur `ep-square-band` (`DATABASE_URL` → `ep-square-band-ag2lxpz8`, vérifié avant write) via `SEED_SWIF=1 pnpm tsx src/scripts/seed/seedSwif.ts`, source canonique `src/scripts/seed/casefiles/swif_seed.json` (28 promotion_mentions, 6 evidence objects, 4 acteurs traités). Pattern de référence : seed BULLISH (PR #3, mergée 2026-05-15).
+Casefile $SWIF (Sheep Wif Hat / Sheepwifhat, memecoin Solana, mint `9hdynudAhhWzuNFAnpz7NjvdKMfh9z8mcZKNYHuAUgJQ`, launchpad pump.fun, lancé ~6 août 2025 — antérieur au Watcher V1) reconstitué manuellement par Dood depuis 57 screenshots X (chain of custody SHA-256 hors repo : `~/INTERLIGENS_FORENSIC/SWIF_2026-05-14/02_metadata/hashes.txt`). Seed exécuté sur `ep-square-band` (`DATABASE_URL` → `ep-square-band-ag2lxpz8`, vérifié avant write) via `SEED_SWIF=1 pnpm tsx src/scripts/seed/seedSwif.ts`, source canonique `src/scripts/seed/casefiles/swif_seed.json` (28 promotion_mentions, 5 evidence objects, 4 acteurs traités). Pattern de référence : seed BULLISH (PR #3, mergée 2026-05-15).
 
-$SWIF est le **pendant social/X** d'un finding déjà documenté : « $SWIF insiders $445K » (coordination insider Gordon via 2 wallets). Ce seed ajoute la couche promotion X ; il ne crée ni ne modifie aucune attribution on-chain.
+$SWIF est un casefile **100 % social/X** : promotion coordonnée de KOLs sur le token. Ce seed couvre la couche promotion X uniquement — il ne crée ni ne modifie aucune attribution on-chain. ⚠️ Le finding « $SWIF insiders $445K Gordon » a été **retiré du dossier le 2026-05-15** (non vérifié — voir section « Finding $445K — retiré » ci-dessous).
 
 **Status casefile : NON publié publiquement (`publishStatus=draft`). Restriction maintenue tant que le dossier procureur BOTIFY n'est pas formellement engagé (secret de l'enquête).**
 
@@ -2073,7 +2073,7 @@ $SWIF est le **pendant social/X** d'un finding déjà documenté : « $SWIF insi
 | `KolProfile` (intacts) | none | 2 | `GordonGekko` (botifyDeal préservé, totalDocumented=579645, pdfScore=70 — inchangé), `DonWedge` (pdfScore=15, notes inchangées) — aucune écriture KolProfile sur ces 2 acteurs |
 | `KolPromotionMention` | upsert | 28 | unique `(sourcePlatform='x', sourcePostId)`. 21/28 sourcePostId synthétiques préfixés `seed_<sha1>` (X status_id absent). Répartition : GordonGekko 24, DonWedge 4. 0 mention skippée (toutes les dates valides). |
 | `KolTokenLink` | upsert | 4 | `role=official-account` (sheepwifhatcoin), `role=telegram-admin` (jayxbt2012), `role=amplifier` (GordonGekko + DonWedge). caseId=`SWIF`. `note` = JSON `{firstPromotionAt,lastPromotionAt,mentionCount,seededFrom}` (null/0 pour sheepwifhatcoin + jayxbt2012 qui n'ont pas de mention dans le JSON). |
-| `KolProceedsEvent` | — | 0 | aucun event proceeds seedé — voir note discrepancy ci-dessous. |
+| `KolProceedsEvent` | — | 0 | aucun event proceeds seedé — casefile SWIF 100 % social, aucune donnée on-chain dans ce dossier. |
 
 ### Décisions de seed
 
@@ -2082,9 +2082,28 @@ $SWIF est le **pendant social/X** d'un finding déjà documenté : « $SWIF insi
 - **pdfScore sheepwifhatcoin = 80** provient du **brief de mission**, pas du JSON (`official_account` n'a pas de `tigerscore_recommended`). Documenté dans le code (`MISSION_PDF_SCORE`) et dans `notes`. jayxbt2012 pdfScore 90 vient bien du JSON (`tigerscore_recommended`).
 - **`linkType` mission → `role` schema.** `KolTokenLink` n'a pas de champ `linkType` ; les valeurs mission (`telegram-admin` / `official-account` / `amplifier`) sont stockées dans `KolTokenLink.role`.
 
-### Discrepancy — finding « $SWIF $445K » introuvable en DB
+### Finding « $SWIF $445K Gordon » — RETIRÉ du dossier (2026-05-15)
 
-La mission posait le finding « $SWIF insiders +$445k profit Gordon » comme **déjà en DB**. Vérification exhaustive : `KolProceedsEvent` (0 ligne SWIF / mint / 445), `KolTokenInvolvement` (3 lignes Gordon, aucune sur le mint SWIF), `KolEvidence` (0 ligne SWIF, toutes handles confondues). **Le finding n'est dans aucune table DB.** Il est en réalité dans `src/data/scamUniverse.json:45` (`"notes": "… $SWIF insiders $445K. Cluster Arkham 10 wallets …"`) — **fichier de données statique du repo, pas une table.** Le seed ne touche ni `src/data/` ni les tables proceeds/evidence → le finding est préservé trivialement. À traiter : matérialiser ce finding en `KolProceedsEvent`/`KolTokenInvolvement` lors d'une session on-chain dédiée pour que le social (ce seed) et l'on-chain soient joignables par mint.
+Décision Dood, 2026-05-15 : le finding « $SWIF insiders +$445K profit Gordon via 2 wallets » est **retiré du casefile SWIF** — jugé non fiable. Ni de Dood ni vérifié on-chain.
+
+**Raisons du retrait :**
+- **Aucun TX hash Solana** — l'extraction $445K n'est étayée par aucune transaction vérifiable.
+- **Contradiction de token non tranchée** — le montant $445K est attribué à `$SWIF` (`src/data/scamUniverse.json`, `scripts/seed/seedBotifyComplete.ts`) ET à `$TRUMP` (`scripts/osint/rebuildRecitPdf.ts:429` : « schéma $TRUMP insiders — GordonGekko … $445,000 … 30 tweets de promotion »).
+- **Méthodologie / source initiale inconnue** — tier `strong` (sources secondaires), pas `confirmed` ; « Cluster Arkham 10 wallets » sans calcul documenté.
+- **Date d'extraction absente** — aucune date de calcul ; « Actif 4 avril 2026 » = activité wallet, pas date d'extraction (le pump SWIF date d'août-sept 2025).
+
+**Audit DB préalable (vérifié 2026-05-15) :** le finding n'est dans **aucune table DB** — `KolProceedsEvent` (0 ligne SWIF), `KolTokenInvolvement` (3 lignes Gordon, aucune sur le mint SWIF), `KolEvidence` (0 ligne SWIF). Les 2 wallets `A8L7hRc3…` / `EqYGemqo1…` existent en `KolWallet` mais en statut `review`.
+
+**Traçabilité — sources flaggées, non supprimées :**
+- `src/data/scamUniverse.json` (node GordonGekko) — finding annoté `unverified, pending on-chain confirmation` ; champ `unverifiedFinding` ajouté. Non supprimé.
+- `scripts/seed/seedBotifyComplete.ts` — 2 wallets : labels → `swif_pending_verification_1/2`, `claimType` `verified_onchain` → `source_attributed` ; mention $445K retirée du `note`.
+- DB `KolWallet` (2 lignes Gordon) — `attributionStatus` `review` → `unverified`, labels `swif_insider_1/2` → `swif_pending_verification_1/2`. Wallets conservés en DB.
+- `scripts/osint/rebuildRecitPdf.ts:429` — claim $TRUMP $445K sortie du rendu PDF, conservée en commentaire `TO_VERIFY`.
+- `swif_seed.json` — `_meta.linked_to_existing_db_finding` et `manipulation_evidence.rug_admission_by_gordon` supprimés (la charge probatoire de `rug_admission` reposait sur la contradiction on-chain $445K) ; refs $445K nettoyées de `cross_case_links.to_existing_db` et de la `criticality` de la mention #5.
+
+**Action future :** session OSINT dédiée — Helius RPC sur `A8L7hRc3qUbA9JXb4D4NcYtECx9qzpY7KCoz6kAwqqx5` et `EqYGemqo1DeFkKoAvps8baQNqaLEHaTg1EBkXTxa431` pour établir activité réelle, montants, timing, et **trancher $SWIF vs $TRUMP**. Ne pas réintroduire le finding au dossier tant que non vérifié.
+
+**Les smoking guns sociaux du casefile SWIF restent intacts** (non affectés par ce retrait) — `manipulation_evidence` conserve 5 objets : auto-incrimination « 180X » (Gordon, 2025-09-19), fake BlackRock endorsement, auto-incrimination Don « I called $SWIF », post-incident defense coordination, international targeting / JayXBT admin Telegram révélé.
 
 ### Schema gaps (aucune migration exécutée — RIEN modifié dans cette session)
 
@@ -2094,8 +2113,8 @@ Mêmes gaps que BULLISH, confirmés sur SWIF, plus 2 nouveaux :
 2. **`KolPromotionMention`** — manque `engagement` (views/likes/rt/replies) et `criticality` (P0/P1/P2). Workaround : suffixe `\n[meta] {…}` dans `contentSnippet`. 18/28 mentions SWIF portent un bloc meta. Parseable mais non queryable.
 3. **`KolTokenLink`** — manque `firstPromotionAt`, `lastPromotionAt`, `mentionCount`. Stockés en JSON dans `note`.
 4. **Pas de table `CrossCaseLink`** — `KolCrossLink` existe mais sémantique KOL↔KOL. Les liens case↔case (SWIF↔BOTIFY, SWIF↔BULLISH) sont seulement loggés.
-5. **Pas de table `manipulation_evidence`** — les 6 evidence objects du JSON SWIF (rug_admission, self_incrimination Gordon/Don, fake_blackrock_endorsement, post_incident_defense_coordination, international_targeting) restent sans home DB. Incluent des `legal_qualification_fr` (art. 313-1 CP, L.465-3-1 CMF) sans champ structuré.
-6. **NOUVEAU — pas de pont social↔on-chain par mint.** Le finding $445k (statique) et les `KolPromotionMention` (DB, ce seed) partagent le mint SWIF mais aucune table ne les joint. Cf. discrepancy ci-dessus.
+5. **Pas de table `manipulation_evidence`** — les 5 evidence objects du JSON SWIF (self_incrimination Gordon/Don, fake_blackrock_endorsement, post_incident_defense_coordination, international_targeting) restent sans home DB. Incluent des `legal_qualification_fr` (L.465-3-1 CMF) sans champ structuré.
+6. **NOUVEAU — pas de pont social↔on-chain par mint.** Aucune table ne joint les `KolPromotionMention` (social) et un finding on-chain (`KolProceedsEvent`) d'un même token. Gap structurel confirmé ; l'exemple déclencheur (finding $445K) a été retiré faute de vérification — cf. section « Finding $445K — retiré ».
 7. **NOUVEAU — pas de table `TokenInvestigationQueue`.** Les 8 tokens additionnels impliqués (TROLL P1, URANUS/DOLLARCOIN/BOSS/Monke/IOTAI/FAT/Butthole P2) n'ont aucun home DB ; ils ne vivent que dans `cross_case_links.additional_tokens_implicated` du JSON.
 
 ### Cross-case links — SWIF ↔ BULLISH (loggés, MANUAL FOLLOW-UP)
@@ -2136,7 +2155,7 @@ Issus de `cross_case_links.additional_tokens_implicated` + auto-incrimination Do
 - `sheepwifhatcoin` créé (HIGH, pdfScore 80, verified=true) + `jayxbt2012` créé (CRITICAL, pdfScore 90, verified=false, behaviorFlags telegram-admin-confirmed) ✓
 - GordonGekko `botifyDeal` toujours non-null, `totalDocumented`=579645 inchangé, pdfScore=70 inchangé ✓
 - DonWedge inchangé (pdfScore=15, notes_len=103) ✓
-- Aucune `KolProceedsEvent` / `KolEvidence` / `KolTokenInvolvement` écrite — finding $445k (scamUniverse.json) intact ✓
+- Aucune `KolProceedsEvent` / `KolEvidence` / `KolTokenInvolvement` écrite — casefile SWIF 100 % social ✓
 
 ### Gate humain
 
