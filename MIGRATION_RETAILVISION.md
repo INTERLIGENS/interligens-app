@@ -2112,6 +2112,22 @@ Le résiduel **$40,627** = cashouts BOTIFY confirmés, hors SWIF. La DB `KolProf
 
 **Les smoking guns sociaux du casefile SWIF restent intacts** (non affectés par ce retrait) — `manipulation_evidence` conserve 5 objets : auto-incrimination « 180X » (Gordon, 2025-09-19), fake BlackRock endorsement, auto-incrimination Don « I called $SWIF », post-incident defense coordination, international targeting / JayXBT admin Telegram révélé.
 
+### Audit `KolProfile.totalDocumented` — 2026-05-15 (laissé intact)
+
+Question : `totalDocumented` de Gordon/Don inclut-il le $445K SWIF retiré ?
+
+**Composition vérifiée — GordonGekko `totalDocumented` = 579645 :**
+- Champ **calculé**, pas statique. Recalculé par `computeProceedsForHandle` (route `POST /api/admin/kol/sync-proceeds`, « recompute from the authoritative KolProceedsEvent ») = `round(SUM("KolProceedsEvent"."amountUsd") WHERE "kolHandle"='GordonGekko' AND ambiguous=false AND amountUsd>0)`.
+- Vérification : 127 lignes `KolProceedsEvent` pour Gordon ; SUM non-ambiguous & >0 = **579 644,79 → round 579645** (réconciliation exacte).
+- Décomposition par `tokenSymbol` : **BOTIFY = 579 644,79** (1 ligne `ARKHAM-SUMMARY` $485 000 + 126 lignes `dex_sell` ≈ $94 645) ; SOL = $63 102 sur 1 ligne `cex_deposit` marquée `ambiguous=true` → **exclue** du total.
+- **0 ligne SWIF** dans `KolProceedsEvent` (ni `tokenSymbol`, ni `tokenAddress`). Le finding $445K SWIF retiré n'y a jamais figuré.
+
+**Conclusion : `totalDocumented` (579645) est 100 % BOTIFY — il n'inclut PAS le $445K SWIF. Laissé intact, aucune modification.**
+
+**DonWedge `totalDocumented` = 0** — 0 ligne `KolProceedsEvent`, aucune attribution SWIF. Intact, aucune action.
+
+⚠️ **Flag pour la session OSINT future** : la ligne `KolProceedsEvent` `ARKHAM-SUMMARY` de **$485 000** (tokenSymbol BOTIFY, `caseId` null) est numériquement proche des figures « $485K » / « $445K » qui circulaient. Elle est labellisée BOTIFY et n'a **pas** été modifiée ici, mais sa provenance mérite un contrôle on-chain lors de la session dédiée (au cas où une part serait en réalité du SWIF mal étiqueté).
+
 ### Schema gaps (aucune migration exécutée — RIEN modifié dans cette session)
 
 Mêmes gaps que BULLISH, confirmés sur SWIF, plus 2 nouveaux :
