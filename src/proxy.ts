@@ -35,6 +35,46 @@ function redirectToAdminLogin(req: NextRequest) {
 
 const BETA_COOKIE = "investigator_session";
 
+// ── V2 preview password gate ───────────────────────────────────────────────
+// Lightweight shared-password gate for the public Website 2.0 (forensic)
+// surface. This is INDEPENDENT of the beta NDA / investigator_session flow:
+// it only protects the public forensic pages so investor demos on the Vercel
+// preview stay frictionless — one shared password, no NDA, no account.
+// The investigator (/en/investigator, /investigators), admin (/admin) and
+// API (/api) routes keep their own guards and are NOT affected.
+const V2_PREVIEW_COOKIE = "v2_preview_access";
+
+/** Public (forensic) route-group paths protected by the V2 preview password. */
+const FORENSIC_PUBLIC = [
+  "/constellation",
+  "/demo/constellation",
+  "/scan",
+  "/result",
+  "/evidence",
+  "/kol",
+  "/cases",
+  "/methodology",
+  "/takedown",
+  "/legal",
+  "/charter",
+  "/about",
+  "/press",
+  "/enterprise",
+  "/guard",
+];
+
+/**
+ * True for the public (forensic) route group: the home page and every
+ * `FORENSIC_PUBLIC` base path (exact match or nested, e.g. /kol/<handle>).
+ */
+function isForensicPublic(pathname: string): boolean {
+  if (pathname === "/") return true;
+  for (const base of FORENSIC_PUBLIC) {
+    if (pathname === base || pathname.startsWith(base + "/")) return true;
+  }
+  return false;
+}
+
 /** Routes that are NEVER gated (access flow, API, static, health). */
 function isBetaExempt(pathname: string): boolean {
   // Access / auth flow
@@ -47,31 +87,10 @@ function isBetaExempt(pathname: string): boolean {
   // WITHOUT an investigator_session cookie. Investigator (/en/investigator,
   // /investigators), admin (/admin) and API (/api) routes are NOT in this
   // list and stay fail-closed via their own guards above.
-  if (pathname === "/") return true;
-  {
-    // Bare-path public routes of the (forensic) group. Each entry matches
-    // the exact path and any nested path (e.g. /kol and /kol/<handle>).
-    const FORENSIC_PUBLIC = [
-      "/constellation",
-      "/demo/constellation",
-      "/scan",
-      "/result",
-      "/evidence",
-      "/kol",
-      "/cases",
-      "/methodology",
-      "/takedown",
-      "/legal",
-      "/charter",
-      "/about",
-      "/press",
-      "/enterprise",
-      "/guard",
-    ];
-    for (const base of FORENSIC_PUBLIC) {
-      if (pathname === base || pathname.startsWith(base + "/")) return true;
-    }
-  }
+  if (isForensicPublic(pathname)) return true;
+  // The V2 preview unlock page must be reachable without ANY cookie,
+  // otherwise the password gate below would redirect it onto itself.
+  if (pathname === "/unlock") return true;
   // API routes have their own per-route guards
   if (pathname.startsWith("/api/")) return true;
   // Admin has its own basic auth
@@ -194,6 +213,22 @@ export function proxy(req: NextRequest) {
       const accessUrl = req.nextUrl.clone();
       accessUrl.pathname = "/access";
       return NextResponse.redirect(accessUrl);
+    }
+  }
+
+  // ── V2 preview password gate — public (forensic) routes ───────────────
+  // Independent of the beta NDA gate above. Every public forensic page
+  // requires the simple shared-password cookie (v2_preview_access). A
+  // missing cookie bounces the visitor to the sober /unlock page. /unlock
+  // itself is not forensic-public (so it stays reachable), and the
+  // /api/v2-unlock validation endpoint is not matched by `config` below.
+  if (isForensicPublic(pathname)) {
+    const unlocked = !!req.cookies.get(V2_PREVIEW_COOKIE)?.value;
+    if (!unlocked) {
+      const unlockUrl = req.nextUrl.clone();
+      unlockUrl.pathname = "/unlock";
+      unlockUrl.search = `?redirect=${encodeURIComponent(pathname)}`;
+      return NextResponse.redirect(unlockUrl);
     }
   }
 
