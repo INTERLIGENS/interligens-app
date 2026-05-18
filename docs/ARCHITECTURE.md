@@ -7,7 +7,7 @@
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
-| ORM | Prisma 5.22 |
+| ORM | Prisma 6.19 |
 | Database | Neon (PostgreSQL, pgBouncer port 6543) |
 | Hosting | Vercel |
 | Storage | Cloudflare R2 |
@@ -48,7 +48,7 @@
 | `destination-risk/` | LOCKED — risk scoring for transfer destination addresses. |
 | `signature-intent/` | LOCKED — classifies wallet signature intent patterns. |
 | `off-chain-credibility/` | LOCKED — off-chain social credibility signals. |
-| `wallet-scan/` | LOCKED — full wallet risk scan (activity, exposure, labels). |
+| `wallet-scan/` | LOCKED — full wallet risk scan (activity, exposure, labels). EVM token balances sourced via Alchemy. |
 | `risk/` | Risk model primitives (severity levels, risk categories). |
 
 ### Wallet & Identity
@@ -71,7 +71,7 @@
 | `helius/` | Helius API client (Solana RPC + metadata). |
 | `solana/` | Solana RPC helpers (account info, token holders). |
 | `solanaGraph/` | Solana transaction graph analysis. |
-| `evm/` | EVM chain utilities (contract detection, ABI calls). |
+| `evm/` | EVM chain utilities (contract detection, ABI calls). Alchemy token-balance lookups (`alchemyTokenBalances`). |
 | `tron/` | TRON chain utilities. |
 | `chains/` | Chain detection and normalization. |
 
@@ -105,7 +105,13 @@
 |--------|-------------|
 | `config/` | API key management and partner config. |
 | `auth/` | Authentication helpers (admin check, session). |
-| `security/` | Security headers, rate limiting, SDLC tooling. |
+| `security/` | Security headers, rate limiting, SDLC tooling, admin auth. |
+
+### Billing & Access
+
+| Module | Description |
+|--------|-------------|
+| `billing/` | Billing v1 — Stripe Checkout for 1 € beta access. Entitlement checks, access grants, grandfather logic for pre-billing users, idempotency keys, audit events, per-route rate limiting. |
 
 ### Investigator Platform
 
@@ -225,6 +231,19 @@ X-Api-Key header → config/lib key lookup → rate limit per tier
 
 ---
 
+## Request Proxy
+
+`src/proxy.ts` (Next.js 16 — replaces the former `middleware.ts`; Next 16
+renamed the middleware entrypoint to `proxy`). Runs before route handlers:
+
+- HTTP Basic auth on `/admin` (`ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS`)
+  plus admin session verification.
+- Locale-aware admin protection (SEC-003) — guards `/admin`, `/api/admin`,
+  and `/{locale}/admin/*`.
+- Security headers and access/auth gating.
+
+---
+
 ## Infrastructure
 
 ```
@@ -243,7 +262,12 @@ Cloudflare R2
 Helius (Solana RPC)
   └─ getAsset, getParsedAccountInfo, token-metadata
 
-Host-005 (Watcher daemon)
+Watcher V2 (Vercel Cron)
+  └─ /api/cron/watcher-v2 — schedule "0 6 */3 * *"
+  └─ Handle source: src/lib/watcher/handles.ts
+  └─ Digest email on detections
+
+Host-005 (Watcher V1 — legacy, being retired)
   └─ krypt@MacBook-Pro-4
   └─ launchctl, 29 handles
   └─ /Users/krypt/interligens-watcher/
@@ -267,3 +291,5 @@ Pages exist in two locale trees:
 - PERSON-type profiles: never retail-visible
 - TigerScore intelligence hard-cap: 0.20
 - OFAC match: floor 15
+- KOL Data Doctrine — public legal pages at `/{locale}/legal/kol-data-doctrine`
+  documenting the "documented risk" framing and KOL data-handling policy.

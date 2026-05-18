@@ -34,7 +34,7 @@ Status legend: **Active** = in use | **Locked** = stable, do not rewrite | **Sca
 | `evm/` | Active | 1 | EVM chain utilities |
 | `tron/` | Active | 1 | TRON chain utilities |
 | `chains/` | Active | 0 | Chain detection and normalization |
-| `watcher/` | Active | 1 | On-chain watcher daemon v2 |
+| `watcher/` | Active | 1 | Watcher V2 — Vercel Cron (`/api/cron/watcher-v2`), handle source `handles.ts`, campaign clustering, token detection, digest email |
 | `telegram-watcher/` | Active | 2 | V3 Telegram channel watcher |
 | `telegram/` | Active | 0 | Telegram webhook handler |
 | `watch/` | Active | 0 | Watch list management |
@@ -51,6 +51,7 @@ Status legend: **Active** = in use | **Locked** = stable, do not rewrite | **Sca
 | `config/` | Active | 1 | API key management and partner config |
 | `auth/` | Active | 1 | Authentication helpers |
 | `security/` | Active | 11 | Security headers, rate limiting, SDLC tooling |
+| `billing/` | Active | 8 | Billing v1 — Stripe Checkout (1 € beta access), entitlement, access grants, grandfather logic, idempotency, audit events |
 | `investigators/` | Active | 0 | Investigator directory, profiles, trust levels |
 | `investigator/` | Active | 0 | Single investigator dashboard |
 | `community/` | Active | 1 | Community submission pipeline |
@@ -83,3 +84,15 @@ Status legend: **Active** = in use | **Locked** = stable, do not rewrite | **Sca
 | `mm-tracker/` | Active | 1 | MM tracker spec implementation |
 | `rwa-registry/` | Active | 0 | Real-world asset registry |
 | `safe-swap/` | Scaffold | 2 | 1inch + Jupiter swap router with pre-swap scan |
+
+---
+
+## Recent additions outside `src/lib/`
+
+These ship outside the `src/lib/` module tree but are part of the same releases.
+
+| Item | Path | Description |
+|------|------|-------------|
+| Billing / access pages | `src/app/access/*` | Stripe Checkout entry, NDA, founder access, success — beta access at 1 €. |
+| Admin probe-handles endpoint | `src/app/api/admin/x/probe-handles/route.ts` | Admin endpoint that probes X/Twitter handles for the Watcher V2 watchlist before they are added to `src/lib/watcher/handles.ts`. |
+| KOL Data Doctrine pages | `src/app/{en,fr}/legal/kol-data-doctrine/page.tsx` | Public legal pages stating the KOL data-handling doctrine and the "documented risk" framing. |
