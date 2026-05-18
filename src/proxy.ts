@@ -41,6 +41,37 @@ function isBetaExempt(pathname: string): boolean {
   if (pathname.startsWith("/access")) return true;
   // Simulator (educational prototype — no backend, no data)
   if (pathname === "/simulator" || pathname.startsWith("/simulator/")) return true;
+  // ── Website 2.0 — public (forensic) route group ────────────────────────
+  // The (forensic) route group is mocks-only (zero real data) and must be
+  // reachable for internal reviews and investor demos on the Vercel preview
+  // WITHOUT an investigator_session cookie. Investigator (/en/investigator,
+  // /investigators), admin (/admin) and API (/api) routes are NOT in this
+  // list and stay fail-closed via their own guards above.
+  if (pathname === "/") return true;
+  {
+    // Bare-path public routes of the (forensic) group. Each entry matches
+    // the exact path and any nested path (e.g. /kol and /kol/<handle>).
+    const FORENSIC_PUBLIC = [
+      "/constellation",
+      "/demo/constellation",
+      "/scan",
+      "/result",
+      "/evidence",
+      "/kol",
+      "/cases",
+      "/methodology",
+      "/takedown",
+      "/legal",
+      "/charter",
+      "/about",
+      "/press",
+      "/enterprise",
+      "/guard",
+    ];
+    for (const base of FORENSIC_PUBLIC) {
+      if (pathname === base || pathname.startsWith(base + "/")) return true;
+    }
+  }
   // API routes have their own per-route guards
   if (pathname.startsWith("/api/")) return true;
   // Admin has its own basic auth
