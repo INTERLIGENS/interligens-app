@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   ClassificationBar,
@@ -17,6 +18,18 @@ import {
 import { RESULTS_BY_ID } from "@/lib/mocks/result-vine";
 
 type Params = Promise<{ id: string }>;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params;
+}): Promise<Metadata> {
+  const { id } = await params;
+  return {
+    title: `Scan result ${id.toUpperCase()} | INTERLIGENS`,
+    description: `Forensic scan result ${id}: threat score, signal grid, and recommended action.`,
+  };
+}
 
 export default async function ResultPage({ params }: { params: Params }) {
   const { id } = await params;

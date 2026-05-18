@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   ClassificationBar,
@@ -15,6 +16,18 @@ import {
 import { KOL_BY_HANDLE } from "@/lib/mocks/kol-bkokoski";
 
 type Params = Promise<{ handle: string }>;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params;
+}): Promise<Metadata> {
+  const { handle } = await params;
+  return {
+    title: `@${handle} — KOL dossier | INTERLIGENS`,
+    description: `Forensic KOL dossier for @${handle}: documented risk signals, verdict, and evidence density.`,
+  };
+}
 
 export default async function KOLPage({ params }: { params: Params }) {
   const { handle } = await params;

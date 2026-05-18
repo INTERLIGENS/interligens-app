@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   ClassificationBar,
@@ -19,6 +20,18 @@ import {
 import { CASEFILE_BY_SLUG } from "@/lib/mocks/case-botify";
 
 type Params = Promise<{ slug: string }>;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  return {
+    title: `Casefile ${slug.toUpperCase()} | INTERLIGENS`,
+    description: `Forensic casefile ${slug}: filing record, timeline, and attached evidence annexes.`,
+  };
+}
 
 export default async function CasefilePage({ params }: { params: Params }) {
   const { slug } = await params;

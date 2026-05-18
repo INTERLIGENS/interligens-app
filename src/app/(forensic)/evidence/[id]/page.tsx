@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   ClassificationBar,
@@ -13,6 +14,18 @@ import { EVIDENCE_BY_ID } from "@/lib/mocks/evidence-vine";
 import { MOCK_CLASSIFICATION } from "@/lib/mocks/_context";
 
 type Params = Promise<{ id: string }>;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params;
+}): Promise<Metadata> {
+  const { id } = await params;
+  return {
+    title: `Evidence ${id.toUpperCase()} | INTERLIGENS`,
+    description: `Forensic evidence bundle ${id}: source material indexed against the editorial standard.`,
+  };
+}
 
 export default async function EvidencePage({ params }: { params: Params }) {
   const { id } = await params;
