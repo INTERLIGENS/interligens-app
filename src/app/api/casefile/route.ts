@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { checkAuth } from "@/lib/security/auth";
 import { kolHandleToMint } from "@/lib/kol/handleToMint";
 
-export const BOTIFY_MINT = "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb";
+const BOTIFY_MINT = "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb";
 
 // ── CaseDB hardcoded (V0 — no fs dependency) ──────────────────────────────────
 const CASE_DB: Record<string, any> = {
