@@ -57,11 +57,6 @@ export type EngagementMode = {
   subjectHint: string;
 };
 
-// Single source of truth for the partnerships contact address. Real,
-// not a TO_FILL — confirmed in the brief. Mailto only; the page does
-// not host a form that submits anywhere.
-export const PARTNERSHIPS_CONTACT_EMAIL = "partnerships@interligens.com";
-
 export const ENTERPRISE_HERO = {
   kicker: "INSTITUTION · PARTNERS",
   title: "Beyond the score, a working surface.",

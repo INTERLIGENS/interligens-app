@@ -54,7 +54,7 @@ export const ABOUT_DIFFERENCE: AboutSection = {
   id: "difference",
   kicker: "03 · DIFFERENCE",
   title: "Not a feature. A discipline.",
-  body: "Generic wallet scanners stop at a verdict number. AI summary tools generate prose without a chain of evidence. Compliance dashboards report data without taking a position. Investigator tools sit behind enterprise paywalls.\nINTERLIGENS is the only one of these that publishes — under a documented standard, with a takedown channel, on a public surface a retail reader can read.\nThe difference is not the technology. The difference is the discipline.",
+  body: "INTERLIGENS is not defined by what it computes. It is defined by what it commits to: a published methodology, an independently retrievable source under every claim, a takedown channel open to anyone it names, a revision history that never silently edits.\nThat commitment is a posture, not a feature set — and it is the posture every other part of the work is built to hold.\nThe difference is not the technology. The difference is the discipline.",
 };
 
 export const ABOUT_LAYERS: AboutLayer[] = [

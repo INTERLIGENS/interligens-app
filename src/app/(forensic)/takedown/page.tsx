@@ -14,8 +14,8 @@ import {
   TAKEDOWN_HERO,
   TAKEDOWN_SECTIONS,
   TAKEDOWN_SLA,
-  TAKEDOWN_CONTACT,
 } from "@/lib/mocks/takedown";
+import { LEGAL_EMAIL } from "@/lib/mocks/contact";
 
 export const metadata = {
   title: "Takedown — INTERLIGENS",
@@ -142,7 +142,7 @@ export default function TakedownPage() {
           Future filing form lands here. Keep this comment as the
           placement marker — no live <form> until the backend route
           (/api/takedown) is wired and queue + audit are in place.
-          Today the takedown@ address is the single channel.
+          Today the legal@ address is the single channel.
         */}
         <div
           className="fx-container"
@@ -182,10 +182,10 @@ export default function TakedownPage() {
               }}
             >
               <a
-                href={`mailto:${TAKEDOWN_CONTACT}`}
+                href={`mailto:${LEGAL_EMAIL}`}
                 style={{ color: "var(--bone)", textDecoration: "none" }}
               >
-                {TAKEDOWN_CONTACT}
+                {LEGAL_EMAIL}
               </a>
             </div>
             <div

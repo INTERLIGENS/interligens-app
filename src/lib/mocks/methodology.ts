@@ -45,7 +45,7 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     id: "tigerscore",
     kicker: "02 · TIGERSCORE",
     title: "What a score actually says.",
-    body: "TigerScore is a composite reading of on-chain behaviour, off-chain credibility, cluster proximity, and sanction exposure.\nIt is not a verdict. A score above 70 says: this entity has the behavioural signature of a coordinated extraction. It does not say a court has ruled. It does not say funds were stolen. It says the trail looks like it.",
+    body: "TigerScore is a composite reading of on-chain behaviour, off-chain credibility, cluster proximity, and sanction exposure — combined under a documented weight set, not a hidden one.\nIt is a reading of the trail, never a verdict on the entity: a high score records that the behavioural signature of coordinated extraction is present, not that a court has ruled or that funds were stolen.\nHow a given band should change a reader's decision is the charter's subject, not this page's.",
   },
   {
     id: "open-evidence",

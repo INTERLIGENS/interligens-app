@@ -7,6 +7,8 @@
  * (Vercel Inc.) is filled because it is invariant.
  */
 
+import { LEGAL_EMAIL, CONTACT_EMAIL } from "@/lib/mocks/contact";
+
 export type LegalSection = {
   id: string;
   kicker: string;
@@ -61,8 +63,7 @@ export const IMPRINT_ENTRIES: ImprintEntry[] = [
   },
   {
     label: "Contact général",
-    value: "TO_FILL · contact email",
-    pending: true,
+    value: CONTACT_EMAIL,
   },
   {
     label: "Hébergeur",
@@ -114,9 +115,9 @@ export const LEGAL_SECTIONS: LegalSection[] = [
     title: "Operational addresses.",
     body: "All operational correspondence flows through the addresses below. Other channels (DM, support tickets, social media) are not monitored for legal or editorial purposes.",
     bullets: [
-      "Takedown filings: takedown@interligens.com",
-      "Legal correspondence: TO_FILL · legal email",
-      "General contact: TO_FILL · contact email",
+      `Takedown filings: ${LEGAL_EMAIL}`,
+      `Legal correspondence: ${LEGAL_EMAIL}`,
+      `General contact: ${CONTACT_EMAIL}`,
     ],
   },
   {

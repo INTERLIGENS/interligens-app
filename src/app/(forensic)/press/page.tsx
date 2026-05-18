@@ -26,11 +26,11 @@ import {
   SPOKESPEOPLE_INTRO,
   SPOKESPEOPLE,
   PRESS_CONTACT_INTRO,
-  PRESS_CONTACT_EMAIL,
   ASSETS_INTRO,
   ASSET_LIST,
   PRESS_EDITORIAL_STANDARDS,
 } from "@/lib/mocks/press";
+import { PARTNERSHIPS_EMAIL } from "@/lib/mocks/contact";
 
 export const metadata = {
   title: "Press — INTERLIGENS",
@@ -146,7 +146,7 @@ export default function PressPage() {
             body={PRESS_CONTACT_INTRO.body}
           >
             <div style={{ marginTop: 16 }}>
-              <PressContactBlock email={PRESS_CONTACT_EMAIL} />
+              <PressContactBlock email={PARTNERSHIPS_EMAIL} />
             </div>
           </SectionFrame>
         </div>
@@ -159,7 +159,7 @@ export default function PressPage() {
           />
         </div>
         <div className="fx-container" style={{ padding: "16px 0 32px" }}>
-          <AssetsList assets={ASSET_LIST} contactEmail={PRESS_CONTACT_EMAIL} />
+          <AssetsList assets={ASSET_LIST} contactEmail={PARTNERSHIPS_EMAIL} />
         </div>
 
         <div className="fx-container">

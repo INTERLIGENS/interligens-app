@@ -6,11 +6,13 @@ import {
   RegistryStatsBand,
   LastScanPreview,
   CrossLinksGrid,
+  HomeGuardTeaser,
   Colophon,
   LegalStrip,
 } from "@/components/forensic";
 import {
   HOME_ENTRIES,
+  HOME_GUARD,
   HOME_HERO,
   HOME_LAST_SCAN,
   HOME_STATS,
@@ -41,6 +43,13 @@ export default function HomePage() {
           <RegistryStatsBand stats={HOME_STATS} />
           <LastScanPreview {...HOME_LAST_SCAN} />
           <CrossLinksGrid links={HOME_ENTRIES} />
+          <HomeGuardTeaser
+            kicker={HOME_GUARD.kicker}
+            title={HOME_GUARD.title}
+            body={HOME_GUARD.body}
+            cta={HOME_GUARD.cta}
+            href={HOME_GUARD.href}
+          />
         </div>
       </main>
 

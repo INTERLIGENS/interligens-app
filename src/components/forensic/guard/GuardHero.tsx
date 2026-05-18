@@ -6,8 +6,8 @@
  * — same grammar as the three scenario panels lower on the page,
  * scaled at hero density.
  *
- * No "install now". The primary CTA is mailto guard@interligens.com
- * with a pre-filled subject. The secondary CTA is a sober link to a
+ * No "install now". The primary CTA is a mailto to the shared
+ * partnerships address with a pre-filled subject. The secondary CTA is a sober link to a
  * canonical reference page (default /methodology) — never to a sales
  * surface.
  */

@@ -8,15 +8,14 @@
  * — the page never names a model. Distribution language stays at
  * "early access".
  *
- * Single working address: guard@interligens.com.
+ * Early access flows through the shared PARTNERSHIPS_EMAIL address
+ * (src/lib/mocks/contact.ts). Only the mailto subject is local here.
  */
 
 import type { ClassificationContext } from "@/lib/contracts/website";
 import { MOCK_CLASSIFICATION } from "@/lib/mocks/_context";
 
 export const GUARD_CLASSIFICATION: ClassificationContext = MOCK_CLASSIFICATION;
-
-export const GUARD_EARLY_ACCESS_EMAIL = "guard@interligens.com";
 
 export const GUARD_EARLY_ACCESS_SUBJECT = "Phantom Guard · Early Access Request";
 

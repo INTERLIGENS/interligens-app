@@ -3,9 +3,11 @@
  *
  * Static content for the takedown discipline page. The page exists as a
  * real public surface; the form is intentionally absent until the
- * backend is wired (Dood directive). All filings flow through the email
- * address declared in TAKEDOWN_CONTACT until that lands.
+ * backend is wired (Dood directive). All filings flow through the
+ * shared LEGAL_EMAIL address (src/lib/mocks/contact.ts) until that lands.
  */
+
+import { LEGAL_EMAIL } from "@/lib/mocks/contact";
 
 export type TakedownSection = {
   id: string;
@@ -26,10 +28,6 @@ export const TAKEDOWN_HERO = {
   title: "Contesting a published claim.",
   dek: "INTERLIGENS treats the takedown channel as part of the editorial standard, not as an afterthought. This page documents who can request review, what evidence is required, and what we will and will not retract.",
 };
-
-// Replace with the production address before launch. Kept here as the
-// single source of truth so it can move without page edits.
-export const TAKEDOWN_CONTACT = "takedown@interligens.com";
 
 export const TAKEDOWN_SECTIONS: TakedownSection[] = [
   {
@@ -85,7 +83,7 @@ export const TAKEDOWN_SECTIONS: TakedownSection[] = [
     id: "contact",
     kicker: "07 · CONTACT",
     title: "Where to file.",
-    body: `All takedown filings go to ${TAKEDOWN_CONTACT} from a verifiable address. PGP key on request.\nWe do not accept filings via DM, support tickets, or social media.`,
+    body: `All takedown filings go to ${LEGAL_EMAIL} from a verifiable address. PGP key on request.\nWe do not accept filings via DM, support tickets, or social media.`,
   },
 ];
 

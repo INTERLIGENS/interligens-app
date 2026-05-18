@@ -46,13 +46,9 @@ export type Spokesperson = {
 export type PressAsset = {
   label: string;
   detail: string;
-  /** "request" → available on request via PRESS_CONTACT_EMAIL; "internal" → not yet exposed. */
+  /** "request" → available on request via PARTNERSHIPS_EMAIL; "internal" → not yet exposed. */
   availability: "request" | "internal";
 };
-
-// Single source of truth for the press contact address. Real, not a
-// TO_FILL — confirmed in the brief.
-export const PRESS_CONTACT_EMAIL = "press@interligens.com";
 
 export const PRESS_HERO = {
   kicker: "INSTITUTION · PRESS",

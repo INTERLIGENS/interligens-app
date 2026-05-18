@@ -3,10 +3,11 @@ import Link from "next/link";
 const LEGAL_ITEMS = [
   { href: "/methodology", label: "Methodology" },
   { href: "/charter",     label: "Charter" },
-  { href: "/takedown",    label: "Takedown" },
-  { href: "/legal",       label: "Legal notice" },
+  { href: "/about",       label: "About" },
   { href: "/press",       label: "Press" },
   { href: "/enterprise",  label: "Partners" },
+  { href: "/legal",       label: "Legal notice" },
+  { href: "/takedown",    label: "Takedown" },
 ] as const;
 
 export function LegalStrip() {

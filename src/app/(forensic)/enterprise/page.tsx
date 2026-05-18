@@ -29,8 +29,8 @@ import {
   ENTERPRISE_PUBLIC_LINES,
   ENTERPRISE_DEEPER_LINES,
   ENTERPRISE_CLOSING,
-  PARTNERSHIPS_CONTACT_EMAIL,
 } from "@/lib/mocks/enterprise";
+import { PARTNERSHIPS_EMAIL } from "@/lib/mocks/contact";
 
 export const metadata = {
   title: "Partners — INTERLIGENS",
@@ -141,7 +141,7 @@ export default function EnterprisePage() {
         <div className="fx-container" style={{ padding: "16px 0 32px" }}>
           <EngagementModes
             modes={ENGAGEMENT_MODES}
-            contactEmail={PARTNERSHIPS_CONTACT_EMAIL}
+            contactEmail={PARTNERSHIPS_EMAIL}
           />
         </div>
 
@@ -170,7 +170,7 @@ export default function EnterprisePage() {
               }}
             >
               <a
-                href={`mailto:${PARTNERSHIPS_CONTACT_EMAIL}`}
+                href={`mailto:${PARTNERSHIPS_EMAIL}`}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -187,7 +187,7 @@ export default function EnterprisePage() {
                   textTransform: "uppercase",
                 }}
               >
-                <span>{PARTNERSHIPS_CONTACT_EMAIL}</span>
+                <span>{PARTNERSHIPS_EMAIL}</span>
                 <span aria-hidden style={{ color: "var(--signal)" }}>
                   →
                 </span>

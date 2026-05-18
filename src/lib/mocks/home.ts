@@ -28,6 +28,14 @@ export const HOME_LAST_SCAN = {
   status: "Analyzing wallet cluster — 4.2s elapsed",
 } as const;
 
+export const HOME_GUARD = {
+  kicker: "DISTRIBUTION · PHANTOM GUARD",
+  title: "The intelligence reaches your wallet.",
+  body: "Phantom Guard carries the dossier — the score, the casefile, the cluster — to the place a decision is actually made. Intelligence at the point of signature: before, not after.",
+  cta: "Read Phantom Guard",
+  href: "/guard",
+} as const;
+
 export const HOME_ENTRIES: CrossLink[] = [
   {
     num: "01",

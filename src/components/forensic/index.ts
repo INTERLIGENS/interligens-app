@@ -14,6 +14,7 @@ export { RegistryOpening } from "./home/RegistryOpening";
 export { RegistryStatsBand } from "./home/RegistryStatsBand";
 export { CrossLinksGrid } from "./home/CrossLinksGrid";
 export { LastScanPreview } from "./home/LastScanPreview";
+export { HomeGuardTeaser } from "./home/HomeGuardTeaser";
 
 // Result
 export { ScoreTheatre } from "./result/ScoreTheatre";

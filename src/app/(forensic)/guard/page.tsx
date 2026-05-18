@@ -27,10 +27,10 @@ import {
   GUARD_CHAIN_STAGES,
   GUARD_CHAIN_INTRO,
   GUARD_EARLY_ACCESS,
-  GUARD_EARLY_ACCESS_EMAIL,
   GUARD_EARLY_ACCESS_SUBJECT,
   GUARD_CLOSING,
 } from "@/lib/mocks/guard";
+import { PARTNERSHIPS_EMAIL } from "@/lib/mocks/contact";
 
 export const metadata = {
   title: "Guard — INTERLIGENS",
@@ -38,7 +38,7 @@ export const metadata = {
     "Phantom Guard is the live distribution layer of the INTERLIGENS engine — the dossier, the casefile, the cluster, surfaced at the moment of signature. Available via early access.",
 };
 
-const PRIMARY_HREF = `mailto:${GUARD_EARLY_ACCESS_EMAIL}?subject=${encodeURIComponent(
+const PRIMARY_HREF = `mailto:${PARTNERSHIPS_EMAIL}?subject=${encodeURIComponent(
   GUARD_EARLY_ACCESS_SUBJECT,
 )}`;
 
@@ -148,7 +148,7 @@ export default function GuardPage() {
             title={GUARD_EARLY_ACCESS.title}
             body={GUARD_EARLY_ACCESS.body}
             noteLine={GUARD_EARLY_ACCESS.noteLine}
-            email={GUARD_EARLY_ACCESS_EMAIL}
+            email={PARTNERSHIPS_EMAIL}
             subject={GUARD_EARLY_ACCESS_SUBJECT}
           />
         </div>
