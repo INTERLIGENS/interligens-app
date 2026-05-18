@@ -1,4 +1,8 @@
 // src/lib/digest/generator.ts
+//
+// @deprecated L'« Intelligence Digest » est fusionné dans le rapport
+// hebdomadaire unifié FR (src/lib/email/unifiedDigest.ts). Ce module
+// et emailTemplate.ts ne sont plus appelés par aucun cron.
 
 export interface DigestKol {
   handle: string;

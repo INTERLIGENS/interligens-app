@@ -207,6 +207,12 @@ function buildText(stats: DigestStats): string {
   ].join("\n");
 }
 
+/**
+ * @deprecated Le « Weekly Digest » anglais autonome n'est plus envoyé.
+ * Ses chiffres sont fusionnés dans le rapport hebdomadaire unifié FR —
+ * voir `sendUnifiedDigest` dans `src/lib/email/unifiedDigest.ts`, qui
+ * réutilise `gatherStats` ci-dessus. Conservé pour référence / preview.
+ */
 export async function sendWeeklyDigest(
   to: string = process.env.DIGEST_TO_EMAIL ?? "admin@interligens.com",
 ): Promise<SendResult & { stats?: DigestStats }> {

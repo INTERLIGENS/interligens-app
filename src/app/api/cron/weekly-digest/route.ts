@@ -1,13 +1,15 @@
 /**
  * GET /api/cron/weekly-digest
  *
- * Vercel cron — Mondays at 08:00 UTC. Fires sendWeeklyDigest().
+ * Vercel cron — Mondays at 08:00 UTC. Fires sendUnifiedDigest() :
+ * le rapport hebdomadaire unifié FR (Security + Weekly + Intelligence)
+ * envoyé depuis alerts@interligens.com vers admin@interligens.com.
  * Auth: Bearer ${CRON_SECRET}.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { sendWeeklyDigest } from "@/lib/email/weeklyDigest";
+import { sendUnifiedDigest } from "@/lib/email/unifiedDigest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await sendWeeklyDigest();
+    const result = await sendUnifiedDigest();
     return NextResponse.json({
       ok: true,
       delivered: result.delivered,
