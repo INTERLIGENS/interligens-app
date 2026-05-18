@@ -1,5 +1,6 @@
 'use client'
 import BetaNav from "@/components/beta/BetaNav";
+import Link from "next/link";
 import React, { useState } from 'react'
 
 export default function VictimReportPage() {
@@ -7,8 +8,9 @@ export default function VictimReportPage() {
   const [form, setForm] = useState({
     token: '', date: '', wallet: '', loss: '', txHash: '',
     exchange: '', actor: '', platform: 'X (Twitter)', description: '', kolHandle: '',
+    email: '',
   })
-  const [template, setTemplate] = useState<'binance'|'ic3'|null>(null)
+  const [template, setTemplate] = useState<'binance'|'ic3'|'finma'|null>(null)
   const [copied, setCopied] = useState(false)
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -25,6 +27,7 @@ export default function VictimReportPage() {
 
   const binanceTpl = [
     'Subject: Report of Fraudulent Activity — Crypto Scam / Rug Pull',
+    'To: compliance@binance.com',
     '',
     'To the Binance Compliance & AML Team,',
     '',
@@ -43,7 +46,7 @@ export default function VictimReportPage() {
     'I believe funds from this scheme were routed through Binance. I request that any accounts receiving these funds be flagged and frozen pending investigation.',
     '',
     'Sincerely,',
-    '[YOUR NAME] / [YOUR EMAIL]',
+    '[YOUR NAME] / ' + (form.email || '[YOUR EMAIL]'),
     '',
     'Reference: INTERLIGENS Intelligence Report — ' + (form.token || '[TOKEN]'),
     'Platform: https://app.interligens.com',
@@ -63,6 +66,7 @@ export default function VictimReportPage() {
     'Amount lost: ' + (form.loss || '[AMOUNT]') + ' USD',
     'Your wallet: ' + (form.wallet || '[YOUR WALLET]'),
     form.txHash ? 'Transaction hash: ' + form.txHash : '',
+    'Contact email: ' + (form.email || '[YOUR EMAIL]'),
     '',
     '— DESCRIPTION —',
     form.description || '[DESCRIBE WHAT HAPPENED]',
@@ -79,7 +83,47 @@ export default function VictimReportPage() {
     'I declare this information is true and accurate to the best of my knowledge.',
   ].filter(l => l !== null).join('\n')
 
-  const activeTemplate = template === 'binance' ? binanceTpl : ic3Tpl
+  const finmaTpl = [
+    'FINMA — Swiss Financial Market Supervisory Authority',
+    'Formal Report of Suspected Unauthorised / Fraudulent Financial Activity',
+    'Submission: https://www.finma.ch/en/finma-public/unauthorised-institutions/',
+    'Postal: FINMA, Laupenstrasse 27, CH-3003 Bern, Switzerland',
+    '',
+    'Date: ' + (form.date || '[DATE]'),
+    '',
+    'To the FINMA Enforcement Division,',
+    '',
+    'I wish to formally report a crypto-asset offering that I believe involved',
+    'fraudulent or unauthorised financial activity and which caused me a financial loss.',
+    '',
+    '— REPORTING PARTY —',
+    'Contact email: ' + (form.email || '[YOUR EMAIL]'),
+    '',
+    '— SUBJECT OF THE REPORT —',
+    'Token / Project: ' + (form.token || '[TOKEN NAME]'),
+    'Date of incident: ' + (form.date || '[DATE]'),
+    'Approximate loss: ' + (form.loss || '[AMOUNT]') + ' USD',
+    'Exchange involved: ' + (form.exchange || '[EXCHANGE]'),
+    '',
+    '— ON-CHAIN REFERENCES —',
+    'My wallet address: ' + (form.wallet || '[YOUR WALLET]'),
+    form.txHash ? 'Transaction hash: ' + form.txHash : '',
+    '',
+    '— DESCRIPTION —',
+    form.description || '[DESCRIBE WHAT HAPPENED]',
+    '',
+    'I respectfully request that FINMA review whether this offering was conducted',
+    'without the required authorisation and whether any Switzerland-based entities',
+    'or intermediaries were involved in the handling of investor funds.',
+    '',
+    'Yours faithfully,',
+    '[YOUR NAME]',
+    '',
+    'Reference: INTERLIGENS Intelligence Report — ' + (form.token || '[TOKEN]'),
+  ].filter(l => l !== null).join('\n')
+
+  const templates = { binance: binanceTpl, ic3: ic3Tpl, finma: finmaTpl }
+  const activeTemplate = template ? templates[template] : ''
 
   const copy = () => {
     navigator.clipboard.writeText(activeTemplate).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
@@ -92,10 +136,13 @@ export default function VictimReportPage() {
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '48px 24px' }}>
 
         <div style={{ marginBottom: 36 }}>
+          <div style={{ display: 'inline-block', fontSize: 9, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 14, border: '1px solid #F85B05', borderRadius: 4, padding: '4px 9px' }}>
+            INTERLIGENS · VICTIM SUPPORT
+          </div>
           <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 10 }}>YOU WERE SCAMMED — HERE IS WHAT TO DO</div>
           <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, marginBottom: 12 }}>File Your Report</h1>
           <p style={{ fontSize: 13, color: '#6b7280', margin: 0, lineHeight: 1.7 }}>
-            Fill in the details below. We will generate ready-to-send report templates for Binance compliance and the FBI IC3. It takes 5 minutes and creates a formal paper trail.
+            Fill in the details below. We will generate ready-to-send report templates for Binance compliance, the FBI IC3, and the Swiss regulator FINMA. It takes 5 minutes and creates a formal paper trail. Nothing you enter leaves your browser — there is no storage and no server call.
           </p>
         </div>
 
@@ -147,6 +194,11 @@ export default function VictimReportPage() {
                 <input style={inp} value={form.kolHandle} onChange={e => set('kolHandle', e.target.value)} placeholder='e.g. bkokoski' />
                 <div style={{ fontSize: 10, color: '#374151', marginTop: 6 }}>Find at app.interligens.com/en/kol/[handle]</div>
               </div>
+              <div>
+                <span style={labelStyle}>Your Email (optional — for follow-up)</span>
+                <input style={inp} type='email' value={form.email} onChange={e => set('email', e.target.value)} placeholder='you@example.com' />
+                <div style={{ fontSize: 10, color: '#374151', marginTop: 6 }}>Only used inside the templates you generate. Never stored, never sent to us.</div>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => setStep(1)} style={{ background: 'transparent', border: '1px solid #374151', borderRadius: 8, color: '#6b7280', fontWeight: 700, fontSize: 12, padding: '12px 20px', cursor: 'pointer' }}>← BACK</button>
@@ -161,13 +213,14 @@ export default function VictimReportPage() {
             <div style={{ fontSize: 11, fontWeight: 900, color: '#f9fafb', letterSpacing: '0.1em', marginBottom: 8 }}>STEP 3 — YOUR REPORT TEMPLATES</div>
             <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 24, lineHeight: 1.6 }}>Select a template, copy it, and submit to the platform.</div>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' as const }}>
               {[
                 { key: 'binance', label: 'Binance Compliance', url: 'https://www.binance.com/en/support/requests/new', color: '#f59e0b' },
                 { key: 'ic3', label: 'FBI IC3', url: 'https://www.ic3.gov', color: '#3b82f6' },
+                { key: 'finma', label: 'FINMA (Switzerland)', url: 'https://www.finma.ch', color: '#F85B05' },
               ].map(t => (
                 <div key={t.key} onClick={() => setTemplate(t.key as any)}
-                  style={{ flex: 1, background: template === t.key ? t.color + '22' : '#0a0a0a', border: '1px solid ' + (template === t.key ? t.color : '#1f2937'), borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
+                  style={{ flex: '1 1 30%', minWidth: 160, background: template === t.key ? t.color + '22' : '#0a0a0a', border: '1px solid ' + (template === t.key ? t.color : '#1f2937'), borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
                   <div style={{ fontSize: 11, fontWeight: 900, color: template === t.key ? t.color : '#6b7280', marginBottom: 4 }}>{t.label}</div>
                   <div style={{ fontSize: 10, color: '#374151' }}>{t.url}</div>
                 </div>
@@ -177,13 +230,13 @@ export default function VictimReportPage() {
             {template && (
               <div style={{ marginBottom: 16 }}>
                 <pre style={{ background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8, padding: '18px 20px', fontSize: 11, color: '#94a3b8', lineHeight: 1.7, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const, maxHeight: 400, overflowY: 'auto' as const, fontFamily: 'monospace' }}>
-                  {template === 'binance' ? binanceTpl : ic3Tpl}
+                  {activeTemplate}
                 </pre>
                 <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
                   <button onClick={copy} style={{ flex: 1, background: copied ? '#10b981' : '#F85B05', border: 'none', borderRadius: 8, color: copied ? '#fff' : '#000', fontWeight: 900, fontSize: 12, padding: '12px', cursor: 'pointer', letterSpacing: '0.1em' }}>
                     {copied ? '✓ COPIED TO CLIPBOARD' : 'COPY REPORT →'}
                   </button>
-                  <a href={template === 'binance' ? 'https://www.binance.com/en/support/requests/new' : 'https://www.ic3.gov/complaint/default.aspx'}
+                  <a href={template === 'binance' ? 'https://www.binance.com/en/support/requests/new' : template === 'ic3' ? 'https://www.ic3.gov/complaint/default.aspx' : 'https://www.finma.ch/en/finma-public/unauthorised-institutions/'}
                     target='_blank' rel='noreferrer'
                     style={{ background: '#0a0a0a', border: '1px solid #374151', borderRadius: 8, color: '#9ca3af', fontWeight: 700, fontSize: 12, padding: '12px 16px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
                     OPEN FORM →
@@ -197,7 +250,8 @@ export default function VictimReportPage() {
               {[
                 { n: '1.', text: 'Submit the Binance report first — exchanges can freeze funds faster than law enforcement.' },
                 { n: '2.', text: 'File with IC3 — creates an official US federal record, required for civil litigation.' },
-                { n: '3.', text: 'Save confirmation numbers. Forward to admin@interligens.com if you want to join a class action.' },
+                { n: '3.', text: 'If a Swiss-based entity was involved, file with FINMA — they can act against unauthorised operators.' },
+                { n: '4.', text: 'Save confirmation numbers. Forward to admin@interligens.com if you want to join a class action.' },
               ].map(s => (
                 <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 10, fontWeight: 900, color: '#F85B05', fontFamily: 'monospace', flexShrink: 0 }}>{s.n}</span>
@@ -213,12 +267,17 @@ export default function VictimReportPage() {
                 JOIN CLASS ACTION →
               </a>
             </div>
-
-            <div style={{ marginTop: 24, fontSize: 10, color: '#1f2937', lineHeight: 1.7 }}>
-              Not legal advice. INTERLIGENS Intelligence © 2026 · INTERLIGENS Delaware C-Corp
-            </div>
           </div>
         )}
+
+        {/* Disclaimer */}
+        <div style={{ marginTop: 36, paddingTop: 20, borderTop: '1px solid #1f2937', fontSize: 11, color: '#4b5563', lineHeight: 1.7 }}>
+          This is not legal advice. The templates above are drafting aids only — consult a qualified professional before filing.{' '}
+          <Link href='/en/legal/disclaimer' style={{ color: '#F85B05', textDecoration: 'none' }}>Read the full disclaimer →</Link>
+          <div style={{ marginTop: 8, fontSize: 10, color: '#1f2937' }}>
+            INTERLIGENS Intelligence © 2026 · INTERLIGENS Delaware C-Corp · No data is stored — everything stays in your browser.
+          </div>
+        </div>
       </div>
     </div>
   )

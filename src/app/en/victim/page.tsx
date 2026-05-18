@@ -55,6 +55,10 @@ export default function VictimPage() {
           <p style={{ fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.6 }}>
             Enter any wallet address or contract. We check if it appears in our database of flagged high-risk addresses, mixers, and complicit exchanges.
           </p>
+          <a href="/en/victim/report"
+            style={{ display: 'inline-block', marginTop: 16, background: '#FF6B00', border: 'none', borderRadius: 8, color: '#000', padding: '10px 18px', fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textDecoration: 'none' }}>
+            Report a scam →
+          </a>
         </div>
 
         {/* Input */}
