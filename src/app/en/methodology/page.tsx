@@ -60,6 +60,19 @@ export default function MethodologyPage() {
           </a>
         </div>
 
+        {/* ── PROOF GRAPH LINK ── */}
+        <a
+          href="/en/methodology/proof-graph"
+          style={{ textDecoration: "none", background: "#0f0f0f", border: "1px solid #FF6B00", borderRadius: 10, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 56, flexWrap: "wrap" }}
+        >
+          <div>
+            <div style={{ fontSize: 9, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 6 }}>PROOF GRAPH</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "#f9fafb" }}>See how TigerScore is built</div>
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>The full scoring architecture — branches, inputs, and what is live.</div>
+          </div>
+          <div style={{ fontSize: 12, color: "#FF6B00", fontWeight: 700, whiteSpace: "nowrap" }}>Proof Graph →</div>
+        </a>
+
         {/* ── EVIDENCE METHODOLOGY ── */}
         <div style={{ marginBottom: 40 }}>
           <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>EVIDENCE METHODOLOGY</div>
