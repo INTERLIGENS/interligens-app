@@ -170,7 +170,7 @@ describe.each(SOL_FIXTURES)("/api/v1/score snapshot — $label", (f) => {
           },
         ],
         sources: [],
-      } as Awaited<ReturnType<typeof loadCaseByMint>>);
+      } as unknown as Awaited<ReturnType<typeof loadCaseByMint>>);
     }
     const req = new NextRequest(
       new Request(`http://localhost/api/v1/score?mint=${f.mint}`),

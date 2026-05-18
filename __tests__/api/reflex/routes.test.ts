@@ -386,9 +386,9 @@ describe("POST /api/reflex/:id/watch", () => {
         },
       }),
     );
-    mockWatchCreate.mockImplementation(async (args: { data: unknown }) => ({
+    mockWatchCreate.mockImplementation(async (args) => ({
       id: "watch-1",
-      ...(args.data as Record<string, unknown>),
+      ...((args as { data: unknown }).data as Record<string, unknown>),
     }));
 
     const req = new NextRequest(
@@ -414,9 +414,9 @@ describe("POST /api/reflex/:id/watch", () => {
         input: { type: "X_HANDLE", handle: "kol", raw: "@kol" },
       }),
     );
-    mockWatchCreate.mockImplementation(async (args: { data: unknown }) => ({
+    mockWatchCreate.mockImplementation(async (args) => ({
       id: "watch-2",
-      ...(args.data as Record<string, unknown>),
+      ...((args as { data: unknown }).data as Record<string, unknown>),
     }));
     const t0 = Date.now();
     const req = new NextRequest(
@@ -441,9 +441,9 @@ describe("POST /api/reflex/:id/watch", () => {
         input: { type: "X_HANDLE", handle: "kol", raw: "@kol" },
       }),
     );
-    mockWatchCreate.mockImplementation(async (args: { data: unknown }) => ({
+    mockWatchCreate.mockImplementation(async (args) => ({
       id: "watch-3",
-      ...(args.data as Record<string, unknown>),
+      ...((args as { data: unknown }).data as Record<string, unknown>),
     }));
     const t0 = Date.now();
     const req = new NextRequest(

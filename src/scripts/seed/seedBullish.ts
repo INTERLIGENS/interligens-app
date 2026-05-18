@@ -399,7 +399,7 @@ async function main() {
 
   // ── DRY RUN exit ────────────────────────────────────────────────────────
   if (!COMMIT) {
-    console.log(`\n[done] DRY-RUN complete. Pass SEED_BULLISH=1 to write to ${dbUrl.match(/ep-[a-z0-9-]+/)?.[0]}.`);
+    console.log(`\n[done] DRY-RUN complete. Pass SEED_BULLISH=1 to write to ${dbUrl?.match(/ep-[a-z0-9-]+/)?.[0]}.`);
     await prisma.$disconnect();
     return;
   }

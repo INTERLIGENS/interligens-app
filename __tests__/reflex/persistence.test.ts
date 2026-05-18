@@ -140,8 +140,8 @@ describe("effectiveMode — SHADOW is fail-closed default", () => {
 
 describe("persistAnalysis — mode is coerced through effectiveMode", () => {
   it("mode='PUBLIC' with flag off → row written as SHADOW", async () => {
-    mockCreate.mockImplementation(async (args: { data: unknown }) =>
-      fakeRow({ ...(args.data as Record<string, unknown>), id: "r-1" }),
+    mockCreate.mockImplementation(async (args) =>
+      fakeRow({ ...((args as { data: unknown }).data as Record<string, unknown>), id: "r-1" }),
     );
     const r = await persistAnalysis(persistPayload({ mode: "PUBLIC" }));
     expect(r.mode).toBe("SHADOW");
@@ -154,8 +154,8 @@ describe("persistAnalysis — mode is coerced through effectiveMode", () => {
 
   it("mode='PUBLIC' with flag on → row written as PUBLIC", async () => {
     vi.stubEnv("REFLEX_PUBLIC_ENABLED", "true");
-    mockCreate.mockImplementation(async (args: { data: unknown }) =>
-      fakeRow({ ...(args.data as Record<string, unknown>), id: "r-2" }),
+    mockCreate.mockImplementation(async (args) =>
+      fakeRow({ ...((args as { data: unknown }).data as Record<string, unknown>), id: "r-2" }),
     );
     const r = await persistAnalysis(persistPayload({ mode: "PUBLIC" }));
     expect(r.mode).toBe("PUBLIC");
@@ -167,16 +167,16 @@ describe("persistAnalysis — mode is coerced through effectiveMode", () => {
   });
 
   it("mode undefined → SHADOW", async () => {
-    mockCreate.mockImplementation(async (args: { data: unknown }) =>
-      fakeRow({ ...(args.data as Record<string, unknown>), id: "r-3" }),
+    mockCreate.mockImplementation(async (args) =>
+      fakeRow({ ...((args as { data: unknown }).data as Record<string, unknown>), id: "r-3" }),
     );
     const r = await persistAnalysis(persistPayload());
     expect(r.mode).toBe("SHADOW");
   });
 
   it("writes all spec-required fields", async () => {
-    mockCreate.mockImplementation(async (args: { data: unknown }) =>
-      fakeRow({ ...(args.data as Record<string, unknown>), id: "r-4" }),
+    mockCreate.mockImplementation(async (args) =>
+      fakeRow({ ...((args as { data: unknown }).data as Record<string, unknown>), id: "r-4" }),
     );
     await persistAnalysis(persistPayload({ tigerScoreSnapshot: 72 }));
     expect(mockCreate).toHaveBeenCalledWith(

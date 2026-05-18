@@ -57,7 +57,9 @@ const mockFindFirst = vi.mocked(
   prisma.reflexAnalysis.findFirst as unknown as (...a: unknown[]) => unknown,
 );
 
-function clean(engine: ReflexEngineOutput["engine"]): ReflexEngineOutput {
+function clean<T = unknown>(
+  engine: ReflexEngineOutput<T>["engine"],
+): ReflexEngineOutput<T> {
   return { engine, ran: true, ms: 0, signals: [] };
 }
 
