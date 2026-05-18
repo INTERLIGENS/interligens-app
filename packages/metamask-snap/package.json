@@ -1,0 +1,16 @@
+{
+  "name": "@interligens/metamask-snap",
+  "version": "0.1.0",
+  "description": "INTERLIGENS Guard MetaMask Snap — forensic risk before signing",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "build": "mm-snap build",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@metamask/snaps-sdk": "^6.0.0",
+    "@metamask/snaps-jest": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

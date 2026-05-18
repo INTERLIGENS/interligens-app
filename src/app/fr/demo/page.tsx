@@ -4,6 +4,7 @@ import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useRef, useMemo } from "react";
+import { flushSync } from 'react-dom';
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
@@ -20,15 +21,28 @@ import TokenPicker, { type TokenCandidate } from "@/components/scan/TokenPicker"
 import { normalizeToAnalysisSummary } from "@/lib/explanation/normalizer";
 import type { Locale } from "@/lib/explanation/types";
 import TechnicalEvidence from "@/components/TechnicalEvidence";
-import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
+import FreshnessStrip from "@/components/scan/FreshnessStrip";
+import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
+import WatchButton from "@/components/scan/WatchButton";
+import AdvancedSignals from "@/components/scan/AdvancedSignals";
+import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
+import type { FreshnessResult } from "@/lib/freshness/engine";
+import type { NarrativeResult } from "@/lib/narrative/generator";
+import ShillToExitTimeline from "@/components/kol/ShillToExitTimeline";
+import type { ShillToExitResult } from "@/lib/shill-to-exit/engine";
+import DemoFeedbackButton from "@/components/demo/DemoFeedbackButton";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
+import MarketStructureRisk from "@/components/scan/MarketStructureRisk";
+import type { MmRiskAssessment } from "@/lib/mm/adapter/types";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
+import TokenInfoCard from "@/components/scan/TokenInfoCard";
+import type { ScanContextResponse } from "@/app/api/v1/scan-context/route";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -241,6 +255,7 @@ export default function TigerScanPageFR() {
   const [graphData, setGraphData] = useState<any>(null);
   const SCAN_STEPS = ['Analyse…', 'Marché…', 'Preuves…'];
   const [result, setResult]             = useState<NormalizedScan | null>(null);
+  const [currentScanAddress, setCurrentScanAddress] = useState("");
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
@@ -254,7 +269,18 @@ export default function TigerScanPageFR() {
   const [error, setError]               = useState<string | null>(null);
   const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
   const [mmResult, setMmResult] = useState<MMScanResult | null>(null);
+  const [mmRisk, setMmRisk] = useState<MmRiskAssessment | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
+  const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
+  const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null);
+  const [offChainResult, setOffChainResult] = useState<OffChainResult | null>(null);
+  const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null);
+  const [shillHandle, setShillHandle] = useState("");
+  const [shillLoading, setShillLoading] = useState(false);
+  const [communityScans, setCommunityScans] = useState<number | null>(null);
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [scanContextData, setScanContextData] = React.useState<ScanContextResponse | null>(null);
+  const [scanContextLoading, setScanContextLoading] = React.useState(false);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
@@ -280,7 +306,6 @@ export default function TigerScanPageFR() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode = selectedScenario;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -299,7 +324,7 @@ export default function TigerScanPageFR() {
         const newP = new URLSearchParams(window.location.search);
         newP.delete("auto");
         window.history.replaceState(null, "", window.location.pathname + (newP.toString() ? "?" + newP.toString() : ""));
-        setTimeout(() => runScan(addr, undefined), 80);
+        setTimeout(() => runScan(addr), 80);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -319,16 +344,16 @@ export default function TigerScanPageFR() {
   const [tickers, setTickers] = React.useState<{ok:boolean,btc?:{price_usd:number,change_24h_pct:number},eth?:{price_usd:number,change_24h_pct:number},sol?:{price_usd:number,change_24h_pct:number}}|null>(null);
 
   const DEMO_CHIPS = [
-    { label: "✅ Sûr", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
-    { label: "⚠️ Attention", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
-    { label: "🚨 Arnaque", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
+    { label: "✅ Sûr",       addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
+    { label: "⚠️ Attention", addr: "7WRX5QGuRLhGCJszpQjYmw6ihb6z8KRdAEHQUhGJpump" },
+    { label: "🚨 Arnaque",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
   ];
 
   React.useEffect(() => {
     if (selectedScenario) {
       const preset = DEMO_PRESETS[mockChain][selectedScenario];
       setAddress(preset.addr);
-      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
+      setTimeout(() => runScan(preset.addr), 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -339,10 +364,11 @@ export default function TigerScanPageFR() {
     const preset = DEMO_PRESETS[mockChain][scenario];
     setSelectedScenario(scenario);
     setAddress(preset.addr);
+    setResult(null);
     const url = new URL(window.location.href);
     url.searchParams.set("mock", scenario);
     window.history.replaceState({}, "", url.toString());
-    runScan(preset.addr, scenario);
+    runScan(preset.addr);
   };
 
   React.useEffect(() => {
@@ -354,12 +380,8 @@ export default function TigerScanPageFR() {
       .catch(() => {});
   }, [address, chain]);
   React.useEffect(() => {
-    if (mockMode) {
-      setTickers({ ok: true, btc: { price_usd: 95000, change_24h_pct: 1.2 }, eth: { price_usd: 3200, change_24h_pct: 0.8 }, sol: { price_usd: 180, change_24h_pct: -0.5 } });
-      return;
-    }
     fetch("/api/market/tickers").then(r => r.json()).then(d => setTickers(d)).catch(() => setTickers({ ok: false }));
-  }, [mockMode]);
+  }, []);
 
 
 
@@ -399,6 +421,7 @@ export default function TigerScanPageFR() {
         const c = results[0]
         const formatted = formatAddressForChain(c.address, c.chain)
         setAddress(formatted)
+        setResult(null)
         runScan(formatted)
         return
       }
@@ -411,41 +434,55 @@ export default function TigerScanPageFR() {
   const handleTickerPick = (c: TokenCandidate) => {
     const formatted = formatAddressForChain(c.address, c.chain)
     setAddress(formatted)
+    setResult(null)
     setTickerState(null)
     runScan(formatted)
   }
 
-  const runScan = async (overrideAddr?: string, overrideMock?: string) => {
+  const runScan = async (overrideAddr?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
-    const useMock = overrideMock ?? mockMode;
-    if (useMock) {
-      setLoading(true); setError(null); setResult(null);
-      await new Promise(r => setTimeout(r, 800));
-      try {
-        const res = await fetch(`/api/mock/scan?mode=${useMock}`, { cache: "no-store" });
-        const data = await res.json();
-        setResult(normalizeScanData(data, "SOL"));
-        setAnalysisStatus("done");
-        setWeather(null);
-        setTimeout(() => document.getElementById("result-anchor")?.scrollIntoView({ behavior: "smooth" }), 200);
-      } catch(e) { setError("Échec du mock"); }
-      setLoading(false);
-      return;
-    }
-    if (!chain) return;
+    flushSync(() => {
+      setResult(null); setError(null); setWeather(null);
+      setGraphData(null); setClusterResult(null); setMmResult(null);
+      setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
+      setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
+      setShillHandle(""); setCorrobData(null); setAddressLabel(null);
+      setRecidivismDetected(false); setRecidivismConfidence("LOW");
+    });
+
+    if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
     setAnalysisStatus("running");
-    setGraphData(null);
-    setRecidivismDetected(false);
-    setRecidivismConfidence("LOW");
-    setError(null);
-    setResult(null);
-    setClusterResult(null);
-    setMmResult(null);
-    setIntelSignal(null);
+    setScanContextLoading(true);
+
+    // Fire scan-context in parallel (non-blocking, 8s timeout)
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(scanAddr)}&_t=${Date.now()}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setScanContextData(d); })
+      .catch(() => {})
+      .finally(() => setScanContextLoading(false));
+
+    // Fire community scan count fetch in parallel (non-blocking, 6s timeout)
+    {
+      const scanTarget = (overrideAddr ?? address).trim();
+      const isEvm = /^0x[a-fA-F0-9]{40}$/.test(scanTarget);
+      const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
+      if (isEvm || isSol) {
+        fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}&_t=${Date.now()}`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(6000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (typeof d?.communityScans === "number") setCommunityScans(d.communityScans); })
+          .catch(() => {});
+      }
+    }
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
-    fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
+    fetch(`/api/scan/intelligence?value=${encodeURIComponent(scanAddr)}`, {
       signal: AbortSignal.timeout(5000),
     })
       .then(r => r.ok ? r.json() : null)
@@ -454,7 +491,7 @@ export default function TigerScanPageFR() {
 
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
     if (chain === "SOL") {
-      fetch(`/api/scan/cluster?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+      fetch(`/api/scan/cluster?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
         signal: AbortSignal.timeout(4000),
       })
         .then(r => r.ok ? r.json() : null)
@@ -462,12 +499,59 @@ export default function TigerScanPageFR() {
         .catch(() => {})
 
       // Fire MM score fetch in parallel (non-blocking, 4.5s timeout)
-      fetch(`/api/scan/mm?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+      fetch(`/api/scan/mm?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
         signal: AbortSignal.timeout(4500),
       })
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setMmResult(d) })
         .catch(() => {})
+    }
+
+    // MM Pattern Engine risk — flag-gated server-side, fail-silent.
+    {
+      const chainKey =
+        chain === "SOL" ? "sol" :
+        chain === "ETH" ? "eth" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" :
+        chain === "BSC" ? "bsc" : null;
+      if (chainKey) {
+        fetch(`/api/scan/mm-risk?address=${encodeURIComponent(scanAddr)}&chain=${chainKey}`, {
+          signal: AbortSignal.timeout(11000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d && d.assessment) setMmRisk(d.assessment) })
+          .catch(() => {})
+      }
+    }
+
+    // Freshness + narrative — parallèle, non-bloquant
+    {
+      const freshnessChain =
+        chain === "SOL" ? "solana" :
+        chain === "ETH" ? "ethereum" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" : null;
+      if (freshnessChain) {
+        fetch("/api/v1/freshness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chain: freshnessChain, mint: scanAddr }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setFreshnessResult(d) })
+          .catch(() => {})
+        fetch("/api/v1/narrative", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tokenMint: scanAddr, chain: freshnessChain }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
+          .catch(() => {})
+      }
     }
 
     for (let i = 0; i < 3; i++) {
@@ -476,11 +560,11 @@ export default function TigerScanPageFR() {
     }
 
     try {
-      const url = buildScanUrl(address, chain, isDeep);
+      const url = buildScanUrl(scanAddr, chain, isDeep);
 
       // Scan + graph en PARALLÈLE — temps total = max(scan, graph)
       const graphUrl = chain === "SOL"
-        ? `/api/scan/solana/graph?mint=${encodeURIComponent(address.trim())}&hops=1&days=14`
+        ? `/api/scan/solana/graph?mint=${encodeURIComponent(scanAddr)}&hops=1&days=14`
         : null;
 
       const [res, gData] = await Promise.all([
@@ -509,7 +593,7 @@ export default function TigerScanPageFR() {
       setGraphData(gData);
       setAddressLabel(null)
       setCorrobData(null)
-      const trimmed = address.trim()
+      const trimmed = scanAddr
       fetch('/api/scan/label?address=' + trimmed)
         .then(r => r.json())
         .then(d => { if (d.found) setAddressLabel(d) })
@@ -518,14 +602,36 @@ export default function TigerScanPageFR() {
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
+      setCurrentScanAddress(scanAddr);
       setResult(normalizedResult);
       setAnalysisStatus("done");
+
+      // Off-chain credibility: fire if website URL is detectable from rawSummary
+      const websiteUrl: string | undefined =
+        normalizedResult.rawSummary?.website ??
+        normalizedResult.rawSummary?.ext?.website ??
+        normalizedResult.rawSummary?.meta?.website ??
+        normalizedResult.rawSummary?.content?.links?.external_url ??
+        normalizedResult.rawSummary?.info?.website ??
+        normalizedResult.rawSummary?.extensions?.website ??
+        undefined;
+      if (websiteUrl) {
+        fetch("/api/v1/off-chain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ websiteUrl, tokenMint: scanAddr }),
+          signal: AbortSignal.timeout(30_000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setOffChainResult(d) })
+          .catch(() => {})
+      }
 
       try {
         const heatRes = await fetch("/api/social/heat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: address.trim(), chain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
+          body: JSON.stringify({ address: scanAddr, chain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
         });
         setWeather(heatRes.ok ? await heatRes.json() : null);
       } catch { setWeather(null); }
@@ -570,7 +676,8 @@ export default function TigerScanPageFR() {
                   setActivePreset(p.id);
                   setSelectedScenario(null);
                   setAddress(p.addr);
-                  setTimeout(() => runScan(p.addr, undefined), 60);
+                  setResult(null);
+                  setTimeout(() => runScan(p.addr), 60);
                 }}
                 className={[
                   "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
@@ -596,6 +703,24 @@ export default function TigerScanPageFR() {
               className="ml-auto text-[9px] font-black uppercase tracking-widest text-zinc-700 hover:text-[#F85B05] transition-colors"
             >{copyDone ? "✓ Copié" : "Copier le lien"}</button>
           </div>
+        </div>
+
+        {/* CHAIN SELECTOR — change le preset mock actif */}
+        <div className="flex justify-center gap-2 flex-wrap mb-3">
+          {(["SOL","ETH","BASE","ARBITRUM","TRON"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => { setMockChain(c); setSelectedScenario(null); }}
+              className={[
+                "px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
+                mockChain === c
+                  ? "border-[#FF6B00] text-[#FF6B00] bg-[#FF6B00]/8"
+                  : "border-zinc-800 text-zinc-600 hover:border-zinc-600 hover:text-zinc-400",
+              ].join(" ")}
+            >
+              {c}
+            </button>
+          ))}
         </div>
 
         <QuickDemoBar
@@ -685,8 +810,8 @@ export default function TigerScanPageFR() {
           </div>
 
           <div id="result-anchor" />
-          <div style={{ opacity: analysisStatus === 'done' && result && !loading ? 1 : 0, transition: 'opacity 300ms ease-in, transform 350ms ease-out', transform: analysisStatus === 'done' && result && !loading ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(6px)', pointerEvents: analysisStatus === 'done' && result && !loading ? 'auto' : 'none' }}>
-            {result && (() => {
+          <div style={{ opacity: result && currentScanAddress === address.trim() ? 1 : 0, transition: 'opacity 300ms ease-in, transform 350ms ease-out', transform: result && currentScanAddress === address.trim() ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(6px)', pointerEvents: result && currentScanAddress === address.trim() && !loading ? 'auto' : 'none' }}>
+            {result && currentScanAddress === address.trim() && (() => {
               // Source de vérité : result OU graphData (pour éviter race condition)
               const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
               const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
@@ -715,7 +840,14 @@ export default function TigerScanPageFR() {
               </div>
 
               {/* 1. TigerScore ring */}
-              <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+
+              {/* TOKEN IDENTITY STRIP */}
+              <div className="flex justify-center w-full mt-5 mb-4">
+                <div className="w-full max-w-[288px]">
+                  <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
+                </div>
+              </div>
 
               {/* 2. ÉVITER — verdict collé au score */}
               <h2
@@ -864,20 +996,98 @@ export default function TigerScanPageFR() {
                 <div className="mt-3">
                   <CaseFileCTA id={address.trim() || null} lang="fr" />
                 </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <WatchButton mint={address.trim()} chain={chain ?? "SOL"} symbol={result.rawSummary?.symbol} lang="fr" />
+                  <span style={{ fontSize: 9, color: "#4b5563" }}>Soyez alerté si le risque change</span>
+                </div>
               </div>
               )}
 
-              {/* 4. MINI SIGNAL CARDS */}
-              <MiniSignalRow
+              {/* ── ADVANCED SIGNALS ── */}
+              <AdvancedSignals
+                website={result.rawSummary?.website ?? result.rawSummary?.content?.links?.external_url ?? result.rawSummary?.extensions?.website ?? null}
+                pairAgeDays={result.rawSummary?.pair_age_days ?? result.rawSummary?.markets?.pair_age_days ?? null}
+                liquidityUsd={result.rawSummary?.markets?.liquidity_usd ?? result.rawSummary?.liquidity_usd ?? null}
+                mintAuthority={result.mintAuthority ?? null}
+                freezeAuthority={result.freezeAuthority ?? null}
+                topHolderPct={result.rawSummary?.top10_pct ?? result.rawSummary?.holder_top10_pct ?? null}
+                signals={(result.rawSummary?.signals ?? []).map((s: any) => ({ id: s.id, label: s.label, severity: s.severity }))}
                 lang="fr"
-                tier={finalTier.toLowerCase() as any}
-                weather={weather}
-                show={true}
+                tier={finalTier}
+                manipulationLevel={weather?.manipulation?.level ?? null}
                 rawSummary={result.rawSummary}
               />
 
+              {/* ── FRESHNESS SIGNALS ── */}
+              {freshnessResult && (
+                <FreshnessStrip result={freshnessResult} lang="fr" />
+              )}
+
+              {/* ── OFF-CHAIN CREDIBILITY ── */}
+              {offChainResult && (
+                <OffChainCredibilityBlock result={offChainResult} lang="fr" />
+              )}
+
+
+              {/* ── PROMOTION INTELLIGENCE — vérification KOL (SOL uniquement) ── */}
+              {chain === "SOL" && (
+                <div className="w-full rounded-xl border border-zinc-800 bg-black p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">
+                    PROMOTION INTELLIGENCE
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={shillHandle}
+                      onChange={(e) => setShillHandle(e.target.value.replace(/^@/, ""))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && shillHandle.trim()) {
+                          setShillLoading(true);
+                          setShillResult(null);
+                          fetch(`/api/v1/shill-to-exit?handle=${encodeURIComponent(shillHandle.trim())}&mint=${encodeURIComponent(address.trim())}`)
+                            .then(r => r.ok ? r.json() : null)
+                            .then(d => { if (d) setShillResult(d); })
+                            .catch(() => {})
+                            .finally(() => setShillLoading(false));
+                        }
+                      }}
+                      placeholder="Entrez un handle KOL pour croiser les données…"
+                      className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 placeholder-zinc-700 outline-none focus:border-zinc-600"
+                    />
+                    <button
+                      type="button"
+                      disabled={!shillHandle.trim() || shillLoading}
+                      onClick={() => {
+                        if (!shillHandle.trim()) return;
+                        setShillLoading(true);
+                        setShillResult(null);
+                        fetch(`/api/v1/shill-to-exit?handle=${encodeURIComponent(shillHandle.trim())}&mint=${encodeURIComponent(address.trim())}`)
+                          .then(r => r.ok ? r.json() : null)
+                          .then(d => { if (d) setShillResult(d); })
+                          .catch(() => {})
+                          .finally(() => setShillLoading(false));
+                      }}
+                      className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-400 text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 disabled:opacity-40 transition-colors"
+                    >
+                      {shillLoading ? "…" : "Vérifier"}
+                    </button>
+                  </div>
+                  {shillResult && (
+                    <div className="mt-4">
+                      <ShillToExitTimeline result={shillResult} lang="fr" />
+                      {!shillResult.detected && (
+                        <p className="text-xs text-zinc-600 mt-2 text-center">Aucun shill-to-exit détecté pour @{shillResult.kolHandle} sur ce token.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 5. TOP ON-CHAIN PROOFS + ASK TIGER ANALYST — flip card */}
               <TigerRevealCard tier={finalTier} proofs={result.proofs} />
+
+              {/* 5b. RISQUE DE STRUCTURE DE MARCHÉ — MM Pattern Engine (flag-gated) */}
+              <MarketStructureRisk result={mmRisk} locale="fr" />
 
               {/* ── SCAM FAMILY GRAPH ── */}
               {result.chain === "SOL" && (
@@ -903,7 +1113,7 @@ export default function TigerScanPageFR() {
 
                 {showEvidence && (
                   <>
-                    <TechnicalEvidence lang="fr" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
+                    <TechnicalEvidence lang="fr" chain={(result.chain === "ETH" || result.chain === "BASE" || result.chain === "ARBITRUM") ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
                     {debug && (
                     <details className="mt-6 rounded-xl border border-zinc-900 bg-black/40">
                       <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-orange-400 hover:text-orange-300">
@@ -939,6 +1149,7 @@ export default function TigerScanPageFR() {
         </div>
       </main>
       </div>
+      <DemoFeedbackButton />
     </div>
   );
 }

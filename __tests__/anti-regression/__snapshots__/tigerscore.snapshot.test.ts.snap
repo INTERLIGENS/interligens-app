@@ -1,0 +1,429 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TigerScore snapshot — 'EVM — Arbitrum fresh contract' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 0,
+      "id": "evm_contract_interaction",
+      "label": "Smart contract address",
+      "severity": "low",
+      "why": "Address is a contract, not an EOA — verify source on explorer",
+    },
+  ],
+  "score": 0,
+  "tier": "GREEN",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — address-poisoning lookalike' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 45,
+      "id": "address_poisoning",
+      "label": "Address poisoning lookalike",
+      "severity": "critical",
+      "why": "First/last 4 characters match a known legitimate address — paste-attack risk",
+    },
+  ],
+  "score": 45,
+  "tier": "ORANGE",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — clean EOA on ETH (no flags)' > matches the locked output 1`] = `
+{
+  "confidence": "Low",
+  "drivers": [],
+  "score": 0,
+  "tier": "GREEN",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — clean contract on Base' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 10,
+      "id": "low_tx_count",
+      "label": "Very low transaction history",
+      "severity": "med",
+      "why": "Wallet/token has minimal activity — disposable pattern",
+    },
+    {
+      "delta": 0,
+      "id": "evm_contract_interaction",
+      "label": "Smart contract address",
+      "severity": "low",
+      "why": "Address is a contract, not an EOA — verify source on explorer",
+    },
+  ],
+  "score": 10,
+  "tier": "GREEN",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — high approvals (no unlimited)' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 35,
+      "id": "high_approvals",
+      "label": "High approval count",
+      "severity": "high",
+      "why": "Large attack surface from many approvals",
+    },
+  ],
+  "score": 35,
+  "tier": "ORANGE",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — known-bad + unlimited approvals…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 70,
+      "id": "unlimited_approvals",
+      "label": "Unlimited approvals detected",
+      "severity": "critical",
+      "why": "Spender can drain wallet at any time",
+    },
+    {
+      "delta": 45,
+      "id": "address_poisoning",
+      "label": "Address poisoning lookalike",
+      "severity": "critical",
+      "why": "First/last 4 characters match a known legitimate address — paste-attack risk",
+    },
+    {
+      "delta": 100,
+      "id": "evm_known_bad",
+      "label": "Known bad EVM address",
+      "severity": "critical",
+      "why": "Address matches INTERLIGENS known-bad registry (GordonGekko, drainer, phishing, mixer, exploit)",
+    },
+  ],
+  "score": 100,
+  "tier": "RED",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — known-bad address (high-confide…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 100,
+      "id": "evm_known_bad",
+      "label": "Known bad EVM address",
+      "severity": "critical",
+      "why": "Address matches INTERLIGENS known-bad registry (GordonGekko, drainer, phishing, mixer, exploit)",
+    },
+    {
+      "delta": 0,
+      "id": "evm_multi_chain_active",
+      "label": "Multi-chain active address",
+      "severity": "low",
+      "why": "Active on 3 EVM chains simultaneously",
+    },
+  ],
+  "score": 100,
+  "tier": "RED",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — unlimited approval × 1' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 70,
+      "id": "unlimited_approvals",
+      "label": "Unlimited approvals detected",
+      "severity": "critical",
+      "why": "Spender can drain wallet at any time",
+    },
+  ],
+  "score": 70,
+  "tier": "RED",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — wallet active on 3 chains' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 0,
+      "id": "evm_multi_chain_active",
+      "label": "Multi-chain active address",
+      "severity": "low",
+      "why": "Active on 3 EVM chains simultaneously",
+    },
+  ],
+  "score": 0,
+  "tier": "GREEN",
+}
+`;
+
+exports[`TigerScore snapshot — 'EVM — watchlist hit' > matches the locked output 1`] = `
+{
+  "confidence": "Low",
+  "drivers": [],
+  "score": 0,
+  "tier": "GREEN",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — benign top-cap (deep liquidity,…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 20,
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "high",
+      "why": "FDV/liquidity ratio=1000 — inflated valuation vs thin liquidity",
+    },
+  ],
+  "score": 20,
+  "tier": "GREEN",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — casefile match + 2 confirmed cr…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 70,
+      "id": "scam_lineage_confirmed",
+      "label": "Confirmed scam lineage",
+      "severity": "critical",
+      "why": "On-chain links to confirmed scam wallets",
+    },
+    {
+      "delta": 70,
+      "id": "confirmed_critical_claims",
+      "label": "Confirmed critical claims on file",
+      "severity": "critical",
+      "why": "Detective-referenced critical evidence found",
+    },
+  ],
+  "score": 100,
+  "tier": "RED",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — freeze + mint authority both ac…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 70,
+      "id": "freeze_authority",
+      "label": "Freeze authority active",
+      "severity": "critical",
+      "why": "Deployer can freeze your tokens",
+    },
+    {
+      "delta": 35,
+      "id": "mint_authority",
+      "label": "Mint authority not revoked",
+      "severity": "critical",
+      "why": "Deployer can inflate supply and dump",
+    },
+  ],
+  "score": 100,
+  "tier": "RED",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — fresh pump-like (young pair, lo…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 30,
+      "id": "pump_fun",
+      "label": "Pump-like launch pattern",
+      "severity": "high",
+      "why": "Address or market URL matches pump.fun launch pattern",
+    },
+    {
+      "delta": 20,
+      "id": "fresh_pool",
+      "label": "Very recent pool",
+      "severity": "high",
+      "why": "Pool created 1d ago — very fresh, high rug risk",
+    },
+    {
+      "delta": 15,
+      "id": "volume_vs_liquidity",
+      "label": "Volume/liquidity spike",
+      "severity": "med",
+      "why": "24h volume is 20.0x liquidity — manipulation signal",
+    },
+    {
+      "delta": 12,
+      "id": "liquidity_very_low",
+      "label": "Very low liquidity pool",
+      "severity": "high",
+      "why": "Liquidity pool = $5,000 — high exit-risk",
+    },
+  ],
+  "score": 62,
+  "tier": "ORANGE",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — full red flag stack (everything…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 35,
+      "id": "unknown_programs",
+      "label": "Unknown programs interacted",
+      "severity": "high",
+      "why": "Unverified programs may be malicious",
+    },
+    {
+      "delta": 70,
+      "id": "freeze_authority",
+      "label": "Freeze authority active",
+      "severity": "critical",
+      "why": "Deployer can freeze your tokens",
+    },
+    {
+      "delta": 35,
+      "id": "mint_authority",
+      "label": "Mint authority not revoked",
+      "severity": "critical",
+      "why": "Deployer can inflate supply and dump",
+    },
+    {
+      "delta": 15,
+      "id": "mutable_metadata",
+      "label": "Mutable metadata",
+      "severity": "med",
+      "why": "Token metadata can be changed post-launch",
+    },
+    {
+      "delta": 70,
+      "id": "scam_lineage_confirmed",
+      "label": "Confirmed scam lineage",
+      "severity": "critical",
+      "why": "On-chain links to confirmed scam wallets",
+    },
+    {
+      "delta": 70,
+      "id": "confirmed_critical_claims",
+      "label": "Confirmed critical claims on file",
+      "severity": "critical",
+      "why": "Detective-referenced critical evidence found",
+    },
+  ],
+  "score": 100,
+  "tier": "RED",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — mutable metadata + freeze autho…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 70,
+      "id": "freeze_authority",
+      "label": "Freeze authority active",
+      "severity": "critical",
+      "why": "Deployer can freeze your tokens",
+    },
+    {
+      "delta": 15,
+      "id": "mutable_metadata",
+      "label": "Mutable metadata",
+      "severity": "med",
+      "why": "Token metadata can be changed post-launch",
+    },
+  ],
+  "score": 85,
+  "tier": "RED",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — scam_lineage REFERENCED (no cas…' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 50,
+      "id": "scam_lineage_referenced",
+      "label": "Scam lineage detected",
+      "severity": "high",
+      "why": "On-chain links to wallets tied to prior scam operations",
+    },
+    {
+      "delta": 10,
+      "id": "token_young_30d",
+      "label": "Token younger than 30 days",
+      "severity": "med",
+      "why": "Pool created 30d ago — young token",
+    },
+  ],
+  "score": 60,
+  "tier": "ORANGE",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — top10 holder concentration 85%' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 15,
+      "id": "holders_concentrated_80",
+      "label": "Top 10 holders control >80% of supply",
+      "severity": "high",
+      "why": "Top 10 holders own 85.0% — extreme concentration risk",
+    },
+  ],
+  "score": 15,
+  "tier": "GREEN",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — unknown programs interaction' > matches the locked output 1`] = `
+{
+  "confidence": "Medium",
+  "drivers": [
+    {
+      "delta": 35,
+      "id": "unknown_programs",
+      "label": "Unknown programs interacted",
+      "severity": "high",
+      "why": "Unverified programs may be malicious",
+    },
+  ],
+  "score": 35,
+  "tier": "ORANGE",
+}
+`;
+
+exports[`TigerScore snapshot — 'SOL — wallet scan (no casefile/market…' > matches the locked output 1`] = `
+{
+  "confidence": "Low",
+  "drivers": [],
+  "score": 0,
+  "tier": "GREEN",
+}
+`;

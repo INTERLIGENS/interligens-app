@@ -41,6 +41,8 @@
     "node_modules",
     "backups",
     "**/*.backup.ts",
-    "**/*.backup.tsx"
+    "**/*.backup.tsx",
+    "packages/metamask-snap",
+    "packages/chrome-guard"
   ]
 }

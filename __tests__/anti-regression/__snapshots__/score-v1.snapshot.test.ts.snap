@@ -1,0 +1,576 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`/api/v1/score snapshot — 'EVM mid-cap — GordonGekko (known-bad)' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "mint": "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41",
+  "phantom_disclaimer": "This token has critical risk signals. Swapping is strongly discouraged.",
+  "phantom_warning_level": "BLOCK",
+  "score": 100,
+  "signals": [
+    {
+      "id": "evm_known_bad",
+      "label": "Known bad EVM address",
+      "severity": "CRITICAL",
+      "value": 100,
+    },
+  ],
+  "sources": [
+    "INTERLIGENS KnownBad",
+  ],
+  "symbol": "TestKnownBad",
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "verdict": "RED",
+}
+`;
+
+exports[`/api/v1/score snapshot — 'EVM mid-cap — random EOA' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "mint": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "verdict": "GREEN",
+}
+`;
+
+exports[`/api/v1/score snapshot — 'EVM top-cap — DAI' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "mint": "0x6b175474e89094c44da98b954eedeac495271d0f",
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "verdict": "GREEN",
+}
+`;
+
+exports[`/api/v1/score snapshot — 'EVM top-cap — LINK' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "mint": "0x514910771af9ca656af840dff83e8264ecf986ca",
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "verdict": "GREEN",
+}
+`;
+
+exports[`/api/v1/score snapshot — 'EVM top-cap — USDC ETH' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "mint": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "verdict": "GREEN",
+}
+`;
+
+exports[`/api/v1/score snapshot — 'EVM top-cap — USDT ETH' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "mint": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "verdict": "GREEN",
+}
+`;
+
+exports[`/api/v1/score snapshot — 'EVM top-cap — wBTC' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "mint": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "verdict": "GREEN",
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL mid-cap A' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 800000,
+  "mint": "MidCapTokenA1111111111111111111111111111111A",
+  "mintAuthority": null,
+  "pairAgeDays": 200,
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "GREEN",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL mid-cap B' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 400000,
+  "mint": "MidCapTokenB1111111111111111111111111111111B",
+  "mintAuthority": null,
+  "pairAgeDays": 90,
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "GREEN",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL mid-cap C' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 1500000,
+  "mint": "MidCapTokenC1111111111111111111111111111111C",
+  "mintAuthority": null,
+  "pairAgeDays": 300,
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 0,
+  "signals": [],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "GREEN",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL top-cap — BONK' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 8000000,
+  "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+  "mintAuthority": null,
+  "pairAgeDays": 600,
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 20,
+  "signals": [
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "GREEN",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL top-cap — JUP' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 4000000,
+  "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+  "mintAuthority": null,
+  "pairAgeDays": 365,
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 20,
+  "signals": [
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "GREEN",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL top-cap — USDC' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 50000000,
+  "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "mintAuthority": null,
+  "pairAgeDays": 1200,
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 20,
+  "signals": [
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "GREEN",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL top-cap — USDT' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 30000000,
+  "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+  "mintAuthority": null,
+  "pairAgeDays": 1500,
+  "phantom_disclaimer": "No major risk signals detected.",
+  "phantom_warning_level": "ALLOW",
+  "score": 20,
+  "signals": [
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "GREEN",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'SOL top-cap — wSOL' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 80000000,
+  "mint": "So11111111111111111111111111111111111111112",
+  "mintAuthority": null,
+  "pairAgeDays": 1800,
+  "phantom_disclaimer": "This token shows elevated risk. Proceed with caution.",
+  "phantom_warning_level": "WARN",
+  "score": 35,
+  "signals": [
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+    {
+      "id": "volume_vs_liquidity",
+      "label": "Volume/liquidity spike",
+      "severity": "MEDIUM",
+      "value": 15,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "ORANGE",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'casefile — BOTIFY (real)' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 2000,
+  "mint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
+  "mintAuthority": null,
+  "pairAgeDays": 1,
+  "phantom_disclaimer": "This token has critical risk signals. Swapping is strongly discouraged.",
+  "phantom_warning_level": "BLOCK",
+  "score": 70,
+  "signals": [
+    {
+      "id": "confirmed_critical_claims",
+      "label": "Confirmed critical claims on file",
+      "severity": "CRITICAL",
+      "value": 70,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+    "INTERLIGENS CaseDB",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "RED",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'casefile — GHOST (synthetic)' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 8000,
+  "mint": "GhostTokenSynthetic11111111111111111111111ab",
+  "mintAuthority": null,
+  "pairAgeDays": 12,
+  "phantom_disclaimer": "This token has critical risk signals. Swapping is strongly discouraged.",
+  "phantom_warning_level": "BLOCK",
+  "score": 72,
+  "signals": [
+    {
+      "id": "pump_fun",
+      "label": "Pump-like launch pattern",
+      "severity": "HIGH",
+      "value": 30,
+    },
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+    {
+      "id": "liquidity_very_low",
+      "label": "Very low liquidity pool",
+      "severity": "HIGH",
+      "value": 12,
+    },
+    {
+      "id": "token_young_30d",
+      "label": "Token younger than 30 days",
+      "severity": "MEDIUM",
+      "value": 10,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "RED",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'casefile — RAVE (synthetic)' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 5000,
+  "mint": "RaveTokenSynthetic111111111111111111111111ab",
+  "mintAuthority": null,
+  "pairAgeDays": 5,
+  "phantom_disclaimer": "This token has critical risk signals. Swapping is strongly discouraged.",
+  "phantom_warning_level": "BLOCK",
+  "score": 77,
+  "signals": [
+    {
+      "id": "pump_fun",
+      "label": "Pump-like launch pattern",
+      "severity": "HIGH",
+      "value": 30,
+    },
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+    {
+      "id": "volume_vs_liquidity",
+      "label": "Volume/liquidity spike",
+      "severity": "MEDIUM",
+      "value": 15,
+    },
+    {
+      "id": "liquidity_very_low",
+      "label": "Very low liquidity pool",
+      "severity": "HIGH",
+      "value": 12,
+    },
+    {
+      "id": "token_young_7d",
+      "label": "Token younger than 7 days",
+      "severity": "HIGH",
+      "value": 15,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "RED",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'casefile — SOLAXY (synthetic)' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 4500,
+  "mint": "SoaxySynthetic1111111111111111111111111111aa",
+  "mintAuthority": null,
+  "pairAgeDays": 3,
+  "phantom_disclaimer": "This token shows elevated risk. Proceed with caution.",
+  "phantom_warning_level": "WARN",
+  "score": 62,
+  "signals": [
+    {
+      "id": "pump_fun",
+      "label": "Pump-like launch pattern",
+      "severity": "HIGH",
+      "value": 30,
+    },
+    {
+      "id": "fresh_pool",
+      "label": "Very recent pool",
+      "severity": "HIGH",
+      "value": 20,
+    },
+    {
+      "id": "volume_vs_liquidity",
+      "label": "Volume/liquidity spike",
+      "severity": "MEDIUM",
+      "value": 15,
+    },
+    {
+      "id": "liquidity_very_low",
+      "label": "Very low liquidity pool",
+      "severity": "HIGH",
+      "value": 12,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "ORANGE",
+  "website": null,
+}
+`;
+
+exports[`/api/v1/score snapshot — 'casefile — VINE (synthetic)' > matches the locked response 1`] = `
+{
+  "api_version": "v1",
+  "cached": false,
+  "freezeAuthority": null,
+  "liquidityUsd": 3000,
+  "mint": "VineSynthetic1111111111111111111111111111aa",
+  "mintAuthority": null,
+  "pairAgeDays": 8,
+  "phantom_disclaimer": "This token has critical risk signals. Swapping is strongly discouraged.",
+  "phantom_warning_level": "BLOCK",
+  "score": 72,
+  "signals": [
+    {
+      "id": "pump_fun",
+      "label": "Pump-like launch pattern",
+      "severity": "HIGH",
+      "value": 30,
+    },
+    {
+      "id": "fdv_liquidity_ratio",
+      "label": "FDV/liquidity imbalance",
+      "severity": "HIGH",
+      "value": 20,
+    },
+    {
+      "id": "volume_vs_liquidity",
+      "label": "Volume/liquidity spike",
+      "severity": "MEDIUM",
+      "value": 15,
+    },
+    {
+      "id": "liquidity_very_low",
+      "label": "Very low liquidity pool",
+      "severity": "HIGH",
+      "value": 12,
+    },
+    {
+      "id": "token_young_30d",
+      "label": "Token younger than 30 days",
+      "severity": "MEDIUM",
+      "value": 10,
+    },
+  ],
+  "sources": [
+    "DexScreener",
+  ],
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "topHolderPct": null,
+  "verdict": "RED",
+  "website": null,
+}
+`;

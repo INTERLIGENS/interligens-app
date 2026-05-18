@@ -4,7 +4,7 @@ const BG = "#0A0C10";
 const SURFACE = "#111318";
 const BORDER = "#1E2028";
 const BRAND = "#F85B05";
-const CYAN = "#FF6B00";
+const ACCENT = "#FF6B00";
 const TEXT = "#F9FAFB";
 const MUTED = "#6B7280";
 const DIMMED = "#3B3F4A";
@@ -74,7 +74,7 @@ export default function BetaAccessLanding() {
         >
           {[
             { label: "PRIVATE BETA", color: BRAND },
-            { label: "NDA REQUIRED", color: CYAN },
+            { label: "NDA REQUIRED", color: ACCENT },
             { label: "INVITE ONLY", color: "#FF3B5C" },
           ].map((b) => (
             <span

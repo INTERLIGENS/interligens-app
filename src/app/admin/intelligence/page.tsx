@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-
-type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit";
+type Tab = "entities" | "sources" | "ingestion" | "cases" | "audit" | "contradictions" | "serial_patterns" | "corrections";
 
 interface DashboardStats {
   entities: { total: number; sanction: number; high: number };
@@ -108,12 +107,12 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${active ? "bg-orange-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${active ? "bg-orange-500 text-black" : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"}`}
     >
       <Icon size={14} />
       {label}
       {count !== undefined && (
-        <span className={`inline-block px-2 py-0.5 rounded text-xs ${active ? "bg-black/20" : "bg-gray-700"}`}>
+        <span className={`inline-block px-2 py-0.5 rounded text-xs ${active ? "bg-black/20" : "bg-[#222]"}`}>
           {count}
         </span>
       )}
@@ -133,7 +132,7 @@ function Stat({
   color?: string;
 }) {
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 flex-1 min-w-[140px]">
+    <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 flex-1 min-w-[140px]">
       <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
         {label.toUpperCase()}
       </div>
@@ -164,7 +163,7 @@ function Pagination({
       <button
         onClick={() => onPage(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
       >
         ← Prev
       </button>
@@ -174,7 +173,7 @@ function Pagination({
       <button
         onClick={() => onPage(Math.min(totalPages, page + 1))}
         disabled={page >= totalPages}
-        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1a1a1a] text-gray-300 hover:bg-gray-700 disabled:opacity-50 transition"
       >
         Next →
       </button>
@@ -229,7 +228,7 @@ function EntitiesTab() {
           }}
           placeholder="Search value…"
           style={{
-            background: "#1e293b",
+            background: "#1a1a1a",
             border: "1px solid #334155",
             borderRadius: 6,
             padding: "6px 12px",
@@ -245,7 +244,7 @@ function EntitiesTab() {
             setPage(1);
           }}
           style={{
-            background: "#1e293b",
+            background: "#1a1a1a",
             border: "1px solid #334155",
             borderRadius: 6,
             padding: "6px 10px",
@@ -266,7 +265,7 @@ function EntitiesTab() {
             setPage(1);
           }}
           style={{
-            background: "#1e293b",
+            background: "#1a1a1a",
             border: "1px solid #334155",
             borderRadius: 6,
             padding: "6px 10px",
@@ -287,13 +286,13 @@ function EntitiesTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["TYPE", "VALUE", "CHAIN", "RISK", "SOURCES", "CASES", "LAST SEEN", "SAFETY"].map(
                 (h) => (
                   <th
@@ -330,12 +329,12 @@ function EntitiesTab() {
               data.map((e: any) => (
                 <tr
                   key={e.id}
-                  style={{ borderBottom: "1px solid #0f172a" }}
+                  style={{ borderBottom: "1px solid #111111" }}
                 >
                   <td style={{ padding: "10px 12px" }}>
                     <span
                       style={{
-                        background: "#1e293b",
+                        background: "#1a1a1a",
                         borderRadius: 4,
                         padding: "2px 6px",
                         fontSize: 10,
@@ -377,7 +376,7 @@ function EntitiesTab() {
                           key={o.id}
                           title={`${o.sourceSlug} — ${o.riskClass}`}
                           style={{
-                            background: o.sourceTier === 1 ? "#7c3aed22" : "#1e293b",
+                            background: o.sourceTier === 1 ? "#7c3aed22" : "#1a1a1a",
                             border: `1px solid ${o.sourceTier === 1 ? "#7c3aed44" : "#334155"}`,
                             borderRadius: 4,
                             padding: "1px 5px",
@@ -409,7 +408,7 @@ function EntitiesTab() {
                             ? "#22c55e22"
                             : e.displaySafety === "ANALYST_REVIEWED"
                             ? "#eab30822"
-                            : "#1e293b",
+                            : "#1a1a1a",
                         color:
                           e.displaySafety === "RETAIL_SAFE"
                             ? "#4ade80"
@@ -452,7 +451,7 @@ function SourcesTab({
           key={src.slug}
           style={{
             background: "#111827",
-            border: "1px solid #1e293b",
+            border: "1px solid #1a1a1a",
             borderRadius: 12,
             padding: 20,
             display: "flex",
@@ -472,7 +471,7 @@ function SourcesTab({
             </div>
             <span
               style={{
-                background: src.tier === 1 ? "#7c3aed22" : "#1e293b",
+                background: src.tier === 1 ? "#7c3aed22" : "#1a1a1a",
                 border: `1px solid ${src.tier === 1 ? "#7c3aed44" : "#334155"}`,
                 borderRadius: 6,
                 padding: "3px 8px",
@@ -502,7 +501,7 @@ function SourcesTab({
           {src.lastBatch && (
             <div
               style={{
-                background: "#0f172a",
+                background: "#111111",
                 borderRadius: 8,
                 padding: "10px 12px",
                 fontSize: 11,
@@ -594,13 +593,13 @@ function IngestionTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["", "SOURCE", "STATUS", "STARTED", "COMPLETED", "FETCHED", "NEW", "UPDATED", "REMOVED", "TRIGGERED BY"].map(
                 (h) => (
                   <th
@@ -635,7 +634,7 @@ function IngestionTab() {
               </tr>
             ) : (
               data.map((b: any) => (
-                <tr key={b.id} style={{ borderBottom: "1px solid #0f172a" }}>
+                <tr key={b.id} style={{ borderBottom: "1px solid #111111" }}>
                   <td style={{ padding: "8px 10px" }}>
                     <StatusIcon status={b.status} />
                   </td>
@@ -716,13 +715,13 @@ function CasesTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["TITLE", "TYPE", "STATUS", "SOURCE", "ENTITIES", "EVIDENCE", "REPORTED", "REF"].map(
                 (h) => (
                   <th
@@ -757,7 +756,7 @@ function CasesTab() {
               </tr>
             ) : (
               data.map((c: any) => (
-                <tr key={c.id} style={{ borderBottom: "1px solid #0f172a" }}>
+                <tr key={c.id} style={{ borderBottom: "1px solid #111111" }}>
                   <td style={{ padding: "10px 12px", fontWeight: 700, color: "#e2e8f0", maxWidth: 200 }}>
                     {truncate(c.title, 40)}
                   </td>
@@ -851,13 +850,13 @@ function AuditTab() {
         style={{
           background: "#111827",
           borderRadius: 12,
-          border: "1px solid #1e293b",
+          border: "1px solid #1a1a1a",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1e293b", background: "#0f172a" }}>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
               {["TIME", "ACTOR", "ACTION", "TARGET", "DETAIL"].map((h) => (
                 <th
                   key={h}
@@ -890,7 +889,7 @@ function AuditTab() {
               </tr>
             ) : (
               data.map((a: any) => (
-                <tr key={a.id} style={{ borderBottom: "1px solid #0f172a" }}>
+                <tr key={a.id} style={{ borderBottom: "1px solid #111111" }}>
                   <td style={{ padding: "8px 12px", color: "#64748b", fontSize: 11, whiteSpace: "nowrap" }}>
                     {fmt(a.createdAt)}
                   </td>
@@ -904,7 +903,7 @@ function AuditTab() {
                           ? "#22c55e22"
                           : a.action.includes("completed")
                           ? "#3b82f622"
-                          : "#1e293b",
+                          : "#1a1a1a",
                         color: a.action.includes("created")
                           ? "#4ade80"
                           : a.action.includes("completed")
@@ -936,6 +935,464 @@ function AuditTab() {
   );
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// CONTRADICTIONS TAB
+// ═════════════════════════════════════════════════════════════════════════════
+
+const SEVERITY_COLOR: Record<string, string> = {
+  CRITICAL: "#ef4444",
+  HIGH: "#f97316",
+  MEDIUM: "#eab308",
+};
+
+const CONTRADICTION_STATUS_COLOR: Record<string, string> = {
+  new: "#f97316",
+  reviewed: "#22c55e",
+  dismissed: "#6b7280",
+};
+
+function ContradictionsTab() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterHandle, setFilterHandle] = useState("");
+  const [filterSeverity, setFilterSeverity] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filterHandle) params.set("handle", filterHandle);
+    if (filterSeverity) params.set("severity", filterSeverity);
+    if (filterStatus) params.set("status", filterStatus);
+    const res = await fetch(`/api/admin/intelligence/contradictions?${params}`, {
+      credentials: "include",
+    });
+    const json = await res.json();
+    setData(Array.isArray(json) ? json : []);
+    setLoading(false);
+  }, [filterHandle, filterSeverity, filterStatus]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateStatus = async (id: string, status: "reviewed" | "dismissed") => {
+    await fetch("/api/admin/intelligence/contradictions", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    load();
+  };
+
+  const fmtDelay = (mins: number) => {
+    if (mins < 60) return `${mins}m`;
+    if (mins < 1440) return `${(mins / 60).toFixed(1)}h`;
+    return `${(mins / 1440).toFixed(1)}d`;
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <input
+          value={filterHandle}
+          onChange={(e) => setFilterHandle(e.target.value)}
+          placeholder="Filter by handle…"
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 12px", color: "#f1f5f9", fontSize: 12, width: 180 }}
+        />
+        <select
+          value={filterSeverity}
+          onChange={(e) => setFilterSeverity(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "CRITICAL", "HIGH", "MEDIUM"].map((s) => (
+            <option key={s} value={s}>{s || "All severities"}</option>
+          ))}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "new", "reviewed", "dismissed"].map((s) => (
+            <option key={s} value={s}>{s || "All statuses"}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1a1a1a", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
+              {["HANDLE", "TOKEN", "TWEET DATE", "SELL DATE", "DELAY", "SEVERITY", "CONF", "STATUS", "ACTIONS"].map((h) => (
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 10, letterSpacing: "0.05em" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>No contradiction alerts found</td></tr>
+            ) : (
+              data.map((a: any) => (
+                <tr key={a.id} style={{ borderBottom: "1px solid #111111" }}>
+                  <td style={{ padding: "10px 12px", color: "#f97316", fontFamily: "monospace", fontSize: 11 }}>@{a.kolHandle}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#e2e8f0" }}>
+                    {a.tokenSymbol ?? truncate(a.tokenMint, 12)}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>
+                    {a.tweetUrl ? (
+                      <a href={a.tweetUrl} target="_blank" rel="noopener" style={{ color: "#818cf8" }}>
+                        {fmt(a.tweetAt)} <ExternalLink size={10} style={{ display: "inline" }} />
+                      </a>
+                    ) : fmt(a.tweetAt)}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>{fmt(a.sellAt)}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#f1f5f9" }}>{fmtDelay(a.delayMinutes)}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: SEVERITY_COLOR[a.severity] ?? "#6b7280", fontWeight: 800, fontSize: 11 }}>{a.severity}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#94a3b8" }}>{a.confidenceScore}%</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: CONTRADICTION_STATUS_COLOR[a.status] ?? "#6b7280", fontWeight: 700, fontSize: 10 }}>{a.status}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    {a.status === "new" && (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          onClick={() => updateStatus(a.id, "reviewed")}
+                          style={{ background: "#22c55e22", border: "1px solid #22c55e44", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: "#4ade80", cursor: "pointer" }}
+                        >
+                          REVIEWED
+                        </button>
+                        <button
+                          onClick={() => updateStatus(a.id, "dismissed")}
+                          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: "#94a3b8", cursor: "pointer" }}
+                        >
+                          DISMISS
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SERIAL PATTERNS TAB
+// ═════════════════════════════════════════════════════════════════════════════
+
+const PATTERN_COLOR: Record<string, string> = {
+  pump_dump: "#ef4444",
+  coordinated_shill: "#f97316",
+  exit_liquidity: "#eab308",
+  wallet_cluster: "#8b5cf6",
+};
+
+const PATTERN_LABEL: Record<string, string> = {
+  pump_dump: "OBSERVED PATTERN",
+  coordinated_shill: "OBSERVED PATTERN",
+  exit_liquidity: "OBSERVED PATTERN",
+  wallet_cluster: "OBSERVED PATTERN",
+};
+
+function SerialPatternsTab() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterChain, setFilterChain] = useState("");
+  const [filterType, setFilterType] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filterChain) params.set("chain", filterChain);
+    if (filterType) params.set("patternType", filterType);
+    const res = await fetch(`/api/admin/intelligence/serial-patterns?${params}`, {
+      credentials: "include",
+    });
+    const json = await res.json();
+    setData(Array.isArray(json) ? json : []);
+    setLoading(false);
+  }, [filterChain, filterType]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <select
+          value={filterChain}
+          onChange={(e) => setFilterChain(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "solana", "ethereum", "bsc"].map((c) => (
+            <option key={c} value={c}>{c || "All chains"}</option>
+          ))}
+        </select>
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#94a3b8", fontSize: 12 }}
+        >
+          {["", "pump_dump", "coordinated_shill", "exit_liquidity", "wallet_cluster"].map((t) => (
+            <option key={t} value={t}>{t || "All types"}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1a1a1a", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
+              {["DEPLOYER", "CHAIN", "TOKENS", "RUGS", "TYPE", "BADGE", "CONF", "LINKED KOLs", "CASES", "LAST SEEN"].map((h) => (
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 10, letterSpacing: "0.05em" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>No serial patterns found</td></tr>
+            ) : (
+              data.map((p: any) => (
+                <tr key={p.id} style={{ borderBottom: "1px solid #111111" }}>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 10, color: "#e2e8f0" }}>
+                    {truncate(p.deployerAddress, 16)}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>{p.chain}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontWeight: 700, color: "#f1f5f9" }}>{p.tokenCount}</td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", color: p.rugCount > 0 ? "#ef4444" : "#64748b" }}>{p.rugCount}</td>
+                  <td style={{ padding: "10px 12px", color: PATTERN_COLOR[p.patternType] ?? "#94a3b8", fontSize: 10, fontWeight: 700 }}>
+                    {p.patternType.replace(/_/g, " ").toUpperCase()}
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ background: "#f9731622", border: "1px solid #f9731644", borderRadius: 4, padding: "2px 6px", fontSize: 9, fontWeight: 700, color: "#fb923c" }}>
+                      {PATTERN_LABEL[p.patternType] ?? "OBSERVED PATTERN"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#94a3b8" }}>{p.confidence}%</td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>
+                    {Array.isArray(p.linkedKolHandles) ? p.linkedKolHandles.length : 0}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 11 }}>
+                    {Array.isArray(p.linkedCaseIds) ? p.linkedCaseIds.length : 0}
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#64748b", fontSize: 11 }}>{fmt(p.lastSeenAt)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CORRECTIONS TAB
+// ═════════════════════════════════════════════════════════════════════════════
+
+const RETRACTION_STATUS_COLOR: Record<string, string> = {
+  pending: "#eab308",
+  applied: "#22c55e",
+  rejected: "#ef4444",
+};
+
+const RETRACTION_SEVERITY_COLOR: Record<string, string> = {
+  minor: "#64748b",
+  major: "#f97316",
+  critical: "#ef4444",
+};
+
+const INITIAL_FORM = {
+  entityType: "kol_profile",
+  entityId: "",
+  kolHandle: "",
+  reason: "",
+  previousValue: "",
+  correctedValue: "",
+  severity: "minor",
+  initiatedBy: "admin",
+};
+
+function CorrectionsTab() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/intelligence/retractions", { credentials: "include" });
+    const json = await res.json();
+    setData(Array.isArray(json) ? json : []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/admin/intelligence/retraction", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          kolHandle: form.kolHandle || null,
+          previousValue: form.previousValue || null,
+          correctedValue: form.correctedValue || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json();
+        setSubmitError(j.details?.join(", ") ?? j.error ?? "Error");
+      } else {
+        setShowModal(false);
+        setForm(INITIAL_FORM);
+        load();
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    await fetch("/api/admin/intelligence/retractions", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action: "reject" }),
+    });
+    load();
+  };
+
+  const inputStyle = {
+    background: "#1a1a1a",
+    border: "1px solid #334155",
+    borderRadius: 6,
+    padding: "6px 10px",
+    color: "#f1f5f9",
+    fontSize: 12,
+    width: "100%",
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+        <button
+          onClick={() => setShowModal(true)}
+          style={{ background: "#FF6B00", color: "#000", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+        >
+          + NEW CORRECTION
+        </button>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#111", border: "1px solid #334155", borderRadius: 12, padding: 24, width: 480, maxWidth: "90vw" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 16 }}>New Correction</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <select value={form.entityType} onChange={(e) => setForm({ ...form, entityType: e.target.value })} style={inputStyle}>
+                {["kol_profile", "casefile", "score", "proceeds"].map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input placeholder="Entity ID (handle / txHash / caseId)" value={form.entityId} onChange={(e) => setForm({ ...form, entityId: e.target.value })} style={inputStyle} />
+              <input placeholder="KOL handle (optional)" value={form.kolHandle} onChange={(e) => setForm({ ...form, kolHandle: e.target.value })} style={inputStyle} />
+              <input placeholder="Reason (required, min 5 chars)" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} style={inputStyle} />
+              <input placeholder="Previous value (optional)" value={form.previousValue} onChange={(e) => setForm({ ...form, previousValue: e.target.value })} style={inputStyle} />
+              <input placeholder="Corrected value (optional)" value={form.correctedValue} onChange={(e) => setForm({ ...form, correctedValue: e.target.value })} style={inputStyle} />
+              <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} style={inputStyle}>
+                {["minor", "major", "critical"].map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              {submitError && <div style={{ color: "#ef4444", fontSize: 11 }}>{submitError}</div>}
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                <button onClick={() => setShowModal(false)} style={{ background: "#1a1a1a", color: "#94a3b8", border: "1px solid #334155", borderRadius: 6, padding: "6px 14px", fontSize: 11, cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={handleSubmit} disabled={submitting} style={{ background: "#FF6B00", color: "#000", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: submitting ? "wait" : "pointer" }}>
+                  {submitting ? "Applying…" : "Apply Correction"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1a1a1a", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
+              {["DATE", "ENTITY", "KOL", "REASON", "PREV", "CORRECTED", "SEVERITY", "BY", "STATUS", ""].map((h) => (
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#64748b", fontWeight: 700, fontSize: 10, letterSpacing: "0.05em" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#64748b" }}>No corrections yet</td></tr>
+            ) : (
+              data.map((r: any) => (
+                <tr key={r.id} style={{ borderBottom: "1px solid #111111" }}>
+                  <td style={{ padding: "10px 12px", color: "#64748b", fontSize: 11, whiteSpace: "nowrap" }}>{fmt(r.createdAt)}</td>
+                  <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 10 }}>
+                    <span style={{ background: "#1a1a1a", borderRadius: 4, padding: "2px 5px" }}>{r.entityType}</span>
+                    <span style={{ display: "block", color: "#64748b", fontFamily: "monospace", fontSize: 9, marginTop: 1 }}>{truncate(r.entityId, 16)}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#f97316", fontFamily: "monospace", fontSize: 11 }}>{r.kolHandle ? `@${r.kolHandle}` : "—"}</td>
+                  <td style={{ padding: "10px 12px", color: "#e2e8f0", fontSize: 11, maxWidth: 200 }}>{truncate(r.reason, 40)}</td>
+                  <td style={{ padding: "10px 12px", color: "#ef444499", fontFamily: "monospace", fontSize: 10 }}>{r.previousValue ?? "—"}</td>
+                  <td style={{ padding: "10px 12px", color: "#22c55e99", fontFamily: "monospace", fontSize: 10 }}>{r.correctedValue ?? "—"}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: RETRACTION_SEVERITY_COLOR[r.severity] ?? "#64748b", fontWeight: 700, fontSize: 10 }}>{r.severity}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", color: "#64748b", fontSize: 10 }}>{r.initiatedBy}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span style={{ color: RETRACTION_STATUS_COLOR[r.status] ?? "#64748b", fontWeight: 700, fontSize: 10 }}>{r.status}</span>
+                    {r.status === "applied" && r.appliedAt && (
+                      <span style={{ display: "block", color: "#64748b", fontSize: 9 }}>{fmt(r.appliedAt)}</span>
+                    )}
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    {r.status === "pending" && (
+                      <button
+                        onClick={() => handleReject(r.id)}
+                        style={{ background: "#ef444422", border: "1px solid #ef444444", borderRadius: 4, padding: "2px 8px", fontSize: 9, fontWeight: 700, color: "#f87171", cursor: "pointer" }}
+                      >
+                        REJECT
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════════════════
@@ -974,7 +1431,7 @@ export default function IntelligencePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div>
@@ -1000,7 +1457,7 @@ export default function IntelligencePage() {
 
       {/* Ingest result banner */}
       {ingestResult && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-3 text-sm flex justify-between items-center">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-3 text-sm flex justify-between items-center">
           <span>
             <strong>{ingestResult.sourceSlug}</strong> ingest{" "}
             <span className="font-semibold text-orange-400">
@@ -1055,6 +1512,24 @@ export default function IntelligencePage() {
           icon={ScrollText}
           onClick={() => setTab("audit")}
         />
+        <TabBtn
+          active={tab === "contradictions"}
+          label="Contradiction Alerts"
+          icon={AlertTriangle}
+          onClick={() => setTab("contradictions")}
+        />
+        <TabBtn
+          active={tab === "serial_patterns"}
+          label="Serial Patterns"
+          icon={AlertTriangle}
+          onClick={() => setTab("serial_patterns")}
+        />
+        <TabBtn
+          active={tab === "corrections"}
+          label="Corrections"
+          icon={CheckCircle}
+          onClick={() => setTab("corrections")}
+        />
       </div>
 
       {/* Tab content */}
@@ -1069,6 +1544,9 @@ export default function IntelligencePage() {
       {tab === "ingestion" && <IngestionTab />}
       {tab === "cases" && <CasesTab />}
       {tab === "audit" && <AuditTab />}
+      {tab === "contradictions" && <ContradictionsTab />}
+        {tab === "serial_patterns" && <SerialPatternsTab />}
+      {tab === "corrections" && <CorrectionsTab />}
       </div>
     </div>
   );

@@ -8,7 +8,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeProceedsForHandle } from "@/lib/kol/proceeds";
+import { emitProceedsRecomputed } from "@/lib/events/producer";
 import { generateCasePdf } from "@/lib/pdf/engine";
+import { scanWalletForCexDeposits } from "@/lib/kol/cexTracker";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -62,6 +64,7 @@ export async function GET(req: NextRequest) {
       const r = await computeProceedsForHandle(handle);
       totalProceedsUsd = r.totalProceedsUsd;
       if (!r.success && r.error) scanError = r.error;
+      emitProceedsRecomputed(handle, totalProceedsUsd);
     } catch (e) {
       scanError = e instanceof Error ? e.message : String(e);
     }
@@ -83,6 +86,20 @@ export async function GET(req: NextRequest) {
       } else {
         row.pdfError = pdf.error;
       }
+    }
+
+    // CEX deposit tracking — scan each active SOL/ETH wallet for deposits
+    try {
+      const wallets = await prisma.kolWallet.findMany({
+        where: { kolHandle: handle, status: "active", chain: { in: ["SOL", "ETH"] } },
+        select: { address: true, chain: true },
+      });
+      for (const w of wallets) {
+        await scanWalletForCexDeposits(w.address, w.chain, handle);
+        await new Promise((res) => setTimeout(res, 120));
+      }
+    } catch (err) {
+      console.error(`[helius-scan] cexTracker failed for ${handle}`, err);
     }
 
     await prisma.kolProfile.update({

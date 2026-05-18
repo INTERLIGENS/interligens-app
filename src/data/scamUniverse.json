@@ -40,9 +40,10 @@
       "risk": "high",
       "confidence": "strong_linkage",
       "rugCount": 2,
-      "totalScammedUsd": 485627,
+      "totalScammedUsd": 40627,
       "tier": "strong",
-      "notes": "KOL BOTIFY 1.665% supply. $SWIF insiders $445K. Cluster Arkham 10 wallets. Actif sur pump.fun."
+      "notes": "KOL BOTIFY 1.665% supply. Cluster Arkham 10 wallets. Actif sur pump.fun.",
+      "unverifiedFinding": "$SWIF insiders $445K — UNVERIFIED, pending on-chain confirmation. Retiré du casefile SWIF le 2026-05-15: aucun TX hash Solana, contradiction token $SWIF vs $TRUMP non tranchée, methodologie et date d'extraction inconnues. Wallets concernes en KolWallet (statut unverified). Cf. MIGRATION_RETAILVISION.md section 'Finding $445K — retire'."
     },
     {
       "id": "planted",

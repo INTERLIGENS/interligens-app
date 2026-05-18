@@ -15,11 +15,11 @@ export interface ScanLabelResult {
 }
 
 const CATEGORY_BADGE: Record<string, { color: string; text: string }> = {
-  scammer: { color: '#ef4444', text: '🚨 KNOWN SCAMMER' },
-  team:    { color: '#f97316', text: '⚠ TEAM WALLET' },
-  kol:     { color: '#f59e0b', text: '📣 PAID PROMOTER' },
-  cex:     { color: '#3b82f6', text: '🏦 CEX WALLET' },
-  mixer:   { color: '#8b5cf6', text: '🌀 MIXER' },
+  scammer: { color: '#ef4444', text: 'DOCUMENTED CRITICAL RISK ACTOR' },
+  team:    { color: '#f97316', text: 'TEAM WALLET' },
+  kol:     { color: '#f59e0b', text: 'PAID PROMOTER' },
+  cex:     { color: '#3b82f6', text: 'CEX WALLET' },
+  mixer:   { color: '#8b5cf6', text: 'MIXER' },
   victim:  { color: '#6b7280', text: 'VICTIM WALLET' },
   other:   { color: '#6b7280', text: 'KNOWN WALLET' },
 }

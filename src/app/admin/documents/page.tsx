@@ -1,8 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type DocCategory = "LEGAL" | "DATA_ROOM" | "OPERATIONAL" | "EDITORIAL";
+type UploadPhase = "idle" | "presigning" | "uploading" | "saving" | "done" | "error";
+
+type DbDoc = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  version: string | null;
+  r2Key: string | null;
+  r2Url: string | null;
+  status: string;
+  createdAt: string;
+};
 
 type DocCard = {
   title: string;
@@ -123,22 +136,84 @@ export default function AdminDocumentsPage() {
   const [uploadCategory, setUploadCategory] = useState<DocCategory>("LEGAL");
   const [uploadVersion, setUploadVersion] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dbDocs, setDbDocs] = useState<DbDoc[]>([]);
+  const [docsLoading, setDocsLoading] = useState(true);
 
-  function handleUploadSubmit(e: React.FormEvent) {
+  const adminToken =
+    typeof window !== "undefined"
+      ? (document.cookie.match(/admin_token=([^;]+)/)?.[1] ?? "")
+      : "";
+
+  useEffect(() => {
+    fetch("/api/admin/documents", {
+      headers: { "x-admin-token": adminToken },
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.documents) setDbDocs(d.documents); })
+      .catch(() => {})
+      .finally(() => setDocsLoading(false));
+  }, [adminToken]);
+
+  async function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Persist wiring to /api/admin/documents/presign + PUT is scheduled for
-    // a follow-up session. For now, log and reset so the form is functional.
-    console.log("[admin/documents] upload submit (not yet wired)", {
-      title: uploadName,
-      description: uploadDesc,
-      category: uploadCategory,
-      version: uploadVersion,
-      fileName: uploadFile?.name,
-      fileSize: uploadFile?.size,
-    });
-    alert(
-      "Metadata captured — R2 upload pipeline will be wired in a later session.",
-    );
+    if (!uploadFile) { setUploadError("Sélectionnez un fichier."); return; }
+
+    setUploadPhase("presigning");
+    setUploadError(null);
+
+    try {
+      // Step 1 — get presigned PUT URL from R2
+      const presignRes = await fetch(
+        `/api/admin/documents/presign?filename=${encodeURIComponent(uploadFile.name)}&mimeType=${encodeURIComponent(uploadFile.type || "application/pdf")}`,
+        { headers: { "x-admin-token": adminToken } },
+      );
+      if (!presignRes.ok) throw new Error(`Presign ${presignRes.status}`);
+      const { uploadUrl, r2Key, publicUrl } = await presignRes.json();
+
+      // Step 2 — PUT file directly to Cloudflare R2
+      setUploadPhase("uploading");
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        body: uploadFile,
+        headers: { "Content-Type": uploadFile.type || "application/pdf" },
+      });
+      if (!putRes.ok) throw new Error(`R2 PUT ${putRes.status}`);
+
+      // Step 3 — persist metadata row in DB
+      setUploadPhase("saving");
+      const saveRes = await fetch("/api/admin/documents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": adminToken,
+        },
+        body: JSON.stringify({
+          title: uploadName.trim(),
+          description: uploadDesc.trim() || null,
+          category: uploadCategory,
+          version: uploadVersion.trim() || null,
+          r2Key,
+          r2Url: publicUrl,
+          status: "uploaded",
+        }),
+      });
+      if (!saveRes.ok) throw new Error(`Save ${saveRes.status}`);
+      const { document: newDoc } = await saveRes.json();
+
+      setDbDocs((prev) => [newDoc, ...prev]);
+      setUploadPhase("done");
+      setUploadName("");
+      setUploadDesc("");
+      setUploadVersion("");
+      setUploadFile(null);
+      setTimeout(() => setUploadPhase("idle"), 3000);
+    } catch (err: unknown) {
+      setUploadPhase("error");
+      setUploadError(err instanceof Error ? err.message : "Upload échoué");
+    }
   }
 
   return (
@@ -169,114 +244,130 @@ export default function AdminDocumentsPage() {
           NDA · Terms · Data Room · Opérationnel
         </div>
 
-        {/* SECTION 1 — Hardcoded document cards */}
+        {/* SECTION 1 — Live documents from DB (fallback: hardcoded placeholders) */}
         <div style={SECTION_HEADER}>1 · Bibliothèque</div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 14,
-          }}
-        >
-          {DOCS.map((doc) => (
-            <div
-              key={doc.title}
-              className="interligens-doc-card"
-              style={CARD}
-            >
+        {docsLoading ? (
+          <div style={{ fontSize: 12, color: DIM, fontFamily: "monospace" }}>Chargement…</div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 14,
+            }}
+          >
+            {(dbDocs.length > 0
+              ? dbDocs.map((doc) => ({
+                  title: doc.title,
+                  description: doc.description ?? "",
+                  category: (doc.category in CATEGORY_LABEL
+                    ? doc.category
+                    : "OPERATIONAL") as DocCategory,
+                  version: doc.version ?? "",
+                  url: doc.r2Url ?? undefined,
+                  status: doc.status as string,
+                }))
+              : DOCS.map((doc) => ({ ...doc, status: "à uploader" as string }))
+            ).map((doc, i) => (
               <div
-                style={{
-                  display: "inline-block",
-                  fontSize: 9,
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: CATEGORY_COLOR[doc.category],
-                  padding: "3px 8px",
-                  border: "1px solid " + CATEGORY_COLOR[doc.category] + "55",
-                  borderRadius: 3,
-                  marginBottom: 10,
-                  fontFamily: "monospace",
-                }}
+                key={i}
+                className="interligens-doc-card"
+                style={CARD}
               >
-                {CATEGORY_LABEL[doc.category]}
-              </div>
-              <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: TEXT,
-                  lineHeight: 1.35,
-                  marginBottom: 6,
-                }}
-              >
-                {doc.title}
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "rgba(255,255,255,0.55)",
-                  lineHeight: 1.55,
-                  marginBottom: 12,
-                  minHeight: 36,
-                }}
-              >
-                {doc.description}
-              </div>
-              <div
-                style={{
-                  fontSize: 10,
-                  color: MUTED,
-                  fontFamily: "monospace",
-                  marginBottom: 12,
-                }}
-              >
-                {doc.version} · status : à uploader
-              </div>
-              {doc.url ? (
-                <a
-                  href={doc.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <div
                   style={{
                     display: "inline-block",
-                    padding: "8px 14px",
-                    background: ACCENT,
-                    color: BG,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: 900,
                     letterSpacing: "0.12em",
-                    fontFamily: "monospace",
                     textTransform: "uppercase",
-                    borderRadius: 4,
-                    textDecoration: "none",
+                    color: CATEGORY_COLOR[doc.category],
+                    padding: "3px 8px",
+                    border: "1px solid " + CATEGORY_COLOR[doc.category] + "55",
+                    borderRadius: 3,
+                    marginBottom: 10,
+                    fontFamily: "monospace",
                   }}
                 >
-                  Télécharger PDF
-                </a>
-              ) : (
-                <button
-                  disabled
+                  {CATEGORY_LABEL[doc.category]}
+                </div>
+                <div
                   style={{
-                    padding: "8px 14px",
-                    background: "transparent",
-                    color: DIM,
-                    border: "1px solid " + CARD_BORDER,
-                    fontSize: 10,
-                    fontWeight: 900,
-                    letterSpacing: "0.12em",
-                    fontFamily: "monospace",
-                    textTransform: "uppercase",
-                    borderRadius: 4,
-                    cursor: "not-allowed",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: TEXT,
+                    lineHeight: 1.35,
+                    marginBottom: 6,
                   }}
                 >
-                  À uploader
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+                  {doc.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.55)",
+                    lineHeight: 1.55,
+                    marginBottom: 12,
+                    minHeight: 36,
+                  }}
+                >
+                  {doc.description}
+                </div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: MUTED,
+                    fontFamily: "monospace",
+                    marginBottom: 12,
+                  }}
+                >
+                  {doc.version} · {doc.status}
+                </div>
+                {doc.url ? (
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-block",
+                      padding: "8px 14px",
+                      background: ACCENT,
+                      color: BG,
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: "0.12em",
+                      fontFamily: "monospace",
+                      textTransform: "uppercase",
+                      borderRadius: 4,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Télécharger PDF
+                  </a>
+                ) : (
+                  <button
+                    disabled
+                    style={{
+                      padding: "8px 14px",
+                      background: "transparent",
+                      color: DIM,
+                      border: "1px solid " + CARD_BORDER,
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: "0.12em",
+                      fontFamily: "monospace",
+                      textTransform: "uppercase",
+                      borderRadius: 4,
+                      cursor: "not-allowed",
+                    }}
+                  >
+                    À uploader
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <style>{`
           .interligens-doc-card {
@@ -466,9 +557,10 @@ export default function AdminDocumentsPage() {
           </div>
           <button
             type="submit"
+            disabled={uploadPhase !== "idle" && uploadPhase !== "error"}
             style={{
               padding: "12px 22px",
-              background: ACCENT,
+              background: uploadPhase === "done" ? "#22c55e" : ACCENT,
               color: BG,
               border: "none",
               fontSize: 11,
@@ -476,12 +568,22 @@ export default function AdminDocumentsPage() {
               letterSpacing: "0.15em",
               fontFamily: "monospace",
               textTransform: "uppercase",
-              cursor: "pointer",
+              cursor: uploadPhase !== "idle" && uploadPhase !== "error" ? "not-allowed" : "pointer",
               borderRadius: 6,
+              opacity: uploadPhase !== "idle" && uploadPhase !== "error" && uploadPhase !== "done" ? 0.7 : 1,
             }}
           >
-            Uploader
+            {uploadPhase === "presigning" ? "Presigning…"
+              : uploadPhase === "uploading" ? "Upload R2…"
+              : uploadPhase === "saving" ? "Enregistrement…"
+              : uploadPhase === "done" ? "Enregistré"
+              : "Uploader"}
           </button>
+          {uploadError && (
+            <div style={{ fontSize: 11, color: "#ef4444", marginTop: 8, fontFamily: "monospace" }}>
+              {uploadError}
+            </div>
+          )}
           <div
             style={{
               fontSize: 11,
@@ -490,8 +592,7 @@ export default function AdminDocumentsPage() {
               marginTop: 10,
             }}
           >
-            Fichiers stockés sur Cloudflare R2. Pipeline d'upload à brancher
-            dans une session dédiée.
+            Fichiers stockés sur Cloudflare R2 · URL publique enregistrée en base.
           </div>
         </form>
 

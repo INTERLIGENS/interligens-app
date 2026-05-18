@@ -105,6 +105,7 @@ CONTENT RULES:
 - Answer ONLY from the scan data above. No outside knowledge.
 - Mirror verdict exactly. Never escalate or downgrade.
 - Respond in ${lang} only.
+- This is signal-based risk analysis, not a legal finding or financial advice. Never imply legal guilt or investment recommendation.
 
 RAW DATA RULE:
 Never dump raw scan data directly. No wallet addresses. No backtick formatting.
@@ -142,8 +143,6 @@ export async function POST(req: NextRequest) {
     console.error("[mobile/ask] JSON parse error:", e);
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-
-  console.log("[mobile/ask] body received:", JSON.stringify(body).slice(0, 500));
 
   const question = body.question?.trim();
   const address = body.address?.trim();

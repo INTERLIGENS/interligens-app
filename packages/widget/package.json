@@ -1,0 +1,38 @@
+{
+  "name": "@interligens/widget",
+  "version": "0.1.0",
+  "description": "Embeddable TigerScore widget for INTERLIGENS partners",
+  "license": "UNLICENSED",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./embed": "./dist/embed.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/InterligensWidget.tsx src/embed.ts --format cjs,esm --dts --external react --out-dir dist",
+    "build:embed": "tsup src/embed.ts --format iife --global-name InterligensEmbed --out-dir dist --out-file embed.js",
+    "dev": "tsup src/InterligensWidget.tsx src/embed.ts --format cjs,esm --dts --external react --out-dir dist --watch"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -31,7 +31,7 @@ export function renderKolPdfLegal(kol: any): string {
   const evidences = kol.evidences ?? []
   const wallets = kol.kolWallets ?? []
   const cases = kol.kolCases ?? []
-  const totalDocumented = evidences.reduce((s: number, e: any) => s + (e.amountUsd ?? 0), 0)
+  const totalDocumented = kol.totalDocumented ?? evidences.reduce((s: number, e: any) => s + (e.amountUsd ?? 0), 0)
   const exitEv = evidences.find((e: any) => e.type === "coordinated_exit")
   const evmEv = evidences.find((e: any) => e.type === "evm_wallet")
   const cashouts = evidences.filter((e: any) => e.type === "onchain_cashout")
@@ -246,7 +246,7 @@ export function renderKolPdfLegal(kol: any): string {
       </div>
     </div>
     <p style="font-size:9.5px;color:var(--ink-light);line-height:1.75">
-      ${kol.exitNarrative ?? `@${kol.handle} is a confirmed serial crypto scammer with ${kol.rugCount} rug-pull events documented across multiple projects. On-chain investigation has identified ${cashouts.length} associated wallet (public-source-linked) cashout events totaling ${fmtUsd(totalDocumented)} in documented proceeds, plus ${fmtUsd(evmEv?.amountUsd)} in unrealized EVM holdings.`}
+      ${kol.exitNarrative ?? `@${kol.handle} is a high-risk actor with ${kol.rugCount} suspected exit-liquidity risk events documented across multiple projects. On-chain investigation has identified ${cashouts.length} associated wallet (public-source-linked) cashout events totaling ${fmtUsd(totalDocumented)} in documented proceeds, plus ${fmtUsd(evmEv?.amountUsd)} in unrealized EVM holdings.`}
     </p>
     ${exitEv ? `
     <div class="exit-box" style="margin-top:16px">

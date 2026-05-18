@@ -4,6 +4,7 @@ import { pushScanHistory } from "@/app/history/page";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { flushSync } from 'react-dom';
 import { getTier, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
 import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import MarketWeather from "@/components/MarketWeather";
@@ -24,14 +25,27 @@ import ScanSkeleton from "@/components/ScanSkeleton";
 import ScanLoadingSteps from "@/components/ScanLoadingSteps";
 import ClusterRiskBadge, { type ClusterRiskResult } from "@/components/ClusterRiskBadge";
 import MMScoreBadge, { type MMScanResult } from "@/components/scan/MMScoreBadge";
+import MarketStructureRisk from "@/components/scan/MarketStructureRisk";
+import type { MmRiskAssessment } from "@/lib/mm/adapter/types";
 import USDTBlacklistBadge from "@/components/scan/USDTBlacklistBadge";
 import IntelligenceBadge, { type IntelligenceSignal } from "@/components/scan/IntelligenceBadge";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import MiniSignalRow from "@/components/scan/MiniSignalRow";
 import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import { computeCabalScore } from "@/lib/risk/cabal";
 import ScamFamilyBlock from "@/components/scan/ScamFamilyBlock";
 import RecidivismAlertBanner, { detectRecidivism } from "@/components/scan/RecidivismAlertBanner";
+import FreshnessStrip from "@/components/scan/FreshnessStrip";
+import OffChainCredibilityBlock from "@/components/scan/OffChainCredibilityBlock";
+import WatchButton from "@/components/scan/WatchButton";
+import AdvancedSignals from "@/components/scan/AdvancedSignals";
+import type { FreshnessResult } from "@/lib/freshness/engine";
+import type { NarrativeResult } from "@/lib/narrative/generator";
+import type { OffChainResult } from "@/lib/off-chain-credibility/engine";
+import ShillToExitTimeline from "@/components/kol/ShillToExitTimeline";
+import type { ShillToExitResult } from "@/lib/shill-to-exit/engine";
+import DemoFeedbackButton from "@/components/demo/DemoFeedbackButton";
+import TokenInfoCard from "@/components/scan/TokenInfoCard";
+import type { ScanContextResponse } from "@/app/api/v1/scan-context/route";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -247,14 +261,26 @@ export default function TigerScanPage() {
   const [analysisStatus, setAnalysisStatus] = useState<"idle"|"running"|"done"|"error">("idle");
   const [graphData, setGraphData] = useState<any>(null);
   const [result, setResult]             = useState<NormalizedScan | null>(null);
+  const [currentScanAddress, setCurrentScanAddress] = useState("");
   const [weather, setWeather]           = useState<any | null>(null);
   const [isDeep, setIsDeep]             = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [clusterResult, setClusterResult] = useState<ClusterRiskResult | null>(null);
   const [mmResult, setMmResult] = useState<MMScanResult | null>(null);
+  const [mmRisk, setMmRisk] = useState<MmRiskAssessment | null>(null);
   const [intelSignal, setIntelSignal] = useState<IntelligenceSignal | null>(null);
+  const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
+  const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null);
+  const [offChainResult, setOffChainResult] = useState<OffChainResult | null>(null);
+  const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null);
+  const [shillHandle, setShillHandle] = useState("");
+  const [shillLoading, setShillLoading] = useState(false);
+  const [communityScans, setCommunityScans] = useState<number | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [scanContextData, setScanContextData] = React.useState<ScanContextResponse | null>(null);
+  const [scanContextLoading, setScanContextLoading] = React.useState(false);
 
   const chain = useMemo(() => detectChain(address), [address]);
   const analysisSummary = useMemo(() => result ? normalizeToAnalysisSummary({ ...result, address: address.trim() }) : null, [result, address]);
@@ -280,7 +306,6 @@ export default function TigerScanPage() {
       if (parsed) setMockChain(parsed.chain);
     }
   }, []);
-  const mockMode = selectedScenario;
   const hasAutoRun = useRef(false);
 
   // ── Autoload ?addr + ?auto ──
@@ -299,7 +324,7 @@ export default function TigerScanPage() {
         const newP = new URLSearchParams(window.location.search);
         newP.delete("auto");
         window.history.replaceState(null, "", window.location.pathname + (newP.toString() ? "?" + newP.toString() : ""));
-        setTimeout(() => runScan(addr, undefined), 80);
+        setTimeout(() => runScan(addr), 80);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -326,9 +351,9 @@ export default function TigerScanPage() {
   } | null>(null);
 
   const DEMO_CHIPS = [
-    { label: "✅ Safe", addr: "SAFE111111111111111111111111111111111111111", mock: "green" },
-    { label: "⚠️ Warning", addr: "WARN2222222222222222222222222222222222222222", mock: "orange" },
-    { label: "🚨 Scam", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb", mock: "red" },
+    { label: "✅ Safe",    addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
+    { label: "⚠️ Warning", addr: "7WRX5QGuRLhGCJszpQjYmw6ihb6z8KRdAEHQUhGJpump" },
+    { label: "🚨 Scam",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
   ];
 
   // Auto-trigger on mount if ?mock= param present
@@ -336,7 +361,7 @@ export default function TigerScanPage() {
     if (selectedScenario) {
       const preset = DEMO_PRESETS[mockChain][selectedScenario];
       setAddress(preset.addr);
-      setTimeout(() => runScan(preset.addr, selectedScenario), 50);
+      setTimeout(() => runScan(preset.addr), 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -347,11 +372,12 @@ export default function TigerScanPage() {
     const preset = DEMO_PRESETS[mockChain][scenario];
     setSelectedScenario(scenario);
     setAddress(preset.addr);
+    setResult(null);
     // Update URL without reload
     const url = new URL(window.location.href);
     url.searchParams.set("mock", scenario);
     window.history.replaceState({}, "", url.toString());
-    runScan(preset.addr, scenario);
+    runScan(preset.addr);
   };
 
   React.useEffect(() => {
@@ -365,12 +391,8 @@ export default function TigerScanPage() {
 
 
   React.useEffect(() => {
-    if (mockMode) {
-      setTickers({ ok: true, btc: { price_usd: 95000, change_24h_pct: 1.2 }, eth: { price_usd: 3200, change_24h_pct: 0.8 }, sol: { price_usd: 180, change_24h_pct: -0.5 } });
-      return;
-    }
     fetch("/api/market/tickers").then(r => r.json()).then(d => setTickers(d)).catch(() => setTickers({ ok: false }));
-  }, [mockMode]);
+  }, []);
 
   const isHyperTokenId = chain === "HYPER_TOKEN_ID";
 
@@ -405,6 +427,7 @@ export default function TigerScanPage() {
         const c = results[0]
         const formatted = formatAddressForChain(c.address, c.chain)
         setAddress(formatted)
+        setResult(null)
         runScan(formatted)
         return
       }
@@ -425,42 +448,57 @@ export default function TigerScanPage() {
   const handleTickerPick = (c: TokenCandidate) => {
     const formatted = formatAddressForChain(c.address, c.chain)
     setAddress(formatted)
+    setResult(null)
     setTickerState(null)
     runScan(formatted)
   }
 
-  const runScan = async (overrideAddr?: string, overrideMock?: string) => {
+  const runScan = async (overrideAddr?: string) => {
     const scanAddr = (overrideAddr ?? address).trim();
-    const useMock = overrideMock ?? mockMode;
-    if (useMock) {
-      setLoading(true); setError(null); setResult(null);
-      setAnalysisStatus("running");
-      await new Promise(r => setTimeout(r, 800));
-      try {
-        const res = await fetch(`/api/mock/scan?mode=${useMock}`, { cache: "no-store" });
-        const data = await res.json();
-        setResult(normalizeScanData(data, "SOL"));
-        setWeather(null);
-        setAnalysisStatus("done");
-        setTimeout(() => document.getElementById("result-anchor")?.scrollIntoView({ behavior: "smooth" }), 200);
-      } catch(e: any) { setError(`Scan mock failed: ${e?.message ?? String(e)}`); setAnalysisStatus("error"); }
-      setLoading(false);
-      return;
-    }
+    flushSync(() => {
+      setResult(null); setError(null); setWeather(null);
+      setScanContextData(null); setScanContextLoading(false);
+      setGraphData(null); setClusterResult(null); setMmResult(null);
+      setMmRisk(null); setIntelSignal(null); setFreshnessResult(null);
+      setNarrativeResult(null); setOffChainResult(null); setShillResult(null);
+      setShillHandle(""); setCommunityScans(null);
+      setCorrobData(null); setAddressLabel(null);
+      setRecidivismDetected(false); setRecidivismConfidence("LOW");
+    });
+
     if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
     setAnalysisStatus("running");
-    setGraphData(null);
-    setRecidivismDetected(false);
-    setRecidivismConfidence("LOW");
-    setError(null);
-    setResult(null);
-    setClusterResult(null);
-    setMmResult(null);
-    setIntelSignal(null);
+    setScanContextLoading(true);
+
+    // Fire scan-context in parallel (non-blocking, 8s timeout)
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(scanAddr)}&_t=${Date.now()}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setScanContextData(d); })
+      .catch(() => {})
+      .finally(() => setScanContextLoading(false));
+
+    // Fire community scan count fetch in parallel (non-blocking, 6s timeout)
+    {
+      const scanTarget = (overrideAddr ?? address).trim();
+      const isEvm = /^0x[a-fA-F0-9]{40}$/.test(scanTarget);
+      const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanTarget);
+      if (isEvm || isSol) {
+        fetch(`/api/v1/score?mint=${encodeURIComponent(scanTarget)}&_t=${Date.now()}`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(6000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (typeof d?.communityScans === "number") setCommunityScans(d.communityScans); })
+          .catch(() => {});
+      }
+    }
 
     // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
-    fetch(`/api/scan/intelligence?value=${encodeURIComponent(address.trim())}`, {
+    fetch(`/api/scan/intelligence?value=${encodeURIComponent(scanAddr)}`, {
       signal: AbortSignal.timeout(5000),
     })
       .then(r => r.ok ? r.json() : null)
@@ -469,7 +507,7 @@ export default function TigerScanPage() {
 
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
     if (chain === "SOL") {
-      fetch(`/api/scan/cluster?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+      fetch(`/api/scan/cluster?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
         signal: AbortSignal.timeout(4000),
       })
         .then(r => r.ok ? r.json() : null)
@@ -477,12 +515,60 @@ export default function TigerScanPage() {
         .catch(() => {})
 
       // Fire MM score fetch in parallel (non-blocking, 4.5s timeout)
-      fetch(`/api/scan/mm?address=${encodeURIComponent(address.trim())}&chain=sol`, {
+      fetch(`/api/scan/mm?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
         signal: AbortSignal.timeout(4500),
       })
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setMmResult(d) })
         .catch(() => {})
+    }
+
+    // Fire MM Pattern Engine risk fetch in parallel — flag-gated server-side,
+    // 11s client timeout (slightly above MM_SCAN_TIMEOUT_MS), fail-silent.
+    {
+      const chainKey =
+        chain === "SOL" ? "sol" :
+        chain === "ETH" ? "eth" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" :
+        chain === "BSC" ? "bsc" : null;
+      if (chainKey) {
+        fetch(`/api/scan/mm-risk?address=${encodeURIComponent(scanAddr)}&chain=${chainKey}`, {
+          signal: AbortSignal.timeout(11000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d && d.assessment) setMmRisk(d.assessment) })
+          .catch(() => {})
+      }
+    }
+
+    // Freshness + narrative — parallel, non-blocking
+    {
+      const freshnessChain =
+        chain === "SOL" ? "solana" :
+        chain === "ETH" ? "ethereum" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" : null;
+      if (freshnessChain) {
+        fetch("/api/v1/freshness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chain: freshnessChain, mint: scanAddr }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setFreshnessResult(d) })
+          .catch(() => {})
+        fetch("/api/v1/narrative", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tokenMint: scanAddr, chain: freshnessChain }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
+          .catch(() => {})
+      }
     }
 
     for (let i = 0; i < 3; i++) {
@@ -491,11 +577,11 @@ export default function TigerScanPage() {
     }
 
     try {
-      const url = buildScanUrl(address, chain, isDeep);
+      const url = buildScanUrl(scanAddr, chain, isDeep);
 
       // Scan + graph en PARALLÈLE — temps total = max(scan, graph)
       const graphUrl = chain === "SOL"
-        ? `/api/scan/solana/graph?mint=${encodeURIComponent(address.trim())}&hops=1&days=14`
+        ? `/api/scan/solana/graph?mint=${encodeURIComponent(scanAddr)}&hops=1&days=14`
         : null;
 
       const [res, gData] = await Promise.all([
@@ -524,7 +610,7 @@ export default function TigerScanPage() {
       setGraphData(gData);
       setAddressLabel(null)
       setCorrobData(null)
-      const trimmed = address.trim()
+      const trimmed = scanAddr
       fetch('/api/scan/label?address=' + trimmed)
         .then(r => r.json())
         .then(d => { if (d.found) setAddressLabel(d) })
@@ -533,12 +619,34 @@ export default function TigerScanPage() {
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
+      setCurrentScanAddress(scanAddr);
       setResult(normalizedResult);
       setAnalysisStatus("done");
 
+      // Off-chain credibility: fire if website URL is detectable from rawSummary
+      const websiteUrl: string | undefined =
+        normalizedResult.rawSummary?.website ??
+        normalizedResult.rawSummary?.ext?.website ??
+        normalizedResult.rawSummary?.meta?.website ??
+        normalizedResult.rawSummary?.content?.links?.external_url ??
+        normalizedResult.rawSummary?.info?.website ??
+        normalizedResult.rawSummary?.extensions?.website ??
+        undefined;
+      if (websiteUrl) {
+        fetch("/api/v1/off-chain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ websiteUrl, tokenMint: scanAddr }),
+          signal: AbortSignal.timeout(30_000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setOffChainResult(d) })
+          .catch(() => {})
+      }
+
       // Save to scan history
       pushScanHistory({
-        address: address.trim(),
+        address: scanAddr,
         chain,
         score: normalizedResult.score ?? null,
         tier: normalizedResult.tier ?? null,
@@ -550,7 +658,7 @@ export default function TigerScanPage() {
         const heatRes = await fetch("/api/social/heat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: address.trim(), chain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
+          body: JSON.stringify({ address: scanAddr, chain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
         });
         setWeather(heatRes.ok ? await heatRes.json() : null);
       } catch { setWeather(null); }
@@ -594,7 +702,8 @@ export default function TigerScanPage() {
                   setActivePreset(p.id);
                   setSelectedScenario(null);
                   setAddress(p.addr);
-                  setTimeout(() => runScan(p.addr, undefined), 60);
+                  setResult(null);
+                  setTimeout(() => runScan(p.addr), 60);
                 }}
                 className={[
                   "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
@@ -609,6 +718,24 @@ export default function TigerScanPage() {
             ))}
 
           </div>
+        </div>
+
+        {/* CHAIN SELECTOR — switches mock preset chain */}
+        <div className="flex justify-center gap-2 flex-wrap mb-3">
+          {(["SOL","ETH","BASE","ARBITRUM","TRON"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => { setMockChain(c); setSelectedScenario(null); }}
+              className={[
+                "px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
+                mockChain === c
+                  ? "border-[#FF6B00] text-[#FF6B00] bg-[#FF6B00]/8"
+                  : "border-zinc-800 text-zinc-600 hover:border-zinc-600 hover:text-zinc-400",
+              ].join(" ")}
+            >
+              {c}
+            </button>
+          ))}
         </div>
 
         {/* QUICK DEMO BAR */}
@@ -737,7 +864,7 @@ export default function TigerScanPage() {
           <div id="result-anchor" />
 
           {/* RUNNING: scan loading steps */}
-          {analysisStatus === "running" && (
+          {analysisStatus === "running" && !result && (
             <div className="grid lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">
                 <ScanLoadingSteps locale="en" />
@@ -749,8 +876,8 @@ export default function TigerScanPage() {
           )}
 
           {/* DONE: résultat final uniquement */}
-          <div style={{ opacity: analysisStatus === "done" && result && !loading ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: analysisStatus === "done" && result && !loading ? "auto" : "none" }}>
-            {result && (() => {
+          <div style={{ opacity: result && currentScanAddress === address.trim() ? 1 : 0, transition: "opacity 300ms ease-in", pointerEvents: result && currentScanAddress === address.trim() && !loading ? "auto" : "none" }}>
+            {result && currentScanAddress === address.trim() && (() => {
               // Source de vérité : result OU graphData (pour éviter race condition)
               const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
               const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
@@ -781,7 +908,14 @@ export default function TigerScanPage() {
               </div>
 
               {/* 1. TigerScore ring */}
-              <AnimatedScoreRing score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+
+              {/* TOKEN IDENTITY STRIP */}
+              <div className="flex justify-center w-full mt-5 mb-4">
+                <div className="w-full max-w-[288px]">
+                  <TokenInfoCard data={scanContextData} loading={scanContextLoading} />
+                </div>
+              </div>
 
               {/* 2. AVOID — verdict collé au score */}
               <h2
@@ -818,7 +952,7 @@ export default function TigerScanPage() {
               )}
 
               {/* 6. MARKET CONTEXT */}
-              <div className="mt-4">
+              <div className="mt-4 w-full">
                 <MarketContext locale="en" />
               </div>
             </div>
@@ -867,6 +1001,50 @@ export default function TigerScanPage() {
               {mmResult && <MMScoreBadge result={mmResult} locale="en" />}
               <USDTBlacklistBadge visible={!!(result?.rawSummary?.usdt_blacklisted)} locale="en" />
               <IntelligenceBadge signal={intelSignal} locale="en" />
+              {communityScans !== null && communityScans > 1 && (
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "5px 10px",
+                  background: "rgba(255,107,0,0.06)",
+                  border: "1px solid rgba(255,107,0,0.18)",
+                  borderRadius: 6,
+                  marginTop: 4,
+                }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,107,0,0.7)" }}>Community</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#FF6B00" }}>{communityScans.toLocaleString()} scans</span>
+                </div>
+              )}
+
+              {/* ── PROJECT INFO DROPDOWN ── */}
+              {(() => {
+                const rs = result.rawSummary as any
+                const site = rs?.website ?? rs?.ext?.website ?? rs?.meta?.website ?? rs?.info?.website ?? rs?.extensions?.website ?? null
+                const wp   = rs?.whitepaper ?? rs?.ext?.whitepaper ?? rs?.meta?.whitepaper ?? null
+                const tw   = rs?.twitter ?? rs?.ext?.twitter ?? rs?.meta?.twitter ?? rs?.twitter_username ?? null
+                const tg   = rs?.telegram ?? rs?.ext?.telegram ?? rs?.meta?.telegram ?? null
+                if (!(site || wp || tw || tg)) return null
+                return (
+                  <div className="bg-[#080808] border border-zinc-800/60 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setShowProjectInfo(v => !v)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left group"
+                    >
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-zinc-400 transition-colors">Project Info</span>
+                      <span className="text-zinc-600 group-hover:text-zinc-400 text-[10px]" style={{ transform: showProjectInfo ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block', transition: 'transform 200ms ease' }}>▾</span>
+                    </button>
+                    <div style={{ maxHeight: showProjectInfo ? '200px' : '0px', overflow: 'hidden', transition: 'max-height 220ms ease' }}>
+                      <div className="px-4 pb-4 flex flex-col gap-2">
+                        {site && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">Website</span><a href={site.startsWith('http') ? site : `https://${site}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors truncate max-w-[180px]">{site.replace(/^https?:\/\//, '')}</a></div>)}
+                        {wp   && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">Whitepaper</span><a href={wp.startsWith('http') ? wp : `https://${wp}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors">View →</a></div>)}
+                        {tw   && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">X / Twitter</span><a href={tw.startsWith('http') ? tw : `https://x.com/${tw.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors truncate max-w-[180px]">{tw.replace(/^https?:\/\/(x\.com|twitter\.com)\//, '@')}</a></div>)}
+                        {tg   && (<div className="flex items-center justify-between"><span className="text-[9px] uppercase tracking-widest text-zinc-600 font-black">Telegram</span><a href={tg.startsWith('http') ? tg : `https://t.me/${tg.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-400 hover:text-[#F85B05] transition-colors truncate max-w-[180px]">{tg}</a></div>)}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* 2. PROOF PACK — PDF, Casefile, Evidence, Timeline */}
               {(finalTier === "RED" || corrobData?.found) && (
@@ -911,20 +1089,106 @@ export default function TigerScanPage() {
                 <div className="mt-3">
                   <CaseFileCTA id={address.trim() || null} lang="en" />
                 </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <WatchButton mint={address.trim()} chain={chain ?? "SOL"} symbol={result.rawSummary?.symbol} lang="en" />
+                  <span style={{ fontSize: 9, color: "#4b5563" }}>Get alerts on major risk changes</span>
+                </div>
               </div>
               )}
 
-              {/* 3. MINI SIGNAL CARDS */}
-              <MiniSignalRow
+              {/* ── ADVANCED SIGNALS ── */}
+              <AdvancedSignals
+                website={result.rawSummary?.website ?? result.rawSummary?.content?.links?.external_url ?? result.rawSummary?.extensions?.website ?? null}
+                websiteAgeDays={offChainResult?.domainAgeDays ?? null}
+                pairAgeDays={result.rawSummary?.pair_age_days ?? result.rawSummary?.markets?.pair_age_days ?? null}
+                liquidityUsd={result.rawSummary?.markets?.liquidity_usd ?? result.rawSummary?.liquidity_usd ?? null}
+                mintAuthority={result.mintAuthority ?? null}
+                freezeAuthority={result.freezeAuthority ?? null}
+                topHolderPct={result.rawSummary?.top10_pct ?? result.rawSummary?.holder_top10_pct ?? null}
+                signals={(result.rawSummary?.signals ?? []).map((s: any) => ({ id: s.id, label: s.label, severity: s.severity }))}
                 lang="en"
-                tier={finalTier.toLowerCase() as any}
-                weather={weather}
-                show={true}
+                tier={finalTier}
+                manipulationLevel={weather?.manipulation?.level ?? null}
                 rawSummary={result.rawSummary}
               />
 
+              {/* ── FRESHNESS SIGNALS ── */}
+              {freshnessResult && (
+                <FreshnessStrip result={freshnessResult} lang="en" />
+              )}
+
+              {/* ── OFF-CHAIN CREDIBILITY ── */}
+              {offChainResult && (
+                <OffChainCredibilityBlock result={offChainResult} lang="en" />
+              )}
+
+              {/* ── PROMOTION INTELLIGENCE — KOL cross-reference (SOL only) ── */}
+              {chain === "SOL" && (
+                <div className="w-full rounded-xl border border-zinc-800 bg-black p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">
+                    PROMOTION INTELLIGENCE
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={shillHandle}
+                      onChange={(e) => setShillHandle(e.target.value.replace(/^@/, ""))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && shillHandle.trim()) {
+                          setShillLoading(true);
+                          setShillResult(null);
+                          fetch(`/api/v1/shill-to-exit?handle=${encodeURIComponent(shillHandle.trim())}&mint=${encodeURIComponent(address.trim())}`)
+                            .then(r => r.ok ? r.json() : null)
+                            .then(d => { if (d) setShillResult(d); })
+                            .catch(() => {})
+                            .finally(() => setShillLoading(false));
+                        }
+                      }}
+                      placeholder="Enter KOL handle to cross-reference…"
+                      className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 placeholder-zinc-700 outline-none focus:border-zinc-600"
+                    />
+                    <button
+                      type="button"
+                      disabled={!shillHandle.trim() || shillLoading}
+                      onClick={() => {
+                        if (!shillHandle.trim()) return;
+                        setShillLoading(true);
+                        setShillResult(null);
+                        fetch(`/api/v1/shill-to-exit?handle=${encodeURIComponent(shillHandle.trim())}&mint=${encodeURIComponent(address.trim())}`)
+                          .then(r => r.ok ? r.json() : null)
+                          .then(d => { if (d) setShillResult(d); })
+                          .catch(() => {})
+                          .finally(() => setShillLoading(false));
+                      }}
+                      className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-400 text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 disabled:opacity-40 transition-colors"
+                    >
+                      {shillLoading ? "…" : "Check"}
+                    </button>
+                  </div>
+                  {shillResult && (
+                    <div className="mt-4">
+                      <ShillToExitTimeline result={shillResult} lang="en" />
+                      {!shillResult.detected && (
+                        <p className="text-xs text-zinc-600 mt-2 text-center">
+                          No on-chain evidence linked to this token yet.{" "}
+                          <a
+                            href={`/en/kol/${shillResult.kolHandle}`}
+                            className="text-[#FF6B00] hover:underline font-semibold"
+                          >
+                            View full KOL profile →
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 4. TOP ON-CHAIN PROOFS + ASK TIGER ANALYST */}
               <TigerRevealCard tier={finalTier} proofs={result.proofs} />
+
+              {/* 4b. MARKET STRUCTURE RISK — MM Pattern Engine (flag-gated) */}
+              <MarketStructureRisk result={mmRisk} locale="en" />
             </div>
           </div>
 
@@ -973,7 +1237,7 @@ export default function TigerScanPage() {
 
                 {showEvidence && (
                   <div className="mt-4 space-y-4">
-                    <TechnicalEvidence lang="en" chain={result.chain === "ETH" ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
+                    <TechnicalEvidence lang="en" chain={(result.chain === "ETH" || result.chain === "BASE" || result.chain === "ARBITRUM") ? "ethereum" : "solana"} show={true} provider_used={result.provider_used} data_source={result.data_source} source_detail={result.source_detail} rpc_fallback_used={result.rpc_fallback_used} cache_hit={result.cache_hit} rpc_down={result.rpc_down} rpc_error={result.rpc_error} spenders={result.spenders} counterparties={result.counterparties} unlimitedCount={result.unlimitedCount} freezeAuthority={result.freezeAuthority} mintAuthority={result.mintAuthority} />
                     {debug && (
                       <details className="rounded-xl border border-zinc-900 bg-black/40">
                         <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-widest text-[#FF6B00]/60 hover:text-[#FF6B00]">Raw data (debug)</summary>
@@ -993,7 +1257,7 @@ export default function TigerScanPage() {
         </div>
 
         {/* ── GO DEEPER ── */}
-        {result && (
+        {result && currentScanAddress === address.trim() && (
           <div className="mt-14 mb-6 border-t border-[#1a1a1a] pt-6 flex items-center gap-6 flex-wrap">
             <span className="text-[10px] font-bold text-zinc-700 uppercase tracking-[0.2em]">Go deeper</span>
             <a href="/en/kol" className="text-[12px] font-semibold text-zinc-500 hover:text-[#FF6B00] transition-colors no-underline">KOL Registry &rarr;</a>
@@ -1008,6 +1272,7 @@ export default function TigerScanPage() {
         </div>
       </main>
       </div>
+      <DemoFeedbackButton />
     </div>
   );
 }

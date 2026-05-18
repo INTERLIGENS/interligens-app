@@ -11,13 +11,12 @@ import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMI
 import { checkAuth } from "@/lib/security/auth";
 
 export async function GET(request: NextRequest) {
-  // ── Auth bypass : dev mode ou mock=1 ──────────────────────────────────────
-  const _isDev = process.env.NODE_ENV === "development";
-  const _isMock = new URL(request.url).searchParams.get("mock") === "1";
-  if (!_isDev && !_isMock) {
-    const _auth = await checkAuth(request);
-    if (!_auth.authorized) return _auth.response!;
-  }
+  // SEC P0 — auth is ALWAYS required. The previous ?mock=1 and
+  // NODE_ENV==="development" bypasses allowed an unauth'd retail caller
+  // to pull the full v2 PDF. Gate closed.
+  const _auth = await checkAuth(request);
+  if (!_auth.authorized) return _auth.response!;
+
   const { searchParams } = new URL(request.url);
   const mint = searchParams.get("mint");
   if (!mint) return NextResponse.json({ error: "Missing ?mint=" }, { status: 400 });

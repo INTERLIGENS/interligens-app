@@ -1,0 +1,1804 @@
+{
+  "cases": [
+    {
+      "id": "NOSIG-TOPCAP-001",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token USDC-SOL — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-002",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token wSOL — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-003",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token USDT-SOL — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-004",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token JUP — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-005",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token BONK — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-006",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token RAY — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-007",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token PYTH — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-008",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token JTO — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-009",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token USDC-ETH — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-010",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token USDT-ETH — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-011",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token wBTC — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-012",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token DAI — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-013",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token LINK — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-014",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token UNI — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-TOPCAP-015",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "top-cap-clean",
+      "notes": "Top-cap token ARB — all engines clean",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-001",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #1 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-002",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #2 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-003",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #3 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-004",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #4 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-005",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #5 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-006",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #6 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-007",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #7 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-008",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #8 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-009",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #9 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-010",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #10 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-011",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #11 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-012",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #12 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-013",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #13 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-014",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #14 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-CLEANEOA-015",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "clean-eoa",
+      "notes": "Random EOA #15 — no signals from any engine",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-001",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #1 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-002",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #2 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-003",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #3 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-004",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #4 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-005",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #5 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-006",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #6 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-007",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #7 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-008",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #8 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-009",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #9 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-UNKNOWN-HANDLE-010",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "unknown-handle",
+      "notes": "Unknown X handle #10 — recidivism/coordination/casefile ran clean",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-001",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #1 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-002",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #2 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-003",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #3 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-004",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #4 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-005",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #5 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-006",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #6 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-007",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #7 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-008",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #8 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-009",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #9 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "NOSIG-URL-010",
+      "expectedVerdict": "NO_CRITICAL_SIGNAL",
+      "bucket": "no-critical",
+      "category": "url-good-credibility",
+      "notes": "URL #10 — off-chain band GOOD or STRONG (no signal emitted)",
+      "engines": [
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    }
+  ]
+}

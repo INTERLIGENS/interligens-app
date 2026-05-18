@@ -349,7 +349,7 @@ function buildFullHtml(trace: TraceFile): string {
     <tr><td>OrbitApe (Telegram)</td><td>Inconnu (via Cobo.com)</td><td>PROPRIÉTAIRE Botify.Cloud. $817K+ documentés (Arkham + doc). Utilise Cobo.com (custody institutionnel).</td><td>Inconnu</td></tr>
     <tr><td>@sxyz500<br>@samjoleary<br>SAMBO</td><td>Sam O'Leary. Confirmé Telegram + vol ADL→HK</td><td>Co-fondateur. KOL 2% (8.5m tokens). $209K+ cashouts (Binance + BloFin). 8 wallets F&amp;F identifiés.</td><td>Melbourne/Adélaïde, Australie</td></tr>
     <tr><td>@planted<br>Djordje | Mr S</td><td>Djordje Stupar. Aveu public 19/03/2025</td><td>"Voix publique" BOTIFY (auto-décrit). Spaces host Telegram. Promotion $GHOST.</td><td>Inconnu</td></tr>
-    <tr><td>@GordonGekko</td><td>Inconnu (OKX à requérir en priorité)</td><td>KOL 1.665% supply BOTIFY. $485K+ cashouts prouvés (BOTIFY + $SWIF). Actif le 4 avril 2026. MaestroBots.</td><td>Inconnu</td></tr>
+    <tr><td>@GordonGekko</td><td>Inconnu (OKX à requérir en priorité)</td><td>KOL 1.665% supply BOTIFY. $40K+ cashouts BOTIFY confirmés (finding $445K SWIF retiré pour vérification). Actif le 4 avril 2026. MaestroBots.</td><td>Inconnu</td></tr>
   </tbody>
 </table>
 <p>Au-delà des fondateurs, 50+ KOLs payés en tokens et une équipe de 16 salariés ($13,010/semaine masse salariale) complétaient la structure. La liste complète est dans le dossier technique remis sur clé USB.</p>
@@ -426,7 +426,8 @@ function buildFullHtml(trace: TraceFile): string {
 <h3>@planted (Djordje Stupar) — l'aveu public du 19 mars 2025</h3>
 <p>Djordje Stupar (@planted), désigné dans le groupe Telegram Botify.Cloud comme "Djordje | Mr S" et "spaces host", a publié sur X le 19 mars 2025 un post admettant son rôle de "voix publique" de BOTIFY. Cet aveu, capturé en screenshot et archivé dans le dossier (pièce E-09), constitue une preuve directe de sa participation consciente à la fraude.</p>
 <h3>@dethective — l'investigateur en ligne</h3>
-<p>@dethective est l'investigateur on-chain qui a premier rendu public le document BOTIFY divulgué par Maria. Il a également exposé le schéma $TRUMP insiders — GordonGekko seul y a réalisé $445,000 de profits pendant 30 tweets de promotion. Bêta-testeur NDA d'INTERLIGENS.</p>
+<p>@dethective est l'investigateur on-chain qui a premier rendu public le document BOTIFY divulgué par Maria. Bêta-testeur NDA d'INTERLIGENS.</p>
+<!-- TO_VERIFY (2026-05-15): claim sortie du rendu PDF — « @dethective a exposé le schéma $TRUMP insiders — GordonGekko seul y a réalisé $445,000 de profits pendant 30 tweets de promotion ». NON VÉRIFIÉE: aucun TX hash Solana, contradiction de token $TRUMP (ici) vs $SWIF (scamUniverse.json / seedBotifyComplete.ts) non tranchée. Ne pas réintégrer aux PDFs sans audit on-chain. Cf. MIGRATION_RETAILVISION.md section 'Finding $445K — retiré'. -->
 
 <h2>VII. Phase 5 — GHOST : la récidive avec les mêmes acteurs (2025–2026)</h2>
 <p>Après l'effondrement de BOTIFY, les mêmes acteurs ont relancé le même schéma avec le token $GHOST (mint Solana : BBKPiLM9KjdJW7oQSKt99RVWcZdhF6sEHRKnwqeBGHST). Cette récidive est documentée et prouvée :</p>

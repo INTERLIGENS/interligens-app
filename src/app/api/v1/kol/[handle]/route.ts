@@ -32,7 +32,6 @@ export async function GET(
     },
   });
   if (!kol) return NextResponse.json({ found: false, handle, error: "KOL not found" }, { status: 404 });
-  const totalDocumentedProceeds = kol.evidences.reduce((sum, e) => sum + (e.amountUsd ?? 0), 0);
   const totalPaidUsd = kol.kolCases.reduce((sum, c) => sum + (c.paidUsd ?? 0), 0);
   return NextResponse.json({
     version: "1.0", found: true,
@@ -43,7 +42,7 @@ export async function GET(
       notes: kol.notes, tags: kol.tags, bio: kol.bio, pricePerPost: kol.pricePerPost,
       evmAddress: kol.evmAddress, exitDate: kol.exitDate, exitNarrative: kol.exitNarrative,
       exitPostUrl: kol.exitPostUrl, totalDocumented: kol.totalDocumented, totalScammed: kol.totalScammed,
-      stats: { evidenceItems: kol._count.evidences, rugLinkedCases: kol._count.kolCases, documentedOnChainProceeds: totalDocumentedProceeds, totalPaidUsd },
+      stats: { evidenceItems: kol._count.evidences, rugLinkedCases: kol._count.kolCases, totalPaidUsd, proceedsSource: "KolProceedsEvent" },
       evidences: kol.evidences, cases: kol.kolCases,
       profileUrl: `https://interligens.com/en/kol/${kol.handle}`,
       legalReportUrl: `https://interligens.com/api/kol/${kol.handle}/pdf-legal`,

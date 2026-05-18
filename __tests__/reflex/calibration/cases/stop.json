@@ -1,0 +1,3266 @@
+{
+  "cases": [
+    {
+      "id": "STOP-CASEFILE-001",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case BOTIFY via kolTokenLink",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolTokenLink",
+                "matchedHandle": "donwedge",
+                "caseIds": [
+                  "BOTIFY"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-002",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case RAVE via kolTokenLink",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolTokenLink",
+                "matchedHandle": "gordongekko",
+                "caseIds": [
+                  "RAVE"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-003",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case GHOST via kolTokenLink",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolTokenLink",
+                "matchedHandle": "sxyz500",
+                "caseIds": [
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-004",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case VINE via kolWallet→kolCase",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolWallet→kolCase",
+                "matchedHandle": "lynk0x",
+                "caseIds": [
+                  "VINE"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-005",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case SOLAXY via kolWallet→kolCase",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolWallet→kolCase",
+                "matchedHandle": "planted",
+                "caseIds": [
+                  "SOLAXY"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-006",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case BOTIFY via kolCase.kolHandle",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolCase.kolHandle",
+                "matchedHandle": "freshkol01",
+                "caseIds": [
+                  "BOTIFY"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-007",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case RAVE via kolCase.kolHandle",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolCase.kolHandle",
+                "matchedHandle": "freshkol02",
+                "caseIds": [
+                  "RAVE"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-008",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case GHOST via kolWallet→kolCase",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolWallet→kolCase",
+                "matchedHandle": "freshkol03",
+                "caseIds": [
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-009",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case VINE via kolCase.kolHandle",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolCase.kolHandle",
+                "matchedHandle": "freshkol04",
+                "caseIds": [
+                  "VINE"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CASEFILE-010",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "casefile-direct",
+      "notes": "Linked to published case SOLAXY via kolCase.kolHandle",
+      "engines": [
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "casefileMatch",
+              "code": "casefileMatch.exact",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchedVia": "kolCase.kolHandle",
+                "matchedHandle": "freshkol05",
+                "caseIds": [
+                  "SOLAXY"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-001",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: Tornado Cash Proxy (ETH)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.mixer.eth",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "Tornado Cash Proxy",
+                "category": "mixer",
+                "chain": "ETH",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-002",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: Blur Drainer (ETH)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.drainer.eth",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "Blur Drainer",
+                "category": "drainer",
+                "chain": "ETH",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-003",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: Angel Drainer v2 (ETH)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.drainer.eth",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "Angel Drainer v2",
+                "category": "drainer",
+                "chain": "ETH",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-004",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: Inferno Drainer (ETH)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.drainer.eth",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "Inferno Drainer",
+                "category": "drainer",
+                "chain": "ETH",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-005",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: Known Phishing Contract (ETH)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.phishing.eth",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "Known Phishing Contract",
+                "category": "phishing",
+                "chain": "ETH",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-006",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: BSC Drainer v1 (BSC)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.drainer.bsc",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "BSC Drainer v1",
+                "category": "drainer",
+                "chain": "BSC",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-007",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: PancakeSwap Fake Router (BSC)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.phishing.bsc",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "PancakeSwap Fake Router",
+                "category": "phishing",
+                "chain": "BSC",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-008",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: GordonGekko ETH (ETH)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.scam.eth",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "GordonGekko ETH",
+                "category": "scam",
+                "chain": "ETH",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-009",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: GordonGekko BASE (BASE)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.scam.base",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "GordonGekko BASE",
+                "category": "scam",
+                "chain": "BASE",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-KNOWNBAD-010",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "knownBad-high",
+      "notes": "High-confidence knownBad hit: GordonGekko ARBITRUM (ARBITRUM)",
+      "engines": [
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "knownBad",
+              "code": "knownBad.scam.arbitrum",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "label": "GordonGekko ARBITRUM",
+                "category": "scam",
+                "chain": "ARBITRUM",
+                "confidence": "high"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-001",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "OFAC SDN address (mixer)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "ofac",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-002",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "OFAC SDN address (terror financing)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "ofac",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-003",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "OFAC SDN address (state actor)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "ofac",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-004",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "OFAC SDN address (DPRK Lazarus)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "ofac",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-005",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "AMF blacklist entry (FR retail fraud)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "amf",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-006",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "AMF blacklist entry (unauthorised broker)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "amf",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-007",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "AMF blacklist entry (pyramid scheme)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "amf",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-008",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "FCA warning list (UK retail fraud)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "fca",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-009",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "FCA warning list (clone firm)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "fca",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-SANCTION-010",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "sanction",
+      "notes": "FCA warning list (binary options)",
+      "engines": [
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "intelligenceOverlay",
+              "code": "intelligenceOverlay.sanction",
+              "severity": "CRITICAL",
+              "confidence": 1.0,
+              "stopTrigger": true,
+              "reasonEn": "Address matches a known risk pattern.",
+              "reasonFr": "L'adresse correspond à un schéma de risque connu.",
+              "payload": {
+                "matchCount": 1,
+                "hasSanction": true,
+                "topRiskClass": "SANCTION",
+                "matchBasis": "address",
+                "sourceSlug": "fca",
+                "ims": 100,
+                "ics": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-001",
+      "expectedVerdict": "WAIT",
+      "bucket": "stop",
+      "category": "convergence-subthreshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.65, expected=WAIT",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.65,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.65,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-002",
+      "expectedVerdict": "WAIT",
+      "bucket": "stop",
+      "category": "convergence-subthreshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.66, expected=WAIT",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.66,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.66,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.66,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "MODERATE",
+              "confidence": 0.66,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-003",
+      "expectedVerdict": "WAIT",
+      "bucket": "stop",
+      "category": "convergence-subthreshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.68, expected=WAIT",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.68,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.68,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.68,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "MODERATE",
+              "confidence": 0.68,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-004",
+      "expectedVerdict": "WAIT",
+      "bucket": "stop",
+      "category": "convergence-subthreshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.69, expected=WAIT",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.69,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.69,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.69,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "MODERATE",
+              "confidence": 0.69,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-005",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-at-threshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.7, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.7,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.7,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-006",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-at-threshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.72, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.72,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.72,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.72,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-007",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-at-threshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.73, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.73,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.73,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.73,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-008",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-at-threshold",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.74, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.74,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.74,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.74,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-009",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-well-above",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.75, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.75,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.75,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.75,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-010",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-well-above",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.78, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.78,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.78,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.78,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-011",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-well-above",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.8, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.8,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.8,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.8,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-012",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-well-above",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.81, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.81,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.81,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.81,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-013",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-well-above",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.82, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.82,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.82,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.82,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-014",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-well-above",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.84, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.84,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.84,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.84,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-015",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-high-conf",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.85, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.85,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.85,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-016",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-high-conf",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.88, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.88,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.88,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.88,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-017",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-high-conf",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.9, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.9,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.9,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.9,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-018",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-high-conf",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.92, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.92,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.92,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.92,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-019",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-high-conf",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.95, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.95,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.95,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.95,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "STOP-CONVERGENCE-020",
+      "expectedVerdict": "STOP",
+      "bucket": "stop",
+      "category": "convergence-high-conf",
+      "notes": "recidivist + 2 CRITICAL drivers, confidence=0.99, expected=STOP",
+      "engines": [
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.recidivist",
+              "severity": "STRONG",
+              "confidence": 0.99,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": true,
+                "priorCaseCount": 3,
+                "caseIds": [
+                  "BOTIFY",
+                  "RAVE",
+                  "GHOST"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unlimited_approvals",
+              "severity": "CRITICAL",
+              "confidence": 0.99,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.freeze_authority",
+              "severity": "CRITICAL",
+              "confidence": 0.99,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    }
+  ]
+}

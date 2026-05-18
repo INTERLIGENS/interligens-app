@@ -53,7 +53,7 @@ const FLAG_LABEL: Record<string, string> = {
   MULTI_HOP_TRANSFER:     'Multi-hop transfer',
   CROSS_CASE_RECURRENCE:  'Cross-case recurrence',
   MULTI_LAUNCH_LINKED:    'Multi-launch linked',
-  LAUNDERING_INDICATORS:  'Laundering indicators',
+  LAUNDERING_INDICATORS:  'Complex fund movement',
   KNOWN_LINKED_WALLETS:   'Known linked wallets',
   COORDINATED_PROMOTION:  'Coordinated promotion',
 }

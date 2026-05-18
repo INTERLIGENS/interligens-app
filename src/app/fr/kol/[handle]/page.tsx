@@ -2,10 +2,15 @@
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
 import ShillToExitCard from '@/components/kol/ShillToExitCard'
+import ShillToExitTimeline from '@/components/kol/ShillToExitTimeline'
 import ProceedsCard from '@/components/kol/ProceedsCard'
+import NarrativeBlock from '@/components/scan/NarrativeBlock'
+import type { ShillToExitResult } from '@/lib/shill-to-exit/engine'
+import type { NarrativeResult } from '@/lib/narrative/generator'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { kolHandleToMint } from "@/lib/kol/handleToMint";
 
 interface KolPortefeuille {
   id: string; address: string; chain: string; label?: string; status: string
@@ -29,6 +34,7 @@ interface KOL {
   completenessLevel?: string; profileStrength?: string
   proceedsCoverage?: string; walletAttributionStrength?: string
   totalDocumented?: number
+  lastHeliusScan?: string | null
   aliases?: { id: string; alias: string; type: string }[]
   tokenLinks?: { id: string; contractAddress: string; chain: string; tokenSymbol?: string; role: string }[]
   evidences?: { id: string; type: string; label: string; description?: string; sourceUrl?: string; dateFirst?: string }[]
@@ -82,7 +88,7 @@ const FLAG_LABELS: Record<string, string> = {
   MULTI_HOP_TRANSFER:     'Transferts multi-sauts (obfuscation)',
   CROSS_CASE_RECURRENCE:  'Recurrence sur plusieurs affaires',
   MULTI_LAUNCH_LINKED:    'Lie a plusieurs lancements de tokens',
-  LAUNDERING_INDICATORS:  'Indicateurs de blanchiment detectes',
+  LAUNDERING_INDICATORS:  'Flux financiers complexes detectes',
   KNOWN_LINKED_WALLETS:   'Wallets lies identifies',
   COORDINATED_PROMOTION:  'Activite de promotion coordonnee',
 }
@@ -103,6 +109,8 @@ export default function KOLPageFR() {
   const [cluster, setCluster] = useState<any>(null)
   const [coordination, setCoordination] = useState<any>(null)
   const [transparency, setTransparency] = useState<any[]>([])
+  const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null)
+  const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null)
 
   useEffect(() => {
     if (!handle) return
@@ -126,6 +134,27 @@ export default function KOLPageFR() {
     fetch('/api/transparency/wallets?handle=' + handle)
       .then(r => r.json())
       .then(d => { if (d?.wallets?.length > 0) setTransparency(d.wallets) })
+      .catch(() => {})
+    fetch('/api/v1/shill-to-exit?handle=' + encodeURIComponent(handle))
+      .then(r => r.ok ? r.json() : null)
+      .then((d: ShillToExitResult | null) => {
+        if (d?.detected) {
+          setShillResult(d)
+          fetch('/api/v1/narrative', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              kolHandle: handle,
+              tokenSymbol: d.tokenSymbol,
+              totalProceedsUsd: d.total_proceeds_usd,
+              deltaHours: d.max_delta_minutes ? d.max_delta_minutes / 60 : undefined,
+            }),
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
+            .catch(() => {})
+        }
+      })
       .catch(() => {})
   }, [handle])
 
@@ -197,11 +226,11 @@ export default function KOLPageFR() {
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 24 }}>
             <div style={{ width: 72, height: 72, borderRadius: 12, background: 'linear-gradient(135deg, #ef444433, #0f0202)', border: '2px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontFamily: 'monospace', fontWeight: 900, color: '#ef4444', flexShrink: 0 }}>
-              {displayName[0].toUpperCase()}
+              {(displayName?.[0] ?? '?').toUpperCase()}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 6 }}>
-                ACTEUR A HAUT RISQUE · {kol.platform.toUpperCase()} · {kol.status.toUpperCase()}
+                ACTEUR A HAUT RISQUE · {(kol.platform ?? '').toUpperCase()} · {(kol.status ?? '').toUpperCase()}
               </div>
               <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 4 }}>{displayName}</div>
               <div style={{ fontSize: 12, color: '#4b5563', fontFamily: 'monospace', marginBottom: 8 }}>@{kol.handle}</div>
@@ -218,14 +247,27 @@ export default function KOLPageFR() {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{fmtUsd(kol.totalScammed ?? undefined)}</div>
               <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>Pertes estimees investisseurs</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=retail&lang=fr`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
-                  ↓ RAPPORT PUBLIC
-                </a>
-                <a href={`/api/pdf/kol?handle=${kol.handle}&mode=lawyer&lang=fr`} target="_blank" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
-                  ↓ VERSION JURIDIQUE
-                </a>
-              </div>
+              {/* Deux téléchargements distincts :
+                   1. « Rapport » → PDF forensic niveau wallet (fallback) ou
+                      /api/report/v2 si le KOL a un mint lié (riche, contextuel).
+                   2. « CaseFile » → /api/casefile?handle=… (narratif + claims). */}
+              {(() => {
+                const mint = kolHandleToMint(kol.handle);
+                const reportHref = mint
+                  ? `/api/report/v2?mint=${encodeURIComponent(mint)}&lang=fr`
+                  : `/api/pdf/kol?handle=${encodeURIComponent(kol.handle)}&mode=retail&lang=fr`;
+                const casefileHref = `/api/casefile/public?handle=${encodeURIComponent(kol.handle)}&lang=fr`;
+                return (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <a href={reportHref} target="_blank" rel="noreferrer" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#F85B05', color: '#fff', textDecoration: 'none' }}>
+                      ↓ RAPPORT
+                    </a>
+                    <a href={casefileHref} target="_blank" rel="noreferrer" style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', padding: '6px 12px', borderRadius: 4, background: '#0a0a0a', border: '1px solid #374151', color: '#9ca3af', textDecoration: 'none' }}>
+                      ↓ CASEFILE
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -264,9 +306,21 @@ export default function KOLPageFR() {
             )}
             {hasLaundry && (
               <span style={{ background: '#ef444415', border: '1px solid #ef444444', color: '#ef4444', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
-                PISTE DE BLANCHIMENT DETECTEE
+                FLUX FINANCIERS COMPLEXES DETECTES
               </span>
             )}
+            {(() => {
+              if (!kol.lastHeliusScan) return null;
+              const ageMs = Date.now() - new Date(kol.lastHeliusScan).getTime();
+              const ageDays = Math.floor(ageMs / 86_400_000);
+              if (ageMs < 24 * 3_600_000) return null;
+              const isStale = ageMs > 7 * 24 * 3_600_000;
+              return (
+                <span style={{ background: '#FFB80015', border: '1px solid #FFB80044', color: '#FFB800', fontSize: 8, fontWeight: 900, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.1em' }}>
+                  {isStale ? 'DONNEES POTENTIELLEMENT OBSOLETES' : `MIS A JOUR IL Y A ${ageDays}J`}
+                </span>
+              );
+            })()}
           </div>
 
           {kol.notes && (
@@ -405,6 +459,12 @@ export default function KOLPageFR() {
 
         {/* HISTORIQUE DES CAS */}
         <ProceedsCard handle={kol.handle} lang="fr" />
+
+        {/* ── SHILL-TO-EXIT TIMELINE ── */}
+        {shillResult && <ShillToExitTimeline result={shillResult} lang="fr" />}
+
+        {/* ── NARRATIVE ── */}
+        {narrativeResult && <NarrativeBlock result={narrativeResult} lang="fr" />}
 
         {laundryTrail && <LaundryTrailCard laundryTrail={laundryTrail} lang="fr" />}
 

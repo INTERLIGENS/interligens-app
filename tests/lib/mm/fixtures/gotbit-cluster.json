@@ -1,0 +1,169 @@
+{
+  "targetWallet": "wallet-0001",
+  "chain": "SOLANA",
+  "fundingEdges": [
+    {
+      "hash": "fund-0",
+      "from": "root-0001",
+      "to": "wallet-0001",
+      "amountUsd": 1000,
+      "block": 100000,
+      "timestamp": 1700000000
+    },
+    {
+      "hash": "fund-1",
+      "from": "root-0001",
+      "to": "wallet-0001",
+      "amountUsd": 1000,
+      "block": 100001,
+      "timestamp": 1700000060
+    },
+    {
+      "hash": "fund-2",
+      "from": "root-0001",
+      "to": "wallet-0002",
+      "amountUsd": 1000,
+      "block": 100002,
+      "timestamp": 1700000120
+    },
+    {
+      "hash": "fund-3",
+      "from": "root-0001",
+      "to": "wallet-0003",
+      "amountUsd": 1000,
+      "block": 100003,
+      "timestamp": 1700000180
+    },
+    {
+      "hash": "fund-4",
+      "from": "root-0001",
+      "to": "wallet-0004",
+      "amountUsd": 1000,
+      "block": 100004,
+      "timestamp": 1700000240
+    },
+    {
+      "hash": "fund-5",
+      "from": "root-0001",
+      "to": "wallet-0005",
+      "amountUsd": 1000,
+      "block": 100005,
+      "timestamp": 1700000300
+    },
+    {
+      "hash": "fund-6",
+      "from": "root-0001",
+      "to": "wallet-0006",
+      "amountUsd": 1000,
+      "block": 100006,
+      "timestamp": 1700000360
+    },
+    {
+      "hash": "fund-7",
+      "from": "root-0001",
+      "to": "wallet-0007",
+      "amountUsd": 1000,
+      "block": 100007,
+      "timestamp": 1700000420
+    }
+  ],
+  "tokenActivity": [
+    {
+      "wallet": "wallet-0001",
+      "tokenId": "TGT",
+      "firstSeen": 1700000060,
+      "lastSeen": 1700003600,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    },
+    {
+      "wallet": "wallet-0001",
+      "tokenId": "ALT",
+      "firstSeen": 1700000120,
+      "lastSeen": 1700007200,
+      "totalVolumeUsd": 1500,
+      "txCount": 3
+    },
+    {
+      "wallet": "wallet-0001",
+      "tokenId": "TGT",
+      "firstSeen": 1700000120,
+      "lastSeen": 1700003660,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    },
+    {
+      "wallet": "wallet-0002",
+      "tokenId": "TGT",
+      "firstSeen": 1700000180,
+      "lastSeen": 1700003720,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    },
+    {
+      "wallet": "wallet-0002",
+      "tokenId": "ALT",
+      "firstSeen": 1700000240,
+      "lastSeen": 1700007320,
+      "totalVolumeUsd": 1500,
+      "txCount": 3
+    },
+    {
+      "wallet": "wallet-0003",
+      "tokenId": "TGT",
+      "firstSeen": 1700000240,
+      "lastSeen": 1700003780,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    },
+    {
+      "wallet": "wallet-0004",
+      "tokenId": "TGT",
+      "firstSeen": 1700000300,
+      "lastSeen": 1700003840,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    },
+    {
+      "wallet": "wallet-0004",
+      "tokenId": "ALT",
+      "firstSeen": 1700000360,
+      "lastSeen": 1700007440,
+      "totalVolumeUsd": 1500,
+      "txCount": 3
+    },
+    {
+      "wallet": "wallet-0005",
+      "tokenId": "TGT",
+      "firstSeen": 1700000360,
+      "lastSeen": 1700003900,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    },
+    {
+      "wallet": "wallet-0006",
+      "tokenId": "TGT",
+      "firstSeen": 1700000420,
+      "lastSeen": 1700003960,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    },
+    {
+      "wallet": "wallet-0006",
+      "tokenId": "ALT",
+      "firstSeen": 1700000480,
+      "lastSeen": 1700007560,
+      "totalVolumeUsd": 1500,
+      "txCount": 3
+    },
+    {
+      "wallet": "wallet-0007",
+      "tokenId": "TGT",
+      "firstSeen": 1700000480,
+      "lastSeen": 1700004020,
+      "totalVolumeUsd": 5000,
+      "txCount": 10
+    }
+  ],
+  "nowSeconds": 1700004000
+}

@@ -59,13 +59,13 @@ export default function BatchPreviewPage() {
     }
   }
 
-  if (loading) return <div className="min-h-screen bg-gray-950 text-gray-400 flex items-center justify-center text-sm">Chargement…</div>;
-  if (!batch) return <div className="min-h-screen bg-gray-950 text-red-400 flex items-center justify-center text-sm">Batch introuvable</div>;
+  if (loading) return <div className="min-h-screen bg-black text-gray-400 flex items-center justify-center text-sm">Chargement…</div>;
+  if (!batch) return <div className="min-h-screen bg-black text-red-400 flex items-center justify-center text-sm">Batch introuvable</div>;
 
   const statusColor = batch.status === "approved" ? "text-green-400" : batch.status === "rejected" ? "text-red-400" : "text-yellow-400";
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between">
@@ -92,7 +92,7 @@ export default function BatchPreviewPage() {
             { label: "Adresses détectées", value: batch.matchedAddrs },
             { label: "Type d'import", value: batch.inputType },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div key={label} className="bg-[#0a0a0a] border border-gray-800 rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-orange-400">{value}</div>
               <div className="text-xs text-gray-400 mt-1">{label}</div>
             </div>
@@ -101,7 +101,7 @@ export default function BatchPreviewPage() {
 
         {/* Chains + Labels */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div className="bg-[#0a0a0a] border border-gray-800 rounded-xl p-4">
             <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">Chains</h3>
             {Object.entries(batch.chains).map(([c, n]) => (
               <div key={c} className="flex justify-between text-sm py-0.5">
@@ -110,7 +110,7 @@ export default function BatchPreviewPage() {
               </div>
             ))}
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div className="bg-[#0a0a0a] border border-gray-800 rounded-xl p-4">
             <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">Labels</h3>
             {Object.entries(batch.topLabels).map(([l, n]) => (
               <div key={l} className="flex justify-between text-sm py-0.5">
@@ -130,7 +130,7 @@ export default function BatchPreviewPage() {
         )}
 
         {/* Sample */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-[#0a0a0a] border border-gray-800 rounded-xl overflow-hidden">
           <div className="p-4 border-b border-gray-800">
             <h3 className="text-xs font-semibold text-gray-400 uppercase">Aperçu — {batch.sample.length} premières lignes</h3>
           </div>
@@ -147,7 +147,7 @@ export default function BatchPreviewPage() {
               </thead>
               <tbody>
                 {batch.sample.map((row, i) => (
-                  <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                  <tr key={i} className="border-b border-gray-800/50 hover:bg-[#1a1a1a]/30">
                     <td className="p-3 font-mono text-orange-300">{row.address.slice(0, 10)}…</td>
                     <td className="p-3 text-gray-300">{row.chain}</td>
                     <td className="p-3 text-gray-300">{row.labelType}</td>

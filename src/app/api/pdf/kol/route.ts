@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { renderKolPdf } from "@/lib/pdf/kol/templateKol"
 import { renderKolPdfLegal } from "@/lib/pdf/kol/templateKolLegal"
+import { checkAuth } from "@/lib/security/auth"
 
 export async function GET(request: NextRequest) {
+  // P0 SEC: gate the KOL dossier PDF behind ADMIN_TOKEN. Same pattern as
+  // /api/pdf/casefile — token via Authorization: Bearer, x-admin-token
+  // header, or ?token=. Missing/invalid → 401.
+  const auth = await checkAuth(request)
+  if (!auth.authorized) return auth.response!
+
   try {
     const { searchParams } = new URL(request.url)
     const handle = searchParams.get("handle")

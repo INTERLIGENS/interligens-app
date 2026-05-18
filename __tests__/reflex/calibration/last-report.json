@@ -1,0 +1,45 @@
+{
+  "total": 200,
+  "passed": 200,
+  "failed": 0,
+  "passRate": 1,
+  "globalStopRate": 0.23,
+  "byVerdict": {
+    "STOP": 46,
+    "WAIT": 54,
+    "VERIFY": 50,
+    "NO_CRITICAL_SIGNAL": 50
+  },
+  "byBucket": {
+    "stop": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0,
+      "falsePositiveStop": 0,
+      "falseNegativeNoSignal": 0
+    },
+    "wait": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0,
+      "falsePositiveStop": 0,
+      "falseNegativeNoSignal": 0
+    },
+    "verify": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0,
+      "falsePositiveStop": 0,
+      "falseNegativeNoSignal": 0
+    },
+    "no-critical": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0,
+      "falsePositiveStop": 0,
+      "falseNegativeNoSignal": 0
+    }
+  },
+  "mismatches": [],
+  "generatedAt": "2026-05-13T19:02:03.167Z"
+}

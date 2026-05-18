@@ -10,6 +10,7 @@ import {
   detectAddressType,
   detectActiveEvmChains,
 } from "@/lib/evm/chainDetect";
+import { emitScanCompleted } from "@/lib/events/producer";
 import {
   isKnownBadEvm,
   getKnownBadGovernedStatus,
@@ -114,6 +115,8 @@ export async function GET(req: NextRequest) {
     },
     address
   );
+
+  emitScanCompleted(address, primaryChain.toLowerCase(), tigerResult.finalScore);
 
   // 6) Compose final response (shape per spec).
   const signals = tigerResult.drivers.map((d) => ({

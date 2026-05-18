@@ -38,62 +38,17 @@ const NetworkIcon = ({ color }: { color: string }) => (
 )
 
 export default function ClusterRiskBadge({ result, locale }: Props) {
+  // Cluster badge must be INVISIBLE when it has nothing meaningful to
+  // surface. UNKNOWN / fallback / LOW all suppressed — no muted "No
+  // cluster signal" line. Only MEDIUM and HIGH render.
   if (!result) return null
-
+  if (result.fallback) return null
   const risk = result.clusterRisk
+  if (risk === 'UNKNOWN' || risk === 'LOW') return null
+
   const color = COLORS[risk]
   const isFr = locale === 'fr'
   const signalText = isFr ? result.signalFr : result.signal
-
-  // UNKNOWN / fallback → single muted line
-  if (risk === 'UNKNOWN' || result.fallback) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 0',
-        }}
-      >
-        <NetworkIcon color="#4b5563" />
-        <span
-          style={{
-            fontSize: 11,
-            color: '#6B7280',
-            fontFamily: 'monospace',
-          }}
-        >
-          {isFr ? 'Signal cluster indisponible' : 'No cluster signal (limited on-chain data)'}
-        </span>
-      </div>
-    )
-  }
-
-  // LOW → discreet single line
-  if (risk === 'LOW') {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 0',
-        }}
-      >
-        <NetworkIcon color="#4b5563" />
-        <span
-          style={{
-            fontSize: 11,
-            color: '#6B7280',
-            fontFamily: 'monospace',
-          }}
-        >
-          {signalText}
-        </span>
-      </div>
-    )
-  }
 
   // HIGH / MEDIUM → card with colored border
   const eyebrow =

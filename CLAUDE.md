@@ -5,6 +5,7 @@ Port: 3100
 Deploy: npx vercel --prod uniquement
 DB prod: DATABASE_URL depuis .env.local (ep-square-band, port 6543 pgbouncer)
 Schema: prisma/schema.prod.prisma — TOUJOURS additif, jamais destructif
+Prisma client: `pnpm prisma:generate` uniquement (alias `--schema prisma/schema.prod.prisma`). `npx prisma generate` sans flag lit schema.prisma dev SQLite et produit un client incomplet.
 Design: bg #000000, accent #FF6B00, text #FFFFFF, JAMAIS #00E5FF
 Next.js 16: params = Promise<{handle:string}> awaité partout
 Branch active: feat/case-intelligence-beta

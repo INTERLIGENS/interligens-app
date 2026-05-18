@@ -2,6 +2,7 @@
 import { getActionCopy } from "@/lib/copy/actions";
 import { buildDemoUrl } from "@/lib/demo/url";
 import React, { useState, useMemo, useRef, useEffect, Suspense } from "react";
+import { flushSync } from 'react-dom';
 import { useSearchParams, usePathname } from "next/navigation";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
@@ -199,6 +200,7 @@ function TigerScanPageInner() {
   const [loading, setLoading]           = useState(false);
   const [loadStep, setLoadStep]         = useState(0);
   const [result, setResult]             = useState<NormalizedScan | null>(null);
+  const [currentScanAddress, setCurrentScanAddress] = useState("");
   const [corrobData, setCorrobData] = useState<any>(null);
   const [addressLabel, setAddressLabel] = useState<any>(null);
   const [weather, setWeather]           = useState<any | null>(null);
@@ -206,7 +208,15 @@ function TigerScanPageInner() {
   const [showEvidence, setShowEvidence] = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
-
+  const [intelSignal, setIntelSignal]   = useState<any>(null);
+  const [clusterResult, setClusterResult] = useState<any>(null);
+  const [mmResult, setMmResult]         = useState<any>(null);
+  const [mmRisk, setMmRisk]             = useState<any>(null);
+  const [freshnessResult, setFreshnessResult] = useState<any>(null);
+  const [narrativeResult, setNarrativeResult] = useState<any>(null);
+  const [scanContextData, setScanContextData] = useState<any>(null);
+  const [scanContextLoading, setScanContextLoading] = useState(false);
+  const [communityScans, setCommunityScans] = useState<number | null>(null);
 
   // Safety net: débloque le bouton si loading reste bloqué > 8s
   useEffect(() => {
@@ -260,9 +270,112 @@ function TigerScanPageInner() {
 
   const runScan = async () => {
     if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
+    const scanAddr = address.trim();
+
+    flushSync(() => {
+      setResult(null); setError(null); setWeather(null);
+    });
+
     setLoading(true);
-    setError(null);
-    setResult(null);
+    setScanContextLoading(true);
+
+    // Fire scan-context in parallel (non-blocking, 8s timeout)
+    fetch(`/api/v1/scan-context?target=${encodeURIComponent(scanAddr)}&_t=${Date.now()}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setScanContextData(d); })
+      .catch(() => {})
+      .finally(() => setScanContextLoading(false));
+
+    // Fire community scan count fetch in parallel (non-blocking, 6s timeout)
+    {
+      const isEvm = /^0x[a-fA-F0-9]{40}$/.test(scanAddr);
+      const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(scanAddr);
+      if (isEvm || isSol) {
+        fetch(`/api/v1/score?mint=${encodeURIComponent(scanAddr)}&_t=${Date.now()}`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(6000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (typeof d?.communityScans === "number") setCommunityScans(d.communityScans); })
+          .catch(() => {});
+      }
+    }
+
+    // Fire intelligence signal fetch in parallel (non-blocking, 5s timeout)
+    fetch(`/api/scan/intelligence?value=${encodeURIComponent(scanAddr)}`, {
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIntelSignal(d); })
+      .catch(() => {});
+
+    // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
+    if (chain === "SOL") {
+      fetch(`/api/scan/cluster?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
+        signal: AbortSignal.timeout(4000),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setClusterResult(d); })
+        .catch(() => {});
+
+      fetch(`/api/scan/mm?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
+        signal: AbortSignal.timeout(4500),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setMmResult(d); })
+        .catch(() => {});
+    }
+
+    // Fire MM Pattern Engine risk fetch in parallel
+    {
+      const chainKey =
+        chain === "SOL" ? "sol" :
+        chain === "ETH" ? "eth" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" :
+        chain === "BSC" ? "bsc" : null;
+      if (chainKey) {
+        fetch(`/api/scan/mm-risk?address=${encodeURIComponent(scanAddr)}&chain=${chainKey}`, {
+          signal: AbortSignal.timeout(11000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d && d.assessment) setMmRisk(d.assessment); })
+          .catch(() => {});
+      }
+    }
+
+    // Freshness + narrative — parallel, non-blocking
+    {
+      const freshnessChain =
+        chain === "SOL" ? "solana" :
+        chain === "ETH" ? "ethereum" :
+        chain === "BASE" ? "base" :
+        chain === "ARBITRUM" ? "arbitrum" : null;
+      if (freshnessChain) {
+        fetch("/api/v1/freshness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chain: freshnessChain, mint: scanAddr }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setFreshnessResult(d); })
+          .catch(() => {});
+
+        fetch("/api/v1/narrative", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tokenMint: scanAddr, chain: freshnessChain }),
+          signal: AbortSignal.timeout(20000),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setNarrativeResult(d); })
+          .catch(() => {});
+      }
+    }
 
     try {
       for (let i = 0; i < 3; i++) {
@@ -299,6 +412,7 @@ function TigerScanPageInner() {
         .then(r => r.json())
         .then(d => { if (d.found) setCorrobData(d) })
         .catch(() => {})
+      setCurrentScanAddress(scanAddr);
       setResult(normalizeScanData(enrichedData, chain));
 
       try {
@@ -348,6 +462,7 @@ function TigerScanPageInner() {
                 onClick={() => {
                   setActivePreset(p.id);
                   setAddress(p.address);
+                  setResult(null);
                   setIsDeep(false);
                   setTimeout(() => document.querySelector<HTMLButtonElement>("[data-scan-btn]")?.click(), 80);
                 }}
@@ -394,7 +509,7 @@ function TigerScanPageInner() {
               <input
                 type="text"
                 value={address}
-                onChange={(e) => { setAddress(e.target.value); setLoading(false); setError(null); }}
+                onChange={(e) => { setAddress(e.target.value); setError(null); }}
                 placeholder="Paste address (SOL / ETH / TRON / base:0x… / arb:0x… / bsc:0x… / hyper:0x…)"
                 onKeyDown={(e) => { if (e.key === "Enter") runScan(); }}
                 className="w-full bg-transparent py-4 text-sm font-mono focus:outline-none placeholder:text-zinc-800 text-white"
@@ -454,7 +569,7 @@ function TigerScanPageInner() {
         </div>
 
         {/* LOADING */}
-        {loading && (
+        {loading && !result && (
           <div className="max-w-md mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
             <div className="flex justify-between items-end">
               <span className="text-[10px] font-black uppercase text-[#F85B05] tracking-[0.4em]">Intelligence Pipeline</span>
@@ -470,7 +585,7 @@ function TigerScanPageInner() {
         )}
 
         {/* RESULTS */}
-        {result && !loading && (
+        {result && currentScanAddress === address.trim() && (
           <div className="grid lg:grid-cols-12 gap-8 animate-in zoom-in-95 duration-700 ease-out">
 
             {/* LEFT: VERDICT */}

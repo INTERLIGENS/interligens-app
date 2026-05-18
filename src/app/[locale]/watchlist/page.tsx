@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 type Watch = {
   id: string;
@@ -41,6 +42,13 @@ function hoursAgo(iso: string | null): string {
 }
 
 export default function WatchlistPage() {
+  // Read the locale from the [locale] dynamic segment so internal links
+  // stay on the user's chosen language. Default to "en" if the segment
+  // is missing or unknown.
+  const params = useParams();
+  const rawLocale = typeof params?.locale === "string" ? params.locale : "en";
+  const locale = rawLocale === "fr" ? "fr" : "en";
+
   const [watches, setWatches] = useState<Watch[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -183,7 +191,7 @@ export default function WatchlistPage() {
               track it here.
             </div>
             <Link
-              href="/en/demo"
+              href={`/${locale}/demo`}
               style={{
                 display: "inline-block",
                 marginTop: 20,

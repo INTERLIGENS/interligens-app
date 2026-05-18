@@ -75,7 +75,7 @@ export default async function AskLogsPage() {
   const rows = await loadLogs()
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-400">Audit Trail</h1>
@@ -85,12 +85,12 @@ export default async function AskLogsPage() {
         </div>
 
         {rows.length === 0 ? (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
             No AskLog entries yet. Either the ASK endpoint hasn&apos;t been called since the
             migration was applied, or the migration hasn&apos;t run. See <code>MIGRATION_ASKLOG.md</code>.
           </div>
         ) : (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 overflow-x-auto max-h-[calc(100vh-180px)]">
+          <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 overflow-x-auto max-h-[calc(100vh-180px)]">
             <table className="w-full text-sm font-mono">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
@@ -108,7 +108,7 @@ export default async function AskLogsPage() {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition align-top">
+                  <tr key={r.id} className="border-b border-gray-800 hover:bg-[#0a0a0a]/50 transition align-top">
                     <td className="py-2 px-3 whitespace-nowrap text-gray-400">
                       {fmtDate(r.createdAt)}
                     </td>

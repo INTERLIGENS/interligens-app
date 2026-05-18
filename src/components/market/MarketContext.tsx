@@ -158,7 +158,7 @@ export default function MarketContext({ locale }: { locale: Locale }) {
         <>
           {/* Prices grid — fixed 2 columns */}
           {prices.length > 0 && (
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4 font-mono">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mb-4 font-mono">
               {prices.map(p => {
                 const up = (p.change24h ?? 0) >= 0
                 const changeColor =

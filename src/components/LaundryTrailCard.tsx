@@ -26,7 +26,7 @@ interface LaundryTrailData {
 
 const SIGNAL_COLORS: Record<string, string> = {
   FRAG: '#FFB800',
-  BRIDGE: '#00E5FF',
+  BRIDGE: '#FF6B00',
   MIXER: '#FF3B5C',
   PRIV: '#FF3B5C',
   DEG: '#FFB800',
@@ -50,7 +50,7 @@ const LABELS = {
   en: {
     signals: 'SIGNALS',
     trailType: 'TRAIL TYPE',
-    laundryRisk: 'LAUNDRY RISK',
+    laundryRisk: 'FUND MOVEMENT RISK',
     recoveryDifficulty: 'RECOVERY DIFFICULTY',
     recovery: 'RECOVERY',
     trailBreak: (hop: number) => `— trail breaks at hop ${hop}`,
@@ -58,7 +58,7 @@ const LABELS = {
   fr: {
     signals: 'SIGNAUX',
     trailType: 'TYPE DE TRACE',
-    laundryRisk: 'RISQUE DE BLANCHIMENT',
+    laundryRisk: 'RISQUE DE FLUX FINANCIER',
     recoveryDifficulty: 'DIFFICULTÉ DE RÉCUPÉRATION',
     recovery: 'RÉCUPÉRATION',
     trailBreak: (hop: number) => `— la trace se perd au hop ${hop}`,

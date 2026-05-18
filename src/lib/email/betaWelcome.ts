@@ -170,7 +170,7 @@ function buildHtml(name: string, accessCode: string): string {
       '" style="background-color:' +
       ACCENT +
       ';padding:14px 26px;">',
-    '<a href="https://app.interligens.com" target="_blank" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#000000;text-decoration:none;">Open your workspace &rarr;</a>',
+    '<a href="https://app.interligens.com/en/demo" target="_blank" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#000000;text-decoration:none;">Open your workspace &rarr;</a>',
     "</td>",
     "</tr>",
     "</table>",
@@ -230,7 +230,7 @@ function buildText(name: string, accessCode: string): string {
     "",
     "Your access code: " + maskedCode,
     "",
-    "Open your workspace: https://app.interligens.com",
+    "Open your workspace: https://app.interligens.com/en/demo",
     "",
     "---",
     "NDA reminder: Everything you see in the platform - derived entities, hypotheses, timeline events, and any shared case - is covered by the INTERLIGENS beta NDA you accepted. Do not share screenshots, exports, or internal findings outside of the platform without explicit approval.",

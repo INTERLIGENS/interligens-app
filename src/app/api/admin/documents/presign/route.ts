@@ -76,10 +76,15 @@ export async function GET(req: NextRequest) {
       { expiresIn: 600 },
     );
 
+    const publicBase =
+      process.env.R2_PUBLIC_BASE_URL ?? "https://pub-interligens.r2.dev";
+    const publicUrl = `${publicBase}/${r2Key}`;
+
     return NextResponse.json({
       ok: true,
       uploadUrl: signedUrl,
       r2Key,
+      publicUrl,
       expiresAt: new Date(Date.now() + 600_000).toISOString(),
     });
   } catch (err) {

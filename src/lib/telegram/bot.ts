@@ -47,11 +47,13 @@ const HELP_TEXT = [
   "*INTERLIGENS Bot*",
   "",
   "Commands:",
-  "  `/scan <address>` — get a TigerScore on any crypto address",
+  "  `/scan <address>` — TigerScore on any crypto address",
+  "  `/kol <handle>` — KOL risk profile",
   "  `/help` — show this menu",
   "",
   "Example:",
   "  `/scan 0xa5B0eDF6B55128E0DdaE8e51aC538c3188401D41`",
+  "  `/kol zachxbt`",
   "",
   "Web app: https://app.interligens.com",
 ].join("\n");
@@ -189,6 +191,47 @@ export async function handleScanCommand(arg: string): Promise<TelegramReply> {
   }
 }
 
+export async function handleKolCommand(arg: string): Promise<TelegramReply> {
+  const handle = arg.replace(/^@/, "").toLowerCase().trim();
+  if (!handle) {
+    return {
+      text: "Usage: `/kol <twitter_handle>`\nExample: `/kol zachxbt`",
+      parse_mode: "Markdown",
+    };
+  }
+  try {
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
+    try {
+      const kol = await prisma.kolProfile.findUnique({
+        where: { handle },
+        select: { handle: true, displayName: true, rugCount: true, tier: true, riskFlag: true },
+      });
+      if (!kol) {
+        return { text: `No KOL profile found for \`@${escapeMarkdown(handle)}\`.`, parse_mode: "Markdown" };
+      }
+      const rugLine = (kol.rugCount ?? 0) > 0
+        ? `\n⚠️ Rug count: *${kol.rugCount}*`
+        : "";
+      return {
+        text: [
+          `🕵️ *KOL PROFILE*`,
+          `Handle: \`@${escapeMarkdown(kol.handle)}\``,
+          `Name: ${escapeMarkdown(kol.displayName ?? "—")}`,
+          `Tier: *${escapeMarkdown(kol.tier ?? "UNKNOWN")}*`,
+          `Risk flag: ${escapeMarkdown(kol.riskFlag)}${rugLine}`,
+        ].join("\n"),
+        parse_mode: "Markdown",
+      };
+    } finally {
+      await prisma.$disconnect();
+    }
+  } catch (err) {
+    console.error("[telegram-bot] kol lookup failed", err);
+    return { text: "KOL lookup failed. Try again later." };
+  }
+}
+
 export function handleHelpCommand(): TelegramReply {
   return { text: HELP_TEXT, parse_mode: "Markdown", disable_web_page_preview: true };
 }
@@ -214,6 +257,12 @@ export async function route(
   if (text.startsWith("/scan")) {
     const arg = text.replace(/^\/scan(@\w+)?\s*/i, "");
     const reply = await handleScanCommand(arg);
+    return { chatId, reply };
+  }
+
+  if (text.startsWith("/kol")) {
+    const arg = text.replace(/^\/kol(@\w+)?\s*/i, "");
+    const reply = await handleKolCommand(arg);
     return { chatId, reply };
   }
 

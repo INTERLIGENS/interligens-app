@@ -75,7 +75,7 @@ export default function IntelVaultPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -89,7 +89,7 @@ export default function IntelVaultPage() {
         </div>
 
         {/* Input type selector */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Source</h2>
           <div className="flex gap-2 flex-wrap">
             {(["url","file","text","address","pdf"] as InputType[]).map(t => (
@@ -99,7 +99,7 @@ export default function IntelVaultPage() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                   inputType === t
                     ? "bg-orange-500 text-black"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    : "bg-[#1a1a1a] text-gray-300 hover:bg-gray-700"
                 }`}
               >
                 {t === "url" ? "🔗 URL" : t === "file" ? "📄 Fichier CSV/JSON" : t === "text" ? "✍️ Texte / Thread" : t === "pdf" ? "📑 PDF" : "📍 Adresse unique"}
@@ -112,7 +112,7 @@ export default function IntelVaultPage() {
               value={url}
               onChange={e => setUrl(e.target.value)}
               placeholder="https://docs.google.com/spreadsheets/... ou raw GitHub URL"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+              className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
             />
           )}
 
@@ -124,7 +124,7 @@ export default function IntelVaultPage() {
               placeholder={inputType === "file"
                 ? "Colle le contenu CSV ou JSON ici"
                 : "Colle le thread, tweet ou texte brut ici (les adresses seront extraites)"}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 font-mono"
+              className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 font-mono"
             />
           )}
 
@@ -142,13 +142,13 @@ export default function IntelVaultPage() {
                     if (res.ok) { const d = await res.json(); setSources(d.sources ?? []); }
                   }
                 }}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300"
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300"
               />
               {pdfFile && <p className="text-xs text-gray-400">📄 {pdfFile.name} ({(pdfFile.size/1024).toFixed(0)} Ko)</p>}
               <select
                 value={sourceId}
                 onChange={e => setSourceId(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm"
               >
                 <option value="">— Sélectionner une source —</option>
                 {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -161,13 +161,13 @@ export default function IntelVaultPage() {
               value={address}
               onChange={e => setAddress(e.target.value)}
               placeholder="0x... ou adresse Solana"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-orange-500"
+              className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-orange-500"
             />
           )}
         </div>
 
         {/* Metadata */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-4">
+        <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Métadonnées</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -176,7 +176,7 @@ export default function IntelVaultPage() {
                 value={sourceName}
                 onChange={e => setSourceName(e.target.value)}
                 placeholder="ex: wearekent_, chainalysis..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
               />
             </div>
             <div>
@@ -185,7 +185,7 @@ export default function IntelVaultPage() {
                 value={label}
                 onChange={e => setLabel(e.target.value)}
                 placeholder="ex: kent_unclaimed_airdrop_list"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
               />
             </div>
             <div>
@@ -193,7 +193,7 @@ export default function IntelVaultPage() {
               <select
                 value={defaultLabelType}
                 onChange={e => setDefaultLabelType(e.target.value as LabelType)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
               >
                 {LABEL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -203,7 +203,7 @@ export default function IntelVaultPage() {
               <select
                 value={visibility}
                 onChange={e => setVisibility(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
               >
                 <option value="internal_only">internal_only</option>
                 <option value="sources_on_request">sources_on_request</option>

@@ -1,0 +1,445 @@
+{
+  "_meta": {
+    "casefile": "BULLISH",
+    "session_date": "2026-05-14",
+    "extracted_from": "Dood screenshot batch via Claude vision",
+    "screenshot_count": 83,
+    "screenshot_count_useful": 79,
+    "chain_of_custody_hash_file": "~/INTERLIGENS_FORENSIC/BULLISH_2026-05-14/02_metadata/hashes.txt",
+    "extraction_method": "manual visual inspection by Claude (Opus 4.7), Claude.ai web interface",
+    "warning": "All dates and URLs extracted by visual inspection. Verify each before DB insert."
+  },
+
+  "token": {
+    "symbol": "BULLISH",
+    "name": "Bullish Degen",
+    "mint": "C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWWkXpump",
+    "chain": "solana",
+    "launchpad": "pump.fun",
+    "dex": "PumpSwap",
+    "launch_date": "2025-10-02",
+    "official_x_account": "@SolBullishDegen",
+    "official_telegram": "t.me/solbullishdegen",
+    "official_dev_x_account": "@trade",
+    "official_dev_declaration_url": "https://x.com/trade/status/2006636904196796811",
+    "official_dev_declaration_date": "2026-01-01T09:01:00Z",
+    "official_dev_declaration_text": "This is the only official account. And the only official dev is @trade. Anyone else claiming anything otherwise is scamming, beware and stay safe.",
+    "ath_fdv_usd": 40000000,
+    "ath_fdv_source": "Bubblemaps tweet 2026-11-19, 'recently surged to a $40M FDV'",
+    "current_fdv_usd_observed_range": [3500000, 9200000],
+    "bubblemaps_intel_desk_case_id": 73,
+    "bubblemaps_thread_url": "https://x.com/bubblemaps/status/1991899901833076952",
+    "bubblemaps_thread_date": "2025-11-19T18:00:00Z",
+    "bubblemap_url": "https://v2.bubblemaps.io/map/k2pPIBZ2jh"
+  },
+
+  "manipulation_evidence": {
+    "bundle_pattern": {
+      "description": "70% of supply owned by fresh wallets funded from Binance",
+      "source": "@bubblemaps tweet 1 (2025-11-19), Intel Desk case 73",
+      "source_url": "https://x.com/bubblemaps/status/1991899901833076952",
+      "claim_quote": "$BULLISH is heavily bundled. 70% of the supply is owned by fresh wallets funded from Binance"
+    },
+    "pre_launch_funding_pattern": {
+      "description": "150+ wallets funded from Binance Sep 13-24, 2025; each sent SOL to a fresh wallet that bought BULLISH within 30 min of Oct 2 launch",
+      "source": "@bubblemaps tweet 3",
+      "preparation_window_days": 11,
+      "wallets_count_min": 150
+    },
+    "cluster_concentration": {
+      "description": "Single bubble cluster = 13.4% of supply",
+      "outflow_observed_usd": 21340,
+      "outflow_addresses": 100,
+      "source": "Bubblemaps bubble map visual at 2025-10-02 snapshot"
+    },
+    "dev_concealment": {
+      "description": "On the day of launch, the dev (@trade) tweeted in first person presenting himself as a random trader who 'aped' the token, without disclosing his role as developer",
+      "evidence_url": "https://x.com/trade/status/1973761403615142249",
+      "evidence_date": "2025-10-02T16:46:00Z",
+      "evidence_text": "Aped some $BULLISH here. New launch, looks good. CA: C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWWkXpump",
+      "engagement_views": 76600,
+      "legal_qualification_fr": "Escroquerie aggravee par dissimulation de qualite (art. 313-1, 313-2 CP) + manipulation de marche (art. L. 465-3 CMF)"
+    },
+    "post_exposure_persistence": {
+      "description": "Patrick continued shilling 1 day after Bubblemaps exposed the scheme on 2025-11-19; blocked critics relaying the bubble map evidence",
+      "post_exposure_tweet_url": "https://x.com/trade/status/1991514352126685623",
+      "post_exposure_tweet_date": "2025-11-20T15:29:00Z",
+      "blocked_critic": "@CryptoCowboy_AU"
+    }
+  },
+
+  "actors": {
+    "primary_dev": {
+      "handle": "trade",
+      "display_name": "Patrick.",
+      "x_url": "https://x.com/trade",
+      "verified": true,
+      "bio": "Investment banker turned crypto trader.",
+      "role": "Official dev (declared publicly by @SolBullishDegen on 2026-01-01)",
+      "tigerscore_recommended": 95,
+      "verdict_color_recommended": "RED",
+      "first_bullish_tweet_date": "2025-10-02",
+      "last_observed_bullish_tweet_date": "2026-05-08",
+      "tweet_count_observed": 18
+    },
+    "official_account": {
+      "handle": "SolBullishDegen",
+      "display_name": "Bullish Degen",
+      "x_url": "https://x.com/SolBullishDegen",
+      "verified": true,
+      "telegram": "t.me/solbullishdegen",
+      "role": "Official project account"
+    },
+    "core_amplifiers": [
+      {
+        "handle": "GordonGekko",
+        "display_name": "Gordon",
+        "x_url": "https://x.com/GordonGekko",
+        "verified": true,
+        "followers_approx": null,
+        "bio": "Founder @crypto_crib_  Co-Founder @_alphametrics",
+        "affiliations": ["@crypto_crib_", "@_alphametrics"],
+        "role": "Core amplifier, cluster operator via crypto_crib_/alphametrics",
+        "tigerscore_recommended": 85,
+        "verdict_color_recommended": "RED",
+        "tweet_count_observed": 16,
+        "max_engagement_tweet_url": "https://x.com/GordonGekko/status/2021905488770937062",
+        "max_engagement_views": 26000,
+        "already_in_botify_dossier": true
+      },
+      {
+        "handle": "moonbag",
+        "display_name": "ray",
+        "x_url": "https://x.com/moonbag",
+        "verified": true,
+        "followers_approx": 191700,
+        "bio": "speculative & momentum trader, growing @crypto_crib_ @mcxyz @_alphametrics",
+        "affiliations": ["@crypto_crib_", "@mcxyz", "@_alphametrics"],
+        "role": "Core amplifier, same cluster as Gordon via crypto_crib_/alphametrics",
+        "tigerscore_recommended": 85,
+        "verdict_color_recommended": "RED",
+        "tweet_count_observed": 12,
+        "max_engagement_tweet_url": "https://x.com/moonbag/status/2031010577846554749",
+        "max_engagement_views": 43200,
+        "telegram": "t.me/tradingjournal",
+        "noteworthy": "Has BLOCKED Dood — knows about INTERLIGENS investigation"
+      },
+      {
+        "handle": "DonWedge",
+        "display_name": "Don",
+        "x_url": "https://x.com/DonWedge",
+        "verified": true,
+        "followers_approx": 232900,
+        "bio": "Crypto Trader | Trench Warrior | Pro Padel",
+        "role": "Largest amplifier by audience, active in Bullish Degen X community",
+        "tigerscore_recommended": 80,
+        "verdict_color_recommended": "RED",
+        "telegrams": ["t.me/ApesCartelAlerts", "t.me/APENOW"],
+        "max_engagement_tweet_url": "https://x.com/DonWedge/status/2039992327842750687",
+        "max_engagement_views": 20600,
+        "already_in_botify_dossier": true,
+        "social_link_to_gordon": "Both reference 'padel' — possible physical/social connection"
+      }
+    ],
+    "peripheral_amplifiers_to_investigate": [
+      {"handle": "Splashie9", "reason": "Tagged in Patrick's Relevant People; bio: Professional Shitposter"},
+      {"handle": "Crypto_Crib_", "reason": "Direct cluster affiliation with Gordon and ray; Gordon replied to him on $BULLISH"},
+      {"handle": "_alphametrics", "reason": "Direct cluster affiliation with Gordon and ray"},
+      {"handle": "mcxyz", "reason": "Listed in ray's bio as part of cluster"},
+      {"handle": "Geppetto_88", "reason": "Already in BOTIFY dossier; ray replied to him on $BULLISH (cross-case link)"},
+      {"handle": "momma_", "reason": "Quoted by Patrick on 2025-10-07 in $BULLISH context"},
+      {"handle": "MarioNawfal", "reason": "Tagged by Patrick on 2025-11-20 in $BULLISH context (KOL macro)"},
+      {"handle": "a1lon9", "reason": "Tagged by Patrick on 2025-10-06; possibly Alon Cohen (pump.fun co-founder) — VERIFY"},
+      {"handle": "DegenHustla", "reason": "Reply to Don 2026-04-03 'Generational entry for $BULLISH'"},
+      {"handle": "WhaleInsider", "reason": "Featured in Bubblemaps exposé thread tweet 2"},
+      {"handle": "CryptoCowboy_AU", "reason": "Critic blocked by Patrick after relaying bubble map; FRIENDLY witness candidate"},
+      {"handle": "0xshardy", "reason": "Public commentator supporting Bubblemaps exposé; FRIENDLY"},
+      {"handle": "Qnt20001", "reason": "Carlito, vocal supporter of Patrick in post-exposure thread"},
+      {"handle": "georgez_crypto", "reason": "Supporter reply on 2025-11-20 Mario tweet"},
+      {"handle": "Dutchflavours", "reason": "Supporter reply"}
+    ]
+  },
+
+  "promotion_mentions": [
+    {
+      "handle": "trade",
+      "url": "https://x.com/trade/status/1973761403615142249",
+      "post_id": "1973761403615142249",
+      "posted_at": "2025-10-02T16:46:00Z",
+      "claim": "Aped some $BULLISH here. New launch, looks good. CA: C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWWkXpump",
+      "engagement": {"views": 76600, "likes": 40, "rt": 1, "replies": 3, "bookmarks": 18},
+      "screenshot_hashes_sha256_filename_pattern": "patrick_trade_212829.png, patrick_trade_212831.png",
+      "criticality": "P0 — dev day-of-launch concealment"
+    },
+    {
+      "handle": "trade",
+      "url_partial": "x.com/trade/status/1991514352126685623",
+      "post_id": "1991514352126685623",
+      "posted_at": "2025-11-20T15:29:00Z",
+      "claim": "Mario's sidelined. Stay $BULLISH",
+      "engagement": {"views": 3241, "likes": 28, "rt": 6, "replies": 6},
+      "criticality": "P0 — post-exposure persistence, day after Bubblemaps thread"
+    },
+    {
+      "handle": "trade",
+      "url": "https://x.com/trade/status/2006636904196796811",
+      "post_id": "2006636904196796811",
+      "posted_at": "2026-01-01T09:01:00Z",
+      "claim": "Stay BULLISH. Ignore the imitators. (QT confirming @trade is sole dev)",
+      "engagement": {"views": 23600, "likes": 104, "rt": 13, "replies": 23, "bookmarks": 3},
+      "criticality": "P0 — public confirmation of dev role"
+    },
+    {
+      "handle": "trade",
+      "post_id_or_url_partial": "x.com/trade/status/1988460612452753512",
+      "posted_at": "2025-11-XX",
+      "claim": "There have been many shake outs along the way. $BULLISH bounces every time... We are going to a BILLION",
+      "criticality": "P1 — moonboy shilling, billion target"
+    },
+    {
+      "handle": "trade",
+      "post_id": "1994375793955500244",
+      "posted_at": "2025-11-28T13:00:00Z",
+      "claim": "Stay $BULLISH (QT @moonbag 'You are not ready for what's to come')",
+      "engagement": {"views": 2466, "likes": 27, "rt": 8, "replies": 5},
+      "criticality": "P1 — coordination with @moonbag"
+    },
+    {
+      "handle": "trade",
+      "posted_at": "2025-10-03",
+      "claim": "Listed on CoinGekko! (+image CoinGecko)",
+      "engagement": {"views": 1300, "likes": 4},
+      "criticality": "P2 — 1-day-post-launch CoinGecko listing announcement"
+    },
+    {
+      "handle": "trade",
+      "posted_at": "2025-10-05",
+      "claim": "First real pullback so far on $BULLISH. If you are sidelined this is your chance.",
+      "engagement": {"views": 1000, "likes": 6, "replies": 3},
+      "criticality": "P1 — buy-the-dip 3 days post-launch"
+    },
+    {
+      "handle": "trade",
+      "posted_at": "2025-10-06",
+      "claim": "$BULLISH @SolBullishDegen (reply to @moonbag)",
+      "engagement": {"views": 306, "likes": 7},
+      "criticality": "P1 — early coordination with @moonbag"
+    },
+    {
+      "handle": "trade",
+      "posted_at": "2026-01-11",
+      "claim": "Bullish looks good here (reply to @GordonGekko)",
+      "engagement": {"views": 1500, "likes": 11},
+      "criticality": "P2 — phrase later reused by Gordon on Mar 4"
+    },
+    {
+      "handle": "trade",
+      "posted_at": "2026-01-02",
+      "claim": "Bullish.",
+      "engagement": {"views": 3000, "likes": 36, "rt": 6}
+    },
+    {
+      "handle": "trade",
+      "posted_at": "2025-12-04",
+      "claim": "All you have to do is stay bullish.",
+      "engagement": {"views": 2700, "likes": 47, "rt": 10}
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/2029136650043826590",
+      "post_id": "2029136650043826590",
+      "posted_at": "2026-03-04T11:07:00Z",
+      "claim": "Bullish looks good here (QT @moonbag 'Loading up personally')",
+      "engagement": {"views": 17100},
+      "criticality": "P0 — phrase reuse from @trade Jan 11, coordination smoking gun"
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/2025241017302061381",
+      "post_id": "2025241017302061381",
+      "posted_at": "2026-02-21T17:07:00Z",
+      "claim": "$BULLISH SOL and BTC",
+      "engagement": {"views": 5094, "likes": 61, "rt": 4, "replies": 13},
+      "criticality": "P1 — @moonbag replies in coordination"
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/2025478011768705142",
+      "post_id": "2025478011768705142",
+      "posted_at": "2026-02-22T08:49:00Z",
+      "claim": "I'm still incredibly Bullish on $BULLISH. When the market starts to turn, it will absolutely FLY. @SolBullishDegen",
+      "engagement": {"views": 13500, "likes": 269, "rt": 24, "replies": 91},
+      "criticality": "P0 — explicit tag to official account, FLY language"
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/2026725257021714879",
+      "post_id": "2026725257021714879",
+      "posted_at": "2026-02-25T19:25:00Z",
+      "claim": "Bullish looking incredibly good here (QT @SolBullishDegen)",
+      "engagement": {"views": 28400, "likes": 169, "rt": 22, "replies": 49}
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/2021905488770937062",
+      "post_id": "2021905488770937062",
+      "posted_at": "2026-02-12T12:13:00Z",
+      "claim": "The $BULLISH reversal will be like NOTHING you have EVER seen. Do you understand?",
+      "engagement": {"views": 26000, "likes": 479, "rt": 64, "replies": 186, "bookmarks": 6},
+      "criticality": "P0 — strongest superlative pump call, highest engagement Gordon tweet"
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/2023334577926754459",
+      "post_id": "2023334577926754459",
+      "posted_at": "2026-02-16T10:52:00Z",
+      "claim": "$BULLISH C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWWkXpump",
+      "engagement": {"views": 4088, "likes": 49, "rt": 5, "replies": 7},
+      "criticality": "P0 — direct CA shill; Gordon replied 'lets cook' to scam accusation in thread"
+    },
+    {
+      "handle": "GordonGekko",
+      "url": "https://x.com/GordonGekko/status/2021528776249856284",
+      "post_id": "2021528776249856284",
+      "posted_at": "2026-02-11T11:16:00Z",
+      "claim": "It is incredibly BULLISH if you ask me",
+      "engagement": {"views": 883, "likes": 19, "replies": 2}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2026-02-11",
+      "claim": "Excellent analysis as usual Ray. Bullish hasn't seen any type of bull market yet, and the team is still working and delivering. (reply to @moonbag)",
+      "engagement": {"views": 1500, "likes": 29},
+      "criticality": "P0 — explicit 'as usual' coordination cue + 'the team' = identification with project"
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2026-02-12",
+      "claim": "Bullish looking good here (reply to @DonWedge)",
+      "engagement": {"likes": 28}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2026-02-15",
+      "claim": "Bullish af mate (reply to @trade)",
+      "engagement": {"likes": 7}
+    },
+    {
+      "handle": "GordonGekko",
+      "posted_at": "2026-02-13",
+      "claim": "Looks bullish to me (reply to @moonbag)",
+      "engagement": {"likes": 4}
+    },
+    {
+      "handle": "moonbag",
+      "url": "https://x.com/moonbag/status/2031010577846554749",
+      "post_id": "2031010577846554749",
+      "posted_at": "2026-03-09T15:13:00Z",
+      "claim": "Solid floor at $3.5M ish for $BULLISH. Once conditions are better, this will cook. Great for those who don't have a bag, I know some whales collecting 5-10M tokens slowly DCA'ing.",
+      "engagement": {"views": 43200, "likes": 445, "rt": 44, "replies": 17, "bookmarks": 2},
+      "criticality": "P0 — explicit knowledge of whale accumulation pattern"
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2026-02-18",
+      "claim": "$100M MC coin larping at $9M MC btw. $BULLISH. My strongest conviction, billions.",
+      "engagement": {"views": 70000, "likes": 515, "rt": 26, "replies": 49},
+      "criticality": "P0 — strongest conviction call, 191K follower audience"
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2026-02-17",
+      "claim": "Something is cooking with $BULLISH. Here is your entry sub 10M MC."
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2026-02-22",
+      "claim": "My biggest conviction regarding meme coins, ticker just makes sense. Always stay $BULLISH",
+      "engagement": {"views": 20000, "likes": 432, "rt": 20, "replies": 47}
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2026-05-12",
+      "claim": "Bullish week ahead.",
+      "engagement": {"views": 24000, "likes": 469, "rt": 16, "replies": 28}
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2026-03-04",
+      "claim": "Alot of people sold the absolute bottom on $BULLISH. Up only now, fomo starts again for it above $10M. Loading up personally.",
+      "criticality": "P0 — 'loading up personally' undisclosed financial interest claim"
+    },
+    {
+      "handle": "moonbag",
+      "url": "https://x.com/moonbag/status/2033089636671565953",
+      "post_id": "2033089636671565953",
+      "posted_at": "2026-03-15T08:55:00Z",
+      "claim": "Super bullish",
+      "engagement": {"views": 242, "likes": 5}
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2025-11-28",
+      "claim": "You are not ready for what's to come (+jackpot image)",
+      "criticality": "P1 — QT'd by Patrick the same day"
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2026-01-14",
+      "claim": "The only thing i see is $BULLISH (reply to @GordonGekko)",
+      "engagement": {"views": 4800, "likes": 23}
+    },
+    {
+      "handle": "moonbag",
+      "posted_at": "2026-01-12",
+      "claim": "max bidding $bullish here (reply to @Geppetto_88)",
+      "engagement": {"views": 506, "likes": 8},
+      "criticality": "P1 — cross-case link to BOTIFY dossier via @Geppetto_88"
+    },
+    {
+      "handle": "DonWedge",
+      "url": "https://x.com/DonWedge/status/2039992327842750687",
+      "post_id": "2039992327842750687",
+      "posted_at": "2026-04-03T11:04:00Z",
+      "claim": "I have been accumulating $BULLISH on the lows, we are in clear accumulation once we break out of accumulation $10M MCAP is magnet",
+      "engagement": {"views": 20600, "likes": 130, "rt": 11, "replies": 39, "bookmarks": 3},
+      "context": "Posted in Bullish Degen X community",
+      "criticality": "P0 — public claim of accumulation, 232K follower audience"
+    },
+    {
+      "handle": "DonWedge",
+      "posted_at": "2026-03-18T08:57:00Z",
+      "claim": "Being $BULLISH is a er... (partial captured)",
+      "engagement": {"views": 13000, "likes": 124, "rt": 3, "replies": 30},
+      "context": "Bullish Degen community post"
+    }
+  ],
+
+  "cross_case_links": {
+    "to_botify": [
+      "Geppetto_88 — already in BOTIFY DB, also replied-to by @moonbag on $BULLISH 2026-01-12",
+      "GordonGekko — already in BOTIFY P0 cluster",
+      "DonWedge — already in BOTIFY P0 cluster"
+    ],
+    "shared_cluster_infrastructure": "@crypto_crib_ + @_alphametrics + @mcxyz appear in bios of both GordonGekko (founder/co-founder) and moonbag (growing)"
+  },
+
+  "external_evidence_to_ingest": {
+    "bubblemaps_thread": {
+      "url": "https://x.com/bubblemaps/status/1991899901833076952",
+      "date": "2025-11-19",
+      "verified_account": true,
+      "engagement": {"views": 363800, "likes": 1600, "rt": 399, "bookmarks": 118},
+      "intel_case_id": 73,
+      "intel_case_url": "https://intel.bubblemaps.io/cases/73/",
+      "bubble_map_url": "https://v2.bubblemaps.io/map/k2pPIBZ2jh",
+      "criticality": "TIER 1 — independent on-chain certification"
+    },
+    "0xshardy_support": {
+      "handle": "@0xshardy",
+      "claim": "kinda funny how every 'fresh trend' magically starts with the same funded clusters. the chart pumps, the bundles stay the same.",
+      "date": "2025-11-19",
+      "engagement": {"views": 8000, "likes": 40, "replies": 1, "rt": 1}
+    }
+  }
+}

@@ -7,7 +7,7 @@ const O = "#FF6B00";
 type Locale = "en" | "fr";
 
 interface NavItem {
-  slug: "demo" | "charter" | "watchlist" | "kol" | "explorer" | "methodology" | "investors" | "investigators";
+  slug: "demo" | "charter" | "watchlist" | "kol" | "explorer" | "wallet-scan" | "jupiter" | "methodology" | "investors" | "investigators";
   label: { en: string; fr: string };
   fallbackLocale?: Locale;
   match: string[];
@@ -19,6 +19,8 @@ const NAV_ITEMS: NavItem[] = [
   { slug: "watchlist",   label: { en: "Watchlist", fr: "Watchlist" },      match: ["/en/watchlist", "/fr/watchlist"] },
   { slug: "kol",         label: { en: "KOL Registry", fr: "Registre KOL" },match: ["/en/kol", "/fr/kol"] },
   { slug: "explorer",    label: { en: "Explorer", fr: "Explorer" },        match: ["/en/explorer", "/fr/explorer"] },
+  { slug: "wallet-scan", label: { en: "Wallet Scan", fr: "Scan Wallet" },   match: ["/en/wallet-scan", "/fr/wallet-scan"] },
+  { slug: "jupiter",     label: { en: "Safe Swap", fr: "Échange Sûr" },    match: ["/en/jupiter"] },
   { slug: "investigators", label: { en: "Investigators", fr: "Enquêteurs" }, match: ["/investigators"] },
   { slug: "methodology", label: { en: "Methodology", fr: "Méthodologie" }, match: ["/en/methodology", "/fr/methodology"] },
   { slug: "investors",   label: { en: "Investors", fr: "Investors" }, fallbackLocale: "en", match: ["/en/investors"] },
@@ -32,17 +34,7 @@ function detectLocale(pathname: string): Locale {
 export default function BetaNav() {
   const pathname = usePathname();
   const locale = detectLocale(pathname);
-  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    function onScroll() {
-      setScrolled(window.scrollY > 20);
-    }
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // Close the mobile menu when the route changes.
   useEffect(() => {
@@ -118,14 +110,8 @@ export default function BetaNav() {
           alignItems: "center",
           padding: "0 32px",
           fontFamily: "Inter, system-ui, sans-serif",
-          background: scrolled || menuOpen ? "rgba(0,0,0,0.92)" : "transparent",
-          backdropFilter: scrolled || menuOpen ? "blur(12px)" : "none",
-          WebkitBackdropFilter: scrolled || menuOpen ? "blur(12px)" : "none",
-          borderBottom:
-            scrolled || menuOpen
-              ? "1px solid rgba(255,107,0,0.10)"
-              : "1px solid transparent",
-          transition: "background 200ms ease, border-bottom 200ms ease",
+          background: "#000000",
+          borderBottom: "1px solid rgba(255,107,0,0.10)",
         }}
       >
         {/* Logo */}

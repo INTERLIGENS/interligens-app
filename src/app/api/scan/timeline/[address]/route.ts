@@ -1,6 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { lookupAddresses } from '@/lib/labels/lookup'
+import { loadCaseByMint } from '../../../../../../lib/caseDb'
+
+const SEVERITY_TO_RISK: Record<string, 'low' | 'medium' | 'high' | 'critical'> = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical',
+}
+
+function buildTimelineFromCasefile(address: string) {
+  // Solana base58 mints are case-sensitive — loadCaseByMint keys on the
+  // original-case form, so pass `address` (NOT the lowercased addr).
+  const cf = loadCaseByMint(address)
+  if (!cf) return null
+
+  const chapters = cf.claims.map((c, idx) => ({
+    id: c.claim_id.toLowerCase(),
+    order: idx + 1,
+    icon: c.claim_id,
+    titleEn: c.title,
+    titleFr: (c as any).title_fr || c.title,
+    risk: SEVERITY_TO_RISK[c.severity] ?? 'medium',
+    descEn: c.description,
+    descFr: (c as any).description_fr || c.description,
+    actors: [] as { label: string; type: string; flagged: boolean; wallet: string }[],
+    evidence: c.thread_url || (c.evidence_refs?.[0] ?? null),
+    flagCount: c.status === 'CONFIRMED' ? 1 : 0,
+    redFlag: c.severity === 'CRITICAL',
+  }))
+
+  const confirmed = cf.claims.filter(c => c.status === 'CONFIRMED').length
+  const corrobScore = Math.min(
+    100,
+    Math.round((confirmed / Math.max(1, cf.claims.length)) * 100)
+  )
+
+  return {
+    found: true,
+    caseId: cf.case_meta.case_id,
+    title: `${cf.case_meta.token_name} — ${cf.case_meta.severity}`,
+    pivotAddress: cf.case_meta.mint,
+    chain: cf.case_meta.chain,
+    chapters,
+    stats: {
+      totalNodes: cf.sources.length,
+      totalEdges: cf.claims.length,
+      flaggedNodes: confirmed,
+      corrobScore,
+      chain: cf.case_meta.chain,
+    },
+    source: 'casefile' as const,
+  }
+}
 
 export async function GET(req: NextRequest, context: { params: Promise<{ address: string }> }) {
   try {
@@ -13,6 +66,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ address
     })
 
     if (!graphCase) {
+      // Fall back to the static casefile JSON store (case-sensitive mint).
+      // BOTIFY and other confirmed casefiles live in data/cases/*.json
+      // even when no GraphCase has been seeded for them yet.
+      const fromCasefile = buildTimelineFromCasefile(address)
+      if (fromCasefile) return NextResponse.json(fromCasefile)
       return NextResponse.json({ found: false, address: addr })
     }
 

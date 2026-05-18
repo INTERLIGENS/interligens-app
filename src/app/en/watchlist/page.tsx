@@ -32,6 +32,7 @@ interface WatchEntry {
   isPublished: boolean
   recentSignals: number
   lastSignalAt: string | null
+  proceedsComputedAt: string | null
   tickers: string[]
   cashout: Cashout
 }
@@ -63,7 +64,7 @@ const FLAG_LINE: Record<string, string> = {
   MULTI_HOP_TRANSFER: "Hides the money trail through multi-hop transfers",
   CROSS_CASE_RECURRENCE: "Reappears across several investigations",
   MULTI_LAUNCH_LINKED: "Linked to several token launches",
-  LAUNDERING_INDICATORS: "Laundering indicators on file",
+  LAUNDERING_INDICATORS: "Complex fund movement pattern on file",
   KNOWN_LINKED_WALLETS: "Known linked wallets identified",
   COORDINATED_PROMOTION: "Coordinated promotion activity",
 }
@@ -239,7 +240,7 @@ function WatchCard({
   onToggle: () => void
 }) {
   const e = entry
-  const headlineMin = fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)
+  const headlineMin = fmtUsd(e.totalProceeds) ?? fmtUsd(e.cashout.total)
   const followers = fmtFollowers(e.followerCount)
   const lastSig = timeAgo(e.lastSignalAt)
   const initial = (e.displayName || e.handle).slice(0, 1).toUpperCase()
@@ -297,6 +298,19 @@ function WatchCard({
                 <span className="text-zinc-700">Under surveillance, no recent signal</span>
               )}
             </div>
+
+            {/* Freshness badge */}
+            {e.proceedsComputedAt && (() => {
+              const ageMs = Date.now() - new Date(e.proceedsComputedAt).getTime();
+              const ageDays = Math.floor(ageMs / 86_400_000);
+              if (ageMs < 24 * 3_600_000) return null;
+              const isStale = ageMs > 7 * 24 * 3_600_000;
+              return (
+                <span className="mt-1.5 inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded" style={{ color: '#FFB800', background: '#FFB80015', border: '1px solid #FFB80040' }}>
+                  {isStale ? 'Data may be outdated' : `Last updated ${ageDays}d ago`}
+                </span>
+              );
+            })()}
 
             {/* Tickers row */}
             {e.tickers.length > 0 && (
@@ -360,7 +374,7 @@ function WatchCard({
               <Bucket label="This year" value={fmtUsd(e.cashout.ytd)} />
               <Bucket
                 label="Total"
-                value={fmtUsd(e.cashout.total) ?? fmtUsd(e.totalProceeds)}
+                value={fmtUsd(e.totalProceeds) ?? fmtUsd(e.cashout.total)}
                 strong
               />
             </div>

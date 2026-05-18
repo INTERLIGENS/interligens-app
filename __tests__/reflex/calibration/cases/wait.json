@@ -1,0 +1,3368 @@
+{
+  "cases": [
+    {
+      "id": "WAIT-NARRATIVE-001",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-LISTING_IMMINENT",
+      "notes": "Single-match LISTING_IMMINENT at defaultConfidence 0.7",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.LISTING_IMMINENT",
+              "severity": "STRONG",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "LISTING_IMMINENT",
+                "scriptLabel": "LISTING_IMMINENT",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-002",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-LISTING_IMMINENT-boosted",
+      "notes": "Multi-marker LISTING_IMMINENT boost from 0.7 → 0.8999999999999999",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.LISTING_IMMINENT",
+              "severity": "STRONG",
+              "confidence": 0.8999999999999999,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "LISTING_IMMINENT",
+                "scriptLabel": "LISTING_IMMINENT",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-003",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-LAST_CHANCE",
+      "notes": "Single-match LAST_CHANCE at defaultConfidence 0.6",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.LAST_CHANCE",
+              "severity": "STRONG",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "LAST_CHANCE",
+                "scriptLabel": "LAST_CHANCE",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-004",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-LAST_CHANCE-boosted",
+      "notes": "Multi-marker LAST_CHANCE boost from 0.6 → 0.8",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.LAST_CHANCE",
+              "severity": "STRONG",
+              "confidence": 0.8,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "LAST_CHANCE",
+                "scriptLabel": "LAST_CHANCE",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-005",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-PRESALE_EXCLUSIVE",
+      "notes": "Single-match PRESALE_EXCLUSIVE at defaultConfidence 0.65",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.PRESALE_EXCLUSIVE",
+              "severity": "STRONG",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "PRESALE_EXCLUSIVE",
+                "scriptLabel": "PRESALE_EXCLUSIVE",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-006",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-PRESALE_EXCLUSIVE-boosted",
+      "notes": "Multi-marker PRESALE_EXCLUSIVE boost from 0.65 → 0.8500000000000001",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.PRESALE_EXCLUSIVE",
+              "severity": "STRONG",
+              "confidence": 0.8500000000000001,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "PRESALE_EXCLUSIVE",
+                "scriptLabel": "PRESALE_EXCLUSIVE",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-007",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-KOL_INSIDER_CALL",
+      "notes": "Single-match KOL_INSIDER_CALL at defaultConfidence 0.7",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "STRONG",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-008",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-KOL_INSIDER_CALL-boosted",
+      "notes": "Multi-marker KOL_INSIDER_CALL boost from 0.7 → 0.8999999999999999",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.KOL_INSIDER_CALL",
+              "severity": "STRONG",
+              "confidence": 0.8999999999999999,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "KOL_INSIDER_CALL",
+                "scriptLabel": "KOL_INSIDER_CALL",
+                "category": "AUTHORITY",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-009",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-FAKE_AUDIT",
+      "notes": "Single-match FAKE_AUDIT at defaultConfidence 0.75",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "STRONG",
+              "confidence": 0.75,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-010",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-FAKE_AUDIT-boosted",
+      "notes": "Multi-marker FAKE_AUDIT boost from 0.75 → 0.95",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_AUDIT",
+              "severity": "STRONG",
+              "confidence": 0.95,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_AUDIT",
+                "scriptLabel": "FAKE_AUDIT",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-011",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-FAKE_PARTNERSHIP",
+      "notes": "Single-match FAKE_PARTNERSHIP at defaultConfidence 0.65",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "STRONG",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-012",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-FAKE_PARTNERSHIP-boosted",
+      "notes": "Multi-marker FAKE_PARTNERSHIP boost from 0.65 → 0.8500000000000001",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.FAKE_PARTNERSHIP",
+              "severity": "STRONG",
+              "confidence": 0.8500000000000001,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "FAKE_PARTNERSHIP",
+                "scriptLabel": "FAKE_PARTNERSHIP",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-013",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-MIGRATION_EMERGENCY",
+      "notes": "Single-match MIGRATION_EMERGENCY at defaultConfidence 0.85",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.MIGRATION_EMERGENCY",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "MIGRATION_EMERGENCY",
+                "scriptLabel": "MIGRATION_EMERGENCY",
+                "category": "URGENCY",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-014",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-MIGRATION_EMERGENCY-boosted",
+      "notes": "Multi-marker MIGRATION_EMERGENCY boost from 0.85 → 1.0",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.MIGRATION_EMERGENCY",
+              "severity": "STRONG",
+              "confidence": 1.0,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "MIGRATION_EMERGENCY",
+                "scriptLabel": "MIGRATION_EMERGENCY",
+                "category": "URGENCY",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-015",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-COMMUNITY_TAKEOVER",
+      "notes": "Single-match COMMUNITY_TAKEOVER at defaultConfidence 0.7",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.COMMUNITY_TAKEOVER",
+              "severity": "STRONG",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "COMMUNITY_TAKEOVER",
+                "scriptLabel": "COMMUNITY_TAKEOVER",
+                "category": "URGENCY",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-016",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-COMMUNITY_TAKEOVER-boosted",
+      "notes": "Multi-marker COMMUNITY_TAKEOVER boost from 0.7 → 0.8999999999999999",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.COMMUNITY_TAKEOVER",
+              "severity": "STRONG",
+              "confidence": 0.8999999999999999,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "COMMUNITY_TAKEOVER",
+                "scriptLabel": "COMMUNITY_TAKEOVER",
+                "category": "URGENCY",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-017",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-AIRDROP_CLAIM_TRAP",
+      "notes": "Single-match AIRDROP_CLAIM_TRAP at defaultConfidence 0.8",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AIRDROP_CLAIM_TRAP",
+              "severity": "STRONG",
+              "confidence": 0.8,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AIRDROP_CLAIM_TRAP",
+                "scriptLabel": "AIRDROP_CLAIM_TRAP",
+                "category": "WALLET_TRAP",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-018",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-AIRDROP_CLAIM_TRAP-boosted",
+      "notes": "Multi-marker AIRDROP_CLAIM_TRAP boost from 0.8 → 1.0",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AIRDROP_CLAIM_TRAP",
+              "severity": "STRONG",
+              "confidence": 1.0,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AIRDROP_CLAIM_TRAP",
+                "scriptLabel": "AIRDROP_CLAIM_TRAP",
+                "category": "WALLET_TRAP",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-019",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-WALLET_VERIFICATION",
+      "notes": "Single-match WALLET_VERIFICATION at defaultConfidence 0.85",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.WALLET_VERIFICATION",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "WALLET_VERIFICATION",
+                "scriptLabel": "WALLET_VERIFICATION",
+                "category": "WALLET_TRAP",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-020",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-WALLET_VERIFICATION-boosted",
+      "notes": "Multi-marker WALLET_VERIFICATION boost from 0.85 → 1.0",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.WALLET_VERIFICATION",
+              "severity": "STRONG",
+              "confidence": 1.0,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "WALLET_VERIFICATION",
+                "scriptLabel": "WALLET_VERIFICATION",
+                "category": "WALLET_TRAP",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-021",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-SEND_TO_RECEIVE",
+      "notes": "Single-match SEND_TO_RECEIVE at defaultConfidence 0.9",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.SEND_TO_RECEIVE",
+              "severity": "STRONG",
+              "confidence": 0.9,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "SEND_TO_RECEIVE",
+                "scriptLabel": "SEND_TO_RECEIVE",
+                "category": "WALLET_TRAP",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-022",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-SEND_TO_RECEIVE-boosted",
+      "notes": "Multi-marker SEND_TO_RECEIVE boost from 0.9 → 1.0",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.SEND_TO_RECEIVE",
+              "severity": "STRONG",
+              "confidence": 1.0,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "SEND_TO_RECEIVE",
+                "scriptLabel": "SEND_TO_RECEIVE",
+                "category": "WALLET_TRAP",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-023",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-SYNCHRONIZED_PUSH",
+      "notes": "Multi-marker SYNCHRONIZED_PUSH boost from 0.55 → 0.7000000000000001 (needs ≥3 markers)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.SYNCHRONIZED_PUSH",
+              "severity": "STRONG",
+              "confidence": 0.7000000000000001,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "SYNCHRONIZED_PUSH",
+                "scriptLabel": "SYNCHRONIZED_PUSH",
+                "category": "COORDINATION",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-024",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-SYNCHRONIZED_PUSH-boosted",
+      "notes": "Multi-marker SYNCHRONIZED_PUSH boost from 0.55 → 0.75",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.SYNCHRONIZED_PUSH",
+              "severity": "STRONG",
+              "confidence": 0.75,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "SYNCHRONIZED_PUSH",
+                "scriptLabel": "SYNCHRONIZED_PUSH",
+                "category": "COORDINATION",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-025",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-AI_RWA_NARRATIVE_HIJACK",
+      "notes": "Multi-marker AI_RWA_NARRATIVE_HIJACK boost from 0.5 → 0.65 (needs ≥3 markers)",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AI_RWA_NARRATIVE_HIJACK",
+              "severity": "STRONG",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AI_RWA_NARRATIVE_HIJACK",
+                "scriptLabel": "AI_RWA_NARRATIVE_HIJACK",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-026",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-AI_RWA_NARRATIVE_HIJACK-boosted",
+      "notes": "Multi-marker AI_RWA_NARRATIVE_HIJACK boost from 0.5 → 0.7",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.AI_RWA_NARRATIVE_HIJACK",
+              "severity": "STRONG",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "AI_RWA_NARRATIVE_HIJACK",
+                "scriptLabel": "AI_RWA_NARRATIVE_HIJACK",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-027",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-CHARITY_CLAIM",
+      "notes": "Single-match CHARITY_CLAIM at defaultConfidence 0.65",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.CHARITY_CLAIM",
+              "severity": "STRONG",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "CHARITY_CLAIM",
+                "scriptLabel": "CHARITY_CLAIM",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-028",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-CHARITY_CLAIM-boosted",
+      "notes": "Multi-marker CHARITY_CLAIM boost from 0.65 → 0.8500000000000001",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.CHARITY_CLAIM",
+              "severity": "STRONG",
+              "confidence": 0.8500000000000001,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "CHARITY_CLAIM",
+                "scriptLabel": "CHARITY_CLAIM",
+                "category": "TRUST_HIJACK",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-029",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-BURN_SUPPLY_SHOCK",
+      "notes": "Single-match BURN_SUPPLY_SHOCK at defaultConfidence 0.6",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.BURN_SUPPLY_SHOCK",
+              "severity": "STRONG",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "BURN_SUPPLY_SHOCK",
+                "scriptLabel": "BURN_SUPPLY_SHOCK",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1"
+                ],
+                "matchedRegexes": [],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-NARRATIVE-030",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "narrative-BURN_SUPPLY_SHOCK-boosted",
+      "notes": "Multi-marker BURN_SUPPLY_SHOCK boost from 0.6 → 0.8",
+      "engines": [
+        {
+          "engine": "narrative",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "narrative",
+              "code": "narrative.BURN_SUPPLY_SHOCK",
+              "severity": "STRONG",
+              "confidence": 0.8,
+              "stopTrigger": false,
+              "payload": {
+                "scriptCode": "BURN_SUPPLY_SHOCK",
+                "scriptLabel": "BURN_SUPPLY_SHOCK",
+                "category": "FOMO",
+                "matchedKeywords": [
+                  "k1",
+                  "k2",
+                  "k3"
+                ],
+                "matchedRegexes": [
+                  "r1"
+                ],
+                "excerpt": "..."
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-001",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-coordinated_promotion",
+      "notes": "Single coordination signal: coordinated_promotion MODERATE",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "type": "coordinated_promotion",
+                "strength": "moderate"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-002",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-repeated_cashout",
+      "notes": "Single coordination signal: repeated_cashout MODERATE",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.repeated_cashout",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "type": "repeated_cashout",
+                "strength": "moderate"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-003",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-multi_launch_linked",
+      "notes": "Single coordination signal: multi_launch_linked STRONG",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.multi_launch_linked",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false,
+              "payload": {
+                "type": "multi_launch_linked",
+                "strength": "strong"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-004",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-cross_case_recurrence",
+      "notes": "Single coordination signal: cross_case_recurrence STRONG",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.cross_case_recurrence",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false,
+              "payload": {
+                "type": "cross_case_recurrence",
+                "strength": "strong"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-005",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-known_linked_wallets",
+      "notes": "Single coordination signal: known_linked_wallets MODERATE",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.known_linked_wallets",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "type": "known_linked_wallets",
+                "strength": "moderate"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-006",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-shared_actor_group",
+      "notes": "Single coordination signal: shared_actor_group STRONG",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false,
+              "payload": {
+                "type": "shared_actor_group",
+                "strength": "strong"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-007",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-shared_launch_window",
+      "notes": "Single coordination signal: shared_launch_window MODERATE",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.shared_launch_window",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false,
+              "payload": {
+                "type": "shared_launch_window",
+                "strength": "moderate"
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-008",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-multi-signal",
+      "notes": "Multiple coordination signals — overallStrength strong",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false
+            },
+            {
+              "source": "coordination",
+              "code": "coordination.repeated_cashout",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false
+            },
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-009",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-multi-signal",
+      "notes": "Multiple coordination signals — overallStrength strong",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false
+            },
+            {
+              "source": "coordination",
+              "code": "coordination.repeated_cashout",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false
+            },
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-COORDINATION-010",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "coordination-multi-signal",
+      "notes": "Multiple coordination signals — overallStrength strong",
+      "engines": [
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.coordinated_promotion",
+              "severity": "STRONG",
+              "confidence": 0.85,
+              "stopTrigger": false
+            },
+            {
+              "source": "coordination",
+              "code": "coordination.repeated_cashout",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false
+            },
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "MODERATE",
+              "confidence": 0.65,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-001",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 1)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.low",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "LOW",
+                "score": 30
+              }
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-002",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 2)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.low",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "LOW",
+                "score": 30
+              }
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-003",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 3)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.low",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "LOW",
+                "score": 30
+              }
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-004",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 4)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.low",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "LOW",
+                "score": 30
+              }
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.shared_actor_group",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-005",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 5)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unknown_programs",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 50
+              }
+            }
+          ]
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.prior_case",
+              "severity": "MODERATE",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": false,
+                "priorCaseCount": 1,
+                "caseIds": [
+                  "X"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-006",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 6)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unknown_programs",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 50
+              }
+            }
+          ]
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.prior_case",
+              "severity": "MODERATE",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": false,
+                "priorCaseCount": 1,
+                "caseIds": [
+                  "X"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-007",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 7)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unknown_programs",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.mixed",
+              "severity": "WEAK",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "MIXED",
+                "score": 50
+              }
+            }
+          ]
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "recidivism",
+              "code": "recidivism.prior_case",
+              "severity": "MODERATE",
+              "confidence": 0.7,
+              "stopTrigger": false,
+              "payload": {
+                "recidivist": false,
+                "priorCaseCount": 1,
+                "caseIds": [
+                  "X"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-008",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 8)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unknown_programs",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.address_poisoning",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.low",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "LOW",
+                "score": 25
+              }
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.known_linked_wallets",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-009",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 9)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unknown_programs",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.address_poisoning",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.low",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "LOW",
+                "score": 25
+              }
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.known_linked_wallets",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    },
+    {
+      "id": "WAIT-CONVERGENCE-010",
+      "expectedVerdict": "WAIT",
+      "bucket": "wait",
+      "category": "convergence-weak-signals",
+      "notes": "≥3 weak/moderate convergent signals (variant 10)",
+      "engines": [
+        {
+          "engine": "tigerscore",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.high_approvals",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.unknown_programs",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            },
+            {
+              "source": "tigerscore",
+              "code": "tigerscore.address_poisoning",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "offchain",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "offchain",
+              "code": "offchain.band.low",
+              "severity": "MODERATE",
+              "confidence": 0.6,
+              "stopTrigger": false,
+              "payload": {
+                "band": "LOW",
+                "score": 25
+              }
+            }
+          ]
+        },
+        {
+          "engine": "coordination",
+          "ran": true,
+          "ms": 0,
+          "signals": [
+            {
+              "source": "coordination",
+              "code": "coordination.known_linked_wallets",
+              "severity": "WEAK",
+              "confidence": 0.4,
+              "stopTrigger": false
+            }
+          ]
+        },
+        {
+          "engine": "knownBad",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "intelligenceOverlay",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "recidivism",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        },
+        {
+          "engine": "casefileMatch",
+          "ran": true,
+          "ms": 0,
+          "signals": []
+        }
+      ]
+    }
+  ]
+}

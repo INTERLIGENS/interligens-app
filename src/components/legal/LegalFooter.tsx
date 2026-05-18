@@ -12,6 +12,8 @@ export default function LegalFooter({ lang = "en" }: { lang?: "en" | "fr" }) {
       <span className="text-zinc-800">·</span>
       <a href={`${base}/legal/disclaimer`} className="hover:text-zinc-500 transition-colors no-underline">Disclaimer</a>
       <span className="text-zinc-800">·</span>
+      <a href={`${base}/legal/kol-data-doctrine`} className="hover:text-zinc-500 transition-colors no-underline">{lang === "fr" ? "Doctrine KOL" : "KOL Doctrine"}</a>
+      <span className="text-zinc-800">·</span>
       <a href={`${base}/correction`} className="hover:text-zinc-500 transition-colors no-underline">Correction</a>
     </div>
   );

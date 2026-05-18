@@ -1,5 +1,6 @@
 // src/app/api/market/route.ts
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from '@/lib/security/rateLimit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -61,7 +62,10 @@ async function fetchFng(): Promise<FngEntry | null> {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.public)
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   const [pricesRes, fngRes] = await Promise.allSettled([fetchPrices(), fetchFng()])
 
   const prices = pricesRes.status === 'fulfilled' ? pricesRes.value : null

@@ -1,0 +1,27 @@
+# INTERLIGENS .vercelignore
+# Anything matching these paths is excluded from the Vercel deployment
+# bundle (does NOT affect git tracking).
+
+# Investigation reports, exports, dumps — PRIVATE data, never deploy.
+exports/
+
+# Tests and docs — not needed at runtime.
+__tests__/
+docs/
+# scripts/ NOT excluded: scripts/watcher/handles-v2.ts is the source of
+# truth imported by src/app/api/cron/watcher-v2/route.ts (per the mirror
+# comment in src/lib/watcher/handles.ts). Vercel's ignore doesn't honor
+# !negation patterns the way .gitignore does, so we ship the whole dir.
+
+# Local env variants that aren't loaded via Vercel project env vars.
+.env.localanthropic
+.env.prod
+.env.vercel.local
+
+# Local DB
+prisma/dev.db
+prisma/migrations_sqlite_backup/
+
+# Misc local artifacts
+*.log
+.DS_Store

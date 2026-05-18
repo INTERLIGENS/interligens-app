@@ -1,0 +1,279 @@
+openapi: 3.0.3
+info:
+  title: INTERLIGENS Partner API
+  version: "1.0"
+  description: |
+    Real-time TigerScore API for blockchain risk assessment.
+    Contact INTERLIGENS to obtain your partner key.
+  contact:
+    name: INTERLIGENS
+    url: https://app.interligens.com
+  license:
+    name: Proprietary
+    url: https://app.interligens.com
+
+servers:
+  - url: https://app.interligens.com/api/partner/v1
+    description: Production
+
+security:
+  - partnerKey: []
+
+components:
+  securitySchemes:
+    partnerKey:
+      type: apiKey
+      in: header
+      name: X-Partner-Key
+
+  schemas:
+    Tier:
+      type: string
+      enum: [GREEN, ORANGE, RED]
+      description: "GREEN=safe (0-34), ORANGE=warning (35-69), RED=avoid (70-100)"
+
+    Verdict:
+      type: string
+      enum: [SAFE, WARNING, AVOID]
+
+    Recommendation:
+      type: string
+      enum: [ALLOW, WARN, BLOCK]
+
+    ScoreLiteResponse:
+      type: object
+      required: [address, score, verdict, tier, signals_count, cache_hit, as_of, version, powered_by]
+      properties:
+        address:
+          type: string
+          example: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm"
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 20
+        verdict:
+          $ref: "#/components/schemas/Verdict"
+        tier:
+          $ref: "#/components/schemas/Tier"
+        signals_count:
+          type: integer
+          example: 2
+        cache_hit:
+          type: boolean
+        as_of:
+          type: string
+          format: date-time
+        version:
+          type: string
+          enum: ["v1"]
+        powered_by:
+          type: string
+          enum: ["INTERLIGENS"]
+
+    TransactionCheckResponse:
+      type: object
+      required: [recommendation, reason, score_to, score_from, verdict_to, chain, version, powered_by]
+      properties:
+        recommendation:
+          $ref: "#/components/schemas/Recommendation"
+        reason:
+          type: string
+          example: "Score 20/100 — no critical risk signals detected"
+        score_to:
+          type: integer
+          minimum: 0
+          maximum: 100
+        score_from:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+        verdict_to:
+          $ref: "#/components/schemas/Verdict"
+        chain:
+          type: string
+          example: "eth"
+        version:
+          type: string
+          enum: ["v1"]
+        powered_by:
+          type: string
+          enum: ["INTERLIGENS"]
+
+    BatchResultItem:
+      oneOf:
+        - type: object
+          required: [address, score, verdict, tier]
+          properties:
+            address:
+              type: string
+            score:
+              type: integer
+              minimum: 0
+              maximum: 100
+            verdict:
+              $ref: "#/components/schemas/Verdict"
+            tier:
+              $ref: "#/components/schemas/Tier"
+        - type: object
+          required: [address, error]
+          properties:
+            address:
+              type: string
+            error:
+              type: string
+              enum: [invalid_address, timeout, internal_error]
+
+    BatchScoreResponse:
+      type: object
+      required: [results, processed, errors, version]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/BatchResultItem"
+        processed:
+          type: integer
+        errors:
+          type: integer
+        version:
+          type: string
+          enum: ["v1"]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+paths:
+  /score-lite:
+    get:
+      summary: Score a single address
+      operationId: scoreLite
+      parameters:
+        - name: address
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Solana base58 mint or EVM 0x address
+          example: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm"
+      responses:
+        "200":
+          description: Score result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreLiteResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "504":
+          description: Timeout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /transaction-check:
+    post:
+      summary: Pre-flight check for a transaction
+      operationId: transactionCheck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to:
+                  type: string
+                  description: Destination address
+                  example: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                from:
+                  type: string
+                  description: Source address (optional)
+                chain:
+                  type: string
+                  enum: [eth, sol, bsc, base, arb, tron]
+                  default: eth
+      responses:
+        "200":
+          description: Transaction check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionCheckResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /batch-score:
+    post:
+      summary: Score up to 10 addresses in one request
+      operationId: batchScore
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [addresses]
+              properties:
+                addresses:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 10
+                  example:
+                    - "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm"
+                    - "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+      responses:
+        "200":
+          description: Batch results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchScoreResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"

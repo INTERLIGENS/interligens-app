@@ -153,5 +153,5 @@ export async function searchRecentTweets(
  * Check if the bearer token is configured.
  */
 export function hasToken(): boolean {
-  return getToken() !== null;
+  return !!getToken();
 }

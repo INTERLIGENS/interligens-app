@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { checkAuth } from "@/lib/security/auth";
+import { kolHandleToMint } from "@/lib/kol/handleToMint";
 
-export const BOTIFY_MINT = "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb";
+const BOTIFY_MINT = "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb";
 
 // ── CaseDB hardcoded (V0 — no fs dependency) ──────────────────────────────────
 const CASE_DB: Record<string, any> = {
@@ -184,10 +185,25 @@ function computeScore(claims: any[], linking: any[], onChain: any, mint: string)
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  // SEC P0 — auth is ALWAYS required. The previous ?mock=1 retail
+  // bypass allowed unauth'd callers to pull the full casefile JSON
+  // (claims, notable wallets, wash-trading signals). Gate closed.
   const _auth = await checkAuth(req);
   if (!_auth.authorized) return _auth.response!;
-  const sanitizeMint = (req.nextUrl.searchParams.get("mint") ?? "").trim();
-  if (!sanitizeMint) return NextResponse.json({error:"mint required"},{status:400});
+
+  // Accept either ?mint= (canonical) or ?handle= (KOL page CaseFile button).
+  // The handle→mint resolution lives in @/lib/kol/handleToMint so there is
+  // ONE source of truth for which KOLs are linked to which cases.
+  const mintParam = (req.nextUrl.searchParams.get("mint") ?? "").trim();
+  const handleParam = (req.nextUrl.searchParams.get("handle") ?? "").trim();
+  const resolvedFromHandle = handleParam ? kolHandleToMint(handleParam) : null;
+  const sanitizeMint = mintParam || resolvedFromHandle || "";
+  if (!sanitizeMint) {
+    return NextResponse.json(
+      { error: handleParam ? "handle has no linked case mint" : "mint or handle required" },
+      { status: 400 }
+    );
+  }
 
   // Offchain ingest
   const caseEntry = CASE_DB[sanitizeMint] ?? null;
