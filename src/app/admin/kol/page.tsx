@@ -2,25 +2,72 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+interface PubResult { publishable: boolean; blockers: string[]; warnings: string[] }
+
 export default function KolDirectory() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [search, setSearch]     = useState("");
   const [loading, setLoading]   = useState(true);
+  const [pub, setPub]           = useState<Record<string, PubResult>>({});
 
   async function load() {
     setLoading(true);
+    setPub({});
     const params = new URLSearchParams({ page: String(page) });
     if (search) params.set("search", search);
     const res = await fetch(`/api/admin/kol?${params}`, { credentials: "include" });
     const data = await res.json();
-    setProfiles(data.profiles ?? []);
+    const list = data.profiles ?? [];
+    setProfiles(list);
     setTotal(data.total ?? 0);
     setLoading(false);
+
+    // Publishability gate — fetch verdicts for the visible page only.
+    const handles = list.map((p: any) => p.handle).filter(Boolean);
+    if (handles.length) {
+      try {
+        const pr = await fetch("/api/admin/kol/publishability/batch", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handles }),
+        });
+        if (pr.ok) {
+          const pd = await pr.json();
+          setPub(pd.results ?? {});
+        }
+      } catch { /* badge stays neutral on failure */ }
+    }
   }
 
   useEffect(() => { load(); }, [page, search]);
+
+  function PubBadge({ handle }: { handle: string }) {
+    const r = pub[handle];
+    if (!r) return <span className="text-zinc-600">—</span>;
+    if (r.publishable) {
+      return (
+        <span
+          title={r.warnings.length ? `${r.warnings.length} warning(s)` : "Passes the publishability gate"}
+          className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[#00FF94]/15 text-[#00FF94] border border-[#00FF94]/40">
+          Publishable{r.warnings.length ? ` · ${r.warnings.length}w` : ""}
+        </span>
+      );
+    }
+    const reason = r.blockers[0] ?? "Blocked";
+    return (
+      <span
+        title={r.blockers.join("\n")}
+        className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[#FF3B5C]/15 text-[#FF3B5C] border border-[#FF3B5C]/40">
+        Not Publishable
+        <span className="block normal-case font-normal tracking-normal text-[9px] text-zinc-500 mt-0.5 max-w-[160px] truncate">
+          {reason}
+        </span>
+      </span>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -45,16 +92,16 @@ export default function KolDirectory() {
           <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="text-xs text-zinc-500 uppercase tracking-wider border-b border-zinc-800">
-                {["Handle","Tier","Price/Post","Platform","Label","Risk","Wallets","Source","Created"].map(h => (
+                {["Handle","Tier","Price/Post","Platform","Label","Risk","Wallets","Publishable","Source","Created"].map(h => (
                   <th key={h} className="text-left py-2 px-3 font-semibold">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="py-8 text-center text-zinc-500">Loading...</td></tr>
+                <tr><td colSpan={10} className="py-8 text-center text-zinc-500">Loading...</td></tr>
               ) : profiles.length === 0 ? (
-                <tr><td colSpan={9} className="py-8 text-center text-zinc-500">No profiles</td></tr>
+                <tr><td colSpan={10} className="py-8 text-center text-zinc-500">No profiles</td></tr>
               ) : profiles.map((p: any) => {
                 const wallets = JSON.parse(p.wallets || "[]");
                 const intakeIds = JSON.parse(p.sourceIntakeIds || "[]");
@@ -73,6 +120,7 @@ export default function KolDirectory() {
                       <span className="text-zinc-400">{p.riskFlag}</span>
                     </td>
                     <td className="py-2 px-3 text-zinc-400">{wallets.length || "—"}</td>
+                    <td className="py-2 px-3"><PubBadge handle={p.handle} /></td>
                     <td className="py-2 px-3">
                       {intakeIds[0] ? (
                         <Link href={`/admin/intake/${intakeIds[0]}`} className="text-[#FF6B00] hover:text-orange-300 transition">→ intake</Link>
