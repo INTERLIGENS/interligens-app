@@ -45,6 +45,18 @@ export interface DigestIncident {
   status: string;
 }
 
+export interface SecurityActionItem {
+  title: string;
+  priority: string;
+  incidentTitle: string | null;
+}
+
+export interface SecurityExposure {
+  incidentTitle: string;
+  level: string;
+  summary: string;
+}
+
 export interface UnifiedStats {
   windowStart: Date;
   windowEnd: Date;
@@ -58,10 +70,15 @@ export interface UnifiedStats {
   newAlerts: number;
   activeCampaignCount: number;
   highPriorityCount: number;
+  securityIncidentCount: number;
+  securityActionCount: number;
   // Sections détaillées
   flaggedKols: FlaggedKol[];
   topCampaigns: DigestCampaign[];
   criticalIncidents: DigestIncident[];
+  newIncidents: DigestIncident[];
+  openActionItems: SecurityActionItem[];
+  exposureHighlights: SecurityExposure[];
 }
 
 export interface SendResult {
@@ -244,19 +261,38 @@ export async function gatherUnifiedStats(): Promise<UnifiedStats> {
     })
     .slice(0, 10);
 
-  // ALERTES CRITIQUES — incidents sécurité de la semaine.
+  // SÉCURITÉ — tout le contenu de l'ex-Security Digest standalone est
+  // désormais intégré ici (incidents critiques, nouveaux incidents,
+  // actions ouvertes, expositions). Le cron security-weekly-digest est
+  // déprécié — ce digest unifié est le seul email hebdomadaire.
   const securityInput = await safe(
     () => buildDigestInputForPeriod(windowStart, windowEnd),
     null,
   );
+  const mapIncident = (r: {
+    title: string;
+    severity: string;
+    detectedAt: Date;
+    summaryShort: string;
+    status: string;
+  }): DigestIncident => ({
+    title: r.title,
+    severity: r.severity,
+    detectedAt: r.detectedAt,
+    impact: r.summaryShort,
+    status: r.status,
+  });
   const criticalIncidents: DigestIncident[] = securityInput
-    ? securityInput.criticalIncidents.map((r) => ({
-        title: r.title,
-        severity: r.severity,
-        detectedAt: r.detectedAt,
-        impact: r.summaryShort,
-        status: r.status,
-      }))
+    ? securityInput.criticalIncidents.map(mapIncident)
+    : [];
+  const newIncidents: DigestIncident[] = securityInput
+    ? securityInput.newIncidents.map(mapIncident)
+    : [];
+  const openActionItems: SecurityActionItem[] = securityInput
+    ? securityInput.openActionItems
+    : [];
+  const exposureHighlights: SecurityExposure[] = securityInput
+    ? securityInput.exposureHighlights
     : [];
 
   return {
@@ -271,9 +307,14 @@ export async function gatherUnifiedStats(): Promise<UnifiedStats> {
     newAlerts: base.newAlerts,
     activeCampaignCount,
     highPriorityCount,
+    securityIncidentCount: newIncidents.length,
+    securityActionCount: openActionItems.length,
     flaggedKols,
     topCampaigns,
     criticalIncidents,
+    newIncidents,
+    openActionItems,
+    exposureHighlights,
   };
 }
 
@@ -324,34 +365,88 @@ function sectionTitle(label: string): string {
 export function buildUnifiedDigestHtml(s: UnifiedStats): string {
   const periode = `${formatDate(s.windowStart)} → ${formatDate(s.windowEnd)}`;
 
-  // 🔴 ALERTES CRITIQUES
-  const alertesSection =
-    s.criticalIncidents.length > 0
-      ? `${sectionTitle("🔴 Alertes critiques")}
+  // 🔴 SÉCURITÉ — contenu intégral de l'ex-Security Digest standalone.
+  const subHeader = (label: string): string =>
+    `<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:${C.muted};font-weight:700;margin:14px 0 8px;">${escapeHtml(label)}</div>`;
+
+  const incidentTable = (incidents: DigestIncident[], border: string): string =>
+    `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.surface};border:1px solid ${border};border-radius:8px;">
+      <tr style="background:#141414;">
+        <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Incident</th>
+        <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Sévérité</th>
+        <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Date</th>
+        <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Statut</th>
+      </tr>
+      ${incidents
+        .map(
+          (i) => `<tr>
+        <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:12px;color:${C.text};">
+          <div style="font-weight:600;">${escapeHtml(i.title)}</div>
+          <div style="font-size:11px;color:${C.muted};margin-top:3px;">${escapeHtml(i.impact)}</div>
+        </td>
+        <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:11px;font-weight:700;text-transform:uppercase;color:${severityColor(i.severity)};">${escapeHtml(i.severity)}</td>
+        <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:11px;color:${C.muted};">${formatDate(i.detectedAt)}</td>
+        <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:11px;color:${C.muted};">${escapeHtml(i.status)}</td>
+      </tr>`,
+        )
+        .join("")}
+    </table>`;
+
+  const hasSecurity =
+    s.criticalIncidents.length > 0 ||
+    s.newIncidents.length > 0 ||
+    s.openActionItems.length > 0 ||
+    s.exposureHighlights.length > 0;
+
+  const alertesSection = `${sectionTitle("🔴 Sécurité")}
       <tr><td>
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.surface};border:1px solid ${C.critical}40;border-radius:8px;">
-          <tr style="background:#141414;">
-            <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Incident</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Sévérité</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Date</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:${C.dim};">Action</th>
-          </tr>
-          ${s.criticalIncidents
-            .map(
-              (i) => `<tr>
-            <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:12px;color:${C.text};">
-              <div style="font-weight:600;">${escapeHtml(i.title)}</div>
-              <div style="font-size:11px;color:${C.muted};margin-top:3px;">${escapeHtml(i.impact)}</div>
-            </td>
-            <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:11px;font-weight:700;text-transform:uppercase;color:${severityColor(i.severity)};">${escapeHtml(i.severity)}</td>
-            <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:11px;color:${C.muted};">${formatDate(i.detectedAt)}</td>
-            <td style="padding:10px 12px;border-top:1px solid ${C.border};font-size:11px;color:${C.muted};">${escapeHtml(i.status)}</td>
-          </tr>`,
-            )
-            .join("")}
-        </table>
-      </td></tr>`
-      : "";
+        ${
+          s.criticalIncidents.length > 0
+            ? subHeader("Incidents critiques / élevés ouverts") +
+              incidentTable(s.criticalIncidents, `${C.critical}40`)
+            : ""
+        }
+        ${
+          s.newIncidents.length > 0
+            ? subHeader("Nouveaux incidents (7 jours)") +
+              incidentTable(s.newIncidents, C.border)
+            : ""
+        }
+        ${
+          s.openActionItems.length > 0
+            ? subHeader("Actions de sécurité ouvertes") +
+              `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.surface};border:1px solid ${C.border};border-radius:8px;">
+                ${s.openActionItems
+                  .map(
+                    (a) => `<tr><td style="padding:9px 12px;border-top:1px solid ${C.border};font-size:12px;color:${C.text};">
+                  <span style="color:${C.accent};font-weight:700;text-transform:uppercase;font-size:10px;margin-right:8px;">${escapeHtml(a.priority)}</span>${escapeHtml(a.title)}${a.incidentTitle ? `<span style="color:${C.muted};font-size:11px;"> · ${escapeHtml(a.incidentTitle)}</span>` : ""}
+                </td></tr>`,
+                  )
+                  .join("")}
+              </table>`
+            : ""
+        }
+        ${
+          s.exposureHighlights.length > 0
+            ? subHeader("Exposition INTERLIGENS") +
+              `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.surface};border:1px solid ${C.border};border-radius:8px;">
+                ${s.exposureHighlights
+                  .map(
+                    (e) => `<tr><td style="padding:9px 12px;border-top:1px solid ${C.border};font-size:12px;color:${C.text};">
+                  <div style="font-weight:600;">${escapeHtml(e.incidentTitle)} <span style="color:${C.warning};font-size:10px;text-transform:uppercase;"> · ${escapeHtml(e.level)}</span></div>
+                  <div style="font-size:11px;color:${C.muted};margin-top:3px;">${escapeHtml(e.summary)}</div>
+                </td></tr>`,
+                  )
+                  .join("")}
+              </table>`
+            : ""
+        }
+        ${
+          hasSecurity
+            ? ""
+            : `<div style="font-size:12px;color:${C.muted};padding:4px 0;">Aucun incident ni action de sécurité en attente cette semaine.</div>`
+        }
+      </td></tr>`;
 
   // 🟠 NOUVELLES MENACES
   const menacesRows =
@@ -483,6 +578,14 @@ export function buildUnifiedDigestHtml(s: UnifiedStats): string {
         <td style="padding:10px 14px;border-top:1px solid ${C.border};font-size:12px;color:${C.muted};">Alertes watcher</td>
         <td style="padding:10px 14px;border-top:1px solid ${C.border};text-align:right;font-size:14px;font-weight:700;color:${C.text};">${s.newAlerts}</td>
       </tr>
+      <tr>
+        <td style="padding:10px 14px;border-top:1px solid ${C.border};font-size:12px;color:${C.muted};">Incidents sécurité (7 j)</td>
+        <td style="padding:10px 14px;border-top:1px solid ${C.border};text-align:right;font-size:14px;font-weight:700;color:${C.text};">${s.securityIncidentCount}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border-top:1px solid ${C.border};font-size:12px;color:${C.muted};">Actions sécurité ouvertes</td>
+        <td style="padding:10px 14px;border-top:1px solid ${C.border};text-align:right;font-size:14px;font-weight:700;color:${C.text};">${s.securityActionCount}</td>
+      </tr>
     </table>
   </td></tr>
 
@@ -534,14 +637,42 @@ export function buildUnifiedDigestText(s: UnifiedStats): string {
   lines.push(`  Fonds tracés       : ${formatUsd(s.proceedsUsd)}`);
   lines.push("");
 
+  lines.push("SÉCURITÉ");
   if (s.criticalIncidents.length > 0) {
-    lines.push("ALERTES CRITIQUES");
+    lines.push("  Incidents critiques / élevés ouverts :");
     for (const i of s.criticalIncidents) {
-      lines.push(`  · [${i.severity.toUpperCase()}] ${i.title} — ${formatDate(i.detectedAt)} (${i.status})`);
-      lines.push(`    ${i.impact}`);
+      lines.push(`    · [${i.severity.toUpperCase()}] ${i.title} — ${formatDate(i.detectedAt)} (${i.status})`);
+      lines.push(`      ${i.impact}`);
     }
-    lines.push("");
   }
+  if (s.newIncidents.length > 0) {
+    lines.push("  Nouveaux incidents (7 jours) :");
+    for (const i of s.newIncidents) {
+      lines.push(`    · [${i.severity.toUpperCase()}] ${i.title} — ${formatDate(i.detectedAt)} (${i.status})`);
+    }
+  }
+  if (s.openActionItems.length > 0) {
+    lines.push("  Actions de sécurité ouvertes :");
+    for (const a of s.openActionItems) {
+      lines.push(`    · [${a.priority.toUpperCase()}] ${a.title}${a.incidentTitle ? ` (${a.incidentTitle})` : ""}`);
+    }
+  }
+  if (s.exposureHighlights.length > 0) {
+    lines.push("  Exposition INTERLIGENS :");
+    for (const e of s.exposureHighlights) {
+      lines.push(`    · ${e.incidentTitle} — exposition : ${e.level}`);
+      lines.push(`      ${e.summary}`);
+    }
+  }
+  if (
+    s.criticalIncidents.length === 0 &&
+    s.newIncidents.length === 0 &&
+    s.openActionItems.length === 0 &&
+    s.exposureHighlights.length === 0
+  ) {
+    lines.push("  Aucun incident ni action de sécurité en attente cette semaine.");
+  }
+  lines.push("");
 
   lines.push("NOUVELLES MENACES");
   if (s.flaggedKols.length > 0) {
@@ -568,9 +699,11 @@ export function buildUnifiedDigestText(s: UnifiedStats): string {
   lines.push("");
 
   lines.push("CHIFFRES");
-  lines.push(`  Posts analysés  : ${s.newCandidates}`);
-  lines.push(`  Fonds observés  : ${formatUsd(s.proceedsUsd)} (${s.proceedsEvents} événements)`);
-  lines.push(`  Alertes watcher : ${s.newAlerts}`);
+  lines.push(`  Posts analysés            : ${s.newCandidates}`);
+  lines.push(`  Fonds observés            : ${formatUsd(s.proceedsUsd)} (${s.proceedsEvents} événements)`);
+  lines.push(`  Alertes watcher           : ${s.newAlerts}`);
+  lines.push(`  Incidents sécurité (7 j)  : ${s.securityIncidentCount}`);
+  lines.push(`  Actions sécurité ouvertes : ${s.securityActionCount}`);
   lines.push("");
   lines.push("ACTIONS");
   lines.push("  Dashboard    : https://app.interligens.com/admin");
