@@ -3,7 +3,7 @@ import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 import { parseBehaviorFlags, type BehaviorFlagKey } from '@/lib/kol/behaviorFlags'
 import { getSnapshotCountByDossier } from '@/lib/evidence/evidenceSnapshots'
 
-export type DossierKind = 'case' | 'launch'
+export type DossierKind = 'case' | 'launch' | 'platform'
 
 export interface LinkedActor {
   handle: string
@@ -206,15 +206,47 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
   return dossiers
 }
 
+// Platform-fraud casefiles (Ponzi networks, fake exchanges, …). These have
+// no token and no KOL actors, so they bypass the KolCase/KolProfile join
+// entirely — they are read straight from the dedicated platform_casefiles
+// table and mapped onto the shared DossierItem shape with kind 'platform'.
+export async function getPlatformCaseDossiers(): Promise<DossierItem[]> {
+  const rows = await prisma.platformCaseFile.findMany({
+    where: { publishStatus: 'published' },
+    orderBy: { publishedDate: 'desc' },
+  })
+
+  return rows.map((r): DossierItem => ({
+    id: `platform-${r.ref}`,
+    kind: 'platform',
+    title: r.codename,
+    summary: r.summary ?? r.title,
+    primaryDate: (r.publishedDate ?? r.createdAt).toISOString(),
+    linkedActors: [],
+    linkedActorsCount: 0,
+    proceedsObservedTotal: r.confirmedLossUsd ?? null,
+    proceedsCoverage: 'documented',
+    evidenceDepth: 'comprehensive',
+    strongestFlags: [],
+    documentationStatus: 'documented',
+    href: `/en/cases/${r.codename.toLowerCase()}`,
+    sharedActorGroup: false,
+    multiLaunchRecurrence: false,
+    topCoordinationSignal: null,
+    snapshotCount: 0,
+  }))
+}
+
 export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
   const published = await getPublishedHandles()
 
-  const [caseDossiers, launchDossiers] = await Promise.all([
+  const [caseDossiers, launchDossiers, platformDossiers] = await Promise.all([
     getCaseDossiers(published),
     getLaunchDossiers(published),
+    getPlatformCaseDossiers(),
   ])
 
-  let items = [...caseDossiers, ...launchDossiers]
+  let items = [...caseDossiers, ...launchDossiers, ...platformDossiers]
 
   // Cross-dossier analysis: detect shared actor groups across launches
   const launchActorSets = launchDossiers.map(d => new Set(d.linkedActors.map(a => a.handle)))

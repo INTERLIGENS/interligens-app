@@ -612,6 +612,45 @@ model CaseFile {
   @@map("casefiles")
 }
 
+// ─── PLATFORM FRAUD CASEFILES ───────────────────────────────────────────────
+// Dedicated entity for non-token fraud families (Ponzi networks, fake
+// exchanges, …). Fully additive — no relation to the token/KOL casefile
+// model above. First entry: IL-PON-CBEX-001. Seed: prisma/seed-cbex.ts.
+// Table created via Neon SQL Editor (never `prisma db push`).
+model PlatformCaseFile {
+  id                 String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  ref                String    @unique
+  codename           String
+  title              String
+  family             String
+  subtype            String
+  platformRiskScore  Int
+  status             String
+  chains             Json      @default("[]")
+  geography          Json      @default("[]")
+  confirmedLossUsd   Int?
+  currency           String    @default("USD")
+  publishedDate      DateTime? @db.Date
+  sourceInvestigator String?
+  sourceThreadUrl    String?
+  specterCollab      Boolean   @default(false)
+  keyWallets         Json      @default("[]")
+  linkedEntities     Json      @default("[]")
+  exitExchanges      Json      @default("[]")
+  activeSuccessor    Boolean   @default(false)
+  successorWallet    String?
+  summary            String?
+  summaryFr          String?
+  bodyMarkdown       String?
+  publishStatus      String    @default("draft")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([family])
+  @@index([publishStatus])
+  @@map("platform_casefiles")
+}
+
 model KOLProfile {
   id           String        @id @default(cuid())
   handle       String        @unique

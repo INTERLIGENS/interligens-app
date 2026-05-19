@@ -4,7 +4,7 @@ import Link from 'next/link'
 import BetaNav from '@/components/beta/BetaNav'
 import IntelligenceOverview from '@/components/explorer/IntelligenceOverview'
 
-type Kind = '' | 'case' | 'launch'
+type Kind = '' | 'case' | 'launch' | 'platform'
 
 interface Actor { handle: string; displayName: string | null; role: string; tier: string | null }
 interface Dossier {
@@ -22,8 +22,9 @@ interface Stats {
 }
 
 const KIND_BADGE: Record<string, { l: string; c: string }> = {
-  case:   { l: 'CLUSTER DE CAS', c: '#ef4444' },
-  launch: { l: 'LANCEMENT TOKEN', c: '#8b5cf6' },
+  case:     { l: 'CLUSTER DE CAS',   c: '#ef4444' },
+  launch:   { l: 'LANCEMENT TOKEN',  c: '#8b5cf6' },
+  platform: { l: 'FRAUDE PLATEFORME', c: '#FF6B00' },
 }
 const DOC_BADGE: Record<string, { l: string; c: string }> = {
   documented: { l: 'DOCUMENTE', c: '#10b981' },
@@ -41,6 +42,7 @@ const FLAG_L: Record<string, string> = {
 }
 const KIND_TABS: { key: Kind; label: string }[] = [
   { key: '', label: 'TOUT' }, { key: 'case', label: 'CAS' }, { key: 'launch', label: 'LANCEMENTS' },
+  { key: 'platform', label: 'PLATEFORME' },
 ]
 
 const fmtUsd = (n: number | null | undefined) => {

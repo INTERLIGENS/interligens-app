@@ -3,7 +3,7 @@ import { getExplorerTimeline, getExplorerStats, type DossierKind } from '@/lib/e
 
 export const dynamic = 'force-dynamic'
 
-const VALID_KINDS: DossierKind[] = ['case', 'launch']
+const VALID_KINDS: DossierKind[] = ['case', 'launch', 'platform']
 
 export async function GET(req: NextRequest) {
   try {

@@ -3,7 +3,7 @@ import BetaNav from "@/components/beta/BetaNav";
 import IntelligenceOverview from "@/components/explorer/IntelligenceOverview";
 import React, { useState, useEffect, useCallback } from 'react'
 
-type Kind = '' | 'case' | 'launch'
+type Kind = '' | 'case' | 'launch' | 'platform'
 
 interface Actor { handle: string; displayName: string | null; role: string; tier: string | null }
 interface Dossier {
@@ -21,8 +21,9 @@ interface Stats {
 }
 
 const KIND_BADGE: Record<string, { l: string; c: string }> = {
-  case:   { l: 'CASE CLUSTER',  c: '#ef4444' },
-  launch: { l: 'TOKEN LAUNCH',  c: '#8b5cf6' },
+  case:     { l: 'CASE CLUSTER',   c: '#ef4444' },
+  launch:   { l: 'TOKEN LAUNCH',   c: '#8b5cf6' },
+  platform: { l: 'PLATFORM FRAUD', c: '#FF6B00' },
 }
 const DOC_BADGE: Record<string, { l: string; c: string }> = {
   documented: { l: 'DOCUMENTED', c: '#10b981' },
@@ -40,6 +41,7 @@ const FLAG_L: Record<string, string> = {
 }
 const KIND_TABS: { key: Kind; label: string }[] = [
   { key: '', label: 'ALL' }, { key: 'case', label: 'CASES' }, { key: 'launch', label: 'LAUNCHES' },
+  { key: 'platform', label: 'PLATFORM' },
 ]
 
 const fmtUsd = (n: number | null | undefined) => {
