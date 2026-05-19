@@ -167,7 +167,7 @@ export default function PlatformCasefileView({ data, locale }: { data: PlatformC
   return (
     <div style={{ minHeight: "100vh", background: "#000000", color: "#f9fafb", fontFamily: "Inter, sans-serif", paddingBottom: 80 }}>
       <BetaNav />
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "56px 24px" }}>
+      <div style={{ maxWidth: 880, margin: "0 auto", padding: "48px 24px" }}>
 
         {/* HEADER */}
         <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>{t.kicker}</div>
