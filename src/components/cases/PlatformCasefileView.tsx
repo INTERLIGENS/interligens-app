@@ -167,7 +167,7 @@ export default function PlatformCasefileView({ data, locale }: { data: PlatformC
   return (
     <div style={{ minHeight: "100vh", background: "#000000", color: "#f9fafb", fontFamily: "Inter, sans-serif", paddingBottom: 80 }}>
       <BetaNav />
-      <div style={{ maxWidth: 880, margin: "0 auto", padding: "48px 24px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 24px" }}>
 
         {/* HEADER */}
         <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>{t.kicker}</div>
@@ -192,21 +192,23 @@ export default function PlatformCasefileView({ data, locale }: { data: PlatformC
         </div>
 
         {summary && (
-          <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.75, margin: "20px 0 28px" }}>{summary}</p>
+          <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.75, margin: "20px 0 28px", maxWidth: 760 }}>{summary}</p>
         )}
 
-        {/* STRUCTURED FIELDS */}
+        {/* STRUCTURED FIELDS — 2-column grid (8 fields), full container width */}
         <div style={{ borderTop: "1px solid #1a1a1a", paddingTop: 24 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
             <Field label={t.family}><Pill color="#FF6B00">{fam}</Pill></Field>
             <Field label={t.subtype}><Pill color="#8b5cf6">{sub}</Pill></Field>
             <Field label={t.loss}><span style={{ fontSize: 18, fontWeight: 900, color: "#FF3B5C", fontFamily: "monospace" }}>{fmtUsd(data.confirmedLossUsd)}</span></Field>
             <Field label={t.published}><span style={{ fontSize: 13, color: "#d1d5db" }}>{data.publishedDate ?? "—"}</span></Field>
+            <Field label={t.chains}>{data.chains.map((c) => <Pill key={c} color="#3b82f6">{c}</Pill>)}</Field>
+            <Field label={t.geography}>{data.geography.map((g) => <Pill key={g}>{g}</Pill>)}</Field>
+            <Field label={t.linkedEntities}>{data.linkedEntities.map((e) => <Pill key={e} color="#FFB800">{e}</Pill>)}</Field>
+            <Field label={t.exitExchanges}>{data.exitExchanges.map((e) => <Pill key={e} color="#FF3B5C">{e}</Pill>)}</Field>
           </div>
-          <Field label={t.chains}>{data.chains.map((c) => <Pill key={c} color="#3b82f6">{c}</Pill>)}</Field>
-          <Field label={t.geography}>{data.geography.map((g) => <Pill key={g}>{g}</Pill>)}</Field>
-          <Field label={t.linkedEntities}>{data.linkedEntities.map((e) => <Pill key={e} color="#FFB800">{e}</Pill>)}</Field>
-          <Field label={t.exitExchanges}>{data.exitExchanges.map((e) => <Pill key={e} color="#FF3B5C">{e}</Pill>)}</Field>
+
+          {/* full-width fields below the grid */}
           <Field label={t.keyWallets}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {data.keyWallets.map((w) => <code key={w} style={{ fontSize: 11, color: "#d1d5db", fontFamily: "monospace" }}>{w}</code>)}
@@ -228,11 +230,13 @@ export default function PlatformCasefileView({ data, locale }: { data: PlatformC
           </Field>
         </div>
 
-        {/* BODY */}
+        {/* BODY — capped at a comfortable reading width inside the wide container */}
         <div style={{ borderTop: "1px solid #1a1a1a", marginTop: 16, paddingTop: 28 }}>
-          {data.bodyMarkdown
-            ? renderMarkdown(data.bodyMarkdown)
-            : <p style={{ fontSize: 12, color: "#6b7280", fontStyle: "italic", lineHeight: 1.7 }}>{t.bodyPending}</p>}
+          <div style={{ maxWidth: 760 }}>
+            {data.bodyMarkdown
+              ? renderMarkdown(data.bodyMarkdown)
+              : <p style={{ fontSize: 12, color: "#6b7280", fontStyle: "italic", lineHeight: 1.7 }}>{t.bodyPending}</p>}
+          </div>
         </div>
 
         {/* FOOTER */}
