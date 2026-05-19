@@ -7,7 +7,7 @@ const O = "#FF6B00";
 type Locale = "en" | "fr";
 
 interface NavItem {
-  slug: "demo" | "charter" | "watchlist" | "kol" | "explorer" | "wallet-scan" | "jupiter" | "methodology" | "investors" | "investigators";
+  slug: "demo" | "charter" | "watchlist" | "kol" | "explorer" | "cases" | "wallet-scan" | "jupiter" | "methodology" | "investors" | "investigators";
   label: { en: string; fr: string };
   fallbackLocale?: Locale;
   match: string[];
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { slug: "watchlist",   label: { en: "Watchlist", fr: "Watchlist" },      match: ["/en/watchlist", "/fr/watchlist"] },
   { slug: "kol",         label: { en: "KOL Registry", fr: "Registre KOL" },match: ["/en/kol", "/fr/kol"] },
   { slug: "explorer",    label: { en: "Explorer", fr: "Explorer" },        match: ["/en/explorer", "/fr/explorer"] },
+  { slug: "cases",       label: { en: "Cases", fr: "Dossiers" },           match: ["/en/cases", "/fr/cases"] },
   { slug: "wallet-scan", label: { en: "Wallet Scan", fr: "Scan Wallet" },   match: ["/en/wallet-scan", "/fr/wallet-scan"] },
   { slug: "jupiter",     label: { en: "Safe Swap", fr: "Échange Sûr" },    match: ["/en/jupiter"] },
   { slug: "investigators", label: { en: "Investigators", fr: "Enquêteurs" }, match: ["/investigators"] },

@@ -83,7 +83,7 @@ function renderMarkdown(md: string): React.ReactNode[] {
     const parts = s.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((p, i) =>
       p.startsWith("**") && p.endsWith("**")
-        ? <strong key={i} style={{ color: "#f9fafb" }}>{p.slice(2, -2)}</strong>
+        ? <strong key={i} style={{ color: "#FF6B00", fontWeight: 700 }}>{p.slice(2, -2)}</strong>
         : <span key={i}>{p}</span>,
     );
   };
@@ -96,8 +96,8 @@ function renderMarkdown(md: string): React.ReactNode[] {
   const flushBullets = () => {
     if (bullets.length) {
       out.push(
-        <ul key={key++} style={{ margin: "0 0 12px", paddingLeft: 20 }}>
-          {bullets.map((b, i) => <li key={i} style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7 }}>{inline(b)}</li>)}
+        <ul key={key++} style={{ margin: "0 0 14px", paddingLeft: 22, listStyleType: "disc" }}>
+          {bullets.map((b, i) => <li key={i} style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7, marginBottom: 5 }}>{inline(b)}</li>)}
         </ul>,
       );
       bullets = [];
@@ -109,7 +109,7 @@ function renderMarkdown(md: string): React.ReactNode[] {
     if (line.trim().startsWith("```")) {
       if (code === null) { flushPara(); flushBullets(); code = []; }
       else {
-        out.push(<pre key={key++} style={{ background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "14px 16px", fontSize: 11, color: "#d1d5db", overflowX: "auto", margin: "0 0 12px" }}>{code.join("\n")}</pre>);
+        out.push(<pre key={key++} style={{ background: "#111111", borderRadius: 4, padding: 12, fontSize: 12, lineHeight: 1.6, color: "#d1d5db", fontFamily: "var(--font-jetbrains-mono), monospace", overflowX: "auto", margin: "0 0 14px" }}>{code.join("\n")}</pre>);
         code = null;
       }
       continue;
@@ -120,14 +120,14 @@ function renderMarkdown(md: string): React.ReactNode[] {
       flushPara(); flushBullets();
       const level = line.match(/^#+/)![0].length;
       const text = line.replace(/^#+\s/, "");
-      const size = level === 1 ? 22 : level === 2 ? 17 : 14;
-      out.push(<div key={key++} style={{ fontSize: size, fontWeight: 900, color: "#f9fafb", letterSpacing: "-0.01em", margin: level === 1 ? "8px 0 12px" : "20px 0 8px" }}>{text}</div>);
+      const size = level === 1 ? 26 : level === 2 ? 20 : 15;
+      out.push(<div key={key++} style={{ fontSize: size, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.015em", margin: level === 1 ? "8px 0 14px" : "24px 0 10px" }}>{text}</div>);
     } else if (/^[-*]\s/.test(line)) {
       flushPara();
       bullets.push(line.replace(/^[-*]\s/, ""));
     } else if (/^(-{3,}|_{3,})$/.test(line.trim())) {
       flushPara(); flushBullets();
-      out.push(<hr key={key++} style={{ border: "none", borderTop: "1px solid #1a1a1a", margin: "20px 0" }} />);
+      out.push(<hr key={key++} style={{ border: "none", borderTop: "1px solid #333333", margin: "22px 0" }} />);
     } else if (line.trim() === "") {
       flushPara(); flushBullets();
     } else {
@@ -136,7 +136,7 @@ function renderMarkdown(md: string): React.ReactNode[] {
     }
   }
   flushPara(); flushBullets();
-  if (code) out.push(<pre key={key++} style={{ background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "14px 16px", fontSize: 11, color: "#d1d5db", overflowX: "auto" }}>{code.join("\n")}</pre>);
+  if (code) out.push(<pre key={key++} style={{ background: "#111111", borderRadius: 4, padding: 12, fontSize: 12, lineHeight: 1.6, color: "#d1d5db", fontFamily: "var(--font-jetbrains-mono), monospace", overflowX: "auto" }}>{code.join("\n")}</pre>);
   return out;
 }
 
