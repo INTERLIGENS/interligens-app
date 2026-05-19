@@ -3,7 +3,10 @@ import { useEffect } from "react";
 
 export default function WhyThisScore() {
   useEffect(() => {
-    window.location.href = "/tigerscore-architecture.html";
+    // The legacy /tigerscore-architecture.html static asset returns 403 in
+    // prod, which left this page stuck on "Loading…". Redirect to the live
+    // Proof Graph route instead.
+    window.location.href = "/en/methodology/proof-graph";
   }, []);
 
   return (
