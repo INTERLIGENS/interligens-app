@@ -104,6 +104,27 @@ export default function ProofGraphPage() {
           <div style={{ marginTop: 8, fontSize: 13, color: "#9ca3af", lineHeight: 1.7 }}>
             Bars are proportional, not numeric. Exact weights, thresholds, and detector internals stay proprietary. <span style={{ color: "#FF6B00", fontWeight: 700 }}>Architecture, not recipe.</span>
           </div>
+          <a
+            href="/tigerscore-architecture.html"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 20,
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase" as const,
+              color: "#FF6B00",
+              textDecoration: "none",
+              border: "1px solid #FF6B0044",
+              background: "#FF6B0010",
+              borderRadius: 8,
+              padding: "10px 16px",
+            }}
+          >
+            View interactive architecture graph →
+          </a>
         </div>
 
         {/* ── ROOT NODE ── */}

@@ -3,10 +3,11 @@ import { useEffect } from "react";
 
 export default function WhyThisScore() {
   useEffect(() => {
-    // The legacy /tigerscore-architecture.html static asset returns 403 in
-    // prod, which left this page stuck on "Loading…". Redirect to the live
-    // Proof Graph route instead.
-    window.location.href = "/en/methodology/proof-graph";
+    // "WHY THIS SCORE?" opens the interactive TigerScore architecture graph.
+    // The static asset is whitelisted by proxy.ts (isBetaExempt + matcher
+    // both exempt the .html extension), so it is reachable without the beta
+    // cookie. The text version stays at /en/methodology/proof-graph.
+    window.location.href = "/tigerscore-architecture.html";
   }, []);
 
   return (
