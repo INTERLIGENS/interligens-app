@@ -149,9 +149,11 @@ function Pill({ children, color = "#6b7280" }: { children: React.ReactNode; colo
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // No marginBottom / min-height: spacing is owned by the grid (rowGap) and
+  // the full-width flex column below it. Label sits tight against its value.
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 9, fontWeight: 900, color: "#FF6B00", letterSpacing: "0.2em", marginBottom: 8 }}>{label.toUpperCase()}</div>
+    <div>
+      <div style={{ fontSize: 9, fontWeight: 900, color: "#FF6B00", letterSpacing: "0.2em", marginBottom: 5 }}>{label.toUpperCase()}</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{children}</div>
     </div>
   );
@@ -197,7 +199,7 @@ export default function PlatformCasefileView({ data, locale }: { data: PlatformC
 
         {/* STRUCTURED FIELDS — 2-column grid (8 fields), full container width */}
         <div style={{ borderTop: "1px solid #1a1a1a", paddingTop: 24 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 32px", alignItems: "start" }}>
             <Field label={t.family}><Pill color="#FF6B00">{fam}</Pill></Field>
             <Field label={t.subtype}><Pill color="#8b5cf6">{sub}</Pill></Field>
             <Field label={t.loss}><span style={{ fontSize: 18, fontWeight: 900, color: "#FF3B5C", fontFamily: "monospace" }}>{fmtUsd(data.confirmedLossUsd)}</span></Field>
@@ -209,25 +211,27 @@ export default function PlatformCasefileView({ data, locale }: { data: PlatformC
           </div>
 
           {/* full-width fields below the grid */}
-          <Field label={t.keyWallets}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {data.keyWallets.map((w) => <code key={w} style={{ fontSize: 11, color: "#d1d5db", fontFamily: "monospace" }}>{w}</code>)}
-            </div>
-          </Field>
-          {data.activeSuccessor && (
-            <Field label={t.successor}>
-              <Pill color="#FF3B5C">{t.yes}</Pill>
-              {data.successorWallet && <code style={{ fontSize: 11, color: "#d1d5db", fontFamily: "monospace" }}>{data.successorWallet}</code>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 24 }}>
+            <Field label={t.keyWallets}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {data.keyWallets.map((w) => <code key={w} style={{ fontSize: 11, color: "#d1d5db", fontFamily: "monospace" }}>{w}</code>)}
+              </div>
             </Field>
-          )}
-          <Field label={t.source}>
-            {data.sourceThreadUrl ? (
-              <a href={data.sourceThreadUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#FF6B00", fontWeight: 700, textDecoration: "none" }}>
-                {data.sourceInvestigator ?? "source"} ↗
-              </a>
-            ) : <span style={{ fontSize: 13, color: "#d1d5db" }}>{data.sourceInvestigator ?? "—"}</span>}
-            {data.specterCollab && <Pill color="#FF6B00">Specter × INTERLIGENS</Pill>}
-          </Field>
+            {data.activeSuccessor && (
+              <Field label={t.successor}>
+                <Pill color="#FF3B5C">{t.yes}</Pill>
+                {data.successorWallet && <code style={{ fontSize: 11, color: "#d1d5db", fontFamily: "monospace" }}>{data.successorWallet}</code>}
+              </Field>
+            )}
+            <Field label={t.source}>
+              {data.sourceThreadUrl ? (
+                <a href={data.sourceThreadUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#FF6B00", fontWeight: 700, textDecoration: "none" }}>
+                  {data.sourceInvestigator ?? "source"} ↗
+                </a>
+              ) : <span style={{ fontSize: 13, color: "#d1d5db" }}>{data.sourceInvestigator ?? "—"}</span>}
+              {data.specterCollab && <Pill color="#FF6B00">Specter × INTERLIGENS</Pill>}
+            </Field>
+          </div>
         </div>
 
         {/* BODY — capped at a comfortable reading width inside the wide container */}
