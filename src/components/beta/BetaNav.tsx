@@ -77,6 +77,12 @@ export default function BetaNav() {
         .beta-nav-spacer { height: 56px; }
         .beta-nav-desktop { display: flex; }
         .beta-nav-mobile-toggle { display: none; }
+        /* Thin, discreet horizontal scrollbar on the desktop nav — signals to
+           the user that the link row is scrollable when it overflows. */
+        .beta-nav-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,107,0,0.45) transparent; }
+        .beta-nav-scroll::-webkit-scrollbar { height: 4px; }
+        .beta-nav-scroll::-webkit-scrollbar-track { background: transparent; }
+        .beta-nav-scroll::-webkit-scrollbar-thumb { background: rgba(255,107,0,0.45); border-radius: 2px; }
         .beta-nav-brand-label { display: inline; }
         @media (max-width: 767px) {
           .beta-nav-desktop { display: none !important; }
@@ -159,10 +165,11 @@ export default function BetaNav() {
           </span>
         </a>
 
-        {/* Desktop links */}
+        {/* Desktop links — horizontally scrollable when the row overflows.
+            minWidth:0 is required for overflowX to engage on a flex item. */}
         <nav
-          className="beta-nav-desktop"
-          style={{ alignItems: "center", gap: 4, flex: 1 }}
+          className="beta-nav-desktop beta-nav-scroll"
+          style={{ alignItems: "center", gap: 4, flex: 1, minWidth: 0, overflowX: "auto" }}
         >
           {NAV_ITEMS.map((item) => {
             const active = isActive(item);

@@ -199,15 +199,22 @@ export default function PlatformCasefileView({ data, locale }: { data: PlatformC
 
         {/* STRUCTURED FIELDS — 2-column grid (8 fields), full container width */}
         <div style={{ borderTop: "1px solid #1a1a1a", paddingTop: 24 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 32px", alignItems: "start" }}>
-            <Field label={t.family}><Pill color="#FF6B00">{fam}</Pill></Field>
-            <Field label={t.subtype}><Pill color="#8b5cf6">{sub}</Pill></Field>
-            <Field label={t.loss}><span style={{ fontSize: 18, fontWeight: 900, color: "#FF3B5C", fontFamily: "monospace" }}>{fmtUsd(data.confirmedLossUsd)}</span></Field>
-            <Field label={t.published}><span style={{ fontSize: 13, color: "#d1d5db" }}>{data.publishedDate ?? "—"}</span></Field>
-            <Field label={t.chains}>{data.chains.map((c) => <Pill key={c} color="#3b82f6">{c}</Pill>)}</Field>
-            <Field label={t.geography}>{data.geography.map((g) => <Pill key={g}>{g}</Pill>)}</Field>
-            <Field label={t.linkedEntities}>{data.linkedEntities.map((e) => <Pill key={e} color="#FFB800">{e}</Pill>)}</Field>
-            <Field label={t.exitExchanges}>{data.exitExchanges.map((e) => <Pill key={e} color="#FF3B5C">{e}</Pill>)}</Field>
+          {/* Two independent flex columns — each packs its 4 fields with a
+              fixed 20px gap. Columns do NOT share row heights, so a tall
+              field (many tags) in one column never opens a gap in the other. */}
+          <div style={{ display: "flex", gap: 32 }}>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
+              <Field label={t.family}><Pill color="#FF6B00">{fam}</Pill></Field>
+              <Field label={t.loss}><span style={{ fontSize: 18, fontWeight: 900, color: "#FF3B5C", fontFamily: "monospace" }}>{fmtUsd(data.confirmedLossUsd)}</span></Field>
+              <Field label={t.chains}>{data.chains.map((c) => <Pill key={c} color="#3b82f6">{c}</Pill>)}</Field>
+              <Field label={t.linkedEntities}>{data.linkedEntities.map((e) => <Pill key={e} color="#FFB800">{e}</Pill>)}</Field>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
+              <Field label={t.subtype}><Pill color="#8b5cf6">{sub}</Pill></Field>
+              <Field label={t.published}><span style={{ fontSize: 13, color: "#d1d5db" }}>{data.publishedDate ?? "—"}</span></Field>
+              <Field label={t.geography}>{data.geography.map((g) => <Pill key={g}>{g}</Pill>)}</Field>
+              <Field label={t.exitExchanges}>{data.exitExchanges.map((e) => <Pill key={e} color="#FF3B5C">{e}</Pill>)}</Field>
+            </div>
           </div>
 
           {/* full-width fields below the grid */}
