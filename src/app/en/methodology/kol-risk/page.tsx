@@ -74,6 +74,32 @@ export default function KolRiskMethodologyPage() {
           <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280", fontStyle: "italic" }}>Architecture, not recipe.</div>
         </div>
 
+        {/* Registry at a glance */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 16 }}>REGISTRY AT A GLANCE</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {[
+              { value: "370+", label: "KOL profiles in the registry" },
+              { value: "220", label: "Profiles with linked wallets" },
+              { value: "484", label: "Total wallets attributed" },
+              { value: "$17.6M", label: "Observed proceeds tracked" },
+              { value: "5,657", label: "Proceeds events documented" },
+              { value: "79", label: "Handles under automated surveillance" },
+            ].map((s) => (
+              <div
+                key={s.label}
+                style={{ background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "18px 20px" }}
+              >
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#FF6B00", fontFamily: "monospace", letterSpacing: "-0.02em" }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.5, marginTop: 6 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: "#4b5563", lineHeight: 1.6, marginTop: 12 }}>
+            Figures reflect documented on-chain evidence and are revised as attribution improves. Proceeds figures are floors, not ceilings.
+          </div>
+        </div>
+
         {/* Axes */}
         <div style={{ marginBottom: 48 }}>
           <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 16 }}>DIRECTIONAL AXES</div>

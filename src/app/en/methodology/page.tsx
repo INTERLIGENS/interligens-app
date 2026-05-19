@@ -73,6 +73,155 @@ export default function MethodologyPage() {
           <div style={{ fontSize: 12, color: "#FF6B00", fontWeight: 700, whiteSpace: "nowrap" }}>Proof Graph →</div>
         </a>
 
+        {/* ── A) WHAT WE ANALYZE ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>WHAT WE ANALYZE</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: 0, marginBottom: 8 }}>Every input behind a score</h2>
+          <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7, marginTop: 8, marginBottom: 16 }}>
+            Each TigerScore is assembled from four evidence layers, all sourced from public data.
+          </div>
+          {[
+            { label: "7 chains live", body: "Solana, Ethereum, Base, Arbitrum, BSC, TRON, Neon." },
+            { label: "On-chain signals", body: "Holder concentration, liquidity depth, token age, volume analysis, cluster risk, deployer history." },
+            { label: "Case intelligence", body: "OFAC / sanctions, Scam Sniffer, GoPlus, casefile claims, and the KOL registry — 370+ profiles, 220 with linked wallets." },
+            { label: "Market data", body: "DexScreener real-time pricing and pump.fun launch detection." },
+            { label: "Social intelligence", body: "Watcher V2 — 79 handles, captured automatically every 72 hours." },
+          ].map((s) => (
+            <div key={s.label} style={{ marginBottom: 12, background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "20px 24px" }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.05em", marginBottom: 8 }}>{s.label}</div>
+              <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.75 }}>{s.body}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── B) HOW THE SCORE WORKS ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>HOW THE SCORE WORKS</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: 0, marginBottom: 8 }}>TigerScore 0–100</h2>
+          <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7, marginTop: 8, marginBottom: 16 }}>
+            A single risk score — higher means higher observed risk. The architecture is published; the exact weights are not.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: 12 }}>
+            {[
+              { tier: "GREEN", range: "0 – 39", color: "#10b981", desc: "Lower observed risk." },
+              { tier: "ORANGE", range: "40 – 69", color: "#f59e0b", desc: "Suspicious signals detected." },
+              { tier: "RED", range: "70 – 100", color: "#ef4444", desc: "Critical risk — documented evidence." },
+            ].map((t) => (
+              <div
+                key={t.tier}
+                style={{
+                  background: "#0f0f0f",
+                  border: `1px solid ${t.color}44`,
+                  borderLeft: `3px solid ${t.color}`,
+                  borderRadius: 8,
+                  padding: "16px 22px",
+                  display: "flex",
+                  gap: 20,
+                  alignItems: "center",
+                }}
+              >
+                <div style={{ minWidth: 80 }}>
+                  <div style={{ fontSize: 9, fontWeight: 900, color: t.color, letterSpacing: "0.15em", marginBottom: 4 }}>{t.tier}</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: t.color, fontFamily: "monospace" }}>{t.range}</div>
+                </div>
+                <div style={{ fontSize: 13, color: "#d1d5db", fontWeight: 600 }}>{t.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, fontSize: 12, color: "#FF6B00", fontWeight: 700, fontStyle: "italic" }}>Architecture, not recipe.</div>
+        </div>
+
+        {/* ── C) WHAT MAKES US DIFFERENT ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>WHAT MAKES US DIFFERENT</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: 0, marginBottom: 16 }}>Evidence, not opinion</h2>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: 2 }}>
+            {[
+              "No wallet connection required.",
+              "Evidence-based, not opinion-based.",
+              "Every claim backed by on-chain data or a documented source.",
+              "5 published casefiles — BOTIFY, RAVE, GHOST, VINE, SOLAXY.",
+              "$17.6M in proceeds traced on-chain.",
+              "484 wallets linked to 220 KOL profiles.",
+              "Automated surveillance — Watcher V2, 79 handles.",
+            ].map((line, i) => (
+              <div
+                key={line}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  padding: "11px 0",
+                  borderTop: i === 0 ? "none" : "1px solid #161616",
+                }}
+              >
+                <span style={{ color: "#FF6B00", fontWeight: 900, fontSize: 13, lineHeight: 1.6 }}>+</span>
+                <span style={{ fontSize: 13, color: "#d1d5db", lineHeight: 1.6, fontWeight: 600 }}>{line}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── D) WHAT WE DON'T DO ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>WHAT WE DON&apos;T DO</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: 0, marginBottom: 16 }}>Hard limits</h2>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: 2 }}>
+            {[
+              "No financial advice.",
+              "No absolute claims of guilt.",
+              "No private data collection.",
+              "No doxxing.",
+              'We write "documented critical risk" — never "scammer" or "criminal".',
+            ].map((line, i) => (
+              <div
+                key={line}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  padding: "11px 0",
+                  borderTop: i === 0 ? "none" : "1px solid #161616",
+                }}
+              >
+                <span style={{ color: "#6b7280", fontWeight: 900, fontSize: 13, lineHeight: 1.6 }}>—</span>
+                <span style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>{line}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── E) LINKS ── */}
+        <div style={{ marginBottom: 56 }}>
+          <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 16 }}>EXPLORE</div>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: 2 }}>
+            {[
+              { label: "TigerScore Details", href: "/en/methodology/tigerscore" },
+              { label: "KOL Risk Methodology", href: "/en/methodology/kol-risk" },
+              { label: "Score Proof Graph", href: "/en/methodology/proof-graph" },
+              { label: "Interactive Architecture", href: "/tigerscore-architecture.html" },
+              { label: "KOL Data Doctrine", href: "/en/legal/kol-data-doctrine" },
+            ].map((l, i) => (
+              <a
+                key={l.href}
+                href={l.href}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "14px 4px",
+                  borderTop: i === 0 ? "none" : "1px solid #161616",
+                  textDecoration: "none",
+                }}
+              >
+                <span style={{ fontSize: 13, color: "#d1d5db", fontWeight: 700 }}>{l.label}</span>
+                <span style={{ fontSize: 12, color: "#FF6B00", fontWeight: 700 }}>→</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
         {/* ── EVIDENCE METHODOLOGY ── */}
         <div style={{ marginBottom: 40 }}>
           <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>EVIDENCE METHODOLOGY</div>

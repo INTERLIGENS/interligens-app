@@ -12,34 +12,48 @@ export const metadata: Metadata = {
   },
 };
 
-const SIGNAL_CATEGORIES = [
+const SIGNAL_GROUPS: {
+  group: string;
+  signals: { code: string; desc: string }[];
+}[] = [
   {
-    label: "On-chain Signals",
-    desc: "Transaction patterns, wallet age, deployment history, authority status, and observable on-chain behaviors associated with the token contract and its deployer.",
+    group: "On-chain Signals",
+    signals: [
+      { code: "holders_concentrated_80", desc: "Top holders control 80%+ of supply." },
+      { code: "holders_concentrated_60", desc: "Top holders control 60%+ of supply." },
+      { code: "liquidity_very_low", desc: "Less than $10K liquidity." },
+      { code: "liquidity_low", desc: "Less than $50K liquidity." },
+      { code: "token_young_7d", desc: "Token created in the last 7 days." },
+      { code: "token_young_30d", desc: "Token created in the last 30 days." },
+      { code: "volume_very_low", desc: "Less than $1K daily trading volume." },
+      { code: "cluster_risk", desc: "Three or more strong signals combined." },
+      { code: "pump_fun_origin", desc: "Token launched via pump.fun." },
+    ],
   },
   {
-    label: "Token Metadata",
-    desc: "Token contract configuration, mint and freeze authority status, metadata completeness, and verified links between on-chain identity and off-chain presence.",
+    group: "Case Intelligence",
+    signals: [
+      { code: "OFAC / Sanctions check", desc: "Screened against 332K+ sanctioned entities." },
+      { code: "Scam Sniffer", desc: "Third-party scam-address database integration." },
+      { code: "GoPlus", desc: "Honeypot and phishing contract detection." },
+      { code: "Casefile claims", desc: "Cross-referenced against 5 published cases." },
+      { code: "KOL Registry correlation", desc: "Matched against documented influencer profiles." },
+    ],
   },
   {
-    label: "Liquidity Analysis",
-    desc: "Depth and distribution of available liquidity, pool age, LP lock status, and observable patterns in liquidity provision and withdrawal events.",
+    group: "Market Data",
+    signals: [
+      { code: "DexScreener", desc: "Real-time price, market cap, and volume." },
+      { code: "Pump.fun detection", desc: "Identifies pump.fun-launched tokens." },
+    ],
   },
   {
-    label: "Holder Concentration",
-    desc: "Distribution of token supply across holder addresses, insider accumulation patterns, and the presence of coordinated holding structures.",
-  },
-  {
-    label: "Token Age",
-    desc: "Time since deployment, trading history length, and contextual signals derived from token maturity relative to observed risk indicators.",
-  },
-  {
-    label: "Case Intelligence",
-    desc: "Cross-referenced findings from the INTERLIGENS case database. When a token or associated wallet appears in an active investigation, case signals are incorporated.",
-  },
-  {
-    label: "Community Signals",
-    desc: "Aggregated scan frequency, corroboration data from independent investigations, and observable consensus signals from documented sources.",
+    group: "Social Intelligence",
+    signals: [
+      { code: "Watcher V2", desc: "79 handles monitored automatically every 72 hours." },
+      { code: "Shill pattern detection", desc: "Identifies coordinated promotion bursts." },
+      { code: "Campaign clustering", desc: "Groups related promotion activity across actors." },
+    ],
   },
 ];
 
@@ -105,16 +119,46 @@ export default function TigerScoreMethodologyPage() {
         {/* Signal categories */}
         <div style={{ marginBottom: 48 }}>
           <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 16 }}>SIGNAL CATEGORIES</div>
-          <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 20, lineHeight: 1.6 }}>
-            TigerScore draws from seven independent signal categories. Internal weights, thresholds, and detector logic are not published.
+          <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 24, lineHeight: 1.6 }}>
+            TigerScore draws from four signal groups, all currently live in production. Internal weights, thresholds, and detector logic are not published — only the architecture below.
           </div>
-          {SIGNAL_CATEGORIES.map((cat) => (
-            <div
-              key={cat.label}
-              style={{ marginBottom: 10, background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "18px 22px" }}
-            >
-              <div style={{ fontSize: 12, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.05em", marginBottom: 6 }}>{cat.label}</div>
-              <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.7 }}>{cat.desc}</div>
+          {SIGNAL_GROUPS.map((g) => (
+            <div key={g.group} style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.05em" }}>{g.group}</div>
+                <span
+                  style={{
+                    background: "#00FF9415",
+                    border: "1px solid #00FF9444",
+                    color: "#00FF94",
+                    fontSize: 8,
+                    fontWeight: 900,
+                    padding: "3px 9px",
+                    borderRadius: 4,
+                    letterSpacing: "0.12em",
+                  }}
+                >
+                  LIVE
+                </span>
+              </div>
+              <div style={{ background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "6px 22px" }}>
+                {g.signals.map((s, i) => (
+                  <div
+                    key={s.code}
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: 12,
+                      padding: "12px 0",
+                      borderTop: i === 0 ? "none" : "1px solid #161616",
+                      flexWrap: "wrap" as const,
+                    }}
+                  >
+                    <code style={{ fontSize: 12, fontFamily: "monospace", color: "#FF6B00", fontWeight: 700 }}>{s.code}</code>
+                    <span style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>{s.desc}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>

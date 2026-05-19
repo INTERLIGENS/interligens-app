@@ -8,9 +8,171 @@ export default function MethodologyPageFR() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '60px 24px' }}>
 
         <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>MÉTHODOLOGIE</div>
+          <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 16, margin: 0 }}>Architecture, pas recette.</h1>
+          <div style={{ marginTop: 12, fontSize: 14, color: '#d1d5db', lineHeight: 1.7 }}>
+            Chaque TigerScore est fondé sur des signaux documentés et un contexte de preuves.
+          </div>
+          <div style={{ marginTop: 8, fontSize: 13, color: '#9ca3af', lineHeight: 1.7 }}>
+            Les poids internes, seuils, mécanismes des détecteurs et logiques anti-évasion restent propriétaires.
+          </div>
+          <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280' }}>Fondé sur des preuves. Pas un conseil financier.</div>
+        </div>
+
+        {/* ── A) CE QUE NOUS ANALYSONS ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>CE QUE NOUS ANALYSONS</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, marginBottom: 8 }}>Chaque donnée derrière un score</h2>
+          <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, marginTop: 8, marginBottom: 16 }}>
+            Chaque TigerScore est assemblé à partir de quatre couches de preuves, toutes issues de données publiques.
+          </div>
+          {[
+            { label: '7 chaînes en production', body: 'Solana, Ethereum, Base, Arbitrum, BSC, TRON, Neon.' },
+            { label: 'Signaux on-chain', body: "Concentration des détenteurs, profondeur de liquidité, âge du token, analyse du volume, risque de cluster, historique du déployeur." },
+            { label: 'Intelligence de dossier', body: "OFAC / sanctions, Scam Sniffer, GoPlus, allégations de dossier et registre KOL — 370+ profils, 220 avec portefeuilles liés." },
+            { label: 'Données de marché', body: 'Prix DexScreener en temps réel et détection des lancements pump.fun.' },
+            { label: 'Intelligence sociale', body: 'Watcher V2 — 79 comptes, capturés automatiquement toutes les 72 heures.' },
+          ].map(s => (
+            <div key={s.label} style={{ marginBottom: 12, background: '#0f0f0f', border: '1px solid #1a1a1a', borderRadius: 8, padding: '20px 24px' }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: '#f9fafb', letterSpacing: '0.05em', marginBottom: 8 }}>{s.label}</div>
+              <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.75 }}>{s.body}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── B) COMMENT FONCTIONNE LE SCORE ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>COMMENT FONCTIONNE LE SCORE</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, marginBottom: 8 }}>TigerScore 0–100</h2>
+          <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, marginTop: 8, marginBottom: 16 }}>
+            Un score de risque unique — plus il est élevé, plus le risque observé est élevé. L&apos;architecture est publiée ; les poids exacts ne le sont pas.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+            {[
+              { tier: 'VERT', range: '0 – 39', color: '#10b981', desc: 'Risque observé plus faible.' },
+              { tier: 'ORANGE', range: '40 – 69', color: '#f59e0b', desc: 'Signaux suspects détectés.' },
+              { tier: 'ROUGE', range: '70 – 100', color: '#ef4444', desc: 'Risque critique — preuves documentées.' },
+            ].map(t => (
+              <div
+                key={t.tier}
+                style={{
+                  background: '#0f0f0f',
+                  border: `1px solid ${t.color}44`,
+                  borderLeft: `3px solid ${t.color}`,
+                  borderRadius: 8,
+                  padding: '16px 22px',
+                  display: 'flex',
+                  gap: 20,
+                  alignItems: 'center',
+                }}
+              >
+                <div style={{ minWidth: 84 }}>
+                  <div style={{ fontSize: 9, fontWeight: 900, color: t.color, letterSpacing: '0.15em', marginBottom: 4 }}>{t.tier}</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: t.color, fontFamily: 'monospace' }}>{t.range}</div>
+                </div>
+                <div style={{ fontSize: 13, color: '#d1d5db', fontWeight: 600 }}>{t.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, fontSize: 12, color: '#F85B05', fontWeight: 700, fontStyle: 'italic' }}>Architecture, pas recette.</div>
+        </div>
+
+        {/* ── C) CE QUI NOUS DIFFÉRENCIE ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>CE QUI NOUS DIFFÉRENCIE</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, marginBottom: 16 }}>Des preuves, pas des opinions</h2>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+            {[
+              'Aucune connexion de portefeuille requise.',
+              'Fondé sur des preuves, pas sur des opinions.',
+              'Chaque affirmation étayée par des données on-chain ou une source documentée.',
+              '5 dossiers publiés — BOTIFY, RAVE, GHOST, VINE, SOLAXY.',
+              '17,6 M$ de produits tracés on-chain.',
+              '484 portefeuilles liés à 220 profils KOL.',
+              'Surveillance automatisée — Watcher V2, 79 comptes.',
+            ].map((line, i) => (
+              <div
+                key={line}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: '11px 0',
+                  borderTop: i === 0 ? 'none' : '1px solid #161616',
+                }}
+              >
+                <span style={{ color: '#F85B05', fontWeight: 900, fontSize: 13, lineHeight: 1.6 }}>+</span>
+                <span style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.6, fontWeight: 600 }}>{line}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── D) CE QUE NOUS NE FAISONS PAS ── */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>CE QUE NOUS NE FAISONS PAS</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, marginBottom: 16 }}>Limites strictes</h2>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+            {[
+              'Aucun conseil financier.',
+              'Aucune affirmation absolue de culpabilité.',
+              'Aucune collecte de données privées.',
+              'Aucun doxxing.',
+              'Nous écrivons « risque critique documenté » — jamais « arnaqueur » ni « criminel ».',
+            ].map((line, i) => (
+              <div
+                key={line}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: '11px 0',
+                  borderTop: i === 0 ? 'none' : '1px solid #161616',
+                }}
+              >
+                <span style={{ color: '#6b7280', fontWeight: 900, fontSize: 13, lineHeight: 1.6 }}>—</span>
+                <span style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{line}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── E) LIENS ── */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 16 }}>EXPLORER</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+            {[
+              { label: 'Détails du TigerScore', href: '/fr/methodology/tigerscore' },
+              { label: 'Méthodologie de risque KOL', href: '/fr/methodology/kol-risk' },
+              { label: 'Graphe de preuve du score', href: '/fr/methodology/proof-graph' },
+              { label: 'Architecture interactive', href: '/tigerscore-architecture.html' },
+              { label: 'Doctrine des données KOL', href: '/fr/legal/kol-data-doctrine' },
+            ].map((l, i) => (
+              <a
+                key={l.href}
+                href={l.href}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 4px',
+                  borderTop: i === 0 ? 'none' : '1px solid #161616',
+                  textDecoration: 'none',
+                }}
+              >
+                <span style={{ fontSize: 13, color: '#d1d5db', fontWeight: 700 }}>{l.label}</span>
+                <span style={{ fontSize: 12, color: '#F85B05', fontWeight: 700 }}>→</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* ── MÉTHODOLOGIE DE PREUVE ── */}
+        <div style={{ marginBottom: 40 }}>
           <div style={{ fontSize: 10, color: '#F85B05', fontWeight: 900, letterSpacing: '0.2em', marginBottom: 12 }}>MÉTHODOLOGIE DE PREUVE</div>
-          <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 16, margin: 0 }}>Comment INTERLIGENS calcule ses estimations financières</h1>
-          <div style={{ marginTop: 12, fontSize: 13, color: '#6b7280', lineHeight: 1.7 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, marginBottom: 8 }}>Comment INTERLIGENS calcule ses estimations financières</h2>
+          <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, marginTop: 8 }}>
             INTERLIGENS publie des estimations financières dérivées de données blockchain accessibles publiquement. Ces chiffres sont des estimations analytiques — et non des faits établis ni des conclusions juridiques.
           </div>
         </div>
