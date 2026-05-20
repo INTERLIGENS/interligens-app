@@ -1,0 +1,73 @@
+# CC OFFLINE — Chemins INTERDITS pendant absence David
+# Toute modification ici doit être bloquée par le pre-commit hook.
+# Source de vérité technique : scripts/guard-offline.sh
+
+# Secrets / env
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+
+# Vercel
+.vercel/
+vercel.json
+
+# Package manager
+package.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Build / TS / lint config
+next.config.*
+tsconfig.json
+tsconfig.*.json
+vitest.config.*
+eslint.config.*
+.eslintrc.*
+tailwind.config.*
+postcss.config.*
+.prettierrc*
+
+# Runtime config
+middleware.ts
+instrumentation.ts
+src/middleware/**
+
+# CI / GitHub
+.github/**
+
+# Git
+.gitignore
+.gitattributes
+
+# Prisma / DB
+prisma/**
+migrations/**
+src/lib/db/**
+src/server/db/**
+
+# API prod
+src/app/api/**
+
+# Lib prod core
+src/lib/scoring/**
+src/lib/tigerscore/**
+src/lib/partner/**
+src/lib/mobile/**
+src/lib/watcher/**
+src/lib/pdf/**
+src/lib/evidence/**
+src/lib/kol/**
+src/lib/auth/**
+src/lib/rate-limit/**
+src/lib/security/**
+src/lib/turnstile/**
+
+# Composants partagés (offline = src/offline/components/)
+src/components/**
+
+# Casefiles publiés
+src/app/casefiles/**
+src/app/(public)/casefiles/**
