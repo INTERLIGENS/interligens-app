@@ -10,3 +10,18 @@ export const flags = {
 export function isLabEnabled(flag: keyof typeof flags): boolean {
   return flags[flag]
 }
+
+// Admin-only / server-only feature flags.
+// Deliberately NOT prefixed NEXT_PUBLIC_ — these must not leak into the client bundle.
+// Default is false in every environment; enable locally with e.g.
+// FEATURE_CASEFILE_ENGINE_V1=true pnpm dev
+export const FEATURE_FLAGS = {
+  CASEFILE_ENGINE_V1: process.env.FEATURE_CASEFILE_ENGINE_V1 === 'true',
+  WIZARD_SANDBOX: process.env.FEATURE_WIZARD_SANDBOX === 'true',
+} as const
+
+export type FeatureFlag = keyof typeof FEATURE_FLAGS
+
+export function isFeatureEnabled(flag: FeatureFlag): boolean {
+  return FEATURE_FLAGS[flag]
+}

@@ -3666,3 +3666,81 @@ model WaitlistEntry {
   source    String   @default("beta_founder_soldout")
   createdAt DateTime @default(now())
 }
+
+// =============================================================================
+// CASEFILE ENGINE V1 — admin-only, feature-flagged (FEATURE_CASEFILE_ENGINE_V1)
+// Synthetic-demo only in V1. No PII. No public exposure.
+// Migration script: MIGRATION_casefile_engine_v1.sql (awaiting human approval).
+// =============================================================================
+
+model CasefileDraft {
+  id                             String   @id @default(cuid())
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+  createdBy                      String
+
+  casefileId                     String   @unique
+  version                        String   @default("v1")
+
+  // V1: synthetic-demo only. sandbox + production-internal désactivés.
+  dataClassification             String   @default("synthetic-demo")
+  intendedAudience               String   @default("format-test")
+  legalDisclaimerAcknowledged    Boolean  @default(false)
+  syntheticAcknowledged          Boolean  @default(false)
+
+  reportingCountry               String
+  reportingLanguage              String?
+
+  controlledWallets              Json
+  walletControlProof             Json
+  fundsSource                    String
+  amountEur                      Float?
+  amountUnknown                  Boolean  @default(false)
+  pricingMethodNote              String?
+
+  incidentPattern                String
+  timeline                       Json
+
+  txids                          String[]
+  noTxidJustification            String?
+  addressesInFlow                Json
+  obfuscationBreakpointCandidate Boolean  @default(false)
+  cexTouchpointDetected          Json
+
+  domains                        Json
+  platformName                   String?
+  publicHandlesMentioned         Json
+
+  exhibits                       Exhibit[]
+
+  primaryTriage                  String?  // V1: A | B | E uniquement en auto. Jamais C.
+  potentialCivilReviewFlag       Boolean  @default(false) // Flag additif, pas catégorie
+  clusterFlag                    Boolean  @default(false)
+  jurisdictionalFlags            Json
+  evidencePackageCompleteness    Json
+  counselReviewRequired          Boolean  @default(true)
+}
+
+model Exhibit {
+  id                  String        @id @default(cuid())
+  casefileDraftId     String
+  casefileDraft       CasefileDraft @relation(fields: [casefileDraftId], references: [id], onDelete: Cascade)
+  exhibitId           String
+  type                String
+  description         String
+  originalFilename    String
+  source              String
+  dateCollected       DateTime
+  collectionMethod    String
+  hashSha256          String
+  storageUri          String
+  relevance           String
+  attributionLevel    String
+  sourceReliability   String
+  // En V1 synthetic-demo: contains-pii interdit, auto-convert en synthetic-pii-placeholder
+  redactionStatus     String
+  admissibilityRisk   String
+  chainOfCustodyNotes String?
+
+  @@unique([casefileDraftId, exhibitId])
+}
