@@ -1,0 +1,37 @@
+# CC OFFLINE — Chemins d'écriture AUTORISÉS pendant absence David
+# Tout ce qui n'est pas listé ici est INTERDIT.
+# Source de vérité : voir aussi .cc-forbidden-paths
+
+# Documentation & contenu
+docs/**
+content/offline/**
+content/charter/**
+content/whitepapers/**
+
+# Code offline isolé
+src/offline/**
+src/offline/components/**
+src/offline/widgets/**
+src/offline/pages/**
+src/tools/offline/**
+
+# Routes Next.js dédiées offline (jamais montées en nav prod)
+src/app/offline/**
+src/app/(offline)/**
+src/app/admin/offline/**
+
+# Bots isolés
+src/bots/telegram/**
+src/bots/discord/**
+src/farcaster/**
+
+# Scripts OSINT isolés
+scripts/osint/**
+
+# Tests offline (mocks only)
+tests/offline/**
+src/offline/**/*.test.ts
+src/offline/**/*.test.tsx
+
+# Configuration offline (rares cas)
+# Aucune par défaut — modifier docs/, jamais les configs racine
