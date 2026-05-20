@@ -651,6 +651,62 @@ model PlatformCaseFile {
   @@map("platform_casefiles")
 }
 
+// ─── TOKEN FRAUD CASEFILES ──────────────────────────────────────────────────
+// Dedicated entity for token-with-ticker fraud families (pump-and-dump,
+// insider supply control, …). Distinct from PlatformCaseFile (no ticker)
+// and from the legacy KolCase-derived token cases (no first-class row).
+// First entry: IL-PND-LAB-001. Seed: prisma/seed-lab.ts.
+// Table created via Neon SQL Editor (never `prisma db push`).
+model TokenCaseFile {
+  id                     String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  ref                    String    @unique
+  codename               String
+  ticker                 String
+  title                  String
+  family                 String
+  subtype                String
+  tigerScore             Int
+  verdict                String
+  status                 String
+  statusNote             String?
+  primaryChain           String
+  secondaryChains        Json      @default("[]")
+  contractAddresses      Json      @default("{}")
+  tokenName              String?
+  decimals               Int?
+  totalSupply            String?
+  circulatingSupply      String?
+  ath                    Decimal?  @db.Decimal(18, 6)
+  atl                    Decimal?  @db.Decimal(18, 6)
+  fdvPeakUsd             BigInt?
+  marketCapMinUsd        BigInt?
+  marketCapMaxUsd        BigInt?
+  tgeDate                DateTime? @db.Date
+  claimedRaiseUsd        Int?
+  backers                Json      @default("[]")
+  founders               Json      @default("[]")
+  exchanges              Json      @default("[]")
+  exitExchanges          Json      @default("[]")
+  keyWallets             Json      @default("[]")
+  linkedTokens           Json      @default("[]")
+  estimatedRetailHarmUsd BigInt?
+  currency               String    @default("USD")
+  sources                Json      @default("[]")
+  specterCollab          Boolean   @default(false)
+  publishedDate          DateTime? @db.Date
+  summary                String?
+  summaryFr              String?
+  bodyMarkdown           String?
+  publishStatus          String    @default("draft")
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([family])
+  @@index([publishStatus])
+  @@index([ticker])
+  @@map("token_casefiles")
+}
+
 model KOLProfile {
   id           String        @id @default(cuid())
   handle       String        @unique

@@ -59,10 +59,32 @@ async function getCasefiles(): Promise<CasefileCard[]> {
       href: `/${LOCALE}/cases/${r.codename.toLowerCase()}`,
     }));
   } catch {
-    // platform_casefiles table unavailable — fall back to token casefiles only.
+    // platform_casefiles table unavailable — skip silently.
     platform = [];
   }
-  return [...platform, ...TOKEN_CASEFILES];
+
+  let token: CasefileCard[] = [];
+  try {
+    const rows = await prisma.tokenCaseFile.findMany({
+      where: { publishStatus: "published" },
+      orderBy: { tigerScore: "desc" },
+    });
+    token = rows.map((r) => ({
+      codename: r.codename,
+      title: r.title,
+      family: "token_casefile" as const,
+      score: r.tigerScore,
+      severityTier: r.verdict,
+      chains: [r.primaryChain, ...asStringArray(r.secondaryChains)],
+      date: r.publishedDate ? r.publishedDate.toISOString().slice(0, 10) : null,
+      href: `/${LOCALE}/cases/${r.codename.toLowerCase()}`,
+    }));
+  } catch {
+    // token_casefiles table unavailable — skip silently.
+    token = [];
+  }
+
+  return [...platform, ...token, ...TOKEN_CASEFILES];
 }
 
 export default async function CasesIndexFR() {
