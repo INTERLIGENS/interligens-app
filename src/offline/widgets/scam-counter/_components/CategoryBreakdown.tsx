@@ -3,7 +3,7 @@
  * descending. Server-rendered.
  */
 
-import type { ScamCategory, ScamStats } from "../_data/mock-stats";
+import { CATEGORY_LABELS, type ScamCategory, type ScamStats } from "../_data/mock-stats";
 
 export interface CategoryBreakdownProps {
   byCategory: ScamStats["byCategory"];
@@ -40,7 +40,7 @@ export default function CategoryBreakdown({ byCategory }: CategoryBreakdownProps
           className="flex items-center justify-between gap-3 border-b border-white/5 py-2 last:border-b-0"
         >
           <span className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-            {row.category.toUpperCase()}
+            {CATEGORY_LABELS[row.category]}
           </span>
           <span className="font-mono text-xs font-bold text-white tabular-nums">
             {row.count}

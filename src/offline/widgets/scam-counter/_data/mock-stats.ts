@@ -28,6 +28,19 @@ export const SCAM_CATEGORIES: readonly ScamCategory[] = [
   "pump-and-dump",
 ] as const;
 
+// Human-readable labels for each category. Used by CategoryBreakdown to
+// avoid rendering raw kebab-case tokens. Keep in lock-step with ScamCategory:
+// every category MUST have an entry (asserted in mock-stats.test.ts).
+export const CATEGORY_LABELS: Record<ScamCategory, string> = {
+  rugpull: "Rugpull",
+  honeypot: "Honeypot",
+  phishing: "Phishing",
+  "exit-scam": "Exit Scam",
+  "fake-airdrop": "Fake Airdrop",
+  impersonation: "Impersonation",
+  "pump-and-dump": "Pump & Dump",
+};
+
 export interface ScamStats {
   total: number;
   lastUpdated: string;

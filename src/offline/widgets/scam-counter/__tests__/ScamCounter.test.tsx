@@ -5,7 +5,11 @@ import { render, screen } from "@testing-library/react";
 import ScamCounter from "../ScamCounter";
 import { sortCategoriesByFrequency } from "../_components/CategoryBreakdown";
 import { describeTrend } from "../_components/TrendIndicator";
-import { MOCK_STATS } from "../_data/mock-stats";
+import {
+  CATEGORY_LABELS,
+  MOCK_STATS,
+  SCAM_CATEGORIES,
+} from "../_data/mock-stats";
 
 describe("ScamCounter — full variant (default)", () => {
   test("renders the formatted total", () => {
@@ -27,10 +31,19 @@ describe("ScamCounter — full variant (default)", () => {
     }
   });
 
-  test("breakdown items show category uppercased and count", () => {
+  test("breakdown items render CATEGORY_LABELS labels and counts", () => {
     render(<ScamCounter variant="full" />);
     const list = screen.getByTestId("category-breakdown-list");
-    expect(list.textContent).toContain("RUGPULL");
+    // Every category's human-readable label must appear, not the raw
+    // kebab-case enum value.
+    for (const c of SCAM_CATEGORIES) {
+      expect(list.textContent).toContain(CATEGORY_LABELS[c]);
+    }
+    // The kebab-case form must NOT leak into the rendered DOM.
+    expect(list.textContent).not.toContain("exit-scam");
+    expect(list.textContent).not.toContain("fake-airdrop");
+    expect(list.textContent).not.toContain("pump-and-dump");
+    // Counts still rendered.
     expect(list.textContent).toContain("142");
   });
 });

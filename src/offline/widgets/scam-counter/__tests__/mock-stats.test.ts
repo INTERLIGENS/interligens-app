@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 
 import {
+  CATEGORY_LABELS,
   MOCK_STATS,
   SCAM_CATEGORIES,
   type ScamCategory,
@@ -30,5 +31,14 @@ describe("Scam Counter — mock-stats invariants", () => {
     // Guards against `new Date().toISOString()` slipping in at runtime —
     // that would break determinism in snapshot tests and CI re-runs.
     expect(MOCK_STATS.lastUpdated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test("every ScamCategory has a CATEGORY_LABELS entry (non-empty string)", () => {
+    for (const c of SCAM_CATEGORIES) {
+      expect(CATEGORY_LABELS).toHaveProperty(c);
+      const label = CATEGORY_LABELS[c as ScamCategory];
+      expect(typeof label).toBe("string");
+      expect(label.length).toBeGreaterThan(0);
+    }
   });
 });
