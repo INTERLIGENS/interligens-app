@@ -39,7 +39,7 @@ export default function CategoryBreakdown({ byCategory }: CategoryBreakdownProps
           key={row.category}
           className="flex items-center justify-between gap-3 border-b border-white/5 py-2 last:border-b-0"
         >
-          <span className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+          <span className="text-[11px] font-black tracking-[0.14em] text-white/70">
             {CATEGORY_LABELS[row.category]}
           </span>
           <span className="font-mono text-xs font-bold text-white tabular-nums">
