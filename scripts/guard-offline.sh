@@ -100,6 +100,16 @@ if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     )
 fi
 
+# Exceptions globales pour toutes les branches cc-offline-* :
+# nouveaux sous-dossiers isolés du core gelé, créés pendant l'offline mode.
+# Chaque ajout doit être explicite, scopé, et validé par revue humaine.
+# - src/lib/pdf/nova/                : générateur PDF $NOVA (synthetic demo, admin-only)
+# - src/app/api/admin/casefile-nova/ : route admin POST pour le PDF $NOVA
+OFFLINE_EXEMPT_PATTERNS=(
+    "^src/lib/pdf/nova/"
+    "^src/app/api/admin/casefile-nova/"
+)
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -122,6 +132,16 @@ while IFS= read -r file; do
         done
         [[ "$EXEMPT" == "true" ]] && continue
     fi
+
+    # Exemptions globales offline (scopées par sous-dossier, voir liste haut de fichier)
+    EXEMPT=false
+    for ex in "${OFFLINE_EXEMPT_PATTERNS[@]}"; do
+        if [[ "$file" =~ $ex ]]; then
+            EXEMPT=true
+            break
+        fi
+    done
+    [[ "$EXEMPT" == "true" ]] && continue
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then

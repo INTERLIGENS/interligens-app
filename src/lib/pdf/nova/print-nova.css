@@ -1,0 +1,369 @@
+/*
+ * src/lib/pdf/nova/print-nova.css
+ *
+ * Print stylesheet for the $NOVA synthetic casefile. Design system
+ * "Forensic Editorial":
+ *   - ink    #000000   text + table headers + tags
+ *   - bone   #F3F0E8   page background panels
+ *   - signal #FF6B00   accent (banner border, section overline, triage)
+ *   - white  #FFFFFF   page background between panels
+ *
+ * Margins follow Bloc 3 spec: 18mm top, 16mm right, 22mm bottom, 16mm left.
+ * The bottom margin is wider to host the persistent footer.
+ */
+
+@page {
+  size: A4;
+  margin: 18mm 16mm 22mm 16mm;
+  @bottom-left {
+    content: "INTERLIGENS \2014  Confidential \2014  Synthetic Demo";
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 9px;
+    color: #000;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " / " counter(pages);
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 9px;
+    color: #000;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: #FFFFFF;
+  color: #000000;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.45;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* ── PANELS (bone background blocks) ─────────────────────────────────── */
+
+.panel {
+  background: #F3F0E8;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+}
+.panel--tight { padding: 14px 22px; }
+
+/* ── COVER ───────────────────────────────────────────────────────────── */
+
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+}
+.cover__overline {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #FF6B00;
+  text-transform: uppercase;
+  padding-left: 12px;
+  border-left: 4px solid #FF6B00;
+  margin-bottom: 24px;
+}
+.cover__title {
+  font-size: 56px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 32px;
+  padding-bottom: 28px;
+  border-bottom: 2px solid #000;
+}
+.cover__subtitle {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 30px;
+}
+.cover__meta {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  row-gap: 8px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  margin-bottom: 26px;
+}
+.cover__meta dt {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #000;
+  font-weight: 400;
+}
+.cover__meta dd { font-weight: 700; color: #000; }
+
+/* Synthetic banner (orange border, black bg, orange text) */
+.banner-synthetic {
+  background: #000;
+  border: 2px solid #FF6B00;
+  color: #FF6B00;
+  padding: 14px 18px;
+  text-align: center;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+.banner-synthetic strong {
+  color: #FF6B00;
+  display: block;
+  margin-bottom: 6px;
+}
+.banner-synthetic .pipe { color: #FF6B00; margin: 0 6px; }
+
+/* Reinforced disclaimer block */
+.disclaimer {
+  background: #F3F0E8;
+  border-left: 4px solid #000;
+  padding: 14px 18px;
+  font-size: 10px;
+  line-height: 1.55;
+}
+.disclaimer strong { font-weight: 800; }
+.disclaimer__heading {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* ── SECTIONS ────────────────────────────────────────────────────────── */
+
+.section {
+  page-break-inside: avoid;
+  margin-bottom: 18px;
+}
+.section--break { page-break-before: always; }
+
+.section__overline {
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #FF6B00;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.section__title {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #000;
+  text-transform: uppercase;
+}
+.section__intro {
+  font-style: italic;
+  font-size: 10px;
+  color: #000;
+  border-left: 3px solid #FF6B00;
+  padding-left: 10px;
+  margin: 8px 0 14px;
+}
+
+.subhead {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 12px 0 6px;
+}
+
+/* ── TABLES ──────────────────────────────────────────────────────────── */
+
+table.evtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+table.evtable thead th {
+  background: #000;
+  color: #FFFFFF;
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 9px;
+}
+table.evtable tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #D8D2C4;
+  vertical-align: top;
+}
+table.evtable tbody tr:last-child td { border-bottom: 0; }
+
+td.mono, .mono {
+  font-family: "Courier New", monospace;
+  font-size: 9.5px;
+  word-break: break-all;
+}
+
+/* ── ATTRIBUTION + SOURCE RELIABILITY TAGS ───────────────────────────── */
+
+.tag {
+  display: inline-block;
+  padding: 2px 7px;
+  font-family: "Courier New", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: #000;
+  color: #FFFFFF;
+  border-radius: 2px;
+}
+.tag--sr1, .tag--sr2, .tag--sr3, .tag--sr4 { background: #000; color: #FFFFFF; }
+.tag--sr5 { background: #FF6B00; color: #000; }
+
+.tag--conf-high   { background: #000; color: #FFFFFF; }
+.tag--conf-medium { background: #F3F0E8; color: #000; border: 1px solid #000; }
+.tag--conf-low    { background: #FFFFFF; color: #000; border: 1px solid #000; }
+
+.tag--risk-low  { background: #000; color: #FFFFFF; }
+.tag--risk-med  { background: #D8D2C4; color: #000; }
+.tag--risk-high { background: #FF6B00; color: #000; }
+
+/* ── KEY-VALUE TABLE (Reporting Party) ───────────────────────────────── */
+
+table.kv {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+table.kv thead th {
+  background: #000;
+  color: #FFFFFF;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+table.kv tbody td {
+  padding: 10px;
+  border-bottom: 1px solid #D8D2C4;
+  vertical-align: top;
+}
+table.kv tbody td:first-child { width: 38%; font-weight: 600; }
+
+.note-callout {
+  border-left: 3px solid #FF6B00;
+  background: #F3F0E8;
+  padding: 10px 14px;
+  font-size: 10px;
+  margin: 12px 0;
+}
+.note-callout strong { font-weight: 800; }
+
+/* ── LISTS ───────────────────────────────────────────────────────────── */
+
+.bulletlist {
+  list-style: none;
+  padding-left: 0;
+  margin: 6px 0 12px;
+}
+.bulletlist li {
+  position: relative;
+  padding-left: 14px;
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.bulletlist li::before {
+  content: "\2022";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #000;
+  font-weight: 900;
+}
+.bulletlist li strong { font-weight: 800; }
+
+/* ── TRIAGE BANNER ───────────────────────────────────────────────────── */
+
+.triage-banner {
+  background: #000;
+  border: 2px solid #FF6B00;
+  color: #FF6B00;
+  padding: 14px 22px;
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  font-size: 16px;
+  text-transform: uppercase;
+  margin: 6px 0 14px;
+}
+
+/* ── JURISDICTIONAL FLAGS ────────────────────────────────────────────── */
+
+.jflag {
+  border-bottom: 1px solid #D8D2C4;
+  padding: 10px 0;
+}
+.jflag:last-child { border-bottom: 0; }
+.jflag__label {
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #FF6B00;
+  text-transform: uppercase;
+  padding-left: 10px;
+  border-left: 3px solid #FF6B00;
+  margin-bottom: 5px;
+}
+.jflag__body { font-size: 10.5px; line-height: 1.5; }
+
+/* ── COMPLETENESS GRID ───────────────────────────────────────────────── */
+
+.completeness {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  row-gap: 6px;
+  font-size: 10px;
+  margin: 10px 0;
+}
+.completeness dt {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.completeness dd {
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-left: 10px;
+  border-left: 3px solid #000;
+}
+.completeness dd.is-partial { border-left-color: #FF6B00; color: #000; }
+.completeness dd.is-excluded { border-left-color: #D8D2C4; color: #555; font-style: italic; }
+
+/* ── FINAL MENTION ───────────────────────────────────────────────────── */
+
+.final-mention {
+  background: #000;
+  color: #FFFFFF;
+  padding: 14px 18px;
+  font-size: 10px;
+  line-height: 1.55;
+  margin-top: 16px;
+}
+.final-mention strong {
+  color: #FF6B00;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: inline-block;
+  margin-right: 6px;
+}
