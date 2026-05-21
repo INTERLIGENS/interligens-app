@@ -110,6 +110,20 @@ OFFLINE_EXEMPT_PATTERNS=(
     "^src/app/api/admin/casefile-nova/"
 )
 
+# Exceptions pour le module Casefile Engine V1 (admin-only, feature-flagged,
+# synthetic-only). Autorisation humaine explicite — voir PR description.
+# Ne couvre PAS l'ensemble de prisma/ ni src/components/ : exemptions ciblées
+# uniquement sur les paths scaffoldés du module.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-engine$ ]]; then
+    EXEMPT_CASEFILE_ENGINE_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^src/components/admin/casefile-engine/"
+        "^MIGRATION_casefile_engine_v1\.sql$"
+        "^MIGRATION_PLAN_casefile_engine_v1\.md$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -142,6 +156,18 @@ while IFS= read -r file; do
         fi
     done
     [[ "$EXEMPT" == "true" ]] && continue
+
+    # Sur la branche casefile-engine, exempter les paths du module.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-engine$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_CASEFILE_ENGINE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
