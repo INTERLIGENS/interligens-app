@@ -177,7 +177,7 @@ Les motifs sont regroupés en cinq catégories : urgence fabriquée, pression so
 
 ### Catégorie D — Désinformation financière
 
-#### D.1 Roadmap appât-et-substitution
+#### D.1 Roadmap à double fond
 
 **Catégorie.** Désinformation financière.
 **Mécanisme exploité.** Biais des coûts irrécupérables ; engagement et cohérence (Cialdini, 1984).
@@ -218,7 +218,7 @@ Les motifs sont regroupés en cinq catégories : urgence fabriquée, pression so
 
 ### Catégorie E — Manipulation d'identité
 
-#### E.1 Usurpation d'identité empilée
+#### E.1 Usurpation d'identité multiple
 
 **Catégorie.** Manipulation d'identité.
 **Mécanisme exploité.** Heuristique d'identité visuelle ; transfert de confiance d'un compte connu vers son sosie.
