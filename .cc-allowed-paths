@@ -10,6 +10,7 @@ content/whitepapers/**
 content/glossary/**
 content/playbooks/**
 content/case-studies/**
+content/internal/**
 
 # Code offline isolé
 src/offline/**
