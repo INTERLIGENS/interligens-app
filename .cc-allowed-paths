@@ -11,6 +11,7 @@ content/glossary/**
 content/playbooks/**
 content/case-studies/**
 content/internal/**
+content/courses/**
 
 # Code offline isolé
 src/offline/**
