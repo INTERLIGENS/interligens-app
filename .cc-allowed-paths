@@ -9,6 +9,7 @@ content/charter/**
 content/whitepapers/**
 content/glossary/**
 content/playbooks/**
+content/case-studies/**
 
 # Code offline isolé
 src/offline/**
