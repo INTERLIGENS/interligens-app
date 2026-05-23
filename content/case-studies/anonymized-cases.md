@@ -75,8 +75,8 @@ A fourth cluster of approximately eight accounts amplified posts during the two 
 
 The following addresses are fictional and are presented in the correct base58 format for Solana but with random values. They do not correspond to any real wallet.
 
-- **Team treasury (presumed deployer)**: `9zFhPGarden7QxV3kRmKyqLvLn8sJTzNcWeRpDeMA1Bbz`
-- **LP deployer (single-use)**: `5kQ7fyBhXpRtNvCMaWLbqRzPTk2HnUsVgyKpMcFzdRcXx`
+- **Team treasury (presumed deployer)**: `7Hk8nP3xR9wK4LmDvQ2tBjNcF5gYpTzMaWeXrSyVuJzA`
+- **LP deployer (single-use)**: `5kQ7fyBhXpRtNvCMaWLbqRzPTk2HnUsVgyKpMcFzdRcX`
 - **First intermediate sweep wallet**: `7gMxqFbWPyKnL4ZtBxRsDvVcJpHeUgSnYwFaErTzkLqM`
 - **Second intermediate sweep wallet**: `8hRtXjLpMaKzNvDwCqBeFvGsHnYrLpTkMcWnQpSrZxYa`
 
@@ -119,20 +119,20 @@ Relevant glossary entries: #5 Sockpuppet, #6 Astroturfing, #36 Rugpull, #53 Clus
 
 ### 4.1 Context
 
-Kalyssa Exchange was a fictional centralized cryptocurrency trading venue presented as based in Eastern Europe and registered in a small offshore jurisdiction. Its native token, $KLSX, was traded on its own platform and on a small number of secondary venues. The platform operated for approximately fourteen months between mid-2024 and mid-2025 before withdrawals were suspended.
+Kalyssa Exchange was a fictional centralized cryptocurrency trading venue presented as headquartered in a Gulf-region free zone and operating under a licence issued by a small Caribbean offshore jurisdiction. Its native token, $KLSX, was traded on its own platform and on a small number of secondary venues. The platform operated for approximately fourteen months between mid-2024 and mid-2025 before withdrawals were suspended.
 
-Kalyssa marketed itself aggressively in two retail-facing markets: a European-language retail audience reached through paid promotion on a major social platform, and a smaller audience reached through Telegram trading communities. At its peak, the platform claimed approximately 47,000 verified users and a 24-hour spot trading volume in the high single-digit millions of dollar equivalent. These figures, the platform's own, were never audited by a third party.
+Kalyssa marketed itself primarily to a Latin American Spanish-language retail audience reached through Spanish-language Telegram trading communities and through paid promotion on a major social platform aimed at the same regional audience. At its peak, the platform claimed approximately 47,000 verified users and a 24-hour spot trading volume in the high single-digit millions of dollar equivalent. These figures, the platform's own, were never audited by a third party.
 
-The platform's stated business model combined spot trading, leveraged futures on a small set of pairs, and a "yield" product paying a high single-digit annual percentage to depositors. The yield product was the principal driver of customer deposit growth from approximately month four onward and is the central element in the case.
+The platform's stated business model combined spot trading, leveraged futures on a small set of pairs, a "yield" product paying a deliberately modest 4.2% annual percentage to depositors — positioned as a "compliance-grade alternative" to the higher rates prevailing among competitors — and a distinctive side-product: a "fine-wine futures" tokenization programme offering fractional exposure to vintage bottles claimed to be held in a bonded warehouse, accessible through a custodial sub-token. These two products drove the bulk of customer deposit growth from month four onward and are the two central elements in the case.
 
 ### 4.2 Chronology
 
 The visible chronology unfolded over approximately fourteen months.
 
-- **Months 1–3.** Platform soft-launch. KYC onboarding implemented through a third-party identity-verification service. Initial marketing emphasized European compliance and "Tier-1 audit standards".
-- **Months 4–6.** Aggressive growth campaign. The yield product launched at approximately 9% APY, marketed as funded by "market-making activity and platform fees". Promotional appearances at two industry conferences (named in the platform's communications, neither of which confirmed Kalyssa's presence as a sponsor).
+- **Months 1–3.** Platform soft-launch. KYC onboarding implemented through a third-party identity-verification service. Initial marketing emphasized multi-jurisdictional compliance and "Tier-1 audit standards".
+- **Months 4–6.** Aggressive growth campaign. The yield product launched at approximately 4.2% APY, marketed as funded by "market-making activity and platform fees" and positioned as a "compliance-grade" product distinguished by its "measured" rate. The fine-wine futures programme launched in parallel, offering fractional tokenized exposure to bottles claimed to be inventoried in a bonded warehouse referenced only in marketing material. Promotional appearances at two industry conferences (named in the platform's communications, neither of which confirmed Kalyssa's presence as a sponsor).
 - **Months 7–10.** Steady user growth. Two minor incidents of delayed withdrawals attributed in customer service communications to "scheduled maintenance" and "third-party bank processing delays". Trustpilot reviews bifurcated sharply during this period.
-- **Months 11–12.** Native token $KLSX listed on two secondary venues. A "compliance certificate" was added to the website, with a logo that resembled but did not exactly match a real European regulator's logo.
+- **Months 11–12.** Native token $KLSX listed on two secondary venues. A "compliance certificate" was added to the website, with a logo that resembled but did not exactly match a real regulator's logo.
 - **Month 13.** Withdrawal delays became systematic. Customer support response times degraded from same-day to multi-day. A blog post attributed the situation to "unprecedented withdrawal pressure" and announced a temporary withdrawal cap.
 - **Month 14, week 1.** The platform announced a 72-hour "scheduled maintenance" for "infrastructure upgrades". The window was extended twice.
 - **Month 14, week 2.** Communication ceased. The website returned a holding page. The CEO's social-media accounts were deleted within 48 hours. The native token's price collapsed across all venues where it remained tradeable.
@@ -151,9 +151,9 @@ A network of approximately fifteen mid-sized promotional accounts engaged with t
 
 The fictional EVM addresses below are presented in the correct hex format with arbitrary values. They do not correspond to any real wallet.
 
-- **Platform "hot wallet" (deposits)**: `0xa3F87B91dE2c54bC9eaC718fF35E29D7bA1c92E4d`
-- **Platform "cold wallet"**: `0xc81fB29eAd7C4196FEa873d6520cB89e7DbF316a7`
-- **Withdrawal sweep wallet (observed in final week)**: `0xe7B4Aa28cF91d35E26b8A491EfCc70dB4296fE12b`
+- **Platform "hot wallet" (deposits)**: `0xa3F87B91dE2c54bC9eaC718fF35E29D7bA1c92E4`
+- **Platform "cold wallet"**: `0xc81fB29eAd7C4196FEa873d6520cB89e7DbF316a`
+- **Withdrawal sweep wallet (observed in final week)**: `0xe7B4Aa28cF91d35E26b8A491EfCc70dB4296fE12`
 
 In the final two weeks before the announced "maintenance", funds previously consolidated in the "cold wallet" were moved in a series of transactions to the sweep wallet. From the sweep wallet, funds were distributed across multiple intermediaries, with a noticeable share routed through a public cross-chain bridge (#30) to a second EVM-compatible chain and then to a privacy mixer (#31). The final destinations were not fully reconstructable from public data.
 
@@ -163,9 +163,10 @@ The pattern is the canonical exit-scam shape (#37): a centralized custodian whos
 
 The off-chain footprint was extensive. Several elements were diagnostic.
 
-- **The compliance certificate.** The certificate added in months 11–12 used a logo that resembled but did not match the logo of a real European regulator. The regulator subsequently issued a public statement clarifying that no relationship existed. This is a §D.3 pattern in its clearest form, compounded by the §E.2 dynamic of regulator-impersonation.
+- **The compliance certificate.** The certificate added in months 11–12 used a logo that resembled but did not match the logo of a real regulator. The regulator subsequently issued a public statement clarifying that no relationship existed. This is a §D.3 pattern in its clearest form, compounded by the §E.2 dynamic of regulator-impersonation.
 - **The CEO photograph.** A simple reverse image search would have identified the photograph as stock imagery before any deposit was made. The photograph was nevertheless used unchallenged for approximately fourteen months.
-- **The yield product's stated funding mechanism.** "Market-making activity and platform fees" was offered as the funding source for approximately 9% APY paid to depositors. The platform's audited trading volume — i.e., none — did not support this claim. Where a yield product's stated funding mechanism cannot be reconciled with the platform's public revenue surface, the depositor is funding the yield, and the product is structurally Ponzi-shaped (a description, not a legal characterization).
+- **The yield product's stated funding mechanism.** "Market-making activity and platform fees" was offered as the funding source for the 4.2% APY paid to depositors. The platform's audited trading volume — i.e., none — did not support this claim, and the "compliance-grade" framing that justified the modesty of the rate also concealed the absence of any reconcilable revenue surface. Where a yield product's stated funding mechanism cannot be reconciled with the platform's public revenue, the depositor is funding the yield, and the product is structurally Ponzi-shaped (a description, not a legal characterization) irrespective of whether the headline rate is conservative or aggressive.
+- **The fine-wine futures programme's stated backing.** The claim that the wine-futures tokens were backed by physical bottles in a bonded warehouse was never substantiated by inspection reports, independent audits, or the warehouse operator's confirmation. Depositors who attempted in-kind redemption received only platform-internal credits, never delivery. A custodial product whose backing depends on physical inventory in an unverifiable third-party warehouse asks the depositor to trust the existence of an asset they have never seen.
 - **Communications hygiene at suspension.** The transition from "scheduled maintenance" to silence was operationally rapid and consistent with the exit-scam template, where the operator's goal is to convert as much time as possible into additional deposits before public recognition of the collapse forecloses the deposit channel.
 
 ### 4.6 Patterns Detected
@@ -335,9 +336,9 @@ Relevant glossary entries: #43 Drainer, #44 Phishing, #49 Approval exploit, #50 
 
 The four cases were selected to illustrate distinct typologies. Their points of overlap and their points of divergence are themselves pedagogically informative.
 
-**Common to all four cases is the management of attention.** Each typology exploits an asymmetry between what the victim is asked to notice and what the operator depends on the victim not noticing. In PhotonGarden, the victim was directed to the price chart and the countdown; the relevant artefact was the unlocked LP. In Kalyssa, the victim was directed to the yield product and the "compliance certificate"; the relevant artefact was the unreconcilable funding mechanism. In FerroLynx, the victim was directed to the rising price; the relevant artefact was the coordination structure off-chain. In QuasarPath, the victim was directed to the "claim"; the relevant artefact was the underlying approval transaction. The investigator's task is symmetric: redirect attention to the relevant artefact, document its presence, and reconstruct the path by which the victim was kept from it.
+**Common to all four cases is the management of attention.** Each typology exploits an asymmetry between what the victim is asked to notice and what the operator depends on the victim not noticing. In PhotonGarden, the victim was directed to the price chart and the countdown; the relevant artefact was the unlocked LP. In Kalyssa, the victim was directed to the yield and the "compliance certificate"; the relevant artefact was the unreconcilable funding. In FerroLynx, the victim was directed to the rising price; the relevant artefact was the coordination structure off-chain. In QuasarPath, the victim was directed to the "claim"; the relevant artefact was the underlying approval transaction. The investigator's task is symmetric: redirect attention to the relevant artefact, document its presence, and reconstruct the path by which the victim was kept from it.
 
-**Common to all four cases is the use of identity construction.** In each case, the operator constructed an identity surface that resembled a legitimate counterparty: a team, a custodian, a community, a protocol. The construction was cheap relative to the proceeds; in three of the four cases, it would have been detected by routine OSINT verification within minutes. The economy of the attack depends on the rarity of routine verification, which in turn depends on the consumer-protection deficits of the ecosystem.
+**Common to all four cases is the use of identity construction.** The operator built an identity surface resembling a legitimate counterparty (team, custodian, community, protocol). The construction was cheap relative to the proceeds; in three of the four cases, it would have been detected by routine OSINT verification within minutes. The economy of the attack depends on the rarity of routine verification.
 
 **Where the cases differ is in the methodological sequence the investigator should follow.** A rugpull is best approached on-chain first (LP structure, team-wallet activity); an exit scam through the off-chain identity surface first (the discrepancy between claimed institutional status and any independent record); a pump-and-dump through the coordination layer (capture of the off-platform organizing channel); a drainer campaign through the infrastructure layer (the drainer contract, domain pattern, and reply-account batch will together identify the campaign as an instance of a recognizable kit). Investigators who use the same methodological order for every case will find themselves doing the wrong work first.
 
