@@ -119,13 +119,11 @@ Entrées de glossaire pertinentes : #5 Sockpuppet, #6 Astroturfing, #36 Rugpull,
 
 ### 4.1 Contexte
 
-Kalyssa Exchange était une plateforme fictive d'échange de cryptomonnaies centralisée présentée comme implantée dans une zone franche du Golfe et opérant sous une licence émise par une petite juridiction caribéenne offshore. Son token natif, $KLSX, était négocié sur sa propre plateforme et sur un petit nombre de lieux secondaires. La plateforme a opéré pendant environ quatorze mois entre le milieu 2024 et le milieu 2025 avant que les retraits ne soient suspendus.
+Kalyssa Exchange était une plateforme fictive d'échange de cryptomonnaies centralisée présentée comme implantée dans une zone franche du Golfe et opérant sous une licence émise par une petite juridiction caribéenne offshore. *La combinaison des juridictions, du type de produit, du public retail et de la chronologie utilisée dans ce cas est synthétique et délibérément composite ; elle est construite pour illustrer un schéma, et non pour évoquer une plateforme réelle précise.* Son token natif, $KLSX, était négocié sur sa propre plateforme et sur un petit nombre de lieux secondaires. La plateforme a opéré pendant environ quatorze mois entre le milieu 2024 et le milieu 2025 avant que les retraits ne soient suspendus.
 
 Kalyssa s'est commercialisée principalement auprès d'un public retail latino-américain hispanophone atteint par des communautés Telegram de trading hispanophones et par promotion payante sur une plateforme sociale majeure visant la même audience régionale. À son pic, la plateforme revendiquait environ 47 000 utilisateurs vérifiés et un volume d'échange spot sur 24 heures de l'ordre du haut million de dollars en équivalent. Ces chiffres, fournis par la plateforme elle-même, n'ont jamais été audités par un tiers.
 
 Le modèle économique annoncé combinait du trading au comptant, des contrats à terme à effet de levier sur un petit ensemble de paires, un produit « yield » versant un rendement annuel délibérément modéré de 4,2 % aux déposants — positionné comme une « alternative compliance-grade » aux taux plus élevés prévalant chez ses concurrents — et un produit complémentaire distinctif : un programme de « futures sur vins de garde » tokenisés offrant une exposition fractionnée à des bouteilles millésimées prétendument détenues dans un entrepôt sous douane, accessible via un sous-token de garde. Ces deux produits ont alimenté l'essentiel de la croissance des dépôts à partir du mois quatre environ et constituent les deux éléments centraux du cas.
-
-*La combinaison des juridictions, du type de produit, du public retail et de la chronologie utilisée dans ce cas est synthétique et délibérément composite ; elle est construite pour illustrer un schéma, et non pour évoquer une plateforme réelle précise.*
 
 ### 4.2 Chronologie
 

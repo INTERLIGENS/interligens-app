@@ -119,13 +119,11 @@ Relevant glossary entries: #5 Sockpuppet, #6 Astroturfing, #36 Rugpull, #53 Clus
 
 ### 4.1 Context
 
-Kalyssa Exchange was a fictional centralized cryptocurrency trading venue presented as headquartered in a Gulf-region free zone and operating under a licence issued by a small Caribbean offshore jurisdiction. Its native token, $KLSX, was traded on its own platform and on a small number of secondary venues. The platform operated for approximately fourteen months between mid-2024 and mid-2025 before withdrawals were suspended.
+Kalyssa Exchange was a fictional centralized cryptocurrency trading venue presented as headquartered in a Gulf-region free zone and operating under a licence issued by a small Caribbean offshore jurisdiction. *The combination of jurisdictions, product type, retail audience, and chronology in this case is synthetic and deliberately composite; it is constructed to illustrate a pattern, not to allude to any specific real-world platform.* Its native token, $KLSX, was traded on its own platform and on a small number of secondary venues. The platform operated for approximately fourteen months between mid-2024 and mid-2025 before withdrawals were suspended.
 
 Kalyssa marketed itself primarily to a Latin American Spanish-language retail audience reached through Spanish-language Telegram trading communities and through paid promotion on a major social platform aimed at the same regional audience. At its peak, the platform claimed approximately 47,000 verified users and a 24-hour spot trading volume in the high single-digit millions of dollar equivalent. These figures, the platform's own, were never audited by a third party.
 
 The platform's stated business model combined spot trading, leveraged futures on a small set of pairs, a "yield" product paying a deliberately modest 4.2% annual percentage to depositors — positioned as a "compliance-grade alternative" to the higher rates prevailing among competitors — and a distinctive side-product: a "fine-wine futures" tokenization programme offering fractional exposure to vintage bottles claimed to be held in a bonded warehouse, accessible through a custodial sub-token. These two products drove the bulk of customer deposit growth from month four onward and are the two central elements in the case.
-
-*The combination of jurisdictions, product type, retail audience, and chronology in this case is synthetic and deliberately composite; it is constructed to illustrate a pattern, not to allude to any specific real-world platform.*
 
 ### 4.2 Chronology
 
