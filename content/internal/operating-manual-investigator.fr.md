@@ -94,7 +94,7 @@ La vue d'un wallet ou d'un contrat présente trois éléments principaux :
 - Une liste de signaux observés, regroupés par catégories (signaux on-chain, signaux off-chain, signaux d'écosystème).
 - Un contexte agrégé : casefiles dans lesquels l'adresse apparaît, autres adresses connexes, fenêtres temporelles d'activité.
 
-Le score a un sens — il agrège plusieurs signaux pondérés selon une méthodologie interne — mais vous ne devez pas l'interpréter comme un verdict. Un score élevé documente un risque, il n'établit pas une infraction. Un score faible n'absout pas une adresse ; il documente une absence de signal au moment du scan, ce qui n'est pas la même chose qu'une absence de risque.
+Le score reflète une combinaison de signaux dont la méthodologie est documentée séparément. Le présent manuel ne décrit pas la mécanique de calcul. Si une valeur de score paraît manifestement incorrecte, l'enquêteur le signale à David sans tenter de la reconstruire. Un score élevé documente un risque, il n'établit pas une infraction. Un score faible n'absout pas une adresse ; il documente une absence de signal au moment du scan, ce qui n'est pas la même chose qu'une absence de risque.
 
 Vous pouvez naviguer depuis la vue vers les casefiles liés, vers les adresses connexes, et vers les profils sociaux rattachés s'il y en a. Vous ne pouvez pas modifier le score, ajouter un signal, ou requalifier une catégorie depuis l'interface.
 
@@ -124,9 +124,9 @@ Vous ne pouvez pas exporter d'éléments issus d'un casefile non public, même s
 
 ### 4.7 Evidence Snapshots
 
-Les Evidence Snapshots sont des captures structurées que vous pouvez générer depuis la beta pour figer un état d'observation à un moment donné. Un snapshot conserve l'identifiant scanné, le score affiché, les signaux observés, l'horodatage, et un identifiant interne unique. Vous l'utilisez dans vos notes pour citer ce que vous avez vu, à quel moment, sans avoir à reproduire l'écran.
+Les Evidence Snapshots sont conservés pour assurer l'auditabilité des observations. L'enquêteur peut les référencer par leur identifiant interne sans avoir besoin de connaître leur mécanique de stockage. Vous l'utilisez dans vos notes pour citer ce que vous avez vu, à quel moment, sans avoir à reproduire l'écran.
 
-Les snapshots restent stockés côté plateforme et vous n'en exportez que l'identifiant dans vos notes internes. Vous ne devez pas tenter d'exporter l'image, le PDF, ou la version riche d'un snapshot vers un canal externe. La traçabilité de l'observation est l'élément que vous remontez ; le contenu reste où il est.
+Vous n'exportez que l'identifiant du snapshot dans vos notes internes ; vous ne cherchez pas à en extraire le contenu rendu vers un canal externe. La traçabilité de l'observation est l'élément que vous remontez ; le contenu reste où il est.
 
 ### 4.8 Surfaces NDA-gated par rapport aux surfaces publiques
 
@@ -172,7 +172,7 @@ Pour les casefiles publiés liés, vous lisez la synthèse, vous notez les élé
 
 Vous créez un snapshot pour chaque observation que vous citerez ensuite. Les snapshots utiles incluent typiquement : la vue wallet initiale, la vue KOL si vous l'avez ouverte, la liste des casefiles liés, et chaque sous-vue qui a influé sur votre raisonnement. Vous conservez les identifiants dans vos notes, jamais le contenu rendu.
 
-Vous ne capturez pas d'écran avec un outil OS-natif sauf pour un usage strictement local (votre dossier d'investigation chiffré, jamais redistribué). Le snapshot interne suffit pour la traçabilité, et il a l'avantage d'être horodaté côté plateforme.
+Vous ne capturez pas d'écran avec un outil OS-natif sauf pour un usage strictement local (votre dossier d'investigation chiffré, jamais redistribué). Le snapshot interne suffit pour la traçabilité.
 
 ### 5.6 Documentation dans le format interne
 
@@ -346,7 +346,7 @@ Si vous identifiez une tentative caractérisée, vous transmettez la trace (cana
 
 La beta couvre sept chaînes principales à la date de cette version. Le détail des chaînes couvertes vous est visible depuis l'application elle-même ; il n'est pas reproduit ici parce qu'il est appelé à évoluer.
 
-Plusieurs chaînes restent hors périmètre. Vous y rencontrerez à l'usage : la majorité des chaînes layer-2 émergentes après la date de cette version, les chaînes monérisées orientées confidentialité, et les couches qui ne sont pas adressées par les explorateurs publics standards. Lorsqu'un signalement porte sur une chaîne hors périmètre, vous ne forcez pas un scan ; vous notez le périmètre manquant dans votre remontée et vous documentez l'enquête à partir des sources externes.
+Plusieurs chaînes restent hors périmètre. Vous y rencontrerez à l'usage : la majorité des chaînes layer-2 émergentes après la date de cette version, les chaînes orientées vers la confidentialité renforcée ou les flux à forte opacité, et les couches qui ne sont pas adressées par les explorateurs publics standards. Lorsqu'un signalement porte sur une chaîne hors périmètre, vous ne forcez pas un scan ; vous notez le périmètre manquant dans votre remontée et vous documentez l'enquête à partir des sources externes.
 
 ### 10.2 Latence des scans
 
@@ -354,7 +354,7 @@ La beta met à jour ses agrégats périodiquement. Vous pouvez donc rencontrer u
 
 ### 10.3 Faux positifs et faux négatifs
 
-Aucune plateforme de scoring n'échappe à un taux résiduel d'erreur. La beta peut signaler comme risquée une adresse qui s'avère neutre après enquête, et peut ne pas signaler une adresse réellement impliquée si les signaux que sa méthodologie pondère ne sont pas encore présents. Vous gardez cette possibilité à l'esprit en lisant un score, et vous remontez les cas qui vous paraissent illustratifs d'un faux positif ou d'un faux négatif (section 8.3).
+Aucune plateforme de scoring n'échappe à un taux résiduel d'erreur. La beta peut signaler comme risquée une adresse qui s'avère neutre après enquête, et peut ne pas signaler une adresse réellement impliquée si les signaux pertinents ne sont pas encore présents au moment du scan. Vous gardez cette possibilité à l'esprit en lisant un score, et vous remontez les cas qui vous paraissent illustratifs d'un faux positif ou d'un faux négatif (section 8.3).
 
 ### 10.4 Casefiles publiés et casefiles non publics
 
