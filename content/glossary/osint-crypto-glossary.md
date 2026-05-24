@@ -349,6 +349,8 @@ An exit scam is the broader category of fraud in which operators of a service ra
 
 A honeypot token is a token that admits inflows but blocks or punitively taxes outflows. The block may be implemented as a contract-level revert on the sell path, as a 100-percent sell-tax, or as a hidden cooldown; the user observes a successful buy and assumes symmetric exit liquidity that does not exist.
 
+*Note: In classical cybersecurity, "honeypot" can also refer to a defensive decoy system designed to attract and study attackers. This glossary uses the crypto-token meaning throughout.*
+
 ### 39. Pump and dump
 
 **Domain**: Fraud Pattern
@@ -363,7 +365,7 @@ A pump-and-dump is a coordinated effort to inflate the price of an asset through
 **Related**: #39, #58
 **See also**: Investigation Checklist §8.3
 
-Wash trading is the practice of trading between accounts controlled by the same actor in order to manufacture apparent volume or price. Detection on-chain relies on heuristic clustering and on patterns inconsistent with arms-length trading; on-chain volume figures that include wash trades systematically overstate genuine economic activity.
+Wash trading is the practice of trading between accounts controlled by the same actor in order to manufacture apparent volume or price. Detection on-chain relies on heuristic clustering and on patterns inconsistent with arms-length trading; on-chain volume figures that include wash trades systematically overstate genuine economic activity. Also relevant to on-chain analysis when measured through transaction-graph patterns and timing heuristics.
 
 ### 41. Front-running
 

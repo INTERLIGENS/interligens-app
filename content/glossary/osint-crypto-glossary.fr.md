@@ -349,6 +349,8 @@ Un exit scam est la catégorie plus large de fraudes dans lesquelles les opérat
 
 Un token honeypot admet les entrées mais bloque ou taxe punitivement les sorties. Le blocage peut être implémenté comme un revert au niveau du contrat sur le chemin de vente, comme une taxe de vente à 100 %, ou comme un cooldown caché ; l'utilisateur observe un achat réussi et suppose à tort une liquidité de sortie symétrique.
 
+*Note : en cybersécurité classique, "honeypot" désigne également un système-leurre défensif conçu pour attirer et étudier des attaquants. Le présent glossaire utilise le sens crypto-token uniquement.*
+
 ### 39. Pump and dump
 
 **Domaine** : Schéma de fraude
@@ -363,7 +365,7 @@ Un pump-and-dump est un effort coordonné visant à gonfler le prix d'un actif p
 **Connexes** : #39, #58
 **Voir aussi** : Investigation Checklist §8.3
 
-Le wash trading est la pratique consistant à échanger entre comptes contrôlés par le même acteur afin de manufacturer un volume ou un prix apparent. La détection on-chain repose sur le clustering heuristique et sur des motifs incompatibles avec des échanges à distance ; les chiffres de volume on-chain qui incluent du wash trading surestiment systématiquement l'activité économique réelle.
+Le wash trading est la pratique consistant à échanger entre comptes contrôlés par le même acteur afin de manufacturer un volume ou un prix apparent. La détection on-chain repose sur le clustering heuristique et sur des motifs incompatibles avec des échanges à distance ; les chiffres de volume on-chain qui incluent du wash trading surestiment systématiquement l'activité économique réelle. Également pertinent pour l'analyse on-chain, lorsqu'il est mesuré par les motifs de graphe transactionnel et les heuristiques temporelles.
 
 ### 41. Front-running
 
