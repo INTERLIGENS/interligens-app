@@ -3,7 +3,7 @@
 **Version** : 1.0
 **Date** : 2026-05-24
 **Owner** : David Douville
-**Status** : V1.0 — production-ready (partiellement mergé sur main, voir tableaux pour statut détaillé)
+**Status** : V1.0 — production-ready, intégralement mergé sur `main` (tag `corpus-pedagogique-v1-2026-05-23`)
 
 ---
 
@@ -31,13 +31,12 @@ Le corpus est conçu pour fonctionner comme un ensemble : les documents se réf�
 |----------|------|---------|--------|------------|
 | Whitepaper Dark Patterns | `content/whitepapers/dark-patterns-crypto.{md,fr.md}` | EN + FR | ✅ Mergé sur main (PR #10, PR #11) | EN 5844 / FR 7079 |
 | Whitepaper Anatomy of a Rugpull | `content/whitepapers/anatomy-of-a-rugpull.{md,fr.md}` | EN + FR | ✅ Mergé sur main (PR #16) | EN 7398 / FR 8173 |
-| Investigation Checklist | `content/playbooks/investigation-checklist.{md,fr.md}` | EN + FR | ⏳ PR #12 DRAFT (conflit additif sur `.cc-allowed-paths`, à reprendre post-Indo) | EN 5792 / FR 6764 |
+| Investigation Checklist | `content/playbooks/investigation-checklist.{md,fr.md}` | EN + FR | ✅ Mergé sur main (PR #12) | EN 5792 / FR 6764 |
 | Glossary OSINT-Crypto-Investigation | `content/glossary/osint-crypto-glossary.{md,fr.md}` | EN + FR | ✅ Mergé sur main (PR #13) | EN 5717 / FR 6653 |
-| Anonymized Case Studies (4 cas) | `content/case-studies/anonymized-cases.{md,fr.md}` | EN + FR | ⏳ PR #14 DRAFT (conflit additif sur `.cc-allowed-paths`, à reprendre post-Indo) | EN 7202 / FR 8445 |
-| Crypto for Investigators Course (10 leçons) | `content/courses/crypto-for-investigators-10-lessons.{md,fr.md}` | EN + FR | ⏳ PR #17 DRAFT (conflit additif sur `.cc-allowed-paths`, à reprendre post-Indo) | EN 10997 / FR 12147 |
+| Anonymized Case Studies (4 cas) | `content/case-studies/anonymized-cases.{md,fr.md}` | EN + FR | ✅ Mergé sur main (PR #14) | EN 7202 / FR 8445 |
+| Crypto for Investigators Course (10 leçons) | `content/courses/crypto-for-investigators-10-lessons.{md,fr.md}` | EN + FR | ✅ Mergé sur main (PR #17) | EN 10997 / FR 12147 |
 
-**Total publics, mergé sur main à ce jour** : 3 documents / 6 (Dark Patterns, Anatomy, Glossary).
-**Total publics, en attente de merge** : 3 documents (Checklist, Case Studies, Course).
+**Total publics, mergé sur main** : 6 documents / 6 (Dark Patterns, Anatomy, Investigation Checklist, Glossary, Case Studies, Course).
 
 ---
 
@@ -45,7 +44,7 @@ Le corpus est conçu pour fonctionner comme un ensemble : les documents se réf�
 
 | Document | Path | Langues | Statut | Word count |
 |----------|------|---------|--------|------------|
-| Operating Manual core (bêta-testeur) | `content/internal/operating-manual-investigator.fr.md` | FR | ⏳ PR #15 DRAFT (conflit additif sur `.cc-allowed-paths`, à reprendre post-Indo) | FR 7035 |
+| Operating Manual core (bêta-testeur) | `content/internal/operating-manual-investigator.fr.md` | FR | ✅ Mergé sur main (PR #15) | FR 7035 |
 | Operating Manual light (enquêteur externe NDA) | `content/internal/operating-manual-investigator-light.fr.md` | FR | ⏳ Branche `feat/cc-offline-11-operating-manual-light` (créé 2026-05-24, pending review) | FR 5132 |
 
 Les deux variantes du manuel partagent la même base structurelle mais s'adressent à des publics distincts :
@@ -127,8 +126,8 @@ Pour tout usage commercial des documents publics (formation payante, intégratio
 
 | Version | Date prévue | Périmètre |
 |---------|-------------|-----------|
-| V1.0 | Mai 2026 | Corpus complet (7 documents + 1 light) en production. **État actuel : 3 documents publics mergés (Dark Patterns, Anatomy, Glossary), 3 publics en PR draft, 2 internes en PR draft / branche.** |
-| V1.1 | Septembre 2026 (post-Indo) | Corrections issues du feedback bêta-testeur, finalisation des merges en attente, ajout d'éventuels cas studies V1.1. |
+| V1.0 | Mai 2026 | Corpus complet (7 documents publics+internes + 1 light) en production. **État actuel : 6 documents publics mergés sur main + 1 interne core mergé (tag `corpus-pedagogique-v1-2026-05-23`). 1 interne light en branche pending review.** |
+| V1.1 | Septembre 2026 (post-Indo) | Corrections issues du feedback bêta-testeur, ajout d'éventuels cas studies V1.1, finalisation merge Operating Manual light. |
 | V2.0 | Q4 2026 | Version publique grand public retail (vulgarisation, format web interactif, complément du corpus existant — pas un remplacement). |
 | V3.0 | 2027 | Extension thématique (DeFi avancée, NFT-specific frauds, social engineering crypto, juridictions extra-européennes). Revue juridique étendue. |
 
@@ -143,4 +142,4 @@ Pour tout usage commercial des documents publics (formation payante, intégratio
 
 ---
 
-**Note de version 1.0 (2026-05-24)** : ce manifeste est créé pendant la fenêtre de préparation de l'absence prolongée du owner (1er juin → 27 juillet 2026). Il reflète l'état du corpus à cette date. Une mise à jour est prévue au retour pour intégrer les merges restants et le feedback de la bêta.
+**Note de version 1.0 (2026-05-24)** : ce manifeste est créé pendant la fenêtre de préparation de l'absence prolongée du owner (1er juin → 27 juillet 2026). Il reflète l'état du corpus à cette date — corpus public V1 intégralement mergé sur `main` et taggué `corpus-pedagogique-v1-2026-05-23`. Une mise à jour est prévue au retour pour intégrer le feedback de la bêta et le merge final de la variante light du manuel.
