@@ -107,13 +107,11 @@ In retrospect, the peak is the most informationally dense moment of the entire l
 
 ## 7. Phase 4 — Extraction
 
-> **⚠ Note on this section.** Extraction is the moment of the rugpull itself. The mechanisms below are described at the level of typology, not implementation. No combination of parameters, addresses, contract signatures, or sequencing details that could be transposed by a bad-faith reader into an operational plan is provided. Forensic indicators useful for after-the-fact reconstruction are listed; operational instructions are not.
+> ⚠️ **Forensic intent only.** This section describes observable post-deployment and review-stage indicators for investigative and educational purposes. It does not provide deployment steps, parameter guidance, executable code, addresses, signatures, or an operational checklist.
 
 The extraction phase converts the value pooled by the community into liquid value held by the operator. The mechanics divide along two axes: the technical mechanism by which the value moves, and the communicative posture the operators adopt while it does.
 
 ### 7.1 Technical variants
-
-> ⚠️ **Forensic intent only.** This section describes observable forensic indicators after deployment or during post-incident review. It is not a deployment guide, a parameter guide, or an implementation checklist. No code, value, signature, or operational sequence is provided.
 
 The technical variants observed in the academic and investigative corpus fall into the four families introduced in §2 and detailed here.
 

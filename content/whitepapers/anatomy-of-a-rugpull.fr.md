@@ -107,13 +107,11 @@ Rétrospectivement, le pic est le moment le plus dense en information de tout le
 
 ## 7. Phase 4 — Extraction
 
-> **⚠ Note sur cette section.** L'extraction est le moment du rugpull proprement dit. Les mécanismes ci-dessous sont décrits au niveau de la typologie, non de l'implémentation. Aucune combinaison de paramètres, d'adresses, de signatures de contrat ou de détails de séquençage qui pourrait être transposée par un lecteur de mauvaise foi en plan opérationnel n'est fournie. Les indicateurs forensiques utiles à la reconstruction a posteriori sont listés ; les instructions opérationnelles ne le sont pas.
+> ⚠️ **Usage forensic uniquement.** Cette section décrit des indicateurs observables après déploiement ou en phase de revue, à finalité d'enquête et pédagogique. Elle ne fournit pas d'étapes de déploiement, de guide de paramétrage, de code exécutable, d'adresses, de signatures ou de liste d'implémentation opérationnelle.
 
 La phase d'extraction convertit la valeur mise en commun par la communauté en valeur liquide détenue par l'opérateur. La mécanique se distribue selon deux axes : le mécanisme technique par lequel la valeur se déplace, et la posture communicative que les opérateurs adoptent pendant qu'elle se déplace.
 
 ### 7.1 Variantes techniques
-
-> ⚠️ **Usage forensic uniquement.** Cette section décrit des indicateurs forensic observables après déploiement ou lors d'une revue post-incident. Ce n'est ni un guide de déploiement, ni un guide de paramétrage, ni une liste d'implémentation. Aucun code, valeur, signature ou séquence opérationnelle n'est fourni.
 
 Les variantes techniques observées dans le corpus académique et d'enquête se regroupent dans les quatre familles introduites au §2 et détaillées ici.
 
