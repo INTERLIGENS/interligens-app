@@ -125,6 +125,8 @@ Kalyssa marketed itself primarily to a Latin American Spanish-language retail au
 
 The platform's stated business model combined spot trading, leveraged futures on a small set of pairs, a "yield" product paying a deliberately modest 4.2% annual percentage to depositors — positioned as a "compliance-grade alternative" to the higher rates prevailing among competitors — and a distinctive side-product: a "fine-wine futures" tokenization programme offering fractional exposure to vintage bottles claimed to be held in a bonded warehouse, accessible through a custodial sub-token. These two products drove the bulk of customer deposit growth from month four onward and are the two central elements in the case.
 
+*The combination of jurisdictions, product type, retail audience, and chronology in this case is synthetic and deliberately composite; it is constructed to illustrate a pattern, not to allude to any specific real-world platform.*
+
 ### 4.2 Chronology
 
 The visible chronology unfolded over approximately fourteen months.

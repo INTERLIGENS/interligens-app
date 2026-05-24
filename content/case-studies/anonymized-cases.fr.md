@@ -125,6 +125,8 @@ Kalyssa s'est commercialisée principalement auprès d'un public retail latino-a
 
 Le modèle économique annoncé combinait du trading au comptant, des contrats à terme à effet de levier sur un petit ensemble de paires, un produit « yield » versant un rendement annuel délibérément modéré de 4,2 % aux déposants — positionné comme une « alternative compliance-grade » aux taux plus élevés prévalant chez ses concurrents — et un produit complémentaire distinctif : un programme de « futures sur vins de garde » tokenisés offrant une exposition fractionnée à des bouteilles millésimées prétendument détenues dans un entrepôt sous douane, accessible via un sous-token de garde. Ces deux produits ont alimenté l'essentiel de la croissance des dépôts à partir du mois quatre environ et constituent les deux éléments centraux du cas.
 
+*La combinaison des juridictions, du type de produit, du public retail et de la chronologie utilisée dans ce cas est synthétique et délibérément composite ; elle est construite pour illustrer un schéma, et non pour évoquer une plateforme réelle précise.*
+
 ### 4.2 Chronologie
 
 La chronologie visible s'est déroulée sur environ quatorze mois.
