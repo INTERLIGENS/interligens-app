@@ -113,6 +113,8 @@ The extraction phase converts the value pooled by the community into liquid valu
 
 ### 7.1 Technical variants
 
+> ⚠️ **Forensic intent only.** This section describes observable forensic indicators after deployment or during post-incident review. It is not a deployment guide, a parameter guide, or an implementation checklist. No code, value, signature, or operational sequence is provided.
+
 The technical variants observed in the academic and investigative corpus fall into the four families introduced in §2 and detailed here.
 
 **Hard liquidity withdrawal.** The most direct mechanism is the withdrawal of the liquidity-provider position from the decentralised exchange by the operator address that originally deposited it. The pool collapses, the token quote against the pair asset falls to zero in a single block, and trading becomes mechanically impossible. The on-chain signature is a single transaction (or a tight cluster) involving the liquidity-provider contract, the operator's address, and the withdrawal of the pair-side reserves into a routing path that has typically been pre-established. The transaction is visible immediately on any block explorer (Glossary #51).

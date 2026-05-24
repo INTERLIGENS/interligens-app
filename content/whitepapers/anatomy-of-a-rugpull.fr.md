@@ -113,6 +113,8 @@ La phase d'extraction convertit la valeur mise en commun par la communauté en v
 
 ### 7.1 Variantes techniques
 
+> ⚠️ **Usage forensic uniquement.** Cette section décrit des indicateurs forensic observables après déploiement ou lors d'une revue post-incident. Ce n'est ni un guide de déploiement, ni un guide de paramétrage, ni une liste d'implémentation. Aucun code, valeur, signature ou séquence opérationnelle n'est fourni.
+
 Les variantes techniques observées dans le corpus académique et d'enquête se regroupent dans les quatre familles introduites au §2 et détaillées ici.
 
 **Retrait brutal de liquidité.** Le mécanisme le plus direct est le retrait de la position de fournisseur de liquidité du DEX par l'adresse opératrice qui l'avait initialement déposée. Le pool s'effondre, la cote du token contre l'actif de paire tombe à zéro en un seul bloc, et le trading devient mécaniquement impossible. La signature on-chain est une transaction unique (ou un groupe serré) impliquant le contrat fournisseur de liquidité, l'adresse de l'opérateur, et le retrait des réserves du côté de la paire vers un chemin de routage typiquement pré-établi. La transaction est visible immédiatement sur n'importe quel block explorer (Glossaire #51).
