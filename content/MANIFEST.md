@@ -3,13 +3,13 @@
 **Version** : 1.0
 **Date** : 2026-05-24
 **Owner** : David Douville
-**Status** : V1.0 — production-ready, intégralement mergé sur `main` (tag `corpus-pedagogique-v1-2026-05-23`)
+**Status** : V1.0 — corpus public et manuel core mergés sur `main` (tag `corpus-pedagogique-v1-2026-05-23`) ; variante light en review pré-merge
 
 ---
 
 ## 1. Vue d'ensemble
 
-Le corpus INTERLIGENS regroupe 7 documents pédagogiques et opérationnels :
+Le corpus INTERLIGENS regroupe 6 documents publics et 1 manuel interne core, complétés par une variante light destinée aux enquêteurs externes sous NDA.
 
 - **6 documents publics** sous licence **CC BY-NC 4.0** : whitepapers (Dark Patterns, Anatomy of a Rugpull), Investigation Checklist, Glossary OSINT-Crypto, Case Studies anonymisées, et un cours en 10 leçons.
 - **1 document interne** sous **NDA strict** : le Manuel opérationnel investigateur, en deux variantes (core complet et light pour usage externe).
@@ -98,7 +98,7 @@ Les définitions techniques (signaux, indicateurs, pivots) sont **minimalistes e
 
 ### 5.4 Exception académique
 
-Une exception est admise pour les citations verbatim de sources académiques ou journalistiques publiques, dans la limite de 30 mots par citation, avec source complète référencée.
+Une exception est admise pour les citations verbatim de sources académiques, réglementaires, institutionnelles ou journalistiques publiques, dans un format court et attribué.
 
 ---
 
@@ -118,7 +118,7 @@ Une exception est admise pour les citations verbatim de sources académiques ou 
 
 ### 6.3 Clause commerciale
 
-Pour tout usage commercial des documents publics (formation payante, intégration dans une offre commerciale, vente sous toute forme), une licence commerciale écrite est requise. Contact : `research@interligens.com`.
+Pour tout usage commercial des documents publics (formation payante, intégration dans une offre commerciale, vente sous toute forme), une licence commerciale écrite est requise. Contact éditorial : à définir avant publication publique.
 
 ---
 
@@ -126,7 +126,7 @@ Pour tout usage commercial des documents publics (formation payante, intégratio
 
 | Version | Date prévue | Périmètre |
 |---------|-------------|-----------|
-| V1.0 | Mai 2026 | Corpus complet (7 documents publics+internes + 1 light) en production. **État actuel : 6 documents publics mergés sur main + 1 interne core mergé (tag `corpus-pedagogique-v1-2026-05-23`). 1 interne light en branche pending review.** |
+| V1.0 | Mai 2026 | Corpus public complet + manuel core en production. Variante light en review pré-départ, destinée à être mergée séparément après validation. |
 | V1.1 | Septembre 2026 (post-Indo) | Corrections issues du feedback bêta-testeur, ajout d'éventuels cas studies V1.1, finalisation merge Operating Manual light. |
 | V2.0 | Q4 2026 | Version publique grand public retail (vulgarisation, format web interactif, complément du corpus existant — pas un remplacement). |
 | V3.0 | 2027 | Extension thématique (DeFi avancée, NFT-specific frauds, social engineering crypto, juridictions extra-européennes). Revue juridique étendue. |
@@ -136,9 +136,9 @@ Pour tout usage commercial des documents publics (formation payante, intégratio
 ## 8. Contact
 
 - **Éditeur** : INTERLIGENS Research
-- **Contact éditorial** : `research@interligens.com`
+- **Contact éditorial** : à définir avant publication publique
 - **Owner** : David Douville
-- **Pour licence commerciale** : `research@interligens.com` (objet : « Licence commerciale corpus pédagogique »).
+- **Pour licence commerciale** : à définir avant publication publique (objet : « Licence commerciale corpus pédagogique »).
 
 ---
 
