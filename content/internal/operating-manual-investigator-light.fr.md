@@ -14,11 +14,11 @@ abstract: "Version allégée du manuel opérationnel destinée à l'enquêteur e
 
 ## 1. Préface
 
-Ce document est confidentiel. Il n'est pas destiné à la publication et n'est pas couvert par la licence Creative Commons appliquée au corpus pédagogique public. Vous le recevez parce que vous êtes lié par un accord de confidentialité actif avec l'éditeur de la beta, et parce que votre rôle d'enquêteur exige un cadre opérationnel qu'un guide utilisateur générique ne couvrirait pas.
+Ce document est confidentiel. Il n'est pas destiné à la publication et n'est pas couvert par la licence Creative Commons appliquée au corpus pédagogique public. Vous le recevez parce que vous êtes lié par un accord de confidentialité actif avec INTERLIGENS, et parce que votre rôle d'enquêteur exige un cadre opérationnel qu'un guide utilisateur générique ne couvrirait pas.
 
 Le manuel s'adresse à un seul lecteur à la fois. Vous ne devez ni transmettre ce document, ni en reproduire d'extraits, ni l'évoquer publiquement, ni le citer dans des communications avec des tiers. Si vous quittez le programme, vous êtes tenu d'en supprimer toute copie locale (y compris dans vos sauvegardes, votre dossier de téléchargements, et tout système de prise de notes synchronisé en ligne). Cette consigne s'étend à tout extrait, citation, capture ou reformulation.
 
-Le manuel est versionné. La présente est la version 1.0, datée du 24 mai 2026. Une nouvelle version sera diffusée à chaque évolution significative de la beta, et la version précédente devra alors être supprimée. Lorsque vous recevez une nouvelle version, vérifiez que le numéro et la date du document que vous utilisez correspondent à la version courante diffusée par David Douville ; en cas de doute, demandez confirmation avant d'agir sur la base d'une procédure qui aurait évolué.
+Le manuel est versionné. La présente est la version 1.0, datée du 24 mai 2026. Une nouvelle version sera diffusée à chaque évolution significative de la beta, et la version précédente devra alors être supprimée. Lorsque vous recevez une nouvelle version, vérifiez que le numéro et la date du document que vous utilisez correspondent à la version courante diffusée par INTERLIGENS ; en cas de doute, demandez confirmation avant d'agir sur la base d'une procédure qui aurait évolué.
 
 Le rappel suivant tient lieu d'engagement de relecture. En manipulant la beta, vous accédez à des dossiers d'enquête en cours, à des identifiants on-chain et off-chain, à des éléments de scoring, et à des contextes dont la divulgation hors cadre serait nuisible aux victimes, aux enquêtes en cours, aux personnes nommées (y compris celles qui pourraient ultérieurement être disculpées), et à la solidité juridique des dossiers eux-mêmes. La confidentialité absolue sur les casefiles non publics, sur les identités observées dans la beta, et sur les méthodes propres à la plateforme n'est pas un objectif à atteindre : c'est une condition de votre participation.
 
@@ -36,9 +36,9 @@ Si la beta vous propose un facteur secondaire d'authentification, vous l'activez
 
 ### 2.3 Re-login et perte d'accès
 
-Si votre session expire, vous vous reconnectez par la même procédure. Si vous perdez l'accès — équipement compromis, identifiants oubliés, suspicion d'usage non autorisé — vous contactez David Douville par le canal direct convenu lors de votre onboarding. N'utilisez pas un formulaire de récupération public si la beta en propose un.
+Si votre session expire, vous vous reconnectez par la même procédure. Si vous perdez l'accès — équipement compromis, identifiants oubliés, suspicion d'usage non autorisé — vous contactez le canal direct convenu avec INTERLIGENS lors de votre onboarding. N'utilisez pas un formulaire de récupération public si la beta en propose un.
 
-En cas de suspicion de compromission (mot de passe possiblement exposé, équipement perdu ou volé), vous notifiez David Douville dans les deux heures. La beta peut être suspendue pour votre compte le temps qu'un nouvel accès soit régénéré.
+En cas de suspicion de compromission (mot de passe possiblement exposé, équipement perdu ou volé), vous notifiez INTERLIGENS par le canal direct convenu dans les deux heures. La beta peut être suspendue pour votre compte le temps qu'un nouvel accès soit régénéré.
 
 ### 2.4 Durée et hygiène de session
 
@@ -60,13 +60,13 @@ Cette section décrit, en liste sobre, ce que vous voyez et ce que vous pouvez e
 
 - **Vue KOL.** Agrège pour un même opérateur social ses pseudonymes connus, ses adresses on-chain rattachées, un score synthétique, et les casefiles dans lesquels il apparaît. La vue est plus sensible que la vue wallet : son contenu est strictement NDA-gated.
 
-- **Casefiles publiés.** Cinq casefiles publiés à la date de cette version, consultables en mode lecture intégrale depuis votre compte comme depuis le compte public. D'autres casefiles existent dans le périmètre de travail de la plateforme ; vous pourrez en voir mention dans la vue KOL ou wallet sans pouvoir y accéder. Ces casefiles non publics ne doivent jamais être nommés ni décrits, même par allusion, hors de votre canal direct avec David Douville.
+- **Casefiles publiés.** Les casefiles publiés disponibles à la date de cette version sont consultables en mode lecture intégrale depuis votre compte comme depuis le compte public. D'autres casefiles existent dans le périmètre de travail de la plateforme ; vous pourrez en voir mention dans la vue KOL ou wallet sans pouvoir y accéder. Ces casefiles non publics ne doivent jamais être nommés ni décrits, même par allusion, hors de votre canal direct avec INTERLIGENS.
 
 - **Investigator Dashboard.** Tableau de bord personnel regroupant vos derniers scans, vos derniers KOL consultés, et les casefiles ouverts récemment. Sert de point de reprise entre deux sessions. Vous pouvez épingler des éléments ; vous ne pouvez pas partager le dashboard ni l'exporter.
 
 - **IOC Export Center.** Export d'un format structuré des indicateurs liés à un casefile publié ou à un scan que vous avez effectué. L'export sert votre dossier d'enquête interne ; il reste couvert par votre NDA et ne doit pas être republié hors du cadre interne. L'export d'éléments issus d'un casefile non public n'est pas autorisé.
 
-- **Evidence Snapshots.** Capture horodatée d'un élément observable dans la plateforme, identifiée par un identifiant interne. Vous les référencez dans vos notes par leur identifiant uniquement, sans extraire le contenu rendu vers un canal externe.
+- **Evidence Snapshots.** Capture horodatée d'un élément observable dans la plateforme, référencée par un identifiant de suivi. Vous les référencez dans vos notes par leur identifiant uniquement, sans extraire le contenu rendu vers un canal externe.
 
 La distinction est binaire : si vous voyez la fonctionnalité dans votre compte et qu'un utilisateur non authentifié ne la verrait pas, le contenu est NDA-gated.
 
@@ -102,7 +102,7 @@ Vous lisez les signaux dans l'ordre où la vue les présente. Pour chaque signal
 
 ### 4.4 Élargissement aux casefiles liés
 
-Si la vue indique des casefiles liés, vous les ouvrez dans l'ordre de proximité affiché. Pour chaque casefile, vous repérez si vous avez accès à la lecture intégrale (casefile publié) ou seulement à la mention (casefile non public). Dans le second cas, vous notez l'existence du lien mais vous ne tentez pas d'en savoir davantage hors de votre canal avec David Douville.
+Si la vue indique des casefiles liés, vous les ouvrez dans l'ordre de proximité affiché. Pour chaque casefile, vous repérez si vous avez accès à la lecture intégrale (casefile publié) ou seulement à la mention (casefile non public). Dans le second cas, vous notez l'existence du lien mais vous ne tentez pas d'en savoir davantage hors de votre canal avec INTERLIGENS.
 
 Pour les casefiles publiés liés, vous lisez la synthèse, vous notez les éléments qui croisent votre signalement (adresses partagées, KOL partagés, fenêtres temporelles partagées), et vous capturez un identifiant d'Evidence Snapshot des passages utiles.
 
@@ -202,7 +202,7 @@ Quelques règles d'usage du gabarit :
 - Le pseudonyme NDA est celui convenu lors de votre onboarding ; il vous permet d'apparaître dans les notes internes sans que votre identité réelle y figure.
 - La source du signalement est un type (« victime directe », « relais médiatique », « observation propre ») et non une identité.
 - Les hypothèses sont formulées sans nommer de personne présumée responsable. Vous écrivez « un acteur correspondant au persona @X aurait pu… » plutôt que « X est… ».
-- Les snapshots sont référencés par identifiant interne. Vous ne copiez pas le contenu rendu d'un snapshot dans vos notes ; le but est de pouvoir retrouver l'observation, non de la dupliquer.
+- Les snapshots sont référencés par identifiant de suivi. Vous ne copiez pas le contenu rendu d'un snapshot dans vos notes ; le but est de pouvoir retrouver l'observation, non de la dupliquer.
 - La section 5 (limites) doit être remplie. Une enquête sans incertitudes documentées est suspecte ; la lucidité méthodologique vaut plus qu'une certitude affichée.
 
 ## 7. Bugs et feedback — Procédure
@@ -242,7 +242,7 @@ C'est le feedback le plus précieux. Il porte sur la qualité de l'output de la 
 
 Vous remontez par le canal direct convenu lors de l'onboarding. Vous ne remontez pas à un email générique de la plateforme, sauf si vous n'avez pas d'autre option. Vous ne remontez pas non plus par les réseaux sociaux, par messagerie publique, ou par tout canal dont vous ne maîtrisez pas la chaîne de transmission.
 
-Le délai indicatif de réponse est de 24 à 48 heures ouvrées pour un signalement standard et de 12 à 24 heures pour un signalement bloquant (impossibilité d'accéder à la beta, suspicion de fuite, élément potentiellement diffamatoire). Pendant la fenêtre du 1er juin 2026 au 27 juillet 2026, David Douville est en déplacement prolongé et le délai de réponse est étendu ; un message d'absence vous précisera, à l'entrée dans cette fenêtre, le canal de relais et le rythme attendu de réponse.
+Le délai indicatif de réponse est de 24 à 48 heures ouvrées pour un signalement standard et de 12 à 24 heures pour un signalement bloquant (impossibilité d'accéder à la beta, suspicion de fuite, élément potentiellement diffamatoire). Pendant la fenêtre du 1er juin 2026 au 27 juillet 2026, le référent principal est en déplacement prolongé et le délai de réponse est étendu ; un message d'absence vous précisera, à l'entrée dans cette fenêtre, le canal de relais et le rythme attendu de réponse.
 
 ## 8. Bonnes pratiques OPSEC
 
@@ -268,7 +268,7 @@ Lorsque vous êtes en déplacement, vous n'ouvrez pas la beta dans un transport 
 
 ### 8.5 Données extraites
 
-Toute donnée que vous extrayez de la beta (identifiant de snapshot, IOC exporté, adresse copiée) est traitée avec la même rigueur que la beta elle-même. Vous la conservez dans votre dossier d'investigation chiffré. Vous ne la collez pas dans un éditeur en ligne, dans un service de transcription tiers, dans un assistant conversationnel sans déploiement local, ou dans un outil dont les conditions d'utilisation autorisent une réutilisation par l'opérateur.
+Toute donnée que vous extrayez de la beta (identifiant de snapshot, IOC exporté, adresse copiée) est traitée avec la même rigueur que la beta elle-même. Vous la conservez dans votre dossier d'investigation chiffré. Vous ne la collez pas dans un éditeur en ligne, dans un service de transcription tiers, dans un assistant conversationnel externe ou tout outil dont les conditions d'utilisation autorisent une réutilisation des données par l'opérateur.
 
 ### 8.6 Fuite suspectée
 
@@ -306,9 +306,9 @@ Vous documentez l'observation avec la rigueur d'un casefile, vous la remontez co
 
 Vous répondez par votre travail d'OSINT public et par les sources publiques que vous avez croisées. Vous ne mentionnez pas la beta. Si la question insiste, vous indiquez que vous ne commentez pas vos outils de travail dans un contexte d'enquête en cours, et vous notifiez le contact (§8.7).
 
-### Q. Que faire pendant l'absence de David Douville (Lombok) ?
+### Q. Que faire pendant la fenêtre du 1er juin 2026 au 27 juillet 2026 ?
 
-David Douville est en déplacement prolongé du 1er juin 2026 au 27 juillet 2026. Pendant cette fenêtre, le délai de réponse est étendu et un canal de relais vous sera précisé en début de période. Pour un signalement non bloquant, vous documentez et vous attendez son retour. Pour un signalement bloquant ou pour une suspicion de fuite, vous utilisez le canal de relais selon la procédure qu'il vous aura précisée. Vous ne forcez pas une décision irréversible en son absence.
+Le référent principal est en déplacement prolongé du 1er juin 2026 au 27 juillet 2026. Pendant cette fenêtre, le délai de réponse est étendu et un canal de relais vous sera précisé en début de période. Pour un signalement non bloquant, vous documentez et vous attendez son retour. Pour un signalement bloquant ou pour une suspicion de fuite, vous utilisez le canal de relais selon la procédure qu'il vous aura précisée. Vous ne forcez pas une décision irréversible en son absence.
 
 ### Q. Puis-je créer un casefile moi-même dans l'interface ?
 
@@ -328,7 +328,7 @@ Vous signalez le fait comme bug (§7.1), vous ne le mentionnez à personne d'aut
 
 ### Q. Que faire si je suis sollicité par une partie nommée dans un casefile publié ?
 
-Vous redirigez vers la page de contact publique de la plateforme et vous notifiez David Douville. Vous ne discutez pas du dossier au-delà de ce qui est déjà public dans le casefile, et vous n'engagez ni rectification, ni justification, ni complément en votre nom. Toute mise au point relève de l'éditeur, pas de vous.
+Vous redirigez vers la page de contact publique de la plateforme et vous notifiez INTERLIGENS par le canal direct convenu. Vous ne discutez pas du dossier au-delà de ce qui est déjà public dans le casefile, et vous n'engagez ni rectification, ni justification, ni complément en votre nom. Toute mise au point relève de l'éditeur, pas de vous.
 
 ### Q. La beta enregistre-t-elle ce que je consulte ?
 
