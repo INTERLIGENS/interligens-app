@@ -24,6 +24,11 @@ async function main() {
 
   console.log("\n=== aggregation ===");
   console.log("observationsScanned:", r.observationsScanned, "| analyzableEvents:", r.analyzableEvents);
+  console.log(
+    "excludedRouters:", r.excludedRouters.observations, "observations from",
+    r.excludedRouters.wallets, "router wallet(s):",
+    JSON.stringify(r.excludedRouters.detail.map((d) => `${d.label} x${d.observations}`)),
+  );
   console.log("candidates:", r.candidates.length,
     "| shortlistEligible:", r.shortlistEligible, "| seriousCandidates:", r.seriousCandidates);
   console.log("byClassification:", JSON.stringify(r.byClassification));
@@ -41,7 +46,13 @@ async function main() {
     );
   }
 
-  if (r.written != null) console.log("\n=== writes ===\nupserted candidates:", r.written);
+  if (r.written != null)
+    console.log(
+      "\n=== writes ===\nrouter candidates removed:",
+      r.routerCandidatesRemoved,
+      "\nupserted candidates:",
+      r.written,
+    );
   else console.log("\n(DRY — no writes. Re-run with --write to persist.)");
 }
 
