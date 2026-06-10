@@ -3744,3 +3744,102 @@ model Exhibit {
 
   @@unique([casefileDraftId, exhibitId])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHILL CORRELATION ENGINE — SHADOW MODE / ADMIN-ONLY
+// Internal investigation module. No public surface, no TigerScore coupling,
+// no PDF/email coupling. Reads from SocialPostCandidate & KolPromotionMention
+// without modifying them. Tables created via Neon SQL Editor — see
+// MIGRATION_shill_correlation_engine_v1.sql. Never `prisma db push`.
+// Wording invariant: candidates, never "the KOL's wallet".
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ShillEvent {
+  id                    String   @id @default(cuid())
+  kolHandle             String
+  tweetId               String
+  tweetTimestamp        DateTime
+  tokenMint             String
+  chain                 String
+  sourcePostCandidateId String?
+  campaignId            String?
+  processingStatus      String   @default("pending")
+  // PHASE 2 follow-up (Blocker A): ticker->mint resolution provenance.
+  // resolved_direct | resolved_from_ca_map | resolved_from_tweet
+  // | unresolved_ticker | ambiguous_ticker
+  resolutionStatus      String   @default("resolved_direct")
+  tokenTicker           String?
+  // PHASE 2 follow-up (Blocker C): tweetTimestamp provenance.
+  // source | x_api | date_only
+  timestampSource       String   @default("source")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  buyerObservations ShillBuyerObservation[]
+
+  @@unique([kolHandle, tweetId, tokenMint])
+  @@index([processingStatus, tweetTimestamp])
+  @@index([kolHandle, tweetTimestamp(sort: Desc)])
+  @@index([chain, tokenMint])
+  @@index([sourcePostCandidateId])
+  @@index([resolutionStatus])
+  @@index([timestampSource])
+}
+
+model ShillBuyerObservation {
+  id                    String   @id @default(cuid())
+  shillEventId          String
+  wallet                String
+  chain                 String
+  firstSeenAt           DateTime
+  deltaSecondsFromTweet Int
+  entryAmountToken      Decimal? @db.Decimal(38, 9)
+  entryAmountUsd        Decimal? @db.Decimal(20, 2)
+  exitAmountUsd         Decimal? @db.Decimal(20, 2)
+  exitDeltaSeconds      Int?
+  behaviorZone          String
+  behaviorType          String
+  isAmbiguous           Boolean  @default(false)
+  firstBuyTxSignature   String?
+  notes                 String?
+  createdAt             DateTime @default(now())
+
+  shillEvent ShillEvent @relation(fields: [shillEventId], references: [id], onDelete: Cascade)
+
+  @@unique([shillEventId, wallet])
+  @@index([wallet, chain])
+  @@index([shillEventId, behaviorZone])
+}
+
+model ShillCorrelationCandidate {
+  id                   String   @id @default(cuid())
+  kolHandle            String
+  wallet               String
+  chain                String
+  observedShillCount   Int      @default(0)
+  analyzableShillCount Int      @default(0)
+  ratioObserved        Decimal  @default(0) @db.Decimal(5, 4)
+  preTweetCount        Int      @default(0)
+  nearTweetCount       Int      @default(0)
+  postTweetCount       Int      @default(0)
+  recurrenceScore      Decimal  @default(0) @db.Decimal(6, 2)
+  specificityScore     Decimal  @default(0) @db.Decimal(6, 2)
+  timingScore          Decimal  @default(0) @db.Decimal(6, 2)
+  exitScore            Decimal  @default(0) @db.Decimal(6, 2)
+  genericSniperPenalty Decimal  @default(0) @db.Decimal(6, 2)
+  correlationScore     Decimal  @default(0) @db.Decimal(6, 2)
+  confidence           String   @default("low")
+  classification       String   @default("watch")
+  reviewStatus         String   @default("draft")
+  firstSeenAt          DateTime
+  lastSeenAt           DateTime
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([kolHandle, wallet, chain])
+  @@index([kolHandle, correlationScore(sort: Desc)])
+  @@index([wallet, chain])
+  @@index([classification, correlationScore(sort: Desc)])
+  @@index([reviewStatus, correlationScore(sort: Desc)])
+}

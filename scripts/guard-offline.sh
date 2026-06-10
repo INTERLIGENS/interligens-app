@@ -124,6 +124,20 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-engine$ ]]; then
     )
 fi
 
+# Exceptions pour le module Shill Correlation Engine (admin-only, shadow mode,
+# internal investigation — pas de surface publique, pas de couplage TigerScore/PDF).
+# Autorisation humaine explicite (David, PHASE 8 handoff) — voir PR description.
+# Ne couvre PAS l'ensemble de prisma/ ni src/app/api/ : exemptions ciblées
+# uniquement sur les paths scaffoldés / touchés par le module.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
+    EXEMPT_SHILL_CORRELATION_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^src/lib/kol/proceeds\.ts$"
+        "^src/app/api/admin/shill-correlation/"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -161,6 +175,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-engine$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_CASEFILE_ENGINE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche shill-correlation, exempter les paths du module.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
