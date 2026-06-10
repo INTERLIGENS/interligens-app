@@ -3831,6 +3831,12 @@ model ShillCorrelationCandidate {
   confidence           String   @default("low")
   classification       String   @default("watch")
   reviewStatus         String   @default("draft")
+  // PHASE 4.6 — autonomous bot/router vetting. excludedReason NULL = surviving.
+  // known_router | high_frequency | too_many_tokens | bot_infra
+  excludedReason       String?
+  walletTxCount30d     Int?
+  walletTokenAccounts  Int?
+  walletVettedAt       DateTime?
   firstSeenAt          DateTime
   lastSeenAt           DateTime
   notes                String?
@@ -3842,4 +3848,5 @@ model ShillCorrelationCandidate {
   @@index([wallet, chain])
   @@index([classification, correlationScore(sort: Desc)])
   @@index([reviewStatus, correlationScore(sort: Desc)])
+  @@index([excludedReason, correlationScore(sort: Desc)])
 }
