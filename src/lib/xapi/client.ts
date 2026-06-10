@@ -150,6 +150,26 @@ export async function searchRecentTweets(
 }
 
 /**
+ * Look up tweets by id (batched, up to 100 per call) via GET /2/tweets?ids=...
+ * Returns the tweets that resolved; missing/deleted/protected ids are simply
+ * absent from the result. Used by the Shill Correlation Engine to recover a
+ * real created_at (and CA from text) for date-only ShillEvents.
+ */
+export async function getTweetsByIds(ids: string[]): Promise<XTweet[]> {
+  const out: XTweet[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = ids.slice(i, i + 100);
+    if (batch.length === 0) continue;
+    const url = `${X_API_BASE}/tweets?ids=${batch.join(",")}&tweet.fields=${TWEET_FIELDS}`;
+    const res = await xFetch(url);
+    if (!res) continue;
+    const json = (await res.json()) as { data?: XTweet[]; errors?: unknown[] };
+    if (json.data) out.push(...json.data);
+  }
+  return out;
+}
+
+/**
  * Check if the bearer token is configured.
  */
 export function hasToken(): boolean {

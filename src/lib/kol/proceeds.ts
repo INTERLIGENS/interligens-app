@@ -27,7 +27,7 @@ const CEX_ADDRESSES = new Set([
 const JUPITER_PROGRAM = "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB";
 const RAYDIUM_PROGRAM = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8";
 
-const CA_MAP: Record<string, string> = {
+export const CA_MAP: Record<string, string> = {
   "BOTIFY":        "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
   "BOTIFY-MAIN":   "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",
   "GHOST":         "De4ULouuU2cAQkhKuYrsrFtJGRRmcSwQD5esmnAUpump",
