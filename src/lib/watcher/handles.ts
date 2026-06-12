@@ -113,4 +113,40 @@ export const handlesV2: WatchHandle[] = [
   { handle: 'CryptoKaleo',     category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
   { handle: 'milesdeutscher',  category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
   { handle: 'MasonVersluis',   category: 'gpt_watchlist_batch1', priority: 'medium', followerCount: 0, chainFocus: 'SOL', addedAt: '2026-05-12', source: 'gpt_watchlist' },
+
+  // ─── Watchlist expansion 2026-06-12 (reviewed + approved) ───────────────
+  // WAVE 1 — TA / signal callers (TIER 1)
+  { handle: 'scottmelker',     category: 'signal_caller',   priority: 'high',   followerCount: 1_085_845, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'TheCryptoDog',    category: 'signal_caller',   priority: 'high',   followerCount:   853_792, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'CryptoCred',      category: 'signal_caller',   priority: 'high',   followerCount:   777_220, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'MartiniGuyYT',    category: 'signal_caller',   priority: 'high',   followerCount:   706_755, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'Trader_XO',       category: 'signal_caller',   priority: 'high',   followerCount:   548_282, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'DaanCrypto',      category: 'signal_caller',   priority: 'high',   followerCount:   415_851, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'KoroushAK',       category: 'signal_caller',   priority: 'high',   followerCount:   378_207, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'CryptoBusy',      category: 'signal_caller',   priority: 'high',   followerCount:   187_549, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '52kskew',         category: 'signal_caller',   priority: 'high',   followerCount:   124_830, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'CryptoJelleNL',   category: 'signal_caller',   priority: 'high',   followerCount:   115_219, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'CastilloTrading', category: 'signal_caller',   priority: 'high',   followerCount:   104_381, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'cryptoWZRD_',     category: 'signal_caller',   priority: 'high',   followerCount:   103_970, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+
+  // WAVE 2 — organic mention-graph candidates (TIER 2)
+  { handle: 'amitisinvesting', category: 'organic_mention', priority: 'medium', followerCount:   442_159, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xEthan',         category: 'organic_mention', priority: 'medium', followerCount:    87_160, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xSammy',         category: 'organic_mention', priority: 'medium', followerCount:    89_055, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xAbhiP',         category: 'organic_mention', priority: 'medium', followerCount:    60_755, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xMerp',          category: 'organic_mention', priority: 'medium', followerCount:    46_954, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xBiZzy',         category: 'organic_mention', priority: 'medium', followerCount:    46_267, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'Jackkk',          category: 'organic_mention', priority: 'medium', followerCount:    42_300, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xIT4I',          category: 'organic_mention', priority: 'medium', followerCount:    30_242, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xRiver8',        category: 'organic_mention', priority: 'medium', followerCount:    28_623, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xCryptoshi',     category: 'organic_mention', priority: 'medium', followerCount:    24_218, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xuberM',         category: 'organic_mention', priority: 'medium', followerCount:    16_347, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xMakesy',        category: 'organic_mention', priority: 'medium', followerCount:     7_107, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: '0xkyle__',        category: 'organic_mention', priority: 'medium', followerCount:         0, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12', notes: 'x_not_found_2026_06_12' },
+
+  // WAVE 3 — large promo-flavored handles (TIER 3, watch-only)
+  { handle: 'cryptogems555',   category: 'promo_watch',     priority: 'low',    followerCount:   445_895, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'Alanlegits',      category: 'promo_watch',     priority: 'low',    followerCount:   337_280, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'CryptoThro',      category: 'promo_watch',     priority: 'low',    followerCount:   210_958, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
+  { handle: 'alterfind_',      category: 'promo_watch',     priority: 'low',    followerCount:   209_623, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
 ]

@@ -67,6 +67,8 @@ export interface XUser {
   name: string;
   username: string;
   description?: string;
+  profile_image_url?: string;
+  verified?: boolean;
   created_at?: string;
   public_metrics?: {
     followers_count: number;
@@ -92,7 +94,7 @@ export interface XTweet {
 
 // ─── Endpoints ────────────────────────────────────────────────
 
-const USER_FIELDS = 'id,name,username,description,created_at,public_metrics';
+const USER_FIELDS = 'id,name,username,description,profile_image_url,verified,created_at,public_metrics';
 const TWEET_FIELDS = 'id,text,created_at,public_metrics,author_id';
 
 /**
@@ -147,6 +149,42 @@ export async function searchRecentTweets(
     return [];
   }
   return json.data;
+}
+
+/**
+ * Search recent tweets (last 7 days) and resolve their authors in the SAME call
+ * via expansions=author_id. Returns the tweets plus the deduped author XUser[]
+ * (with public_metrics / created_at / verified), and a next_token for paging.
+ * Costs 1 API call per page regardless of author count — used by KOL discovery.
+ */
+export async function searchRecentWithAuthors(
+  query: string,
+  maxResults: number = 100,
+  nextToken?: string,
+): Promise<{ tweets: XTweet[]; users: XUser[]; nextToken?: string }> {
+  const params = new URLSearchParams({
+    query,
+    max_results: String(maxResults),
+    "tweet.fields": TWEET_FIELDS,
+    expansions: "author_id",
+    "user.fields": USER_FIELDS,
+  });
+  if (nextToken) params.set("next_token", nextToken);
+  const url = `${X_API_BASE}/tweets/search/recent?${params.toString()}`;
+  const res = await xFetch(url);
+  if (!res) return { tweets: [], users: [] };
+
+  const json = (await res.json()) as {
+    data?: XTweet[];
+    includes?: { users?: XUser[] };
+    meta?: { next_token?: string };
+    errors?: unknown[];
+  };
+  return {
+    tweets: json.data ?? [],
+    users: json.includes?.users ?? [],
+    nextToken: json.meta?.next_token,
+  };
 }
 
 /**
