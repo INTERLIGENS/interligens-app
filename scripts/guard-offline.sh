@@ -138,6 +138,17 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
     )
 fi
 
+# Exceptions pour la watchlist expansion (ajout de KOL reviewés au watcher).
+# Autorisation humaine explicite (David, WAVES 1-3 approuvées) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur handles.ts (la source de vérité du watcher) ;
+# ne couvre PAS le reste de src/lib/watcher/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
+    EXEMPT_WATCHLIST_EXPANSION_PATTERNS=(
+        "^src/lib/watcher/handles\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -187,6 +198,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche watchlist-expansion, exempter handles.ts (source watcher).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_WATCHLIST_EXPANSION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
