@@ -149,6 +149,19 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
     )
 fi
 
+# Exceptions pour le module PRE-BUY GUARD V1 (admin-only, shadow mode — couche
+# de convergence REFLEX + shill correlation + KOL referral, pas de surface
+# publique, additif uniquement, zéro modification de REFLEX).
+# Autorisation humaine explicite (David) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur la route admin du module + le guard lui-même ;
+# ne couvre PAS l'ensemble de src/app/api/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-prebuy-guard$ ]]; then
+    EXEMPT_PREBUY_GUARD_PATTERNS=(
+        "^src/app/api/admin/prebuy/"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -210,6 +223,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_WATCHLIST_EXPANSION_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche prebuy-guard, exempter les paths du module.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-prebuy-guard$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_PREBUY_GUARD_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
