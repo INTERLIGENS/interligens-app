@@ -136,3 +136,28 @@ export function kolHandleToCasefilePreset(handle: string | null | undefined): Ca
   if (BOTIFY_HANDLES.has(handle.toLowerCase())) return "botify";
   return null;
 }
+
+// ── mint → preset resolver ──────────────────────────────────────────────────
+//
+// Broader than the public-PDF MINT_TO_PRESET maps in /api/casefile/public and
+// /api/casefile/pdf (which list only presets with an approved retail template):
+// this map is for RISK-PRESENCE detection (admin/shadow surfaces such as
+// PRE-BUY GUARD), so it includes every preset that documents a token, public
+// template or not. The BOTIFY mint here matches the lookup key used by the
+// public route (note: it differs by one char from the mint string embedded in
+// buildBotifyInput's case_meta — the route key is the canonical one).
+export const MINT_TO_CASEFILE_PRESET: Record<string, CaseFilePresetName> = {
+  BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb: "botify",
+};
+if (vineOsint.case_meta?.mint) {
+  MINT_TO_CASEFILE_PRESET[vineOsint.case_meta.mint] = "vine";
+}
+
+/**
+ * Resolve a token mint to a known preset. Returns null when no preset
+ * documents this mint.
+ */
+export function mintToCasefilePreset(mint: string | null | undefined): CaseFilePresetName | null {
+  if (!mint) return null;
+  return MINT_TO_CASEFILE_PRESET[mint.trim()] ?? null;
+}
