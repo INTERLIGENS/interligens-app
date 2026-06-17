@@ -367,6 +367,12 @@ model KolProfile {
   sourceIntakeIds           String                @default("[]")
   confidence                String                @default("low")
   status                    String                @default("active")
+  // Lifecycle flag — low-value handles move to standby (isActive=false) instead
+  // of deletion. Live since MIGRATION_kolprofile_isactive_v1.sql (2026-06-12);
+  // synced into schema here to match the production DB (ep-square-band).
+  isActive                  Boolean               @default(true)
+  deactivatedAt             DateTime?
+  deactivatedReason         String?
   bio                       String?
   followerCount             Int?
   notes                     String?

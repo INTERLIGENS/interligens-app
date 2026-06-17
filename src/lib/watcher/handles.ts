@@ -142,7 +142,6 @@ export const handlesV2: WatchHandle[] = [
   { handle: '0xCryptoshi',     category: 'organic_mention', priority: 'medium', followerCount:    24_218, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
   { handle: '0xuberM',         category: 'organic_mention', priority: 'medium', followerCount:    16_347, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
   { handle: '0xMakesy',        category: 'organic_mention', priority: 'medium', followerCount:     7_107, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
-  { handle: '0xkyle__',        category: 'organic_mention', priority: 'medium', followerCount:         0, chainFocus: 'SOL',   addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12', notes: 'x_not_found_2026_06_12' },
 
   // WAVE 3 — large promo-flavored handles (TIER 3, watch-only)
   { handle: 'cryptogems555',   category: 'promo_watch',     priority: 'low',    followerCount:   445_895, chainFocus: 'multi', addedAt: '2026-06-12', source: 'watchlist_expansion_2026_06_12' },
