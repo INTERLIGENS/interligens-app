@@ -189,6 +189,20 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
     )
 fi
 
+# Exceptions pour le cleanup sweep (dette technique post-merge — additif uniquement).
+# Autorisation humaine explicite (David, FULL CLEANUP SWEEP) — voir PR description.
+# Périmètre ciblé : sync du schema sur la prod DB (colonnes lifecycle KolProfile
+# déjà live), retrait d'un handle mort du watcher, et le short-circuit spend-cap
+# de la route cron watcher-v2. Aucune logique core / scoring / auth touchée.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cleanup-sweep$ ]]; then
+    EXEMPT_CLEANUP_SWEEP_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^src/lib/watcher/handles\.ts$"
+        "^src/app/api/cron/watcher-v2/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -286,6 +300,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_WATCHER_WINDOW_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche cleanup-sweep, exempter les paths de la dette technique.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cleanup-sweep$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_CLEANUP_SWEEP_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

@@ -9,7 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { getUserByUsername, getUserTweetsWindow, hasToken } from "@/lib/xapi/client";
+import { getUserByUsername, getUserTweetsWindow, hasToken, isSpendCapped, spendCapResetDate } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "@/lib/watcher/handles";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
@@ -117,6 +117,30 @@ async function scanAll() {
   const maxPostsPerHandle = parseInt(process.env.WATCHER_MAX_POSTS_PER_HANDLE ?? "15", 10);
   const startTime = new Date(scanStart.getTime() - lookbackHours * 3_600_000).toISOString();
   console.log(`[watcher-v2] Resume window: start_time=${startTime} (lookback ${lookbackHours}h), cap=${maxPostsPerHandle} posts/handle (GordonGekko 100)`);
+
+  // Spend-cap short-circuit. The X API billing spend cap makes EVERY read 403
+  // (masquerading as "not found"), which would otherwise march the whole
+  // watchlist logging dozens of false "SKIP — not found" lines and burn the
+  // serverless budget. Probe ONE handle up front; if the latch trips, bail
+  // cleanly before the loop so a capped run is unambiguous and cheap.
+  if (watchlist.length > 0) {
+    await getUserByUsername(watchlist[0].handle);
+    if (isSpendCapped()) {
+      const resetDate = spendCapResetDate() ?? null;
+      console.error(
+        `[watcher-v2] 🛑 X API spend cap reached — aborting scan before processing any handle. ` +
+          `Reads resume ${resetDate ?? "next billing cycle"}. Raise the cap in the X developer console to resume now.`,
+      );
+      return {
+        ok: true,
+        spendCapped: true,
+        resetDate,
+        ...stats,
+        note: `X API spend cap reached — scan aborted, 0 handles processed. Resets ${resetDate ?? "next billing cycle"}.`,
+      };
+    }
+    stats.userLookups++; // not capped: the probe lookup is a real billed read
+  }
 
   // try/finally : on enregistre la conso X API réelle exactement une
   // fois (les reads déjà faits sont facturés même si le scan s'arrête).

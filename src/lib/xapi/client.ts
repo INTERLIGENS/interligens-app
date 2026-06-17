@@ -15,9 +15,31 @@ function headers(): Record<string, string> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
+// ─── Billing spend-cap state ──────────────────────────────────
+// X bills against a per-cycle SPEND CAP. Once reached, EVERY read returns
+// HTTP 403 with body {"title":"SpendCapReached","reset_date":"YYYY-MM-DD",...}
+// — NOT a 429, and NOT a not_found. We latch it process-wide so subsequent
+// calls short-circuit instead of hammering a blocked API and masquerading as
+// "not_found". Resets when the process restarts (and re-probes the live API).
+
+const spendCap: { reached: boolean; resetDate?: string } = { reached: false };
+
+/** True once the X API billing spend cap has been hit in this process. */
+export function isSpendCapped(): boolean {
+  return spendCap.reached;
+}
+/** Billing-cycle reset date reported by X (e.g. "2026-06-21"), if known. */
+export function spendCapResetDate(): string | undefined {
+  return spendCap.resetDate;
+}
+
 // ─── Rate-limit aware fetch ───────────────────────────────────
 
 async function xFetch(url: string): Promise<Response | null> {
+  // Already known spend-capped this run → skip the call (no point, and avoids
+  // re-logging). Callers can disambiguate null via isSpendCapped().
+  if (spendCap.reached) return null;
+
   let res: Response;
   try {
     res = await fetch(url, { headers: headers() });
@@ -32,7 +54,7 @@ async function xFetch(url: string): Promise<Response | null> {
     console.warn(`[xapi] ⚠️  rate limit remaining: ${remaining}`);
   }
 
-  // Retry once on 429
+  // Retry once on 429 (transient per-window rate limit)
   if (res.status === 429) {
     console.warn('[xapi] 429 rate limited — waiting 15s then retrying once');
     await sleep(15_000);
@@ -42,10 +64,27 @@ async function xFetch(url: string): Promise<Response | null> {
       console.error(`[xapi] retry network error: ${err}`);
       return null;
     }
-    if (!res.ok) {
-      console.error(`[xapi] retry failed: ${res.status}`);
+  }
+
+  // 403 billing spend-cap — distinct from a normal 403/not_found. Latch + halt.
+  if (res.status === 403) {
+    let body = '';
+    try { body = await res.text(); } catch { /* body unreadable */ }
+    if (body.includes('SpendCapReached') || body.includes('/problems/credits')) {
+      let resetDate: string | undefined;
+      try { resetDate = JSON.parse(body).reset_date as string; } catch { /* non-JSON */ }
+      spendCap.reached = true;
+      spendCap.resetDate = resetDate;
+      // Logged exactly once per process (top short-circuit handles the rest).
+      console.error(
+        `[xapi] 🛑 SPEND CAP reached — X API billing cap hit; all reads are blocked ` +
+          `until ${resetDate ?? 'the next billing cycle'}. Raise the cap in the X developer ` +
+          `console to resume immediately. Halting further X API calls this run.`,
+      );
       return null;
     }
+    console.error(`[xapi] 403 Forbidden — ${url}`);
+    return null;
   }
 
   if (!res.ok) {
@@ -190,6 +229,38 @@ export async function getUserTweetsWindow(
 
   // Last page may overshoot the cap → trim to the exact budget.
   return collected.length > maxPosts ? collected.slice(0, maxPosts) : collected;
+}
+
+/**
+ * Get a user's recent timeline (up to 100) WITH media presence resolved via
+ * expansions=attachments.media_keys. Each returned tweet carries hasMedia /
+ * photoCount so callers can estimate a chart/media ratio. 1 API call per page.
+ */
+export async function getUserTimeline(
+  userId: string,
+  maxResults: number = 100,
+): Promise<(XTweet & { hasMedia: boolean; photoCount: number })[]> {
+  const params = new URLSearchParams({
+    max_results: String(maxResults),
+    "tweet.fields": "id,text,created_at,public_metrics,attachments",
+    expansions: "attachments.media_keys",
+    "media.fields": "type",
+  });
+  const url = `${X_API_BASE}/users/${userId}/tweets?${params.toString()}`;
+  const res = await xFetch(url);
+  if (!res) return [];
+  const json = (await res.json()) as {
+    data?: (XTweet & { attachments?: { media_keys?: string[] } })[];
+    includes?: { media?: { media_key: string; type: string }[] };
+    errors?: unknown[];
+  };
+  if (!json.data) return [];
+  const mediaType = new Map((json.includes?.media ?? []).map((m) => [m.media_key, m.type]));
+  return json.data.map((t) => {
+    const keys = t.attachments?.media_keys ?? [];
+    const photoCount = keys.filter((k) => mediaType.get(k) === "photo").length;
+    return { ...t, hasMedia: keys.length > 0, photoCount };
+  });
 }
 
 /**
