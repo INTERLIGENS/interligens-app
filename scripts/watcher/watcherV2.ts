@@ -212,6 +212,8 @@ async function maybePromote(
 // avec les counts réellement consommés. Si la run crashe à mi-
 // parcours, on enregistre les reads déjà faits (X les a facturés)
 // — pas de double comptage car écriture unique par process.
+// Upsert atomique sur l'index unique XApiUsage_monthStart_key
+// (posé en prod via Neon SQL Editor) → race-safe.
 
 export async function recordXApiUsage(stats: WatcherStats): Promise<void> {
   const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? '0.0058');
@@ -234,33 +236,22 @@ export async function recordXApiUsage(stats: WatcherStats): Promise<void> {
     return;
   }
 
-  // Pas de contrainte UNIQUE sur monthStart dans la table live →
-  // UPDATE puis INSERT si 0 ligne. Sûr : le watcher est l'unique
-  // writer et tourne en série (cron 1/jour), pas de concurrence.
-  const updated = await prisma.$executeRawUnsafe(
-    `UPDATE "XApiUsage"
-        SET "totalCostUsd"  = "totalCostUsd"  + $1,
-            "tweetsFetched" = "tweetsFetched" + $2,
-            "userLookups"   = "userLookups"   + $3,
-            "updatedAt"     = now()
-      WHERE "monthStart" = date_trunc('month', (now() at time zone 'utc'))`,
+  // Upsert atomique sur l'index unique XApiUsage_monthStart_key.
+  // Une seule instruction → race-safe même si deux runs se chevauchent.
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "XApiUsage"
+       ("id", "monthStart", "totalCostUsd", "tweetsFetched", "userLookups", "updatedAt")
+     VALUES (gen_random_uuid()::text,
+             date_trunc('month', (now() at time zone 'utc')),
+             $1, $2, $3, now())
+     ON CONFLICT ("monthStart") DO UPDATE SET
+       "totalCostUsd"  = "XApiUsage"."totalCostUsd"  + EXCLUDED."totalCostUsd",
+       "tweetsFetched" = "XApiUsage"."tweetsFetched" + EXCLUDED."tweetsFetched",
+       "userLookups"   = "XApiUsage"."userLookups"   + EXCLUDED."userLookups",
+       "updatedAt"     = now()`,
     runCost, posts, lookups,
   );
-
-  if (updated === 0) {
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "XApiUsage"
-         ("id", "monthStart", "totalCostUsd", "tweetsFetched", "userLookups", "updatedAt")
-       VALUES (gen_random_uuid()::text,
-               date_trunc('month', (now() at time zone 'utc')),
-               $1, $2, $3, now())`,
-      runCost, posts, lookups,
-    );
-    console.log(`   💰 XApiUsage: nouvelle ligne mois créée (+$${runCost.toFixed(4)})`);
-  } else {
-    console.log(`   💰 XApiUsage: cumul mis à jour (+$${runCost.toFixed(4)})`);
-  }
-  console.log(`      → +${posts} posts, +${lookups} lookups ce run`);
+  console.log(`   💰 XApiUsage upsert: +$${runCost.toFixed(4)} (+${posts} posts, +${lookups} lookups)`);
 }
 
 // ─── Main scan pipeline ───────────────────────────────────────
