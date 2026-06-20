@@ -176,6 +176,19 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-xapi-usage-cron$ ]]; then
     )
 fi
 
+# Exceptions pour le fix fenêtre du watcher (mode reprise start_time +
+# pagination). Additif : le cron passe une fenêtre temporelle + un cap
+# posts/handle au client X API. Aucune écriture DB, aucune migration.
+# Autorisation humaine explicite (David) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 + le guard ;
+# le client src/lib/xapi/ n'est pas un chemin protégé (hors exemption).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
+    EXEMPT_WATCHER_WINDOW_PATTERNS=(
+        "^src/app/api/cron/watcher-v2/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -261,6 +274,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-xapi-usage-cron$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_USAGE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche watcher-window-fix, exempter la route cron watcher-v2.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_WATCHER_WINDOW_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

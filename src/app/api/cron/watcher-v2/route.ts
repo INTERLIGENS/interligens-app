@@ -9,7 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { getUserByUsername, getUserTweets, hasToken } from "@/lib/xapi/client";
+import { getUserByUsername, getUserTweetsWindow, hasToken } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "@/lib/watcher/handles";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
@@ -108,6 +108,16 @@ async function scanAll() {
   const watchlist = handlesV2.slice(0, maxHandles);
   console.log(`[watcher-v2] Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles (WATCHER_MAX_HANDLES=${maxHandles})`);
 
+  // ── Resume window (catch-up) ────────────────────────────────────────────
+  // The cron is daily → look back a bit MORE than 24h so a late/early run
+  // never leaves a gap. Overlap is harmless: the (postId,influencerId) unique
+  // key dedups re-seen posts. Per-handle cap bounds the cost of a hyper-active
+  // account (pagination would otherwise pull every post in the window).
+  const lookbackHours = parseInt(process.env.WATCHER_LOOKBACK_HOURS ?? "26", 10);
+  const maxPostsPerHandle = parseInt(process.env.WATCHER_MAX_POSTS_PER_HANDLE ?? "15", 10);
+  const startTime = new Date(scanStart.getTime() - lookbackHours * 3_600_000).toISOString();
+  console.log(`[watcher-v2] Resume window: start_time=${startTime} (lookback ${lookbackHours}h), cap=${maxPostsPerHandle} posts/handle (GordonGekko 100)`);
+
   // try/finally : on enregistre la conso X API réelle exactement une
   // fois (les reads déjà faits sont facturés même si le scan s'arrête).
   try {
@@ -131,10 +141,10 @@ async function scanAll() {
         fetchedAt: new Date().toISOString(),
       });
 
-      // GordonGekko: 100 tweets/run (high-volume case under active investigation).
-      // All other handles: 10 tweets/run (budget).
-      const maxResults = handle === "GordonGekko" ? 100 : 10;
-      const tweets = await getUserTweets(xUser.id, maxResults);
+      // Windowed catch-up: page through [startTime, now], capped per handle.
+      // GordonGekko keeps a higher cap (high-volume case under investigation).
+      const handleCap = handle === "GordonGekko" ? 100 : maxPostsPerHandle;
+      const tweets = await getUserTweetsWindow(xUser.id, { startTime, maxPosts: handleCap });
       stats.tweetsFetched += tweets.length;
 
       const influencerId = await ensureInfluencer(handle);
