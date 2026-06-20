@@ -133,6 +133,66 @@ export async function getUserTweets(
 }
 
 /**
+ * Get a user's recent tweets across a TIME WINDOW, with pagination.
+ *
+ * Resume mode for the watcher: unlike getUserTweets (single page, ≤100),
+ * this pages through GET /2/users/:id/tweets via pagination_token until the
+ * window [startTime, now] is exhausted OR the per-handle cap is reached.
+ *
+ *  - startTime : ISO-8601, passed as start_time. The API only returns posts
+ *                in [start_time, now]; pagination naturally terminates at the
+ *                window boundary. Omit → API default (~most recent).
+ *  - maxPosts  : hard cap on posts fetched for this handle this run (cost
+ *                guard against a hyper-active account). Default 100.
+ *  - perPage   : posts per request (X clamps to 5..100). Default 100 = fewest
+ *                requests for a given window.
+ *
+ * Billing is per post returned, so the returned array length == billable
+ * posts for this handle. Each page is 1 request (not the $ driver).
+ */
+export async function getUserTweetsWindow(
+  userId: string,
+  opts: { startTime?: string; maxPosts?: number; perPage?: number } = {},
+): Promise<XTweet[]> {
+  const maxPosts = Math.max(1, opts.maxPosts ?? 100);
+  const perPage = Math.min(100, Math.max(5, opts.perPage ?? 100));
+  const collected: XTweet[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const remaining = maxPosts - collected.length;
+    if (remaining <= 0) break;
+    // X API requires max_results in [5,100]; request at least 5 then trim.
+    const reqSize = Math.min(perPage, Math.max(5, remaining));
+    const params = new URLSearchParams({
+      max_results: String(reqSize),
+      "tweet.fields": TWEET_FIELDS,
+    });
+    if (opts.startTime) params.set("start_time", opts.startTime);
+    if (pageToken) params.set("pagination_token", pageToken);
+
+    const res = await xFetch(`${X_API_BASE}/users/${userId}/tweets?${params.toString()}`);
+    if (!res) break; // network/HTTP error already logged by xFetch
+
+    const json = (await res.json()) as {
+      data?: XTweet[];
+      meta?: { next_token?: string };
+      errors?: unknown[];
+    };
+    if (json.errors || !json.data) {
+      if (json.errors) console.error(`[xapi] getUserTweetsWindow(${userId}): API error`, json.errors);
+      break; // no data (or end of timeline) → stop
+    }
+
+    collected.push(...json.data);
+    pageToken = json.meta?.next_token;
+  } while (pageToken && collected.length < maxPosts);
+
+  // Last page may overshoot the cap → trim to the exact budget.
+  return collected.length > maxPosts ? collected.slice(0, maxPosts) : collected;
+}
+
+/**
  * Search recent tweets (last 7 days) by query string.
  */
 export async function searchRecentTweets(
