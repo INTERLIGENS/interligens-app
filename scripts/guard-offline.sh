@@ -162,6 +162,20 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-prebuy-guard$ ]]; then
     )
 fi
 
+# Exceptions pour le tracking conso X API dans le cron watcher-v2.
+# Ajout purement additif : 1 compteur userLookups + 1 upsert XApiUsage
+# (SQL brut ON CONFLICT, table + index déjà en prod via Neon). Aucune
+# autre logique du cron modifiée, aucun appel X API supplémentaire.
+# Autorisation humaine explicite (David) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 + le guard
+# lui-même ; ne couvre PAS le reste de src/app/api/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-xapi-usage-cron$ ]]; then
+    EXEMPT_XAPI_USAGE_PATTERNS=(
+        "^src/app/api/cron/watcher-v2/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -235,6 +249,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-prebuy-guard$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_PREBUY_GUARD_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche xapi-usage-cron, exempter la route cron watcher-v2.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-xapi-usage-cron$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_XAPI_USAGE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

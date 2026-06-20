@@ -35,6 +35,53 @@ async function ensureInfluencer(handle: string): Promise<string> {
   return created.id;
 }
 
+// ─── Real X API cost tracking → XApiUsage (raw SQL) ───────────
+//
+// Prix calé sur la facture réelle X (pay-per-use, 2026-05-21→06-20):
+// $79.97 / 13 810 posts = ~$0.0058/post. Configurable via
+// X_API_COST_PER_POST (défaut 0.0058). User lookups non refacturés
+// par défaut (la facture impute tout aux posts) ; X_API_COST_PER_LOOKUP
+// existe si on veut les modéliser. Écrit le schéma réel de la table
+// live (monthStart/totalCostUsd/tweetsFetched/userLookups) en SQL
+// brut — le modèle Prisma (month/estimatedUsd) est périmé.
+//
+// Upsert atomique ON CONFLICT sur l'index unique
+// XApiUsage_monthStart_key (posé en prod via Neon). Appelé une fois
+// par run dans un finally → comptabilise les reads réellement faits
+// même si le scan s'interrompt, sans double comptage (1 écriture/run).
+// Toute erreur d'écriture est avalée : le tracking ne casse jamais le scan.
+async function recordXApiUsage(stats: { tweetsFetched: number; userLookups: number }) {
+  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? "0.0058");
+  const costPerLookup = parseFloat(process.env.X_API_COST_PER_LOOKUP ?? "0");
+  const posts = stats.tweetsFetched;
+  const lookups = stats.userLookups;
+  if (posts === 0 && lookups === 0) {
+    console.log("[watcher-v2] XApiUsage: 0 read consommé — aucune écriture");
+    return;
+  }
+  const runCost = posts * costPerPost + lookups * costPerLookup;
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "XApiUsage"
+         ("id", "monthStart", "totalCostUsd", "tweetsFetched", "userLookups", "updatedAt")
+       VALUES (gen_random_uuid()::text,
+               date_trunc('month', (now() at time zone 'utc')),
+               $1, $2, $3, now())
+       ON CONFLICT ("monthStart") DO UPDATE SET
+         "totalCostUsd"  = "XApiUsage"."totalCostUsd"  + EXCLUDED."totalCostUsd",
+         "tweetsFetched" = "XApiUsage"."tweetsFetched" + EXCLUDED."tweetsFetched",
+         "userLookups"   = "XApiUsage"."userLookups"   + EXCLUDED."userLookups",
+         "updatedAt"     = now()`,
+      runCost, posts, lookups,
+    );
+    console.log(
+      `[watcher-v2] 💰 XApiUsage upsert: +$${runCost.toFixed(4)} (+${posts} posts, +${lookups} lookups)`,
+    );
+  } catch (err) {
+    console.error("[watcher-v2] XApiUsage write failed (scan unaffected):", err);
+  }
+}
+
 async function scanAll() {
   const emailMode = (process.env.WATCHER_EMAIL_MODE ?? "digest").toLowerCase();
   const scanStart = new Date();
@@ -43,6 +90,7 @@ async function scanAll() {
     scanned: 0,
     failed: 0,
     tweetsFetched: 0,
+    userLookups: 0,
     candidates: 0,
     skipped: 0,
     enriched: 0,
@@ -60,11 +108,15 @@ async function scanAll() {
   const watchlist = handlesV2.slice(0, maxHandles);
   console.log(`[watcher-v2] Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles (WATCHER_MAX_HANDLES=${maxHandles})`);
 
+  // try/finally : on enregistre la conso X API réelle exactement une
+  // fois (les reads déjà faits sont facturés même si le scan s'arrête).
+  try {
   for (const entry of watchlist) {
     const handle = entry.handle;
 
     try {
       const xUser = await getUserByUsername(handle);
+      stats.userLookups++; // 1 requête X API facturée, succès ou non
       if (!xUser) {
         console.warn(`[watcher-v2] SKIP @${handle} — not found`);
         stats.failed++;
@@ -188,6 +240,10 @@ async function scanAll() {
       continue;
     }
   }
+  } finally {
+    // Conso X API réelle de ce run → XApiUsage (cumul mois courant)
+    await recordXApiUsage(stats);
+  }
 
   // ── Campaign clustering + digest (after full scan) ──────────────────────
   let clusterResult = { campaignsCreated: 0, signalsLinked: 0, highPriority: 0, critical: 0 };
@@ -234,6 +290,10 @@ async function scanAll() {
     highPriority: clusterResult.highPriority,
     critical: clusterResult.critical,
     quotaEstimate: `~${(stats.tweetsFetched * 30).toLocaleString()} tweets/month`,
+    xApiCostUsd: Number(
+      (stats.tweetsFetched * parseFloat(process.env.X_API_COST_PER_POST ?? "0.0058")
+        + stats.userLookups * parseFloat(process.env.X_API_COST_PER_LOOKUP ?? "0")).toFixed(4),
+    ),
   };
 }
 
