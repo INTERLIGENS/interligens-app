@@ -29,6 +29,7 @@ interface WatcherStats {
   handlesScanned: number;
   handlesFailed: number;
   tweetsFetched: number;
+  userLookups: number;
   candidatesCreated: number;
   candidatesSkipped: number;
   profilesEnriched: number;
@@ -40,6 +41,7 @@ function emptyStats(): WatcherStats {
     handlesScanned: 0,
     handlesFailed: 0,
     tweetsFetched: 0,
+    userLookups: 0,
     candidatesCreated: 0,
     candidatesSkipped: 0,
     profilesEnriched: 0,
@@ -193,6 +195,74 @@ async function maybePromote(
   stats.profilesPromoted++;
 }
 
+// ─── Real X API cost tracking → XApiUsage (raw SQL) ───────────
+//
+// Unit price calé sur la facture réelle X (pay-per-use, période
+// 2026-05-21 → 06-20): $79.97 / 13 810 posts = ~$0.00579/post.
+// → X_API_COST_PER_POST défaut 0.0058 (le $0.10/1000 historique
+//   était faux, 58× trop bas). Les user lookups ne sont PAS
+//   refacturés par défaut (la facture impute tout aux posts) ;
+//   X_API_COST_PER_LOOKUP existe si on veut les modéliser un jour.
+//
+// Écrit le SCHÉMA RÉEL de la table live (migration 20260321) :
+//   monthStart / totalCostUsd / tweetsFetched / userLookups
+// PAS le modèle Prisma périmé (month/estimatedUsd) → SQL brut.
+//
+// Idempotence : appelé EXACTEMENT une fois par run (bloc finally),
+// avec les counts réellement consommés. Si la run crashe à mi-
+// parcours, on enregistre les reads déjà faits (X les a facturés)
+// — pas de double comptage car écriture unique par process.
+
+export async function recordXApiUsage(stats: WatcherStats): Promise<void> {
+  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? '0.0058');
+  const costPerLookup = parseFloat(process.env.X_API_COST_PER_LOOKUP ?? '0');
+  const posts = stats.tweetsFetched;
+  const lookups = stats.userLookups;
+
+  if (posts === 0 && lookups === 0) {
+    console.log('   💰 XApiUsage: 0 read consommé ce run — aucune écriture.');
+    return;
+  }
+
+  const runCost = posts * costPerPost + lookups * costPerLookup;
+
+  if (DRY_RUN) {
+    console.log(
+      `   [DRY] XApiUsage += ${posts} posts, ${lookups} lookups, $${runCost.toFixed(4)} ` +
+      `(prix: $${costPerPost}/post, $${costPerLookup}/lookup) — cumul mois courant`,
+    );
+    return;
+  }
+
+  // Pas de contrainte UNIQUE sur monthStart dans la table live →
+  // UPDATE puis INSERT si 0 ligne. Sûr : le watcher est l'unique
+  // writer et tourne en série (cron 1/jour), pas de concurrence.
+  const updated = await prisma.$executeRawUnsafe(
+    `UPDATE "XApiUsage"
+        SET "totalCostUsd"  = "totalCostUsd"  + $1,
+            "tweetsFetched" = "tweetsFetched" + $2,
+            "userLookups"   = "userLookups"   + $3,
+            "updatedAt"     = now()
+      WHERE "monthStart" = date_trunc('month', (now() at time zone 'utc'))`,
+    runCost, posts, lookups,
+  );
+
+  if (updated === 0) {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "XApiUsage"
+         ("id", "monthStart", "totalCostUsd", "tweetsFetched", "userLookups", "updatedAt")
+       VALUES (gen_random_uuid()::text,
+               date_trunc('month', (now() at time zone 'utc')),
+               $1, $2, $3, now())`,
+      runCost, posts, lookups,
+    );
+    console.log(`   💰 XApiUsage: nouvelle ligne mois créée (+$${runCost.toFixed(4)})`);
+  } else {
+    console.log(`   💰 XApiUsage: cumul mis à jour (+$${runCost.toFixed(4)})`);
+  }
+  console.log(`      → +${posts} posts, +${lookups} lookups ce run`);
+}
+
 // ─── Main scan pipeline ───────────────────────────────────────
 
 export async function runWatcherV2(): Promise<WatcherStats> {
@@ -211,8 +281,12 @@ export async function runWatcherV2(): Promise<WatcherStats> {
   console.log(`   Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles`);
   console.log(`   DRY_RUN: ${DRY_RUN}\n`);
 
-  // Process in batches of 10
+  // Process in batches of 10.
+  // try/finally : on enregistre la conso X API réelle exactement
+  // une fois, même si la boucle crashe à mi-parcours (les reads
+  // déjà faits ont été facturés par X).
   const BATCH_SIZE = 10;
+  try {
   for (let i = 0; i < watchlist.length; i += BATCH_SIZE) {
     const batch = watchlist.slice(i, i + BATCH_SIZE);
     console.log(`\n── Batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} handles) ──`);
@@ -221,8 +295,9 @@ export async function runWatcherV2(): Promise<WatcherStats> {
       const handle = entry.handle;
       console.log(`\n  📡 scanning @${handle}...`);
 
-      // 1. Look up user
+      // 1. Look up user (1 requête X API facturée, succès ou non)
       const xUser = await getUserByUsername(handle);
+      stats.userLookups++;
       if (!xUser) {
         console.log(`    ⚠️  user not found or API error — skipping`);
         stats.handlesFailed++;
@@ -271,15 +346,24 @@ export async function runWatcherV2(): Promise<WatcherStats> {
       await sleep(1_000);
     }
   }
+  } finally {
+    // Conso X API réelle de ce run → XApiUsage (cumul mois courant)
+    await recordXApiUsage(stats);
+  }
 
   // ─── Summary ──────────────────────────────────────────────
 
   const monthlyEstimate = stats.tweetsFetched * 30;
+  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? '0.0058');
+  const runCost = stats.tweetsFetched * costPerPost
+    + stats.userLookups * parseFloat(process.env.X_API_COST_PER_LOOKUP ?? '0');
   console.log(`\n${'═'.repeat(50)}`);
   console.log(`✅ WATCHER V2 — SCAN COMPLETE`);
   console.log(`   Handles scanned:         ${stats.handlesScanned}`);
   console.log(`   Handles failed:          ${stats.handlesFailed}`);
   console.log(`   Tweets fetched:          ${stats.tweetsFetched}`);
+  console.log(`   User lookups:            ${stats.userLookups}`);
+  console.log(`   Run cost (X API):        $${runCost.toFixed(4)} (@$${costPerPost}/post)`);
   console.log(`   Candidates created:      ${stats.candidatesCreated}`);
   console.log(`   Candidates skipped:      ${stats.candidatesSkipped}`);
   console.log(`   KolProfiles enriched:    ${stats.profilesEnriched}`);
