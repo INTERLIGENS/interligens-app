@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Watchdog Watcher V2 — launchd (Host-001 / dood).
+  NE PAS activer avant relecture. Pour installer :
+    cp src/scripts/watchdog/com.interligens.watchdog.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.interligens.watchdog.plist
+  Pour désactiver :
+    launchctl unload ~/Library/LaunchAgents/com.interligens.watchdog.plist
+  Test manuel immédiat (sans attendre 09:00) :
+    launchctl start com.interligens.watchdog
+  Déclenche 1x/jour à 09:00 (heure locale). RunAtLoad=false => ne se lance pas
+  au chargement, c'est toi qui contrôles le premier run.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.interligens.watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/opt/node@20/bin/node</string>
+        <string>/Users/dood/dev/interligens-web/src/scripts/watchdog/watcher-health.mjs</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/dood/dev/interligens-web</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/dood/Library/Logs/interligens-watchdog.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/dood/Library/Logs/interligens-watchdog.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
