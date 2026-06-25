@@ -1257,8 +1257,35 @@ model EvidenceSnapshot {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  // Forensic columns (present in DB ep-square-band, added by OSINT seeder sessions)
+  kolHandle     String?
+  tokenSymbol   String?
+  localFilePath String?
+  sha256        String?  @unique
+  sessionId     String?
+  notes         String?
+
   @@index([relationType, relationKey])
   @@index([isPublic, reviewStatus])
+  @@index([sessionId])
+  @@index([kolHandle, tokenSymbol])
+}
+
+model EvidenceNegative {
+  id             String    @id @default(dbgenerated("gen_random_uuid()"))
+  kolHandle      String
+  tokenSymbol    String
+  observedAt     DateTime?
+  sessionId      String?
+  sourceUrl      String?
+  classification String    @default("confirmed_negative")
+  note           String?
+  reviewStatus   String    @default("approved")
+  createdAt      DateTime  @default(now())
+
+  @@unique([kolHandle, tokenSymbol, sessionId], map: "EvidenceNegative_kol_token_session_key")
+  @@index([kolHandle, tokenSymbol])
+  @@index([sessionId])
 }
 
 model TransparencySubmission {
