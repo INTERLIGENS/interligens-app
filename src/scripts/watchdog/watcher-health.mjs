@@ -20,8 +20,8 @@
  *      Filtre x_api_v2 OBLIGATOIRE — les rows playwright_local / seeders manuels
  *      pollueraient sinon le signal et masqueraient un watcher mort (faux vert).
  *   2. Spend cap : totalCostUsd du mois courant vs cap configurable.
- *   3. Canal email : dernier WatcherDigest.emailStatus (informatif — le Watcher
- *      digest email est cassé depuis le 2026-05-10 ; on alerte via Telegram).
+ *   (Le check "canal email" a été retiré le 2026-06-25 : digest email
+ *    abandonné, Telegram est l'unique canal d'alerte.)
  *
  * NB schéma : la table réelle XApiUsage est driftée vs schema.prod.prisma
  * (colonnes monthStart/totalCostUsd, PAS month/estimatedUsd) — d'où le SQL brut.
@@ -187,22 +187,11 @@ async function runChecks(client) {
     lines.push(`• Spend X API : ERREUR check (${e.message})`);
   }
 
-  // 3. Canal email du Watcher (informatif — on alerte via Telegram, pas email)
-  try {
-    const r = await client.query(
-      `SELECT "emailStatus","createdAt" FROM "WatcherDigest" ORDER BY "createdAt" DESC LIMIT 1`
-    );
-    if (r.rows.length === 0) {
-      lines.push(`• Canal email Watcher : aucun digest enregistré (info)`);
-    } else {
-      const { emailStatus, createdAt } = r.rows[0];
-      const when = new Date(createdAt).toISOString().slice(0, 10);
-      const ok = emailStatus === "sent";
-      lines.push(`• Canal email Watcher : ${ok ? "✅" : "⚠️"} dernier digest ${when} = ${emailStatus}`);
-    }
-  } catch (e) {
-    lines.push(`• Canal email Watcher : ERREUR check (${e.message})`);
-  }
+  // Canal email digest (Resend) : ABANDONNÉ le 2026-06-25 au profit de
+  // Telegram comme unique canal d'alerte. L'ancien check #3 lisait la
+  // dernière ligne WatcherDigest, mais il n'y en a qu'UNE (2026-05-09,
+  // error_fetch ponctuel) et WATCHER_EMAIL_MODE n'est plus "digest" →
+  // il affichait éternellement un ⚠️ périmé sans valeur. Retiré.
 
   return { problems, lines };
 }
