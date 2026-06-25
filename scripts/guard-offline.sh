@@ -203,6 +203,19 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cleanup-sweep$ ]]; then
     )
 fi
 
+# Exceptions pour le sync schema Evidence (file-only — additif uniquement).
+# La table EvidenceNegative + les colonnes forensic EvidenceSnapshot existent
+# DÉJÀ en DB ep-square-band (ajoutées par les sessions seeder OSINT en SQL brut) ;
+# ce sync ne fait que refléter cette réalité dans schema.prod.prisma. AUCUNE
+# migration DB. Autorisation humaine explicite (David) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur le schema + le guard lui-même.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
+    EXEMPT_EVIDENCE_SCHEMA_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -312,6 +325,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cleanup-sweep$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_CLEANUP_SWEEP_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche evidence-schema-sync, exempter le schema (sync file-only).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
