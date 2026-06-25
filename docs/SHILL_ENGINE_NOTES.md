@@ -67,11 +67,31 @@ window ±10/15 min, 133 pages each (399 calls total):
 
 **Verdict: backfilling the old backlog via Helius pagination is infeasible.**
 
-### Future solution (post-Indo, pending France return)
-The right primitive is a **time-range / timestamp-seek source**:
-- **Birdeye historical trades** (query trades by time window directly — no
-  pagination waste) ← preferred. Blocked by "no Birdeye purchase during Indo".
-- Alternatives: Helius DAS/archival, or a local parsed-tx indexer (Postgres).
+### Future solution (when we attack the backlog — NOT during Indo OSINT)
+The right primitive is a **time-range / timestamp-seek source** (the thing
+Helius lacks: filter trades by `blockTime` / date range directly, no
+pagination waste). **Test the FREE options FIRST — do not default to paying.**
+
+**Test order:**
+1. **Bitquery** (https://bitquery.io) — GraphQL Solana API indexing DEXTrades
+   (Raydium / Pump.fun / Jupiter) with **native temporal seek** (filter by
+   `Block.Time` + date range). This is exactly the missing primitive. Free tier,
+   no credit card, datasets not paywalled. **← TEST FIRST** on the backlog:
+   if the free tier covers our 34 (now-resolved) mints, the backfill is FREE.
+2. **Vybe API** — Solana trade-history endpoint with `timeEnd` unix + sort by
+   `blockTime`. Second free seek-temporal option if Bitquery falls short.
+3. **Nansen** (free, browser, Token God Mode) — for **manual on-chain OSINT
+   enrichment** of casefiles (no code, no API). Not a programmatic backfill, but
+   useful to eyeball a specific token's early buyers by hand.
+4. **Birdeye historical trades** — PAID, **last resort only** if the free
+   options above don't cover our needs. ("No Birdeye purchase during Indo.")
+
+> ⚠️ Free-tier **rate limits must be verified empirically** before committing to
+> one: our targets are pump.fun tokens with ~665-950 tx/day weeks post-launch
+> (see probe above), so a tight free-tier query/row cap could throttle a full
+> 34-mint backfill. Measure the cap against one active mint first.
+>
+> Last-resort alt if all seek sources fail: a local parsed-tx indexer (Postgres).
 
 ### The engine is healthy going forward
 Buyer-fetch runs **at ingestion**, while events are still within the recent
