@@ -31,7 +31,7 @@
  *   TELEGRAM_BOT_TOKEN      (requis)  — bot Telegram
  *   TELEGRAM_OPS_CHAT_ID    (requis)  — chat de destination des alertes
  *   WATCHDOG_SILENCE_DAYS   (déf 3.5) — seuil silence watcher, en jours
- *   WATCHDOG_SPEND_CAP_USD  (déf 50)  — cap mensuel X API
+ *   WATCHDOG_SPEND_CAP_USD  (déf 100) — cap mensuel X API (réel ~$100, 2026-06-25)
  *   WATCHDOG_WARN_PCT       (déf 80)  — % du cap déclenchant un warn
  *   WATCHDOG_STATE_FILE     (déf ~/.interligens-watchdog-state.json)
  *   WATCHDOG_DRY_RUN        (déf off) — "1" => imprime au lieu d'envoyer Telegram
@@ -64,7 +64,7 @@ loadEnvLocal();
 
 // --- Config ------------------------------------------------------------------
 const SILENCE_DAYS = parseFloat(process.env.WATCHDOG_SILENCE_DAYS ?? "3.5");
-const SPEND_CAP_USD = parseFloat(process.env.WATCHDOG_SPEND_CAP_USD ?? "50");
+const SPEND_CAP_USD = parseFloat(process.env.WATCHDOG_SPEND_CAP_USD ?? "100");
 const WARN_PCT = parseFloat(process.env.WATCHDOG_WARN_PCT ?? "80");
 const DRY_RUN = process.env.WATCHDOG_DRY_RUN === "1";
 const STATE_FILE =
