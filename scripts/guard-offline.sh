@@ -297,6 +297,22 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint4-draft-bridge$ ]
     )
 fi
 
+# Exceptions pour l'Evidence Intake Bridge — Sprint 5 (state machine).
+# Table d'audit CandidateStatusLog créée additivement via SQL Neon brut (jamais
+# prisma db push) ; ce commit ne fait que refléter le modèle dans
+# schema.prod.prisma (anti-drift). La logique (candidateStateMachine.ts) +
+# son câblage (promoteWatcherSignalsToDraft.ts) vivent dans src/lib/watcher-bridge/
+# qui n'est pas gelé. Aucun filtre de lecture touché, aucune surface publique.
+# Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
+# UNIQUEMENT sur le schema + le guard ; MIGRATION_candidate_status_log.sql (racine)
+# n'est pas un chemin gelé.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint5-state-machine$ ]]; then
+    EXEMPT_INTAKE_BRIDGE_S5_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -478,6 +494,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint4-draft-bridge$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_INTAKE_BRIDGE_S4_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche intake-bridge-sprint5-state-machine, exempter le schema prod (sync anti-drift).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint5-state-machine$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_INTAKE_BRIDGE_S5_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

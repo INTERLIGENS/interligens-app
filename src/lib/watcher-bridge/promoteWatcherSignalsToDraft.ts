@@ -15,6 +15,7 @@
 import { resolveCanonicalToken } from "@/lib/token-resolution/resolveCanonicalToken";
 import { createAutoEvidenceSnapshot } from "@/lib/watcher-bridge/createAutoEvidenceSnapshot";
 import { createDraftKolTokenLink } from "@/lib/watcher-bridge/createDraftKolTokenLink";
+import { advanceCandidateTo, logCandidateEvent } from "@/lib/watcher-bridge/candidateStateMachine";
 
 export interface RawDb {
   $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
@@ -213,6 +214,10 @@ export async function promoteCandidate(
       socialPostCandidateId: cand.id,
       evidenceSnapshotId,
     });
+    // State machine: draft link created → walk legally to needs_review
+    // (new→parsed→clustered→draft_ready→draft_link_created→needs_review).
+    // Idempotent on re-run (already at needs_review → no-op).
+    await advanceCandidateTo(db, cand.id, "needs_review", "watcher bridge draft promotion");
     return {
       candidateId,
       action: draft.action === "draft_created" ? "draft_created" : "draft_skipped_exists",
@@ -225,6 +230,10 @@ export async function promoteCandidate(
   // B — ambiguous/unresolved/conflict → resolution queue (SignalIntake).
   if (["AMBIGUOUS", "UNRESOLVED", "CONFLICT"].includes(resolution.status)) {
     const r = await enqueueSignalIntake(db, cand, tokens, addresses, resolution, dryRun);
+    if (!dryRun) {
+      // State machine: clustered → resolution_pending (idempotent on re-run).
+      await advanceCandidateTo(db, cand.id, "resolution_pending", `unresolved: ${resolution.status}`);
+    }
     return {
       candidateId, action: r.action, kolHandle: cand.handle, symbol: tokens[0] ?? null,
       resolutionStatus: resolution.status, resolutionMethod: resolution.method,
@@ -232,7 +241,12 @@ export async function promoteCandidate(
     };
   }
 
-  // Resolved HIGH but below threshold and not explicit-CA → no write this run.
+  // Resolved HIGH but below threshold and not explicit-CA → no draft. The
+  // candidate stays 'clustered' (re-evaluable); the reason is a log annotation.
+  if (!dryRun) {
+    await advanceCandidateTo(db, cand.id, "clustered", "below_threshold sync");
+    await logCandidateEvent(db, cand.id, "below_threshold");
+  }
   return {
     candidateId, action: "below_threshold", kolHandle: cand.handle,
     symbol: resolution.symbol ?? tokens[0] ?? null,
