@@ -1352,6 +1352,23 @@ model SignalIntake {
   reviewNote                String?
 }
 
+// ─── Evidence Intake Bridge — Sprint 5 ──────────────────────────────────────
+// Audit log of SocialPostCandidate status-machine transitions. Created
+// additively via MIGRATION_candidate_status_log.sql on ep-square-band. Written
+// by candidateStateMachine.transitionCandidate / logCandidateEvent (raw SQL).
+model CandidateStatusLog {
+  id          String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  candidateId String
+  fromStatus  String
+  toStatus    String
+  reason      String?
+  actorId     String?
+  createdAt   DateTime @default(now())
+
+  @@index([candidateId])
+  @@index([createdAt])
+}
+
 model TransparencySubmission {
   id               String               @id @default(cuid())
   submittedHandle  String?
