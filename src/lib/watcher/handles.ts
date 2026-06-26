@@ -86,6 +86,9 @@ export const handlesV2: WatchHandle[] = [
   { handle: 'Empire_sol1',     category: 'community_callout',    priority: 'low', followerCount: 25_000,  chainFocus: 'SOL', addedAt: '2026-04-04', source: 'community_callout' },
   { handle: 'A1lon9',          category: 'pump_fun_cofounder',   priority: 'low', followerCount: 300_000, chainFocus: 'SOL', addedAt: '2026-04-04', source: 'pump_fun_cofounder' },
 
+  // LOW — INTERLIGENS DB (draft profiles, surfaced for Watchlist via curated KolTokenLink)
+  { handle: 'moonbag',         category: 'interligens_case',     priority: 'low', followerCount: 0,       chainFocus: 'SOL', addedAt: '2026-06-26', source: 'interligens_db', notes: 'TOES campaign — draft KolProfile, 7 OSINT captures 2026-06-20; low until reviewed' },
+
   // MEDIUM — GPT watchlist batch 1 (2026-05-12)
   // 21 large-reach SOL callers added from GPT-generated watchlist; existence
   // verified against X API. 4 of the original 25 (blknoiz06, CrashiusClay69,

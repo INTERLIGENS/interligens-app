@@ -232,6 +232,21 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
     )
 fi
 
+# Exceptions pour l'ajout du handle moonbag au watcher (TOES campaign).
+# moonbag a un KolProfile (draft) + un KolTokenLink TOES curated déjà en DB
+# (ep-square-band) ; l'ajout à handlesV2 le fait remonter sur la Watchlist
+# comme GordonGekko/DonWedge. Additif : 1 entrée WatchHandle, priority low.
+# Aucune écriture DB, aucune migration, aucun autre handle modifié.
+# Autorisation humaine explicite (David) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur handles.ts (source de vérité du watcher) +
+# le guard lui-même ; ne couvre PAS le reste de src/lib/watcher/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-moonbag-watchlist$ ]]; then
+    EXEMPT_MOONBAG_WATCHLIST_PATTERNS=(
+        "^src/lib/watcher/handles\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -329,6 +344,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_WATCHER_WINDOW_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche moonbag-watchlist, exempter handles.ts (source watcher).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-moonbag-watchlist$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_MOONBAG_WATCHLIST_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
