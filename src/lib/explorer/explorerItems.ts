@@ -140,6 +140,9 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
 
 export async function getLaunchDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null }>): Promise<DossierItem[]> {
   const tokens = await prisma.kolTokenLink.findMany({
+    // Evidence Intake Bridge (S8): only public curated links surface publicly —
+    // never bridge drafts (visibility='draft') or rejected ones.
+    where: { visibility: 'public' },
     select: { id: true, tokenSymbol: true, contractAddress: true, chain: true, kolHandle: true, role: true, note: true, caseId: true, documentationStatus: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
   })

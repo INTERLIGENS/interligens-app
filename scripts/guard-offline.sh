@@ -329,6 +329,22 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$
     )
 fi
 
+# Exceptions pour l'Evidence Intake Bridge — Sprint 8 (filtre visibility public).
+# Ajoute `visibility: 'public'` au where KolTokenLink de 6 surfaces de lecture
+# publiques (explorer, cluster, coordination, reflex×2, leaderboard) pour que les
+# drafts/rejected du bridge n'apparaissent JAMAIS côté public. Behavior-preserving
+# (les liens légitimes sont tous 'public'). Aucune écriture DB, read-only.
+# Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
+# UNIQUEMENT sur kolLeaderboard.ts (le seul des 6 sous un chemin gelé, src/lib/kol/)
+# + le guard ; les 5 autres (cluster/, coordination/, explorer/, reflex/) ne sont
+# pas gelés.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint8-visibility-filter$ ]]; then
+    EXEMPT_INTAKE_BRIDGE_S8_PATTERNS=(
+        "^src/lib/kol/kolLeaderboard\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -534,6 +550,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_INTAKE_BRIDGE_S7_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche intake-bridge-sprint8-visibility-filter, exempter kolLeaderboard.ts (gelé).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint8-visibility-filter$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_INTAKE_BRIDGE_S8_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

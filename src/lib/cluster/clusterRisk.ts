@@ -55,7 +55,7 @@ export async function getRelatedActorsForProfile(handle: string): Promise<Cluste
 
   // Find all tokens and cases for this handle
   const [myTokenLinks, myCases] = await Promise.all([
-    prisma.kolTokenLink.findMany({ where: { kolHandle: handle, documentationStatus: { not: 'review' } }, select: { tokenSymbol: true, caseId: true } }),
+    prisma.kolTokenLink.findMany({ where: { kolHandle: handle, documentationStatus: { not: 'review' }, visibility: 'public' }, select: { tokenSymbol: true, caseId: true } }),
     prisma.kolCase.findMany({ where: { kolHandle: handle }, select: { caseId: true } }),
   ])
 
@@ -70,7 +70,7 @@ export async function getRelatedActorsForProfile(handle: string): Promise<Cluste
   const [tokenPeers, casePeers] = await Promise.all([
     myTokens.length > 0
       ? prisma.kolTokenLink.findMany({
-          where: { tokenSymbol: { in: myTokens }, kolHandle: { not: handle }, documentationStatus: { not: 'review' } },
+          where: { tokenSymbol: { in: myTokens }, kolHandle: { not: handle }, documentationStatus: { not: 'review' }, visibility: 'public' },
           select: { kolHandle: true, tokenSymbol: true, role: true, caseId: true },
         })
       : [],
