@@ -1234,6 +1234,28 @@ model KolTokenLink {
   documentationStatus String     @default("partial")
   attributionNote     String?
   createdAt           DateTime   @default(now())
+
+  // ─── Evidence Intake Bridge — Sprint 1 (additif, ADDITIF-only DB migration
+  // MIGRATION_intake_bridge_sprint1.sql). visibility/reviewStatus NOT yet read
+  // by any public filter this sprint — the visibility gate lands in Sprint 8.
+  // Backfilled: all pre-bridge rows = visibility 'public', reviewStatus
+  // 'approved_public', sourceType 'manual_seed', createdByBridge false.
+  visibility                String   @default("public")
+  reviewStatus              String   @default("approved_public")
+  sourceType                String?
+  sourceRefId               String?
+  watcherCampaignId         String?
+  socialPostCandidateId     String?
+  canonicalChain            String?
+  canonicalMint             String?
+  tokenResolutionConfidence String?
+  tokenResolutionStatus     String?
+  evidenceSnapshotId        String?
+  reviewedBy                String?
+  reviewedAt                DateTime?
+  reviewNote                String?
+  createdByBridge           Boolean  @default(false)
+
   kol                 KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
 
   @@unique([kolHandle, contractAddress, chain])
@@ -1265,6 +1287,15 @@ model EvidenceSnapshot {
   sessionId     String?
   notes         String?
 
+  // ─── Evidence Intake Bridge — Sprint 1 (additif). reviewStatus already
+  // existed (default 'pending') and is intentionally left unchanged.
+  evidenceLevel  String?
+  sourceType     String?
+  sourceRefId    String?
+  canonicalMint  String?
+  captureQuality String?
+  hashStatus     String?
+
   @@index([relationType, relationKey])
   @@index([isPublic, reviewStatus])
   @@index([sessionId])
@@ -1286,6 +1317,39 @@ model EvidenceNegative {
   @@unique([kolHandle, tokenSymbol, sessionId], map: "EvidenceNegative_kol_token_session_key")
   @@index([kolHandle, tokenSymbol])
   @@index([sessionId])
+}
+
+// ─── Evidence Intake Bridge — Sprint 1 ──────────────────────────────────────
+// Common ingestion engine table (new). Created additively via
+// MIGRATION_intake_bridge_sprint1.sql on ep-square-band. No public read filter
+// references it this sprint (Sprint 8 will). visibility defaults to 'internal'.
+model SignalIntake {
+  id                        String    @id @default(cuid())
+  sourceType                String
+  sourceRefId               String?
+  status                    String    @default("new")
+  visibility                String    @default("internal")
+  rawText                   String?
+  detectedSymbols           String[]
+  detectedAddresses         String[]
+  detectedUrls              String[]
+  kolHandle                 String?
+  submittedByUserId         String?
+  canonicalChain            String?
+  canonicalMint             String?
+  tokenResolutionStatus     String?
+  tokenResolutionConfidence String?
+  tokenResolutionMethod     String?
+  signalScore               Int?
+  priority                  String?
+  evidenceSnapshotId        String?
+  kolTokenLinkId            String?
+  watcherCampaignId         String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @default(now()) @updatedAt
+  reviewedBy                String?
+  reviewedAt                DateTime?
+  reviewNote                String?
 }
 
 model TransparencySubmission {

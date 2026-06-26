@@ -263,6 +263,22 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-budget-cadence$ ]]; then
     )
 fi
 
+# Exceptions pour l'Evidence Intake Bridge — Sprint 1 (schema ADDITIF seul).
+# La migration SQL (ALTER ADD COLUMN IF NOT EXISTS + CREATE TABLE SignalIntake +
+# backfill) est appliquée sur ep-square-band via connexion brute (jamais
+# prisma db push) ; ce commit ne fait que refléter ces colonnes/table dans
+# schema.prod.prisma (anti-drift) + le fichier MIGRATION racine. Aucune
+# suppression, aucun filtre de lecture touché (la gate visibility arrive au
+# Sprint 8). Autorisation humaine explicite (David) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur le schema + le guard ; le fichier
+# MIGRATION_intake_bridge_sprint1.sql (racine) n'est pas un chemin gelé.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint1-schema$ ]]; then
+    EXEMPT_INTAKE_BRIDGE_S1_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -420,6 +436,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-budget-cadence$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_WATCHER_BUDGET_CADENCE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche intake-bridge-sprint1-schema, exempter le schema prod (sync anti-drift).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint1-schema$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_INTAKE_BRIDGE_S1_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
