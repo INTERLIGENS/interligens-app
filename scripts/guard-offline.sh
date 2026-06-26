@@ -279,6 +279,24 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint1-schema$ ]]; the
     )
 fi
 
+# Exceptions pour l'Evidence Intake Bridge — Sprint 4 (promotion draft).
+# Le bridge crée des KolTokenLink visibility='draft' (jamais public) + des
+# SignalIntake. Pour garantir « draft = jamais public », on AVANCE la part
+# minimale du filtre Sprint 8 : les lectures publiques resolve + watchlist
+# filtrent strictement sur visibility='public'. Behavior-preserving (les 187
+# lignes legacy sont toutes 'public'), prouvé par curl AVANT/APRÈS identique.
+# Aucune autre logique de scan/watchlist modifiée. Autorisation humaine
+# explicite (David) — voir PR description. Exemption ciblée UNIQUEMENT sur ces
+# deux routes + le guard ; les fichiers du module (src/lib/watcher-bridge/,
+# src/scripts/) ne sont pas des chemins gelés.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint4-draft-bridge$ ]]; then
+    EXEMPT_INTAKE_BRIDGE_S4_PATTERNS=(
+        "^src/app/api/scan/resolve/route\.ts$"
+        "^src/app/api/watchlist/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -448,6 +466,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint1-schema$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_INTAKE_BRIDGE_S1_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche intake-bridge-sprint4-draft-bridge, exempter resolve + watchlist (filtre visibility).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint4-draft-bridge$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_INTAKE_BRIDGE_S4_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

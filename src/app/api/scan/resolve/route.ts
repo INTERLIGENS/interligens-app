@@ -173,9 +173,14 @@ async function fetchCuratedHits(query: string): Promise<ResolvedTokenCandidate[]
   const rows = await prisma.$queryRawUnsafe<
     Array<{ kolHandle: string; contractAddress: string; chain: string; tokenSymbol: string | null }>
   >(
+    // Evidence Intake Bridge: only EXPLICITLY public curated links surface on the
+    // public scan. Bridge-created drafts (visibility='draft') are never read here.
+    // Strict equality on purpose — visibility is NOT NULL (Sprint 1 backfill set
+    // all legacy rows to 'public'), so a future NULL/draft can never leak.
     `SELECT "kolHandle", "contractAddress", "chain", "tokenSymbol"
        FROM "KolTokenLink"
-      WHERE upper(regexp_replace(coalesce("tokenSymbol", ''), '[$[:space:]_-]', '', 'g')) LIKE $1`,
+      WHERE "visibility" = 'public'
+        AND upper(regexp_replace(coalesce("tokenSymbol", ''), '[$[:space:]_-]', '', 'g')) LIKE $1`,
     likeArg,
   )
   return buildInternalCandidates(
