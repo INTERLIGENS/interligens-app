@@ -58,6 +58,8 @@ export async function lookupCrossReferences(
       where: {
         contractAddress: { equals: input.address, mode: "insensitive" },
         caseId: { not: null },
+        // Evidence Intake Bridge (S8): public links only — never bridge drafts.
+        visibility: "public",
       },
       select: { caseId: true },
     });

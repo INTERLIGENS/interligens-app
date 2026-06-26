@@ -57,6 +57,8 @@ export async function runCasefileMatch(
       const tokenLinks = await prisma.kolTokenLink.findMany({
         where: {
           contractAddress: { equals: input.address, mode: "insensitive" },
+          // Evidence Intake Bridge (S8): public links only — never bridge drafts.
+          visibility: "public",
         },
         select: { kolHandle: true, caseId: true },
       });

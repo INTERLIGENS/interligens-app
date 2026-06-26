@@ -89,7 +89,7 @@ export async function getCoordinationSignalsForProfile(handle: string): Promise<
 
   // Get linked tokens and cases
   const [tokenLinks, caseLinks] = await Promise.all([
-    prisma.kolTokenLink.findMany({ where: { kolHandle: handle, documentationStatus: { not: 'review' } }, select: { tokenSymbol: true, caseId: true } }),
+    prisma.kolTokenLink.findMany({ where: { kolHandle: handle, documentationStatus: { not: 'review' }, visibility: 'public' }, select: { tokenSymbol: true, caseId: true } }),
     prisma.kolCase.findMany({ where: { kolHandle: handle }, select: { caseId: true } }),
   ])
 
@@ -104,7 +104,7 @@ export async function getCoordinationSignalsForProfile(handle: string): Promise<
   const publishedSet = new Set(published.map(p => p.handle))
 
   const peerTokenLinks = myTokens.length > 0
-    ? await prisma.kolTokenLink.findMany({ where: { tokenSymbol: { in: myTokens }, kolHandle: { not: handle }, documentationStatus: { not: 'review' } }, select: { kolHandle: true, tokenSymbol: true } })
+    ? await prisma.kolTokenLink.findMany({ where: { tokenSymbol: { in: myTokens }, kolHandle: { not: handle }, documentationStatus: { not: 'review' }, visibility: 'public' }, select: { kolHandle: true, tokenSymbol: true } })
     : []
   const peerCaseLinks = myCaseIds.length > 0
     ? await prisma.kolCase.findMany({ where: { caseId: { in: myCaseIds }, kolHandle: { not: handle } }, select: { kolHandle: true, caseId: true } })
