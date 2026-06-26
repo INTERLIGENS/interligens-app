@@ -3441,6 +3441,9 @@ model WatcherCampaign {
   summary                String?
   claimPatterns          String                @default("[]")
   metadata               Json?
+  // Evidence Intake Bridge — Sprint 7: roll-up of draft-link review state.
+  // 'pending' (default), 'partially_approved', 'approved_public', 'rejected'.
+  reviewStatus           String                @default("pending")
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
   signals                SocialPostCandidate[]

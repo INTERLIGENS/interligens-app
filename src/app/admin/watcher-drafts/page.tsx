@@ -19,6 +19,7 @@ import {
   type DraftQueueRow,
   type NeedsResolutionRow,
 } from "@/lib/watcher-bridge/loadWatcherDraftQueue";
+import DraftActions from "./DraftActions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -81,14 +82,14 @@ export default async function WatcherDraftsPage() {
           <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1100 }}>
             <thead>
               <tr>
-                {["KOL", "Symbol", "Canonical mint", "Conf.", "Res. status", "Priority", "Score", "kolCount", "Evidence", "Draft status", "Duplicate", "Post"].map((h) => (
+                {["KOL", "Symbol", "Canonical mint", "Conf.", "Res. status", "Priority", "Score", "kolCount", "Evidence", "Draft status", "Duplicate", "Post", "Actions"].map((h) => (
                   <th key={h} style={th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {drafts.length === 0 ? (
-                <tr><td style={{ ...td, color: C.dim }} colSpan={12}>No draft links.</td></tr>
+                <tr><td style={{ ...td, color: C.dim }} colSpan={13}>No draft links.</td></tr>
               ) : (
                 drafts.map((d: DraftQueueRow) => (
                   <tr key={d.id}>
@@ -104,6 +105,13 @@ export default async function WatcherDraftsPage() {
                     <td style={td}><Pill text={d.reviewStatus} tone="dim" /> <Pill text={d.visibility} tone="dim" /></td>
                     <td style={td}>{d.publicDuplicateCount > 0 ? <Pill text={`${d.publicDuplicateCount} public`} tone="danger" /> : <span style={{ color: C.dim }}>none</span>}</td>
                     <td style={td}>{d.postUrl ? <a href={d.postUrl} target="_blank" rel="noreferrer" style={{ color: C.accent }}>post ↗</a> : "—"}</td>
+                    <td style={td}>
+                      <DraftActions
+                        draftId={d.id}
+                        canApprove={!!d.canonicalMint && d.resolutionConfidence === "HIGH"}
+                        blockReason={!d.canonicalMint ? "no canonical mint" : d.resolutionConfidence !== "HIGH" ? `confidence ${d.resolutionConfidence ?? "—"}` : undefined}
+                      />
+                    </td>
                   </tr>
                 ))
               )}
