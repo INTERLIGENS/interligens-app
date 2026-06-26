@@ -50,7 +50,12 @@ async function ensureInfluencer(handle: string): Promise<string> {
 // par run dans un finally → comptabilise les reads réellement faits
 // même si le scan s'interrompt, sans double comptage (1 écriture/run).
 // Toute erreur d'écriture est avalée : le tracking ne casse jamais le scan.
-async function recordXApiUsage(stats: { tweetsFetched: number; userLookups: number }) {
+async function recordXApiUsage(stats: {
+  tweetsFetched: number;
+  userLookups: number;
+  xApiUsageWritten?: boolean;
+  xApiUsageError?: string | null;
+}) {
   const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? "0.0058");
   const costPerLookup = parseFloat(process.env.X_API_COST_PER_LOOKUP ?? "0");
   const posts = stats.tweetsFetched;
@@ -77,8 +82,17 @@ async function recordXApiUsage(stats: { tweetsFetched: number; userLookups: numb
     console.log(
       `[watcher-v2] 💰 XApiUsage upsert: +$${runCost.toFixed(4)} (+${posts} posts, +${lookups} lookups)`,
     );
+    stats.xApiUsageWritten = true;
   } catch (err) {
-    console.error("[watcher-v2] XApiUsage write failed (scan unaffected):", err);
+    // Observabilité : on logge ET on remonte l'erreur dans les stats du run
+    // (visible dans la réponse JSON du cron). Le scan n'est pas cassé pour
+    // autant — le tracking budget reste best-effort —, mais un échec récurrent
+    // (table vide alors que des reads sont consommés) devient diagnosticable
+    // sans avoir à fouiller les logs serverless.
+    const msg = err instanceof Error ? err.message : String(err);
+    stats.xApiUsageWritten = false;
+    stats.xApiUsageError = msg;
+    console.error("[watcher-v2] XApiUsage write failed (scan unaffected):", msg);
   }
 }
 
@@ -95,6 +109,11 @@ async function scanAll() {
     skipped: 0,
     enriched: 0,
     promoted: 0,
+    // Observabilité du tracking budget X API (voir recordXApiUsage). Remontés
+    // dans la réponse JSON du run pour qu'un échec d'écriture XApiUsage soit
+    // visible sans fouiller les logs. written reste false si 0 read consommé.
+    xApiUsageWritten: false as boolean,
+    xApiUsageError: null as string | null,
   };
 
   // Accumulates per-handle signal summaries for the batch digest.
@@ -109,11 +128,15 @@ async function scanAll() {
   console.log(`[watcher-v2] Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles (WATCHER_MAX_HANDLES=${maxHandles})`);
 
   // ── Resume window (catch-up) ────────────────────────────────────────────
-  // The cron is daily → look back a bit MORE than 24h so a late/early run
-  // never leaves a gap. Overlap is harmless: the (postId,influencerId) unique
-  // key dedups re-seen posts. Per-handle cap bounds the cost of a hyper-active
-  // account (pagination would otherwise pull every post in the window).
-  const lookbackHours = parseInt(process.env.WATCHER_LOOKBACK_HOURS ?? "26", 10);
+  // The cron runs DAILY (vercel.json "0 6 * * *") → look back a bit MORE than
+  // 24h so a late/early run never leaves a gap. 30h gives ~6h of overlap
+  // between consecutive daily runs. Overlap is harmless: the
+  // (postId,influencerId) unique key dedups re-seen posts. Per-handle cap
+  // bounds the cost of a hyper-active account (pagination would otherwise pull
+  // every post in the window). NOTE: lookback MUST stay >= the cron interval —
+  // if the schedule ever moves back to every-N-days, raise WATCHER_LOOKBACK_HOURS
+  // accordingly or coverage gaps reappear.
+  const lookbackHours = parseInt(process.env.WATCHER_LOOKBACK_HOURS ?? "30", 10);
   const maxPostsPerHandle = parseInt(process.env.WATCHER_MAX_POSTS_PER_HANDLE ?? "15", 10);
   const startTime = new Date(scanStart.getTime() - lookbackHours * 3_600_000).toISOString();
   console.log(`[watcher-v2] Resume window: start_time=${startTime} (lookback ${lookbackHours}h), cap=${maxPostsPerHandle} posts/handle (GordonGekko 100)`);

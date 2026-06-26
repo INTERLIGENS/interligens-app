@@ -247,6 +247,22 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-moonbag-watchlist$ ]]; then
     )
 fi
 
+# Exceptions pour le fix budget + cadence du watcher (P3 observabilité XApiUsage,
+# P2 cadence quotidienne). Additif : remontée de l'erreur d'écriture XApiUsage
+# dans les stats du run, lookback 26h→30h, et schedule cron 72h→quotidien dans
+# vercel.json. Aucune écriture DB, aucune migration (l'index unique monthStart
+# existe déjà). Aucune logique de détection / KolTokenLink touchée.
+# Autorisation humaine explicite (David) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 + vercel.json (où vit
+# le schedule) + le guard lui-même ; ne couvre PAS le reste de src/app/api/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-budget-cadence$ ]]; then
+    EXEMPT_WATCHER_BUDGET_CADENCE_PATTERNS=(
+        "^src/app/api/cron/watcher-v2/route\.ts$"
+        "^vercel\.json$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -392,6 +408,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SCAN_RESOLVER_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche watcher-budget-cadence, exempter la route cron watcher-v2 + vercel.json.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-budget-cadence$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_WATCHER_BUDGET_CADENCE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
