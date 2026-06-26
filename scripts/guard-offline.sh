@@ -313,6 +313,22 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint5-state-machine$ 
     )
 fi
 
+# Exceptions pour l'Evidence Intake Bridge — Sprint 7 (approve/reject 1-clic).
+# Endpoints admin POST approve/reject (auth verifyAdminSession, même cookie que
+# la page Sprint 6) + colonne WatcherCampaign.reviewStatus ajoutée additivement
+# via SQL Neon brut (jamais prisma db push) reflétée dans le schema (anti-drift).
+# La logique (reviewDraftLink.ts) + les boutons (src/app/admin/watcher-drafts/)
+# vivent hors chemins gelés. Autorisation humaine explicite (David) — voir PR.
+# Exemption ciblée UNIQUEMENT sur les routes du module + le schema + le guard ;
+# MIGRATION_watchercampaign_reviewstatus.sql (racine) n'est pas gelé.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$ ]]; then
+    EXEMPT_INTAKE_BRIDGE_S7_PATTERNS=(
+        "^src/app/api/admin/watcher-drafts/"
+        "^prisma/schema\.prod\.prisma$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -506,6 +522,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint5-state-machine$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_INTAKE_BRIDGE_S5_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche intake-bridge-sprint7-approve-action, exempter les routes approve/reject + schema.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_INTAKE_BRIDGE_S7_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
