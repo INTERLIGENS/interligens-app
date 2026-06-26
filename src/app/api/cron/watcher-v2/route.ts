@@ -96,6 +96,70 @@ async function recordXApiUsage(stats: {
   }
 }
 
+// ─── X API monthly HARD CAP ───────────────────────────────────────────────
+//
+// Absolute monthly ceiling: the watcher STOPS before crossing it, never after.
+// The cap is read from the REAL XApiUsage table (totalCostUsd for the current
+// month) — not an in-memory counter that resets on a cold serverless start.
+//
+// X_API_HARD_CAP_USD : hard monthly ceiling (default $100).
+// CAP_WARN_RATIO     : soft-warning threshold (80% of the cap).
+// CAP_SAFETY_FACTOR  : conservative pad on the estimated next-run cost. The
+//   per-handle post cap makes (handles × cap × costPerPost) a true upper bound,
+//   but X_API_COST_PER_POST is a BILLED AVERAGE that can drift up, so we pad the
+//   estimate to stop a full run BEFORE the ceiling rather than risk landing on
+//   it. Configurable via X_API_CAP_SAFETY_FACTOR.
+export const X_API_HARD_CAP_USD = parseFloat(process.env.X_API_HARD_CAP_USD ?? "100");
+const CAP_WARN_RATIO = 0.8;
+const CAP_SAFETY_FACTOR = parseFloat(process.env.X_API_CAP_SAFETY_FACTOR ?? "1.25");
+
+// Worst-case cost of the upcoming run: every handle fetched at its per-handle
+// cap (GordonGekko=100), priced at costPerPost, padded by the safety factor.
+export function estimateRunCostUsd(
+  handles: { handle: string }[],
+  maxPostsPerHandle: number,
+  costPerPost: number,
+  safetyFactor: number = CAP_SAFETY_FACTOR,
+): number {
+  const posts = handles.reduce(
+    (sum, h) => sum + (h.handle === "GordonGekko" ? 100 : maxPostsPerHandle),
+    0,
+  );
+  return posts * costPerPost * safetyFactor;
+}
+
+// Reads the REAL spent-this-month from XApiUsage. hasBaseline=false when no row
+// exists yet for the current month → treat as $0 spent (run may proceed), but
+// the caller logs that the tracking has no baseline yet. Accepts any db handle
+// exposing $queryRawUnsafe (PrismaClient OR an interactive tx) so it is testable.
+export async function readMonthSpendUsd(
+  db: { $queryRawUnsafe: <T = unknown>(q: string, ...a: unknown[]) => Promise<T> },
+): Promise<{ spentUsd: number; hasBaseline: boolean }> {
+  const rows = await db.$queryRawUnsafe<Array<{ spent: number | null }>>(
+    `SELECT "totalCostUsd"::float8 AS spent
+       FROM "XApiUsage"
+      WHERE "monthStart" = date_trunc('month', (now() at time zone 'utc'))
+      LIMIT 1`,
+  );
+  if (!rows.length || rows[0].spent == null) return { spentUsd: 0, hasBaseline: false };
+  return { spentUsd: rows[0].spent, hasBaseline: true };
+}
+
+// Pure decision: given real spend, the estimated run cost, and the cap, decide
+// whether to block the run (spent + estimate would reach the cap) and whether to
+// raise the soft warning (spent ≥ 80% of the cap).
+export function evaluateBudgetCap(opts: {
+  spentUsd: number;
+  estimateUsd: number;
+  capUsd: number;
+  warnRatio?: number;
+}): { capReached: boolean; warning: boolean } {
+  const warnRatio = opts.warnRatio ?? CAP_WARN_RATIO;
+  const capReached = opts.spentUsd + opts.estimateUsd >= opts.capUsd;
+  const warning = opts.spentUsd >= opts.capUsd * warnRatio;
+  return { capReached, warning };
+}
+
 async function scanAll() {
   const emailMode = (process.env.WATCHER_EMAIL_MODE ?? "digest").toLowerCase();
   const scanStart = new Date();
@@ -114,6 +178,12 @@ async function scanAll() {
     // visible sans fouiller les logs. written reste false si 0 read consommé.
     xApiUsageWritten: false as boolean,
     xApiUsageError: null as string | null,
+    // Hard-cap budgétaire X API (voir helpers ci-dessus). Remontés dans la
+    // réponse JSON du run.
+    xApiCapReached: false as boolean,
+    xApiCapWarning: false as boolean,
+    xApiSpentThisMonth: 0 as number,
+    xApiCapUsd: 0 as number,
   };
 
   // Accumulates per-handle signal summaries for the batch digest.
@@ -140,6 +210,47 @@ async function scanAll() {
   const maxPostsPerHandle = parseInt(process.env.WATCHER_MAX_POSTS_PER_HANDLE ?? "15", 10);
   const startTime = new Date(scanStart.getTime() - lookbackHours * 3_600_000).toISOString();
   console.log(`[watcher-v2] Resume window: start_time=${startTime} (lookback ${lookbackHours}h), cap=${maxPostsPerHandle} posts/handle (GordonGekko 100)`);
+
+  // ── Monthly HARD CAP pre-run check ($100 default) ───────────────────────
+  // Read REAL spend-this-month from XApiUsage, estimate this run's worst-case
+  // cost, and refuse to start if the two together would reach the cap. Runs
+  // BEFORE any billed X API call so a capped month costs $0.
+  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? "0.0058");
+  const estimateUsd = estimateRunCostUsd(watchlist, maxPostsPerHandle, costPerPost);
+  const { spentUsd, hasBaseline } = await readMonthSpendUsd(prisma);
+  const { capReached, warning } = evaluateBudgetCap({
+    spentUsd,
+    estimateUsd,
+    capUsd: X_API_HARD_CAP_USD,
+  });
+  stats.xApiSpentThisMonth = spentUsd;
+  stats.xApiCapUsd = X_API_HARD_CAP_USD;
+  stats.xApiCapWarning = warning;
+  if (!hasBaseline) {
+    console.log(
+      `[watcher-v2] XApiUsage has no baseline row for this month yet — treating spend as $0. ` +
+        `Tracking starts accumulating once the current code records usage in prod.`,
+    );
+  }
+  if (warning && !capReached) {
+    console.warn(
+      `[watcher-v2] ⚠️ X API spend at $${spentUsd.toFixed(2)}/$${X_API_HARD_CAP_USD} this month ` +
+        `(≥${Math.round(CAP_WARN_RATIO * 100)}%) — approaching the hard cap.`,
+    );
+  }
+  if (capReached) {
+    stats.xApiCapReached = true;
+    console.error(
+      `[watcher-v2] 🛑 X API hard cap reached: $${spentUsd.toFixed(2)} spent + ~$${estimateUsd.toFixed(2)} ` +
+        `est. run ≥ $${X_API_HARD_CAP_USD}/month cap — run skipped, 0 handles processed.`,
+    );
+    return {
+      ok: true,
+      capReached: true,
+      ...stats,
+      note: `X API hard cap reached: $${spentUsd.toFixed(2)}/$${X_API_HARD_CAP_USD} this month, run skipped.`,
+    };
+  }
 
   // Spend-cap short-circuit. The X API billing spend cap makes EVERY read 403
   // (masquerading as "not found"), which would otherwise march the whole
@@ -170,6 +281,20 @@ async function scanAll() {
   try {
   for (const entry of watchlist) {
     const handle = entry.handle;
+
+    // Intra-run hard-cap guard: stop fetching BEFORE crossing the cap. Cost so
+    // far = month baseline + posts fetched this run × costPerPost. Belt-and-
+    // suspenders behind the pre-run check (the estimate is an upper bound, but
+    // this guarantees we never keep burning calls if it were ever exceeded).
+    const projectedSpendUsd = spentUsd + stats.tweetsFetched * costPerPost;
+    if (projectedSpendUsd >= X_API_HARD_CAP_USD) {
+      stats.xApiCapReached = true;
+      console.error(
+        `[watcher-v2] 🛑 X API hard cap reached mid-run at $${projectedSpendUsd.toFixed(2)}/` +
+          `$${X_API_HARD_CAP_USD} — stopping after ${stats.scanned} handles, ${stats.tweetsFetched} posts.`,
+      );
+      break;
+    }
 
     try {
       const xUser = await getUserByUsername(handle);
