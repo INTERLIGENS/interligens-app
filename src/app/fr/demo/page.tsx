@@ -415,17 +415,18 @@ export default function TigerScanPageFR() {
     try {
       const r = await fetch('/api/scan/resolve?ticker=' + encodeURIComponent(ticker), { cache: 'no-store' })
       const data = await r.json()
-      const results: TokenCandidate[] = Array.isArray(data?.results) ? data.results : []
-      if (results.length === 1) {
+      const candidates: TokenCandidate[] = Array.isArray(data?.candidates) ? data.candidates : []
+      // resolved → auto-scan; ambiguous → dropdown; not_found → empty picker
+      if (data?.status === 'resolved' && data?.selected) {
         setTickerState(null)
-        const c = results[0]
+        const c = data.selected as TokenCandidate
         const formatted = formatAddressForChain(c.address, c.chain)
         setAddress(formatted)
         setResult(null)
         runScan(formatted)
         return
       }
-      setTickerState({ query: ticker, candidates: results, loading: false })
+      setTickerState({ query: ticker, candidates, loading: false })
     } catch {
       setTickerState({ query: ticker, candidates: [], loading: false })
     }

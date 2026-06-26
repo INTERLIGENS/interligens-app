@@ -216,6 +216,22 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
     )
 fi
 
+# Exceptions pour le scan ticker resolver (DexScreener fallback — additif au
+# résolveur ticker→token du scan /demo). Le résolveur retombe sur DexScreener
+# search puis CoinGecko quand l'interne manque, avec matching tolérant scoré et
+# désambiguïsation par déroulant. Read-only, aucune écriture DB. Aucun couplage
+# scoring/TigerScore/PDF. Autorisation humaine explicite (David) — voir PR.
+# Exemption ciblée UNIQUEMENT sur la route resolve + le composant TokenPicker +
+# le guard lui-même. Les fichiers non gelés (src/lib/marketProviders.ts,
+# src/app/{fr,en}/demo/page.tsx) passent sans exemption (hors paths interdits).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
+    EXEMPT_SCAN_RESOLVER_PATTERNS=(
+        "^src/app/api/scan/resolve/route\.ts$"
+        "^src/components/scan/TokenPicker\.tsx$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -337,6 +353,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche scan-resolver-dexscreener, exempter la route resolve + TokenPicker.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_SCAN_RESOLVER_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

@@ -188,3 +188,211 @@ export async function getMarketSnapshot(
   setCache(chain, mint, snapshot);
   return snapshot;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TICKER RESOLUTION SUPPORT (additive — used by /api/scan/resolve)
+//
+// New surface area only. getMarketSnapshot(mint) above is UNCHANGED — the 11
+// routes that import it keep the same signature. Everything below is exported
+// helpers + searchDexScreenerPairs (a ticker→pairs search, distinct from the
+// mint-keyed fetchDexScreener used by getMarketSnapshot).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type TickerMatchType =
+  | "exact"
+  | "query_starts_with_symbol"
+  | "symbol_starts_with_query";
+
+// Short, app-canonical chain codes (same enum the demo scan routing + the
+// TokenPicker CHAIN_LABEL already use). "OTHER" = recognised pair on a chain we
+// don't route — displayable but never auto-resolved.
+export type ResolveChain =
+  | "SOL"
+  | "ETH"
+  | "BSC"
+  | "TRON"
+  | "HYPER"
+  | "BASE"
+  | "ARBITRUM"
+  | "OTHER";
+
+export type ResolveSource = "curated" | "mentions" | "dexscreener" | "coingecko";
+
+export interface ResolvedTokenCandidate {
+  ticker: string;
+  name: string | null;
+  mint: string;
+  chain: ResolveChain;
+  liquidityUsd: number | null;
+  volume24hUsd: number | null;
+  pairCreatedAt: number | null;
+  source: ResolveSource;
+  matchType: TickerMatchType;
+  lowLiquidity: boolean;
+  // Internal sources (curated/mentions) carry the count of distinct KOLs on
+  // file; external sources leave it at 0.
+  kolCount?: number;
+}
+
+export type ResolveStatus = "resolved" | "ambiguous" | "not_found";
+
+// Generic tickers: never prefix-auto-matched. Force exact (and exact-multiple
+// then resolves to ambiguous). Editable on purpose.
+export const GENERIC_TICKERS = new Set<string>([
+  "AI", "DOG", "CAT", "PEPE", "BTC", "ETH", "SOL", "USDT", "USDC", "BNB",
+  "XRP", "DOGE", "SHIB", "MEME", "MOON", "INU", "PUMP",
+]);
+
+const KNOWN_ROUTABLE_CHAINS: ResolveChain[] = ["SOL", "ETH", "BSC", "BASE", "ARBITRUM"];
+
+// Strip $, whitespace, dashes, underscores; uppercase. Used for BOTH query and
+// stored/on-pair symbol before comparison.
+export function normalizeSymbol(s: string | null | undefined): string {
+  if (!s) return "";
+  return s.toUpperCase().replace(/[$\s_-]/g, "");
+}
+
+// Both arguments must already be normalised (normalizeSymbol). Returns null when
+// there is no acceptable match. Prefix matches are gated:
+//   min(len) >= 4  AND  maxLen/minLen <= 3   (TOES↔TOESCOIN ok; CAT↔CATGIRL no)
+// Generic tickers only ever match exact.
+export function tickerMatchType(qn: string, sn: string): TickerMatchType | null {
+  if (!qn || !sn) return null;
+  if (qn === sn) return "exact";
+  if (GENERIC_TICKERS.has(qn) || GENERIC_TICKERS.has(sn)) return null;
+  const minL = Math.min(qn.length, sn.length);
+  const maxL = Math.max(qn.length, sn.length);
+  if (minL < 4) return null;
+  if (maxL / minL > 3) return null;
+  // query is longer, stored symbol is a leading slice of it (TOESCOIN ⊃ TOES):
+  // the stored symbol begins (starts off) the typed query → symbol_starts_with_query.
+  if (qn.startsWith(sn)) return "symbol_starts_with_query";
+  // stored symbol is longer, typed query is a leading slice of it (TOES → TOESCOIN):
+  // the typed query begins (starts off) the stored symbol → query_starts_with_symbol.
+  if (sn.startsWith(qn)) return "query_starts_with_symbol";
+  return null;
+}
+
+// Strict candidate ordering:
+//   1. exact before prefix
+//   2. Solana preference at equal matchType (app is Solana-first)
+//   3. liquidityUsd desc   4. volume24hUsd desc   5. pairCreatedAt desc
+// An exact at 8k liq beats a prefix at 40k liq (rule 1 outranks rule 3).
+export function compareResolveCandidates(
+  a: ResolvedTokenCandidate,
+  b: ResolvedTokenCandidate,
+): number {
+  const rank = (c: ResolvedTokenCandidate) => (c.matchType === "exact" ? 2 : 1);
+  let d = rank(b) - rank(a);
+  if (d) return d;
+  const sol = (c: ResolvedTokenCandidate) => (c.chain === "SOL" ? 1 : 0);
+  d = sol(b) - sol(a);
+  if (d) return d;
+  d = (b.liquidityUsd ?? -1) - (a.liquidityUsd ?? -1);
+  if (d) return d;
+  d = (b.volume24hUsd ?? -1) - (a.volume24hUsd ?? -1);
+  if (d) return d;
+  d = (b.pairCreatedAt ?? -1) - (a.pairCreatedAt ?? -1);
+  if (d) return d;
+  return 0;
+}
+
+// Decides resolved / ambiguous / not_found from an ALREADY-SORTED list.
+// Internal (curated/mentions) hits are trusted: a single one auto-resolves even
+// on a prefix match. External hits must be exact + adequately liquid, and a
+// low-liquidity hit (<1000) is never auto-resolved silently.
+export function decideResolution(sorted: ResolvedTokenCandidate[]): ResolveStatus {
+  if (sorted.length === 0) return "not_found";
+  const top = sorted[0];
+  const second = sorted[1];
+  const exacts = sorted.filter((c) => c.matchType === "exact");
+  const knownChain = KNOWN_ROUTABLE_CHAINS.includes(top.chain);
+  const isInternal = top.source === "curated" || top.source === "mentions";
+
+  if (exacts.length >= 2) {
+    const chains = new Set(exacts.map((c) => c.chain));
+    if (chains.size > 1) {
+      // Cross-chain exact collision: only resolve if the leader clearly
+      // dominates (≥2x liquidity). A chain mistake is critical on an anti-scam.
+      const a = top.liquidityUsd ?? 0;
+      const b = second?.liquidityUsd ?? 0;
+      const ratio = b > 0 ? a / b : a > 0 ? Infinity : 0;
+      if (!(ratio >= 2)) return "ambiguous";
+      // dominant leader → fall through to eligibility checks
+    } else {
+      // Multiple exact matches on the same chain = genuinely distinct tokens.
+      return "ambiguous";
+    }
+  } else if (sorted.length >= 2) {
+    // Several candidates, at most one exact. A prefix top is never auto-picked.
+    if (top.matchType !== "exact") return "ambiguous";
+  }
+
+  if (!knownChain) return "ambiguous";
+  if (isInternal) return "resolved";
+  if (top.matchType === "exact" && !top.lowLiquidity) return "resolved";
+  return "ambiguous";
+}
+
+const DEX_CHAIN_MAP: Record<string, ResolveChain> = {
+  solana: "SOL",
+  ethereum: "ETH",
+  base: "BASE",
+  bsc: "BSC",
+};
+
+// Ticker → candidate pairs via DexScreener public search (keyless, no auth
+// header). Network/parse failures return [] so the resolver falls through to
+// CoinGecko without crashing. Inclusion threshold: liquidity.usd >= 250.
+export async function searchDexScreenerPairs(
+  query: string,
+): Promise<ResolvedTokenCandidate[]> {
+  const qn = normalizeSymbol(query);
+  if (!qn) return [];
+  try {
+    const res = await fetch(
+      `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(query)}`,
+      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(5000) },
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    const pairs: any[] = Array.isArray(json?.pairs) ? json.pairs : [];
+
+    const grouped = new Map<string, ResolvedTokenCandidate>();
+    for (const p of pairs) {
+      const symRaw = p?.baseToken?.symbol;
+      const mint = p?.baseToken?.address;
+      if (!symRaw || !mint) continue;
+      const matchType = tickerMatchType(qn, normalizeSymbol(symRaw));
+      if (!matchType) continue;
+      const liq = typeof p?.liquidity?.usd === "number" ? p.liquidity.usd : null;
+      if (liq === null || liq < 250) continue; // hard inclusion floor
+      const chain = DEX_CHAIN_MAP[p?.chainId] ?? "OTHER";
+      const candidate: ResolvedTokenCandidate = {
+        ticker: String(symRaw).replace(/^\$+/, "").toUpperCase(),
+        name: p?.baseToken?.name ?? null,
+        mint: String(mint),
+        chain,
+        liquidityUsd: liq,
+        volume24hUsd: typeof p?.volume?.h24 === "number" ? p.volume.h24 : null,
+        pairCreatedAt: typeof p?.pairCreatedAt === "number" ? p.pairCreatedAt : null,
+        source: "dexscreener",
+        matchType,
+        lowLiquidity: liq < 1000,
+        kolCount: 0,
+      };
+      const key = chain + ":" + candidate.mint.toLowerCase();
+      const existing = grouped.get(key);
+      // Keep the most liquid pair per (chain, mint).
+      if (!existing || (candidate.liquidityUsd ?? 0) > (existing.liquidityUsd ?? 0)) {
+        grouped.set(key, candidate);
+      }
+    }
+
+    return Array.from(grouped.values())
+      .sort(compareResolveCandidates)
+      .slice(0, 5);
+  } catch {
+    return [];
+  }
+}
