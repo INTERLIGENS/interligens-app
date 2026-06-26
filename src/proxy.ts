@@ -2,8 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/security/adminAuth";
 
-const isProd = process.env.NODE_ENV === "production";
-
 function basicAuthFail() {
   return new NextResponse("Unauthorized", {
     status: 401,
@@ -117,7 +115,11 @@ export function proxy(req: NextRequest) {
   const isAdminApiRoute =
     !isAdminLoginSurface && pathname.startsWith("/api/admin");
 
-  if (isProd && isAdminPageRoute) {
+  // Always-on (Sprint 8 hardening): the admin gate no longer depends on isProd.
+  // A prod-only gate is a trap — local testing or a mis-configured preview deploy
+  // would silently read as "admin is open". The /admin/login carve-out above
+  // (isAdminLoginSurface) keeps login reachable without a session.
+  if (isAdminPageRoute) {
     // Browser pages: ONLY accept the admin_session cookie. No more Basic
     // Auth prompt — the user signs in at /admin/login and gets a cookie.
     if (!verifyAdminSession(req)) {
@@ -125,7 +127,7 @@ export function proxy(req: NextRequest) {
     }
   }
 
-  if (isProd && isAdminApiRoute) {
+  if (isAdminApiRoute) {
     // API routes: accept either the admin_session cookie (so internal
     // fetches from the admin UI keep working) or Basic Auth (legacy curl
     // scripts still work). Route handlers then layer requireAdminApi on
