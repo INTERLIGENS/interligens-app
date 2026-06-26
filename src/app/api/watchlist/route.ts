@@ -38,7 +38,10 @@ export async function GET() {
     const [curatedLinks, mentionLinks, involvements] = handlesForTokenLookup.length
       ? await Promise.all([
           prisma.kolTokenLink.findMany({
-            where: { kolHandle: { in: handlesForTokenLookup, mode: 'insensitive' }, tokenSymbol: { not: null } },
+            // Evidence Intake Bridge: only EXPLICITLY public links produce ticker
+            // chips. Bridge drafts (visibility='draft') never surface here. Strict
+            // equality — visibility is NOT NULL, so no NULL/draft can leak.
+            where: { kolHandle: { in: handlesForTokenLookup, mode: 'insensitive' }, tokenSymbol: { not: null }, visibility: 'public' },
             select: { kolHandle: true, tokenSymbol: true, createdAt: true },
             orderBy: { createdAt: 'desc' },
           }),
