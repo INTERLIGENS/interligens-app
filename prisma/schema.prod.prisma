@@ -1296,6 +1296,12 @@ model EvidenceSnapshot {
   captureQuality String?
   hashStatus     String?
 
+  // ─── OSINT Vision Ingest V1 (additif, MIGRATION_osint_vision_ingest_v1.sql,
+  // NOT yet applied). Distinguishes vision-auto shadow evidence from manual
+  // seeds; extractionConfidence carries the per-field/per-token confidence blob.
+  extractionMethod     String?
+  extractionConfidence Json?
+
   @@index([relationType, relationKey])
   @@index([isPublic, reviewStatus])
   @@index([sessionId])
