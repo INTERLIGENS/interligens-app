@@ -1369,6 +1369,27 @@ model CandidateStatusLog {
   @@index([createdAt])
 }
 
+// ─── Bridge cron safety layer — JobRunLog ───────────────────────────────────
+// Audit of every bridge job run (incl. dry-runs and disabled no-ops). Created
+// additively via MIGRATION_jobrunlog.sql. `limit` is reserved SQL → `limitN`.
+model JobRunLog {
+  id            String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  jobName       String
+  dryRun        Boolean   @default(false)
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    @default("running")
+  limitN        Int?
+  processed     Int       @default(0)
+  createdDrafts Int       @default(0)
+  ambiguous     Int       @default(0)
+  conflicts     Int       @default(0)
+  errors        Int       @default(0)
+  summaryJson   Json?
+
+  @@index([jobName, startedAt(sort: Desc)])
+}
+
 model TransparencySubmission {
   id               String               @id @default(cuid())
   submittedHandle  String?

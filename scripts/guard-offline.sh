@@ -345,6 +345,21 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint8-visibility-filt
     )
 fi
 
+# Exceptions pour le Bridge cron safety layer (PAS de cron — juste la couche de
+# contrôle). Refactor de promoteWatcherSignalsToDraft (options + métriques),
+# télémétrie optionnelle dans resolveCanonicalToken, wrapper runBridgeJob
+# (kill switch env + JobRunLog), table JobRunLog additive (SQL Neon brut, jamais
+# prisma db push) reflétée dans le schema (anti-drift). Aucun câblage cron.
+# Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
+# UNIQUEMENT sur le schema + le guard ; src/lib/watcher-bridge/,
+# src/lib/token-resolution/ et src/scripts/ ne sont pas gelés.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-bridge-cron-safety$ ]]; then
+    EXEMPT_BRIDGE_CRON_SAFETY_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -550,6 +565,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_INTAKE_BRIDGE_S7_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche bridge-cron-safety, exempter le schema prod (sync JobRunLog).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-bridge-cron-safety$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_BRIDGE_CRON_SAFETY_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
