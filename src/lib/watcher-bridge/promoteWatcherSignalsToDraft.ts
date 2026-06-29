@@ -12,7 +12,7 @@
 //
 // READ + write, idempotent, no public surface. Not wired into the cron.
 
-import { resolveCanonicalToken } from "@/lib/token-resolution/resolveCanonicalToken";
+import { resolveCanonicalToken, type ApiCallTelemetry } from "@/lib/token-resolution/resolveCanonicalToken";
 import { createAutoEvidenceSnapshot } from "@/lib/watcher-bridge/createAutoEvidenceSnapshot";
 import { createDraftKolTokenLink } from "@/lib/watcher-bridge/createDraftKolTokenLink";
 import { advanceCandidateTo, logCandidateEvent } from "@/lib/watcher-bridge/candidateStateMachine";
@@ -29,7 +29,8 @@ export type PromoteAction =
   | "below_threshold"
   | "not_eligible"
   | "no_signal"
-  | "not_found";
+  | "not_found"
+  | "error";
 
 export interface PromoteResult {
   candidateId: string;
@@ -42,6 +43,8 @@ export interface PromoteResult {
   draftId?: string;
   signalIntakeId?: string;
   reason?: string;
+  /** true if a new E1 EvidenceSnapshot was (or in dry-run WOULD be) created. */
+  createdEvidenceSnapshot?: boolean;
 }
 
 const ELIGIBLE_STATUSES = new Set(["new", "clustered"]);
@@ -78,16 +81,30 @@ function toPgTextArray(arr: string[]): string {
   return "{" + arr.map((s) => `"${s.replace(/(["\\])/g, "\\$1")}"`).join(",") + "}";
 }
 
-async function ensureEvidenceSnapshotId(db: RawDb, candidateId: string): Promise<string | null> {
-  // Sprint 3 is idempotent — ensures the E1 evidence exists, then we read its id.
-  await createAutoEvidenceSnapshot(db as never, candidateId);
+// Ensures the E1 evidence exists for a candidate and reports whether a NEW one
+// was created. In dryRun mode it writes NOTHING — it only checks existence and
+// reports `created` as "would create" (key metric for the dry-run backlog).
+async function ensureEvidenceSnapshotId(
+  db: RawDb,
+  candidateId: string,
+  dryRun: boolean,
+): Promise<{ id: string | null; created: boolean }> {
+  const existing = await db.$queryRawUnsafe<Array<{ id: string }>>(
+    `SELECT id FROM "EvidenceSnapshot"
+      WHERE "sourceRefId" = $1 AND "sourceType" = 'watcher_x_post'
+      ORDER BY "createdAt" ASC LIMIT 1`,
+    candidateId,
+  );
+  if (existing.length > 0) return { id: existing[0].id, created: false };
+  if (dryRun) return { id: null, created: true }; // would be created on a live run
+  const r = await createAutoEvidenceSnapshot(db as never, candidateId);
   const rows = await db.$queryRawUnsafe<Array<{ id: string }>>(
     `SELECT id FROM "EvidenceSnapshot"
       WHERE "sourceRefId" = $1 AND "sourceType" = 'watcher_x_post'
       ORDER BY "createdAt" ASC LIMIT 1`,
     candidateId,
   );
-  return rows[0]?.id ?? null;
+  return { id: rows[0]?.id ?? null, created: r.action === "created" };
 }
 
 async function enqueueSignalIntake(
@@ -133,7 +150,7 @@ async function enqueueSignalIntake(
 export async function promoteCandidate(
   db: RawDb,
   candidateId: string,
-  opts: { dryRun?: boolean } = {},
+  opts: { dryRun?: boolean; telemetry?: ApiCallTelemetry } = {},
 ): Promise<PromoteResult> {
   const dryRun = !!opts.dryRun;
 
@@ -176,16 +193,20 @@ export async function promoteCandidate(
   }
   const thresholdMet = priorityHigh || scoreHigh || multiKol;
 
-  // A.2 — canonical resolution (Sprint 2 service).
-  const resolution = await resolveCanonicalToken({
-    rawText: cand.rawText ?? undefined,
-    extractedCashtags: tokens,
-    extractedAddresses: addresses,
-    chainHint: "solana",
-    postTimestamp: cand.postedAtUtc ?? undefined,
-    kolHandle: cand.handle,
-    watcherCampaignId: cand.campaignId ?? undefined,
-  });
+  // A.2 — canonical resolution (Sprint 2 service). Telemetry counts its DexScreener
+  // / Helius calls — done in dry-run too (resolution is real even in dry mode).
+  const resolution = await resolveCanonicalToken(
+    {
+      rawText: cand.rawText ?? undefined,
+      extractedCashtags: tokens,
+      extractedAddresses: addresses,
+      chainHint: "solana",
+      postTimestamp: cand.postedAtUtc ?? undefined,
+      kolHandle: cand.handle,
+      watcherCampaignId: cand.campaignId ?? undefined,
+    },
+    opts.telemetry,
+  );
 
   const resolvedHigh =
     resolution.status === "RESOLVED" &&
@@ -197,14 +218,16 @@ export async function promoteCandidate(
   if (resolvedHigh && (thresholdMet || explicitCaHigh)) {
     const symbol = resolution.symbol || tokens[0] || null;
     const chain = resolution.chain || "SOL";
+    // Compute evidence existence in BOTH modes (dry = "would create", no write).
+    const ev = await ensureEvidenceSnapshotId(db, cand.id, dryRun);
     if (dryRun) {
       return {
         candidateId, action: "draft_created", kolHandle: cand.handle, symbol,
         canonicalMint: resolution.canonicalMint, resolutionStatus: resolution.status,
-        resolutionMethod: resolution.method, reason: "dry_run",
+        resolutionMethod: resolution.method, createdEvidenceSnapshot: ev.created,
+        reason: "dry_run",
       };
     }
-    const evidenceSnapshotId = await ensureEvidenceSnapshotId(db, cand.id);
     const draft = await createDraftKolTokenLink(db, {
       kolHandle: cand.handle,
       canonicalMint: resolution.canonicalMint!,
@@ -212,7 +235,7 @@ export async function promoteCandidate(
       symbol,
       watcherCampaignId: cand.campaignId,
       socialPostCandidateId: cand.id,
-      evidenceSnapshotId,
+      evidenceSnapshotId: ev.id,
     });
     // State machine: draft link created → walk legally to needs_review
     // (new→parsed→clustered→draft_ready→draft_link_created→needs_review).
@@ -223,7 +246,7 @@ export async function promoteCandidate(
       action: draft.action === "draft_created" ? "draft_created" : "draft_skipped_exists",
       kolHandle: cand.handle, symbol, canonicalMint: resolution.canonicalMint,
       resolutionStatus: resolution.status, resolutionMethod: resolution.method,
-      draftId: draft.kolTokenLinkId,
+      draftId: draft.kolTokenLinkId, createdEvidenceSnapshot: ev.created,
     };
   }
 
@@ -255,46 +278,124 @@ export async function promoteCandidate(
   };
 }
 
+export interface PromoteOptions {
+  candidateIds?: string[];
+  dryRun?: boolean;
+  limit?: number;                       // default 25, strictly enforced
+  minPriority?: "HIGH" | "CRITICAL";    // campaign priority floor
+  maxAgeDays?: number;                  // only candidates posted within N days
+  onlyUnprocessed?: boolean;            // default true: status IN (new, clustered)
+  stopOnError?: boolean;                // default false: log error, continue
+}
+
 export interface PromoteSummary {
   processed: number;
-  draft_created: number;
-  draft_skipped_exists: number;
-  needs_resolution_created: number;
-  needs_resolution_skipped: number;
-  below_threshold: number;
-  not_eligible: number;
-  no_signal: number;
-  not_found: number;
+  createdEvidenceSnapshots: number;
+  createdDraftLinks: number;
+  alreadyExistingSkipped: number;
+  ambiguous: number;
+  unresolved: number;
+  conflict: number;
+  lowPrioritySkipped: number;
+  errors: number;
+  durationMs: number;
+  apiCallsDexScreener: number;
+  apiCallsHelius: number;
+  actionCounts: Record<string, number>; // raw per-action tally (debug)
   results: PromoteResult[];
 }
 
 export async function promoteWatcherSignalsToDraft(
   db: RawDb,
-  opts: { candidateIds?: string[]; limit?: number; dryRun?: boolean } = {},
+  opts: PromoteOptions = {},
 ): Promise<PromoteSummary> {
+  const startedAt = Date.now();
+  const dryRun = !!opts.dryRun;
+  const stopOnError = !!opts.stopOnError;
+  const limit = Math.max(0, opts.limit ?? 25);
+  const onlyUnprocessed = opts.onlyUnprocessed !== false; // default true
+  const telemetry: ApiCallTelemetry = { dexScreener: 0, helius: 0 };
+
   let ids = opts.candidateIds ?? [];
-  if (ids.length === 0 && opts.limit) {
+  let lowPrioritySkipped = 0;
+
+  if (ids.length > 0) {
+    ids = ids.slice(0, limit); // limit strictly enforced even for explicit ids
+  } else {
+    const conds: string[] = [
+      `jsonb_typeof(c."detectedTokens") = 'array'`,
+      `jsonb_array_length(c."detectedTokens") > 0`,
+    ];
+    const params: unknown[] = [];
+    if (onlyUnprocessed) conds.push(`c.status IN ('new','clustered')`);
+    if (opts.maxAgeDays != null) {
+      params.push(opts.maxAgeDays);
+      conds.push(`coalesce(c."postedAtUtc", c."discoveredAtUtc") >= now() - ($${params.length} || ' days')::interval`);
+    }
+    const baseWhere = conds.join(" AND ");
+
+    // minPriority — controlled enum, safe to inline. Also tally lowPrioritySkipped.
+    let priorityClause = "";
+    if (opts.minPriority) {
+      const allowed = opts.minPriority === "CRITICAL" ? "('CRITICAL')" : "('HIGH','CRITICAL')";
+      priorityClause = ` AND wc.priority IN ${allowed}`;
+      const skip = await db.$queryRawUnsafe<Array<{ n: number }>>(
+        `SELECT count(*)::int n FROM "social_post_candidates" c
+           LEFT JOIN "WatcherCampaign" wc ON wc.id = c."campaignId"
+          WHERE ${baseWhere} AND (wc.priority IS NULL OR wc.priority NOT IN ${allowed})`,
+        ...params,
+      );
+      lowPrioritySkipped = skip[0]?.n ?? 0;
+    }
+
+    params.push(limit);
     const rows = await db.$queryRawUnsafe<Array<{ id: string }>>(
-      `SELECT id FROM "social_post_candidates"
-        WHERE jsonb_typeof("detectedTokens") = 'array'
-          AND jsonb_array_length("detectedTokens") > 0
-        ORDER BY "discoveredAtUtc" DESC
-        LIMIT $1`,
-      opts.limit,
+      `SELECT c.id FROM "social_post_candidates" c
+         LEFT JOIN "WatcherCampaign" wc ON wc.id = c."campaignId"
+        WHERE ${baseWhere}${priorityClause}
+        ORDER BY c."discoveredAtUtc" DESC
+        LIMIT $${params.length}`,
+      ...params,
     );
     ids = rows.map((r) => r.id);
   }
 
   const summary: PromoteSummary = {
-    processed: 0, draft_created: 0, draft_skipped_exists: 0,
-    needs_resolution_created: 0, needs_resolution_skipped: 0,
-    below_threshold: 0, not_eligible: 0, no_signal: 0, not_found: 0, results: [],
+    processed: 0, createdEvidenceSnapshots: 0, createdDraftLinks: 0,
+    alreadyExistingSkipped: 0, ambiguous: 0, unresolved: 0, conflict: 0,
+    lowPrioritySkipped, errors: 0, durationMs: 0,
+    apiCallsDexScreener: 0, apiCallsHelius: 0, actionCounts: {}, results: [],
   };
+
   for (const id of ids) {
-    const r = await promoteCandidate(db, id, { dryRun: opts.dryRun });
-    summary.processed++;
-    summary[r.action]++;
-    summary.results.push(r);
+    try {
+      const r = await promoteCandidate(db, id, { dryRun, telemetry });
+      summary.processed++;
+      summary.actionCounts[r.action] = (summary.actionCounts[r.action] ?? 0) + 1;
+      if (r.action === "draft_created") summary.createdDraftLinks++;
+      if (r.action === "draft_skipped_exists" || r.action === "needs_resolution_skipped") {
+        summary.alreadyExistingSkipped++;
+      }
+      if (r.createdEvidenceSnapshot) summary.createdEvidenceSnapshots++;
+      if (r.action === "needs_resolution_created" || r.action === "needs_resolution_skipped") {
+        if (r.resolutionStatus === "AMBIGUOUS") summary.ambiguous++;
+        else if (r.resolutionStatus === "CONFLICT") summary.conflict++;
+        else summary.unresolved++;
+      }
+      summary.results.push(r);
+    } catch (e) {
+      summary.errors++;
+      summary.actionCounts["error"] = (summary.actionCounts["error"] ?? 0) + 1;
+      summary.results.push({
+        candidateId: id, action: "error",
+        reason: e instanceof Error ? e.message : String(e),
+      });
+      if (stopOnError) break; // stop the batch (errors already recorded)
+    }
   }
+
+  summary.apiCallsDexScreener = telemetry.dexScreener;
+  summary.apiCallsHelius = telemetry.helius;
+  summary.durationMs = Date.now() - startedAt;
   return summary;
 }

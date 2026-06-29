@@ -55,6 +55,14 @@ export interface CanonicalTokenResolution {
   limitations: string[];
 }
 
+// Optional network-call counter — the caller (bridge cron-safety layer) passes
+// one in to surface apiCallsDexScreener / apiCallsHelius in its run metrics.
+// Incremented exactly once per outbound fetch. Read-only side effect.
+export interface ApiCallTelemetry {
+  dexScreener: number;
+  helius: number;
+}
+
 // Built lazily (read env at call time, not module load) so the key is always
 // the live one regardless of import ordering.
 const heliusRpcUrl = () =>
@@ -71,7 +79,8 @@ interface MintMarket {
 
 // DexScreener token-by-mint → the most-liquid SOL pair for that exact mint, or
 // null when the mint is not indexed (new / illiquid pump.fun token).
-async function dexScreenerByMint(mint: string): Promise<MintMarket | null> {
+async function dexScreenerByMint(mint: string, telemetry?: ApiCallTelemetry): Promise<MintMarket | null> {
+  if (telemetry) telemetry.dexScreener++;
   try {
     const res = await fetch(`https://api.dexscreener.com/tokens/v1/solana/${mint}`, {
       headers: { Accept: "application/json" },
@@ -101,8 +110,9 @@ async function dexScreenerByMint(mint: string): Promise<MintMarket | null> {
 // Solana RPC fallback (Helius): confirm a mint account exists on-chain. Used
 // only when DexScreener has no pair yet — a freshly launched pump.fun token
 // exists on-chain before it is indexed.
-async function rpcConfirmMint(mint: string): Promise<boolean> {
+async function rpcConfirmMint(mint: string, telemetry?: ApiCallTelemetry): Promise<boolean> {
   if (!process.env.HELIUS_API_KEY) return false;
+  if (telemetry) telemetry.helius++;
   try {
     const res = await fetch(heliusRpcUrl(), {
       method: "POST",
@@ -139,6 +149,7 @@ function explicitCandidate(m: MintMarket): TokenCandidate {
 
 export async function resolveCanonicalToken(
   input: ResolveCanonicalInput,
+  telemetry?: ApiCallTelemetry,
 ): Promise<CanonicalTokenResolution> {
   const limitations: string[] = [];
   const cashtags = (input.extractedCashtags ?? []).filter(Boolean);
@@ -151,7 +162,7 @@ export async function resolveCanonicalToken(
   }
 
   for (const mint of validMints) {
-    const dex = await dexScreenerByMint(mint);
+    const dex = await dexScreenerByMint(mint, telemetry);
 
     if (dex) {
       // CA confirmed on DexScreener (symbol known) → check Level-4 CONFLICT.
@@ -160,6 +171,7 @@ export async function resolveCanonicalToken(
         const caN = normalizeSymbol(dex.symbol);
         const symbolsAgree = !!cashN && !!caN && tickerMatchType(cashN, caN) !== null;
         if (cashN && !symbolsAgree) {
+          if (telemetry) telemetry.dexScreener++;
           const cashHits = await searchDexScreenerPairs(firstCashtag);
           const otherPlausible = cashHits.filter(
             (h) =>
@@ -201,7 +213,7 @@ export async function resolveCanonicalToken(
     }
 
     // No DexScreener pair → RPC fallback (on-chain existence).
-    const onChain = await rpcConfirmMint(mint);
+    const onChain = await rpcConfirmMint(mint, telemetry);
     if (onChain) {
       return {
         status: "RESOLVED",
@@ -235,6 +247,7 @@ export async function resolveCanonicalToken(
 
   // ─── Level 2/3 — cashtag via DexScreener ────────────────────────────────
   if (firstCashtag) {
+    if (telemetry) telemetry.dexScreener++;
     const hits = await searchDexScreenerPairs(firstCashtag);
     const d = decideCashtag(firstCashtag, hits);
     const candidates = d.candidates.map(toTokenCandidate);
