@@ -34,10 +34,15 @@ export interface VisionOutput {
   readWithCertainty: string[];       // human list of what was read with certainty
   uncertain: string[];               // human list of what was NOT certain
   notes: string | null;              // free-text observations, no invention
+  // Populated by callVision after the lock-1 double-read consensus merge.
+  diagnostics?: VisionDiagnostics;
 }
 
 export const VISION_MODEL = "claude-sonnet-4-5";
 export const VISION_MAX_TOKENS = 1500;
+// Low temperature for both consensus passes — we want the model's most
+// deterministic read, then we cross-check the two passes character by character.
+export const VISION_TEMPERATURE = 0;
 
 /**
  * The strict extraction system prompt. Hard rules mirror the manual-OSINT
@@ -86,4 +91,28 @@ export function buildVisionUserText(kolHandleHint: string | null): string {
     ? `Handle hint (use only to disambiguate; the image is authoritative): @${kolHandleHint.replace(/^@/, "")}.`
     : "No handle hint provided — read it from the image if legible, else null.";
   return `Extract the structured OSINT facts from this single screenshot. ${hint} Apply every hard rule. Return ONLY the JSON object.`;
+}
+
+
+// ─── Lock 1 (double-read consensus) diagnostics ──────────────────────────────
+// callVision runs TWO independent passes and cross-checks them. The result is a
+// merged VisionOutput where any field the two passes DISAGREE on is forced to
+// null, plus this diagnostics block recording both raw reads for audit. The
+// model's self-reported contractAddressCertain is downgraded to a logged HINT
+// only (caCertainHint) — it is NEVER an authority for resolution.
+export interface TokenConsensusDiagnostic {
+  tokenSymbol: string | null;                 // merged (agreed) ticker, else null
+  tickerReads: [string | null, string | null];
+  tickerAgree: boolean;
+  caReads: [string | null, string | null];
+  caAgree: boolean;
+  caCertainHint: boolean;                      // OR of both passes' self-reported certainty (logged only)
+}
+
+export interface VisionDiagnostics {
+  passes: number;                              // 1 or 2
+  secondPassError: string | null;              // non-null if the 2nd pass failed -> treat as disagreement
+  handleReads: [string | null, string | null];
+  tokenCountReads: [number, number];
+  tokens: TokenConsensusDiagnostic[];
 }

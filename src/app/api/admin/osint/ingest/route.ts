@@ -20,6 +20,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { callVision, type VisionMediaType } from "@/lib/osint/vision/callVision";
+import { resolveVisionTokens } from "@/lib/osint/vision/resolveTokens";
+import { verifyMintOnChain } from "@/lib/osint/vision/verifyMintOnChain";
 import { buildPlan } from "@/lib/osint/vision/buildPlan";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -113,7 +115,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "vision_unavailable" }, { status: 502 });
   }
 
-  const plan = buildPlan({ vision, sha256, bytes: buf.length, fileName, kolHandleHint, capturedAt });
+  // ── Three-lock CA resolution (lock 1 ran inside callVision; locks 2+3 here) ──
+  // Still dry-run: verifyMintOnChain only READS Helius, writes nothing.
+  const resolutions = await resolveVisionTokens(vision, { verifyMint: verifyMintOnChain });
+
+  const plan = buildPlan({ vision, resolutions, sha256, bytes: buf.length, fileName, kolHandleHint, capturedAt });
 
   // DRY-RUN: nothing is written. Return the plan for human review.
   return NextResponse.json({
