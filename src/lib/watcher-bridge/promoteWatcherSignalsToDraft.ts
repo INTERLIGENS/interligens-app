@@ -30,6 +30,8 @@ export type PromoteAction =
   | "not_eligible"
   | "no_signal"
   | "not_found"
+  | "below_liquidity"
+  | "kol_cap_skipped"
   | "error";
 
 export interface PromoteResult {
@@ -45,6 +47,8 @@ export interface PromoteResult {
   reason?: string;
   /** true if a new E1 EvidenceSnapshot was (or in dry-run WOULD be) created. */
   createdEvidenceSnapshot?: boolean;
+  /** Resolved token liquidity (USD) when known; null = unknown (RPC-fresh). */
+  liquidityUsd?: number | null;
 }
 
 const ELIGIBLE_STATUSES = new Set(["new", "clustered"]);
@@ -150,7 +154,7 @@ async function enqueueSignalIntake(
 export async function promoteCandidate(
   db: RawDb,
   candidateId: string,
-  opts: { dryRun?: boolean; telemetry?: ApiCallTelemetry } = {},
+  opts: { dryRun?: boolean; telemetry?: ApiCallTelemetry; minLiquidityUsd?: number } = {},
 ): Promise<PromoteResult> {
   const dryRun = !!opts.dryRun;
 
@@ -218,6 +222,27 @@ export async function promoteCandidate(
   if (resolvedHigh && (thresholdMet || explicitCaHigh)) {
     const symbol = resolution.symbol || tokens[0] || null;
     const chain = resolution.chain || "SOL";
+
+    // Liquidity floor (S4.5). Skip the draft if the resolved token's liquidity is
+    // below the floor — OR unknown (explicit_ca confirmed on-chain via RPC, no
+    // DexScreener pair yet = fresh pump.fun). The fresh-illiquid case is a
+    // SEPARATE PRIORITY BACKLOG (launch rugs the anti-scam must catch early) —
+    // see BACKLOG_fresh_illiquid_explicit_ca.md — counted, never silently lost.
+    if (opts.minLiquidityUsd != null) {
+      const liq = resolution.candidates[0]?.liquidityUsd ?? null;
+      if (liq == null || liq < opts.minLiquidityUsd) {
+        const freshIlliquid = liq == null && resolution.method === "explicit_ca";
+        return {
+          candidateId, action: "below_liquidity", kolHandle: cand.handle, symbol,
+          canonicalMint: resolution.canonicalMint, resolutionStatus: resolution.status,
+          resolutionMethod: resolution.method, liquidityUsd: liq,
+          reason: freshIlliquid
+            ? "fresh_illiquid_explicit_ca"
+            : `liquidity ${liq ?? "unknown"} < ${opts.minLiquidityUsd}`,
+        };
+      }
+    }
+
     // Compute evidence existence in BOTH modes (dry = "would create", no write).
     const ev = await ensureEvidenceSnapshotId(db, cand.id, dryRun);
     if (dryRun) {
@@ -286,22 +311,31 @@ export interface PromoteOptions {
   maxAgeDays?: number;                  // only candidates posted within N days
   onlyUnprocessed?: boolean;            // default true: status IN (new, clustered)
   stopOnError?: boolean;                // default false: log error, continue
+  // ── S4.5 threshold hardening ──
+  requireMultiKol?: boolean;            // campaign kolCount >= 2 (master lever)
+  minLiquidityUsd?: number;             // resolved token liquidity floor (USD)
+  maxPerKol?: number;                   // max drafts per KOL per run (anti-saturation)
 }
 
 export interface PromoteSummary {
-  processed: number;
+  selected: number;                     // candidates that ENTERED the loop (post-SQL, ≤ limit)
+  processed: number;                    // selected minus kolCapSkipped (ran promoteCandidate)
   createdEvidenceSnapshots: number;
   createdDraftLinks: number;
   alreadyExistingSkipped: number;
   ambiguous: number;
   unresolved: number;
   conflict: number;
-  lowPrioritySkipped: number;
+  lowPrioritySkipped: number;           // SQL-excluded: priority < minPriority
+  singleKolSkipped: number;             // SQL-excluded: kolCount < 2 (requireMultiKol)
+  belowLiquiditySkipped: number;        // gate-excluded: liquidity < floor or unknown
+  freshIlliquidExplicitCa: number;      // of belowLiquidity: explicit_ca + liquidity null
+  kolCapSkipped: number;                // loop-excluded: KOL already at maxPerKol
   errors: number;
   durationMs: number;
   apiCallsDexScreener: number;
   apiCallsHelius: number;
-  actionCounts: Record<string, number>; // raw per-action tally (debug)
+  actionCounts: Record<string, number>; // raw per-action tally (every selected id → 1 bucket)
   results: PromoteResult[];
 }
 
@@ -314,10 +348,12 @@ export async function promoteWatcherSignalsToDraft(
   const stopOnError = !!opts.stopOnError;
   const limit = Math.max(0, opts.limit ?? 25);
   const onlyUnprocessed = opts.onlyUnprocessed !== false; // default true
+  const requireMultiKol = !!opts.requireMultiKol;
   const telemetry: ApiCallTelemetry = { dexScreener: 0, helius: 0 };
 
   let ids = opts.candidateIds ?? [];
   let lowPrioritySkipped = 0;
+  let singleKolSkipped = 0;
 
   if (ids.length > 0) {
     ids = ids.slice(0, limit); // limit strictly enforced even for explicit ids
@@ -334,7 +370,8 @@ export async function promoteWatcherSignalsToDraft(
     }
     const baseWhere = conds.join(" AND ");
 
-    // minPriority — controlled enum, safe to inline. Also tally lowPrioritySkipped.
+    // minPriority — controlled enum, safe to inline. Tally lowPrioritySkipped
+    // (within the base pool, regardless of the multi-kol filter).
     let priorityClause = "";
     if (opts.minPriority) {
       const allowed = opts.minPriority === "CRITICAL" ? "('CRITICAL')" : "('HIGH','CRITICAL')";
@@ -348,11 +385,25 @@ export async function promoteWatcherSignalsToDraft(
       lowPrioritySkipped = skip[0]?.n ?? 0;
     }
 
+    // requireMultiKol — campaign kolCount >= 2. Tally singleKolSkipped: candidates
+    // that pass base+priority but whose campaign has < 2 distinct KOLs.
+    let multiKolClause = "";
+    if (requireMultiKol) {
+      multiKolClause = ` AND coalesce(wc."kolCount", 0) >= 2`;
+      const skip = await db.$queryRawUnsafe<Array<{ n: number }>>(
+        `SELECT count(*)::int n FROM "social_post_candidates" c
+           LEFT JOIN "WatcherCampaign" wc ON wc.id = c."campaignId"
+          WHERE ${baseWhere}${priorityClause} AND coalesce(wc."kolCount", 0) < 2`,
+        ...params,
+      );
+      singleKolSkipped = skip[0]?.n ?? 0;
+    }
+
     params.push(limit);
     const rows = await db.$queryRawUnsafe<Array<{ id: string }>>(
       `SELECT c.id FROM "social_post_candidates" c
          LEFT JOIN "WatcherCampaign" wc ON wc.id = c."campaignId"
-        WHERE ${baseWhere}${priorityClause}
+        WHERE ${baseWhere}${priorityClause}${multiKolClause}
         ORDER BY c."discoveredAtUtc" DESC
         LIMIT $${params.length}`,
       ...params,
@@ -360,21 +411,53 @@ export async function promoteWatcherSignalsToDraft(
     ids = rows.map((r) => r.id);
   }
 
+  // Resolve handles for the per-KOL cap (works for both selection + explicit ids).
+  const idToHandle = new Map<string, string>();
+  if (ids.length > 0) {
+    const hrows = await db.$queryRawUnsafe<Array<{ id: string; handle: string }>>(
+      `SELECT c.id, i.handle FROM "social_post_candidates" c
+         JOIN "influencers" i ON i.id = c."influencerId"
+        WHERE c.id = ANY($1::text[])`,
+      toPgTextArray(ids),
+    );
+    for (const r of hrows) idToHandle.set(r.id, r.handle);
+  }
+
   const summary: PromoteSummary = {
-    processed: 0, createdEvidenceSnapshots: 0, createdDraftLinks: 0,
+    selected: ids.length, processed: 0, createdEvidenceSnapshots: 0, createdDraftLinks: 0,
     alreadyExistingSkipped: 0, ambiguous: 0, unresolved: 0, conflict: 0,
-    lowPrioritySkipped, errors: 0, durationMs: 0,
+    lowPrioritySkipped, singleKolSkipped, belowLiquiditySkipped: 0, freshIlliquidExplicitCa: 0,
+    kolCapSkipped: 0, errors: 0, durationMs: 0,
     apiCallsDexScreener: 0, apiCallsHelius: 0, actionCounts: {}, results: [],
   };
 
+  const kolDraftCount = new Map<string, number>();
+
   for (const id of ids) {
+    const handle = idToHandle.get(id) ?? null;
+
+    // Per-KOL cap — pre-check BEFORE promoteCandidate (skips processing + API).
+    if (opts.maxPerKol != null && handle && (kolDraftCount.get(handle) ?? 0) >= opts.maxPerKol) {
+      summary.kolCapSkipped++;
+      summary.actionCounts["kol_cap_skipped"] = (summary.actionCounts["kol_cap_skipped"] ?? 0) + 1;
+      summary.results.push({ candidateId: id, action: "kol_cap_skipped", kolHandle: handle });
+      continue;
+    }
+
     try {
-      const r = await promoteCandidate(db, id, { dryRun, telemetry });
+      const r = await promoteCandidate(db, id, { dryRun, telemetry, minLiquidityUsd: opts.minLiquidityUsd });
       summary.processed++;
       summary.actionCounts[r.action] = (summary.actionCounts[r.action] ?? 0) + 1;
-      if (r.action === "draft_created") summary.createdDraftLinks++;
+      if (r.action === "draft_created") {
+        summary.createdDraftLinks++;
+        if (handle) kolDraftCount.set(handle, (kolDraftCount.get(handle) ?? 0) + 1);
+      }
       if (r.action === "draft_skipped_exists" || r.action === "needs_resolution_skipped") {
         summary.alreadyExistingSkipped++;
+      }
+      if (r.action === "below_liquidity") {
+        summary.belowLiquiditySkipped++;
+        if (r.reason === "fresh_illiquid_explicit_ca") summary.freshIlliquidExplicitCa++;
       }
       if (r.createdEvidenceSnapshot) summary.createdEvidenceSnapshots++;
       if (r.action === "needs_resolution_created" || r.action === "needs_resolution_skipped") {
