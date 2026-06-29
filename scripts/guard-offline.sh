@@ -360,6 +360,26 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-bridge-cron-safety$ ]]; then
     )
 fi
 
+# Exceptions pour le module OSINT Vision Ingest V1 (admin-only, shadow mode).
+# Route EXTRACT (dry-run, zéro écriture DB) + route COMMIT (shadow : publishable
+#=false, KolTokenLink visibility='draft', PENDING jamais résolu). Migration
+# additive MIGRATION_osint_vision_ingest_v1.sql (ADD COLUMN IF NOT EXISTS sur
+# EvidenceSnapshot.extractionMethod/extractionConfidence) NON appliquée — lancée
+# manuellement par David dans le Neon SQL Editor ; le schema.prod.prisma ne fait
+# que refléter ces 2 colonnes (anti-drift). Aucune surface publique, aucun
+# couplage scoring/TigerScore/PDF. Autorisation humaine explicite (David, diff
+# validé) — voir PR description. Exemption ciblée UNIQUEMENT sur le schema, le
+# fichier migration, les routes admin du module, et le guard lui-même ;
+# src/lib/osint/vision/ n'est pas un chemin gelé (passe sans exemption).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-osint-vision-ingest$ ]]; then
+    EXEMPT_OSINT_VISION_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^migrations/MIGRATION_osint_vision_ingest_v1\.sql$"
+        "^src/app/api/admin/osint/"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -589,6 +609,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint8-visibility-filter$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_INTAKE_BRIDGE_S8_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche osint-vision-ingest, exempter le schema + migration + routes admin du module.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-osint-vision-ingest$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_OSINT_VISION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
