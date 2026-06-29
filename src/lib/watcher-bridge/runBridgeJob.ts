@@ -23,7 +23,7 @@ export interface RawDb {
 
 const JOB_NAME = "watcher_bridge_promote";
 
-export type BridgeJobStatus = "success" | "error" | "disabled";
+export type BridgeJobStatus = "success" | "completed_with_errors" | "error" | "disabled";
 
 export interface BridgeJobResult {
   jobRunLogId: string | null;
@@ -87,6 +87,14 @@ export async function runBridgeJob(
   const minPriorityEnv = (process.env.WATCHER_BRIDGE_MIN_PRIORITY ?? "HIGH").toUpperCase();
   const minPriority: "HIGH" | "CRITICAL" =
     overrides.minPriority ?? (minPriorityEnv === "CRITICAL" ? "CRITICAL" : "HIGH");
+  // ── S4.5 threshold-hardening defaults (env, overridable) ──
+  const requireMultiKol = overrides.requireMultiKol ?? envBool(process.env.WATCHER_BRIDGE_REQUIRE_MULTI_KOL, false);
+  const minLiquidityUsd = overrides.minLiquidityUsd
+    ?? (process.env.WATCHER_BRIDGE_MIN_LIQUIDITY ? parseFloat(process.env.WATCHER_BRIDGE_MIN_LIQUIDITY) : undefined);
+  const maxPerKol = overrides.maxPerKol
+    ?? (process.env.WATCHER_BRIDGE_MAX_PER_KOL ? parseInt(process.env.WATCHER_BRIDGE_MAX_PER_KOL, 10) : undefined);
+  const maxAgeDays = overrides.maxAgeDays
+    ?? (process.env.WATCHER_BRIDGE_MAX_AGE_DAYS ? parseInt(process.env.WATCHER_BRIDGE_MAX_AGE_DAYS, 10) : undefined);
 
   // ── Kill switch ──────────────────────────────────────────────────────────
   if (!enabled) {
@@ -108,9 +116,16 @@ export async function runBridgeJob(
       limit,
       minPriority,
       onlyUnprocessed: overrides.onlyUnprocessed ?? true,
+      requireMultiKol,
+      ...(minLiquidityUsd != null ? { minLiquidityUsd } : {}),
+      ...(maxPerKol != null ? { maxPerKol } : {}),
+      ...(maxAgeDays != null ? { maxAgeDays } : {}),
     });
-    await finishJobRunLog(db, runId, "success", summary);
-    return { jobRunLogId: runId, status: "success", dryRun, summary };
+    // Status reflects per-candidate errors: a run that completed but had ≥1
+    // errored candidate is NOT a clean success (audit must surface it).
+    const finalStatus: BridgeJobStatus = (summary.errors ?? 0) > 0 ? "completed_with_errors" : "success";
+    await finishJobRunLog(db, runId, finalStatus, summary);
+    return { jobRunLogId: runId, status: finalStatus, dryRun, summary };
   } catch (e) {
     await finishJobRunLog(db, runId, "error", null);
     return {
