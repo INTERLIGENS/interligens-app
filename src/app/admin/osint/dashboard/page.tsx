@@ -111,6 +111,36 @@ export default async function OsintDashboardPage() {
         </div>
       </Section>
 
+      {/* ── Porte retail (Sprint C1) ────────────────────────────────────── */}
+      <Section title="Retail gate (public submit)">
+        {!m.retail.hasData ? (
+          <p style={{ color: C.warning, fontSize: 12 }}>0 / aucune soumission retail (porte fermée ou en attente)</p>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 12 }}>
+              <Stat k="retail images" value={m.retail.totalImages} sub="anonymous_retail" tone={C.accent} />
+              <Stat k="queued" value={m.retail.queued} sub={m.retail.oldestQueuedAgeHours !== null ? `oldest ${m.retail.oldestQueuedAgeHours}h` : "none waiting"} tone={m.retail.queued > 0 ? C.warning : C.text} />
+              <Stat k="budget capped" value={m.retail.budgetCapped} sub="vision cap hit" tone={m.retail.budgetCapped > 0 ? C.warning : C.text} />
+              <Stat k="duplicates" value={m.retail.duplicate} sub="zero vision cost" />
+              <Stat k="precheck rejected" value={m.retail.precheckRejected} sub="bad format/size" tone={m.retail.precheckRejected > 0 ? C.danger : C.text} />
+              <Stat k="pending review" value={m.retail.pendingReview} tone={m.retail.pendingReview > 0 ? C.warning : C.text} />
+              <Stat k="auto-committed" value={m.retail.autoCommitted} sub="shadow only" tone={C.safe} />
+            </div>
+            {m.retail.topRejectReasons.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ ...label, fontSize: 9, color: C.dim }}>rejection reasons</span>
+                {m.retail.topRejectReasons.map((r) => (
+                  <div key={r.reason} style={{ display: "flex", justifyContent: "space-between", border: `1px solid ${C.line}`, background: C.panel, borderRadius: 6, padding: "8px 14px" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{r.reason}</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: C.danger }}>{r.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </Section>
+
       {/* ── Backlog de revue ────────────────────────────────────────────── */}
       <Section title="Review backlog">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
