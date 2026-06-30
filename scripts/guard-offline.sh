@@ -380,6 +380,21 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-osint-vision-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour la PORTE RETAIL OSINT (Sprint C1, gated beta — construite mais
+# FERMÉE par défaut, kill switch OFF). Autorisation humaine explicite (David, GPT
+# validé) — voir PR description. Exemption CIBLÉE sur la 1re surface publique :
+# - src/app/api/osint/               : routes publiques submit + status (derrière kill switch)
+# - src/app/api/admin/osint/retail/  : processeur async admin (double kill switch)
+# Ne couvre PAS tout src/app/api/ ni src/components/. Les pages (src/app/submit/,
+# src/app/admin/osint/dashboard/) et le lib (src/lib/osint/) ne sont pas gelés.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-retail-gate$ ]]; then
+    EXEMPT_RETAIL_GATE_PATTERNS=(
+        "^src/app/api/osint/"
+        "^src/app/api/admin/osint/retail/"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -621,6 +636,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-osint-vision-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_OSINT_VISION_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche retail-gate, exempter les routes publiques submit/status + le processeur retail.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-retail-gate$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_RETAIL_GATE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

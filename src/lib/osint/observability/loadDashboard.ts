@@ -31,17 +31,33 @@ async function tableExists(name: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+/** true si les colonnes retail (Sprint C1) sont appliquées sur OsintSubmission. */
+async function retailColumnsExist(): Promise<boolean> {
+  const rows = (await prisma.$queryRawUnsafe(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'OsintSubmission' AND column_name IN ('extractionMethod','precheckReason')`,
+  )) as Array<{ column_name: string }>;
+  return rows.length >= 2;
+}
+
 export async function loadDashboard(nowIso?: string): Promise<DashboardView> {
   const now = nowIso ?? new Date().toISOString();
   const submissionSourceLive = await tableExists("OsintSubmission");
 
   let rows: SubmissionLite[] = [];
   if (submissionSourceLive) {
+    // Les colonnes retail sont additives (Sprint C1) : on ne les sélectionne que si présentes,
+    // sinon le SELECT planterait sur une base où seule la table v1 existe.
+    const hasRetail = await retailColumnsExist();
+    const retailCols = hasRetail
+      ? `, "extractionMethod", "precheckReason"`
+      : `, NULL AS "extractionMethod", NULL AS "precheckReason"`;
     const raw = (await prisma.$queryRawUnsafe(
       `SELECT status, "pendingReason", "decisionReasons",
               ("rawVisionPass2" IS NOT NULL) AS "twoPass",
               "ingestedAt", "updatedAt",
               status IN ('AUTO_COMMITTED_SHADOW','RESOLVED_BY_REVIEW','REJECTED_BY_REVIEW') AS "isProcessed"
+              ${retailCols}
          FROM "OsintSubmission"`,
     )) as Array<Record<string, unknown>>;
     rows = raw.map((r) => ({
@@ -51,6 +67,8 @@ export async function loadDashboard(nowIso?: string): Promise<DashboardView> {
       ingestedAt: r.ingestedAt ? new Date(r.ingestedAt as string).toISOString() : now,
       processedAt: r.isProcessed && r.updatedAt ? new Date(r.updatedAt as string).toISOString() : null,
       decisionReasons: Array.isArray(r.decisionReasons) ? (r.decisionReasons as unknown[]).map(String) : [],
+      extractionMethod: (r.extractionMethod as string) ?? null,
+      precheckReason: (r.precheckReason as string) ?? null,
     }));
   }
 

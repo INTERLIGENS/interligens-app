@@ -28,6 +28,28 @@ export interface SubmissionLite {
   processedAt: string | null;
   /** trace décision : sert à compter les erreurs Helius / retryable. */
   decisionReasons: string[];
+  /** méthode d'extraction : 'vision_retail_auto' marque une soumission RETAIL (Sprint C1). null sinon. */
+  extractionMethod?: string | null;
+  /** raison de rejet précheck (RejectReason), si status=PRECHECK_REJECTED. */
+  precheckReason?: string | null;
+}
+
+/** Bloc RETAIL (Sprint C1) — sources extractionMethod='vision_retail_auto'. */
+export interface RetailMetrics {
+  /** au moins une ligne retail observée. */
+  hasData: boolean;
+  /** total d'images retail (1 ligne = 1 image). */
+  totalImages: number;
+  queued: number;
+  budgetCapped: number;
+  duplicate: number;
+  precheckRejected: number;
+  pendingReview: number;
+  autoCommitted: number;
+  /** âge du plus ancien QUEUED retail (heures), null si aucun. */
+  oldestQueuedAgeHours: number | null;
+  /** raisons de rejet précheck dominantes, triées décroissant. */
+  topRejectReasons: Array<{ reason: string; count: number }>;
 }
 
 export interface RateBucket {
@@ -74,6 +96,51 @@ export interface DashboardMetrics {
   };
   /** temps moyen de traitement (ingest → processed), en heures (null si aucun). */
   avgProcessingHours: number | null;
+  /** métriques de la porte retail publique (Sprint C1). */
+  retail: RetailMetrics;
+}
+
+const RETAIL_EXTRACTION_METHOD = "vision_retail_auto";
+
+/** Calcule le bloc retail à partir des seules lignes extractionMethod='vision_retail_auto'. */
+function computeRetail(rows: SubmissionLite[], nowMs: number): RetailMetrics {
+  const r = rows.filter((x) => x.extractionMethod === RETAIL_EXTRACTION_METHOD);
+  const is = (s: string) => r.filter((x) => x.status === s).length;
+
+  let oldestQueuedMs: number | null = null;
+  for (const x of r) {
+    if (x.status !== SubmissionStatus.QUEUED) continue;
+    const t = Date.parse(x.ingestedAt);
+    if (Number.isNaN(t)) continue;
+    if (oldestQueuedMs === null || t < oldestQueuedMs) oldestQueuedMs = t;
+  }
+  const oldestQueuedAgeHours =
+    oldestQueuedMs !== null && !Number.isNaN(nowMs)
+      ? Math.round(((nowMs - oldestQueuedMs) / 3_600_000) * 10) / 10
+      : null;
+
+  const rejMap = new Map<string, number>();
+  for (const x of r) {
+    if (x.status !== SubmissionStatus.PRECHECK_REJECTED) continue;
+    const reason = x.precheckReason && x.precheckReason.length > 0 ? x.precheckReason : "UNSPECIFIED";
+    rejMap.set(reason, (rejMap.get(reason) ?? 0) + 1);
+  }
+  const topRejectReasons = [...rejMap.entries()]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    hasData: r.length > 0,
+    totalImages: r.length,
+    queued: is(SubmissionStatus.QUEUED),
+    budgetCapped: is(SubmissionStatus.QUEUED_BUDGET_CAPPED),
+    duplicate: is(SubmissionStatus.DUPLICATE),
+    precheckRejected: is(SubmissionStatus.PRECHECK_REJECTED),
+    pendingReview: is(SubmissionStatus.PENDING_REVIEW),
+    autoCommitted: is(SubmissionStatus.AUTO_COMMITTED_SHADOW),
+    oldestQueuedAgeHours,
+    topRejectReasons,
+  };
 }
 
 function rate(count: number, total: number): RateBucket {
@@ -179,5 +246,6 @@ export function computeDashboard(rows: SubmissionLite[], nowIso: string): Dashbo
     helius,
     backlog: { pending, oldestAgeHours },
     avgProcessingHours,
+    retail: computeRetail(rows, nowMs),
   };
 }
