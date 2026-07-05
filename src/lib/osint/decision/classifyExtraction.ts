@@ -33,7 +33,9 @@ import type {
   ExtractedClaim,
   ExtractionDecisionRecord,
   ProvenanceRecord,
+  ClaimPriority,
 } from "../contracts";
+import { normZone, zoneToPriority } from "../vision/visionPrompt";
 
 // ── Signals : ce que l'orchestrateur a vérifié AVANT de classer ──────────────
 
@@ -111,6 +113,16 @@ function strongAttribution(claim: ExtractedClaim): boolean {
   // Un lien KOL↔token n'est « solide » que si le handle est lu de l'image avec
   // haute confiance. Un handle null, ou medium/low, ne suffit jamais.
   return !!claim.kolHandle && claim.kolHandleConfidence === "high";
+}
+
+/**
+ * Priorité EFFECTIVE du claim : `priority` explicite si posée, sinon dérivée de la
+ * zone (primary → high, second plan → low), sinon 'high' (legacy sans zone = sujet).
+ * INVARIANT : un claim 'low' (sidebar/embedded/reply) ne peut JAMAIS auto-committer
+ * une assertion KOL↔token — au mieux une evidence shadow.
+ */
+function effectivePriority(claim: ExtractedClaim): ClaimPriority {
+  return claim.priority ?? zoneToPriority(claim.zone);
 }
 
 // ── Score composite (explicatif) ─────────────────────────────────────────────
@@ -219,29 +231,38 @@ export function classifyClaim(
   reasons.push("evidence: CA présente + certaine + consensus + mint exists + ticker match + chain connue → shadow");
 
   // ── (d) AUTO_COMMIT_ASSERTION : evidence OK + attribution + trust ≥ investigator
+  //         + priorité 'high' (le SUJET du post). Un claim de second plan (sidebar/
+  //         embedded/reply, priority=low) NE PEUT JAMAIS auto-committer d'assertion,
+  //         même à trust maximal : au mieux l'evidence shadow ci-dessus.
+  const priority = effectivePriority(claim);
+  const isSecondPlan = priority === "low";
   const attributionSolid = strongAttribution(claim);
   const trustOK = SOURCE_TRUST_WEIGHT[trustTier] >= INVESTIGATOR_WEIGHT;
 
-  if (attributionSolid && trustOK) {
-    reasons.push(`assertion: attribution solide + trustTier '${trustTier}' ≥ investigator → lien draft (shadow)`);
+  if (!isSecondPlan && attributionSolid && trustOK) {
+    reasons.push(`assertion: attribution solide + trustTier '${trustTier}' ≥ investigator + zone primary → lien draft (shadow)`);
     return finish(
-      { decision: ExtractionDecision.AUTO_COMMIT_ASSERTION, reason: "evidence + attribution + trust suffisant" },
+      { decision: ExtractionDecision.AUTO_COMMIT_ASSERTION, reason: "evidence + attribution + trust suffisant (zone primary)" },
       ClaimStatus.ATTRIBUTION_VERIFIED,
       { autoCommit: true, status: "auto_shadow", reason: "lien KOL↔token auto-commité en shadow (visibility draft)" },
     );
   }
 
   // evidence OK mais assertion bloquée → la CA est commitée, le lien NON.
-  const why = !trustOK
-    ? `trustTier '${trustTier}' < investigator — assertion KOL↔token JAMAIS auto pour retail/anonyme`
-    : "attribution insuffisante (handle null ou confiance < high)";
+  // Second plan = blocage DUR (jamais auto) ; sinon trust/attribution insuffisants.
+  const why = isSecondPlan
+    ? `zone '${normZone(claim.zone)}' priority=low (second plan) — assertion KOL↔token JAMAIS auto, quelle que soit l'attribution ou le trust`
+    : !trustOK
+      ? `trustTier '${trustTier}' < investigator — assertion KOL↔token JAMAIS auto pour retail/anonyme`
+      : "attribution insuffisante (handle null ou confiance < high)";
   reasons.push(`assertion BLOQUÉE: ${why} → evidence shadow seule, lien en PENDING (ATTRIBUTION)`);
   return finish(
     { decision: ExtractionDecision.AUTO_COMMIT_EVIDENCE, reason: "CA vérifiée on-chain commitée en shadow ; assertion non autorisée" },
     ClaimStatus.ONCHAIN_VERIFIED_ONLY,
     {
+      // Second plan → 'blocked' (dur) ; sinon 'pending' si le trust permettrait une revue.
       autoCommit: false,
-      status: trustOK ? "pending" : "blocked",
+      status: isSecondPlan || !trustOK ? "blocked" : "pending",
       reason: why,
       pendingReason: PendingReason.ATTRIBUTION,
     },

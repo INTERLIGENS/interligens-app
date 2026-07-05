@@ -42,6 +42,7 @@ function resolution(over: Partial<TokenResolution>): TokenResolution {
     tokenSymbol: "ABC",
     contractAddress: "PENDING:ABC",
     chain: "solana",
+    zone: "primary",
     resolved: false,
     resolutionPath: "double_vision:disagree",
     warnings: [],

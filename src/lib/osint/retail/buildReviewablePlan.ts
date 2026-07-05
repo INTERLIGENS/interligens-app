@@ -23,7 +23,7 @@ import type {
   VisionChain,
 } from "../contracts";
 import { isPending } from "../vision/validateCA";
-import type { VisionOutput } from "../vision/visionPrompt";
+import { zoneToPriority, type VisionOutput } from "../vision/visionPrompt";
 import type { TokenResolution } from "../vision/resolveTokens";
 import type { ReviewablePlan, ReviewableClaim } from "../decision";
 
@@ -80,6 +80,9 @@ export function buildReviewablePlan(input: BuildReviewablePlanInput): Reviewable
       perf: tk?.perf ?? null,
       kolHandle,
       kolHandleConfidence: vision.kolHandleConfidence,
+      // Zone lue par la vision, portée intacte à travers les 3 locks ; priorité dérivée.
+      zone: r.zone,
+      priority: zoneToPriority(r.zone),
       // Placeholders : classifyClaim recalcule.
       decision: { decision: ExtractionDecision.PENDING, reason: "placeholder — recomputed by classifyClaim" },
       claimStatus: ClaimStatus.UNVERIFIED_SUBMISSION,

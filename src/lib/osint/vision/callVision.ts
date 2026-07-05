@@ -22,6 +22,7 @@ import {
   VISION_MAX_TOKENS,
   VISION_TEMPERATURE,
   buildVisionUserText,
+  normZone,
   type VisionOutput,
   type VisionToken,
   type VisionDiagnostics,
@@ -134,6 +135,9 @@ export function mergeConsensus(
       chain: ta?.chain ?? "unknown",
       chainConfidence: ta?.chainConfidence ?? "low",
       perf: ta?.perf ?? null,
+      // Zone is a layout fact, not a character read → carried from pass A
+      // (position-aligned). Absent ⇒ normalized to "primary" downstream.
+      zone: normZone(ta?.zone),
     });
 
     diagTokens.push({

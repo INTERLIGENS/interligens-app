@@ -12,7 +12,7 @@
  * On les IMPORTE et RE-EXPORTE ici pour ne pas créer un second type divergent.
  */
 
-import type { Confidence, VisionChain } from "../vision/visionPrompt";
+import type { Confidence, VisionChain, ClaimZone, ClaimPriority } from "../vision/visionPrompt";
 import type {
   ClaimStatus,
   ExtractionDecision,
@@ -21,7 +21,7 @@ import type {
   SourceTrustTier,
 } from "./status";
 
-export type { Confidence, VisionChain };
+export type { Confidence, VisionChain, ClaimZone, ClaimPriority };
 
 /**
  * Décision attachée à UN claim (ExtractedClaim) à l'issue de l'extraction +
@@ -68,6 +68,19 @@ export interface ExtractedClaim {
 
   kolHandle: string | null;              // sans '@', ou null si non lisible
   kolHandleConfidence: Confidence;
+
+  /**
+   * ZONE du claim dans la capture (primary/sidebar/embedded/reply). Optionnel :
+   * absent ⇒ traité comme 'primary' (le sujet du post) → comportement legacy
+   * identique. Voir normZone/zoneToPriority (../vision/visionPrompt).
+   */
+  zone?: ClaimZone;
+  /**
+   * PRIORITÉ dérivée de la zone : 'high' pour le sujet (primary), 'low' pour tout
+   * second plan (sidebar/embedded/reply). Optionnel : absent ⇒ 'high'. INVARIANT
+   * (classifyClaim) : un claim 'low' ne peut JAMAIS auto-committer une assertion.
+   */
+  priority?: ClaimPriority;
 
   /** Verdict + raison figés pour CE claim. */
   decision: ExtractionDecisionRecord;
