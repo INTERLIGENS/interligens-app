@@ -18,13 +18,14 @@
  */
 
 import { validateCA, pendingFor } from "./validateCA";
-import type { VisionOutput } from "./visionPrompt";
+import { normZone, type ClaimZone, type VisionOutput } from "./visionPrompt";
 import type { VerifyMintFn } from "./verifyMintOnChain";
 
 export interface TokenResolution {
   tokenSymbol: string | null;     // normalized ticker (no $), or null if illegible/disagree
   contractAddress: string;        // real CA (RESOLVED) or "PENDING:<TICKER>"
   chain: string;                  // derived from CA format when resolved, else vision/unknown
+  zone: ClaimZone;                // WHERE the token was read (primary/sidebar/embedded/reply)
   resolved: boolean;
   resolutionPath: string;
   warnings: string[];
@@ -66,6 +67,7 @@ export async function resolveVisionTokens(
     const warnings: string[] = [];
     const caReads: [string | null, string | null] = d?.caReads ?? [tk.contractAddress ?? null, null];
     const caCertainHint = d?.caCertainHint ?? false;
+    const zone = normZone(tk.zone); // layout region — carried untouched through every lock
     let chain = (tk.chain ?? "unknown").toLowerCase();
 
     const audit = {
@@ -79,6 +81,7 @@ export async function resolveVisionTokens(
       tokenSymbol: ticker,
       contractAddress: pendingFor(ticker),
       chain,
+      zone,
       resolved: false,
       resolutionPath: path,
       warnings,
@@ -153,6 +156,7 @@ export async function resolveVisionTokens(
       tokenSymbol: ticker,
       contractAddress: candidateCA,
       chain,
+      zone,
       resolved: true,
       resolutionPath: "double_vision:ok|onchain:ok|ticker:ok",
       warnings,

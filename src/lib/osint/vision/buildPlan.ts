@@ -92,6 +92,7 @@ export interface OsintPlan {
       tokenSymbol: string | null;
       ca: "resolved" | "PENDING";
       chain: string;
+      zone: string;
       resolutionPath: string;
       caReads: [string | null, string | null];
       onChainSymbol: string | null;
@@ -145,13 +146,14 @@ export function buildPlan(input: BuildPlanInput): OsintPlan {
       role: "promoter",
       documentationStatus: "partial",
       attributionNote: `Vision-auto extraction (shadow). snapshotType=${vision.snapshotType}. session ${sessionId}.`,
-      note: `vision_auto; resolutionPath=${r.resolutionPath}; caCertainHint=${r.audit.caCertainHint}; onChainSymbol=${r.audit.onChainSymbol ?? "n/a"}.`,
+      note: `vision_auto; zone=${r.zone}; resolutionPath=${r.resolutionPath}; caCertainHint=${r.audit.caCertainHint}; onChainSymbol=${r.audit.onChainSymbol ?? "n/a"}.`,
       resolutionPath: r.resolutionPath,
     });
     perTokenSummary.push({
       tokenSymbol: r.tokenSymbol,
       ca: isPending(r.contractAddress) ? "PENDING" : "resolved",
       chain: r.chain,
+      zone: r.zone,
       resolutionPath: r.resolutionPath,
       caReads: r.audit.caReads,
       onChainSymbol: r.audit.onChainSymbol,
