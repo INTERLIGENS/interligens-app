@@ -138,3 +138,92 @@ describe("THREE-LOCK resolveVisionTokens", () => {
     expect(r.warnings.some((w) => w.startsWith("CA_NO_METADATA"))).toBe(true);
   });
 });
+
+// ── cc-offline-48 — CA-AWARE DEDUP ───────────────────────────────────────────
+// The same cashtag in different casings, CA on only one of them, must NOT let a
+// CA-less first mention evict the CA-bearing one before the locks/Helius run.
+const BEPE_CA = "CqzWnaG6FBvSR8xysUGswnQpdM8sTGzMeFbfs9kTKeWN"; // real, Helius exists, symbol "bepe"
+
+describe("cc-offline-48 — CA-aware dedup of case-variant cashtags", () => {
+  it("THE $Bepe case — $Bepe(no CA) then $bepe(CA) then $BEPE(no CA) => CA-bearing token survives and RESOLVES", async () => {
+    // reading order puts the CA-less mention FIRST (the exact real-capture layout)
+    const tokens: VisionToken[] = [
+      tok({ tokenSymbol: "Bepe", contractAddress: null, contractAddressCertain: false, chain: "unknown", chainConfidence: "low" }),
+      tok({ tokenSymbol: "bepe", contractAddress: BEPE_CA }),
+      tok({ tokenSymbol: "BEPE", contractAddress: null, contractAddressCertain: false, chain: "unknown", chainConfidence: "low" }),
+    ];
+    const vision = mergeConsensus(pass(tokens), pass(tokens), null);
+    const verifyMint = vi.fn(verifyExists("bepe"));
+    const res = await resolveVisionTokens(vision, { verifyMint });
+
+    // the three case-variants collapse to ONE claim — and it is the CA-bearing one
+    expect(res).toHaveLength(1);
+    expect(res[0].resolved).toBe(true);
+    expect(res[0].contractAddress).toBe(BEPE_CA);
+    expect(res[0].resolutionPath).toBe("double_vision:ok|onchain:ok|ticker:ok");
+    expect(verifyMint).toHaveBeenCalledWith(BEPE_CA); // the CA actually reached lock 2
+    expect(verifyMint).toHaveBeenCalledTimes(1);
+  });
+
+  it("order-independent — CA-bearing mention FIRST still resolves once (legit dedup of the echoes)", async () => {
+    const tokens: VisionToken[] = [
+      tok({ tokenSymbol: "bepe", contractAddress: BEPE_CA }),
+      tok({ tokenSymbol: "Bepe", contractAddress: null, contractAddressCertain: false, chain: "unknown", chainConfidence: "low" }),
+    ];
+    const vision = mergeConsensus(pass(tokens), pass(tokens), null);
+    const res = await resolveVisionTokens(vision, { verifyMint: vi.fn(verifyExists("bepe")) });
+    expect(res).toHaveLength(1);
+    expect(res[0].resolved).toBe(true);
+    expect(res[0].contractAddress).toBe(BEPE_CA);
+  });
+
+  it("two DIFFERENT CAs under the same ticker => TWO distinct claims, no CA overwritten", async () => {
+    // TOES/WORLDCUP shape: one cashtag, two real mints. Never merge blindly.
+    const tokens: VisionToken[] = [
+      tok({ tokenSymbol: "TOES", contractAddress: TOES_REAL }),
+      tok({ tokenSymbol: "toes", contractAddress: BEPE_CA }), // different CA, same ticker casing-insensitive
+    ];
+    const vision = mergeConsensus(pass(tokens), pass(tokens), null);
+    const res = await resolveVisionTokens(vision, { verifyMint: vi.fn(verifyExists("TOES")) });
+    expect(res).toHaveLength(2);
+    const cas = res.map((r) => r.contractAddress).sort();
+    expect(cas).toEqual([TOES_REAL, BEPE_CA].sort());
+    // both survive to the locks — neither CA is clobbered by the other
+    expect(res.every((r) => r.resolved)).toBe(true);
+  });
+
+  it("legit dedup preserved — two STRICTLY identical mentions (same ticker, same CA) => ONE claim", async () => {
+    const tokens: VisionToken[] = [
+      tok({ tokenSymbol: "TOES", contractAddress: TOES_REAL }),
+      tok({ tokenSymbol: "TOES", contractAddress: TOES_REAL }),
+    ];
+    const vision = mergeConsensus(pass(tokens), pass(tokens), null);
+    const verifyMint = vi.fn(verifyExists("TOES"));
+    const res = await resolveVisionTokens(vision, { verifyMint });
+    expect(res).toHaveLength(1);
+    expect(res[0].resolved).toBe(true);
+    expect(verifyMint).toHaveBeenCalledTimes(1); // not re-verified for the duplicate
+  });
+
+  it("regression — mono-token capture is unchanged (one claim, resolves as before)", async () => {
+    const vision = mergeConsensus(pass([tok({ contractAddress: TOES_REAL })]), pass([tok({ contractAddress: TOES_REAL })]), null);
+    const res = await resolveVisionTokens(vision, { verifyMint: vi.fn(verifyExists("TOES")) });
+    expect(res).toHaveLength(1);
+    expect(res[0].resolved).toBe(true);
+    expect(res[0].contractAddress).toBe(TOES_REAL);
+  });
+
+  it("no-CA-anywhere ticker => one PENDING representative (unchanged behaviour)", async () => {
+    const tokens: VisionToken[] = [
+      tok({ tokenSymbol: "Bepe", contractAddress: null, contractAddressCertain: false, chain: "unknown", chainConfidence: "low" }),
+      tok({ tokenSymbol: "BEPE", contractAddress: null, contractAddressCertain: false, chain: "unknown", chainConfidence: "low" }),
+    ];
+    const vision = mergeConsensus(pass(tokens), pass(tokens), null);
+    const verifyMint = vi.fn(verifyExists("bepe"));
+    const res = await resolveVisionTokens(vision, { verifyMint });
+    expect(res).toHaveLength(1);
+    expect(res[0].resolved).toBe(false);
+    expect(res[0].contractAddress).toBe("PENDING:BEPE");
+    expect(verifyMint).not.toHaveBeenCalled();
+  });
+});
