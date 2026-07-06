@@ -15,14 +15,14 @@ function vision(p: Partial<VisionOutput>): VisionOutput {
 }
 function resolved(sym: string): TokenResolution {
   return {
-    tokenSymbol: sym, contractAddress: SOL_CA, chain: "solana", resolved: true,
+    tokenSymbol: sym, contractAddress: SOL_CA, chain: "solana", zone: "primary", resolved: true,
     resolutionPath: "double_vision:ok|onchain:ok|ticker:ok", warnings: [],
     audit: { caReads: [SOL_CA, SOL_CA], caCertainHint: true, onChainSymbol: sym, onChainStatus: "exists" },
   };
 }
 function pending(sym: string, path: string, warn: string): TokenResolution {
   return {
-    tokenSymbol: sym, contractAddress: `PENDING:${sym}`, chain: "solana", resolved: false,
+    tokenSymbol: sym, contractAddress: `PENDING:${sym}`, chain: "solana", zone: "primary", resolved: false,
     resolutionPath: path, warnings: [warn],
     audit: { caReads: ["x", "y"], caCertainHint: true, onChainSymbol: null, onChainStatus: null },
   };
