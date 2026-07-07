@@ -5,9 +5,17 @@ import type { HopsDepth, DaysWindow, Priority } from "@/lib/solanaGraph/types";
 import { vaultLookup } from "@/lib/vault/vaultLookup";
 import { checkScanLimit } from "@/lib/vault/scanRateLimit";
 import { auditScanLookup } from "@/lib/vault/auditScan";
+import { getClientIp } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
+  // Rate-limit BEFORE any work — this endpoint enqueues a Helius graph scan
+  // (external $ cost, shared HELIUS key). Unauthenticated, and the proxy exempts
+  // /api/* so there is no global limiter. checkScanLimit = 60 req / 5 min / IP.
+  const rl = checkScanLimit(getClientIp(req));
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
   let body: Record<string,unknown>; try{body=await req.json();}catch{return NextResponse.json({
       error:"Invalid JSON"},{status:400});}
   const mint=typeof body.mint==="string"?body.mint:undefined, wallet=typeof body.wallet==="string"?body.wallet:undefined;

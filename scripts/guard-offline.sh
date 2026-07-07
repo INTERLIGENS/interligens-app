@@ -427,6 +427,21 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-remove-dead-crons$ ]]; then
     )
 fi
 
+# Exceptions pour l'ajout de rate-limit sur 3 POSTs publics non-authentifiés à
+# coût/write (graph/jobs = Helius $, reflex watch + mm challenge = writes DB).
+# Le proxy exempte /api/*, aucune couverture globale. Ajout défensif : un gate
+# rate-limit en tête de handler (429 au dépassement), aucune logique métier/scoring
+# touchée. Autorisation humaine explicite (David, voie 1) — voir PR description.
+# Exemption STRICTEMENT limitée aux 3 routes concernées + le guard lui-même.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
+    EXEMPT_RATELIMIT_POSTS_PATTERNS=(
+        "^src/app/api/scan/solana/graph/jobs/route\.ts$"
+        "^src/app/api/reflex/\[id\]/watch/route\.ts$"
+        "^src/app/api/v1/mm/challenge/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -704,6 +719,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-remove-dead-crons$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_REMOVE_DEAD_CRONS_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche ratelimit-public-posts, exempter STRICTEMENT les 3 routes patchées.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
