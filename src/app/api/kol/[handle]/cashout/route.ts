@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getPriceAtDate } from "@/lib/kol/pricing";
+import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
 
 const prisma = new PrismaClient();
 const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`;
@@ -115,8 +116,9 @@ export async function GET(
   const ca = searchParams.get("ca");
 
   try {
-    const profile = await prisma.kolProfile.findUnique({
-      where: { handle },
+    // Publish gate: non-public handles 404 (never expose wallet cashout data).
+    const profile = await prisma.kolProfile.findFirst({
+      where: { handle, ...PUBLIC_KOL_FILTER },
       include: { kolWallets: true },
     });
 

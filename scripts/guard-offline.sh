@@ -395,6 +395,23 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-retail-gate$ ]]; then
     )
 fi
 
+# Exceptions pour le fix fuite handle (sécurité — gate PUBLIC_KOL_FILTER sur 4
+# routes détail par-handle qui exposaient des données non-public sans auth).
+# Fix défensif : ajout d'un filtre publish + scrub de champs internes, aucune
+# nouvelle surface, aucune logique core/scoring touchée. Autorisation humaine
+# explicite (David, voie 1) — voir PR description.
+# Exemption STRICTEMENT limitée aux 4 fichiers de routes concernés + le guard
+# lui-même ; ne couvre PAS le reste de src/app/api/ (aucun wildcard).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
+    EXEMPT_FIX_HANDLE_LEAK_PATTERNS=(
+        "^src/app/api/v1/kol/\[handle\]/route\.ts$"
+        "^src/app/api/laundry/\[handle\]/route\.ts$"
+        "^src/app/api/kol/\[handle\]/class-action/route\.ts$"
+        "^src/app/api/kol/\[handle\]/cashout/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -648,6 +665,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-retail-gate$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RETAIL_GATE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche fix-handle-leak, exempter STRICTEMENT les 4 routes détail patchées.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_FIX_HANDLE_LEAK_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
