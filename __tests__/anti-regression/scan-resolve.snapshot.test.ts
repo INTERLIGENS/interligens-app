@@ -11,21 +11,19 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// The route resolves curated links + mentions via prisma.$queryRawUnsafe (raw
+// SQL on "KolTokenLink" / "KolPromotionMention") since the findMany→SQL refactor.
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    kolTokenLink: { findMany: vi.fn() },
-    kolPromotionMention: { findMany: vi.fn() },
+    $queryRawUnsafe: vi.fn(),
   },
 }));
 
 import { prisma } from "@/lib/prisma";
 import { GET as resolveGET } from "@/app/api/scan/resolve/route";
 
-const mockTokenLinkFindMany = vi.mocked(
-  prisma.kolTokenLink.findMany as unknown as (...a: unknown[]) => unknown,
-);
-const mockMentionFindMany = vi.mocked(
-  prisma.kolPromotionMention.findMany as unknown as (...a: unknown[]) => unknown,
+const mockQueryRaw = vi.mocked(
+  prisma.$queryRawUnsafe as unknown as (...a: unknown[]) => unknown,
 );
 
 interface Fixture {
@@ -149,10 +147,15 @@ afterEach(() => {
 
 describe.each(FIXTURES)("/api/scan/resolve snapshot — $label", (f) => {
   it("matches the locked response", async () => {
-    mockTokenLinkFindMany.mockResolvedValue(f.curated);
-    mockMentionFindMany.mockResolvedValue(
-      f.mentions.map((m) => ({ ...m, kol: { handle: m.kolHandle } })),
-    );
+    // Route by SQL table name — the raw query selects kolHandle flat, so the
+    // fixtures (curated {kolHandle,contractAddress,chain,tokenSymbol}, mentions
+    // {kolHandle,tokenMint,chain,tokenSymbol}) are already the right shape.
+    mockQueryRaw.mockImplementation((sql: unknown) => {
+      const q = String(sql);
+      if (q.includes('"KolTokenLink"')) return Promise.resolve(f.curated);
+      if (q.includes('"KolPromotionMention"')) return Promise.resolve(f.mentions);
+      return Promise.resolve([]);
+    });
     // CoinGecko: two-step fetch (search → coins/{id}). Always return what
     // the fixture declares; if empty, search returns coins: [].
     globalThis.fetch = vi.fn(async (url) => {
