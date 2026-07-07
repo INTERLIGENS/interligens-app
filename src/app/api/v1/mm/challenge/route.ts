@@ -4,9 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { writeReviewLog } from "@/lib/mm/registry/reviewLog";
 import { dkimPrecheck } from "@/lib/mm/email/dkim";
 import type { MmTargetType, MmVerifMethod } from "@/lib/mm/types";
+import { checkRateLimit, getClientIp, rateLimitResponse, detectLocale } from "@/lib/security/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+// Unauthenticated write (mmChallenge.create) + DNS precheck; the proxy exempts
+// /api/* so there is no global limiter. 30 req / min / IP.
+const CHALLENGE_RATE_LIMIT = { windowMs: 60_000, max: 30, keyPrefix: "rl:mm-challenge" };
 
 const VALID_TARGET_TYPES: MmTargetType[] = ["ENTITY", "CLAIM", "ATTRIBUTION"];
 const VALID_VERIF_METHODS: MmVerifMethod[] = [
@@ -34,6 +39,9 @@ function badRequest(message: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = await checkRateLimit(getClientIp(req), CHALLENGE_RATE_LIMIT);
+  if (!rl.allowed) return rateLimitResponse(rl, detectLocale(req));
+
   let body: ChallengeBody;
   try {
     body = (await req.json()) as ChallengeBody;

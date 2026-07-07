@@ -10,6 +10,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { findById } from "@/lib/reflex/persistence";
 import { WATCH_DEFAULT_TTL_DAYS } from "@/lib/reflex/constants";
+import { checkRateLimit, getClientIp, rateLimitResponse, detectLocale } from "@/lib/security/rateLimit";
+
+// Unauthenticated write (reflexWatch.create); the proxy exempts /api/* so there
+// is no global limiter. 30 req / min / IP — generous for legit use, stops floods.
+const WATCH_RATE_LIMIT = { windowMs: 60_000, max: 30, keyPrefix: "rl:reflex-watch" };
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +43,9 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  const rl = await checkRateLimit(getClientIp(req), WATCH_RATE_LIMIT);
+  if (!rl.allowed) return rateLimitResponse(rl, detectLocale(req));
+
   const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ error: "missing_id" }, { status: 400 });
