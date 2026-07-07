@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -119,6 +120,18 @@ export async function GET(
   { params }: { params: Promise<{ handle: string }> }
 ) {
   const { handle } = await params;
+
+  // Publish gate: non-public handles never expose on-chain wallet/token detail.
+  // Return a VALID masked-empty structure (status 200, no error) so the watchlist
+  // WalletHistorySection renders its empty state instead of crashing. Checked
+  // BEFORE the cache so a non-public handle can never serve cached real data.
+  const publicProfile = await prisma.kolProfile.findFirst({
+    where: { handle, ...PUBLIC_KOL_FILTER },
+    select: { id: true },
+  });
+  if (!publicProfile) {
+    return NextResponse.json({ handle, wallets: [], tokens: [], cached: false, masked: true });
+  }
 
   const cached = CACHE.get(handle);
   if (cached && Date.now() - cached.ts < TTL_MS) {

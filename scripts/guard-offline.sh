@@ -408,6 +408,8 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
         "^src/app/api/laundry/\[handle\]/route\.ts$"
         "^src/app/api/kol/\[handle\]/class-action/route\.ts$"
         "^src/app/api/kol/\[handle\]/cashout/route\.ts$"
+        "^src/app/api/watchlist/route\.ts$"
+        "^src/app/api/kol/\[handle\]/wallet-history/route\.ts$"
         "^scripts/guard-offline\.sh$"
     )
 fi
