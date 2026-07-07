@@ -208,7 +208,25 @@ export async function GET() {
       sources: [...new Set(entries.map(e => e.source))].length,
     }
 
-    return NextResponse.json({ entries, stats })
+    // 6. Redact sensitive analytics for NON-published entries. The row stays
+    // fully present (handle, tickers, priority, followers, isPublished, chips) —
+    // only the analytic fields are nulled. Applied AFTER sort + stats so neither
+    // ordering nor aggregate stats change vs today (zero display regression).
+    const publicEntries = entries.map(e =>
+      e.isPublished
+        ? e
+        : {
+            ...e,
+            totalScammed: null,
+            totalProceeds: null,
+            behaviorFlags: [],
+            behaviorFlagsCount: 0,
+            riskFlag: null,
+            rugCount: null,
+          }
+    )
+
+    return NextResponse.json({ entries: publicEntries, stats })
   } catch (error) {
     console.error('[watchlist] error:', error)
     return NextResponse.json({ error: 'Failed to load watchlist' }, { status: 500 })
