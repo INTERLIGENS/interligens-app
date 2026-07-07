@@ -1,6 +1,7 @@
 // src/app/api/kol/[handle]/class-action/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
 
 export const maxDuration = 30;
 
@@ -11,7 +12,6 @@ export interface ClassActionPackage {
     handle: string;
     label: string | null;
     platform: string;
-    evmAddress: string | null;
     tier: string | null;
   };
   caseStats: {
@@ -35,8 +35,10 @@ export async function GET(
 ) {
   const { handle } = await params;
 
-  const kol = await prisma.kolProfile.findUnique({
-    where: { handle },
+  // Publish gate — SSR page carries no cookie, so the filter MUST live here.
+  // Co-defendants are only served when the SUBJECT itself is a public profile.
+  const kol = await prisma.kolProfile.findFirst({
+    where: { handle, ...PUBLIC_KOL_FILTER },
     include: { evidences: true, kolCases: true },
   });
 
@@ -59,7 +61,6 @@ export async function GET(
       handle: kol.handle,
       label: kol.label,
       platform: kol.platform,
-      evmAddress: kol.evmAddress ?? null,
       tier: kol.tier ?? null,
     },
     caseStats: {
