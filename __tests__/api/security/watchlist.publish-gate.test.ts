@@ -59,7 +59,12 @@ beforeEach(() => {
     { kolHandle: "pubguy", tokenSymbol: "REAL", createdAt: new Date() },
   ]);
   (prisma.kolPromotionMention.findMany as any).mockResolvedValue([]);
-  (prisma.kolTokenInvolvement.findMany as any).mockResolvedValue([]);
+  // Both handles have real cashout proceeds (KolTokenInvolvement) so we can
+  // assert the bucket is zeroed for the non-published one and kept for the published.
+  (prisma.kolTokenInvolvement.findMany as any).mockResolvedValue([
+    { kolHandle: "pubguy", proceedsUsd: 50000, firstSellAt: new Date() },
+    { kolHandle: "draftguy", proceedsUsd: 90000, firstSellAt: new Date() },
+  ]);
   (prisma.socialPostCandidate.groupBy as any).mockResolvedValue([]);
   (prisma.influencer.findMany as any).mockResolvedValue([]);
   mockBatch.mockResolvedValue([profile("pubguy", true), profile("draftguy", false)]);
@@ -90,6 +95,8 @@ describe("GET /api/watchlist — non-published redaction", () => {
     expect(draft.behaviorFlagsCount).toBe(0);
     expect(draft.riskFlag).toBeNull();
     expect(draft.rugCount).toBeNull();
+    // cashout ("Money taken") zeroed — shape kept valid so the UI can't crash
+    expect(draft.cashout).toEqual({ d1: 0, d7: 0, d30: 0, ytd: 0, total: 0 });
     // kept
     expect(draft.handle).toBe("draftguy");
     expect(draft.priority).toBe("medium");
@@ -108,5 +115,7 @@ describe("GET /api/watchlist — non-published redaction", () => {
     expect(pub.riskFlag).toBe("high");
     expect(pub.rugCount).toBe(4);
     expect(pub.tickers).toContain("REAL");
+    // cashout untouched for published — real proceeds still surface
+    expect(pub.cashout.total).toBe(50000);
   });
 });

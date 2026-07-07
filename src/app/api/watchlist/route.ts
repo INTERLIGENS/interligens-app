@@ -223,6 +223,10 @@ export async function GET() {
             behaviorFlagsCount: 0,
             riskFlag: null,
             rugCount: null,
+            // cashout ("Money taken" headline, from KolTokenInvolvement) is
+            // sensitive too — zero the bucket (shape kept so e.cashout.total/d1…
+            // stay valid: fmtUsd(0) -> null -> the UI renders its empty state).
+            cashout: { d1: 0, d7: 0, d30: 0, ytd: 0, total: 0 },
           }
     )
 
