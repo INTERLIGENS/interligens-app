@@ -414,6 +414,19 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
     )
 fi
 
+# Exceptions pour le retrait des 5 crons morts de vercel.json (401 no-op —
+# handlers en x-cron-secret/?secret= alors que Vercel envoie Bearer ; pipelines
+# legacy supplantés par helius-scan + watcher-v2). Aucune logique code touchée :
+# on retire uniquement les déclencheurs cron, les handlers restent inertes.
+# Autorisation humaine explicite (David, voie 1) — voir PR description.
+# Exemption STRICTEMENT limitée à vercel.json + le guard lui-même.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-remove-dead-crons$ ]]; then
+    EXEMPT_REMOVE_DEAD_CRONS_PATTERNS=(
+        "^vercel\.json$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -679,6 +692,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_FIX_HANDLE_LEAK_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche remove-dead-crons, exempter STRICTEMENT vercel.json (retrait des crons morts).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-remove-dead-crons$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_REMOVE_DEAD_CRONS_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
