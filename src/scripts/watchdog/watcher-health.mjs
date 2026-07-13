@@ -74,6 +74,25 @@ const STATE_FILE =
 const SILENCE_MS = SILENCE_DAYS * 86_400_000;
 const REALERT_MS = 24 * 3_600_000; // ré-alerte au plus une fois / 24h pour le même problème
 
+// --- Retry connexion DB (anti-faux-positif réseau) ---------------------------
+// Host-001 est un laptop en Indonésie (Lombok) ; le lien vers Neon (Francfort)
+// est intercontinental et lâche par intermittence (read ETIMEDOUT/ECONNRESET
+// en pleine session — le socket se connecte puis meurt). Un seul essai =>
+// une alerte 🔴 "échec DB" au 1er paquet perdu, alors que la DB va très bien.
+// On ne considère donc la DB en panne que si TOUTES les tentatives échouent :
+//   - hoquet réseau transitoire  -> une tentative suivante réussit -> pas d'alerte
+//   - vraie panne DB             -> les 3 tentatives échouent      -> alerte 🔴
+const DB_MAX_ATTEMPTS = parseInt(process.env.WATCHDOG_DB_MAX_ATTEMPTS ?? "3", 10);
+// Timeout explicite par tentative : borne les stalls silencieux (sinon un
+// ETIMEDOUT read peut pendre ~75s au niveau OS).
+const DB_CONNECT_TIMEOUT_MS = parseInt(process.env.WATCHDOG_DB_CONNECT_TIMEOUT_MS ?? "15000", 10);
+// Backoff AVANT chaque nouvelle tentative (la 1re est immédiate). Avec 3
+// tentatives, 2 attentes sont consommées (2s puis 5s) ; le 10s reste défini
+// pour une éventuelle 4e tentative via WATCHDOG_DB_MAX_ATTEMPTS.
+const DB_RETRY_BACKOFF_MS = [2000, 5000, 10000];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 // --- État local (anti-spam + heartbeat) --------------------------------------
 function loadState() {
   try {
@@ -196,6 +215,49 @@ async function runChecks(client) {
   return { problems, lines };
 }
 
+// --- Connexion + checks avec retries (anti-faux-positif réseau) ---------------
+// Retente connect()+runChecks jusqu'à DB_MAX_ATTEMPTS fois. Les checks sont
+// 100% lecture (SELECT) et idempotents, donc sûrs à rejouer. Ne throw QUE si
+// toutes les tentatives échouent (=> vraie panne DB, alerte légitime).
+async function connectAndCheck() {
+  let lastErr;
+  for (let attempt = 1; attempt <= DB_MAX_ATTEMPTS; attempt++) {
+    const client = new Client({
+      connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: DB_CONNECT_TIMEOUT_MS,
+    });
+    try {
+      await client.connect();
+      try {
+        return await runChecks(client);
+      } finally {
+        try {
+          await client.end();
+        } catch {}
+      }
+    } catch (e) {
+      lastErr = e;
+      try {
+        await client.end();
+      } catch {}
+      if (attempt < DB_MAX_ATTEMPTS) {
+        const wait = DB_RETRY_BACKOFF_MS[attempt - 1] ?? 5000;
+        console.error(
+          `[watchdog] tentative connexion DB ${attempt}/${DB_MAX_ATTEMPTS} échouée: ` +
+            `${e.code || ""} ${e.message} — retry dans ${(wait / 1000).toFixed(0)}s`
+        );
+        await sleep(wait);
+      } else {
+        console.error(
+          `[watchdog] tentative connexion DB ${attempt}/${DB_MAX_ATTEMPTS} échouée: ` +
+            `${e.code || ""} ${e.message} — abandon.`
+        );
+      }
+    }
+  }
+  throw lastErr;
+}
+
 // --- Main --------------------------------------------------------------------
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -203,20 +265,19 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
   let result;
   try {
-    await client.connect();
-    result = await runChecks(client);
+    result = await connectAndCheck();
   } catch (e) {
-    // Échec de connexion DB lui-même = anomalie à signaler.
-    console.error("[watchdog] échec connexion/checks DB:", e.message);
-    await sendTelegram(`🔴 WATCHDOG — échec d'accès à la DB : ${e.message}`);
+    // Échec de connexion DB après toutes les tentatives = vraie anomalie.
+    console.error(
+      `[watchdog] échec connexion/checks DB après ${DB_MAX_ATTEMPTS} tentatives:`,
+      e.message
+    );
+    await sendTelegram(
+      `🔴 WATCHDOG — échec d'accès à la DB (après ${DB_MAX_ATTEMPTS} tentatives) : ${e.message}`
+    );
     process.exit(1);
-  } finally {
-    try {
-      await client.end();
-    } catch {}
   }
 
   const { problems, lines } = result;
