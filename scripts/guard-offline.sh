@@ -442,6 +442,24 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
     )
 fi
 
+# Exceptions pour le hotfix garde-fou X API AUTORITATIF — bascule de la DÉCISION
+# de blocage du watcher de l'estimation $ maison (fenêtre calendaire) vers
+# l'usage X réel en POSTS sur le cycle 21-21 (GET /2/usage/tweets), fail-closed
+# avec retries. Additif : nouveau helper getProjectUsage (src/lib/xapi/, non
+# gelé, passe hors exemption) + décision posts dans la route cron + tests
+# unitaires. Aucune écriture DB, aucune migration, aucun couplage
+# scoring/TigerScore/PDF. Autorisation humaine explicite (David, voie 1) —
+# voir PR description. Exemption STRICTEMENT limitée aux 2 fichiers src/app/api/
+# concernés + le guard lui-même ; AUCUN wildcard sur src/app/api/ (toute autre
+# route src/app/api/ reste bloquée).
+if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
+    EXEMPT_XAPI_AUTHORITATIVE_PATTERNS=(
+        "^src/app/api/cron/watcher-v2/route\.ts$"
+        "^src/app/api/cron/watcher-v2/__tests__/budgetCapPosts\.test\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -731,6 +749,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche hotfix/xapi-usage-authoritative, exempter STRICTEMENT les 2
+    # fichiers src/app/api/ du hotfix + le guard (aucun wildcard src/app/api/).
+    if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
