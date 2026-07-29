@@ -179,6 +179,19 @@ async function runChecks(client) {
   }
 
   // 2. Spend cap (lecture de NOTRE table d'estimation, pas d'appel X API)
+  //
+  // ⚠️ DIVERGENCE DE REPORTING CONNUE (follow-up) — depuis le hotfix
+  // xapi-usage-authoritative, la DÉCISION de blocage du watcher se base sur
+  // l'usage AUTORITATIF X en POSTS et sur le cycle réel 21→21
+  // (GET /2/usage/tweets). Ce check-ci lit encore XApiUsage.totalCostUsd, une
+  // ESTIMATION en $ sur une fenêtre CALENDAIRE (date_trunc('month'), reset le
+  // 1er) — donc désaligné du cycle X et de la vraie logique de garde-fou. En
+  // pratique il SUR-estime en fin de cycle (empile jusqu'à ~20j du cycle
+  // précédent) puis SOUS-estime en début de mois. Cette ligne "Spend X API"
+  // reste donc un indicateur $ approximatif, NON FIABLE, jusqu'au follow-up qui
+  // recalera le watchdog sur l'usage autoritatif (sans casser sa garantie "zéro
+  // appel X" — p.ex. via des colonnes que le watcher persiste). Ne pas s'y fier
+  // pour un seuil budgétaire tant que ce follow-up n'est pas fait.
   try {
     const r = await client.query(
       `SELECT "totalCostUsd","tweetsFetched","userLookups"

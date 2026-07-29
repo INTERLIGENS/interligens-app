@@ -152,6 +152,56 @@ export async function getUserByUsername(username: string): Promise<XUser | null>
   return json.data;
 }
 
+// ─── Authoritative usage (billing-cycle) ──────────────────────
+// GET /2/usage/tweets reports the project's Post-pull usage for the CURRENT X
+// billing cycle — the authoritative counter, not our $ estimate. It returns
+// POSTS (not dollars) and the cycle reset day, so the watcher can gate on the
+// real cycle window (reset day 21) instead of a calendar month. This endpoint
+// is usage metadata: it is NOT billed as a Post read and does not increment
+// project_usage itself.
+export interface XUsage {
+  /** Posts consumed in the current billing cycle (authoritative). */
+  projectUsage: number;
+  /** Tier Post-pull quota for the cycle (e.g. 2_000_000) — NOT the $ spend cap. */
+  projectCap: number;
+  /** Day-of-month the usage cycle resets (e.g. 21). */
+  capResetDay: number;
+}
+
+/**
+ * Read the authoritative project Post usage for the current billing cycle.
+ * Returns null on ANY failure (network / HTTP / parse / unexpected shape) so the
+ * caller can apply its own fail-safe policy. Free call (usage metadata, not a
+ * billed read).
+ */
+export async function getProjectUsage(): Promise<XUsage | null> {
+  const res = await xFetch(`${X_API_BASE}/usage/tweets`);
+  if (!res) return null;
+
+  let json: {
+    data?: { project_usage?: string; project_cap?: string; cap_reset_day?: number | string };
+  };
+  try {
+    json = (await res.json()) as typeof json;
+  } catch {
+    console.error('[xapi] getProjectUsage: response body not JSON');
+    return null;
+  }
+  const d = json.data;
+  if (!d || d.project_usage == null) {
+    console.error('[xapi] getProjectUsage: unexpected response shape', json);
+    return null;
+  }
+  const projectUsage = parseInt(String(d.project_usage), 10);
+  const projectCap = parseInt(String(d.project_cap ?? '0'), 10);
+  const capResetDay = Number(d.cap_reset_day ?? 0);
+  if (!Number.isFinite(projectUsage)) {
+    console.error('[xapi] getProjectUsage: project_usage not a number', d.project_usage);
+    return null;
+  }
+  return { projectUsage, projectCap, capResetDay };
+}
+
 /**
  * Get recent tweets for a userId.
  */

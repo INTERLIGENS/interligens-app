@@ -9,7 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { getUserByUsername, getUserTweetsWindow, hasToken, isSpendCapped, spendCapResetDate } from "@/lib/xapi/client";
+import { getUserByUsername, getUserTweetsWindow, getProjectUsage, type XUsage, hasToken, isSpendCapped, spendCapResetDate } from "@/lib/xapi/client";
 import { detectSignals, shouldKeep } from "@/lib/watcher/tokenDetector";
 import { handlesV2 } from "@/lib/watcher/handles";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
@@ -160,6 +160,75 @@ export function evaluateBudgetCap(opts: {
   return { capReached, warning };
 }
 
+// ─── X API POSTS-BASED HARD CAP (authoritative decision) ──────────────────
+//
+// The dollar cap above (X_API_HARD_CAP_USD) and the XApiUsage table are RETAINED
+// for reporting/history ONLY — they estimate cost over a CALENDAR month, which
+// drifts from X's real 21→21 billing cycle. The BLOCK DECISION now uses the
+// authoritative Post usage from GET /2/usage/tweets (project_usage, in posts,
+// scoped to the real cycle) gated against a POSTS cap.
+//
+// X_API_HARD_CAP_POSTS : hard cycle ceiling in POSTS. Default 24_000 ≈ $139 at
+//   $0.0058/post — a conservative margin under X's real $150 spend cap. The tier
+//   Post quota (project_cap, ~2_000_000) is far higher and NOT the binding limit
+//   here; the $150 spend cap (mapped to posts) is.
+export const X_API_HARD_CAP_POSTS = parseInt(process.env.X_API_HARD_CAP_POSTS ?? "24000", 10);
+
+// Worst-case POST count of the upcoming run: every handle at its per-handle cap
+// (GordonGekko=100), padded by the safety factor. Mirror of estimateRunCostUsd
+// but in posts (the decision currency).
+export function estimateRunPosts(
+  handles: { handle: string }[],
+  maxPostsPerHandle: number,
+  safetyFactor: number = CAP_SAFETY_FACTOR,
+): number {
+  const posts = handles.reduce(
+    (sum, h) => sum + (h.handle === "GordonGekko" ? 100 : maxPostsPerHandle),
+    0,
+  );
+  return Math.ceil(posts * safetyFactor);
+}
+
+// Pure decision in POSTS: block if authoritative cycle usage + this run's
+// estimated posts would reach the cap; warn at warnRatio (80%) of the cap.
+export function evaluateBudgetCapPosts(opts: {
+  usagePosts: number;
+  estimatePosts: number;
+  capPosts: number;
+  warnRatio?: number;
+}): { capReached: boolean; warning: boolean } {
+  const warnRatio = opts.warnRatio ?? CAP_WARN_RATIO;
+  const capReached = opts.usagePosts + opts.estimatePosts >= opts.capPosts;
+  const warning = opts.usagePosts >= opts.capPosts * warnRatio;
+  return { capReached, warning };
+}
+
+// Authoritative usage read with retries (anti-faux-positif réseau). getProjectUsage
+// returns null on any failure; we retry a few times with backoff to absorb a
+// TRANSIENT network hiccup without blocking a run at the first dropped packet.
+// If X stays unreachable across ALL attempts, we return null and the caller
+// FAILS CLOSED (skips the run) — a budget guard must never spend blind.
+// Params are injectable so the decision path is unit-testable without real waits.
+const USAGE_RETRY_BACKOFF_MS = [2_000, 5_000]; // 3 attempts total: immediate, +2s, +5s
+export async function getProjectUsageWithRetry(
+  fetchUsage: () => Promise<XUsage | null> = getProjectUsage,
+  backoffMs: number[] = USAGE_RETRY_BACKOFF_MS,
+): Promise<XUsage | null> {
+  const maxAttempts = backoffMs.length + 1;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const usage = await fetchUsage();
+    if (usage) return usage;
+    if (attempt < maxAttempts) {
+      const wait = backoffMs[attempt - 1] ?? 5_000;
+      console.warn(
+        `[watcher-v2] X usage API unreadable (attempt ${attempt}/${maxAttempts}) — retry in ${wait / 1000}s`,
+      );
+      await sleep(wait);
+    }
+  }
+  return null;
+}
+
 async function scanAll() {
   const emailMode = (process.env.WATCHER_EMAIL_MODE ?? "digest").toLowerCase();
   const scanStart = new Date();
@@ -182,8 +251,14 @@ async function scanAll() {
     // réponse JSON du run.
     xApiCapReached: false as boolean,
     xApiCapWarning: false as boolean,
+    // Reporting ($ estimé, fenêtre calendaire — XApiUsage). PAS la décision.
     xApiSpentThisMonth: 0 as number,
     xApiCapUsd: 0 as number,
+    // Décision AUTORITATIVE (posts, cycle X via /2/usage/tweets).
+    xApiUsagePosts: 0 as number,
+    xApiCapPosts: 0 as number,
+    xApiCapResetDay: 0 as number,
+    usageUnavailable: false as boolean,
   };
 
   // Accumulates per-handle signal summaries for the batch digest.
@@ -211,44 +286,71 @@ async function scanAll() {
   const startTime = new Date(scanStart.getTime() - lookbackHours * 3_600_000).toISOString();
   console.log(`[watcher-v2] Resume window: start_time=${startTime} (lookback ${lookbackHours}h), cap=${maxPostsPerHandle} posts/handle (GordonGekko 100)`);
 
-  // ── Monthly HARD CAP pre-run check ($100 default) ───────────────────────
-  // Read REAL spend-this-month from XApiUsage, estimate this run's worst-case
-  // cost, and refuse to start if the two together would reach the cap. Runs
-  // BEFORE any billed X API call so a capped month costs $0.
-  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? "0.0058");
-  const estimateUsd = estimateRunCostUsd(watchlist, maxPostsPerHandle, costPerPost);
-  const { spentUsd, hasBaseline } = await readMonthSpendUsd(prisma);
-  const { capReached, warning } = evaluateBudgetCap({
-    spentUsd,
-    estimateUsd,
-    capUsd: X_API_HARD_CAP_USD,
+  // ── DECISION: authoritative POSTS hard cap (X billing cycle) ────────────
+  // The BLOCK DECISION uses the authoritative Post usage for the CURRENT X
+  // billing cycle (GET /2/usage/tweets → project_usage), gated against
+  // X_API_HARD_CAP_POSTS. Runs BEFORE any billed X read, so a capped cycle
+  // costs $0. FAIL-CLOSED: if X usage is unreadable after retries, we skip the
+  // run rather than spend blind against an unknown baseline.
+  const estimatePosts = estimateRunPosts(watchlist, maxPostsPerHandle);
+  const usage = await getProjectUsageWithRetry();
+  if (!usage) {
+    stats.xApiCapReached = true;
+    stats.usageUnavailable = true;
+    stats.xApiCapPosts = X_API_HARD_CAP_POSTS;
+    console.error(
+      `[watcher-v2] 🛑 X usage API unreadable after retries — run skipped (FAIL-CLOSED, 0 handles). ` +
+        `Refusing to scan without an authoritative cycle-usage baseline.`,
+    );
+    return {
+      ok: true,
+      capReached: true,
+      ...stats, // includes usageUnavailable=true (set above)
+      note: `X usage API unreachable — run skipped (fail-closed), 0 handles processed.`,
+    };
+  }
+  stats.xApiUsagePosts = usage.projectUsage;
+  stats.xApiCapPosts = X_API_HARD_CAP_POSTS;
+  stats.xApiCapResetDay = usage.capResetDay;
+  const { capReached, warning } = evaluateBudgetCapPosts({
+    usagePosts: usage.projectUsage,
+    estimatePosts,
+    capPosts: X_API_HARD_CAP_POSTS,
   });
-  stats.xApiSpentThisMonth = spentUsd;
-  stats.xApiCapUsd = X_API_HARD_CAP_USD;
   stats.xApiCapWarning = warning;
-  if (!hasBaseline) {
-    console.log(
-      `[watcher-v2] XApiUsage has no baseline row for this month yet — treating spend as $0. ` +
-        `Tracking starts accumulating once the current code records usage in prod.`,
+
+  // REPORTING ONLY (NOT the decision): keep the legacy $ estimate from XApiUsage
+  // (calendar-month window) visible in the run JSON for continuity/dashboards.
+  // NOTE: XApiUsage drifts from X's 21→21 cycle — it is history/reporting, not
+  // the gate. The block decision is the posts logic above. Best-effort read.
+  try {
+    const { spentUsd } = await readMonthSpendUsd(prisma);
+    stats.xApiSpentThisMonth = spentUsd;
+    stats.xApiCapUsd = X_API_HARD_CAP_USD;
+  } catch (err) {
+    console.warn(
+      "[watcher-v2] reporting spend read failed (non-fatal):",
+      err instanceof Error ? err.message : err,
     );
   }
+
   if (warning && !capReached) {
     console.warn(
-      `[watcher-v2] ⚠️ X API spend at $${spentUsd.toFixed(2)}/$${X_API_HARD_CAP_USD} this month ` +
-        `(≥${Math.round(CAP_WARN_RATIO * 100)}%) — approaching the hard cap.`,
+      `[watcher-v2] ⚠️ X API cycle usage ${usage.projectUsage}/${X_API_HARD_CAP_POSTS} posts ` +
+        `(≥${Math.round(CAP_WARN_RATIO * 100)}%, resets day ${usage.capResetDay}) — approaching the posts cap.`,
     );
   }
   if (capReached) {
     stats.xApiCapReached = true;
     console.error(
-      `[watcher-v2] 🛑 X API hard cap reached: $${spentUsd.toFixed(2)} spent + ~$${estimateUsd.toFixed(2)} ` +
-        `est. run ≥ $${X_API_HARD_CAP_USD}/month cap — run skipped, 0 handles processed.`,
+      `[watcher-v2] 🛑 X API posts cap reached: ${usage.projectUsage} used + ~${estimatePosts} ` +
+        `est. run ≥ ${X_API_HARD_CAP_POSTS} posts/cycle — run skipped, 0 handles processed.`,
     );
     return {
       ok: true,
       capReached: true,
       ...stats,
-      note: `X API hard cap reached: $${spentUsd.toFixed(2)}/$${X_API_HARD_CAP_USD} this month, run skipped.`,
+      note: `X API posts cap reached: ${usage.projectUsage}/${X_API_HARD_CAP_POSTS} posts this cycle (resets day ${usage.capResetDay}), run skipped.`,
     };
   }
 
@@ -282,16 +384,17 @@ async function scanAll() {
   for (const entry of watchlist) {
     const handle = entry.handle;
 
-    // Intra-run hard-cap guard: stop fetching BEFORE crossing the cap. Cost so
-    // far = month baseline + posts fetched this run × costPerPost. Belt-and-
-    // suspenders behind the pre-run check (the estimate is an upper bound, but
-    // this guarantees we never keep burning calls if it were ever exceeded).
-    const projectedSpendUsd = spentUsd + stats.tweetsFetched * costPerPost;
-    if (projectedSpendUsd >= X_API_HARD_CAP_USD) {
+    // Intra-run hard-cap guard (POSTS): stop fetching BEFORE crossing the cap.
+    // Projected cycle usage = authoritative cycle baseline + posts fetched this
+    // run. Belt-and-suspenders behind the pre-run check (the estimate is an
+    // upper bound, but this guarantees we never keep burning reads if it were
+    // ever exceeded mid-run).
+    const projectedPosts = usage.projectUsage + stats.tweetsFetched;
+    if (projectedPosts >= X_API_HARD_CAP_POSTS) {
       stats.xApiCapReached = true;
       console.error(
-        `[watcher-v2] 🛑 X API hard cap reached mid-run at $${projectedSpendUsd.toFixed(2)}/` +
-          `$${X_API_HARD_CAP_USD} — stopping after ${stats.scanned} handles, ${stats.tweetsFetched} posts.`,
+        `[watcher-v2] 🛑 X API posts cap reached mid-run at ${projectedPosts}/` +
+          `${X_API_HARD_CAP_POSTS} posts — stopping after ${stats.scanned} handles, ${stats.tweetsFetched} posts.`,
       );
       break;
     }
