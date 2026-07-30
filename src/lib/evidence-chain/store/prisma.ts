@@ -17,7 +17,8 @@ type PItem = {
   capturedBy: string | null; captureHost: string | null; captureTool: string | null;
   captureToolVersion: string | null; sourceUrl: string | null; sourceType: string;
   ingestedAt: Date; tsaToken: Uint8Array | null; tsaProvider: string | null;
-  tsaTimestampedAt: Date | null; immutableStored: boolean; immutableRef: string | null; notes: string | null;
+  tsaTimestampedAt: Date | null; tsaCertChain: string | null; immutableStored: boolean;
+  immutableRef: string | null; notes: string | null;
 };
 type PLink = {
   id: string; evidenceItemId: string; linkType: string; externalId: string | null;
@@ -54,8 +55,8 @@ export class PrismaEvidenceStore implements EvidenceStore {
   async setR2(id: string, r2Key: string, immutableStored: boolean, immutableRef: string | null): Promise<void> {
     await this.prisma.evidenceItem.update({ where: { id }, data: { r2Key, immutableStored, immutableRef } });
   }
-  async setTsa(id: string, tsaToken: Buffer, tsaProvider: string, tsaTimestampedAt: Date): Promise<void> {
-    await this.prisma.evidenceItem.update({ where: { id }, data: { tsaToken: new Uint8Array(tsaToken), tsaProvider, tsaTimestampedAt } });
+  async setTsa(id: string, tsaToken: Buffer, tsaProvider: string, tsaTimestampedAt: Date, tsaCertChain: string): Promise<void> {
+    await this.prisma.evidenceItem.update({ where: { id }, data: { tsaToken: new Uint8Array(tsaToken), tsaProvider, tsaTimestampedAt, tsaCertChain } });
   }
   async insertLink(link: NewEvidenceLink): Promise<EvidenceLinkRecord> {
     const r = await this.prisma.evidenceLink.create({ data: {

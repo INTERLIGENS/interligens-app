@@ -467,6 +467,9 @@ fi
 # AccessLog, anti-drift). Migration NON appliquée. Autorisation humaine explicite
 # (David) — voir PR description. Exemption STRICTEMENT limitée au schema + le
 # guard lui-même ; aucun wildcard sur prisma/.
+# ⚠️ À RETIRER lors du merge de feat/cc-offline-54-evidence-chain dans main :
+# exemption temporaire liée à CETTE branche (cc-offline-54). Une fois mergée,
+# supprimer ce bloc de définition ET son bloc d'application plus bas dans la boucle.
 if [[ "$BRANCH" =~ ^feat/cc-offline-54-evidence-chain$ ]]; then
     EXEMPT_EVIDENCE_CHAIN_PATTERNS=(
         "^prisma/schema\.prod\.prisma$"
@@ -786,6 +789,7 @@ while IFS= read -r file; do
 
     # Sur la branche cc-offline-54-evidence-chain, exempter STRICTEMENT le schema
     # prod (3 modèles additifs) + le guard (aucun wildcard prisma/).
+    # ⚠️ À RETIRER au merge de cc-offline-54 (voir bloc de définition ci-dessus).
     if [[ "$BRANCH" =~ ^feat/cc-offline-54-evidence-chain$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_CHAIN_PATTERNS[@]}"; do

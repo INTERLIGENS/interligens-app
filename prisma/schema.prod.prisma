@@ -4024,6 +4024,7 @@ model EvidenceItem {
   tsaToken           Bytes?
   tsaProvider        String?
   tsaTimestampedAt   DateTime?
+  tsaCertChain       String?  // PEM: signer+intermediates+root archived at stamping (offline verify)
   immutableStored    Boolean  @default(false)
   immutableRef       String?
   notes              String?
