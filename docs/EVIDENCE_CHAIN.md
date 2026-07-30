@@ -58,5 +58,29 @@ bucket dédié + clés content-addressed + (recommandé) token **write-only** c�
 dashboard Cloudflare. `immutableStored=false`. Ne jamais présenter comme WORM.
 
 ## Modèle
-`EvidenceItem` (1) → `EvidenceLink` (N, X_API_RECORD/ONCHAIN_TX/WALLET/MANUAL)
+`EvidenceItem` (1) → `EvidenceLink` (N, X_API_RECORD/ONCHAIN_TX/WALLET/MANUAL/ARCHIVE_MEMBER)
 + `EvidenceAccessLog` (INGEST/READ/EXPORT/LINK/VERIFY). Détails : `src/lib/evidence-chain/`.
+
+## 6. Horodatage rétroactif vs au fil de l'eau — ⚠️ PRINCIPE
+Un token TSA prouve que **le hash existait à la date de stamping**, PAS que la
+capture a eu lieu à `capturedAt`. Ces deux dates sont distinctes.
+- Pièce capturée au fil de l'eau (`ingest-capture`) : `timestampMode="at-capture"`.
+- Pièce **migrée** (`migrate-snapshots`) : notes marquées `[TIMESTAMP:RETROACTIVE]`,
+  `capturedBy="legacy:evidence-snapshot"`, `capturedAt` = `observedAt` **déclarative
+  (non prouvée)**. Le manifeste expose `timestampMode="retroactive"` par pièce +
+  un `disclaimer`. Ne jamais présenter une pièce rétroactive comme équivalente à
+  une capture horodatée au fil de l'eau.
+
+## 7. Réconciliation EvidenceSnapshot → EvidenceItem (CC-OFFLINE-55)
+```
+pnpm tsx src/scripts/evidence-chain/audit-snapshots.ts        # Phase 1 (read-only) → docs/EVIDENCE_RECONCILIATION_AUDIT.md
+pnpm tsx src/scripts/evidence-chain/migrate-snapshots.ts      # Phase 2 dry-run (défaut)
+pnpm tsx src/scripts/evidence-chain/migrate-snapshots.ts --commit [--limit N] [--throttle-ms M]
+pnpm tsx src/scripts/evidence-chain/migrate-snapshots.ts --stamp-pending [--throttle-ms M]   # reprise TSA
+pnpm tsx src/scripts/evidence-chain/migrate-snapshots.ts --test-stamp 5                       # test (sans écriture)
+```
+ADDITIF : ne touche jamais `EvidenceSnapshot` (source). Catégories : A migrable,
+C hashable, **B quarantaine (hash divergent, non migré)**, D absente. Dedup par
+sha256 (pièce déjà en base → lien MANUAL seul). Lien MANUAL `externalId` = id
+EvidenceSnapshot source (traçabilité). Idempotent/reprenable. `--stamp-pending`
+rejoue les pièces `tsaToken NULL`. ~23 min estimées pour 925 (throttle 1s).
