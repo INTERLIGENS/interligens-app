@@ -1,10 +1,16 @@
 /**
  * RFC 3161 timestamping via the OpenSSL `ts` CLI (real, third-party verifiable).
- * Sends the HASH only (never the file). Stores the full TSR (contains the token).
+ * Sends the HASH only (never the file). Stores the full TSR + the CERT CHAIN
+ * captured at stamping time so verification stays possible OFFLINE, forever,
+ * even after the TSA certs expire or the authority goes away.
  *
- * TSA_URL is CONFIGURABLE (no hard-coded authority). Tested authorities that
- * responded GRANTED (2026-07-30, real calls): freetsa.org, DigiCert, Sectigo.
- * freetsa is the default candidate because it publishes its CA for verification.
+ * URLs are CONFIGURABLE (no hard-coded authority). Routing by criticality:
+ *   P0  → TSA_URL_PRIMARY (commercial), fallback TSA_URL_FALLBACK
+ *   else→ TSA_URL_FALLBACK directly
+ * ⚠️ Commercial free endpoints (DigiCert/Sectigo) are code-signing-scoped and
+ * rate-limited (Sectigo asks ≥15s between scripted calls) — honour
+ * TSA_COMMERCIAL_MIN_DELAY_MS; for guaranteed forensic use a PAID/eIDAS TSA is
+ * required. Fallback authority tested GRANTED 2026-07-30: freetsa.org.
  */
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -15,9 +21,10 @@ import { join } from "path";
 const pexec = promisify(execFile);
 
 export interface TsaResult {
-  token: Buffer;      // full RFC3161 response (TSR)
-  genTime: Date;      // parsed timestamp
-  provider: string;   // authority host
+  token: Buffer;        // full RFC3161 response (TSR)
+  genTime: Date;        // parsed timestamp
+  provider: string;     // authority host
+  certChainPem: string; // embedded signer/intermediates + fetched root CA (for offline verify)
 }
 
 function providerFromUrl(url: string): string {
@@ -29,7 +36,6 @@ async function withTmp<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   try { return await fn(dir); } finally { await rm(dir, { recursive: true, force: true }); }
 }
 
-/** Build a DER TimeStampReq for a sha256 hex digest (certReq set). */
 export async function buildTsq(sha256hex: string): Promise<Buffer> {
   return withTmp(async (dir) => {
     const out = join(dir, "req.tsq");
@@ -38,11 +44,42 @@ export async function buildTsq(sha256hex: string): Promise<Buffer> {
   });
 }
 
-/** One real request to a TSA. Throws on non-200 / non-granted. */
-export async function requestTimestampOnce(sha256hex: string, tsaUrl: string, timeoutMs = 25000): Promise<TsaResult> {
+/**
+ * Capture the verification material for long-term / offline validation:
+ * the certs embedded in the token (signer + intermediates) plus the root CA
+ * fetched from caUrl (the token does not embed the root). Concatenated PEM.
+ */
+export async function captureCertChain(tsr: Buffer, caUrl?: string): Promise<string> {
+  const embedded = await withTmp(async (dir) => {
+    const tsrF = join(dir, "resp.tsr");
+    const tokF = join(dir, "token.der");
+    const pemF = join(dir, "embedded.pem");
+    await writeFile(tsrF, tsr);
+    await pexec("openssl", ["ts", "-reply", "-in", tsrF, "-token_out", "-out", tokF]);
+    await pexec("openssl", ["pkcs7", "-inform", "DER", "-in", tokF, "-print_certs", "-out", pemF]);
+    return readFile(pemF, "utf8");
+  });
+  let ca = "";
+  if (caUrl) {
+    try {
+      const res = await fetch(caUrl);
+      if (res.ok) ca = await res.text();
+      else console.warn(`[evidence-tsa] CA fetch ${caUrl} → HTTP ${res.status} (chaîne sans racine)`);
+    } catch (e) {
+      console.warn(`[evidence-tsa] CA fetch ${caUrl} échoué (${e instanceof Error ? e.message : e}) — chaîne sans racine`);
+    }
+  }
+  // Keep only PEM certificate blocks.
+  const certs = (embedded + "\n" + ca).match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+  return certs.join("\n") + "\n";
+}
+
+export async function requestTimestampOnce(
+  sha256hex: string, tsaUrl: string, opts: { caUrl?: string; timeoutMs?: number } = {},
+): Promise<TsaResult> {
   const tsq = await buildTsq(sha256hex);
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  const t = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 25000);
   let tsr: Buffer;
   try {
     const res = await fetch(tsaUrl, {
@@ -56,7 +93,6 @@ export async function requestTimestampOnce(sha256hex: string, tsaUrl: string, ti
   } finally {
     clearTimeout(t);
   }
-  // Parse status + genTime from the reply.
   const genTime = await withTmp(async (dir) => {
     const f = join(dir, "resp.tsr");
     await writeFile(f, tsr);
@@ -68,61 +104,117 @@ export async function requestTimestampOnce(sha256hex: string, tsaUrl: string, ti
     if (isNaN(d.getTime())) throw new Error("TSA reply unparseable Time stamp");
     return d;
   });
-  return { token: tsr, genTime, provider: providerFromUrl(tsaUrl) };
+  const certChainPem = await captureCertChain(tsr, opts.caUrl);
+  return { token: tsr, genTime, provider: providerFromUrl(tsaUrl), certChainPem };
 }
 
-/** Request with retry + backoff. Returns null if the TSA stays unreachable —
- *  ingestion proceeds with tsaToken null and a retry flag (never blocks). */
 export async function requestTimestampWithRetry(
   sha256hex: string,
-  opts: { tsaUrl?: string; retries?: number; backoffMs?: number[]; timeoutMs?: number } = {},
+  opts: { tsaUrl?: string; caUrl?: string; retries?: number; backoffMs?: number[]; timeoutMs?: number } = {},
 ): Promise<TsaResult | null> {
   const tsaUrl = opts.tsaUrl ?? process.env.TSA_URL;
   if (!tsaUrl) {
-    console.warn("[evidence-tsa] TSA_URL non configuré — horodatage sauté (tsaToken null).");
+    console.warn("[evidence-tsa] aucune TSA configurée — horodatage sauté (tsaToken null).");
     return null;
   }
   const backoff = opts.backoffMs ?? [1000, 3000, 8000];
   const attempts = (opts.retries ?? backoff.length) + 1;
   for (let i = 1; i <= attempts; i++) {
     try {
-      return await requestTimestampOnce(sha256hex, tsaUrl, opts.timeoutMs);
+      return await requestTimestampOnce(sha256hex, tsaUrl, { caUrl: opts.caUrl, timeoutMs: opts.timeoutMs });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (i < attempts) {
         const wait = backoff[i - 1] ?? backoff[backoff.length - 1];
-        console.warn(`[evidence-tsa] tentative ${i}/${attempts} échouée (${msg}) — retry ${wait}ms`);
+        console.warn(`[evidence-tsa] ${tsaUrl} tentative ${i}/${attempts} (${msg}) — retry ${wait}ms`);
         await new Promise((r) => setTimeout(r, wait));
       } else {
-        console.error(`[evidence-tsa] TSA indisponible après ${attempts} tentatives (${msg}) — tsaToken null, à rattraper.`);
+        console.error(`[evidence-tsa] ${tsaUrl} indisponible après ${attempts} tentatives (${msg}).`);
       }
     }
   }
   return null;
 }
 
-/** Verify a stored TSR against a sha256 digest + a CA file. Returns true iff
- *  OpenSSL reports "Verification: OK". Configurable CA (TSA_CA_FILE). */
-export async function verifyTimestamp(
+// ─── Routing by criticality ──────────────────────────────────────────────────
+
+export interface TsaEndpoint { url: string; caUrl?: string }
+export interface TsaRouting { primary: TsaEndpoint | null; fallback: TsaEndpoint | null; commercialMinDelayMs: number }
+
+export function tsaRoutingFromEnv(): TsaRouting {
+  const primary = process.env.TSA_URL_PRIMARY
+    ? { url: process.env.TSA_URL_PRIMARY, caUrl: process.env.TSA_CA_URL_PRIMARY } : null;
+  const fallback = process.env.TSA_URL_FALLBACK
+    ? { url: process.env.TSA_URL_FALLBACK, caUrl: process.env.TSA_CA_URL_FALLBACK }
+    : (process.env.TSA_URL ? { url: process.env.TSA_URL, caUrl: process.env.TSA_CA_URL } : null);
+  const commercialMinDelayMs = parseInt(process.env.TSA_COMMERCIAL_MIN_DELAY_MS ?? "15000", 10);
+  return { primary, fallback, commercialMinDelayMs };
+}
+
+export type Criticality = "P0" | "OTHER";
+
+export interface RoutedTsa { result: TsaResult; tsaUsed: "primary" | "fallback"; url: string }
+
+/**
+ * P0 → primary (commercial) then fallback; else fallback only. Logs which TSA
+ * served. Honours the commercial min-delay before hitting the primary.
+ */
+export async function timestampWithRouting(
   sha256hex: string,
-  token: Buffer,
-  opts: { caFile?: string; untrustedFile?: string } = {},
+  opts: { criticality: Criticality; routing?: TsaRouting; retries?: number },
+): Promise<RoutedTsa | null> {
+  const r = opts.routing ?? tsaRoutingFromEnv();
+  const order: Array<{ ep: TsaEndpoint; kind: "primary" | "fallback"; commercial: boolean }> = [];
+  if (opts.criticality === "P0" && r.primary) order.push({ ep: r.primary, kind: "primary", commercial: true });
+  if (r.fallback) order.push({ ep: r.fallback, kind: "fallback", commercial: false });
+  if (order.length === 0) {
+    console.warn("[evidence-tsa] aucune TSA routée (primary/fallback non configurés).");
+    return null;
+  }
+  for (const step of order) {
+    if (step.commercial && r.commercialMinDelayMs > 0) {
+      await new Promise((res) => setTimeout(res, r.commercialMinDelayMs)); // anti-hammer (Sectigo ≥15s)
+    }
+    const result = await requestTimestampWithRetry(sha256hex, { tsaUrl: step.ep.url, caUrl: step.ep.caUrl, retries: opts.retries });
+    if (result) {
+      console.log(`[evidence-tsa] horodaté via ${step.kind} (${result.provider})`);
+      return { result, tsaUsed: step.kind, url: step.ep.url };
+    }
+    console.warn(`[evidence-tsa] ${step.kind} (${step.ep.url}) échec — bascule.`);
+  }
+  return null;
+}
+
+// ─── Verification ────────────────────────────────────────────────────────────
+
+/** OFFLINE verify: uses ONLY the token + the archived cert chain. No network. */
+export async function verifyTimestampOffline(
+  sha256hex: string, token: Buffer, certChainPem: string,
 ): Promise<{ ok: boolean; detail: string }> {
-  const caFile = opts.caFile ?? process.env.TSA_CA_FILE;
-  if (!caFile) return { ok: false, detail: "no CA file (TSA_CA_FILE)" };
+  if (!certChainPem || !/BEGIN CERTIFICATE/.test(certChainPem)) return { ok: false, detail: "no archived cert chain" };
   return withTmp(async (dir) => {
-    const f = join(dir, "resp.tsr");
-    await writeFile(f, token);
-    const args = ["ts", "-verify", "-digest", sha256hex, "-in", f, "-CAfile", caFile];
-    if (opts.untrustedFile) args.push("-untrusted", opts.untrustedFile);
+    const tsrF = join(dir, "resp.tsr");
+    const caF = join(dir, "chain.pem");
+    await writeFile(tsrF, token);
+    await writeFile(caF, certChainPem);
     try {
-      const { stdout, stderr } = await pexec("openssl", args);
+      const { stdout, stderr } = await pexec("openssl", ["ts", "-verify", "-digest", sha256hex, "-in", tsrF, "-CAfile", caF]);
       const out = stdout + stderr;
-      return { ok: /Verification:\s*OK/i.test(out), detail: out.trim().split("\n").pop() ?? "" };
+      return { ok: /Verification:\s*OK/i.test(out), detail: (out.trim().split("\n").pop() ?? "").trim() };
     } catch (e) {
       const err = e as { stdout?: string; stderr?: string; message?: string };
       const out = (err.stdout ?? "") + (err.stderr ?? "") + (err.message ?? "");
-      return { ok: false, detail: out.trim().split("\n").pop() ?? "verify failed" };
+      return { ok: false, detail: (out.trim().split("\n").pop() ?? "verify failed").trim() };
     }
   });
+}
+
+/** Online verify against an external CA file (kept for ad-hoc use). */
+export async function verifyTimestamp(
+  sha256hex: string, token: Buffer, opts: { caFile?: string } = {},
+): Promise<{ ok: boolean; detail: string }> {
+  const caFile = opts.caFile ?? process.env.TSA_CA_FILE;
+  if (!caFile) return { ok: false, detail: "no CA file (TSA_CA_FILE)" };
+  const chain = await readFile(caFile, "utf8");
+  return verifyTimestampOffline(sha256hex, token, chain);
 }

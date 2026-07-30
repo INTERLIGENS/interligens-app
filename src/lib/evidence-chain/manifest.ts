@@ -7,7 +7,7 @@
 import { readdirSync, statSync } from "fs";
 import { join } from "path";
 import { sha256Buffer, sha256File } from "./hash";
-import { requestTimestampWithRetry, verifyTimestamp } from "./tsa";
+import { requestTimestampWithRetry, verifyTimestampOffline } from "./tsa";
 import type { EvidenceStore, CorroborationLevel } from "./types";
 
 export const MANIFEST_VERSION = "evidence-chain/v1";
@@ -22,7 +22,7 @@ export interface ManifestItem {
   sourceUrl: string | null;
   capturedAt: string | null;
   custody: { capturedBy: string | null; captureHost: string | null; captureTool: string | null; captureToolVersion: string | null; ingestedAt: string };
-  tsa: { provider: string; timestampedAt: string; tokenB64: string } | null;
+  tsa: { provider: string; timestampedAt: string; tokenB64: string; certChainPem: string } | null;
   links: { linkType: string; externalId: string | null; externalUrl: string | null; corroborationLevel: string }[];
   corroboration: CorroborationLevel;
 }
@@ -34,7 +34,7 @@ export interface Manifest {
   itemCount: number;
   items: ManifestItem[];
   manifestHash: string;
-  manifestTsa: { provider: string; timestampedAt: string; tokenB64: string } | null;
+  manifestTsa: { provider: string; timestampedAt: string; tokenB64: string; certChainPem: string } | null;
 }
 
 /** Deterministic JSON (sorted keys) for hashing. */
@@ -54,7 +54,7 @@ function highestCorroboration(levels: string[]): CorroborationLevel {
 export async function generateManifest(
   casefileId: string,
   store: EvidenceStore,
-  opts: { generatedAt: Date; tsaEnabled?: boolean; tsaUrl?: string } = { generatedAt: new Date() },
+  opts: { generatedAt: Date; tsaEnabled?: boolean; tsaUrl?: string; tsaCaUrl?: string } = { generatedAt: new Date() },
 ): Promise<Manifest> {
   const items = await store.getCasefileItems(casefileId);
   const manifestItems: ManifestItem[] = [];
@@ -69,7 +69,7 @@ export async function generateManifest(
         captureToolVersion: it.captureToolVersion, ingestedAt: it.ingestedAt.toISOString(),
       },
       tsa: it.tsaToken && it.tsaProvider && it.tsaTimestampedAt
-        ? { provider: it.tsaProvider, timestampedAt: it.tsaTimestampedAt.toISOString(), tokenB64: it.tsaToken.toString("base64") }
+        ? { provider: it.tsaProvider, timestampedAt: it.tsaTimestampedAt.toISOString(), tokenB64: it.tsaToken.toString("base64"), certChainPem: it.tsaCertChain ?? "" }
         : null,
       links: links.map((l) => ({ linkType: l.linkType, externalId: l.externalId, externalUrl: l.externalUrl, corroborationLevel: l.corroborationLevel })),
       corroboration: highestCorroboration(links.map((l) => l.corroborationLevel)),
@@ -80,8 +80,8 @@ export async function generateManifest(
 
   let manifestTsa: Manifest["manifestTsa"] = null;
   if (opts.tsaEnabled) {
-    const ts = await requestTimestampWithRetry(manifestHash, { tsaUrl: opts.tsaUrl });
-    if (ts) manifestTsa = { provider: ts.provider, timestampedAt: ts.genTime.toISOString(), tokenB64: ts.token.toString("base64") };
+    const ts = await requestTimestampWithRetry(manifestHash, { tsaUrl: opts.tsaUrl, caUrl: opts.tsaCaUrl });
+    if (ts) manifestTsa = { provider: ts.provider, timestampedAt: ts.genTime.toISOString(), tokenB64: ts.token.toString("base64"), certChainPem: ts.certChainPem };
   }
   return { ...core, itemCount: manifestItems.length, manifestHash, manifestTsa };
 }
@@ -101,11 +101,16 @@ function walkFiles(dir: string): string[] {
   return out;
 }
 
-/** Verify a manifest against a directory of files. PASS/FAIL per piece. */
+/**
+ * Verify a manifest against a directory of files. PASS/FAIL per piece.
+ * TSA verification is OFFLINE: it uses ONLY the cert chain archived in the
+ * manifest at stamping time — no network, no external CA file. Verifiable
+ * forever, even after the TSA certs expire or the authority disappears.
+ */
 export async function verifyManifest(
   manifest: Manifest,
   filesDir: string,
-  opts: { caFile?: string; verifyTsa?: boolean } = {},
+  opts: { verifyTsa?: boolean } = {},
 ): Promise<VerifyReport> {
   // 1. Manifest integrity: recompute hash over the canonical core.
   const core = { version: manifest.version, generatedAt: manifest.generatedAt, casefileId: manifest.casefileId, items: manifest.items };
@@ -122,8 +127,8 @@ export async function verifyManifest(
       continue;
     }
     let tsaVerified: boolean | undefined;
-    if (opts.verifyTsa && it.tsa && opts.caFile) {
-      const r = await verifyTimestamp(it.sha256, Buffer.from(it.tsa.tokenB64, "base64"), { caFile: opts.caFile });
+    if (opts.verifyTsa && it.tsa && it.tsa.certChainPem) {
+      const r = await verifyTimestampOffline(it.sha256, Buffer.from(it.tsa.tokenB64, "base64"), it.tsa.certChainPem);
       tsaVerified = r.ok;
       if (!r.ok) { items.push({ sha256: it.sha256, status: "FAIL", reason: `tsa verify failed: ${r.detail}`, tsaVerified }); continue; }
     }
@@ -131,8 +136,8 @@ export async function verifyManifest(
   }
 
   let manifestTsaVerified: boolean | undefined;
-  if (opts.verifyTsa && manifest.manifestTsa && opts.caFile) {
-    manifestTsaVerified = (await verifyTimestamp(manifest.manifestHash, Buffer.from(manifest.manifestTsa.tokenB64, "base64"), { caFile: opts.caFile })).ok;
+  if (opts.verifyTsa && manifest.manifestTsa && manifest.manifestTsa.certChainPem) {
+    manifestTsaVerified = (await verifyTimestampOffline(manifest.manifestHash, Buffer.from(manifest.manifestTsa.tokenB64, "base64"), manifest.manifestTsa.certChainPem)).ok;
   }
 
   const overall: "PASS" | "FAIL" = manifestHashOk && items.every((i) => i.status === "PASS") ? "PASS" : "FAIL";

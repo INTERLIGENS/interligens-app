@@ -33,6 +33,7 @@ function toItem(r: Row): EvidenceItemRecord {
     tsaToken: r.tsaToken ? Buffer.from(r.tsaToken as Buffer) : null,
     tsaProvider: (r.tsaProvider as string) ?? null,
     tsaTimestampedAt: r.tsaTimestampedAt ? new Date(String(r.tsaTimestampedAt)) : null,
+    tsaCertChain: (r.tsaCertChain as string) ?? null,
     immutableStored: !!r.immutableStored,
     immutableRef: (r.immutableRef as string) ?? null,
     notes: (r.notes as string) ?? null,
@@ -62,7 +63,7 @@ export class SqliteEvidenceStore implements EvidenceStore {
         byteSize INTEGER, sha256 TEXT UNIQUE NOT NULL, capturedAt TEXT, capturedBy TEXT,
         captureHost TEXT, captureTool TEXT, captureToolVersion TEXT, sourceUrl TEXT,
         sourceType TEXT NOT NULL DEFAULT 'OTHER', ingestedAt TEXT NOT NULL,
-        tsaToken BLOB, tsaProvider TEXT, tsaTimestampedAt TEXT,
+        tsaToken BLOB, tsaProvider TEXT, tsaTimestampedAt TEXT, tsaCertChain TEXT,
         immutableStored INTEGER NOT NULL DEFAULT 0, immutableRef TEXT, notes TEXT);
       CREATE TABLE IF NOT EXISTS EvidenceLink (
         id TEXT PRIMARY KEY, evidenceItemId TEXT NOT NULL, linkType TEXT NOT NULL,
@@ -100,9 +101,9 @@ export class SqliteEvidenceStore implements EvidenceStore {
     this.db.prepare("UPDATE EvidenceItem SET r2Key=?, immutableStored=?, immutableRef=? WHERE id=?")
       .run(r2Key, immutableStored ? 1 : 0, immutableRef, id);
   }
-  async setTsa(id: string, tsaToken: Buffer, tsaProvider: string, tsaTimestampedAt: Date): Promise<void> {
-    this.db.prepare("UPDATE EvidenceItem SET tsaToken=?, tsaProvider=?, tsaTimestampedAt=? WHERE id=?")
-      .run(tsaToken, tsaProvider, tsaTimestampedAt.toISOString(), id);
+  async setTsa(id: string, tsaToken: Buffer, tsaProvider: string, tsaTimestampedAt: Date, tsaCertChain: string): Promise<void> {
+    this.db.prepare("UPDATE EvidenceItem SET tsaToken=?, tsaProvider=?, tsaTimestampedAt=?, tsaCertChain=? WHERE id=?")
+      .run(tsaToken, tsaProvider, tsaTimestampedAt.toISOString(), tsaCertChain, id);
   }
   async insertLink(link: NewEvidenceLink): Promise<EvidenceLinkRecord> {
     const id = "el_" + randomUUID();

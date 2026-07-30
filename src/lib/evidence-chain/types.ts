@@ -34,6 +34,7 @@ export interface EvidenceItemRecord {
   tsaToken: Buffer | null;
   tsaProvider: string | null;
   tsaTimestampedAt: Date | null;
+  tsaCertChain: string | null;
   immutableStored: boolean;
   immutableRef: string | null;
   notes: string | null;
@@ -83,7 +84,7 @@ export interface EvidenceStore {
   findBySha256(sha256: string): Promise<EvidenceItemRecord | null>;
   insertItem(item: NewEvidenceItem): Promise<EvidenceItemRecord>;
   setR2(id: string, r2Key: string, immutableStored: boolean, immutableRef: string | null): Promise<void>;
-  setTsa(id: string, tsaToken: Buffer, tsaProvider: string, tsaTimestampedAt: Date): Promise<void>;
+  setTsa(id: string, tsaToken: Buffer, tsaProvider: string, tsaTimestampedAt: Date, tsaCertChain: string): Promise<void>;
   insertLink(link: NewEvidenceLink): Promise<EvidenceLinkRecord>;
   insertAccessLog(evidenceItemId: string, action: AccessAction, actor: string | null, context: string | null): Promise<void>;
   getItem(id: string): Promise<EvidenceItemRecord | null>;

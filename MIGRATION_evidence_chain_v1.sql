@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS "EvidenceItem" (
   "tsaToken"           BYTEA,
   "tsaProvider"        TEXT,
   "tsaTimestampedAt"   TIMESTAMP(3),
+  "tsaCertChain"       TEXT,   -- PEM chain (signer+intermediates+root) archived at stamping → offline verify
   "immutableStored"    BOOLEAN NOT NULL DEFAULT false,
   "immutableRef"       TEXT,
   "notes"              TEXT
@@ -37,6 +38,8 @@ CREATE TABLE IF NOT EXISTS "EvidenceItem" (
 CREATE UNIQUE INDEX IF NOT EXISTS "EvidenceItem_sha256_key"       ON "EvidenceItem" ("sha256");
 CREATE INDEX        IF NOT EXISTS "EvidenceItem_casefileId_idx"   ON "EvidenceItem" ("casefileId");
 CREATE INDEX        IF NOT EXISTS "EvidenceItem_sourceType_idx"   ON "EvidenceItem" ("sourceType");
+-- Idempotent : si la table préexiste d'un run partiel, garantir la colonne chaîne.
+ALTER TABLE "EvidenceItem" ADD COLUMN IF NOT EXISTS "tsaCertChain" TEXT;
 
 CREATE TABLE IF NOT EXISTS "EvidenceLink" (
   "id"                 TEXT PRIMARY KEY,

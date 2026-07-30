@@ -36,7 +36,7 @@ export async function findWatcherCandidates(
             inf.handle AS "handle", spc."postedAtUtc" AS "postedAtUtc",
             spc."discoveredAtUtc" AS "discoveredAtUtc", LEFT(spc."rawText", 140) AS "snippet"
        FROM social_post_candidates spc
-       JOIN "Influencer" inf ON inf.id = spc."influencerId"
+       JOIN influencers inf ON inf.id = spc."influencerId"
       WHERE LOWER(inf.handle) = LOWER($1)
         AND spc."sourceProvider" = 'x_api_v2'
         AND spc."postedAtUtc" BETWEEN $2 AND $3

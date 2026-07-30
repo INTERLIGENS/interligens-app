@@ -85,7 +85,7 @@ describe("evidence-chain — X API attach (offline, mocked DB)", () => {
     const db = { $queryRawUnsafe: async (q: string) => { captured = q; return rows as unknown as never; } };
     const out = await findWatcherCandidates(db, { handle: "h", capturedAt: new Date(), windowHours: 24 });
     expect(captured).toMatch(/social_post_candidates/);
-    expect(captured).toMatch(/JOIN "Influencer"/);
+    expect(captured).toMatch(/JOIN influencers/);
     expect(out[0].postId).toBe("111");
   });
 
@@ -108,21 +108,44 @@ describe("evidence-chain — X API attach (offline, mocked DB)", () => {
 
 // ─── LIVE (réseau) — exécutés seulement avec le flag ────────────────────────
 const TSA_LIVE = process.env.EVIDENCE_TSA_LIVE === "1";
-describe.runIf(TSA_LIVE)("evidence-chain — TSA réel (live)", () => {
-  it("obtains a real RFC3161 token and verifies it; tamper → false", async () => {
-    const { requestTimestampWithRetry, verifyTimestamp } = await import("../tsa");
+const FREETSA = { url: "https://freetsa.org/tsr", caUrl: "https://freetsa.org/files/cacert.pem" };
+describe.runIf(TSA_LIVE)("evidence-chain — TSA réel + archivage chaîne + vérif OFFLINE (live)", () => {
+  it("stamps via routing, archives the cert chain, and verifies OFFLINE from the manifest only", async () => {
+    const { verifyTimestampOffline } = await import("../tsa");
+    const store2 = new SqliteEvidenceStore(":memory:");
     const f = join(tmp, "tsa.txt"); writeFileSync(f, "tsa live " + Date.now());
     const sha = await sha256File(f);
-    const ts = await requestTimestampWithRetry(sha, { tsaUrl: process.env.TSA_URL ?? "https://freetsa.org/tsr" });
-    expect(ts).not.toBeNull();
-    // fetch freetsa CA for verification
-    const ca = join(tmp, "ca.pem");
-    writeFileSync(ca, Buffer.from(await (await fetch("https://freetsa.org/files/cacert.pem")).arrayBuffer()));
-    const ok = await verifyTimestamp(sha, ts!.token, { caFile: ca });
+    // OTHER criticality → fallback (freetsa). Chain fetched + archived at stamping.
+    const r = await ingestFile(
+      { filePath: f, sourceType: "OTHER", casefileId: "tsa-case", criticality: "OTHER" },
+      store2,
+      { tsa: { enabled: true, routing: { primary: null, fallback: FREETSA, commercialMinDelayMs: 0 } } },
+    );
+    expect(r.tsa.done).toBe(true);
+    expect(r.tsa.tsaUsed).toBe("fallback");
+    expect(r.item.tsaCertChain).toMatch(/BEGIN CERTIFICATE/);
+
+    // Direct offline verify from the archived chain (no network, no external CA).
+    const ok = await verifyTimestampOffline(sha, r.item.tsaToken!, r.item.tsaCertChain!);
     expect(ok.ok).toBe(true);
-    const bad = await verifyTimestamp("0".repeat(64), ts!.token, { caFile: ca });
+    const bad = await verifyTimestampOffline("0".repeat(64), r.item.tsaToken!, r.item.tsaCertChain!);
     expect(bad.ok).toBe(false);
-  }, 60000);
+
+    // Manifest carries the chain → verifyManifest verifies TSA OFFLINE → PASS.
+    const manifest = await generateManifest("tsa-case", store2, { generatedAt: new Date("2026-07-30T00:00:00Z") });
+    expect(manifest.items[0].tsa?.certChainPem).toMatch(/BEGIN CERTIFICATE/);
+    const bundle = join(tmp, "tsa-bundle"); mkdirSync(bundle, { recursive: true });
+    for (const it of manifest.items) copyFileSync(it.filePath!, join(bundle, it.sha256));
+    const passReport = await verifyManifest(manifest, bundle, { verifyTsa: true });
+    expect(passReport.overall).toBe("PASS");
+    expect(passReport.items[0].tsaVerified).toBe(true);
+
+    // Tamper 1 byte → FAIL (hash mismatch).
+    appendFileSync(join(bundle, manifest.items[0].sha256), Buffer.from([0x00]));
+    const failReport = await verifyManifest(manifest, bundle, { verifyTsa: true });
+    expect(failReport.overall).toBe("FAIL");
+    store2.close();
+  }, 90000);
 });
 
 const R2_LIVE = process.env.EVIDENCE_R2_LIVE === "1";

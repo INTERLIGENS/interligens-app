@@ -8,7 +8,7 @@ import { basename, extname } from "path";
 import type { S3Client } from "@aws-sdk/client-s3";
 import { sha256File } from "./hash";
 import { contentAddressedKey, putEvidenceObject } from "./r2";
-import { requestTimestampWithRetry } from "./tsa";
+import { timestampWithRouting, type TsaRouting, type Criticality } from "./tsa";
 import type { EvidenceStore, EvidenceItemRecord, EvidenceSourceType } from "./types";
 import { readFile } from "fs/promises";
 
@@ -24,11 +24,13 @@ export interface IngestInput {
   captureToolVersion?: string | null;
   mimeType?: string | null;
   notes?: string | null;
+  /** P0 routes to the commercial primary TSA; anything else uses the fallback. */
+  criticality?: Criticality;
 }
 
 export interface IngestOptions {
   r2?: { s3: S3Client; bucket: string } | null;
-  tsa?: { tsaUrl?: string; enabled?: boolean } | null;
+  tsa?: { enabled?: boolean; routing?: TsaRouting } | null;
   actor?: string;
 }
 
@@ -36,7 +38,7 @@ export interface IngestResult {
   item: EvidenceItemRecord;
   duplicate: boolean;
   r2Key: string | null;
-  tsa: { attempted: boolean; done: boolean; pending: boolean; provider?: string };
+  tsa: { attempted: boolean; done: boolean; pending: boolean; provider?: string; tsaUsed?: "primary" | "fallback" };
 }
 
 export async function ingestFile(input: IngestInput, store: EvidenceStore, opts: IngestOptions = {}): Promise<IngestResult> {
@@ -77,14 +79,16 @@ export async function ingestFile(input: IngestInput, store: EvidenceStore, opts:
   const tsaEnabled = opts.tsa?.enabled ?? !!opts.tsa;
   const result: IngestResult = { item, duplicate: false, r2Key, tsa: { attempted: tsaEnabled, done: false, pending: tsaEnabled } };
   if (tsaEnabled) {
-    const ts = await requestTimestampWithRetry(sha256, { tsaUrl: opts.tsa?.tsaUrl });
-    if (ts) {
-      await store.setTsa(item.id, ts.token, ts.provider, ts.genTime);
-      item.tsaToken = ts.token; item.tsaProvider = ts.provider; item.tsaTimestampedAt = ts.genTime;
-      result.tsa = { attempted: true, done: true, pending: false, provider: ts.provider };
+    const routed = await timestampWithRouting(sha256, { criticality: input.criticality ?? "OTHER", routing: opts.tsa?.routing });
+    if (routed) {
+      const { result: ts, tsaUsed } = routed;
+      await store.setTsa(item.id, ts.token, ts.provider, ts.genTime, ts.certChainPem);
+      item.tsaToken = ts.token; item.tsaProvider = ts.provider; item.tsaTimestampedAt = ts.genTime; item.tsaCertChain = ts.certChainPem;
+      await store.insertAccessLog(item.id, "VERIFY", actor, `tsa via ${tsaUsed} (${ts.provider}); cert chain archived`);
+      result.tsa = { attempted: true, done: true, pending: false, provider: ts.provider, tsaUsed };
     } else {
       // pending: retry task will pick up rows WHERE tsaToken IS NULL.
-      await store.insertAccessLog(item.id, "INGEST", actor, "tsa pending (authority unreachable)");
+      await store.insertAccessLog(item.id, "INGEST", actor, "tsa pending (all authorities unreachable)");
     }
   }
   return result;
