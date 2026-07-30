@@ -460,6 +460,20 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour CC-OFFLINE-54 — Chaîne de preuve V1 (additif, shadow).
+# Le module vit hors chemins gelés (src/lib/evidence-chain/, src/scripts/
+# evidence-chain/, MIGRATION_evidence_chain_v1.sql racine). Le SEUL fichier gelé
+# touché est prisma/schema.prod.prisma (3 modèles additifs EvidenceItem/Link/
+# AccessLog, anti-drift). Migration NON appliquée. Autorisation humaine explicite
+# (David) — voir PR description. Exemption STRICTEMENT limitée au schema + le
+# guard lui-même ; aucun wildcard sur prisma/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-54-evidence-chain$ ]]; then
+    EXEMPT_EVIDENCE_CHAIN_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -762,6 +776,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche cc-offline-54-evidence-chain, exempter STRICTEMENT le schema
+    # prod (3 modèles additifs) + le guard (aucun wildcard prisma/).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-54-evidence-chain$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_EVIDENCE_CHAIN_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
