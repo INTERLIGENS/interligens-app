@@ -3994,3 +3994,71 @@ model ShillCorrelationCandidate {
   @@index([reviewStatus, correlationScore(sort: Desc)])
   @@index([excludedReason, correlationScore(sort: Desc)])
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CC-OFFLINE-54 — CHAÎNE DE PREUVE V1 (Evidence Chain)
+// Additif / shadow. Migration : MIGRATION_evidence_chain_v1.sql (NON appliquée).
+// sourceType/linkType/corroborationLevel/action = String (pas d'enum PG) pour
+// une migration TEXT simple ; l'énumération vit côté TS (src/lib/evidence-chain).
+// Une capture (EvidenceItem) porte PLUSIEURS EvidenceLink (3 posts sur 1 image
+// = 1 EvidenceItem + 3 EvidenceLink).
+// ═══════════════════════════════════════════════════════════════════════════
+
+model EvidenceItem {
+  id                 String   @id @default(cuid())
+  casefileId         String?
+  r2Key              String?
+  filePath           String?
+  mimeType           String?
+  byteSize           Int?
+  sha256             String   @unique
+  capturedAt         DateTime?
+  capturedBy         String?
+  captureHost        String?
+  captureTool        String?
+  captureToolVersion String?
+  sourceUrl          String?
+  sourceType         String   @default("OTHER") // X_POST|TELEGRAM|WEB_PAGE|EXPLORER|REPO_ARTIFACT|OTHER
+  ingestedAt         DateTime @default(now())
+  tsaToken           Bytes?
+  tsaProvider        String?
+  tsaTimestampedAt   DateTime?
+  immutableStored    Boolean  @default(false)
+  immutableRef       String?
+  notes              String?
+
+  links      EvidenceLink[]
+  accessLogs EvidenceAccessLog[]
+
+  @@index([casefileId])
+  @@index([sourceType])
+}
+
+model EvidenceLink {
+  id                 String   @id @default(cuid())
+  evidenceItemId     String
+  linkType           String   // X_API_RECORD|ONCHAIN_TX|WALLET|MANUAL
+  externalId         String?
+  externalUrl        String?
+  corroborationLevel String   @default("NONE") // NONE|SINGLE_SOURCE|CORROBORATED
+  createdAt          DateTime @default(now())
+
+  item EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Cascade)
+
+  @@index([evidenceItemId])
+  @@index([linkType, externalId])
+}
+
+model EvidenceAccessLog {
+  id             String   @id @default(cuid())
+  evidenceItemId String
+  action         String   // INGEST|READ|EXPORT|LINK|VERIFY
+  actor          String?
+  at             DateTime @default(now())
+  context        String?
+
+  item EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Cascade)
+
+  @@index([evidenceItemId, at])
+}
