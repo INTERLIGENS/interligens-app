@@ -38,8 +38,13 @@ function mimeOf(p: string): string {
 async function main() {
   const file = process.argv[2];
   const handle = flag("handle");
+  const capturedBy = flag("captured-by");
   if (!file || file.startsWith("--") || !handle) {
-    console.error("usage: ingest-capture <fichier> --handle <kol> [--criticality P0|OTHER] [--source-type ...] [--casefile <id>] [--at <iso>] [--window 48] [--link-all]");
+    console.error("usage: ingest-capture <fichier> --handle <kol> --captured-by <opérateur> [--criticality P0|OTHER] [--source-type ...] [--casefile <id>] [--at <iso>] [--window 48] [--link-all]");
+    process.exit(2);
+  }
+  if (!capturedBy || !capturedBy.trim()) {
+    console.error("❌ --captured-by <opérateur> est OBLIGATOIRE (chaîne de possession). Aucun défaut, aucun null.");
     process.exit(2);
   }
   if (!existsSync(file)) { console.error(`fichier introuvable: ${file}`); process.exit(2); }
@@ -59,7 +64,7 @@ async function main() {
   console.log(`Ingestion « ${basename(file)} » (@${handle}, ${criticality}, ${sourceType})…`);
   const res = await ingestFile({
     filePath: file, sourceType, mimeType: mimeOf(file), sourceUrl: null, casefileId, capturedAt,
-    captureHost: process.env.HOSTNAME ?? null, captureTool: "ingest-capture", captureToolVersion: "v1",
+    capturedBy, captureHost: process.env.HOSTNAME ?? null, captureTool: "ingest-capture", captureToolVersion: "v1",
     notes: `handle=@${handle}`, criticality,
   }, store, { r2, tsa: { enabled: true }, actor: `ingest-capture:@${handle}` });
 

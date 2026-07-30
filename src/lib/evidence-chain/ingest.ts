@@ -42,6 +42,10 @@ export interface IngestResult {
 }
 
 export async function ingestFile(input: IngestInput, store: EvidenceStore, opts: IngestOptions = {}): Promise<IngestResult> {
+  // Chaîne de possession : qui a capturé est OBLIGATOIRE. Pas de null silencieux.
+  if (!input.capturedBy || !input.capturedBy.trim()) {
+    throw new Error("evidence-chain: capturedBy est requis (chaîne de possession) — aucune valeur par défaut, aucun null silencieux.");
+  }
   const actor = opts.actor ?? null;
   // 1. SHA-256 of the file AS-IS (before any transformation).
   const sha256 = await sha256File(input.filePath);

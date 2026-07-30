@@ -6,7 +6,7 @@
 export const SOURCE_TYPES = ["X_POST", "TELEGRAM", "WEB_PAGE", "EXPLORER", "REPO_ARTIFACT", "OTHER"] as const;
 export type EvidenceSourceType = (typeof SOURCE_TYPES)[number];
 
-export const LINK_TYPES = ["X_API_RECORD", "ONCHAIN_TX", "WALLET", "MANUAL"] as const;
+export const LINK_TYPES = ["X_API_RECORD", "ONCHAIN_TX", "WALLET", "MANUAL", "ARCHIVE_MEMBER"] as const;
 export type EvidenceLinkType = (typeof LINK_TYPES)[number];
 
 export const CORROBORATION_LEVELS = ["NONE", "SINGLE_SOURCE", "CORROBORATED"] as const;
