@@ -25,12 +25,25 @@ export interface ManifestItem {
   tsa: { provider: string; timestampedAt: string; tokenB64: string; certChainPem: string } | null;
   links: { linkType: string; externalId: string | null; externalUrl: string | null; corroborationLevel: string }[];
   corroboration: CorroborationLevel;
+  /**
+   * "at-capture" = horodaté au fil de l'eau (le hash existait au moment de la capture).
+   * "retroactive" = horodatage rétroactif (pièce migrée) : le token TSA prouve
+   * SEULEMENT l'existence du hash à la date de stamping, PAS que la capture a eu
+   * lieu à capturedAt (date déclarative). Dérivé du marqueur notes [TIMESTAMP:RETROACTIVE].
+   */
+  timestampMode: "at-capture" | "retroactive";
 }
+
+/** Disclaimer inscrit dans chaque manifeste (hashé + horodaté avec le reste). */
+export const MANIFEST_DISCLAIMER =
+  "Un token TSA prouve l'existence du hash à sa date de stamping, non la date de capture. " +
+  "Les pièces timestampMode=retroactive ont une capturedAt DÉCLARATIVE (non prouvée).";
 
 export interface Manifest {
   version: string;
   generatedAt: string;
   casefileId: string;
+  disclaimer: string;
   itemCount: number;
   items: ManifestItem[];
   manifestHash: string;
@@ -73,9 +86,10 @@ export async function generateManifest(
         : null,
       links: links.map((l) => ({ linkType: l.linkType, externalId: l.externalId, externalUrl: l.externalUrl, corroborationLevel: l.corroborationLevel })),
       corroboration: highestCorroboration(links.map((l) => l.corroborationLevel)),
+      timestampMode: (it.notes ?? "").includes("[TIMESTAMP:RETROACTIVE]") ? "retroactive" : "at-capture",
     });
   }
-  const core = { version: MANIFEST_VERSION, generatedAt: opts.generatedAt.toISOString(), casefileId, items: manifestItems };
+  const core = { version: MANIFEST_VERSION, generatedAt: opts.generatedAt.toISOString(), casefileId, disclaimer: MANIFEST_DISCLAIMER, items: manifestItems };
   const manifestHash = sha256Buffer(stableStringify(core));
 
   let manifestTsa: Manifest["manifestTsa"] = null;
@@ -113,7 +127,7 @@ export async function verifyManifest(
   opts: { verifyTsa?: boolean } = {},
 ): Promise<VerifyReport> {
   // 1. Manifest integrity: recompute hash over the canonical core.
-  const core = { version: manifest.version, generatedAt: manifest.generatedAt, casefileId: manifest.casefileId, items: manifest.items };
+  const core = { version: manifest.version, generatedAt: manifest.generatedAt, casefileId: manifest.casefileId, disclaimer: manifest.disclaimer, items: manifest.items };
   const manifestHashOk = sha256Buffer(stableStringify(core)) === manifest.manifestHash;
 
   // 2. Hash every file in the dir → content map (order-independent).
