@@ -4,7 +4,13 @@ import { NextRequest } from "next/server";
 describe("proxy Basic Auth", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("laisse passer en dev sans Basic Auth", async () => {
+  // Le gate admin est ALWAYS-ON depuis 798723d ("admin gate always-on in
+  // proxy.ts"). src/proxy.ts ne lit pas NODE_ENV et n'expose aucune branche dev :
+  // checkBasicAuth() renvoie false dès qu'il n'y a pas d'en-tête Authorization,
+  // quel que soit l'environnement. NODE_ENV reste stubbé ici précisément pour
+  // verrouiller cette indépendance — si quelqu'un réintroduit un bypass dev dans
+  // le proxy, ce test tombe.
+  it("bloque aussi en dev sans Basic Auth", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("ADMIN_BASIC_USER", "admin");
     vi.stubEnv("ADMIN_BASIC_PASS", "pass");
@@ -12,7 +18,7 @@ describe("proxy Basic Auth", () => {
     const { proxy } = await import("../../proxy");
     const req = new NextRequest("http://localhost/api/admin/sources");
     const res = proxy(req);
-    expect(res.status).not.toBe(401);
+    expect(res.status).toBe(401);
   });
 
   it("bloque en prod sans Basic Auth", async () => {
