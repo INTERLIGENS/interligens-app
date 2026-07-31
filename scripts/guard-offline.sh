@@ -460,29 +460,12 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
-# Exceptions pour le hotfix issue #46 — le test « laisse passer en dev sans Basic
-# Auth » encode une intention SUPPRIMÉE VOLONTAIREMENT par 798723d (« admin gate
-# always-on in proxy.ts »). src/proxy.ts ne lit pas NODE_ENV et n'a aucune
-# branche dev : le test est faux, pas le code. On corrige le TEST.
-# Exemption STRICTEMENT limitée au fichier de test + le guard lui-même.
-# src/middleware/adminAuth.ts reste HORS exemption et bloqué (vérifié : aucun
-# wildcard sur src/middleware/).
-#
-# ⚠️ ANGLE MORT PRÉEXISTANT, sans rapport avec cette exemption : src/proxy.ts —
-# qui porte checkBasicAuth(), le gate admin réel — n'est couvert par AUCUN
-# pattern de FORBIDDEN_PATTERNS. "^middleware\.ts$" vise la racine (fichier
-# inexistant dans ce repo) et "^src/middleware/" ne couvre que adminAuth.ts et
-# ses tests. Le guard ne protège donc pas l'implémentation du gate. À traiter
-# séparément — ne pas le corriger ici sous couvert d'un hotfix de test.
-#
-# Autorisation humaine explicite (David, voie A) — exemption retirée par un
-# commit de suivi immédiatement après le merge, comme pour cc-offline-54.
-if [[ "$BRANCH" =~ ^hotfix/middleware-test-46$ ]]; then
-    EXEMPT_MIDDLEWARE_TEST_46_PATTERNS=(
-        "^src/middleware/__tests__/middleware\.test\.ts$"
-        "^scripts/guard-offline\.sh$"
-    )
-fi
+# NOTE (issue #46, exemption retirée après merge) — ANGLE MORT TOUJOURS OUVERT :
+# src/proxy.ts, qui porte checkBasicAuth() et donc le gate admin réel, n'est
+# couvert par AUCUN pattern de FORBIDDEN_PATTERNS. "^middleware\.ts$" vise un
+# fichier racine inexistant dans ce repo, et "^src/middleware/" ne couvre que
+# adminAuth.ts et ses tests. Le guard ne protège pas l'implémentation du gate.
+# À traiter dans son propre chantier, pas au détour d'un hotfix.
 
 VIOLATIONS=0
 VIOLATING_FILES=()
@@ -786,20 +769,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche hotfix/middleware-test-46, exempter STRICTEMENT le fichier
-    # de test + le guard. Le reste de src/middleware/ (dont adminAuth.ts) reste
-    # bloqué — aucun wildcard.
-    if [[ "$BRANCH" =~ ^hotfix/middleware-test-46$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_MIDDLEWARE_TEST_46_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
