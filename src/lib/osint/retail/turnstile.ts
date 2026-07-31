@@ -10,12 +10,13 @@
  * Comme la porte globale est FERMÉE par défaut, aucun envoi réel ne transite tant
  * que l'admin n'a pas explicitement ouvert ET configuré Turnstile.
  *
- * NOMMAGE DU SECRET : on accepte les DEUX noms. `TURNSTILE_SECRET` est le nom
- * réellement provisionné dans l'environnement (déjà lu par
+ * NOMMAGE DU SECRET : on accepte les DEUX noms, `TURNSTILE_SECRET` en premier.
+ * C'est le nom réellement provisionné dans l'environnement (déjà lu par
  * src/app/api/community/submit et src/lib/billing/turnstile) ; ce module avait
  * été écrit sur `TURNSTILE_SECRET_KEY`, jamais posé. Sans ce fallback,
  * isTurnstileConfigured() renvoyait false et l'anti-bot serait resté inerte le
- * jour où la porte retail s'ouvre. Aucun nouveau secret à créer.
+ * jour où la porte retail s'ouvre. Aucun nouveau secret à créer. Voir
+ * turnstileSecret() pour le détail de la résolution (chaîne vide = absent).
  *
  * Aucune dépendance npm : fetch natif vers l'API Cloudflare.
  */
@@ -33,9 +34,20 @@ export interface TurnstileResult {
   reason: string;
 }
 
-/** Secret Turnstile, sous l'un ou l'autre nom. null si aucun n'est posé. */
+/**
+ * Secret Turnstile, sous l'un ou l'autre nom. null si aucun n'est exploitable.
+ *
+ * `||` et NON `??` : une variable posée à la chaîne vide doit être traitée comme
+ * absente, pas comme une valeur. Avec `??`, `TURNSTILE_SECRET=""` masquerait un
+ * `TURNSTILE_SECRET_KEY` valide et l'anti-bot repasserait silencieusement en
+ * `configured:false`. Précédent maison : BIRDEYE_API_KEY est resté 101 jours en
+ * Production avec un placeholder de 2 caractères sans que rien ne le signale.
+ *
+ * Ordre TURNSTILE_SECRET d'abord, aligné sur src/lib/billing/turnstile.ts, pour
+ * que les deux modules transmettent le MÊME secret si les deux noms sont posés.
+ */
 function turnstileSecret(): string | null {
-  return process.env.TURNSTILE_SECRET_KEY ?? process.env.TURNSTILE_SECRET ?? null;
+  return process.env.TURNSTILE_SECRET || process.env.TURNSTILE_SECRET_KEY || null;
 }
 
 export function isTurnstileConfigured(): boolean {

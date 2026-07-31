@@ -50,6 +50,31 @@ describe("isTurnstileConfigured", () => {
     process.env.TURNSTILE_SECRET = "sk-provisionned";
     expect(isTurnstileConfigured()).toBe(true);
   });
+
+  // Une var posée à vide vaut ABSENTE. Avec `??` au lieu de `||`, ces deux cas
+  // renverraient true (secret = "") puis masqueraient le secret valide.
+  it("false quand le seul nom posé est une chaîne vide", () => {
+    process.env.TURNSTILE_SECRET = "";
+    expect(isTurnstileConfigured()).toBe(false);
+  });
+
+  it("false quand les deux noms sont posés à vide", () => {
+    process.env.TURNSTILE_SECRET = "";
+    process.env.TURNSTILE_SECRET_KEY = "";
+    expect(isTurnstileConfigured()).toBe(false);
+  });
+
+  it("TURNSTILE_SECRET vide ne masque pas un TURNSTILE_SECRET_KEY valide", () => {
+    process.env.TURNSTILE_SECRET = "";
+    process.env.TURNSTILE_SECRET_KEY = "sk-legacy";
+    expect(isTurnstileConfigured()).toBe(true);
+  });
+
+  it("TURNSTILE_SECRET_KEY vide ne masque pas un TURNSTILE_SECRET valide", () => {
+    process.env.TURNSTILE_SECRET_KEY = "";
+    process.env.TURNSTILE_SECRET = "sk-provisionned";
+    expect(isTurnstileConfigured()).toBe(true);
+  });
 });
 
 describe("verifyTurnstile — verdict sans secret", () => {
@@ -69,6 +94,38 @@ describe("verifyTurnstile — verdict sans secret", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+/** Capture le champ `secret` réellement transmis à siteverify. */
+async function secretSentToSiteverify(): Promise<string | null> {
+  const originalFetch = globalThis.fetch;
+  let sent: string | null = null;
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    sent = new URLSearchParams(String(init?.body)).get("secret");
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  }) as unknown as typeof fetch;
+  try {
+    await verifyTurnstile("tok");
+    return sent;
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+describe("verifyTurnstile — précédence des deux noms", () => {
+  // Ordre aligné sur src/lib/billing/turnstile.ts : si les deux vars sont
+  // posées, les deux modules doivent transmettre le MÊME secret à Cloudflare.
+  it("les deux posés → TURNSTILE_SECRET gagne (ordre billing)", async () => {
+    process.env.TURNSTILE_SECRET = "sk-provisionned";
+    process.env.TURNSTILE_SECRET_KEY = "sk-legacy";
+    expect(await secretSentToSiteverify()).toBe("sk-provisionned");
+  });
+
+  it("TURNSTILE_SECRET vide → c'est TURNSTILE_SECRET_KEY qui part", async () => {
+    process.env.TURNSTILE_SECRET = "";
+    process.env.TURNSTILE_SECRET_KEY = "sk-legacy";
+    expect(await secretSentToSiteverify()).toBe("sk-legacy");
   });
 });
 
