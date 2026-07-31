@@ -1,0 +1,194 @@
+INTERLIGENS — Inventaire de nettoyage des branches locales
+Généré le 2026-07-31 sur Host-001, repo ~/dev/interligens-web
+main au moment du nettoyage : d69e591e7df02a57e383648b1603c608759a4a13  (fix(osint-retail): accepte TURNSTILE_SECRET en plus de TURNSTILE_SECRET_KEY)
+
+But : conserver de quoi ressusciter n'importe quelle branche supprimée.
+Restauration : git branch <nom> <sha>
+
+Comptage : 167 branches locales hors main
+  - 108 supprimées         (groupe A ci-dessous)
+  -  30 conservées, contenu non mergé (groupe B)
+  -  28 conservées, refusées par -d mais contenu déjà dans main (groupe C)
+  -   1 conservée : hotfix/turnstile-env-naming (branche de cette session)
+
+================================================================
+GROUPE A — SUPPRIMÉES (tip ancêtre de main, git branch -d accepté)
+================================================================
+80bd9d6acc3540713cc5a248e936dcbc266bb046  2026-04-15  feat/admin-design-unify
+e06d7fdfd67d6b42eddc12d6aeb725f573a66877  2026-04-26  feat/admin-documents-r2
+e8b6d54a617e2d303637c2e94e279b60728243e3  2026-04-15  feat/admin-hub
+f5b0ffa4d820b5b8ffebd3f7f7106b3fd70b8abb  2026-04-15  feat/admin-stats-documents
+12beba5364f703395861352e73b6d2fadfa0381b  2026-04-16  feat/admin-threads-x
+2fad47abeb2c9062d2a6f2801747f3d047e43d1f  2026-04-25  feat/advanced-signals-block
+f0e628239c1956a05beda219a4824dd877c73ab4  2026-05-14  feat/billing-beta
+3b45719ab0d07c64a96cb015295997eaacbb9f3a  2026-05-15  feat/bullish-casefile-seed
+8ef57a4d43b3d9a6a7b31cae3f8e7fd812cf428f  2026-04-25  feat/cex-deposit-tracking
+4490d1924e6a950c484e56326c2e6c60aa184fca  2026-04-26  feat/contradiction-alerts
+31a23524c27246d8f0a8daae4fab9136da3c5ead  2026-04-25  feat/cross-case-linking
+29fe0bf11910c261646f66130f1dd6e790a954ff  2026-04-25  feat/csv-validation
+f3e8c8f54c6a3fa9e449d1c3ea1bba9bfee66be2  2026-04-25  feat/dead-letter-replay
+6d678ea39944ef9bd68495762ad7089126776a47  2026-04-23  feat/destination-risk
+282bf9cbbf3858e4ce34fd54314c73b96ece90da  2026-04-24  feat/domain-events
+eb4ea225a0adb7c245587c0e8dedb320e610905c  2026-04-25  feat/e2e-validation
+08f554f2f5ddaf7f3d888ac31c16a85e2a55640a  2026-04-25  feat/enrich-public-score
+c00cacb6a6375b9202314fb93f6fe49354e10577  2026-04-25  feat/feedback-button
+52d0b03b2243b8c518fdc85715b110345cebb6ae  2026-04-20  feat/foundations-audit-fix
+1498f28215c94e00fda1cbce3e92c60dcaaff8c3  2026-04-23  feat/freshness-engine
+d45c6c3baa2633045c0bfbfa0b2c9ead3b88e683  2026-04-20  feat/graph-final-pass
+e71c05e33a4b432e8aebd2dc95c9cc48d9a3db55  2026-04-24  feat/identity-queue
+c8aba928505d41ec2e05cc4e2f508447c6c52635  2026-04-24  feat/identity-resolution
+d0eeadbd0b1a9c015570482994daa34ecbaa9c1d  2026-04-24  feat/ingestion-pipeline
+ad71cb88c87b5495b002b93c895b1bbb632fa309  2026-06-26  feat/intake-bridge-sprint4-draft-bridge
+fdad31b429df8c0eadd3869d64b9bb3ec85d9423  2026-04-24  feat/investigation-2026-04-24
+618e8751b2a07a35f538f7d5155855482808e098  2026-04-20  feat/investigators-finalisation-pre-audit
+5bdc71de15f8b96e267504ff077908c7d8780175  2026-04-13  feat/investigators-v2a
+c697ef823edd13cb0403ba3c64015fed7a40de12  2026-05-02  feat/ioc-export-center
+af717bc7ce65e8ae857fb09d9c40f10c258ce54f  2026-04-26  feat/jupiter-poc
+be1ed67194934c308e0eb0cb6c4bbb4bfd205be8  2026-04-24  feat/kol-api-canonical
+991e9b2ce9ec8a0f4f357a98e76835076b3679c0  2026-04-24  feat/kol-canonical-snapshot
+62b7f9d82ea629f027b57371fb8788dc618dfb64  2026-04-25  feat/legal-wording-audit
+cfdc0e2babd74ea2de59cfb76bec33e8eaab0ad3  2026-04-13  feat/llm-abstraction
+a1f8fa3315781be11520e9ba55c3f46ed08f77ae  2026-04-16  feat/messaging-investigators
+fbedfdd44642707cab599379cb8252be5860056e  2026-04-26  feat/metamask-snap
+1880e41a900cd9b28e4db3870ff357e0dbb97b76  2026-04-21  feat/mm-tracker-clean
+378a17a46518c0effc5527128b6c1842db81231c  2026-04-23  feat/narrative-flow
+9b7df2e43a873139329d988b03b81f2c87c0b873  2026-04-23  feat/off-chain-credibility
+4f3906e9d0abd2b4f96bda6e939b66f8678d6e9c  2026-04-24  feat/ops-alerting
+4aa16b38c79ac6b3352f1bb4ca6f26db309b1516  2026-04-24  feat/ops-dashboard
+944891602577e080bceb8b23e2192b0045a424c4  2026-04-26  feat/partner-api-v1
+c7a6f5adc1f7dbe2735cf31fbef4d12a3fa880ad  2026-04-15  feat/pdf-engine-v2
+f264adf0b39542e8bbbad4e5dd74266daed9b5c2  2026-04-24  feat/proceeds-policy
+171fade73c753b9f8ed567815dbbf7c122a17e85  2026-04-25  feat/project-info-dropdown
+c01439cc3b06a064cfe435c011a9bf267720646a  2026-04-25  feat/project-info-scan
+5913dfcdd46b531b2d55e311bf20c513b4e765d5  2026-04-25  feat/ravedao-casefile
+f1de06b4e771090f5b757909808e1f1f3215152a  2026-04-24  feat/read-snapshots
+a0abc5d252db04085cdcdebde76e39df92ff241b  2026-04-24  feat/recompute-policy
+25a7c68d62af82529bc68acc697c503eec6eae03  2026-05-13  feat/reflex-v1
+febc6655511baf7a12bb338edbeffdb927dacced  2026-04-26  feat/retraction-engine
+18baa684ef44b40f85c0d0d7ab04b610f404903d  2026-04-24  feat/scan-emits-events
+affe0b13a10b648d3ecce8a961c7f95517f2b76c  2026-04-26  feat/serial-pattern-detector
+0b9b9ebc6dda547c4b9d7dd39a41d7a997cf9f56  2026-04-23  feat/shill-to-exit
+977efe26b42d3cb664a5a010d39be2f4690052d5  2026-04-24  feat/shill-ui-evm-feedback
+785e994d0d7546cb31a050a0d9b19e23aba7eef5  2026-04-23  feat/signature-intent
+48ed64accc2b11514377b460d3578d7c64a25f13  2026-04-25  feat/snapshot-versioning
+3dded280f299f86030d02fb7c20b0bf1b4606c3f  2026-05-15  feat/swif-casefile-seed
+6e29248a1fa1d7a2075a63aceb48189de8cc22bb  2026-04-17  feat/tigerscore-hardening
+d44a33e25973176ba875817941065ab136f3b622  2026-04-28  feat/token-info-card
+c661634d982ee0af6a8f4e91b3f00964b0ec5238  2026-04-14  feat/trusted-investigator-program
+0865205e8783c32b083322cef5c7ece02596c880  2026-04-23  feat/truth-taxonomy
+bd22806c64ae4097abef0d2e9da9d7e8bea79e2e  2026-04-25  feat/ux-consolidation-advanced-signals
+094c2bb6602c3c7998af1a333801bd62f07ee86f  2026-05-02  feat/vault-evidence-snapshots
+bcc13f13b4f57d98924c12424775c05ce7c95aa1  2026-04-26  feat/victim-aggregation
+0865205e8783c32b083322cef5c7ece02596c880  2026-04-23  feat/visual-fixes
+785e994d0d7546cb31a050a0d9b19e23aba7eef5  2026-04-23  feat/wallet-scan
+9fafd59cf10604838b137f9a6a07bf26a96c3b38  2026-04-23  feat/watch-digest-monitoring
+d0be63d25a3712236743798a0cb195dc264d6ff6  2026-04-13  feat/watch-post-scan
+aa6dba0c88c8d4633f9a373a43ac6730e55b2e8a  2026-04-25  feat/watcher-admin-dashboard
+029eeaf0be80f692db5b2e9dfd454dc69df1505f  2026-04-25  feat/watcher-campaign-clustering
+f11de720204233121ee273f3b7ec8573f4037e06  2026-04-25  feat/watcher-digest-stop-spam
+31a23524c27246d8f0a8daae4fab9136da3c5ead  2026-04-25  feat/watcher-tests
+64508828e46428e78e6024892293c06a91d9bf8e  2026-04-23  feat/watcher-v2-fix
+7a3439512f6a9e9e440c8076a102909246cff944  2026-04-24  feat/watchlist-api-canonical
+5c7e6ac602040880fb538594004a4be0b35ebb32  2026-04-26  feat/website-age-card
+0a82dad375db962d5e8b0d2064332e2fb9350d49  2026-04-25  fix/admin-bg-uniform-a
+a4282b448348d0e183336c7588ff6933410e09e2  2026-04-25  fix/admin-design-uniform-a
+80640849a595e486a40f8be53ab0d6f2c44e1e0c  2026-04-25  fix/admin-design-uniform-b
+62d9876380b07a4fd76d3364fec709e1d207609c  2026-04-25  fix/admin-kol-directory
+bb4cddcdadae8f7f09305e2a097b5758c1cd9c10  2026-04-25  fix/admin-nav-highlight-overlap-lang
+f42fc0f780b60054dc21f2ce83079481d7474fb4  2026-04-25  fix/admin-nav-new-items
+4e911be71e58aa215c7dab96e47c5e581fc080aa  2026-04-25  fix/advanced-signals-demo-pages
+9526781c14c1579fd8afe9e6df90ef6db86587ca  2026-04-21  fix/casefile-public-retail
+75e90326c6e5688051960bde363e3798f0556403  2026-04-21  fix/close-mock-bypass-front
+8644110f60a002ebfa38462ca6853dc35bf2c39b  2026-04-21  fix/close-mock-bypass-routes
+8b0335249decd29745aabb2a3c86f44be74321f2  2026-04-25  fix/demo-responsive-market
+589bddb9adaaf42de239e3ffedfa8caee0815312  2026-04-24  fix/demo-scan-chain-state
+f0c1c63fdc24b887e339793397c27d9874668f4d  2026-04-25  fix/emit-proceeds-recomputed
+27b993acfc34b26f4fbe404df6864a148c6fd568  2026-04-21  fix/fr-watchlist-signals-redirect
+4845261fe4fe0beb7ab0a91522fa59e3d1acb195  2026-04-26  fix/intel-summarize-retry
+5a738c3e440f8b78d24d52b04ac303f6e5755361  2026-04-25  fix/investigate-writer-c
+6fddace8b06c130ba7a77046b46b4b7d853fcbd1  2026-04-25  fix/kol-handle-canonical
+1b83db4c386cdf23d43737dff61391e536be20a6  2026-04-21  fix/locale-hardcodes-demo
+ae6791a0232af1e797f39baffc96319dc94093b9  2026-05-08  fix/middleware-migration
+79ac860fb73170cdf8176c393dad6743e3a33814  2026-04-25  fix/mobile-scan-snapshot
+68bc02b6fb92eaedcda0bdb6b2ed2367ddd66f27  2026-04-21  fix/pdf-kol-auth
+55392ec0ae00395ad85df85ede0c94279114c6fb  2026-04-24  fix/single-source-api-v1
+5e475831a7ed6e18fde9bbd128a798777bf1b532  2026-04-24  fix/single-source-pdf
+fd69ce0f95c3ae314b7185c95e4619d383f5c06e  2026-04-24  fix/single-source-writer-b
+833106150cc95c45b238d8f30ea24bb24003e596  2026-04-24  fix/single-source-writer-c
+b2bba21475d80fac66b1e4f9179630cc2a3efa95  2026-04-19  hotfix/idor-investigator-session
+094c2bb6602c3c7998af1a333801bd62f07ee86f  2026-05-02  hotfix/kol-crosslink-schema
+7fb710dee2c29992915197b052a535ba57b7edf8  2026-05-02  hotfix/police-annex-pdf-print-ready
+0c3d385e3d67b8dc8b054e422065d2443c398362  2026-04-19  release/2026-04-19-graph-plus-idor
+a37e64b51148826d8512cdd2d0becf7b5c3b11db  2026-05-01  release/beta-prefreeze
+a357938e7e3f865f7f9f11675ec0611e950545cc  2026-04-21  release/mm-engine-live
+7ac22b3b8b76b2cf76236f6dcc137ddfb61c69e1  2026-05-08  upgrade/prisma-5-to-6
+
+================================================================
+GROUPE B — CONSERVÉES : travail non mergé (NE PAS SUPPRIMER)
+format : sha  date  branche  [patchs non présents dans main]
+================================================================
+4b63e7fa583bbfe295f0529310ccf9ee883b66ac  2026-05-21  feat/cc-offline-08-casefile-engine  [2 patch(s)]
+a7d33494a328c8e08a0ea0531e7bcdfae82a0b23  2026-06-17  feat/cc-offline-12-cookerflips-seed  [2 patch(s)]
+e3a298f7a3945663a35b0a916444a80fa8e0e814  2026-05-24  feat/cc-offline-13-style-guide-research  [1 patch(s)]
+53f9e6b3eae79f8114dc0710703c4ba371597f9d  2026-05-24  feat/cc-offline-14-lombok-ops-runbook  [1 patch(s)]
+877c1ba12b623e142ec86d93d28f0b7cfe5518b3  2026-05-24  feat/cc-offline-15-bloc-immediat-gpt-validations  [3 patch(s)]
+e0f33a5e20ba821e65a67e87102670cbbcac713a  2026-05-27  feat/cc-offline-16-reprise-indo-doc  [1 patch(s)]
+8437fd9752ee69b4dc2c76cb1c35430fc0fc91d5  2026-06-17  feat/cc-offline-20-cleanup-sweep  [1 patch(s)]
+e349a81d0dfc18f61f0ee45d6a75b0a271de23d3  2026-06-17  feat/cc-offline-21-captain-seed  [3 patch(s)]
+5d364af2b8bc9366b2faaa7bbfb7b1bf0fe1ef77  2026-06-18  feat/cc-offline-22-0xsweep-seed  [4 patch(s)]
+a658cefbe0aa98abe7960ce7f04da023352145db  2026-06-18  feat/cc-offline-23-crashius-seed  [5 patch(s)]
+4ca0c6404aefd0ec0548d63ec71a609d98e06a94  2026-06-19  feat/cc-offline-24-fuelkek-seed  [6 patch(s)]
+9c7cdf5d4111bae1c9d22c17bfeb4a4f4767fd02  2026-06-20  feat/cc-offline-25-orangie-seed  [7 patch(s)]
+b6a83a5a76cfd4fe9936f76848bb02cf520165f8  2026-06-20  feat/cc-offline-26-xapi-usage-tracking  [7 patch(s)]
+267c783a806cb0a1ab895592218fc574e8178163  2026-06-29  feat/cc-offline-43-bridge-threshold-hardening  [1 patch(s)]
+70ea8048028a8c26a62ee9488cc4e6e17c0dc54f  2026-07-30  feat/cc-offline-53-kol-tooling  [1 patch(s)]
+b6071a0d6322854c62749de8f43e0bc99fd12422  2026-07-30  feat/cc-offline-55-evidence-reconciliation  [2 patch(s)]
+ae0487b0dfbf869242eea8e092b805a666e66a92  2026-04-19  feat/constellation-visual-upgrade  [39 patch(s)]
+f08455f9153e76514e4bb6e7c21d49e859fe1ad6  2026-04-18  feat/founding-intelligence-seed  [15 patch(s)]
+d918dcd2360bc8f7887fef83200740528a0297db  2026-04-17  feat/mm-tracker  [5 patch(s)]
+e9e30f3ed6acdc8c41fd039b400da692218c5150  2026-04-17  feat/scam-universe-graph  [2 patch(s)]
+b01304dfe448c50a5cfb441156bf4b5ee0040a36  2026-05-08  feat/website-v2-3d-constellation-poc  [3 patch(s)]
+c851de1e8306585a3301bdb197b936ad5c2d00f8  2026-05-18  feat/website-v2-discipline-pages  [14 patch(s)]
+1172e94ef175c8a75520e46d5a314af959327ee4  2026-05-01  labs/cloudflare-web3-gateway-v1  [1 patch(s)]
+011f2ad058ffe803bd8de6ec80fd959bcce3f731  2026-05-01  labs/evm-wallets-v1  [1 patch(s)]
+d1806e6b00ea0511a9690d5afdaf95dbf3381e3f  2026-05-01  labs/jupiter-safe-swap-v2  [1 patch(s)]
+3230bff2dd7b41cc2a36206f9dcb105fe1f282b3  2026-05-01  labs/metamask-snap-v2  [2 patch(s)]
+254ae6946d68377f0833130fe0fab47371a86890  2026-05-01  labs/phantom-guard-v2  [1 patch(s)]
+ee45b4088c5a3d6660397b8a66e3c293b33ba845  2026-05-01  labs/solana-wallets-v1  [1 patch(s)]
+3492f1f97a0a9445fe9caf6d4d4ecbd952d3ee91  2026-05-01  labs/wallet-integration-core  [1 patch(s)]
+0d5cb4f16130138f0beb44dcd35f32d67440a82c  2026-05-01  labs/walletconnect-appkit-v1  [1 patch(s)]
+
+================================================================
+GROUPE C — CONSERVÉES : rebasées/squashées avant merge.
+Contenu déjà dans main (git cherry = 0 patch propre), mais le tip n'est
+pas un ancêtre de main donc -d refuse. Suppression possible plus tard
+par -D APRÈS revue individuelle. Laissées intactes ici par prudence.
+================================================================
+536bfbb628d71eb737a7c9929f38ee69f584d9ad  2026-07-29  backup/main-536bfbb
+f93d7aedc72735d000cd6f48d862544b931ec4c3  2026-05-20  feat/cc-offline-07-casefile-nova-generator
+2521041d380a62e99083b3ee94ee39432da2f0d0  2026-06-10  feat/cc-offline-17-shill-correlation
+4f8dfb9e2d3fbe3d40eb24952cf6cbbf227c5121  2026-06-17  feat/cc-offline-18-watchlist-expansion
+b0197e958f63a2e3e2f31b1640959caa85f3164b  2026-06-17  feat/cc-offline-19-prebuy-guard
+f0dccce80bc36282ce445306eb234170e3654c9b  2026-06-20  feat/cc-offline-27-xapi-usage-cron
+2fc3fd1e3bd073317b290626b0adc4cc7fb4bb5e  2026-06-24  feat/cc-offline-28-watcher-window-fix
+4e44bca61f29fb4118c47f774a0f09b159d23c98  2026-06-26  feat/cc-offline-30-scan-resolver-dexscreener
+aa550f728fb05df054cb500b1f23e8ad8be93298  2026-06-26  feat/cc-offline-31-moonbag-watchlist
+1c3acaa41cd16125e13321e1ead2cfa5584ea5a3  2026-06-26  feat/cc-offline-32-watcher-budget-cadence
+6296b0b3b48ef1aec3d5cb473d2882150a3432d8  2026-06-26  feat/cc-offline-33-intake-bridge-sprint1-schema
+368acbb576a2d8444b2b8a53c56668a08fbb459e  2026-06-26  feat/cc-offline-34-intake-bridge-sprint2-resolution
+9005d9733b6d638e02426b7955dd81b277953e32  2026-06-26  feat/cc-offline-35-intake-bridge-sprint3-auto-evidence
+2b38cbf7a6d574d8687743e1c62a1108ec254a9a  2026-06-26  feat/cc-offline-36-intake-bridge-sprint4-draft-bridge
+1a2be844a811c95f3e29d91989d763bdcd96822b  2026-06-27  feat/cc-offline-37-intake-bridge-sprint5-state-machine
+da2757217ac787d2bd712ee385b43c69a7156fb2  2026-06-27  feat/cc-offline-38-intake-bridge-sprint6-admin-queue
+f17650716b557e81ed89676a85b7439233a93c07  2026-06-27  feat/cc-offline-39-intake-bridge-sprint7-approve-action
+798723dc8bf71d7ec3eae30a1aaa5b984be90d21  2026-06-27  feat/cc-offline-40-admin-auth-middleware
+c7ea576132c850ced61f26657123b2f06102b386  2026-06-27  feat/cc-offline-41-intake-bridge-sprint8-visibility-filter
+d739e13d3d14f5325aedc290f09cc460a478b73c  2026-06-29  feat/cc-offline-42-bridge-cron-safety
+bcac302586dbfc5789de345df919594f11ead2ae  2026-06-30  feat/cc-offline-44-osint-vision-ingest
+38b6b5e8a305e773ba31f3319b52443c224a3ebc  2026-07-07  feat/cc-offline-49-fix-handle-leak
+1ae86f3608e839c6175e4cbad43d4897c565b1b5  2026-07-07  feat/cc-offline-50-remove-dead-crons
+5e63e8473f16823e2c052930ba6bb5c2a306a67c  2026-07-07  feat/cc-offline-51-ratelimit-public-posts
+f255a7ab18a766826fc79b7a5c2e92ad64afff40  2026-07-07  feat/cc-offline-52-fix-scan-resolve-tests
+838ec58af63db4ce3519225a390de8e80a0d0be0  2026-07-30  feat/cc-offline-54-evidence-chain
+1d834b898e4ecc723ee2ff9d762f52f049fabc02  2026-07-13  hotfix/watchdog-db-retry
+536bfbb628d71eb737a7c9929f38ee69f584d9ad  2026-07-29  hotfix/xapi-usage-authoritative
