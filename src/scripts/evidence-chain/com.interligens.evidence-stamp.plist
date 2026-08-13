@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Rattrapage TSA evidence-chain — launchd (Host-001 / dood), CC-OFFLINE-56.
+  Tourne à 08:30, AVANT le watchdog de 09:00 qui rapporte « TSA pending: N »
+  sur Telegram : si le job fait son travail, N est ~0 dans le rapport.
+
+  Installer :
+    cp src/scripts/evidence-chain/com.interligens.evidence-stamp.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.interligens.evidence-stamp.plist
+  Désactiver :
+    launchctl unload ~/Library/LaunchAgents/com.interligens.evidence-stamp.plist
+  Test manuel immédiat :
+    launchctl start com.interligens.evidence-stamp
+
+  ⚠️ PATH : /opt/homebrew/bin d'abord — le script exige un openssl avec la
+  sous-commande `ts` (OpenSSL 3.x Homebrew) ; le LibreSSL d'Apple ne l'a pas.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.interligens.evidence-stamp</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-c</string>
+        <string>cd /Users/dood/dev/interligens-web &amp;&amp; ./node_modules/.bin/tsx src/scripts/evidence-chain/stamp-pending.ts</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/opt/homebrew/opt/node@20/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/dood/dev/interligens-web</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/dood/Library/Logs/interligens-evidence-stamp.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/dood/Library/Logs/interligens-evidence-stamp.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

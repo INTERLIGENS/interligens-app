@@ -21,6 +21,21 @@ export interface RawDb {
   $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
 }
 
+import type { S3Client } from "@aws-sdk/client-s3";
+import type { EvidenceStore } from "../evidence-chain/types";
+import { ingestBuffer } from "../evidence-chain/ingest";
+import { stableStringify } from "../evidence-chain/manifest";
+
+// Chaîne de preuve (CC-OFFLINE-56, opt-in) : l'artefact d'un candidate est son
+// JSON canonique (il n'existe aucun fichier de capture — la source est l'API X).
+// capturedAt = discoveredAtUtc (quand NOTRE watcher a récupéré le post) ;
+// postedAtUtc reste déclaratif dans l'artefact. timestampMode=at-ingestion.
+export interface ChainOpts {
+  store: EvidenceStore;
+  r2?: { s3: S3Client; bucket: string } | null;
+  tsaEnabled?: boolean;
+}
+
 const SOL_MINT_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 export type AutoEvidenceAction = "created" | "skipped_exists" | "no_signal" | "dry_run" | "not_found";
@@ -38,6 +53,7 @@ interface CandidateRow {
   handle: string;
   postUrl: string | null;
   postedAtUtc: Date | null;
+  discoveredAtUtc: Date | null;
   toks: string | null; // detectedTokens jsonb ::text
   addrs: string | null; // detectedAddresses text (JSON string)
 }
@@ -73,12 +89,12 @@ const NOTES =
 export async function createAutoEvidenceSnapshot(
   db: RawDb,
   candidateId: string,
-  opts: { dryRun?: boolean; now?: Date } = {},
+  opts: { dryRun?: boolean; now?: Date; chain?: ChainOpts | null } = {},
 ): Promise<AutoEvidenceResult> {
   const now = opts.now ?? new Date();
 
   const rows = await db.$queryRawUnsafe<CandidateRow[]>(
-    `SELECT c.id, i.handle, c."postUrl", c."postedAtUtc",
+    `SELECT c.id, i.handle, c."postUrl", c."postedAtUtc", c."discoveredAtUtc",
             c."detectedTokens"::text AS toks, c."detectedAddresses" AS addrs
        FROM "social_post_candidates" c
        JOIN "influencers" i ON i.id = c."influencerId"
@@ -152,10 +168,63 @@ export async function createAutoEvidenceSnapshot(
     canonicalMint,
   );
 
+  const snapshotId = inserted[0]?.id;
+
+  // ── Chaîne de preuve (opt-in) — artefact JSON canonique du candidate ──
+  if (opts.chain && snapshotId) {
+    try {
+      const artifact = stableStringify({
+        kind: "watcher-v2-candidate",
+        candidateId: cand.id,
+        handle: cand.handle,
+        postUrl: cand.postUrl,
+        postedAtUtc: cand.postedAtUtc ? cand.postedAtUtc.toISOString() : null,
+        discoveredAtUtc: cand.discoveredAtUtc ? cand.discoveredAtUtc.toISOString() : null,
+        detectedTokens: tokens,
+        detectedAddresses: addresses,
+        snapshotId,
+      });
+      const res = await ingestBuffer(
+        {
+          buffer: Buffer.from(artifact, "utf8"),
+          fileName: `watcher-candidate-${cand.id}.json`,
+          mimeType: "application/json",
+          sourceType: "X_POST",
+          sourceUrl: cand.postUrl,
+          capturedAt: cand.discoveredAtUtc ?? null,
+          capturedBy: "watcher-v2:x-api",
+          captureTool: "watcher-bridge",
+          captureToolVersion: "v1",
+          provenanceType: "FIRST_PARTY_CAPTURE",
+          timestampMode: "at-ingestion",
+          notes: `Artefact JSON canonique du SocialPostCandidate (aucun fichier de capture — source X API). postedAtUtc déclaratif ; capturedAt=discoveredAtUtc.`,
+          criticality: "OTHER",
+        },
+        opts.chain.store,
+        { r2: opts.chain.r2 ?? null, tsa: opts.chain.tsaEnabled ? { enabled: true } : null, actor: "watcher-bridge" },
+      );
+      if (!res.duplicate) {
+        await opts.chain.store.insertLink({
+          evidenceItemId: res.item.id, linkType: "X_API_RECORD",
+          externalId: cand.id, externalUrl: cand.postUrl ?? null,
+          corroborationLevel: "SINGLE_SOURCE",
+        });
+        await opts.chain.store.insertLink({
+          evidenceItemId: res.item.id, linkType: "MANUAL",
+          externalId: snapshotId, externalUrl: null,
+        });
+      }
+    } catch (e) {
+      // Jamais bloquant : le snapshot existe, la pièce sera re-chaînée au run suivant
+      // (dedup par sha256 de l'artefact canonique).
+      console.error("[watcher-bridge] chaîne de preuve non créée (non bloquant):", e instanceof Error ? e.message : e);
+    }
+  }
+
   return {
     candidateId,
     action: "created",
-    snapshotId: inserted[0]?.id,
+    snapshotId,
     tokenSymbol,
     canonicalMint,
   };
@@ -175,7 +244,7 @@ export interface BatchSummary {
 // recent candidates that carry a token signal. dryRun never writes.
 export async function runAutoEvidenceBatch(
   db: RawDb,
-  opts: { candidateIds?: string[]; limit?: number; dryRun?: boolean; now?: Date } = {},
+  opts: { candidateIds?: string[]; limit?: number; dryRun?: boolean; now?: Date; chain?: ChainOpts | null } = {},
 ): Promise<BatchSummary> {
   let ids = opts.candidateIds ?? [];
   if (ids.length === 0 && opts.limit) {
@@ -201,7 +270,7 @@ export async function runAutoEvidenceBatch(
   };
 
   for (const id of ids) {
-    const r = await createAutoEvidenceSnapshot(db, id, { dryRun: opts.dryRun, now: opts.now });
+    const r = await createAutoEvidenceSnapshot(db, id, { dryRun: opts.dryRun, now: opts.now, chain: opts.chain });
     summary.processed++;
     summary[r.action]++;
     summary.results.push(r);

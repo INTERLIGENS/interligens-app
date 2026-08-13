@@ -134,6 +134,7 @@ async function main() {
       const res = await ingestFile({
         filePath: resolvePath(r.localFilePath!), sourceType: mapSourceType(r.snapshotType), sourceUrl: r.sourceUrl ?? null,
         capturedAt: r.observedAt ? new Date(r.observedAt) : null, capturedBy: CAPTURED_BY, captureTool: "migrate-snapshots", captureToolVersion: "v1",
+        provenanceType: "MIGRATED_BACKFILL", timestampMode: "retroactive",
         notes, criticality: "OTHER",
       }, store, { r2, tsa: { enabled: true }, actor: "migrate-snapshots" });
       res.duplicate ? dup++ : created++;

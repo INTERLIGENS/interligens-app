@@ -219,6 +219,30 @@ async function runChecks(client) {
     lines.push(`• Spend X API : ERREUR check (${e.message})`);
   }
 
+  // 3. Chaîne de preuve — pièces sans horodatage TSA (CC-OFFLINE-56).
+  // Lecture seule. Les pièces créées en serverless naissent tsaToken NULL et
+  // sont rattrapées par le job launchd stamp-pending (08:30, avant ce watchdog
+  // à 09:00) : N doit donc être ~0 ici. La ligne est TOUJOURS dans le rapport
+  // (demande David : voir si N ne redescend pas) ; warn seulement au-delà du
+  // seuil WATCHDOG_TSA_PENDING_WARN (déf 50) — filet anti-dérive, pas du bruit.
+  try {
+    const r = await client.query(
+      `SELECT count(*)::int AS n FROM "EvidenceItem" WHERE "tsaToken" IS NULL`
+    );
+    const n = r.rows[0]?.n ?? 0;
+    const warnAt = parseInt(process.env.WATCHDOG_TSA_PENDING_WARN ?? "50", 10);
+    if (n >= warnAt) {
+      problems.push({
+        key: "tsa_pending",
+        severity: "warn",
+        line: `🟠 TSA pending: ${n} pièce(s) sans horodatage (seuil ${warnAt}) — vérifier le job stamp-pending (launchd Host-001)`,
+      });
+    }
+    lines.push(`• TSA pending: ${n}`);
+  } catch (e) {
+    lines.push(`• TSA pending: ERREUR check (${e.message})`);
+  }
+
   // Canal email digest (Resend) : ABANDONNÉ le 2026-06-25 au profit de
   // Telegram comme unique canal d'alerte. L'ancien check #3 lisait la
   // dernière ligne WatcherDigest, mais il n'y en a qu'UNE (2026-05-09,

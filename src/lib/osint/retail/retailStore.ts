@@ -323,7 +323,26 @@ export function buildRetailProcessingStore(rowId: string): SubmissionStore {
         input.extractionMethod,
         input.notes,
       )) as Array<{ id: string }>;
-      return { id: rows[0]?.id ?? id };
+      const snapshotId = rows[0]?.id ?? id;
+
+      // Chaîne de preuve (CC-OFFLINE-56) : lie l'EvidenceItem créé à la réception
+      // (même sha256) au snapshot shadow. Best-effort, idempotent, jamais bloquant.
+      try {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "EvidenceLink" ("id","evidenceItemId","linkType","externalId","externalUrl","corroborationLevel","createdAt")
+           SELECT gen_random_uuid()::text, ei."id", 'MANUAL', $2, NULL, 'NONE', now()
+             FROM "EvidenceItem" ei
+            WHERE ei."sha256" = $1
+              AND NOT EXISTS (
+                SELECT 1 FROM "EvidenceLink" el
+                 WHERE el."evidenceItemId" = ei."id" AND el."linkType" = 'MANUAL' AND el."externalId" = $2)`,
+          input.imageSha256,
+          snapshotId,
+        );
+      } catch (e) {
+        console.error("[retailStore] lien evidence-chain non créé (non bloquant):", e instanceof Error ? e.message : e);
+      }
+      return { id: snapshotId };
     },
 
     async upsertLinkDraft(input) {
