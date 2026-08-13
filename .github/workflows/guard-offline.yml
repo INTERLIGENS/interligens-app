@@ -31,7 +31,13 @@ jobs:
       # `git rev-parse --abbrev-ref HEAD` pour valider le format de branche.
       # Sans `ref:`, actions/checkout pose un HEAD détaché sur le merge commit
       # et le guard verrait une branche nommée "HEAD".
-      - uses: actions/checkout@v4
+      #
+      # SHA épinglé, pas `@v4` : un tag mobile peut être repointé par le
+      # propriétaire de l'action (cf. compromissions trivy-action et
+      # kics-github-action). C'est aussi la règle Semgrep
+      # github-actions-mutable-action-tag, bloquante dans security.yml.
+      # 11d5960a326750d5838078e36cf38b85af677262 = actions/checkout v4.4.0.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
