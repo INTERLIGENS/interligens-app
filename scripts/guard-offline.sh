@@ -75,24 +75,38 @@ FORBIDDEN_PATTERNS=(
     "^prisma/"
     "^migrations/"
     "^src/middleware/"
-    "^src/server/db/"
-    "^src/lib/db/"
     "^src/lib/scoring/"
     "^src/lib/tigerscore/"
-    "^src/lib/partner/"
-    "^src/lib/mobile/"
     "^src/lib/watcher/"
     "^src/lib/pdf/"
     "^src/lib/evidence/"
     "^src/lib/kol/"
     "^src/lib/auth/"
-    "^src/lib/rate-limit/"
     "^src/lib/security/"
-    "^src/lib/turnstile/"
     "^src/components/"
     "^src/app/api/"
-    "^src/app/casefiles/"
-    "^src/app/\(public\)/casefiles/"
+
+    # ── Le guard lui-même ───────────────────────────────────────────────────
+    # Sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS au milieu de
+    # 40 autres fichiers sans que rien ne le signale. Le hook pre-commit exécute
+    # la version WORKING TREE du script : une modification du guard doit donc
+    # passer par la voie de maintenance déclarée plus bas (branche dédiée +
+    # guard seul dans le diff), sinon elle est bloquée.
+    "^scripts/guard-offline\.sh$"
+
+    # ── Fichiers de sécurité dont la compromission est INVISIBLE ────────────
+    # Sélection volontairement resserrée (audit issue #46, décision David) :
+    # uniquement ce qui ne laisse ni trace dans les logs ni trou dans le revenu.
+    # Les rate-limiters, billing/entitlement et cap restent NON gelés — un
+    # contournement s'y voit au monitoring ou à la facturation.
+    "^src/lib/vault/auth\.server\.ts$"          # IDOR inter-clients + piste d'audit
+    "^src/lib/intel-vault/auth\.ts$"            # requireAdmin() du vault
+    "^src/lib/osint/retail/retailConfig\.ts$"   # kill switches retail + budget vision
+    "^src/lib/featureFlags\.ts$"                # ouvre n'importe quelle surface non finie
+    "^src/lib/osint/retail/turnstile\.ts$"      # anti-bot retail
+    "^src/lib/billing/turnstile\.ts$"           # anti-bot checkout
+    "^src/lib/osint/retail/privateVault\.ts$"   # cloisonnement données privées
+    "^src/lib/osint/retail/ipHash\.ts$"         # pseudonymisation IP (RGPD)
 )
 
 # Exceptions sur la branche setup uniquement
@@ -101,7 +115,6 @@ if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     # On exempte les chemins de setup légitimes.
     EXEMPT_SETUP_PATTERNS=(
         "^\.github/workflows/guard-offline\.yml$"
-        "^scripts/guard-offline\.sh$"
         "^CLAUDE\.offline\.md$"
         "^\.cc-allowed-paths$"
         "^\.cc-forbidden-paths$"
@@ -129,7 +142,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-engine$ ]]; then
         "^src/components/admin/casefile-engine/"
         "^MIGRATION_casefile_engine_v1\.sql$"
         "^MIGRATION_PLAN_casefile_engine_v1\.md$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -143,7 +155,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
         "^prisma/schema\.prod\.prisma$"
         "^src/lib/kol/proceeds\.ts$"
         "^src/app/api/admin/shill-correlation/"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -154,7 +165,6 @@ fi
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
     EXEMPT_WATCHLIST_EXPANSION_PATTERNS=(
         "^src/lib/watcher/handles\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -162,12 +172,11 @@ fi
 # de convergence REFLEX + shill correlation + KOL referral, pas de surface
 # publique, additif uniquement, zéro modification de REFLEX).
 # Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route admin du module + le guard lui-même ;
+# Exemption ciblée UNIQUEMENT sur la route admin du module ;
 # ne couvre PAS l'ensemble de src/app/api/.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-prebuy-guard$ ]]; then
     EXEMPT_PREBUY_GUARD_PATTERNS=(
         "^src/app/api/admin/prebuy/"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -176,12 +185,11 @@ fi
 # (SQL brut ON CONFLICT, table + index déjà en prod via Neon). Aucune
 # autre logique du cron modifiée, aucun appel X API supplémentaire.
 # Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 + le guard
-# lui-même ; ne couvre PAS le reste de src/app/api/.
+# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 ;
+# ne couvre PAS le reste de src/app/api/.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-xapi-usage-cron$ ]]; then
     EXEMPT_XAPI_USAGE_PATTERNS=(
         "^src/app/api/cron/watcher-v2/route\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -189,12 +197,11 @@ fi
 # pagination). Additif : le cron passe une fenêtre temporelle + un cap
 # posts/handle au client X API. Aucune écriture DB, aucune migration.
 # Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 + le guard ;
+# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 ;
 # le client src/lib/xapi/ n'est pas un chemin protégé (hors exemption).
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
     EXEMPT_WATCHER_WINDOW_PATTERNS=(
         "^src/app/api/cron/watcher-v2/route\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -208,7 +215,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cleanup-sweep$ ]]; then
         "^prisma/schema\.prod\.prisma$"
         "^src/lib/watcher/handles\.ts$"
         "^src/app/api/cron/watcher-v2/route\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -217,11 +223,10 @@ fi
 # DÉJÀ en DB ep-square-band (ajoutées par les sessions seeder OSINT en SQL brut) ;
 # ce sync ne fait que refléter cette réalité dans schema.prod.prisma. AUCUNE
 # migration DB. Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur le schema + le guard lui-même.
+# Exemption ciblée UNIQUEMENT sur le schema.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
     EXEMPT_EVIDENCE_SCHEMA_PATTERNS=(
         "^prisma/schema\.prod\.prisma$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -231,13 +236,12 @@ fi
 # désambiguïsation par déroulant. Read-only, aucune écriture DB. Aucun couplage
 # scoring/TigerScore/PDF. Autorisation humaine explicite (David) — voir PR.
 # Exemption ciblée UNIQUEMENT sur la route resolve + le composant TokenPicker +
-# le guard lui-même. Les fichiers non gelés (src/lib/marketProviders.ts,
+# Les fichiers non gelés (src/lib/marketProviders.ts,
 # src/app/{fr,en}/demo/page.tsx) passent sans exemption (hors paths interdits).
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
     EXEMPT_SCAN_RESOLVER_PATTERNS=(
         "^src/app/api/scan/resolve/route\.ts$"
         "^src/components/scan/TokenPicker\.tsx$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -247,12 +251,10 @@ fi
 # comme GordonGekko/DonWedge. Additif : 1 entrée WatchHandle, priority low.
 # Aucune écriture DB, aucune migration, aucun autre handle modifié.
 # Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur handles.ts (source de vérité du watcher) +
-# le guard lui-même ; ne couvre PAS le reste de src/lib/watcher/.
+# Exemption ciblée UNIQUEMENT sur handles.ts (source de vérité du watcher) ; ne couvre PAS le reste de src/lib/watcher/.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-moonbag-watchlist$ ]]; then
     EXEMPT_MOONBAG_WATCHLIST_PATTERNS=(
         "^src/lib/watcher/handles\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -263,12 +265,11 @@ fi
 # existe déjà). Aucune logique de détection / KolTokenLink touchée.
 # Autorisation humaine explicite (David) — voir PR description.
 # Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 + vercel.json (où vit
-# le schedule) + le guard lui-même ; ne couvre PAS le reste de src/app/api/.
+# le schedule) ; ne couvre PAS le reste de src/app/api/.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-budget-cadence$ ]]; then
     EXEMPT_WATCHER_BUDGET_CADENCE_PATTERNS=(
         "^src/app/api/cron/watcher-v2/route\.ts$"
         "^vercel\.json$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -279,12 +280,11 @@ fi
 # schema.prod.prisma (anti-drift) + le fichier MIGRATION racine. Aucune
 # suppression, aucun filtre de lecture touché (la gate visibility arrive au
 # Sprint 8). Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur le schema + le guard ; le fichier
+# Exemption ciblée UNIQUEMENT sur le schema ; le fichier
 # MIGRATION_intake_bridge_sprint1.sql (racine) n'est pas un chemin gelé.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint1-schema$ ]]; then
     EXEMPT_INTAKE_BRIDGE_S1_PATTERNS=(
         "^prisma/schema\.prod\.prisma$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -296,13 +296,12 @@ fi
 # lignes legacy sont toutes 'public'), prouvé par curl AVANT/APRÈS identique.
 # Aucune autre logique de scan/watchlist modifiée. Autorisation humaine
 # explicite (David) — voir PR description. Exemption ciblée UNIQUEMENT sur ces
-# deux routes + le guard ; les fichiers du module (src/lib/watcher-bridge/,
+# deux routes ; les fichiers du module (src/lib/watcher-bridge/,
 # src/scripts/) ne sont pas des chemins gelés.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint4-draft-bridge$ ]]; then
     EXEMPT_INTAKE_BRIDGE_S4_PATTERNS=(
         "^src/app/api/scan/resolve/route\.ts$"
         "^src/app/api/watchlist/route\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -313,12 +312,11 @@ fi
 # son câblage (promoteWatcherSignalsToDraft.ts) vivent dans src/lib/watcher-bridge/
 # qui n'est pas gelé. Aucun filtre de lecture touché, aucune surface publique.
 # Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
-# UNIQUEMENT sur le schema + le guard ; MIGRATION_candidate_status_log.sql (racine)
+# UNIQUEMENT sur le schema ; MIGRATION_candidate_status_log.sql (racine)
 # n'est pas un chemin gelé.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint5-state-machine$ ]]; then
     EXEMPT_INTAKE_BRIDGE_S5_PATTERNS=(
         "^prisma/schema\.prod\.prisma$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -328,13 +326,12 @@ fi
 # via SQL Neon brut (jamais prisma db push) reflétée dans le schema (anti-drift).
 # La logique (reviewDraftLink.ts) + les boutons (src/app/admin/watcher-drafts/)
 # vivent hors chemins gelés. Autorisation humaine explicite (David) — voir PR.
-# Exemption ciblée UNIQUEMENT sur les routes du module + le schema + le guard ;
+# Exemption ciblée UNIQUEMENT sur les routes du module + le schema ;
 # MIGRATION_watchercampaign_reviewstatus.sql (racine) n'est pas gelé.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$ ]]; then
     EXEMPT_INTAKE_BRIDGE_S7_PATTERNS=(
         "^src/app/api/admin/watcher-drafts/"
         "^prisma/schema\.prod\.prisma$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -345,12 +342,11 @@ fi
 # (les liens légitimes sont tous 'public'). Aucune écriture DB, read-only.
 # Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
 # UNIQUEMENT sur kolLeaderboard.ts (le seul des 6 sous un chemin gelé, src/lib/kol/)
-# + le guard ; les 5 autres (cluster/, coordination/, explorer/, reflex/) ne sont
+# ; les 5 autres (cluster/, coordination/, explorer/, reflex/) ne sont
 # pas gelés.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint8-visibility-filter$ ]]; then
     EXEMPT_INTAKE_BRIDGE_S8_PATTERNS=(
         "^src/lib/kol/kolLeaderboard\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -360,12 +356,11 @@ fi
 # (kill switch env + JobRunLog), table JobRunLog additive (SQL Neon brut, jamais
 # prisma db push) reflétée dans le schema (anti-drift). Aucun câblage cron.
 # Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
-# UNIQUEMENT sur le schema + le guard ; src/lib/watcher-bridge/,
+# UNIQUEMENT sur le schema ; src/lib/watcher-bridge/,
 # src/lib/token-resolution/ et src/scripts/ ne sont pas gelés.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-bridge-cron-safety$ ]]; then
     EXEMPT_BRIDGE_CRON_SAFETY_PATTERNS=(
         "^prisma/schema\.prod\.prisma$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -378,14 +373,13 @@ fi
 # que refléter ces 2 colonnes (anti-drift). Aucune surface publique, aucun
 # couplage scoring/TigerScore/PDF. Autorisation humaine explicite (David, diff
 # validé) — voir PR description. Exemption ciblée UNIQUEMENT sur le schema, le
-# fichier migration, les routes admin du module, et le guard lui-même ;
+# fichier migration, les routes admin du module ;
 # src/lib/osint/vision/ n'est pas un chemin gelé (passe sans exemption).
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-osint-vision-ingest$ ]]; then
     EXEMPT_OSINT_VISION_PATTERNS=(
         "^prisma/schema\.prod\.prisma$"
         "^migrations/MIGRATION_osint_vision_ingest_v1\.sql$"
         "^src/app/api/admin/osint/"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -400,7 +394,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-retail-gate$ ]]; then
     EXEMPT_RETAIL_GATE_PATTERNS=(
         "^src/app/api/osint/"
         "^src/app/api/admin/osint/retail/"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -409,8 +402,8 @@ fi
 # Fix défensif : ajout d'un filtre publish + scrub de champs internes, aucune
 # nouvelle surface, aucune logique core/scoring touchée. Autorisation humaine
 # explicite (David, voie 1) — voir PR description.
-# Exemption STRICTEMENT limitée aux 4 fichiers de routes concernés + le guard
-# lui-même ; ne couvre PAS le reste de src/app/api/ (aucun wildcard).
+# Exemption STRICTEMENT limitée aux 4 fichiers de routes concernés ;
+# ne couvre PAS le reste de src/app/api/ (aucun wildcard).
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
     EXEMPT_FIX_HANDLE_LEAK_PATTERNS=(
         "^src/app/api/v1/kol/\[handle\]/route\.ts$"
@@ -419,7 +412,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
         "^src/app/api/kol/\[handle\]/cashout/route\.ts$"
         "^src/app/api/watchlist/route\.ts$"
         "^src/app/api/kol/\[handle\]/wallet-history/route\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -428,11 +420,10 @@ fi
 # legacy supplantés par helius-scan + watcher-v2). Aucune logique code touchée :
 # on retire uniquement les déclencheurs cron, les handlers restent inertes.
 # Autorisation humaine explicite (David, voie 1) — voir PR description.
-# Exemption STRICTEMENT limitée à vercel.json + le guard lui-même.
+# Exemption STRICTEMENT limitée à vercel.json.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-remove-dead-crons$ ]]; then
     EXEMPT_REMOVE_DEAD_CRONS_PATTERNS=(
         "^vercel\.json$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -441,13 +432,12 @@ fi
 # Le proxy exempte /api/*, aucune couverture globale. Ajout défensif : un gate
 # rate-limit en tête de handler (429 au dépassement), aucune logique métier/scoring
 # touchée. Autorisation humaine explicite (David, voie 1) — voir PR description.
-# Exemption STRICTEMENT limitée aux 3 routes concernées + le guard lui-même.
+# Exemption STRICTEMENT limitée aux 3 routes concernées.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
     EXEMPT_RATELIMIT_POSTS_PATTERNS=(
         "^src/app/api/scan/solana/graph/jobs/route\.ts$"
         "^src/app/api/reflex/\[id\]/watch/route\.ts$"
         "^src/app/api/v1/mm/challenge/route\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -459,13 +449,12 @@ fi
 # unitaires. Aucune écriture DB, aucune migration, aucun couplage
 # scoring/TigerScore/PDF. Autorisation humaine explicite (David, voie 1) —
 # voir PR description. Exemption STRICTEMENT limitée aux 2 fichiers src/app/api/
-# concernés + le guard lui-même ; AUCUN wildcard sur src/app/api/ (toute autre
+# concernés ; AUCUN wildcard sur src/app/api/ (toute autre
 # route src/app/api/ reste bloquée).
 if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     EXEMPT_XAPI_AUTHORITATIVE_PATTERNS=(
         "^src/app/api/cron/watcher-v2/route\.ts$"
         "^src/app/api/cron/watcher-v2/__tests__/budgetCapPosts\.test\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
 fi
 
@@ -475,7 +464,7 @@ fi
 # GO Phase 2 + exemption validée sur le plan d'audit) — voir PR description.
 # Exemption ciblée UNIQUEMENT sur : le schema prod (3 colonnes additives,
 # MIGRATION_evidence_provenance_v1.sql déjà appliquée par David dans Neon),
-# les 2 routes câblées, et le guard lui-même. Ne couvre PAS l'ensemble de
+# et les 2 routes câblées. Ne couvre PAS l'ensemble de
 # src/app/api/ ni prisma/. La logique vit hors chemins gelés
 # (src/lib/evidence-chain/, src/lib/osint/, src/lib/watcher-bridge/, src/scripts/).
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
@@ -483,8 +472,34 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         "^prisma/schema\.prod\.prisma$"
         "^src/app/api/osint/submit/route\.ts$"
         "^src/app/api/admin/osint/commit/route\.ts$"
-        "^scripts/guard-offline\.sh$"
     )
+fi
+
+# ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
+# Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
+# sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
+# de 40 autres fichiers, et rien ne le signale.
+#
+# Mais un guard qu'on ne peut plus modifier est un guard qu'on finira par
+# bypasser. Cette voie est la SEULE issue, et elle est permanente — ce n'est
+# pas une exemption de chantier à retirer après merge (le retrait serait
+# lui-même bloqué : la « danse » en 2 commits ne peut pas se terminer sur un
+# fichier auto-gelé). Elle exige DEUX conditions simultanées :
+#
+#   1. branche dédiée  ^hotfix/guard-[a-z0-9-]+$
+#   2. le guard SEUL dans le diff (aucun autre fichier)
+#
+# Les deux sont visibles d'un coup d'œil sur la PR : nom de branche explicite,
+# et un diff à un seul fichier. Modifier le guard reste possible, mais plus
+# jamais discrètement ni en passager clandestin d'un autre chantier.
+GUARD_MAINTENANCE=false
+if [[ "$BRANCH" =~ ^hotfix/guard-[a-z0-9-]+$ ]]; then
+    _diff_count=$(echo "$DIFF_FILES" | grep -c . || true)
+    _diff_only=$(echo "$DIFF_FILES" | grep . || true)
+    if [[ "$_diff_count" -eq 1 && "$_diff_only" == "scripts/guard-offline.sh" ]]; then
+        GUARD_MAINTENANCE=true
+        echo "🔧 GUARD: mode maintenance — branche dédiée + guard seul dans le diff."
+    fi
 fi
 
 VIOLATIONS=0
@@ -497,6 +512,11 @@ fi
 
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
+
+    # Voie de maintenance : le guard, et lui seul, sur une branche hotfix/guard-*.
+    if [[ "$GUARD_MAINTENANCE" == "true" && "$file" == "scripts/guard-offline.sh" ]]; then
+        continue
+    fi
 
     # Sur branche setup, exempter les fichiers de setup
     if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
@@ -797,7 +817,7 @@ while IFS= read -r file; do
     fi
 
     # Sur la branche hotfix/xapi-usage-authoritative, exempter STRICTEMENT les 2
-    # fichiers src/app/api/ du hotfix + le guard (aucun wildcard src/app/api/).
+    # fichiers src/app/api/ du hotfix (aucun wildcard src/app/api/).
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
