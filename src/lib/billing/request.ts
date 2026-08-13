@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import type { NextRequest } from "next/server";
+import { requireSalt } from "@/lib/config/requireSalt";
 
 export function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -12,9 +13,10 @@ export function getClientIp(req: NextRequest): string {
 }
 
 export function hashIp(ip: string): string {
-  // `||` et non `??` : un sel à la chaîne vide vaut ABSENT, sinon le hash des
-  // IP part sans sel et redevient ré-identifiable, sans aucun signal.
-  const salt = process.env.IP_HASH_SALT || "interligens";
+  // Le repli littéral "interligens" est retiré. Ici le sel préfixe un SHA-256 nu
+  // (pas un HMAC) : sel connu = hachage cassé encore plus vite, sur des IP de
+  // clients payants. requireSalt lève ici, à l'usage — pas à l'import.
+  const salt = requireSalt("IP_HASH_SALT");
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
 }
 
