@@ -61,8 +61,27 @@ export interface IngestResult {
   item: EvidenceItemRecord;
   duplicate: boolean;
   r2Key: string | null;
+  /**
+   * true quand des octets EXISTAIENT mais n'ont pas pu être archivés faute de
+   * config R2 exploitable. À ne pas confondre avec un hash-only délibéré, qui
+   * ne passe jamais par ingestBuffer/ingestFile.
+   */
+  r2Unavailable: boolean;
   tsa: { attempted: boolean; done: boolean; pending: boolean; provider?: string; tsaUsed?: "primary" | "fallback" };
 }
+
+/**
+ * Marqueur de tête sur EvidenceItem.notes — mode dégradé BRUYANT.
+ *
+ * Sans lui, une pièce dont les octets n'ont pas été archivés (R2 mal
+ * provisionné) est indiscernable d'un hash-only DÉLIBÉRÉ : dans les deux cas
+ * r2Key est NULL. Pour une chaîne de custody c'est le pire mode de
+ * défaillance — une preuve sans pièce jointe qui se présente comme complète.
+ *
+ * Même convention que [TIMESTAMP:RETROACTIVE], déjà lu par le manifeste.
+ * Compté séparément par src/scripts/watchdog/watcher-health.mjs.
+ */
+export const R2_UNAVAILABLE_MARKER = "[R2:UNAVAILABLE]";
 
 function assertProvenance(input: IngestCommon): void {
   // Chaîne de possession : qui a capturé est OBLIGATOIRE. Pas de null silencieux.
@@ -95,15 +114,39 @@ async function ingestCore(
   const existing = await store.findBySha256(sha256);
   if (existing) {
     await store.insertAccessLog(existing.id, "READ", actor, `duplicate ingest skipped for ${displayName}`);
-    return { item: existing, duplicate: true, r2Key: existing.r2Key, tsa: { attempted: false, done: !!existing.tsaToken, pending: !existing.tsaToken } };
+    return { item: existing, duplicate: true, r2Key: existing.r2Key, r2Unavailable: false, tsa: { attempted: false, done: !!existing.tsaToken, pending: !existing.tsaToken } };
   }
 
-  // EvidenceItem written.
+  // MODE DÉGRADÉ BRUYANT — on arrive ici avec des octets EN MAIN (ingestFile et
+  // ingestBuffer en fournissent toujours). Donc `opts.r2` absent ne veut pas
+  // dire « pas d'octets à archiver », ça veut dire « octets présents, nulle
+  // part où les mettre » : evidenceR2ConfigFromEnv() a renvoyé null, une
+  // variable R2 est mal provisionnée. Le hash-only DÉLIBÉRÉ, lui, n'appelle
+  // jamais cette fonction — il insère directement via store.insertItem.
+  // La détection est donc structurelle, pas déclarative : aucun appelant ne
+  // peut oublier de la signaler.
+  const r2Unavailable = !opts.r2;
+  if (r2Unavailable) {
+    console.error(
+      `[evidence-chain] R2 INDISPONIBLE — octets NON archivés pour sha256=${sha256} ` +
+        `(${byteSize} o, ${displayName}). evidenceR2ConfigFromEnv() a renvoyé null : ` +
+        `vérifier R2_ACCOUNT_ID / R2_EVIDENCE_* / R2_*. La pièce est conservée et marquée ` +
+        `${R2_UNAVAILABLE_MARKER}.`,
+    );
+  }
+
+  // EvidenceItem written. Le marqueur est posé À L'INSERTION, jamais par un
+  // UPDATE ultérieur : une pièce ne doit pas exister une seule seconde sans
+  // dire la vérité sur ses octets.
+  const notes = r2Unavailable
+    ? `${R2_UNAVAILABLE_MARKER} ${input.notes ?? ""}`.trim()
+    : input.notes ?? null;
+
   const item = await store.insertItem({
     casefileId: input.casefileId ?? null, sha256, filePath, mimeType: input.mimeType ?? null,
     byteSize, sourceType: input.sourceType, sourceUrl: input.sourceUrl ?? null, capturedAt: input.capturedAt ?? null,
     capturedBy: input.capturedBy ?? null, captureHost: input.captureHost ?? null, captureTool: input.captureTool ?? null,
-    captureToolVersion: input.captureToolVersion ?? null, notes: input.notes ?? null,
+    captureToolVersion: input.captureToolVersion ?? null, notes,
     provenanceType: input.provenanceType, submittedBy: input.submittedBy ?? null, timestampMode: input.timestampMode,
   });
 
@@ -120,10 +163,19 @@ async function ingestCore(
   // Access log (INGEST).
   await store.insertAccessLog(item.id, "INGEST", actor, `sha256=${sha256} bytes=${byteSize} src=${input.sourceType} provenance=${input.provenanceType} tsmode=${input.timestampMode}`);
 
+  // Access log dédié, calqué sur « tsa pending » : traçable, requêtable, et
+  // impossible à confondre avec le log d'un hash-only délibéré.
+  if (r2Unavailable) {
+    await store.insertAccessLog(
+      item.id, "INGEST", actor,
+      `r2 unavailable — bytes NOT archived (evidenceR2ConfigFromEnv returned null); bytes=${byteSize}`,
+    );
+  }
+
   // Phase 3 — timestamp; never blocks ingestion (échec/openssl absent → pending,
   // rattrapé par stamp-pending.ts sur Host-001).
   const tsaEnabled = opts.tsa?.enabled ?? !!opts.tsa;
-  const result: IngestResult = { item, duplicate: false, r2Key, tsa: { attempted: tsaEnabled, done: false, pending: tsaEnabled } };
+  const result: IngestResult = { item, duplicate: false, r2Key, r2Unavailable, tsa: { attempted: tsaEnabled, done: false, pending: tsaEnabled } };
   if (tsaEnabled) {
     let routed: Awaited<ReturnType<typeof timestampWithRouting>> = null;
     try {

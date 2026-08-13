@@ -20,6 +20,10 @@
  *      Filtre x_api_v2 OBLIGATOIRE — les rows playwright_local / seeders manuels
  *      pollueraient sinon le signal et masqueraient un watcher mort (faux vert).
  *   2. Spend cap : totalCostUsd du mois courant vs cap configurable.
+ *   3. TSA pending : EvidenceItem sans horodatage (warn au-delà d'un seuil).
+ *   4. Evidence sans octets : DEUX compteurs séparés sur r2Key IS NULL —
+ *      hash-only délibéré (informatif) vs [R2:UNAVAILABLE] accidentel (crit
+ *      dès 1, aucun job ne rattrape).
  *   (Le check "canal email" a été retiré le 2026-06-25 : digest email
  *    abandonné, Telegram est l'unique canal d'alerte.)
  *
@@ -241,6 +245,45 @@ async function runChecks(client) {
     lines.push(`• TSA pending: ${n}`);
   } catch (e) {
     lines.push(`• TSA pending: ERREUR check (${e.message})`);
+  }
+
+  // 4. Chaîne de preuve — pièces SANS OCTETS. Deux populations à ne JAMAIS
+  // confondre, alors qu'elles ont toutes deux r2Key IS NULL :
+  //
+  //   a) hash-only DÉLIBÉRÉ — commit opérateur où les octets n'ont volontairement
+  //      pas été transmis. Notes marquées « HASH-ONLY (bytes non transmis) » par
+  //      src/lib/osint/evidenceCommitBridge.ts. Normal, informatif, jamais alertant.
+  //
+  //   b) ACCIDENTEL — les octets existaient mais evidenceR2ConfigFromEnv() a
+  //      renvoyé null (variable R2 mal provisionnée). Marqué [R2:UNAVAILABLE] à
+  //      l'insertion par src/lib/evidence-chain/ingest.ts. C'est une preuve sans
+  //      pièce jointe : toute valeur > 0 est un problème, pas un seuil à régler.
+  //
+  // Lecture seule. Le compte (b) alerte dès 1 — contrairement à TSA pending, il
+  // n'existe aucun job de rattrapage : les octets sont perdus si la source l'est.
+  try {
+    const r = await client.query(
+      `SELECT
+         count(*) FILTER (WHERE "notes" LIKE '[R2:UNAVAILABLE]%')::int AS accidental,
+         count(*) FILTER (WHERE "notes" LIKE '%HASH-ONLY%')::int        AS deliberate
+       FROM "EvidenceItem"
+       WHERE "r2Key" IS NULL`
+    );
+    const accidental = r.rows[0]?.accidental ?? 0;
+    const deliberate = r.rows[0]?.deliberate ?? 0;
+    if (accidental > 0) {
+      problems.push({
+        key: "evidence_no_bytes",
+        severity: "crit",
+        line:
+          `🔴 EVIDENCE SANS OCTETS — ${accidental} pièce(s) [R2:UNAVAILABLE] : les octets ` +
+          `existaient mais n'ont pas été archivés (config R2 injoignable). Vérifier ` +
+          `R2_ACCOUNT_ID / R2_EVIDENCE_* / R2_* en Production. Aucun job ne rattrape.`,
+      });
+    }
+    lines.push(`• Evidence sans octets : ${accidental} accidentel(s) [R2:UNAVAILABLE], ${deliberate} hash-only délibéré(s)`);
+  } catch (e) {
+    lines.push(`• Evidence sans octets : ERREUR check (${e.message})`);
   }
 
   // Canal email digest (Resend) : ABANDONNÉ le 2026-06-25 au profit de
