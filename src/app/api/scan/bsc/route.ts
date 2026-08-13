@@ -2,7 +2,6 @@ import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMI
 import { NextRequest, NextResponse } from "next/server";
 
 import { vaultLookup } from "@/lib/vault/vaultLookup";
-import { checkScanLimit } from "@/lib/vault/scanRateLimit";
 import { auditScanLookup } from "@/lib/vault/auditScan";
 
 const BSCSCAN_KEY = process.env.BSCSCAN_API_KEY ?? "";

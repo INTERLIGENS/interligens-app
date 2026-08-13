@@ -487,6 +487,34 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour le port des limiteurs mémoire sur Upstash (BLOC SÉCURITÉ
+# tâche 3). Deux modules (src/lib/publicScore/rateLimit.ts,
+# src/lib/vault/scanRateLimit.ts — non gelés) délèguent désormais à
+# src/lib/security/rateLimit.ts ; les appelants passent en await. Ajout d'un
+# champ failClosed sur RateLimitConfig + presets scanJob/publicScore, et
+# capture du fetch qui rejette (panne Upstash = 500 aujourd'hui).
+# Aucune écriture DB, aucune migration, aucune logique métier/scoring touchée.
+# Autorisation humaine explicite (David) — voir PR description.
+# Exemption STRICTEMENT limitée aux 11 fichiers touchés + le guard ;
+# AUCUN wildcard sur src/app/api/ ni sur src/lib/security/. Retirée dans le
+# commit suivant de cette même branche (danse standard).
+if [[ "$BRANCH" =~ ^hotfix/ratelimit-upstash$ ]]; then
+    EXEMPT_RATELIMIT_UPSTASH_PATTERNS=(
+        "^src/lib/security/rateLimit\.ts$"
+        "^src/app/api/v1/score/route\.ts$"
+        "^src/app/api/v1/score/route\.test\.ts$"
+        "^src/app/api/v1/score/__tests__/route\.test\.ts$"
+        "^src/app/api/v1/scan-context/route\.ts$"
+        "^src/app/api/v1/scan-context/route\.test\.ts$"
+        "^src/app/api/scan/eth/route\.ts$"
+        "^src/app/api/scan/bsc/route\.ts$"
+        "^src/app/api/scan/hyper/route\.ts$"
+        "^src/app/api/scan/solana/graph/jobs/route\.ts$"
+        "^src/app/api/scan/solana/graph/jobs/\[id\]/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -801,6 +829,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche ratelimit-upstash, exempter STRICTEMENT les 11 fichiers portés.
+    if [[ "$BRANCH" =~ ^hotfix/ratelimit-upstash$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_RATELIMIT_UPSTASH_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

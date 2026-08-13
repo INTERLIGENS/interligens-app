@@ -3,10 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { vaultLookup } from "@/lib/vault/vaultLookup";
 import { checkScanLimit } from "@/lib/vault/scanRateLimit";
 import { auditScanLookup } from "@/lib/vault/auditScan";
+import { getClientIp, rateLimitResponse, detectLocale } from "@/lib/security/rateLimit";
 
 const HYPER_API_KEY = process.env.HYPER_API_KEY ?? "";
 
 export async function GET(req: NextRequest) {
+  // checkScanLimit était importé ici mais JAMAIS appelé : la route n'avait
+  // aucun limiteur alors qu'elle tape l'API Hyperliquid. Non authentifiée, et
+  // le proxy exempte /api/*. Aligné sur /api/scan/eth et /api/scan/bsc :
+  // 20 req / 1 min / IP, fail-open.
+  const rl = await checkScanLimit(getClientIp(req));
+  if (!rl.allowed) return rateLimitResponse(rl, detectLocale(req));
+
   const address = req.nextUrl.searchParams.get("address")?.trim() ?? "";
   const deep    = req.nextUrl.searchParams.get("deep") === "true";
 
