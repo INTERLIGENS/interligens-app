@@ -1,10 +1,12 @@
 
 import { createHmac } from "crypto";
+import { requireSalt } from "@/lib/config/requireSalt";
 
 export function hashIp(ip: string): string {
-  // `||` et non `??` : un sel à la chaîne vide vaut ABSENT, sinon le HMAC part
-  // avec une clé vide et les IP redeviennent ré-identifiables, silencieusement.
-  const salt = process.env.VAULT_AUDIT_SALT || "default-salt";
+  // Le repli littéral "default-salt" est retiré : l'espace des IPv4 fait 2^32,
+  // une table complète se calcule en minutes dès que la clé du HMAC est connue.
+  // requireSalt lève ici, à l'usage — pas à l'import.
+  const salt = requireSalt("VAULT_AUDIT_SALT");
   return createHmac("sha256", salt).update(ip).digest("hex").slice(0, 32);
 }
 

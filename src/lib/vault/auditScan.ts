@@ -2,13 +2,13 @@
 // Hash address before logging — never store in clear text.
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { requireSalt } from "@/lib/config/requireSalt";
 
 function hashAddress(address: string): string {
-  // `||` et non `??` : un sel posé à la chaîne vide vaut ABSENT. Avec `??`,
-  // VAULT_AUDIT_SALT="" donnait un HMAC à clé vide — les adresses auditées
-  // devenaient ré-identifiables par simple table de hachage, sans aucun signal.
-  // Le repli littéral est déjà public, mais il n'est pas une chaîne vide.
-  const salt = process.env.VAULT_AUDIT_SALT || "interligens_default_salt";
+  // Le repli littéral "interligens_default_salt" est retiré : il vivait dans le
+  // dépôt, donc publiquement. Une adresse auditée hachée avec lui se ré-identifie
+  // par simple table. requireSalt lève ici, à l'usage — pas à l'import.
+  const salt = requireSalt("VAULT_AUDIT_SALT");
   return crypto.createHmac("sha256", salt).update(address.toLowerCase().trim()).digest("hex").slice(0, 16);
 }
 
