@@ -1,6 +1,5 @@
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { vaultLookup } from "@/lib/vault/vaultLookup";
-import { checkScanLimit } from "@/lib/vault/scanRateLimit";
 import { auditScanLookup } from "@/lib/vault/auditScan";
 import { NextResponse } from "next/server";
 import { rpcCall } from "@/lib/rpc";
@@ -384,9 +383,9 @@ export async function GET(req: Request) {
     // ── Intel Vault ────────────────────────────────────────────────────────────
     let intelVault = { match: false, categories: [] as string[], explainAvailable: false };
     try {
-      const _ip = (req.headers.get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
-      const _rl = checkScanLimit(_ip);
-      if (!_rl.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      // Second gate retiré : il était en mémoire (donc inopérant entre lambdas)
+      // et redondant avec le checkRateLimit Upstash en tête de ce handler, qui
+      // couvre déjà tout le GET avec le même preset `scan`.
       const _vr = await vaultLookup("ethereum", address);
       await auditScanLookup({ address, chain: "ethereum", match: _vr.match, categoriesCount: _vr.categories.length });
       const _isAdmin = req.headers.get("x-admin-token") === process.env.ADMIN_TOKEN;

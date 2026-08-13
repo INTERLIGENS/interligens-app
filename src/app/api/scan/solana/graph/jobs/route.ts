@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createJob, enqueueJob, processNextJob } from "@/lib/solanaGraph/scheduler";
 import type { HopsDepth, DaysWindow, Priority } from "@/lib/solanaGraph/types";
 import { vaultLookup } from "@/lib/vault/vaultLookup";
-import { checkScanLimit } from "@/lib/vault/scanRateLimit";
+import { checkScanJobLimit } from "@/lib/vault/scanRateLimit";
 import { auditScanLookup } from "@/lib/vault/auditScan";
 import { getClientIp } from "@/lib/security/rateLimit";
 
@@ -11,8 +11,14 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   // Rate-limit BEFORE any work — this endpoint enqueues a Helius graph scan
   // (external $ cost, shared HELIUS key). Unauthenticated, and the proxy exempts
-  // /api/* so there is no global limiter. checkScanLimit = 60 req / 5 min / IP.
-  const rl = checkScanLimit(getClientIp(req));
+  // /api/* so there is no global limiter: this gate is the only thing between a
+  // script and the Helius bill.
+  //
+  // Backed by Upstash (shared across lambdas) — the previous in-memory counter
+  // was per-instance and therefore never actually enforced in production.
+  // 60 req / 5 min / IP, FAIL-CLOSED: if Upstash is down this returns 429
+  // rather than letting the cost through. See RATE_LIMIT_PRESETS.scanJob.
+  const rl = await checkScanJobLimit(getClientIp(req));
   if (!rl.allowed) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }

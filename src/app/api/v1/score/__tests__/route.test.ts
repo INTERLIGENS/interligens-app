@@ -45,38 +45,43 @@ describe("mapSeverity", () => {
 
 // -- Rate limiter tests -------------------------------------------------------
 
+// Le module délègue désormais à src/lib/security/rateLimit.ts (Upstash en
+// prod, store mémoire ici puisque UPSTASH_REDIS_REST_URL/_TOKEN sont absents
+// en CI). checkRateLimit est ASYNCHRONE : chaque appel doit être await, sinon
+// les hits ne sont pas comptés dans l'ordre et le 61e ne bloque pas.
+// Plafond inchangé : 60 / 60 s / IP.
 describe("checkRateLimit", () => {
   beforeEach(() => {
     __resetForTest();
   });
 
-  it("allows the first request", () => {
-    const result = checkRateLimit("1.2.3.4");
+  it("allows the first request", async () => {
+    const result = await checkRateLimit("1.2.3.4");
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(59);
   });
 
-  it("allows 60 requests within a window", () => {
+  it("allows 60 requests within a window", async () => {
     for (let i = 0; i < 60; i++) {
-      const r = checkRateLimit("1.2.3.4");
+      const r = await checkRateLimit("1.2.3.4");
       expect(r.allowed).toBe(true);
     }
   });
 
-  it("blocks the 61st request (rate limit exceeded)", () => {
+  it("blocks the 61st request (rate limit exceeded)", async () => {
     for (let i = 0; i < 60; i++) {
-      checkRateLimit("1.2.3.4");
+      await checkRateLimit("1.2.3.4");
     }
-    const blocked = checkRateLimit("1.2.3.4");
+    const blocked = await checkRateLimit("1.2.3.4");
     expect(blocked.allowed).toBe(false);
     expect(blocked.remaining).toBe(0);
   });
 
-  it("rate limits are per-IP", () => {
+  it("rate limits are per-IP", async () => {
     for (let i = 0; i < 60; i++) {
-      checkRateLimit("1.2.3.4");
+      await checkRateLimit("1.2.3.4");
     }
-    const otherIp = checkRateLimit("5.6.7.8");
+    const otherIp = await checkRateLimit("5.6.7.8");
     expect(otherIp.allowed).toBe(true);
     expect(otherIp.remaining).toBe(59);
   });

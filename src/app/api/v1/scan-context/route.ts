@@ -184,7 +184,7 @@ async function fetchCoinGeckoPrice(address: string, chain: Chain): Promise<numbe
 
 export async function GET(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rl = checkRateLimit(ip);
+  const rl = await checkRateLimit(ip);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "rate_limit_exceeded" },

@@ -122,7 +122,7 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
-  const rl = checkRateLimit(ip);
+  const rl = await checkRateLimit(ip);
 
   if (!rl.allowed) {
     return NextResponse.json(

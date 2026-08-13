@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
+// checkRateLimit est asynchrone depuis le port sur Upstash (src/lib/security/rateLimit).
 vi.mock("@/lib/publicScore/rateLimit", () => ({
-  checkRateLimit: vi.fn(() => ({ allowed: true, remaining: 59, resetAt: Date.now() + 60000 })),
+  checkRateLimit: vi.fn(async () => ({ allowed: true, remaining: 59, resetAt: Date.now() + 60000 })),
 }));
 vi.mock("@/lib/caseDb", () => ({ loadCaseByMint: vi.fn(() => null) }));
 
@@ -87,7 +88,7 @@ describe("GET /api/v1/scan-context", () => {
 
   it("returns 429 when rate limited", async () => {
     const { checkRateLimit } = await import("@/lib/publicScore/rateLimit");
-    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, remaining: 0, resetAt: Date.now() + 60000 });
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0, resetAt: Date.now() + 60000 });
     const res = await callScanContext(`target=${VALID_SOL}`);
     expect(res.status).toBe(429);
   });

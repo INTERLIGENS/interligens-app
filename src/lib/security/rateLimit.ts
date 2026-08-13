@@ -13,6 +13,18 @@ export interface RateLimitConfig {
   windowMs: number;
   max: number;
   keyPrefix: string;
+  /**
+   * Comportement quand Upstash est injoignable.
+   *
+   * `false`/absent (défaut) = FAIL-OPEN : on laisse passer. Une panne du
+   * limiteur ne doit pas mettre le produit à terre.
+   *
+   * `true` = FAIL-CLOSED : on refuse. Réservé aux endpoints dont chaque appel
+   * déclenche un coût externe réel — sans limiteur, une panne Upstash devient
+   * une facture. Le compromis est assumé : ces surfaces tombent pendant la
+   * panne plutôt que de brûler du budget.
+   */
+  failClosed?: boolean;
 }
 
 export interface RateLimitResult {
@@ -24,16 +36,35 @@ export interface RateLimitResult {
 }
 
 export const RATE_LIMIT_PRESETS = {
-  /** Puppeteer PDF — 10 req / 5 min / IP */
-  pdf:     { windowMs: 5 * 60 * 1000, max: 10,  keyPrefix: "rl:pdf"     },
+  /** Puppeteer PDF — 10 req / 5 min / IP. FAIL-CLOSED : Puppeteer coûte cher. */
+  pdf:     { windowMs: 5 * 60 * 1000, max: 10,  keyPrefix: "rl:pdf",  failClosed: true },
   /** Scans on-chain — 20 req / 1 min / IP */
   scan:    { windowMs:     60 * 1000, max: 20,  keyPrefix: "rl:scan"    },
+  /**
+   * Jobs de scan graph Solana — 60 req / 5 min / IP. FAIL-CLOSED.
+   *
+   * POST non authentifié qui met en file une expansion de graphe Helius (RPC
+   * payant, clé partagée) et écrit en DB. Le proxy exempte /api/*, il n'y a
+   * donc aucun limiteur global en amont : ce gate est le seul rempart entre
+   * un script et la facture Helius. Fenêtre/plafond repris à l'identique de
+   * l'ancien checkScanLimit (SCAN_RATE_LIMIT=60 / RATE_WINDOW_MS=300000).
+   */
+  scanJob: { windowMs: 5 * 60 * 1000, max: 60,  keyPrefix: "rl:scanjob", failClosed: true },
   /** OSINT / watchlist — 30 req / 1 min / IP */
   osint:   { windowMs:     60 * 1000, max: 30,  keyPrefix: "rl:osint"   },
   /** Partner API — 120 req / 1 min / IP */
   partner: { windowMs:     60 * 1000, max: 120, keyPrefix: "rl:partner" },
   /** Public info endpoints — 120 req / 1 min / IP */
   public:  { windowMs:     60 * 1000, max: 120, keyPrefix: "rl:public"  },
+  /**
+   * API publique de score — 60 req / 1 min / IP.
+   *
+   * Preset distinct de `public` (120/min) pour PRÉSERVER À L'IDENTIQUE le
+   * plafond de l'ancien src/lib/publicScore/rateLimit.ts. Réutiliser `public`
+   * doublerait l'allocation d'une surface publique non authentifiée — un
+   * relâchement, pas un port.
+   */
+  publicScore: { windowMs: 60 * 1000, max: 60, keyPrefix: "rl:publicscore" },
 } satisfies Record<string, RateLimitConfig>;
 
 // ── In-memory store (dev / CI) ───────────────────────────────────────────────
@@ -70,6 +101,22 @@ function slidingWindowMemory(key: string, cfg: RateLimitConfig): RateLimitResult
 
 // ── Upstash Redis adapter (prod) ─────────────────────────────────────────────
 
+/**
+ * Verdict à appliquer quand Upstash n'a pas répondu exploitablement.
+ *
+ * Politique portée par le preset (`cfg.failClosed`), plus par un test en dur
+ * sur keyPrefix. Le fallback `keyPrefix === "rl:pdf"` reste pour les configs
+ * ad-hoc construites à la main hors RATE_LIMIT_PRESETS.
+ */
+function upstashUnavailable(cfg: RateLimitConfig, now: number): RateLimitResult {
+  const failClosed = cfg.failClosed ?? cfg.keyPrefix === "rl:pdf";
+  if (failClosed) {
+    const retryAfter = Math.ceil(cfg.windowMs / 1000);
+    return { allowed: false, remaining: 0, limit: cfg.max, retryAfter, resetAt: now + cfg.windowMs };
+  }
+  return { allowed: true, remaining: cfg.max, limit: cfg.max, retryAfter: 0, resetAt: now + cfg.windowMs };
+}
+
 async function slidingWindowUpstash(key: string, cfg: RateLimitConfig): Promise<RateLimitResult> {
   const url    = process.env.UPSTASH_REDIS_REST_URL!;
   const token  = process.env.UPSTASH_REDIS_REST_TOKEN!;
@@ -85,20 +132,25 @@ async function slidingWindowUpstash(key: string, cfg: RateLimitConfig): Promise<
     ["ZRANGE",           key,  "0", "0", "WITHSCORES"              ],
   ];
 
-  const res = await fetch(`${url}/pipeline`, {
-    method:  "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body:    JSON.stringify(pipeline),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${url}/pipeline`, {
+      method:  "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body:    JSON.stringify(pipeline),
+    });
+  } catch (e) {
+    // Panne réseau (DNS, connexion refusée, timeout) : fetch REJETTE, il ne
+    // renvoie pas un status. Sans ce catch l'exception remontait jusqu'au
+    // handler de route — ni fail-open ni fail-closed, un 500. C'est pourtant
+    // le mode de panne le plus probable d'Upstash.
+    console.error("[rateLimit] Upstash unreachable", cfg.keyPrefix, e);
+    return upstashUnavailable(cfg, now);
+  }
 
   if (!res.ok) {
-    console.error("[rateLimit] Upstash error", res.status);
-    // Fail-closed pour PDF (coûteux/Puppeteer) — fail-open pour scan/osint
-    if (cfg.keyPrefix === "rl:pdf") {
-      const retryAfter = Math.ceil(cfg.windowMs / 1000);
-      return { allowed: false, remaining: 0, limit: cfg.max, retryAfter, resetAt: now + cfg.windowMs };
-    }
-    return { allowed: true, remaining: cfg.max, limit: cfg.max, retryAfter: 0, resetAt: now + cfg.windowMs };
+    console.error("[rateLimit] Upstash error", res.status, cfg.keyPrefix);
+    return upstashUnavailable(cfg, now);
   }
 
   const data        = (await res.json()) as Array<{ result: unknown }>;
