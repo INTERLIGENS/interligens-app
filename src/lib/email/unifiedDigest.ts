@@ -728,13 +728,15 @@ export async function sendUnifiedDigest(): Promise<SendResult> {
     return { delivered: false, skipped: "no_api_key", stats };
   }
 
+  // `||` et non `??` : une adresse à la chaîne vide vaut ABSENTE, sinon elle
+  // masque le repli et le digest part vers "" (non délivré, sans erreur).
   const from =
-    process.env.ALERT_FROM_EMAIL ??
-    process.env.DIGEST_FROM_EMAIL ??
+    process.env.ALERT_FROM_EMAIL ||
+    process.env.DIGEST_FROM_EMAIL ||
     "alerts@interligens.com";
   const to =
-    process.env.DIGEST_TO_EMAIL ??
-    process.env.ALERT_EMAIL ??
+    process.env.DIGEST_TO_EMAIL ||
+    process.env.ALERT_EMAIL ||
     "admin@interligens.com";
 
   const subject = `🐯 INTERLIGENS — Rapport hebdomadaire — ${formatDate(stats.windowEnd)}`;

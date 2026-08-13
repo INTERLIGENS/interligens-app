@@ -37,8 +37,12 @@ async function sendViaResend(level: AlertLevel, title: string, body: string): Pr
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
 
-  const to = process.env.ALERT_EMAIL ?? process.env.DIGEST_TO_EMAIL ?? "admin@interligens.com";
-  const from = process.env.ALERT_FROM_EMAIL ?? process.env.DIGEST_FROM_EMAIL ?? "alerts@interligens.com";
+  // `||` et non `??` : une adresse posée à la chaîne vide vaut ABSENTE. Avec
+  // `??`, ALERT_EMAIL="" donnait to="" — Resend refusait l'envoi, sendViaResend
+  // renvoyait false, et l'alerte ops disparaissait sans trace. On perdait les
+  // alertes exactement au moment où elles servent.
+  const to = process.env.ALERT_EMAIL || process.env.DIGEST_TO_EMAIL || "admin@interligens.com";
+  const from = process.env.ALERT_FROM_EMAIL || process.env.DIGEST_FROM_EMAIL || "alerts@interligens.com";
   const subject = `${LEVEL_EMOJI[level]} INTERLIGENS OPS — ${title}`;
   const html = `<pre style="font-family:monospace">${body.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`;
 
