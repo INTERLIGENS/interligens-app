@@ -12,7 +12,9 @@ export function getClientIp(req: NextRequest): string {
 }
 
 export function hashIp(ip: string): string {
-  const salt = process.env.IP_HASH_SALT ?? "interligens";
+  // `||` et non `??` : un sel à la chaîne vide vaut ABSENT, sinon le hash des
+  // IP part sans sel et redevient ré-identifiable, sans aucun signal.
+  const salt = process.env.IP_HASH_SALT || "interligens";
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
 }
 

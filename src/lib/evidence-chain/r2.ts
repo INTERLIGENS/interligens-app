@@ -20,12 +20,22 @@ export interface EvidenceR2Config {
   endpoint: string;
 }
 
-/** Read R2 config from env. Dedicated evidence bucket if set, else the shared one. */
+/**
+ * Read R2 config from env. Dedicated evidence bucket if set, else the shared one.
+ *
+ * `||` et NON `??` sur les trois replis : une variable provisionnée à la CHAÎNE
+ * VIDE vaut ABSENTE, pas valeur. Avec `??`, poser `R2_EVIDENCE_BUCKET_NAME=""`
+ * ne retombait pas sur `R2_BUCKET_NAME` — le `!bucket` juste en dessous faisait
+ * renvoyer null, et l'archivage R2 des preuves se désactivait SILENCIEUSEMENT :
+ * les EvidenceItem continuaient d'être écrits, sans octets, sans erreur. Une
+ * faute de frappe au provisionnement suffisait. Troisième instance du même
+ * angle mort après cc7d492 et 38f10f2 (Turnstile).
+ */
 export function evidenceR2ConfigFromEnv(): EvidenceR2Config | null {
   const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_EVIDENCE_ACCESS_KEY_ID ?? process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_EVIDENCE_SECRET_ACCESS_KEY ?? process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_EVIDENCE_BUCKET_NAME ?? process.env.R2_BUCKET_NAME;
+  const accessKeyId = process.env.R2_EVIDENCE_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_EVIDENCE_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY;
+  const bucket = process.env.R2_EVIDENCE_BUCKET_NAME || process.env.R2_BUCKET_NAME;
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
   const endpoint = process.env.R2_ENDPOINT ?? `https://${accountId}.r2.cloudflarestorage.com`;
   return { accountId, accessKeyId, secretAccessKey, bucket, endpoint };

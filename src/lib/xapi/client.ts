@@ -6,7 +6,10 @@
 const X_API_BASE = 'https://api.x.com/2';
 
 function getToken(): string | null {
-  return process.env.X_BEARER_TOKEN ?? process.env.TWITTER_BEARER_TOKEN ?? null;
+  // `||` et non `??` : un token posé à la chaîne vide vaut ABSENT. Avec `??`,
+  // X_BEARER_TOKEN="" masquait un TWITTER_BEARER_TOKEN valide et le watcher
+  // levait « X_BEARER_TOKEN not set » alors qu'un token exploitable existait.
+  return process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN || null;
 }
 
 function headers(): Record<string, string> {
