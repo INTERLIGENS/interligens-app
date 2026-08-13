@@ -61,7 +61,16 @@ FORBIDDEN_PATTERNS=(
     "^tailwind\.config\."
     "^postcss\.config\."
     "^\.prettierrc"
+    # ── Le gate de requêtes (admin + beta) ──────────────────────────────────
+    # Next.js 16 a renommé le middleware en « proxy » : dans CE repo le gate
+    # réel vit dans src/proxy.ts (checkBasicAuth, verifyAdminSession, beta-gate,
+    # isBetaExempt, matcher). Il n'était couvert par AUCUN pattern —
+    # "^src/middleware/" exige un slash et ne matche que src/middleware/adminAuth.ts.
+    # Les deux emplacements conventionnels Next.js sont gardés comme tripwire :
+    # un fichier créé là serait exécuté sur chaque requête, donc gelé d'office.
+    "^src/proxy\.ts$"
     "^middleware\.ts$"
+    "^src/middleware\.ts$"
     "^instrumentation\.ts$"
     "^prisma/"
     "^migrations/"
@@ -478,12 +487,18 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# NOTE (issue #46, exemption retirée après merge) — ANGLE MORT TOUJOURS OUVERT :
-# src/proxy.ts, qui porte checkBasicAuth() et donc le gate admin réel, n'est
-# couvert par AUCUN pattern de FORBIDDEN_PATTERNS. "^middleware\.ts$" vise un
-# fichier racine inexistant dans ce repo, et "^src/middleware/" ne couvre que
-# adminAuth.ts et ses tests. Le guard ne protège pas l'implémentation du gate.
-# À traiter dans son propre chantier, pas au détour d'un hotfix.
+# Exceptions pour la fermeture de l'angle mort src/proxy.ts (issue #46).
+# Le guard ne protégeait pas l'implémentation du gate admin/beta : ajout de
+# "^src/proxy\.ts$" (+ "^src/middleware\.ts$" en tripwire) à FORBIDDEN_PATTERNS.
+# Autorisation humaine explicite (David, BLOC SÉCURITÉ tâche 2) — voir PR.
+# Exemption STRICTEMENT limitée au guard lui-même ; elle est retirée dans le
+# commit suivant de cette même branche (danse standard), elle n'existe donc
+# pas sur main après merge.
+if [[ "$BRANCH" =~ ^hotfix/guard-proxy-coverage$ ]]; then
+    EXEMPT_GUARD_PROXY_COVERAGE_PATTERNS=(
+        "^scripts/guard-offline\.sh$"
+    )
+fi
 
 VIOLATIONS=0
 VIOLATING_FILES=()
@@ -799,6 +814,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche guard-proxy-coverage, exempter STRICTEMENT le guard lui-même.
+    if [[ "$BRANCH" =~ ^hotfix/guard-proxy-coverage$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_GUARD_PROXY_COVERAGE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
