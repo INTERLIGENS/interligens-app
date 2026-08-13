@@ -487,19 +487,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour la fermeture de l'angle mort src/proxy.ts (issue #46).
-# Le guard ne protégeait pas l'implémentation du gate admin/beta : ajout de
-# "^src/proxy\.ts$" (+ "^src/middleware\.ts$" en tripwire) à FORBIDDEN_PATTERNS.
-# Autorisation humaine explicite (David, BLOC SÉCURITÉ tâche 2) — voir PR.
-# Exemption STRICTEMENT limitée au guard lui-même ; elle est retirée dans le
-# commit suivant de cette même branche (danse standard), elle n'existe donc
-# pas sur main après merge.
-if [[ "$BRANCH" =~ ^hotfix/guard-proxy-coverage$ ]]; then
-    EXEMPT_GUARD_PROXY_COVERAGE_PATTERNS=(
-        "^scripts/guard-offline\.sh$"
-    )
-fi
-
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -814,18 +801,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche guard-proxy-coverage, exempter STRICTEMENT le guard lui-même.
-    if [[ "$BRANCH" =~ ^hotfix/guard-proxy-coverage$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_GUARD_PROXY_COVERAGE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
