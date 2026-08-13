@@ -494,10 +494,24 @@ fi
 # il doit l'être : la décision est de poser les sels dans l'environnement de test
 # PLUTÔT que d'ouvrir une exception NODE_ENV dans le code de production — une
 # exception NODE_ENV serait un repli déguisé, exactement ce qu'on retire.
-# Exemption STRICTEMENT limitée à vitest.config.ts.
+# RÉALLOCATION (balayage final) : le balayage a sorti DEUX sites de sel de plus,
+# non listés au départ. Ce sont des applications de requireSalt, donc ils
+# appartiennent à CE chantier, pas au chantier 3/3 :
+#   - src/app/api/admin/intake/route.ts : createHmac(ADMIN_TOKEN ?? "secret").
+#     Déplacé depuis EXEMPT_SWEEP_FINAL_PATTERNS ci-dessous.
+#   - src/lib/osint/retail/ipHash.ts : ipSalt() retombe sur le littéral
+#     "interligens_retail_ip_fallback_salt". Le fichier est gelé nommément
+#     (compromission INVISIBLE, audit #46) et c'est exactement pourquoi : le
+#     repli produit un HMAC valide sur une clé publique, avec un console.warn
+#     tiré UNE SEULE fois par process — en pratique, invisible. Le repli
+#     intermédiaire sur ADMIN_TOKEN est CONSERVÉ (c'est un vrai secret) ;
+#     seul le littéral terminal disparaît.
+# Exemption STRICTEMENT limitée à ces 3 fichiers.
 if [[ "$BRANCH" =~ ^hotfix/require-salt$ ]]; then
     EXEMPT_REQUIRE_SALT_PATTERNS=(
         "^vitest\.config\.ts$"
+        "^src/app/api/admin/intake/route\.ts$"
+        "^src/lib/osint/retail/ipHash\.ts$"
     )
 fi
 
@@ -524,13 +538,9 @@ if [[ "$BRANCH" =~ ^hotfix/env-numeric-nan$ ]]; then
     )
 fi
 
-# 3/3 — hotfix/sweep-final-secrets : les 3 résidus du balayage final.
-# - admin/intake/route.ts : createHmac("sha256", ADMIN_TOKEN ?? "secret") — 4e site
-#   de sel à défaut littéral, non listé au départ, sorti du balayage. Les ipHash /
-#   userAgentHash des soumissions étaient clés sur le littéral public "secret".
-#   requireAdminApi() est fail-closed sur ADMIN_TOKEN (500 si absente) : le repli
-#   est donc inatteignable en pratique, mais il est armé et n'attend qu'un
-#   refactor de la garde pour devenir vivant. On le retire.
+# 3/3 — hotfix/sweep-final-secrets : les résidus fail-open du balayage final.
+# (Les 2 sites de SEL sortis par le balayage ont été réalloués au chantier 1/3
+#  ci-dessus : ce sont des applications de requireSalt, ils appartiennent là.)
 # - cron/corroboration/route.ts et cron/intake-watch/route.ts : le seul gate est
 #   `auth !== \`Bearer ${process.env.CRON_SECRET}\`` sans aucun `if (!secret)`.
 #   CRON_SECRET absente → le secret attendu devient la chaîne CONSTANTE
@@ -538,10 +548,9 @@ fi
 #   cron est ouverte à qui envoie cet en-tête. Les 18 autres crons du repo sont
 #   déjà fail-closed : ces deux-là sont les seuls écarts. Alignement sur le motif
 #   majoritaire, aucune logique métier touchée.
-# Exemption STRICTEMENT limitée aux 3 routes nommées ; AUCUN wildcard.
+# Exemption STRICTEMENT limitée aux 2 routes nommées ; AUCUN wildcard.
 if [[ "$BRANCH" =~ ^hotfix/sweep-final-secrets$ ]]; then
     EXEMPT_SWEEP_FINAL_PATTERNS=(
-        "^src/app/api/admin/intake/route\.ts$"
         "^src/app/api/cron/corroboration/route\.ts$"
         "^src/app/api/cron/intake-watch/route\.ts$"
     )
