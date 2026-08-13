@@ -7,6 +7,8 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 import { PrismaClient } from "@prisma/client";
 import { runAutoEvidenceBatch } from "@/lib/watcher-bridge/createAutoEvidenceSnapshot";
+import { PrismaEvidenceStore } from "@/lib/evidence-chain/store/prisma";
+import { evidenceR2ConfigFromEnv, buildEvidenceR2 } from "@/lib/evidence-chain/r2";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -21,7 +23,15 @@ async function main() {
 
   const prisma = new PrismaClient();
   try {
-    const summary = await runAutoEvidenceBatch(prisma, { candidateIds, limit, dryRun });
+    // Chaîne de preuve (CC-OFFLINE-56) : artefact JSON canonique par candidate.
+    // Script lancé depuis un host avec openssl → TSA tentée au fil de l'eau.
+    const cfg = evidenceR2ConfigFromEnv();
+    const chain = dryRun ? null : {
+      store: new PrismaEvidenceStore(prisma),
+      r2: cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket } : null,
+      tsaEnabled: true,
+    };
+    const summary = await runAutoEvidenceBatch(prisma, { candidateIds, limit, dryRun, chain });
     console.log(JSON.stringify({ mode: dryRun ? "DRY_RUN" : "LIVE", ...summary }, null, 2));
   } finally {
     await prisma.$disconnect();

@@ -26,7 +26,7 @@ describe("evidence-chain — ingestion & hash (offline)", () => {
     const f = join(tmp, "a.txt");
     writeFileSync(f, "hello evidence " + "x".repeat(50));
     const expected = await sha256File(f);
-    const r = await ingestFile({ filePath: f, sourceType: "OTHER", casefileId: "case-1", capturedBy: "test-operator" }, store);
+    const r = await ingestFile({ filePath: f, sourceType: "OTHER", casefileId: "case-1", capturedBy: "test-operator", provenanceType: "FIRST_PARTY_CAPTURE", timestampMode: "at-capture" }, store);
     expect(r.duplicate).toBe(false);
     expect(r.item.sha256).toBe(expected);
     expect(r.item.byteSize).toBeGreaterThan(0);
@@ -34,7 +34,7 @@ describe("evidence-chain — ingestion & hash (offline)", () => {
 
   it("detects a duplicate by hash (signalled, not duplicated)", async () => {
     const f = join(tmp, "a.txt");
-    const r = await ingestFile({ filePath: f, sourceType: "OTHER", casefileId: "case-1", capturedBy: "test-operator" }, store);
+    const r = await ingestFile({ filePath: f, sourceType: "OTHER", casefileId: "case-1", capturedBy: "test-operator", provenanceType: "FIRST_PARTY_CAPTURE", timestampMode: "at-capture" }, store);
     expect(r.duplicate).toBe(true);
     const items = await store.getCasefileItems("case-1");
     expect(items.length).toBe(1); // still one item, not two
@@ -42,13 +42,13 @@ describe("evidence-chain — ingestion & hash (offline)", () => {
 
   it("refuses ingestion without capturedBy (chain of custody — no silent null)", async () => {
     const f = join(tmp, "nocap.txt"); writeFileSync(f, "no capturedBy");
-    await expect(ingestFile({ filePath: f, sourceType: "OTHER", casefileId: "case-1" }, store)).rejects.toThrow(/capturedBy/);
+    await expect(ingestFile({ filePath: f, sourceType: "OTHER", casefileId: "case-1", provenanceType: "FIRST_PARTY_CAPTURE", timestampMode: "at-capture" }, store)).rejects.toThrow(/capturedBy/);
   });
 
   it("ingests sxyz500_hops.json as REPO_ARTIFACT (first real piece)", async () => {
     expect(existsSync(SXYZ)).toBe(true);
     const expected = await sha256File(SXYZ);
-    const r = await ingestFile({ filePath: SXYZ, sourceType: "REPO_ARTIFACT", casefileId: "case-1", capturedBy: "test-operator", notes: "sxyz500 wallet hops" }, store);
+    const r = await ingestFile({ filePath: SXYZ, sourceType: "REPO_ARTIFACT", casefileId: "case-1", capturedBy: "test-operator", provenanceType: "FIRST_PARTY_CAPTURE", timestampMode: "at-capture", notes: "sxyz500 wallet hops" }, store);
     expect(r.item.sourceType).toBe("REPO_ARTIFACT");
     expect(r.item.sha256).toBe(expected);
   });
@@ -122,7 +122,7 @@ describe.runIf(TSA_LIVE)("evidence-chain — TSA réel + archivage chaîne + vé
     const sha = await sha256File(f);
     // OTHER criticality → fallback (freetsa). Chain fetched + archived at stamping.
     const r = await ingestFile(
-      { filePath: f, sourceType: "OTHER", casefileId: "tsa-case", criticality: "OTHER", capturedBy: "test-operator" },
+      { filePath: f, sourceType: "OTHER", casefileId: "tsa-case", criticality: "OTHER", capturedBy: "test-operator", provenanceType: "FIRST_PARTY_CAPTURE", timestampMode: "at-capture" },
       store2,
       { tsa: { enabled: true, routing: { primary: null, fallback: FREETSA, commercialMinDelayMs: 0 } } },
     );

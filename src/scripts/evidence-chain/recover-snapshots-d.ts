@@ -69,7 +69,9 @@ function r2KeyFromUrl(u: string): string { return decodeURIComponent(new URL(u).
       const ir = await ingestFile({
         filePath: tmp, sourceType: mapSourceType(r.snapshotType), sourceUrl: r.imageUrl,
         capturedAt: r.observedAt ? new Date(r.observedAt) : null, capturedBy: CAPTURED_BY,
-        captureTool: "recover-d", captureToolVersion: "v1", notes, criticality: "OTHER",
+        captureTool: "recover-d", captureToolVersion: "v1",
+        provenanceType: "MIGRATED_BACKFILL", timestampMode: "retroactive",
+        notes, criticality: "OTHER",
       }, store!, { r2, tsa: { enabled: true }, actor: "recover-d" });
       if (!ir.tsa.done) noTsa++;
       const ex: unknown[] = await prisma.$queryRawUnsafe(`SELECT 1 FROM "EvidenceLink" WHERE "evidenceItemId"=$1 AND "linkType"='MANUAL' AND "externalId"=$2 LIMIT 1`, ir.item.id, r.id);

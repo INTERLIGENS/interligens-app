@@ -26,6 +26,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { isPending } from "@/lib/osint/vision/validateCA";
+import {
+  validateCommitImages,
+  chainOperatorEvidence,
+  type ChainOperatorResult,
+} from "@/lib/osint/evidenceCommitBridge";
 
 interface PlanLink {
   kolHandle: string;
@@ -98,11 +103,36 @@ export async function POST(req: NextRequest) {
   const migErr = await preflightMigration();
   if (migErr) return NextResponse.json({ error: "migration_required", detail: migErr }, { status: 412 });
 
+  // ── Chaîne de preuve (CC-OFFLINE-56) — VALIDATION AVANT TOUTE ÉCRITURE ──
+  // imagesBase64 (optionnel) : map { sha256 annoncé → base64 }. Le sha recalculé
+  // serveur DOIT matcher le plan ; mismatch ou image hors plan = rejet explicite
+  // de TOUT le commit, aucune pièce ni écriture shadow créée.
+  const imagesBase64 = (body.imagesBase64 as Record<string, string> | undefined) ?? {};
+  if (typeof imagesBase64 !== "object" || Array.isArray(imagesBase64)) {
+    return NextResponse.json({ error: "invalid_imagesBase64", detail: "imagesBase64 must be a { sha256: base64 } map" }, { status: 400 });
+  }
+  const imgValidation = validateCommitImages(evidences, imagesBase64);
+  if (!imgValidation.ok) {
+    return NextResponse.json(
+      {
+        error: "image_hash_mismatch",
+        detail: "sha256 recalculé serveur ≠ plan (ou image hors plan). Commit rejeté — aucune pièce créée.",
+        mismatches: imgValidation.mismatches,
+        unknown: imgValidation.unknown,
+      },
+      { status: 422 },
+    );
+  }
+  const evidenceCapturedBy = typeof body.capturedBy === "string" && body.capturedBy.trim()
+    ? body.capturedBy.trim()
+    : "operator:admin-console";
+
   const report = {
     mode: "shadow_commit",
     kolProfile: null as null | { handle: string; created: boolean },
     links: { ok: 0, pending: 0, failed: [] as Array<{ tokenSymbol?: string | null; error: string }> },
     evidences: { inserted: 0, skipped_existing: 0, failed: [] as Array<{ sha256: string; error: string }> },
+    evidenceChain: [] as ChainOperatorResult[],
   };
 
   // ── KolProfile — SHADOW, never publish ──
@@ -198,6 +228,22 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       report.evidences.failed.push({ sha256: e.sha256, error: (err as Error).message });
     }
+  }
+
+  // ── Chaîne de preuve — EvidenceItem + lien MANUAL par évidence (CC-OFFLINE-56).
+  // Bytes validés plus haut ; absents → hash-only. Erreur rapportée par pièce,
+  // jamais un échec silencieux du commit.
+  for (const e of evidences) {
+    report.evidenceChain.push(
+      await chainOperatorEvidence(
+        {
+          sha256: e.sha256, localFilePath: e.localFilePath, sessionId: e.sessionId,
+          capturedAt: e.capturedAt ?? null, sourceUrl: e.sourceUrl ?? null, snapshotType: e.snapshotType,
+        },
+        imagesBase64[e.sha256] ?? null,
+        evidenceCapturedBy,
+      ),
+    );
   }
 
   const ok = report.links.failed.length === 0 && report.evidences.failed.length === 0;

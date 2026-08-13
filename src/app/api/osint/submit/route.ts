@@ -49,6 +49,7 @@ import {
 } from "@/lib/osint/retail/retailStore";
 import { SubmissionStatus } from "@/lib/osint/contracts";
 import { VISION_MODEL } from "@/lib/osint/vision/visionPrompt";
+import { chainRetailEvidence } from "@/lib/osint/retail/evidenceChainBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -198,6 +199,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } catch (e) {
         console.error("[osint/submit] normalize/vault error:", e);
       }
+
+      // Chaîne de preuve — EvidenceItem créé DÈS LA RÉCEPTION, avant toute vision
+      // (CC-OFFLINE-56). Jamais bloquant pour la soumission ; TSA rattrapée par
+      // le job stamp-pending si absente ici.
+      await chainRetailEvidence({
+        buffer: buf,
+        mimeType: pre?.mediaType ?? "image/png",
+        ipHash,
+        batchId,
+        imageIndex: i,
+        tweetUrl,
+        vaultRef,
+      });
     }
 
     try {

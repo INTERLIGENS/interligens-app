@@ -119,6 +119,7 @@ async function main() {
       const res = await ingestFile({
         filePath: abs, sourceType: sourceTypeOf(rel), mimeType: mimeOf(abs), sourceUrl: null,
         capturedAt: g ? g.at : null, capturedBy: CAPTURED_BY, captureTool: "backfill", captureToolVersion: "v1",
+        provenanceType: "MIGRATED_BACKFILL", timestampMode: "retroactive",
         notes: parentNotes, criticality: "OTHER",
       }, store!, { r2, tsa: { enabled: true }, actor: "backfill" });
       res.duplicate ? stats.dup++ : stats.items++;
@@ -133,6 +134,7 @@ async function main() {
             const mr = await ingestFile({
               filePath: m, sourceType: sourceTypeOf(join(rel, basename(m))), mimeType: mimeOf(m), sourceUrl: null,
               capturedAt: g ? g.at : null, capturedBy: CAPTURED_BY, captureTool: "backfill", captureToolVersion: "v1",
+              provenanceType: "MIGRATED_BACKFILL", timestampMode: "retroactive",
               notes: `backfill membre d'archive ${rel} (parent ${res.item.sha256.slice(0, 12)}); provenance FAIBLE; capturedAt=commit git de l'archive`,
               criticality: "OTHER",
             }, store!, { r2, tsa: { enabled: true }, actor: "backfill" });

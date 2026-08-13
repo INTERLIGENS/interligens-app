@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
 import type {
   EvidenceStore, EvidenceItemRecord, EvidenceLinkRecord,
   NewEvidenceItem, NewEvidenceLink, AccessAction, EvidenceSourceType,
-  EvidenceLinkType, CorroborationLevel,
+  EvidenceLinkType, CorroborationLevel, ProvenanceType, TimestampMode,
 } from "../types";
 
 type Row = Record<string, unknown>;
@@ -29,6 +29,9 @@ function toItem(r: Row): EvidenceItemRecord {
     captureToolVersion: (r.captureToolVersion as string) ?? null,
     sourceUrl: (r.sourceUrl as string) ?? null,
     sourceType: String(r.sourceType) as EvidenceSourceType,
+    provenanceType: ((r.provenanceType as string) ?? null) as ProvenanceType | null,
+    submittedBy: (r.submittedBy as string) ?? null,
+    timestampMode: ((r.timestampMode as string) ?? null) as TimestampMode | null,
     ingestedAt: new Date(String(r.ingestedAt)),
     tsaToken: r.tsaToken ? Buffer.from(r.tsaToken as Buffer) : null,
     tsaProvider: (r.tsaProvider as string) ?? null,
@@ -62,7 +65,9 @@ export class SqliteEvidenceStore implements EvidenceStore {
         id TEXT PRIMARY KEY, casefileId TEXT, r2Key TEXT, filePath TEXT, mimeType TEXT,
         byteSize INTEGER, sha256 TEXT UNIQUE NOT NULL, capturedAt TEXT, capturedBy TEXT,
         captureHost TEXT, captureTool TEXT, captureToolVersion TEXT, sourceUrl TEXT,
-        sourceType TEXT NOT NULL DEFAULT 'OTHER', ingestedAt TEXT NOT NULL,
+        sourceType TEXT NOT NULL DEFAULT 'OTHER',
+        provenanceType TEXT, submittedBy TEXT, timestampMode TEXT,
+        ingestedAt TEXT NOT NULL,
         tsaToken BLOB, tsaProvider TEXT, tsaTimestampedAt TEXT, tsaCertChain TEXT,
         immutableStored INTEGER NOT NULL DEFAULT 0, immutableRef TEXT, notes TEXT);
       CREATE TABLE IF NOT EXISTS EvidenceLink (
@@ -85,15 +90,19 @@ export class SqliteEvidenceStore implements EvidenceStore {
     const now = new Date().toISOString();
     this.db.prepare(`INSERT INTO EvidenceItem
       (id,casefileId,r2Key,filePath,mimeType,byteSize,sha256,capturedAt,capturedBy,captureHost,
-       captureTool,captureToolVersion,sourceUrl,sourceType,ingestedAt,immutableStored,notes)
+       captureTool,captureToolVersion,sourceUrl,sourceType,provenanceType,submittedBy,timestampMode,
+       ingestedAt,immutableStored,notes)
       VALUES (@id,@casefileId,@r2Key,@filePath,@mimeType,@byteSize,@sha256,@capturedAt,@capturedBy,
-       @captureHost,@captureTool,@captureToolVersion,@sourceUrl,@sourceType,@ingestedAt,0,@notes)`).run({
+       @captureHost,@captureTool,@captureToolVersion,@sourceUrl,@sourceType,@provenanceType,
+       @submittedBy,@timestampMode,@ingestedAt,0,@notes)`).run({
       id, casefileId: item.casefileId ?? null, r2Key: item.r2Key ?? null, filePath: item.filePath ?? null,
       mimeType: item.mimeType ?? null, byteSize: item.byteSize ?? null, sha256: item.sha256,
       capturedAt: item.capturedAt ? item.capturedAt.toISOString() : null, capturedBy: item.capturedBy ?? null,
       captureHost: item.captureHost ?? null, captureTool: item.captureTool ?? null,
       captureToolVersion: item.captureToolVersion ?? null, sourceUrl: item.sourceUrl ?? null,
-      sourceType: item.sourceType, ingestedAt: now, notes: item.notes ?? null,
+      sourceType: item.sourceType, provenanceType: item.provenanceType ?? null,
+      submittedBy: item.submittedBy ?? null, timestampMode: item.timestampMode ?? null,
+      ingestedAt: now, notes: item.notes ?? null,
     });
     return (await this.getItem(id))!;
   }

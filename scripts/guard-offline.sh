@@ -460,6 +460,24 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour le câblage evidence-chain sur les flux de capture live
+# (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
+# commit opérateur, watcher bridge). Autorisation humaine explicite (David,
+# GO Phase 2 + exemption validée sur le plan d'audit) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur : le schema prod (3 colonnes additives,
+# MIGRATION_evidence_provenance_v1.sql déjà appliquée par David dans Neon),
+# les 2 routes câblées, et le guard lui-même. Ne couvre PAS l'ensemble de
+# src/app/api/ ni prisma/. La logique vit hors chemins gelés
+# (src/lib/evidence-chain/, src/lib/osint/, src/lib/watcher-bridge/, src/scripts/).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
+    EXEMPT_EVIDENCE_LIVE_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+        "^src/app/api/osint/submit/route\.ts$"
+        "^src/app/api/admin/osint/commit/route\.ts$"
+        "^scripts/guard-offline\.sh$"
+    )
+fi
+
 # NOTE (issue #46, exemption retirée après merge) — ANGLE MORT TOUJOURS OUVERT :
 # src/proxy.ts, qui porte checkBasicAuth() et donc le gate admin réel, n'est
 # couvert par AUCUN pattern de FORBIDDEN_PATTERNS. "^middleware\.ts$" vise un
@@ -600,6 +618,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche evidence-live-ingest, exempter le schema + les 2 routes câblées.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break

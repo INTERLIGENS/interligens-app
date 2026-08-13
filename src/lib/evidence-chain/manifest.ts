@@ -8,9 +8,12 @@ import { readdirSync, statSync } from "fs";
 import { join } from "path";
 import { sha256Buffer, sha256File } from "./hash";
 import { requestTimestampWithRetry, verifyTimestampOffline } from "./tsa";
-import type { EvidenceStore, CorroborationLevel } from "./types";
+import type { EvidenceStore, CorroborationLevel, ProvenanceType } from "./types";
 
-export const MANIFEST_VERSION = "evidence-chain/v1";
+// v2 : + provenanceType / submittedBy par pièce. Les manifestes v1 déjà émis
+// restent vérifiables (la vérification reconstruit le core depuis le JSON du
+// manifeste lui-même — cf. shim disclaimer dans verifyManifest).
+export const MANIFEST_VERSION = "evidence-chain/v2";
 
 export interface ManifestItem {
   sha256: string;
@@ -31,13 +34,24 @@ export interface ManifestItem {
    * SEULEMENT l'existence du hash à la date de stamping, PAS que la capture a eu
    * lieu à capturedAt (date déclarative). Dérivé du marqueur notes [TIMESTAMP:RETROACTIVE].
    */
-  timestampMode: "at-capture" | "retroactive";
+  timestampMode: "at-capture" | "retroactive" | "at-ingestion";
+  /**
+   * FIRST_PARTY_CAPTURE = capturé par un opérateur/système INTERLIGENS.
+   * THIRD_PARTY_SUBMISSION = soumis par un tiers (capturedBy="unattributed",
+   * submittedBy porte l'identité pseudonyme du soumetteur).
+   * MIGRATED_BACKFILL = pièce historique migrée (colonne NULL en base — jamais
+   * réécrite ; la valeur est DÉRIVÉE ici, Option A).
+   */
+  provenanceType: ProvenanceType;
+  submittedBy: string | null;
 }
 
 /** Disclaimer inscrit dans chaque manifeste (hashé + horodaté avec le reste). */
 export const MANIFEST_DISCLAIMER =
   "Un token TSA prouve l'existence du hash à sa date de stamping, non la date de capture. " +
-  "Les pièces timestampMode=retroactive ont une capturedAt DÉCLARATIVE (non prouvée).";
+  "Les pièces timestampMode=retroactive ont une capturedAt DÉCLARATIVE (non prouvée). " +
+  "Les pièces timestampMode=at-ingestion sont horodatées à la RÉCEPTION par le système " +
+  "(provenanceType=THIRD_PARTY_SUBMISSION : contenu fourni par un tiers, capture non attribuée).";
 
 export interface Manifest {
   version: string;
@@ -86,7 +100,12 @@ export async function generateManifest(
         : null,
       links: links.map((l) => ({ linkType: l.linkType, externalId: l.externalId, externalUrl: l.externalUrl, corroborationLevel: l.corroborationLevel })),
       corroboration: highestCorroboration(links.map((l) => l.corroborationLevel)),
-      timestampMode: (it.notes ?? "").includes("[TIMESTAMP:RETROACTIVE]") ? "retroactive" : "at-capture",
+      // Colonne canonique d'abord ; fallback legacy (1070 pièces pré-provenance,
+      // colonnes NULL par construction — Option A, zéro réécriture).
+      timestampMode: it.timestampMode
+        ?? ((it.notes ?? "").includes("[TIMESTAMP:RETROACTIVE]") ? "retroactive" : "at-capture"),
+      provenanceType: it.provenanceType ?? "MIGRATED_BACKFILL",
+      submittedBy: it.submittedBy ?? null,
     });
   }
   const core = { version: MANIFEST_VERSION, generatedAt: opts.generatedAt.toISOString(), casefileId, disclaimer: MANIFEST_DISCLAIMER, items: manifestItems };
@@ -127,7 +146,15 @@ export async function verifyManifest(
   opts: { verifyTsa?: boolean } = {},
 ): Promise<VerifyReport> {
   // 1. Manifest integrity: recompute hash over the canonical core.
-  const core = { version: manifest.version, generatedAt: manifest.generatedAt, casefileId: manifest.casefileId, disclaimer: manifest.disclaimer, items: manifest.items };
+  // Shim de compat : `disclaimer` n'entre dans le core QUE s'il est présent dans
+  // le manifeste — les tout premiers manifestes v1 (émis sans disclaimer) restent
+  // vérifiables, comme ceux émis avec, comme les v2. Les items sont repris
+  // verbatim du JSON : les champs ajoutés en v2 sont auto-portants.
+  const core = {
+    version: manifest.version, generatedAt: manifest.generatedAt, casefileId: manifest.casefileId,
+    ...(manifest.disclaimer !== undefined ? { disclaimer: manifest.disclaimer } : {}),
+    items: manifest.items,
+  };
   const manifestHashOk = sha256Buffer(stableStringify(core)) === manifest.manifestHash;
 
   // 2. Hash every file in the dir → content map (order-independent).

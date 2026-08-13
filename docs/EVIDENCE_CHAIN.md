@@ -84,3 +84,32 @@ C hashable, **B quarantaine (hash divergent, non migré)**, D absente. Dedup par
 sha256 (pièce déjà en base → lien MANUAL seul). Lien MANUAL `externalId` = id
 EvidenceSnapshot source (traçabilité). Idempotent/reprenable. `--stamp-pending`
 rejoue les pièces `tsaToken NULL`. ~23 min estimées pour 925 (throttle 1s).
+
+## 8. Provenance + câblage des flux live (CC-OFFLINE-56)
+Colonnes additives (`MIGRATION_evidence_provenance_v1.sql`, appliquée 2026-08-13) :
+`provenanceType` (`FIRST_PARTY_CAPTURE`|`THIRD_PARTY_SUBMISSION`|`MIGRATED_BACKFILL`),
+`submittedBy` (ipHash retail), `timestampMode` (+ `at-ingestion` : la TSA prouve la
+**réception**, pas la capture). Règles (`ingest.ts`, throw) : `capturedBy="unattributed"`
+UNIQUEMENT si THIRD_PARTY_SUBMISSION ; THIRD_PARTY_SUBMISSION exige `submittedBy`.
+**Les 1070 pièces pré-provenance restent NULL (jamais réécrites — Option A)** ; le
+manifeste (v2) dérive `MIGRATED_BACKFILL` + `timestampMode` du marqueur notes.
+Les manifestes v1 déjà émis restent vérifiables (shim disclaimer dans `verifyManifest`).
+
+Flux câblés — la pièce naît À LA RÉCEPTION, jamais au traitement :
+- **Retail** `POST /api/osint/submit` : EvidenceItem dès réception des bytes acceptés,
+  AVANT vision (`evidenceChainBridge.ts`). Échec chaîne = non bloquant pour la soumission.
+- **Opérateur** `POST /api/admin/osint/commit` : `imagesBase64` optionnel — sha256
+  recalculé serveur DOIT matcher le plan AVANT toute écriture (mismatch = 422, zéro
+  pièce) ; fallback hash-only si bytes absents (`evidenceCommitBridge.ts`).
+- **Watcher** `run-auto-evidence.ts` : artefact JSON canonique du candidate
+  (`stableStringify`) → EvidenceItem + liens X_API_RECORD/MANUAL.
+
+TSA en serverless : JAMAIS en requête (openssl non garanti + latence) — les pièces
+naissent `tsaToken NULL` et sont rattrapées par :
+```
+pnpm tsx src/scripts/evidence-chain/stamp-pending.ts [--dry-run] [--limit N] [--throttle-ms M]
+```
+launchd quotidien Host-001 (08:30) : `src/scripts/evidence-chain/com.interligens.evidence-stamp.plist`
+(⚠️ PATH homebrew : le LibreSSL d'Apple n'a pas `openssl ts`). Le watchdog de 09:00
+rapporte « TSA pending: N » sur Telegram (warn ≥ WATCHDOG_TSA_PENDING_WARN, déf 50).
+Opt-in TSA en requête : `EVIDENCE_TSA_INROUTE="true"` (retries 0, jamais bloquant).

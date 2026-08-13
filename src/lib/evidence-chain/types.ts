@@ -15,6 +15,21 @@ export type CorroborationLevel = (typeof CORROBORATION_LEVELS)[number];
 export const ACCESS_ACTIONS = ["INGEST", "READ", "EXPORT", "LINK", "VERIFY"] as const;
 export type AccessAction = (typeof ACCESS_ACTIONS)[number];
 
+// Provenance (colonnes ajoutées par MIGRATION_evidence_provenance_v1.sql).
+// Les 1070 pièces pré-migration restent NULL = legacy (Option A, zéro réécriture) ;
+// le manifeste les expose comme MIGRATED_BACKFILL par dérivation.
+export const PROVENANCE_TYPES = ["FIRST_PARTY_CAPTURE", "THIRD_PARTY_SUBMISSION", "MIGRATED_BACKFILL"] as const;
+export type ProvenanceType = (typeof PROVENANCE_TYPES)[number];
+
+// "at-capture"   : horodaté au fil de l'eau (hash existait à la capture).
+// "retroactive"  : pièce migrée, capturedAt déclarative (marqueur notes legacy).
+// "at-ingestion" : la TSA prouve la RÉCEPTION par le système, pas la capture.
+export const TIMESTAMP_MODES = ["at-capture", "retroactive", "at-ingestion"] as const;
+export type TimestampMode = (typeof TIMESTAMP_MODES)[number];
+
+/** Seule valeur de capturedBy autorisée sans identité — et uniquement en THIRD_PARTY_SUBMISSION. */
+export const UNATTRIBUTED = "unattributed";
+
 export interface EvidenceItemRecord {
   id: string;
   casefileId: string | null;
@@ -30,6 +45,9 @@ export interface EvidenceItemRecord {
   captureToolVersion: string | null;
   sourceUrl: string | null;
   sourceType: EvidenceSourceType;
+  provenanceType: ProvenanceType | null;
+  submittedBy: string | null;
+  timestampMode: TimestampMode | null;
   ingestedAt: Date;
   tsaToken: Buffer | null;
   tsaProvider: string | null;
@@ -64,6 +82,9 @@ export interface NewEvidenceItem {
   captureToolVersion?: string | null;
   sourceUrl?: string | null;
   sourceType: EvidenceSourceType;
+  provenanceType?: ProvenanceType | null;
+  submittedBy?: string | null;
+  timestampMode?: TimestampMode | null;
   notes?: string | null;
 }
 

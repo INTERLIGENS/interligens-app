@@ -4020,6 +4020,12 @@ model EvidenceItem {
   captureToolVersion String?
   sourceUrl          String?
   sourceType         String   @default("OTHER") // X_POST|TELEGRAM|WEB_PAGE|EXPLORER|REPO_ARTIFACT|OTHER
+  // Provenance (MIGRATION_evidence_provenance_v1.sql, appliquée 2026-08-13).
+  // NULL = pièce legacy pré-provenance (jamais réécrite — Option A) ;
+  // le manifeste dérive alors MIGRATED_BACKFILL + timestampMode depuis notes.
+  provenanceType     String?  // FIRST_PARTY_CAPTURE|THIRD_PARTY_SUBMISSION|MIGRATED_BACKFILL
+  submittedBy        String?  // identité pseudonyme du soumetteur (ipHash retail)
+  timestampMode      String?  // at-capture|retroactive|at-ingestion
   ingestedAt         DateTime @default(now())
   tsaToken           Bytes?
   tsaProvider        String?
@@ -4034,6 +4040,7 @@ model EvidenceItem {
 
   @@index([casefileId])
   @@index([sourceType])
+  @@index([provenanceType])
 }
 
 model EvidenceLink {

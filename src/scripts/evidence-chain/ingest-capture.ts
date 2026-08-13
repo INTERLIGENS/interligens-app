@@ -65,6 +65,7 @@ async function main() {
   const res = await ingestFile({
     filePath: file, sourceType, mimeType: mimeOf(file), sourceUrl: null, casefileId, capturedAt,
     capturedBy, captureHost: process.env.HOSTNAME ?? null, captureTool: "ingest-capture", captureToolVersion: "v1",
+    provenanceType: "FIRST_PARTY_CAPTURE", timestampMode: "at-capture",
     notes: `handle=@${handle}`, criticality,
   }, store, { r2, tsa: { enabled: true }, actor: `ingest-capture:@${handle}` });
 

@@ -8,7 +8,7 @@ import type { PrismaClient } from "@prisma/client";
 import type {
   EvidenceStore, EvidenceItemRecord, EvidenceLinkRecord,
   NewEvidenceItem, NewEvidenceLink, AccessAction, EvidenceSourceType,
-  EvidenceLinkType, CorroborationLevel,
+  EvidenceLinkType, CorroborationLevel, ProvenanceType, TimestampMode,
 } from "../types";
 
 type PItem = {
@@ -16,6 +16,7 @@ type PItem = {
   mimeType: string | null; byteSize: number | null; sha256: string; capturedAt: Date | null;
   capturedBy: string | null; captureHost: string | null; captureTool: string | null;
   captureToolVersion: string | null; sourceUrl: string | null; sourceType: string;
+  provenanceType: string | null; submittedBy: string | null; timestampMode: string | null;
   ingestedAt: Date; tsaToken: Uint8Array | null; tsaProvider: string | null;
   tsaTimestampedAt: Date | null; tsaCertChain: string | null; immutableStored: boolean;
   immutableRef: string | null; notes: string | null;
@@ -27,6 +28,9 @@ type PLink = {
 
 function toItem(r: PItem): EvidenceItemRecord {
   return { ...r, sourceType: r.sourceType as EvidenceSourceType,
+    provenanceType: (r.provenanceType as ProvenanceType | null) ?? null,
+    submittedBy: r.submittedBy ?? null,
+    timestampMode: (r.timestampMode as TimestampMode | null) ?? null,
     tsaToken: r.tsaToken ? Buffer.from(r.tsaToken) : null };
 }
 function toLink(r: PLink): EvidenceLinkRecord {
@@ -49,6 +53,8 @@ export class PrismaEvidenceStore implements EvidenceStore {
       captureHost: item.captureHost ?? null, captureTool: item.captureTool ?? null,
       captureToolVersion: item.captureToolVersion ?? null, sourceUrl: item.sourceUrl ?? null,
       sourceType: item.sourceType, notes: item.notes ?? null,
+      provenanceType: item.provenanceType ?? null, submittedBy: item.submittedBy ?? null,
+      timestampMode: item.timestampMode ?? null,
     } });
     return toItem(r as unknown as PItem);
   }
