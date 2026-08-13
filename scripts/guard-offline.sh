@@ -475,14 +475,26 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# ══ SESSION DE CLÔTURE SÉCURITÉ (3 chantiers, 3 branches) ═══════════════════
-# Les trois blocs ci-dessous sont posés par UNE SEULE PR de garde parce qu'ils
-# encadrent une session unique et déjà arbitrée. Le verrou tient quand même :
-# chaque bloc reste scopé à SA branche et à SES fichiers nommés un par un,
-# aucun wildcard, aucun partage de périmètre entre les trois. Une PR de garde
-# de retrait les enlève tous les trois en fin de session.
+# ══ SESSION DE CLÔTURE SÉCURITÉ — RELIQUAT ══════════════════════════════════
+# La session comptait 3 chantiers. Deux sont mergés et leurs exemptions ont été
+# retirées (env-numeric-nan, sweep-final-secrets) : le guard a repris son
+# comportement nominal sur src/app/api/.
+#
+# ⚠️  IL EN RESTE UNE, ET ELLE EST OUVERTE VOLONTAIREMENT.
+# hotfix/require-salt n'est PAS mergée : le chantier attend que IP_HASH_SALT
+# soit posée en Production (sans elle, /api/billing/waitlist et
+# /api/billing/create-checkout-session lèvent au lieu de hacher). Retirer
+# l'exemption maintenant bloquerait la PR au moment de son merge — la CI
+# applique le guard de MAIN au diff de la branche.
+#
+# À FAIRE, DANS CET ORDRE :
+#   1. poser IP_HASH_SALT en Production (Vercel UI)
+#   2. merger la PR hotfix/require-salt
+#   3. PR de garde qui supprime le bloc ci-dessous
+# Tant que l'étape 3 n'est pas faite, vitest.config.ts, admin/intake/route.ts
+# et osint/retail/ipHash.ts restent modifiables sur cette seule branche.
 
-# 1/3 — hotfix/require-salt : un sel cryptographique n'a plus de repli.
+# hotfix/require-salt : un sel cryptographique n'a plus de repli.
 # requireSalt(varName) lève À L'USAGE (jamais à l'import) sur les 3 sites qui
 # retombaient sur un littéral public : VAULT_AUDIT_SALT → "interligens_default_salt"
 # (vault/auditScan.ts) et "default-salt" (community/ipHash.ts), IP_HASH_SALT →
@@ -496,9 +508,8 @@ fi
 # exception NODE_ENV serait un repli déguisé, exactement ce qu'on retire.
 # RÉALLOCATION (balayage final) : le balayage a sorti DEUX sites de sel de plus,
 # non listés au départ. Ce sont des applications de requireSalt, donc ils
-# appartiennent à CE chantier, pas au chantier 3/3 :
+# appartiennent à CE chantier plutôt qu'à celui du balayage :
 #   - src/app/api/admin/intake/route.ts : createHmac(ADMIN_TOKEN ?? "secret").
-#     Déplacé depuis EXEMPT_SWEEP_FINAL_PATTERNS ci-dessous.
 #   - src/lib/osint/retail/ipHash.ts : ipSalt() retombe sur le littéral
 #     "interligens_retail_ip_fallback_salt". Le fichier est gelé nommément
 #     (compromission INVISIBLE, audit #46) et c'est exactement pourquoi : le
@@ -512,47 +523,6 @@ if [[ "$BRANCH" =~ ^hotfix/require-salt$ ]]; then
         "^vitest\.config\.ts$"
         "^src/app/api/admin/intake/route\.ts$"
         "^src/lib/osint/retail/ipHash\.ts$"
-    )
-fi
-
-# 2/3 — hotfix/env-numeric-nan : NaN ne désactive plus un plafond.
-# parseInt/parseFloat renvoient NaN sur une valeur non numérique, et TOUTE
-# comparaison avec NaN est false. Le cas critique est X_API_HARD_CAP_POSTS
-# (cron/watcher-v2) : le cap posts est la décision de blocage AUTORITATIVE du
-# watcher. X_API_HARD_CAP_POSTS="" ou "24 000" → NaN → `usage + estimate >= NaN`
-# est false → le garde-fou budget ne bloque PLUS JAMAIS, silencieusement, avec
-# de l'argent réel au bout (cycle X à $150). Même famille sur les caps/limites
-# des 3 autres routes. Correctif : Number.isFinite + repli sur le défaut littéral,
-# calqué sur le motif déjà en place dans src/lib/vault/scanRateLimit.ts.
-# Les ~10 sites latents hors src/app/api/ (config/env.ts, evidence-chain/tsa.ts,
-# storage/, surveillance/, vault/, watcher-bridge/, scripts/watcher/) ne sont pas
-# gelés et passent hors exemption.
-# Exemption STRICTEMENT limitée aux 4 routes nommées ; AUCUN wildcard sur
-# src/app/api/ (toute autre route reste bloquée).
-if [[ "$BRANCH" =~ ^hotfix/env-numeric-nan$ ]]; then
-    EXEMPT_ENV_NUMERIC_NAN_PATTERNS=(
-        "^src/app/api/cron/watcher-v2/route\.ts$"
-        "^src/app/api/admin/export/address-labels/route\.ts$"
-        "^src/app/api/community/submit/route\.ts$"
-        "^src/app/api/pdf/casefile/route\.ts$"
-    )
-fi
-
-# 3/3 — hotfix/sweep-final-secrets : les résidus fail-open du balayage final.
-# (Les 2 sites de SEL sortis par le balayage ont été réalloués au chantier 1/3
-#  ci-dessus : ce sont des applications de requireSalt, ils appartiennent là.)
-# - cron/corroboration/route.ts et cron/intake-watch/route.ts : le seul gate est
-#   `auth !== \`Bearer ${process.env.CRON_SECRET}\`` sans aucun `if (!secret)`.
-#   CRON_SECRET absente → le secret attendu devient la chaîne CONSTANTE
-#   "Bearer undefined" ; posée à vide → "Bearer ". Dans les deux cas la route
-#   cron est ouverte à qui envoie cet en-tête. Les 18 autres crons du repo sont
-#   déjà fail-closed : ces deux-là sont les seuls écarts. Alignement sur le motif
-#   majoritaire, aucune logique métier touchée.
-# Exemption STRICTEMENT limitée aux 2 routes nommées ; AUCUN wildcard.
-if [[ "$BRANCH" =~ ^hotfix/sweep-final-secrets$ ]]; then
-    EXEMPT_SWEEP_FINAL_PATTERNS=(
-        "^src/app/api/cron/corroboration/route\.ts$"
-        "^src/app/api/cron/intake-watch/route\.ts$"
     )
 fi
 
@@ -948,29 +918,7 @@ while IFS= read -r file; do
         [[ "$EXEMPT" == "true" ]] && continue
     fi
 
-    # Sur la branche env-numeric-nan, exempter STRICTEMENT les 4 routes à cap.
-    if [[ "$BRANCH" =~ ^hotfix/env-numeric-nan$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_ENV_NUMERIC_NAN_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
-    # Sur la branche sweep-final-secrets, exempter STRICTEMENT les 3 routes du balayage.
-    if [[ "$BRANCH" =~ ^hotfix/sweep-final-secrets$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SWEEP_FINAL_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
