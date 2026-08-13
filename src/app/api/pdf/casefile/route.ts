@@ -10,6 +10,7 @@ import { computeScore } from "@/lib/scoring";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import type { ScanResult } from "@/app/api/scan/solana/route";
 import { uploadPdf, isStorageEnabled } from "@/lib/storage/pdfStorage";
+import { envInt } from "@/lib/config/envNumber";
 
 export async function GET(request: NextRequest) {
   const _auth = await checkAuth(request);
@@ -77,7 +78,10 @@ export async function GET(request: NextRequest) {
           key: upload.key,
           sha256: upload.sha256,
           sizeBytes: upload.sizeBytes,
-          expiresInSeconds: parseInt(process.env.PDF_SIGNED_URL_TTL_SECONDS ?? "900", 10),
+          // Non fini -> 900. Doit rester ALIGNÉ sur pdfStorage.signedUrlTtl(),
+          // qui applique le même défaut : une divergence annoncerait au client
+          // une expiration que l'URL signée ne respecte pas.
+          expiresInSeconds: envInt("PDF_SIGNED_URL_TTL_SECONDS", 900),
         });
       }
       // upload === null : R2 down → fallback stream direct

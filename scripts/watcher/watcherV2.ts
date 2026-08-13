@@ -19,6 +19,7 @@ import { handlesV2, type WatchHandle } from './handles-v2';
 import { runSeedBatch } from '../seed/engine';
 import type { SeedKolProfile } from '../seed/types';
 import type { XUser, XTweet } from '../../src/lib/xapi/client';
+import { envInt, envFloat } from "../../src/lib/config/envNumber";
 
 const prisma = new PrismaClient();
 const DRY_RUN = process.env.DRY_RUN === 'true';
@@ -216,8 +217,8 @@ async function maybePromote(
 // (posé en prod via Neon SQL Editor) → race-safe.
 
 export async function recordXApiUsage(stats: WatcherStats): Promise<void> {
-  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? '0.0058');
-  const costPerLookup = parseFloat(process.env.X_API_COST_PER_LOOKUP ?? '0');
+  const costPerPost = envFloat("X_API_COST_PER_POST", 0.0058);
+  const costPerLookup = envFloat("X_API_COST_PER_LOOKUP", 0);
   const posts = stats.tweetsFetched;
   const lookups = stats.userLookups;
 
@@ -265,7 +266,7 @@ export async function runWatcherV2(): Promise<WatcherStats> {
   }
 
   // Spending guard: limit handles per run
-  const maxHandles = parseInt(process.env.WATCHER_MAX_HANDLES ?? '50', 10);
+  const maxHandles = envInt("WATCHER_MAX_HANDLES", 50);
   const watchlist = handlesV2.slice(0, maxHandles);
 
   console.log(`\n🔭 WATCHER V2 — X API Native Scan`);
@@ -345,9 +346,9 @@ export async function runWatcherV2(): Promise<WatcherStats> {
   // ─── Summary ──────────────────────────────────────────────
 
   const monthlyEstimate = stats.tweetsFetched * 30;
-  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? '0.0058');
+  const costPerPost = envFloat("X_API_COST_PER_POST", 0.0058);
   const runCost = stats.tweetsFetched * costPerPost
-    + stats.userLookups * parseFloat(process.env.X_API_COST_PER_LOOKUP ?? '0');
+    + stats.userLookups * envFloat("X_API_COST_PER_LOOKUP", 0);
   console.log(`\n${'═'.repeat(50)}`);
   console.log(`✅ WATCHER V2 — SCAN COMPLETE`);
   console.log(`   Handles scanned:         ${stats.handlesScanned}`);

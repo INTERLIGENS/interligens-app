@@ -1,8 +1,10 @@
 // src/lib/vault/approveJob.ts
 import { prisma } from "@/lib/prisma";
 import { rebuildCacheForAddresses } from "./vaultLookup";
+import { envInt } from "@/lib/config/envNumber";
 
-const CHUNK_SIZE = parseInt(process.env.APPROVE_CHUNK_SIZE ?? "5000");
+// Non fini -> 5000. Un CHUNK_SIZE NaN casserait la boucle de découpage.
+const CHUNK_SIZE = envInt("APPROVE_CHUNK_SIZE", 5000);
 
 export async function runApproveJob(batchId: string): Promise<void> {
   try {

@@ -16,6 +16,7 @@ import {
   type PromoteSummary,
   type PromoteOptions,
 } from "@/lib/watcher-bridge/promoteWatcherSignalsToDraft";
+import { envInt, envIntOptional, envFloatOptional } from "@/lib/config/envNumber";
 
 export interface RawDb {
   $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
@@ -83,18 +84,22 @@ export async function runBridgeJob(
 ): Promise<BridgeJobResult> {
   const enabled = envBool(process.env.WATCHER_BRIDGE_ENABLED, false);
   const dryRun = overrides.dryRun ?? envBool(process.env.WATCHER_BRIDGE_DRY_RUN, false);
-  const limit = overrides.limit ?? parseInt(process.env.WATCHER_BRIDGE_LIMIT ?? "25", 10);
+  const limit = overrides.limit ?? envInt("WATCHER_BRIDGE_LIMIT", 25);
   const minPriorityEnv = (process.env.WATCHER_BRIDGE_MIN_PRIORITY ?? "HIGH").toUpperCase();
   const minPriority: "HIGH" | "CRITICAL" =
     overrides.minPriority ?? (minPriorityEnv === "CRITICAL" ? "CRITICAL" : "HIGH");
   // ── S4.5 threshold-hardening defaults (env, overridable) ──
   const requireMultiKol = overrides.requireMultiKol ?? envBool(process.env.WATCHER_BRIDGE_REQUIRE_MULTI_KOL, false);
-  const minLiquidityUsd = overrides.minLiquidityUsd
-    ?? (process.env.WATCHER_BRIDGE_MIN_LIQUIDITY ? parseFloat(process.env.WATCHER_BRIDGE_MIN_LIQUIDITY) : undefined);
-  const maxPerKol = overrides.maxPerKol
-    ?? (process.env.WATCHER_BRIDGE_MAX_PER_KOL ? parseInt(process.env.WATCHER_BRIDGE_MAX_PER_KOL, 10) : undefined);
-  const maxAgeDays = overrides.maxAgeDays
-    ?? (process.env.WATCHER_BRIDGE_MAX_AGE_DAYS ? parseInt(process.env.WATCHER_BRIDGE_MAX_AGE_DAYS, 10) : undefined);
+  // Seuils OPTIONNELS : absents = pas de seuil. Le motif précédent
+  // (`X ? parseFloat(X) : undefined`) avait un piège plus vicieux que le repli
+  // classique — une valeur illisible passe le test de présence, parseFloat rend
+  // NaN, et le seuil devient NaN : actif en apparence, mais toujours false à la
+  // comparaison. Un filtre qui se croit armé et ne filtre rien. NaN retombe
+  // désormais sur `undefined`, c'est-à-dire sur le même comportement explicite
+  // que « seuil non posé ».
+  const minLiquidityUsd = overrides.minLiquidityUsd ?? envFloatOptional("WATCHER_BRIDGE_MIN_LIQUIDITY");
+  const maxPerKol = overrides.maxPerKol ?? envIntOptional("WATCHER_BRIDGE_MAX_PER_KOL");
+  const maxAgeDays = overrides.maxAgeDays ?? envIntOptional("WATCHER_BRIDGE_MAX_AGE_DAYS");
 
   // ── Kill switch ──────────────────────────────────────────────────────────
   if (!enabled) {

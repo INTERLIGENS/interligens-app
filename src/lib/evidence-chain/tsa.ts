@@ -17,6 +17,7 @@ import { promisify } from "util";
 import { writeFile, readFile, mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { envInt } from "@/lib/config/envNumber";
 
 const pexec = promisify(execFile);
 
@@ -147,7 +148,9 @@ export function tsaRoutingFromEnv(): TsaRouting {
   const fallback = process.env.TSA_URL_FALLBACK
     ? { url: process.env.TSA_URL_FALLBACK, caUrl: process.env.TSA_CA_URL_FALLBACK }
     : (process.env.TSA_URL ? { url: process.env.TSA_URL, caUrl: process.env.TSA_CA_URL } : null);
-  const commercialMinDelayMs = parseInt(process.env.TSA_COMMERCIAL_MIN_DELAY_MS ?? "15000", 10);
+  // Non fini -> 15000. Ce délai espace les appels au TSA commercial (payant) :
+  // en NaN, le `sleep(NaN)` ne temporise plus et les requêtes partent en rafale.
+  const commercialMinDelayMs = envInt("TSA_COMMERCIAL_MIN_DELAY_MS", 15000);
   return { primary, fallback, commercialMinDelayMs };
 }
 

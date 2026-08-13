@@ -15,6 +15,7 @@ import { handlesV2 } from "@/lib/watcher/handles";
 import { sendKolAlert } from "@/lib/alerts/kolAlert";
 import { sendWatcherDigest, type BatchSignal, type CampaignSummary } from "@/lib/alerts/watcherDigest";
 import { clusterSignals, type SignalInput } from "@/lib/watcher/campaignClusterer";
+import { envInt, envFloat } from "@/lib/config/envNumber";
 
 // Vercel cron route config — force dynamic execution and extend the default
 // 10s serverless timeout to accommodate the per-handle sleep(1000) loop.
@@ -56,8 +57,8 @@ async function recordXApiUsage(stats: {
   xApiUsageWritten?: boolean;
   xApiUsageError?: string | null;
 }) {
-  const costPerPost = parseFloat(process.env.X_API_COST_PER_POST ?? "0.0058");
-  const costPerLookup = parseFloat(process.env.X_API_COST_PER_LOOKUP ?? "0");
+  const costPerPost = envFloat("X_API_COST_PER_POST", 0.0058);
+  const costPerLookup = envFloat("X_API_COST_PER_LOOKUP", 0);
   const posts = stats.tweetsFetched;
   const lookups = stats.userLookups;
   if (posts === 0 && lookups === 0) {
@@ -109,9 +110,9 @@ async function recordXApiUsage(stats: {
 //   but X_API_COST_PER_POST is a BILLED AVERAGE that can drift up, so we pad the
 //   estimate to stop a full run BEFORE the ceiling rather than risk landing on
 //   it. Configurable via X_API_CAP_SAFETY_FACTOR.
-export const X_API_HARD_CAP_USD = parseFloat(process.env.X_API_HARD_CAP_USD ?? "100");
+export const X_API_HARD_CAP_USD = envFloat("X_API_HARD_CAP_USD", 100);
 const CAP_WARN_RATIO = 0.8;
-const CAP_SAFETY_FACTOR = parseFloat(process.env.X_API_CAP_SAFETY_FACTOR ?? "1.25");
+const CAP_SAFETY_FACTOR = envFloat("X_API_CAP_SAFETY_FACTOR", 1.25);
 
 // Worst-case cost of the upcoming run: every handle fetched at its per-handle
 // cap (GordonGekko=100), priced at costPerPost, padded by the safety factor.
@@ -172,7 +173,7 @@ export function evaluateBudgetCap(opts: {
 //   $0.0058/post — a conservative margin under X's real $150 spend cap. The tier
 //   Post quota (project_cap, ~2_000_000) is far higher and NOT the binding limit
 //   here; the $150 spend cap (mapped to posts) is.
-export const X_API_HARD_CAP_POSTS = parseInt(process.env.X_API_HARD_CAP_POSTS ?? "24000", 10);
+export const X_API_HARD_CAP_POSTS = envInt("X_API_HARD_CAP_POSTS", 24000);
 
 // Worst-case POST count of the upcoming run: every handle at its per-handle cap
 // (GordonGekko=100), padded by the safety factor. Mirror of estimateRunCostUsd
@@ -268,7 +269,7 @@ async function scanAll() {
 
   // Budget guard: cap the number of handles scanned per run.
   // Default 50 keeps monthly X API usage well under the $50 ceiling.
-  const maxHandles = parseInt(process.env.WATCHER_MAX_HANDLES ?? "50", 10);
+  const maxHandles = envInt("WATCHER_MAX_HANDLES", 50);
   const watchlist = handlesV2.slice(0, maxHandles);
   console.log(`[watcher-v2] Budget mode: scanning ${watchlist.length} of ${handlesV2.length} handles (WATCHER_MAX_HANDLES=${maxHandles})`);
 
@@ -281,8 +282,8 @@ async function scanAll() {
   // every post in the window). NOTE: lookback MUST stay >= the cron interval —
   // if the schedule ever moves back to every-N-days, raise WATCHER_LOOKBACK_HOURS
   // accordingly or coverage gaps reappear.
-  const lookbackHours = parseInt(process.env.WATCHER_LOOKBACK_HOURS ?? "30", 10);
-  const maxPostsPerHandle = parseInt(process.env.WATCHER_MAX_POSTS_PER_HANDLE ?? "15", 10);
+  const lookbackHours = envInt("WATCHER_LOOKBACK_HOURS", 30);
+  const maxPostsPerHandle = envInt("WATCHER_MAX_POSTS_PER_HANDLE", 15);
   const startTime = new Date(scanStart.getTime() - lookbackHours * 3_600_000).toISOString();
   console.log(`[watcher-v2] Resume window: start_time=${startTime} (lookback ${lookbackHours}h), cap=${maxPostsPerHandle} posts/handle (GordonGekko 100)`);
 
@@ -576,8 +577,8 @@ async function scanAll() {
     critical: clusterResult.critical,
     quotaEstimate: `~${(stats.tweetsFetched * 30).toLocaleString()} tweets/month`,
     xApiCostUsd: Number(
-      (stats.tweetsFetched * parseFloat(process.env.X_API_COST_PER_POST ?? "0.0058")
-        + stats.userLookups * parseFloat(process.env.X_API_COST_PER_LOOKUP ?? "0")).toFixed(4),
+      (stats.tweetsFetched * envFloat("X_API_COST_PER_POST", 0.0058)
+        + stats.userLookups * envFloat("X_API_COST_PER_LOOKUP", 0)).toFixed(4),
     ),
   };
 }
