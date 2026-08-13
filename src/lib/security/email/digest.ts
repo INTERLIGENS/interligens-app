@@ -279,16 +279,22 @@ export async function sendDigest(
     return { delivered: false, skipped: "no_api_key" };
   }
 
+  // `||` et non `??` sur les variables d'env : une adresse posée à la chaîne
+  // vide vaut ABSENTE. Avec `??`, DIGEST_TO_EMAIL="" donnait to="" — Resend
+  // refusait l'envoi et le digest disparaissait sans erreur. ALERT_EMAIL et
+  // ALERT_FROM_EMAIL sont posées en Production.
+  // `opts.to`/`opts.from` gardent `??` : ce sont des paramètres d'appel, une
+  // chaîne vide y serait un choix explicite de l'appelant, pas une absence.
   const to =
     opts.to ??
-    process.env.DIGEST_TO_EMAIL ??
-    process.env.ALERT_EMAIL ??
-    "admin@interligens.com";
+    (process.env.DIGEST_TO_EMAIL ||
+      process.env.ALERT_EMAIL ||
+      "admin@interligens.com");
   const from =
     opts.from ??
-    process.env.DIGEST_FROM_EMAIL ??
-    process.env.ALERT_FROM_EMAIL ??
-    "alerts@interligens.com";
+    (process.env.DIGEST_FROM_EMAIL ||
+      process.env.ALERT_FROM_EMAIL ||
+      "alerts@interligens.com");
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
