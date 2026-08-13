@@ -490,15 +490,41 @@ fi
 #   2. le guard SEUL dans le diff (aucun autre fichier)
 #
 # Les deux sont visibles d'un coup d'œil sur la PR : nom de branche explicite,
-# et un diff à un seul fichier. Modifier le guard reste possible, mais plus
-# jamais discrètement ni en passager clandestin d'un autre chantier.
+# et un diff qui ne contient que le système de garde. Modifier le guard reste
+# possible, mais plus jamais discrètement ni en passager clandestin d'un autre
+# chantier.
+#
+# LE SYSTÈME DE GARDE = 2 fichiers, indissociables :
+#   scripts/guard-offline.sh            les règles
+#   .github/workflows/guard-offline.yml le runner CI qui les applique
+# Le workflow tombe sous "^\.github/" (gelé) : sans cette entrée, la voie de
+# maintenance bloquerait toute évolution du runner, ou forcerait à modifier les
+# deux fichiers dans des PR séparées — le diff de branche vu par la CI contient
+# les deux, et « guard SEUL » échouerait. Les deux ensemble, seuls, sont donc
+# le périmètre légitime d'un chantier de maintenance du guard.
+GUARD_SYSTEM_FILES=(
+    "scripts/guard-offline.sh"
+    ".github/workflows/guard-offline.yml"
+)
+
+is_guard_system_file() {
+    local f="$1"
+    for g in "${GUARD_SYSTEM_FILES[@]}"; do
+        [[ "$f" == "$g" ]] && return 0
+    done
+    return 1
+}
+
 GUARD_MAINTENANCE=false
 if [[ "$BRANCH" =~ ^hotfix/guard-[a-z0-9-]+$ ]]; then
-    _diff_count=$(echo "$DIFF_FILES" | grep -c . || true)
-    _diff_only=$(echo "$DIFF_FILES" | grep . || true)
-    if [[ "$_diff_count" -eq 1 && "$_diff_only" == "scripts/guard-offline.sh" ]]; then
+    _only_guard_system=true
+    while IFS= read -r _f; do
+        [[ -z "$_f" ]] && continue
+        is_guard_system_file "$_f" || _only_guard_system=false
+    done <<< "$DIFF_FILES"
+    if [[ "$_only_guard_system" == "true" ]]; then
         GUARD_MAINTENANCE=true
-        echo "🔧 GUARD: mode maintenance — branche dédiée + guard seul dans le diff."
+        echo "🔧 GUARD: mode maintenance — branche dédiée + système de garde seul dans le diff."
     fi
 fi
 
@@ -514,7 +540,7 @@ while IFS= read -r file; do
     [[ -z "$file" ]] && continue
 
     # Voie de maintenance : le guard, et lui seul, sur une branche hotfix/guard-*.
-    if [[ "$GUARD_MAINTENANCE" == "true" && "$file" == "scripts/guard-offline.sh" ]]; then
+    if [[ "$GUARD_MAINTENANCE" == "true" ]] && is_guard_system_file "$file"; then
         continue
     fi
 
