@@ -1,6 +1,8 @@
 // src/lib/vault/adaptiveThrottle.ts
 // Fingerprint = ip + user-agent, throttle adaptatif si trop de matches vault
 
+import { envInt } from "@/lib/config/envNumber";
+
 interface FingerprintState {
   matchCount: number;
   requestCount: number;
@@ -8,8 +10,11 @@ interface FingerprintState {
   throttledUntil: number;
 }
 
-const WINDOW_MS    = parseInt(process.env.RATE_WINDOW_MS   ?? "300000"); // 5min
-const MATCH_LIMIT  = parseInt(process.env.THROTTLE_MATCH_LIMIT ?? "20");
+// Non fini -> défaut littéral. En NaN, `elapsed > WINDOW_MS` et
+// `matches >= MATCH_LIMIT` sont tous deux false : la fenêtre ne se réinitialise
+// jamais ET le throttle ne se déclenche jamais.
+const WINDOW_MS    = envInt("RATE_WINDOW_MS", 300000); // 5min
+const MATCH_LIMIT  = envInt("THROTTLE_MATCH_LIMIT", 20);
 const COOLDOWN_MS  = 10 * 60 * 1000; // 10min
 
 const store = new Map<string, FingerprintState>();

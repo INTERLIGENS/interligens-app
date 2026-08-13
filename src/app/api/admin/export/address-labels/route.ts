@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { envInt } from "@/lib/config/envNumber";
 
-const EXPORT_MAX_ROWS = parseInt(process.env.EXPORT_MAX_ROWS ?? "250000");
+// Plafond de lignes exportées. Non fini -> 250000 : sans garde, une valeur
+// illisible donnait NaN, et `rows.length > NaN` est false — l'export partait
+// sans borne sur une table admin entière.
+const EXPORT_MAX_ROWS = envInt("EXPORT_MAX_ROWS", 250000);
 const ALLOW_ENTITY_EXPORT = process.env.ALLOW_ENTITY_EXPORT === "true";
 
 export async function GET(req: NextRequest) {

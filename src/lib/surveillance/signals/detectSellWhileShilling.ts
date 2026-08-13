@@ -8,9 +8,13 @@ import { extractTokensFromText } from "./tokenExtractor";
 import { computeHoldingAtTime } from "./holdingsComputer";
 import { classifyWindow } from "./windowClassifier";
 import { randomUUID } from "crypto";
+import { envFloat } from "@/lib/config/envNumber";
 
-const HOLDING_PCT_THRESHOLD = parseFloat(process.env.HOLDING_PCT_THRESHOLD ?? "0.25");
-const USD_THRESHOLD = parseFloat(process.env.USD_THRESHOLD ?? "2500");
+// Non fini -> défaut littéral. Ces deux seuils décident si un signal
+// « vend pendant qu'il shill » est émis : en NaN, toute comparaison est false
+// et le détecteur n'émet plus RIEN, en silence.
+const HOLDING_PCT_THRESHOLD = envFloat("HOLDING_PCT_THRESHOLD", 0.25);
+const USD_THRESHOLD = envFloat("USD_THRESHOLD", 2500);
 
 export async function detectForInfluencer(
   influencerId: string,

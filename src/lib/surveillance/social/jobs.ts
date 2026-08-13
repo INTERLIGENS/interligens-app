@@ -9,9 +9,11 @@ import { NitterRssProvider } from "./providers/nitterRss";
 import { PlaywrightProfileProvider } from "./providers/playwrightProfile";
 import { captureSocialPost } from "../evidencePack";
 import { randomUUID } from "crypto";
+import { envInt } from "@/lib/config/envNumber";
 
-const DISCOVER_BATCH = parseInt(process.env.SOCIAL_DISCOVER_BATCH ?? "20");
-const CAPTURE_BATCH = parseInt(process.env.SOCIAL_CAPTURE_BATCH ?? "10");
+// Non fini -> défaut littéral (taille de lot passée en `take:` Prisma).
+const DISCOVER_BATCH = envInt("SOCIAL_DISCOVER_BATCH", 20);
+const CAPTURE_BATCH = envInt("SOCIAL_CAPTURE_BATCH", 10);
 const MAX_ATTEMPTS = 3;
 
 // ─── DISCOVER ────────────────────────────────────────────────────────────────

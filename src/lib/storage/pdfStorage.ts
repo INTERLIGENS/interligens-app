@@ -5,6 +5,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2Client, isStorageEnabled } from "./r2Client";
 export { isStorageEnabled } from "./r2Client";
 import type { PdfUploadInput, PdfUploadResult, StorageEnv } from "./types";
+import { envInt } from "@/lib/config/envNumber";
 
 function getStorageEnv(): StorageEnv {
   const v = process.env.VERCEL_ENV;
@@ -20,8 +21,9 @@ function getBucketName(): string {
 }
 
 function getSignedUrlTtl(): number {
-  const parsed = parseInt(process.env.PDF_SIGNED_URL_TTL_SECONDS ?? "900", 10);
-  return isNaN(parsed) ? 900 : Math.min(parsed, 3600);
+  // Déjà gardé par isNaN ; passé à envInt pour une seule idiome dans le repo.
+  // Le plafond dur de 3600s reste appliqué après le repli.
+  return Math.min(envInt("PDF_SIGNED_URL_TTL_SECONDS", 900), 3600);
 }
 
 function slugify(input: string): string {
@@ -53,8 +55,8 @@ export async function uploadPdf(
 ): Promise<PdfUploadResult | null> {
   if (!isStorageEnabled() || !r2Client) return null;
 
-  const maxBytes =
-    parseInt(process.env.PDF_MAX_SIZE_BYTES ?? "20971520", 10) || 20_971_520;
+  // Déjà gardé par `|| ` (NaN est falsy) ; passé à envInt pour l'idiome unique.
+  const maxBytes = envInt("PDF_MAX_SIZE_BYTES", 20_971_520);
   if (input.buffer.byteLength > maxBytes) {
     throw new Error(
       `[pdfStorage] PDF exceeds max size (${input.buffer.byteLength} > ${maxBytes})`

@@ -4,8 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { validateSubmission, detectChain, deriveSeverity } from "@/lib/community/validate";
 import { hashIp, getClientIp } from "@/lib/community/ipHash";
 import { getRateLimitStore } from "@/lib/vault/ratelimit/getStore";
+import { envInt } from "@/lib/config/envNumber";
 
-const RATE_LIMIT = parseInt(process.env.COMMUNITY_RATE_LIMIT ?? "5");
+// Limite de soumissions par IP. Non fini -> 5 : NaN désarmait complètement le
+// rate-limit de ce POST public non authentifié (`count >= NaN` est false).
+const RATE_LIMIT = envInt("COMMUNITY_RATE_LIMIT", 5);
 
 export async function POST(req: NextRequest) {
   // Rate limit

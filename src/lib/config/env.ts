@@ -1,4 +1,6 @@
 // src/lib/config/env.ts
+import { envInt } from "./envNumber";
+
 export const isProd = process.env.NODE_ENV === "production";
 
 function requireInProd(key: string): void {
@@ -31,10 +33,12 @@ export const env = {
   RAWDOCS_S3_SECRET_KEY: process.env.RAWDOCS_S3_SECRET_KEY ?? "",
   RAWDOCS_S3_REGION: process.env.RAWDOCS_S3_REGION ?? "auto",
   VAULT_AUDIT_SALT: process.env.VAULT_AUDIT_SALT ?? "",
-  EXPORT_MAX_ROWS: parseInt(process.env.EXPORT_MAX_ROWS ?? "250000"),
-  APPROVE_CHUNK_SIZE: parseInt(process.env.APPROVE_CHUNK_SIZE ?? "5000"),
-  SCAN_RATE_LIMIT: parseInt(process.env.SCAN_RATE_LIMIT ?? "60"),
-  RATE_WINDOW_MS: parseInt(process.env.RATE_WINDOW_MS ?? "300000"),
+  // Non fini -> défaut littéral. Ces 4 valeurs bornent un export, un batch et
+  // deux rate-limits : en NaN, chacune désarme sa borne sans rien signaler.
+  EXPORT_MAX_ROWS: envInt("EXPORT_MAX_ROWS", 250000),
+  APPROVE_CHUNK_SIZE: envInt("APPROVE_CHUNK_SIZE", 5000),
+  SCAN_RATE_LIMIT: envInt("SCAN_RATE_LIMIT", 60),
+  RATE_WINDOW_MS: envInt("RATE_WINDOW_MS", 300000),
 } as const;
 
 export function hasRedis(): boolean {
