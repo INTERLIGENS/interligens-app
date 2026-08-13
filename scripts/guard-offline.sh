@@ -475,20 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour le balayage « chaîne vide = variable absente » (3e instance
-# du motif après cc7d492 et 38f10f2). digest.ts résout ses adresses via
-# DIGEST_TO_EMAIL ?? ALERT_EMAIL : une var posée à vide donnait une adresse
-# vide, Resend refusait l'envoi, et le digest disparaissait sans erreur.
-# Correction d'un opérateur, aucune logique métier touchée.
-# Autorisation humaine explicite (David) — voir PR description.
-# Exemption STRICTEMENT limitée à ce seul fichier ; AUCUN wildcard sur
-# src/lib/security/. Retirée au commit suivant (danse standard).
-if [[ "$BRANCH" =~ ^hotfix/env-fallback-empty-string$ ]]; then
-    EXEMPT_ENV_FALLBACK_PATTERNS=(
-        "^src/lib/security/email/digest\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -861,18 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche env-fallback-empty-string, exempter STRICTEMENT digest.ts.
-    if [[ "$BRANCH" =~ ^hotfix/env-fallback-empty-string$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_ENV_FALLBACK_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
