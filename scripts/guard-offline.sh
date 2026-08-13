@@ -475,6 +475,78 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# ══ SESSION DE CLÔTURE SÉCURITÉ (3 chantiers, 3 branches) ═══════════════════
+# Les trois blocs ci-dessous sont posés par UNE SEULE PR de garde parce qu'ils
+# encadrent une session unique et déjà arbitrée. Le verrou tient quand même :
+# chaque bloc reste scopé à SA branche et à SES fichiers nommés un par un,
+# aucun wildcard, aucun partage de périmètre entre les trois. Une PR de garde
+# de retrait les enlève tous les trois en fin de session.
+
+# 1/3 — hotfix/require-salt : un sel cryptographique n'a plus de repli.
+# requireSalt(varName) lève À L'USAGE (jamais à l'import) sur les 3 sites qui
+# retombaient sur un littéral public : VAULT_AUDIT_SALT → "interligens_default_salt"
+# (vault/auditScan.ts) et "default-salt" (community/ipHash.ts), IP_HASH_SALT →
+# "interligens" (billing/request.ts). Un défaut littéral est publié dans le repo :
+# le HMAC/hash devient inversible par table, et les adresses/IP pseudonymisées
+# redeviennent ré-identifiables sans le moindre signal.
+# Les 3 sites et le helper (src/lib/config/requireSalt.ts) ne sont PAS gelés et
+# passent hors exemption. Seul vitest.config.ts l'est ("^vitest\.config\."), et
+# il doit l'être : la décision est de poser les sels dans l'environnement de test
+# PLUTÔT que d'ouvrir une exception NODE_ENV dans le code de production — une
+# exception NODE_ENV serait un repli déguisé, exactement ce qu'on retire.
+# Exemption STRICTEMENT limitée à vitest.config.ts.
+if [[ "$BRANCH" =~ ^hotfix/require-salt$ ]]; then
+    EXEMPT_REQUIRE_SALT_PATTERNS=(
+        "^vitest\.config\.ts$"
+    )
+fi
+
+# 2/3 — hotfix/env-numeric-nan : NaN ne désactive plus un plafond.
+# parseInt/parseFloat renvoient NaN sur une valeur non numérique, et TOUTE
+# comparaison avec NaN est false. Le cas critique est X_API_HARD_CAP_POSTS
+# (cron/watcher-v2) : le cap posts est la décision de blocage AUTORITATIVE du
+# watcher. X_API_HARD_CAP_POSTS="" ou "24 000" → NaN → `usage + estimate >= NaN`
+# est false → le garde-fou budget ne bloque PLUS JAMAIS, silencieusement, avec
+# de l'argent réel au bout (cycle X à $150). Même famille sur les caps/limites
+# des 3 autres routes. Correctif : Number.isFinite + repli sur le défaut littéral,
+# calqué sur le motif déjà en place dans src/lib/vault/scanRateLimit.ts.
+# Les ~10 sites latents hors src/app/api/ (config/env.ts, evidence-chain/tsa.ts,
+# storage/, surveillance/, vault/, watcher-bridge/, scripts/watcher/) ne sont pas
+# gelés et passent hors exemption.
+# Exemption STRICTEMENT limitée aux 4 routes nommées ; AUCUN wildcard sur
+# src/app/api/ (toute autre route reste bloquée).
+if [[ "$BRANCH" =~ ^hotfix/env-numeric-nan$ ]]; then
+    EXEMPT_ENV_NUMERIC_NAN_PATTERNS=(
+        "^src/app/api/cron/watcher-v2/route\.ts$"
+        "^src/app/api/admin/export/address-labels/route\.ts$"
+        "^src/app/api/community/submit/route\.ts$"
+        "^src/app/api/pdf/casefile/route\.ts$"
+    )
+fi
+
+# 3/3 — hotfix/sweep-final-secrets : les 3 résidus du balayage final.
+# - admin/intake/route.ts : createHmac("sha256", ADMIN_TOKEN ?? "secret") — 4e site
+#   de sel à défaut littéral, non listé au départ, sorti du balayage. Les ipHash /
+#   userAgentHash des soumissions étaient clés sur le littéral public "secret".
+#   requireAdminApi() est fail-closed sur ADMIN_TOKEN (500 si absente) : le repli
+#   est donc inatteignable en pratique, mais il est armé et n'attend qu'un
+#   refactor de la garde pour devenir vivant. On le retire.
+# - cron/corroboration/route.ts et cron/intake-watch/route.ts : le seul gate est
+#   `auth !== \`Bearer ${process.env.CRON_SECRET}\`` sans aucun `if (!secret)`.
+#   CRON_SECRET absente → le secret attendu devient la chaîne CONSTANTE
+#   "Bearer undefined" ; posée à vide → "Bearer ". Dans les deux cas la route
+#   cron est ouverte à qui envoie cet en-tête. Les 18 autres crons du repo sont
+#   déjà fail-closed : ces deux-là sont les seuls écarts. Alignement sur le motif
+#   majoritaire, aucune logique métier touchée.
+# Exemption STRICTEMENT limitée aux 3 routes nommées ; AUCUN wildcard.
+if [[ "$BRANCH" =~ ^hotfix/sweep-final-secrets$ ]]; then
+    EXEMPT_SWEEP_FINAL_PATTERNS=(
+        "^src/app/api/admin/intake/route\.ts$"
+        "^src/app/api/cron/corroboration/route\.ts$"
+        "^src/app/api/cron/intake-watch/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -847,6 +919,42 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche require-salt, exempter STRICTEMENT vitest.config.ts.
+    if [[ "$BRANCH" =~ ^hotfix/require-salt$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_REQUIRE_SALT_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche env-numeric-nan, exempter STRICTEMENT les 4 routes à cap.
+    if [[ "$BRANCH" =~ ^hotfix/env-numeric-nan$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_ENV_NUMERIC_NAN_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche sweep-final-secrets, exempter STRICTEMENT les 3 routes du balayage.
+    if [[ "$BRANCH" =~ ^hotfix/sweep-final-secrets$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_SWEEP_FINAL_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
