@@ -1,0 +1,58 @@
+name: CC Offline Guard
+
+# Applique scripts/guard-offline.sh sur chaque PR vers main.
+#
+# POINT CLÉ — le guard exécuté est celui d'`origin/main`, JAMAIS celui de la
+# branche. Sinon une PR qui modifie le guard se jugerait avec ses propres
+# règles : il suffirait d'ajouter une exemption dans le même commit pour tout
+# laisser passer, exactement ce que le hook pre-commit local autorise (il lit
+# le working tree). Le hook reste un garde-fou de confort côté poste ; ce
+# workflow est l'autorité.
+#
+# Corollaire : une PR qui modifie le système de garde est jugée par la voie de
+# maintenance telle qu'elle existe SUR MAIN (branche ^hotfix/guard-[a-z0-9-]+$
+# + système de garde seul dans le diff). C'est voulu — on ne peut pas
+# s'auto-autoriser en élargissant la règle dans la PR qui en profite.
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: guard-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Paths / branch guard (règles de main)
+    runs-on: ubuntu-latest
+    steps:
+      # La branche de la PR, avec son vrai nom : le guard lit
+      # `git rev-parse --abbrev-ref HEAD` pour valider le format de branche.
+      # Sans `ref:`, actions/checkout pose un HEAD détaché sur le merge commit
+      # et le guard verrait une branche nommée "HEAD".
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      # Le guard calcule son diff avec `main...HEAD` — il lui faut une ref
+      # locale `main` qui pointe sur la base réelle.
+      - name: Créer la ref locale main
+        run: git fetch --no-tags origin main:main
+
+      # LA version qui fait autorité : celle de main, pas celle de la PR.
+      - name: Extraire le guard depuis origin/main
+        run: |
+          git show origin/main:scripts/guard-offline.sh > "$RUNNER_TEMP/guard-main.sh"
+          echo "--- guard de main (origin/main = $(git rev-parse --short origin/main)) ---"
+          sha256sum "$RUNNER_TEMP/guard-main.sh"
+          echo "--- guard de la branche, pour comparaison ---"
+          if [ -f scripts/guard-offline.sh ]; then
+            sha256sum scripts/guard-offline.sh
+          else
+            echo "absent de la branche"
+          fi
+
+      - name: Exécuter le guard de main sur le diff de la PR
+        run: bash "$RUNNER_TEMP/guard-main.sh"
