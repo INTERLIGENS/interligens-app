@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { createHmac } from "crypto";
+import { requireSalt } from "@/lib/config/requireSalt";
 import { extractFromUrl, extractFromFile, extractFromText } from "@/lib/intake/extract";
 import { routeIntake } from "@/lib/intake/router";
 
+// Sel des ipHash / userAgentHash stockés sur IntakeRecord. Le repli littéral
+// "secret" est retiré : il clait le HMAC sur une chaîne publique, donc les IP
+// et user-agents des soumissions redevenaient ré-identifiables par table.
+// requireAdminApi() ci-dessous est fail-closed sur ADMIN_TOKEN (500 si absente),
+// donc ce repli était inatteignable EN L'ÉTAT — mais il était armé, et n'attendait
+// qu'un refactor de la garde pour redevenir vivant sans que personne le voie.
 function hmac(val: string): string {
-  return createHmac("sha256", process.env.ADMIN_TOKEN ?? "secret").update(val).digest("hex");
+  return createHmac("sha256", requireSalt("ADMIN_TOKEN")).update(val).digest("hex");
 }
 
 // ── POST /api/admin/intake ─────────────────────────────────────────────────

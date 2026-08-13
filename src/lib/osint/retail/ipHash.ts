@@ -9,24 +9,32 @@
  * donnée personnelle directement ré-identifiante.
  *
  * Sel : OSINT_RETAIL_IP_SALT si présent, sinon ADMIN_TOKEN (toujours défini en
- * prod), sinon un fallback constant — dans ce dernier cas le hash reste stable
- * mais moins résistant ; on log un avertissement une seule fois.
+ * prod). Il n'y a PLUS de troisième repli.
+ *
+ * Le repli littéral "interligens_retail_ip_fallback_salt" a été retiré. Sa
+ * documentation disait « le hash reste stable mais moins résistant » — c'est
+ * trop doux. Le sel vivait dans le dépôt : le HMAC n'était plus un HMAC mais un
+ * hachage nu, et l'espace IPv4 (2^32) se tabule en minutes. Les IP des
+ * soumissions retail redevenaient donc ré-identifiables, ce qui est exactement
+ * ce que la pseudonymisation RGPD de ce module doit empêcher.
+ *
+ * L'avertissement qui l'accompagnait ne rattrapait rien : `_warned` le limitait
+ * à UNE occurrence par process, donc noyé dans les logs du premier démarrage et
+ * jamais revu. C'est pour ce genre de dégradation muette que ce fichier est gelé
+ * nommément par l'audit #46 (« compromission INVISIBLE »).
  */
 
 import { createHmac } from "crypto";
-
-let _warned = false;
+import { requireSalt } from "@/lib/config/requireSalt";
 
 function ipSalt(): string {
+  // Chaîne vide = variable absente : on passe au repli suivant plutôt que de
+  // partir avec une clé vide.
   const explicit = process.env.OSINT_RETAIL_IP_SALT;
-  if (explicit) return explicit;
-  const admin = process.env.ADMIN_TOKEN;
-  if (admin) return admin;
-  if (!_warned) {
-    console.warn("[osint/retail] OSINT_RETAIL_IP_SALT and ADMIN_TOKEN unset — using weak fallback salt for IP hashing.");
-    _warned = true;
-  }
-  return "interligens_retail_ip_fallback_salt";
+  if (explicit && explicit.trim() !== "") return explicit;
+  // Repli sur ADMIN_TOKEN — un VRAI secret, pas un littéral. S'il manque aussi,
+  // requireSalt lève : un sel absent est une panne, pas une dégradation.
+  return requireSalt("ADMIN_TOKEN");
 }
 
 /**

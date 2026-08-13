@@ -155,3 +155,83 @@ describe("sites câblés sur requireSalt", () => {
     }
   });
 });
+
+// ── Les 2 sites sortis par le BALAYAGE FINAL ──────────────────────────────
+// Non listés au départ : ce sont des applications de requireSalt, découvertes
+// en balayant le motif « sel ou secret avec défaut littéral » sur tout le repo.
+
+describe("balayage — admin/intake (4e site de sel)", () => {
+  it("le littéral \"secret\" a disparu du fichier", async () => {
+    // hmac() n'est pas exporté et la route est derrière requireAdminApi ; on
+    // verrouille donc la disparition du repli au niveau source, ce qui suffit
+    // à empêcher sa réintroduction silencieuse.
+    const fs = await import("fs");
+    const src = fs.readFileSync(
+      new URL("../../src/app/api/admin/intake/route.ts", import.meta.url),
+      "utf8",
+    );
+    expect(src).not.toMatch(/ADMIN_TOKEN\s*\?\?\s*["'`]secret["'`]/);
+    expect(src).toContain('requireSalt("ADMIN_TOKEN")');
+  });
+});
+
+describe("balayage — osint/retail/ipHash (5e site de sel)", () => {
+  const SAVED = {
+    explicit: process.env.OSINT_RETAIL_IP_SALT,
+    admin: process.env.ADMIN_TOKEN,
+  };
+
+  afterEach(() => {
+    if (SAVED.explicit === undefined) delete process.env.OSINT_RETAIL_IP_SALT;
+    else process.env.OSINT_RETAIL_IP_SALT = SAVED.explicit;
+    if (SAVED.admin === undefined) delete process.env.ADMIN_TOKEN;
+    else process.env.ADMIN_TOKEN = SAVED.admin;
+    vi.resetModules();
+  });
+
+  async function load() {
+    vi.resetModules();
+    return import("@/lib/osint/retail/ipHash");
+  }
+
+  it("utilise OSINT_RETAIL_IP_SALT quand il est posé", async () => {
+    process.env.OSINT_RETAIL_IP_SALT = "sel-retail-explicite";
+    delete process.env.ADMIN_TOKEN;
+    const { hashIp } = await load();
+    expect(hashIp("1.2.3.4")).toMatch(/^[0-9a-f]+$/);
+  });
+
+  it("retombe sur ADMIN_TOKEN — un VRAI secret — quand le sel explicite manque", async () => {
+    delete process.env.OSINT_RETAIL_IP_SALT;
+    process.env.ADMIN_TOKEN = "admin-token-de-test";
+    const { hashIp } = await load();
+    expect(hashIp("1.2.3.4")).toMatch(/^[0-9a-f]+$/);
+  });
+
+  it("chaîne vide sur le sel explicite = absent, on passe au repli suivant", async () => {
+    process.env.OSINT_RETAIL_IP_SALT = "";
+    process.env.ADMIN_TOKEN = "admin-token-de-test";
+    const { hashIp } = await load();
+    // Doit produire le MÊME hash que si la variable était absente.
+    const withEmpty = hashIp("1.2.3.4");
+    delete process.env.OSINT_RETAIL_IP_SALT;
+    const { hashIp: h2 } = await load();
+    expect(withEmpty).toBe(h2("1.2.3.4"));
+  });
+
+  it("LÈVE quand les deux manquent — plus de repli littéral", async () => {
+    delete process.env.OSINT_RETAIL_IP_SALT;
+    delete process.env.ADMIN_TOKEN;
+    const { hashIp } = await load();
+    expect(() => hashIp("1.2.3.4")).toThrow(/ADMIN_TOKEN/);
+  });
+
+  it("le littéral de repli a disparu du fichier", async () => {
+    const fs = await import("fs");
+    const src = fs.readFileSync(
+      new URL("../../src/lib/osint/retail/ipHash.ts", import.meta.url),
+      "utf8",
+    );
+    expect(src).not.toContain('return "interligens_retail_ip_fallback_salt"');
+  });
+});
