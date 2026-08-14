@@ -43,6 +43,14 @@
     {
       "path": "/api/cron/retail-process-queue",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/intelligence/ingest/ofac",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/intelligence/ingest/scamsniffer",
+      "schedule": "30 1 * * *"
     }
   ]
 }

@@ -71,6 +71,25 @@ const SILENCE_DAYS = parseFloat(process.env.WATCHDOG_SILENCE_DAYS ?? "3.5");
 const SPEND_CAP_USD = parseFloat(process.env.WATCHDOG_SPEND_CAP_USD ?? "100");
 const WARN_PCT = parseFloat(process.env.WATCHDOG_WARN_PCT ?? "80");
 const DRY_RUN = process.env.WATCHDOG_DRY_RUN === "1";
+
+// Âge maximum toléré par source d'intelligence, en jours. Une liste de
+// sanctions se démode plus vite qu'un flux communautaire de domaines : le
+// seuil suit la nature de la source, pas une moyenne.
+//
+// ofac/amf/fca sont palier 1 (réglementaire) : leur péremption est CRITIQUE
+// parce que TigerScore applique un floor sur un match ET ne contrôle aucune
+// fraîcheur — un « pas de sanction » calculé sur une liste de 4 mois est une
+// affirmation que rien ne soutient.
+const INTEL_TIER1_SLUGS = new Set(["ofac", "amf", "fca"]);
+const INTEL_MAX_AGE_DAYS_DEFAULT = parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_DAYS ?? "30", 10);
+const INTEL_MAX_AGE_DAYS = {
+  ofac: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_OFAC ?? "7", 10),
+  amf: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_AMF ?? "14", 10),
+  fca: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_FCA ?? "14", 10),
+  scamsniffer: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_SCAMSNIFFER ?? "14", 10),
+  forta: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_FORTA ?? "30", 10),
+  goplus: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_GOPLUS ?? "30", 10),
+};
 const STATE_FILE =
   process.env.WATCHDOG_STATE_FILE ||
   path.join(process.env.HOME || REPO_ROOT, ".interligens-watchdog-state.json");
@@ -284,6 +303,106 @@ async function runChecks(client) {
     lines.push(`• Evidence sans octets : ${accidental} accidentel(s) [R2:UNAVAILABLE], ${deliberate} hash-only délibéré(s)`);
   } catch (e) {
     lines.push(`• Evidence sans octets : ERREUR check (${e.message})`);
+  }
+
+  // 5. Péremption des sources d'intelligence réglementaire.
+  //
+  // POURQUOI CE CHECK EXISTE — TigerScore applique un floor 15 sur match OFAC
+  // (scorer.ts) et matchEntity ne filtre QUE sur listIsActive : il n'existe
+  // aucune notion d'âge dans le calcul, ni TTL, ni décote, ni avertissement.
+  // Une observation OFAC de 133 jours a été mesurée le 2026-08-14 en train de
+  // modifier un score en direct (80 → 72), sans que rien ne signale sa
+  // vétusté. La donnée périmée ne se voit donc NULLE PART dans le produit :
+  // c'est le seul endroit où on peut la voir.
+  //
+  // Le seuil est par palier de source : une liste de sanctions se démode plus
+  // vite qu'un flux communautaire de domaines de phishing.
+  try {
+    const r = await client.query(
+      `SELECT "sourceSlug",
+              max("ingestedAt")                                    AS last,
+              (now()::date - max("ingestedAt")::date)::int          AS age_days
+         FROM intel_source_observations
+        GROUP BY "sourceSlug"`
+    );
+
+    if (r.rows.length === 0) {
+      problems.push({
+        key: "intel_empty",
+        severity: "crit",
+        line: `🔴 INTEL VAULT VIDE — aucune observation. Le floor OFAC de TigerScore ne peut plus se déclencher.`,
+      });
+      lines.push(`• Intel sources : AUCUNE observation`);
+    } else {
+      const stale = [];
+      for (const row of r.rows) {
+        const slug = row.sourceSlug;
+        const age = Number(row.age_days);
+        const limit = INTEL_MAX_AGE_DAYS[slug] ?? INTEL_MAX_AGE_DAYS_DEFAULT;
+        if (age > limit) stale.push({ slug, age, limit });
+      }
+
+      // Une source réglementaire périmée est CRITIQUE : le produit rend des
+      // verdicts « pas de sanction » qui ne veulent rien dire.
+      const staleTier1 = stale.filter((x) => INTEL_TIER1_SLUGS.has(x.slug));
+      if (staleTier1.length > 0) {
+        problems.push({
+          key: "intel_stale_tier1",
+          severity: "crit",
+          line:
+            `🔴 SOURCE RÉGLEMENTAIRE PÉRIMÉE — ` +
+            staleTier1.map((x) => `${x.slug} ${x.age}j (seuil ${x.limit}j)`).join(", ") +
+            `. TigerScore applique un floor sur ces listes ET ne contrôle aucune fraîcheur : ` +
+            `les verdicts « pas de sanction » ne sont plus fiables.`,
+        });
+      }
+      const staleOther = stale.filter((x) => !INTEL_TIER1_SLUGS.has(x.slug));
+      if (staleOther.length > 0) {
+        problems.push({
+          key: "intel_stale",
+          severity: "warn",
+          line:
+            `⚠️ Source intel périmée — ` +
+            staleOther.map((x) => `${x.slug} ${x.age}j (seuil ${x.limit}j)`).join(", "),
+        });
+      }
+
+      const summary = r.rows
+        .map((row) => `${row.sourceSlug} ${Number(row.age_days)}j`)
+        .sort()
+        .join(", ");
+      lines.push(`• Intel sources : ${summary}`);
+    }
+  } catch (e) {
+    lines.push(`• Intel sources : ERREUR check (${e.message})`);
+  }
+
+  // 6. Batches d'ingestion restés « running ».
+  //
+  // Trois batches d'avril 2026 (2 ofac, 1 scamsniffer) n'ont jamais été
+  // clôturés : le run a dépassé la fenêtre serverless et personne ne l'a su —
+  // aucun timeout, aucune reprise. Un batch zombie ressemble à un import en
+  // cours, indéfiniment.
+  try {
+    const r = await client.query(
+      `SELECT count(*)::int AS n
+         FROM intel_ingestion_batches
+        WHERE status = 'running'
+          AND "startedAt" < now() - interval '1 hour'`
+    );
+    const zombies = Number(r.rows[0]?.n ?? 0);
+    if (zombies > 0) {
+      problems.push({
+        key: "intel_zombie_batch",
+        severity: "warn",
+        line:
+          `⚠️ ${zombies} batch(es) d'ingestion intel bloqué(s) en 'running' depuis >1h — ` +
+          `run dépassé hors fenêtre serverless, jamais clôturé.`,
+      });
+    }
+    lines.push(`• Batches intel zombies : ${zombies}`);
+  } catch (e) {
+    lines.push(`• Batches intel zombies : ERREUR check (${e.message})`);
   }
 
   // Canal email digest (Resend) : ABANDONNÉ le 2026-06-25 au profit de
