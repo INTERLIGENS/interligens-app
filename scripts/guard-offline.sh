@@ -475,57 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# ══ SESSION DE CLÔTURE SÉCURITÉ — RELIQUAT ══════════════════════════════════
-# La session comptait 3 chantiers. Deux sont mergés et leurs exemptions ont été
-# retirées (env-numeric-nan, sweep-final-secrets) : le guard a repris son
-# comportement nominal sur src/app/api/.
-#
-# ⚠️  IL EN RESTE UNE, ET ELLE EST OUVERTE VOLONTAIREMENT.
-# hotfix/require-salt n'est PAS mergée : le chantier attend que IP_HASH_SALT
-# soit posée en Production (sans elle, /api/billing/waitlist et
-# /api/billing/create-checkout-session lèvent au lieu de hacher). Retirer
-# l'exemption maintenant bloquerait la PR au moment de son merge — la CI
-# applique le guard de MAIN au diff de la branche.
-#
-# À FAIRE, DANS CET ORDRE :
-#   1. poser IP_HASH_SALT en Production (Vercel UI)
-#   2. merger la PR hotfix/require-salt
-#   3. PR de garde qui supprime le bloc ci-dessous
-# Tant que l'étape 3 n'est pas faite, vitest.config.ts, admin/intake/route.ts
-# et osint/retail/ipHash.ts restent modifiables sur cette seule branche.
-
-# hotfix/require-salt : un sel cryptographique n'a plus de repli.
-# requireSalt(varName) lève À L'USAGE (jamais à l'import) sur les 3 sites qui
-# retombaient sur un littéral public : VAULT_AUDIT_SALT → "interligens_default_salt"
-# (vault/auditScan.ts) et "default-salt" (community/ipHash.ts), IP_HASH_SALT →
-# "interligens" (billing/request.ts). Un défaut littéral est publié dans le repo :
-# le HMAC/hash devient inversible par table, et les adresses/IP pseudonymisées
-# redeviennent ré-identifiables sans le moindre signal.
-# Les 3 sites et le helper (src/lib/config/requireSalt.ts) ne sont PAS gelés et
-# passent hors exemption. Seul vitest.config.ts l'est ("^vitest\.config\."), et
-# il doit l'être : la décision est de poser les sels dans l'environnement de test
-# PLUTÔT que d'ouvrir une exception NODE_ENV dans le code de production — une
-# exception NODE_ENV serait un repli déguisé, exactement ce qu'on retire.
-# RÉALLOCATION (balayage final) : le balayage a sorti DEUX sites de sel de plus,
-# non listés au départ. Ce sont des applications de requireSalt, donc ils
-# appartiennent à CE chantier plutôt qu'à celui du balayage :
-#   - src/app/api/admin/intake/route.ts : createHmac(ADMIN_TOKEN ?? "secret").
-#   - src/lib/osint/retail/ipHash.ts : ipSalt() retombe sur le littéral
-#     "interligens_retail_ip_fallback_salt". Le fichier est gelé nommément
-#     (compromission INVISIBLE, audit #46) et c'est exactement pourquoi : le
-#     repli produit un HMAC valide sur une clé publique, avec un console.warn
-#     tiré UNE SEULE fois par process — en pratique, invisible. Le repli
-#     intermédiaire sur ADMIN_TOKEN est CONSERVÉ (c'est un vrai secret) ;
-#     seul le littéral terminal disparaît.
-# Exemption STRICTEMENT limitée à ces 3 fichiers.
-if [[ "$BRANCH" =~ ^hotfix/require-salt$ ]]; then
-    EXEMPT_REQUIRE_SALT_PATTERNS=(
-        "^vitest\.config\.ts$"
-        "^src/app/api/admin/intake/route\.ts$"
-        "^src/lib/osint/retail/ipHash\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -906,17 +855,6 @@ while IFS= read -r file; do
         [[ "$EXEMPT" == "true" ]] && continue
     fi
 
-    # Sur la branche require-salt, exempter STRICTEMENT vitest.config.ts.
-    if [[ "$BRANCH" =~ ^hotfix/require-salt$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_REQUIRE_SALT_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
 
 
