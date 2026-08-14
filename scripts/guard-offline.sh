@@ -475,65 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# ── Session « rebrancher les pipelines » (4 chantiers) ──────────────────────
-# Contexte commun : l'audit du 2026-08-14 a établi que 12 routes cron existent
-# sans entrée dans vercel.json, et que le watcher-bridge n'a JAMAIS eu de
-# déclencheur (« Not wired into the cron » en tête de son propre module) alors
-# que le watcher-v2 empile depuis des candidats sur une X API facturée.
-# Chaque chantier ci-dessous rend un pipeline consommé, ou rend visible qu'il ne
-# l'est pas. Autorisation humaine explicite (David, session autonome) — voir PR.
-#
-# Toutes les exemptions sont NOMMÉES fichier par fichier. AUCUN wildcard sur
-# src/app/api/ : toute route non listée reste bloquée.
-
-# 58 — watcher-bridge : sa route cron (nouvelle) + le schedule.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-bridge-reconnect$ ]]; then
-    EXEMPT_BRIDGE_RECONNECT_PATTERNS=(
-        "^src/app/api/cron/watcher-bridge/route\.ts$"
-        "^vercel\.json$"
-    )
-fi
-
-# 59 — « états qui mentent ». Trois corrections d'état + un affichage faux :
-#   • process-events marque `processed` les identity.review_required sans
-#     action, ce qui vide la file de revue admin en ≤24 h (160 events, 0 pending) ;
-#   • ERROR_RETRYABLE est posé par process-queue mais listQueuedRetail ne relit
-#     que QUEUED : le statut ment sur son propre nom, aucune reprise n'existe ;
-#   • process-queue retail n'a aucun déclencheur (ni cron, ni bouton UI).
-# La logique vit hors chemins gelés (src/lib/events/, src/lib/osint/retail/
-# retailStore.ts, src/app/admin/) ; seules ces 4 entrées sont gelées.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-lying-states$ ]]; then
-    EXEMPT_LYING_STATES_PATTERNS=(
-        "^src/app/api/cron/process-events/route\.ts$"
-        "^src/app/api/cron/retail-process-queue/route\.ts$"
-        "^src/app/api/admin/osint/retail/process-queue/route\.ts$"
-        "^prisma/schema\.prod\.prisma$"
-        "^vercel\.json$"
-    )
-fi
-
-# 60 — fraîcheur réglementaire. /api/intelligence/ingest/[slug] est DÉJÀ écrite
-# pour un cron (auth CRON_SECRET, maxDuration 300, commentaire « Cron / Admin
-# API ») mais n'a jamais été planifiée : OFAC est gelé au 2026-04-08, soit 128
-# jours, alors que TigerScore applique un floor 15 sur match OFAC. Seul le
-# schedule est touché ; la détection de péremption vit dans src/scripts/watchdog/
-# (non gelé).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intel-freshness$ ]]; then
-    EXEMPT_INTEL_FRESHNESS_PATTERNS=(
-        "^vercel\.json$"
-    )
-fi
-
-# 61 — inventaire cron. Arbitrage ligne par ligne des 12 routes non planifiées :
-# planifier / déclencheur manuel documenté / morte documentée. AUCUNE
-# suppression de code. Seul vercel.json est touché ; la documentation vit dans
-# docs/ (non gelé).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cron-inventory$ ]]; then
-    EXEMPT_CRON_INVENTORY_PATTERNS=(
-        "^vercel\.json$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -749,54 +690,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SCAN_RESOLVER_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche watcher-bridge-reconnect, exempter sa route cron + le schedule.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-bridge-reconnect$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_BRIDGE_RECONNECT_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche lying-states, exempter les 3 routes d'etat + schema + schedule.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-lying-states$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_LYING_STATES_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche intel-freshness, exempter le schedule seul.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intel-freshness$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_INTEL_FRESHNESS_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche cron-inventory, exempter le schedule seul.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cron-inventory$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_CRON_INVENTORY_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
