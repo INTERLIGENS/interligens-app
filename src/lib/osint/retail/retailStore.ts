@@ -22,6 +22,20 @@ import { VISION_PASSES_PER_IMAGE } from "./retailConfig";
 import { DEFAULT_RETAIL_PRIVACY_STATUS } from "./privacy";
 
 export const RETAIL_EXTRACTION_METHOD = "vision_retail_auto";
+
+/**
+ * Nombre maximum de passages vision par soumission.
+ *
+ * ERROR_RETRYABLE était posé par process-queue sur toute erreur non-JSON
+ * (timeout, 429, coupure réseau) mais listQueuedRetail ne relisait que QUEUED :
+ * aucune reprise n'existait. Le statut annonçait une reprise que rien
+ * n'implémentait — une erreur transitoire était en fait définitive.
+ *
+ * La reprise est bornée : sans plafond, une image qui fait systématiquement
+ * échouer la vision serait re-soumise à chaque passage du cron et brûlerait le
+ * budget vision quotidien en boucle.
+ */
+export const MAX_PROCESSING_ATTEMPTS = 3;
 export const RETAIL_SOURCE_TYPE = "osint_retail_screenshot";
 
 /** Statuts qui consomment (ou ont consommé) de la vision — pour le calcul budget. */
@@ -105,6 +119,15 @@ export async function preflightRetail(): Promise<string | null> {
         AND column_name IN ('batchId','privacyStatus','normalizedImageB64','extractionMethod','precheckReason')`,
   )) as Array<{ column_name: string }>;
   if (cols.length < 5) return "OsintSubmission retail columns missing — apply MIGRATION_osint_retail_gate_v1.sql.";
+
+  // La reprise bornée s'appuie sur ce compteur. Sans lui, listQueuedRetail
+  // rejouerait ERROR_RETRYABLE sans limite : on refuse de traiter plutôt que de
+  // boucler sur le budget vision.
+  const att = (await prisma.$queryRawUnsafe(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'OsintSubmission' AND column_name = 'processingAttempts'`,
+  )) as Array<{ column_name: string }>;
+  if (!att.length) return "OsintSubmission.processingAttempts missing — apply MIGRATION_osint_retail_retry_v1.sql.";
   return null;
 }
 
@@ -218,12 +241,18 @@ export async function listQueuedRetail(limit: number): Promise<QueuedRetailRow[]
     `SELECT id, "batchId", "imageSha256", "perceptualHash", "normalizedImageB64",
             "normalizedMediaType", "submitter", "tweetUrl", "contextNote", "ingestedAt"
        FROM "OsintSubmission"
-      WHERE status = $1 AND "extractionMethod" = $2
+      WHERE "extractionMethod" = $2
+        AND (
+          status = $1
+          OR (status = $4 AND COALESCE("processingAttempts", 0) < $5)
+        )
       ORDER BY "ingestedAt" ASC
       LIMIT $3`,
     SubmissionStatus.QUEUED,
     RETAIL_EXTRACTION_METHOD,
     limit,
+    SubmissionStatus.ERROR_RETRYABLE,
+    MAX_PROCESSING_ATTEMPTS,
   )) as Array<Record<string, unknown>>;
   return rows.map((r) => ({
     id: String(r.id),
@@ -241,21 +270,46 @@ export async function listQueuedRetail(limit: number): Promise<QueuedRetailRow[]
 
 /** Passe une ligne en PROCESSING (verrou optimiste : uniquement si encore QUEUED). */
 export async function markProcessing(id: string): Promise<boolean> {
+  // Le compteur est incrémenté À LA PRISE DU VERROU, pas à l'erreur : un
+  // processus qui meurt en plein appel vision a bel et bien consommé une
+  // tentative. L'incrémenter côté markError ne compterait que les échecs
+  // proprement remontés, et une boucle de crash resterait infinie.
   const n = await prisma.$executeRawUnsafe(
-    `UPDATE "OsintSubmission" SET status = $1, "updatedAt" = now()
-      WHERE id = $2 AND status = $3`,
+    `UPDATE "OsintSubmission"
+        SET status = $1,
+            "processingAttempts" = COALESCE("processingAttempts", 0) + 1,
+            "updatedAt" = now()
+      WHERE id = $2
+        AND (
+          status = $3
+          OR (status = $4 AND COALESCE("processingAttempts", 0) < $5)
+        )`,
     SubmissionStatus.PROCESSING,
     id,
     SubmissionStatus.QUEUED,
+    SubmissionStatus.ERROR_RETRYABLE,
+    MAX_PROCESSING_ATTEMPTS,
   );
   return Number(n) > 0;
 }
 
-/** Marque une ligne en erreur (retryable/final) avec une raison. */
+/**
+ * Marque une ligne en erreur (retryable/final) avec une raison.
+ *
+ * Une demande de ERROR_RETRYABLE sur une ligne dont les tentatives sont
+ * épuisées est enregistrée en ERROR_FINAL : le statut doit dire ce qui va
+ * réellement se passer. Laisser « retryable » sur une ligne que plus rien ne
+ * reprendra reproduirait exactement le défaut qu'on corrige ici.
+ */
 export async function markError(id: string, status: SubmissionStatusT, reason: string): Promise<void> {
+  const exhausted =
+    status === SubmissionStatus.ERROR_RETRYABLE
+      ? `CASE WHEN COALESCE("processingAttempts", 0) >= ${MAX_PROCESSING_ATTEMPTS}
+              THEN '${SubmissionStatus.ERROR_FINAL}' ELSE $1 END`
+      : `$1`;
   await prisma.$executeRawUnsafe(
     `UPDATE "OsintSubmission"
-        SET status = $1, "decisionReasons" = $2::jsonb, "updatedAt" = now()
+        SET status = ${exhausted}, "decisionReasons" = $2::jsonb, "updatedAt" = now()
       WHERE id = $3`,
     status,
     JSON.stringify([reason]),

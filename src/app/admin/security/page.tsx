@@ -526,10 +526,19 @@ export default async function SecurityCenterPage() {
                 <div style={{ marginTop: 6, color: MUTED, fontSize: 12 }}>{overview.lastDigest.subject}</div>
               </>
             ) : (
+              // Cet écran affirmait que /api/cron/security-weekly-digest
+              // « runs every Monday 08:00 UTC ». C'était faux depuis sa
+              // dépréciation : la route est un no-op qui répond
+              // { deprecated: true } et son entrée a été retirée de
+              // vercel.json. Le digest sécurité est fusionné dans le rapport
+              // hebdomadaire unifié FR. Une UI qui annonce une automatisation
+              // inexistante est pire qu'une UI muette — on cesse de vérifier.
               <span style={{ color: MUTED }}>
-                No digest generated yet. The cron{" "}
-                <code style={{ color: ACCENT }}>/api/cron/security-weekly-digest</code> runs every
-                Monday 08:00 UTC (≈ 10:00 Europe/Paris, −1h in winter).
+                No digest generated yet. The standalone security digest is{" "}
+                <strong style={{ color: MEDIUM }}>deprecated</strong> — its content is merged into
+                the unified FR weekly report sent by{" "}
+                <code style={{ color: ACCENT }}>/api/cron/weekly-digest</code> (Mondays 08:00 UTC,
+                ≈ 10:00 Europe/Paris, −1h in winter).
               </span>
             )}
             <div style={{ marginTop: 12, fontSize: 12, color: MUTED }}>
