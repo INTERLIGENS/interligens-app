@@ -4,16 +4,33 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processEvent } from "@/lib/events/processor";
 import { alertEventBacklog, alertIdentityBacklog } from "@/lib/ops/alerting";
+import { HUMAN_REVIEW_TYPES } from "@/lib/events/processor";
+import { timingSafeEqual } from "crypto";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const BATCH_SIZE = 50;
 
+// Gate cron FAIL-CLOSED en temps constant, aligné sur les 19 autres crons du
+// repo. La garde `!process.env.CRON_SECRET` était déjà là (la route ne s'ouvrait
+// pas quand le secret manquait) ; c'est la comparaison qui restait naïve.
+function verifyCronSecret(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  const header = req.headers.get("authorization") ?? "";
+  const expected = `Bearer ${secret}`;
+  const a = Buffer.from(header, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) {
+    timingSafeEqual(a, Buffer.alloc(a.length));
+    return false;
+  }
+  return timingSafeEqual(a, b);
+}
+
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization") || "";
-  const expected = `Bearer ${process.env.CRON_SECRET || ""}`;
-  if (!process.env.CRON_SECRET || authHeader !== expected) {
+  if (!verifyCronSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -21,6 +38,12 @@ export async function GET(req: NextRequest) {
   const pending = await prisma.domainEvent.findMany({
     where: {
       status: "pending",
+      // Les événements en attente d'arbitrage humain restent `pending` par
+      // conception (voir HUMAN_REVIEW_TYPES). Sans cette exclusion ils
+      // rempliraient le batch de 50 à chaque passage et affameraient les
+      // événements réellement traitables — le backlog d'identité au
+      // 2026-08-14 (160 lignes) dépasse à lui seul la taille du batch.
+      type: { notIn: [...HUMAN_REVIEW_TYPES] },
       OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
     },
     orderBy: { createdAt: "asc" },

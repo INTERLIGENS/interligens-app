@@ -1,14 +1,48 @@
 {
   "crons": [
-    { "path": "/api/cron/watcher-v2", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/watcher-bridge", "schedule": "30 6 * * *" },
-    { "path": "/api/cron/daily-flow", "schedule": "0 2 * * *" },
-    { "path": "/api/cron/watch-rescan", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/weekly-digest", "schedule": "0 8 * * 1" },
-    { "path": "/api/cron/intel-rss", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/intel-summarize", "schedule": "30 7 * * *" },
-    { "path": "/api/cron/helius-scan", "schedule": "0 4 * * *" },
-    { "path": "/api/cron/watch-alerts", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/process-events", "schedule": "0 3 * * *" }
+    {
+      "path": "/api/cron/watcher-v2",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/watcher-bridge",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/daily-flow",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/watch-rescan",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-digest",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/intel-rss",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/intel-summarize",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/cron/helius-scan",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/watch-alerts",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/process-events",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/retail-process-queue",
+      "schedule": "0 5 * * *"
+    }
   ]
 }
