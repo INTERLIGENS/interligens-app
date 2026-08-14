@@ -15,10 +15,10 @@ import fs from "fs";
 // `pending` : le cron quotidien la vidait donc avant qu'un humain la voie.
 // Au 2026-08-14 : 160 événements, tous `processed`, aucun arbitré.
 
-const update = vi.fn(async () => ({}));
+const update = vi.fn(async (_args?: { data: { status: string } }) => ({}));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    domainEvent: { update: (...a: unknown[]) => update(...a), create: vi.fn(async () => ({})) },
+    domainEvent: { update, create: vi.fn(async () => ({})) },
   },
 }));
 vi.mock("@/lib/kol/proceeds", () => ({ computeProceedsForHandle: vi.fn(async () => ({})) }));
@@ -57,8 +57,8 @@ describe("identity.review_required — la file de revue ne doit pas se vider seu
     const { processEvent } = await import("@/lib/events/processor");
     await processEvent(evt("proceeds.recomputed"));
     expect(update).toHaveBeenCalledTimes(1);
-    const arg = update.mock.calls[0][0] as { data: { status: string } };
-    expect(arg.data.status).toBe("processed");
+    const arg = update.mock.calls[0][0];
+    expect(arg?.data.status).toBe("processed");
   });
 
   it("le cron exclut ces types de son batch — sinon 160 lignes affameraient un batch de 50", () => {
