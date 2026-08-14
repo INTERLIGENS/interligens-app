@@ -32,6 +32,7 @@ export type PromoteAction =
   | "not_found"
   | "below_liquidity"
   | "kol_cap_skipped"
+  | "no_kol_profile"
   | "error";
 
 export interface PromoteResult {
@@ -331,6 +332,7 @@ export interface PromoteSummary {
   belowLiquiditySkipped: number;        // gate-excluded: liquidity < floor or unknown
   freshIlliquidExplicitCa: number;      // of belowLiquidity: explicit_ca + liquidity null
   kolCapSkipped: number;                // loop-excluded: KOL already at maxPerKol
+  noKolProfileSkipped: number;          // loop-excluded: no KolProfile row for the handle
   errors: number;
   durationMs: number;
   apiCallsDexScreener: number;
@@ -361,6 +363,13 @@ export async function promoteWatcherSignalsToDraft(
     const conds: string[] = [
       `jsonb_typeof(c."detectedTokens") = 'array'`,
       `jsonb_array_length(c."detectedTokens") > 0`,
+      // Sans KolProfile, l'INSERT KolTokenLink violerait la FK : le candidat ne
+      // peut RIEN produire. La garde de boucle plus bas le rattrape aussi, mais
+      // l'exclure ici est ce qui permet au job de DRAINER : sinon ces candidats
+      // (1091 au 2026-08-14) consomment les slots de `limit` à chaque run et le
+      // backlog ne descend jamais. La garde de boucle reste le filet pour le
+      // chemin `candidateIds` explicite, qui ne passe pas par ce SELECT.
+      `EXISTS (SELECT 1 FROM "KolProfile" p WHERE p.handle = i.handle)`,
     ];
     const params: unknown[] = [];
     if (onlyUnprocessed) conds.push(`c.status IN ('new','clustered')`);
@@ -378,6 +387,7 @@ export async function promoteWatcherSignalsToDraft(
       priorityClause = ` AND wc.priority IN ${allowed}`;
       const skip = await db.$queryRawUnsafe<Array<{ n: number }>>(
         `SELECT count(*)::int n FROM "social_post_candidates" c
+           JOIN "influencers" i ON i.id = c."influencerId"
            LEFT JOIN "WatcherCampaign" wc ON wc.id = c."campaignId"
           WHERE ${baseWhere} AND (wc.priority IS NULL OR wc.priority NOT IN ${allowed})`,
         ...params,
@@ -392,6 +402,7 @@ export async function promoteWatcherSignalsToDraft(
       multiKolClause = ` AND coalesce(wc."kolCount", 0) >= 2`;
       const skip = await db.$queryRawUnsafe<Array<{ n: number }>>(
         `SELECT count(*)::int n FROM "social_post_candidates" c
+           JOIN "influencers" i ON i.id = c."influencerId"
            LEFT JOIN "WatcherCampaign" wc ON wc.id = c."campaignId"
           WHERE ${baseWhere}${priorityClause} AND coalesce(wc."kolCount", 0) < 2`,
         ...params,
@@ -402,6 +413,7 @@ export async function promoteWatcherSignalsToDraft(
     params.push(limit);
     const rows = await db.$queryRawUnsafe<Array<{ id: string }>>(
       `SELECT c.id FROM "social_post_candidates" c
+         JOIN "influencers" i ON i.id = c."influencerId"
          LEFT JOIN "WatcherCampaign" wc ON wc.id = c."campaignId"
         WHERE ${baseWhere}${priorityClause}${multiKolClause}
         ORDER BY c."discoveredAtUtc" DESC
@@ -423,11 +435,35 @@ export async function promoteWatcherSignalsToDraft(
     for (const r of hrows) idToHandle.set(r.id, r.handle);
   }
 
+  // ── Pré-filtre KolProfile (cause racine des 3 erreurs FK du 2026-06-29) ────
+  // Le bridge lit le handle depuis `influencers` (watchlist du watcher) mais
+  // KolTokenLink.kolHandle porte une FK vers KolProfile(handle). Les deux
+  // populations ne coïncident pas : un influencer sans KolProfile faisait
+  // remonter une violation 23503 depuis l'INSERT, comptée en `errors` — un
+  // écart de données présenté comme une panne.
+  //
+  // On résout l'existence en UN seul SELECT sur le lot, et on saute le
+  // candidat AVANT promoteCandidate — donc avant resolveCanonicalToken, qui
+  // consomme DexScreener/Helius. Un candidat sans KolProfile ne peut produire
+  // aucun lien : payer une résolution pour lui est du gaspillage pur.
+  //
+  // Choix délibéré : on NE crée PAS le KolProfile manquant. Publier un profil
+  // KOL est une décision éditoriale humaine, pas un effet de bord de cron.
+  // Le compteur noKolProfileSkipped rend l'écart visible pour arbitrage.
+  const knownKolProfiles = new Set<string>();
+  if (idToHandle.size > 0) {
+    const prows = await db.$queryRawUnsafe<Array<{ handle: string }>>(
+      `SELECT handle FROM "KolProfile" WHERE handle = ANY($1::text[])`,
+      toPgTextArray([...new Set(idToHandle.values())]),
+    );
+    for (const r of prows) knownKolProfiles.add(r.handle);
+  }
+
   const summary: PromoteSummary = {
     selected: ids.length, processed: 0, createdEvidenceSnapshots: 0, createdDraftLinks: 0,
     alreadyExistingSkipped: 0, ambiguous: 0, unresolved: 0, conflict: 0,
     lowPrioritySkipped, singleKolSkipped, belowLiquiditySkipped: 0, freshIlliquidExplicitCa: 0,
-    kolCapSkipped: 0, errors: 0, durationMs: 0,
+    kolCapSkipped: 0, noKolProfileSkipped: 0, errors: 0, durationMs: 0,
     apiCallsDexScreener: 0, apiCallsHelius: 0, actionCounts: {}, results: [],
   };
 
@@ -435,6 +471,21 @@ export async function promoteWatcherSignalsToDraft(
 
   for (const id of ids) {
     const handle = idToHandle.get(id) ?? null;
+
+    // KolProfile absent — pre-check BEFORE promoteCandidate (skips processing +
+    // API). Sans profil, l'INSERT KolTokenLink violerait la FK : on sort
+    // proprement au lieu de laisser remonter une 23503.
+    if (handle && !knownKolProfiles.has(handle)) {
+      summary.noKolProfileSkipped++;
+      summary.actionCounts["no_kol_profile"] = (summary.actionCounts["no_kol_profile"] ?? 0) + 1;
+      summary.results.push({
+        candidateId: id,
+        action: "no_kol_profile",
+        kolHandle: handle,
+        reason: "no KolProfile row — KolTokenLink.kolHandle FK would fail",
+      });
+      continue;
+    }
 
     // Per-KOL cap — pre-check BEFORE promoteCandidate (skips processing + API).
     if (opts.maxPerKol != null && handle && (kolDraftCount.get(handle) ?? 0) >= opts.maxPerKol) {

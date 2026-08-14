@@ -10,6 +10,9 @@ import fs from "fs";
 const ROUTES = [
   { nom: "cron/corroboration", path: "src/app/api/cron/corroboration/route.ts" },
   { nom: "cron/intake-watch", path: "src/app/api/cron/intake-watch/route.ts" },
+  // Route ajoutée au moment où le watcher-bridge a reçu son déclencheur : elle
+  // naît avec le gate correct, et cette entrée empêche qu'il régresse.
+  { nom: "cron/watcher-bridge", path: "src/app/api/cron/watcher-bridge/route.ts" },
 ];
 
 describe("gates cron fail-closed (source)", () => {
