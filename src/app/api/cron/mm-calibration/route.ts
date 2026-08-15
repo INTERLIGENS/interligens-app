@@ -7,6 +7,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,12 @@ export async function GET(req: NextRequest) {
   if (!verifyCronSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/cron/mm-calibration");
+  if (blockedByProdGuard) return blockedByProdGuard;
 
   // TODO(phase-5): iterate over all cohort keys with enough observed tokens,
   //   fetch raw metrics via the data layer (helius/birdeye/etherscan),

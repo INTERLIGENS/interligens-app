@@ -3,6 +3,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 import { deliverPendingAlerts } from "@/lib/surveillance/alerts/deliverAlerts";
 
 export const runtime = "nodejs";
@@ -24,6 +25,12 @@ function verifyCronSecret(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   if (!verifyCronSecret(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/cron/alerts/deliver");
+  if (blockedByProdGuard) return blockedByProdGuard;
   const result = await deliverPendingAlerts();
   return NextResponse.json(result);
 }

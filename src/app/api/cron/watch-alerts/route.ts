@@ -1,5 +1,6 @@
 // src/app/api/cron/watch-alerts/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,12 @@ export async function GET(req: NextRequest) {
   if (auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/cron/watch-alerts");
+  if (blockedByProdGuard) return blockedByProdGuard;
 
   try {
     const { checkAndAlert } = await import("@/lib/watch/engine");
