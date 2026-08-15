@@ -11,6 +11,7 @@ import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import { emitProceedsRecomputed } from "@/lib/events/producer";
 import { generateCasePdf } from "@/lib/pdf/engine";
 import { scanWalletForCexDeposits } from "@/lib/kol/cexTracker";
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -39,6 +40,12 @@ export async function GET(req: NextRequest) {
   if (!process.env.CRON_SECRET || authHeader !== expected) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/cron/helius-scan");
+  if (blockedByProdGuard) return blockedByProdGuard;
 
   const url = new URL(req.url);
   const handleFilter = url.searchParams.get("handle");

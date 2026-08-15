@@ -16,6 +16,7 @@ import { sendKolAlert } from "@/lib/alerts/kolAlert";
 import { sendWatcherDigest, type BatchSignal, type CampaignSummary } from "@/lib/alerts/watcherDigest";
 import { clusterSignals, type SignalInput } from "@/lib/watcher/campaignClusterer";
 import { envInt, envFloat } from "@/lib/config/envNumber";
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 
 // Vercel cron route config — force dynamic execution and extend the default
 // 10s serverless timeout to accommodate the per-handle sleep(1000) loop.
@@ -597,6 +598,12 @@ export async function GET(req: NextRequest) {
   if (authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/cron/watcher-v2");
+  if (blockedByProdGuard) return blockedByProdGuard;
   if (!hasToken()) {
     return NextResponse.json({ error: "X_BEARER_TOKEN not configured" }, { status: 500 });
   }

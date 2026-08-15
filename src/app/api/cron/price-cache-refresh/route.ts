@@ -23,6 +23,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -222,6 +223,12 @@ export async function GET(req: NextRequest) {
   if (authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/cron/price-cache-refresh");
+  if (blockedByProdGuard) return blockedByProdGuard;
   try {
     const result = await refresh();
     console.log('[price-cache-refresh]', JSON.stringify(result));

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestSource, SOURCES } from "@/lib/intelligence";
 import type { SourceSlug } from "@/lib/intelligence";
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 
 export const maxDuration = 300; // 5 minutes — OFAC XML is ~200MB
 
@@ -27,6 +28,12 @@ function authenticate(req: NextRequest): NextResponse | null {
   if (provided !== secret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/intelligence/ingest/[slug]");
+  if (blockedByProdGuard) return blockedByProdGuard;
 
   return null;
 }
