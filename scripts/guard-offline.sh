@@ -31,6 +31,11 @@ elif [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     BRANCH_OK=true
 elif [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-[a-z0-9-]+$ ]]; then
     BRANCH_OK=true
+elif [[ "$BRANCH" == "feat/preview-prod-isolation" ]]; then
+    # Chantier d'isolation Preview → Production. Nom de branche imposé par le
+    # cadrage du chantier, hors nomenclature cc-offline-XX. Autorisation
+    # humaine explicite (David) — voir PR description.
+    BRANCH_OK=true
 elif [[ "$BRANCH" =~ ^hotfix/ ]]; then
     BRANCH_OK=true
 fi
@@ -458,6 +463,36 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour l'isolation Preview → Production.
+#
+# Le chantier insère un garde d'écriture (src/lib/ops/prodWriteGuard.ts) sur
+# les 22 routes cron actives : une route refuse de s'exécuter (403) quand
+# VERCEL_ENV != production et que la base visée est ep-square-band. Ferme le
+# déclenchement d'un cron depuis un déploiement Preview, qui porte aujourd'hui
+# le même CRON_SECRET et la même DATABASE_URL que la Production.
+#
+# WILDCARD ASSUMÉ, À TITRE EXCEPTIONNEL. Les exemptions précédentes sur
+# src/app/api/ étaient nominatives, fichier par fichier. Ici le changement
+# touche réellement les 22 routes : les lister une à une donnerait 22 lignes
+# sans rien garder de plus. Contrepartie exigée et fournie avant merge — le
+# diff est UNIFORME : 22 fichiers, +7/-0 chacun, zéro suppression, et le
+# contenu ajouté se réduit à 7 formes distinctes apparaissant chacune 22 fois
+# (1 import + 3 lignes de commentaire + 1 const + 1 if + 1 ligne vide).
+# Aucune logique métier modifiée, aucune écriture nouvelle, aucune migration.
+# Vérifiable par :
+#   git diff --numstat -- src/app/api
+#   git diff -- src/app/api | grep '^+' | grep -v '^+++' | sed 's/^+//' \
+#     | sed 's|"/api[^"]*"|"<ROUTE>"|' | sort | uniq -c
+#
+# Autorisation humaine explicite (David) — voir PR description.
+# RETRAIT PRÉVU après merge de la PR métier, protocole habituel.
+if [[ "$BRANCH" == "feat/preview-prod-isolation" ]]; then
+    EXEMPT_PREVIEW_ISOLATION_PATTERNS=(
+        "^src/app/api/cron/"
+        "^src/app/api/intelligence/ingest/"
+    )
+fi
+
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -847,6 +882,20 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche preview-prod-isolation, exempter les routes cron et la
+    # route d'ingestion intelligence — les seules que le garde d'écriture
+    # production instrumente. Le reste de src/app/api/ reste bloqué.
+    if [[ "$BRANCH" == "feat/preview-prod-isolation" ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_PREVIEW_ISOLATION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
