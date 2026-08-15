@@ -13,6 +13,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { createRequire } from "node:module";
 import { isNominativeApiPath } from "@/lib/security/nominativeApiGate";
 
 const ADMIN_TOKEN = "admin-token-for-tests-not-a-real-secret";
@@ -204,8 +205,15 @@ describe("proxy — credentials invalides", () => {
 // divergences et rendrait le test vert pour la mauvaise raison.
 type PathToRegexp = (pattern: string) => RegExp;
 
-async function loadPathToRegexp(): Promise<PathToRegexp> {
-  const mod = (await import("next/dist/compiled/path-to-regexp")) as unknown as {
+// `next/dist/compiled/path-to-regexp` est un bundle CommonJS SANS déclaration
+// de types : un `import()` statique déclenche TS7016, et un `require()` nu est
+// interdit par @typescript-eslint/no-require-imports. `createRequire` est la
+// voie standard et typée pour charger un module CJS non typé depuis un module
+// ESM — pas de .d.ts fantôme à maintenir pour un chemin interne de Next.
+const requireCjs = createRequire(import.meta.url);
+
+function loadPathToRegexp(): PathToRegexp {
+  const mod = requireCjs("next/dist/compiled/path-to-regexp") as {
     pathToRegexp?: PathToRegexp;
     default?: { pathToRegexp?: PathToRegexp };
   };
@@ -216,7 +224,7 @@ async function loadPathToRegexp(): Promise<PathToRegexp> {
 
 describe("alignement gate ↔ config.matcher du proxy", () => {
   it.each(NOMINATIVE_PATHS)("le matcher route bien %s vers le proxy", async (path) => {
-    const pathToRegexp = await loadPathToRegexp();
+    const pathToRegexp = loadPathToRegexp();
     const { config } = await loadProxy();
     const matchers = (config.matcher as string[]).filter((m) => m.startsWith("/api/"));
     const hit = matchers.some((m) => pathToRegexp(m).test(path));
@@ -224,7 +232,7 @@ describe("alignement gate ↔ config.matcher du proxy", () => {
   });
 
   it("le matcher ne recouvre PAS les surfaces non nominatives", async () => {
-    const pathToRegexp = await loadPathToRegexp();
+    const pathToRegexp = loadPathToRegexp();
     const { config } = await loadProxy();
     const nominative = (config.matcher as string[]).filter(
       (m) => m.startsWith("/api/") && !m.startsWith("/api/admin") && !m.startsWith("/api/investigator"),
