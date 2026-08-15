@@ -185,7 +185,75 @@ de trace.
 
 ---
 
-## 3. Séquence exacte des actions dans l'UI Vercel
+## 3. ✅ EXÉCUTÉ le 2026-08-15 — état final
+
+**Le §3 n'est plus une consigne, c'est un compte rendu.** Les changements ont
+été appliqués via l'API Vercel, pas dans l'UI.
+
+### Méthode
+
+`vercel env rm` était exclu : **63 des entrées concernées sont des entrées
+UNIQUES partagées `production`+`preview`**, un `rm` y aurait détruit la valeur
+de production, irrécupérable. On a utilisé `PATCH /v9/projects/{id}/env/{envId}`
+avec le seul champ `target`, qui retire `preview` **sans toucher à la valeur**.
+
+Prouvé avant application sur une variable jetable créée pour l'occasion :
+
+```
+[1 CREATE] HTTP 201  cibles = ["production","preview"]
+[2 AVANT ] valeur identique à celle posée ? OUI
+[3 PATCH ] HTTP 200
+[4 APRÈS ] valeur PRÉSERVÉE ? OUI ✅   preview retiré ? OUI ✅
+[5 DELETE] HTTP 200
+```
+
+### Résultat
+
+`63 actions — 45 PATCH, 12 DELETE, 6 CREATE — 63 réussies, 0 échouée.`
+
+Preview est passé de ~76 à **25 entrées**, toutes inertes, publiques ou de
+configuration. Vérifications post-application :
+
+| Contrôle | Résultat |
+|---|---|
+| Clés critiques ayant encore une entrée `production` | ✅ toutes |
+| Entrées production recréées (valeur perdue) ? | ❌ non — `createdAt` d'origine conservé (142 / 93 / 159 / 161 j) |
+| Chaîne de production ciblant encore Preview | ✅ aucune |
+| Les 5 variables obligatoires au build Preview | ✅ présentes, valeurs dédiées |
+| Production toujours fonctionnelle | ✅ `/api/v1/score` rend de vraies données |
+
+### Preuve par exécution réelle sur un déploiement Preview
+
+Déploiement `dpl_ESMJcFawpXopF9v86Nfkt54jiy1N`, `target: preview`, `READY` :
+
+| Requête | Résultat | Ce que ça prouve |
+|---|---|---|
+| `GET /api/cron/watcher-bridge` sans secret | **401** | route fermée |
+| `GET /api/cron/watcher-bridge` avec un secret arbitraire | **401** | `CRON_SECRET` n'est plus en Preview |
+| `GET /api/cron/digest` (no-op, sans base) | **200** | le déploiement est sain |
+| `POST /api/transparency/submit` | **500** | écriture impossible |
+| `POST /api/investigators/apply` | **500** | écriture impossible |
+
+Le contraste est le cœur de la démonstration : **une route sans base répond
+200, toutes les routes avec base répondent 500.** L'échec est spécifique à la
+base, pas un déploiement cassé. Aucune écriture n'a atteint `ep-square-band`.
+
+Bonus observé : les appels suivants sont passés en **429**, le limiteur de
+`transparency/submit` comptant réellement — ce que l'ancien compteur `Map`
+ne faisait pas.
+
+### Reste à faire à la main
+
+Rien sur les variables. Le seul geste humain restant est le déploiement en
+production, décrit dans le rapport de session.
+
+---
+
+## 3bis. Séquence de référence (pour rejouer ou auditer)
+
+Conservée telle qu'elle a été appliquée.
+
+### Détail des étapes — Séquence exacte des actions dans l'UI Vercel
 
 Chemin : **Vercel → projet `interligens-app` → Settings → Environment Variables**.
 
