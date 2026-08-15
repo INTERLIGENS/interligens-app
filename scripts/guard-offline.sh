@@ -31,11 +31,6 @@ elif [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     BRANCH_OK=true
 elif [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-[a-z0-9-]+$ ]]; then
     BRANCH_OK=true
-elif [[ "$BRANCH" == "feat/unauth-write-hardening" ]]; then
-    # Chantier de durcissement des routes d'écriture non authentifiées.
-    # Nom imposé par le cadrage, hors nomenclature cc-offline-XX.
-    # Autorisation humaine explicite (David) — voir PR description.
-    BRANCH_OK=true
 elif [[ "$BRANCH" =~ ^hotfix/ ]]; then
     BRANCH_OK=true
 fi
@@ -463,36 +458,6 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
-# Exceptions pour le durcissement des routes d'écriture non authentifiées.
-#
-# Audit de la surface d'écriture : 144 routes écrivent en base, 13 sans
-# authentification identifiée. Sur ces 13, aucune n'alimente TigerScore ni les
-# casefiles (vérifié : zéro référence à ces modèles dans src/lib/tigerscore/ et
-# src/lib/prebuy/). Le risque réel est la saturation d'une file de revue
-# humaine, pas l'empoisonnement du moteur.
-#
-# Trois fichiers, NOMMÉS UN À UN — aucun wildcard sur src/app/api/ :
-#   - investigators/apply : 2 INSERT, aucun rate-limit, handle/email/country
-#     sans borne de taille ;
-#   - transparency/submit : compteur `new Map()` en mémoire, inopérant entre
-#     lambdas — le « max 3 par jour » annoncé ne s'applique à rien ;
-#   - admin/kol/[handle]/proceeds/status : Basic auth construite sur
-#     `process.env.X ?? ""`. Si les deux variables manquent, le secret attendu
-#     devient "Basic Og==" et un appelant qui l'envoie passe. Fail-OPEN latent
-#     sur une route qui publie des données forensiques.
-#
-# Les configs de rate-limit partagées vont dans src/lib/ops/ (non gelé) pour
-# ne pas toucher à ^src/lib/security/.
-# Autorisation humaine explicite (David) — voir PR description.
-# RETRAIT PRÉVU après merge de la PR métier, protocole habituel.
-if [[ "$BRANCH" == "feat/unauth-write-hardening" ]]; then
-    EXEMPT_UNAUTH_WRITE_PATTERNS=(
-        "^src/app/api/investigators/apply/route\.ts$"
-        "^src/app/api/transparency/submit/route\.ts$"
-        "^src/app/api/admin/kol/\[handle\]/proceeds/status/route\.ts$"
-    )
-fi
-
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -882,19 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche unauth-write-hardening, exempter les 3 fichiers nommés.
-    # Le reste de src/app/api/ reste bloqué.
-    if [[ "$BRANCH" == "feat/unauth-write-hardening" ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_UNAUTH_WRITE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
