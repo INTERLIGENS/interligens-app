@@ -1,7 +1,71 @@
+// Route admin — publication de données forensiques (Observed Proceeds).
+// `src/proxy.ts` garde déjà /api/admin/* (cookie de session ou Basic auth),
+// mais cette route refait sa propre vérification Basic. C'est une bonne chose ;
+// encore faut-il qu'elle soit fail-closed.
+//
+// LE DÉFAUT CORRIGÉ
+// Le secret attendu était construit ainsi :
+//
+//     const expectedUser = process.env.ADMIN_BASIC_USER ?? "";
+//     const expectedPass = process.env.ADMIN_BASIC_PASS ?? "";
+//     const expected = "Basic " + base64(`${expectedUser}:${expectedPass}`);
+//
+// Les deux variables absentes, `expected` vaut `"Basic Og=="` — le base64 de
+// `":"`. Un appelant qui envoie exactement cet en-tête passe. Le repli `?? ""`
+// ne protège rien : il fabrique un secret devinable. Quatrième apparition de
+// cette famille de bug dans ce repo.
+//
+// Non exploitable aujourd'hui (proxy.ts garde la route et les deux variables
+// sont posées en Production), mais une route qui publie des données
+// forensiques ne doit pas dépendre d'une configuration extérieure pour être
+// fermée. Absence ou vacuité d'une des deux variables ⇒ 500, jamais un
+// laissez-passer. Comparaison en temps constant, alignée sur les autres gates
+// du repo.
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { timingSafeEqual } from "crypto";
 
 const prisma = new PrismaClient();
+
+type AuthOutcome = { ok: true } | { ok: false; response: NextResponse };
+
+function requireAdminBasic(req: NextRequest): AuthOutcome {
+  const user = process.env.ADMIN_BASIC_USER;
+  const pass = process.env.ADMIN_BASIC_PASS;
+
+  // FAIL-CLOSED. `!user` couvre l'absence ET la chaîne vide : une variable
+  // posée à "" ne doit pas devenir la moitié d'un secret valide.
+  if (!user || !pass) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Server misconfigured: admin basic credentials not set" },
+        { status: 500 },
+      ),
+    };
+  }
+
+  const provided = req.headers.get("authorization") ?? "";
+  const expected = "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
+
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) {
+    // Comparaison factice de même coût, pour ne pas révéler la longueur.
+    timingSafeEqual(a, Buffer.alloc(a.length));
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+  if (!timingSafeEqual(a, b)) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+  return { ok: true };
+}
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   draft:    ["reviewed"],
@@ -15,13 +79,8 @@ export async function POST(
 ) {
   const { handle } = await params;
 
-  const authHeader = req.headers.get("authorization") ?? "";
-  const expectedUser = process.env.ADMIN_BASIC_USER ?? "";
-  const expectedPass = process.env.ADMIN_BASIC_PASS ?? "";
-  const expected = "Basic " + Buffer.from(`${expectedUser}:${expectedPass}`).toString("base64");
-  if (authHeader !== expected) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = requireAdminBasic(req);
+  if (!auth.ok) return auth.response;
 
   const body = await req.json().catch(() => ({}));
   const { status, reviewNote } = body;
@@ -69,13 +128,8 @@ export async function GET(
 ) {
   const { handle } = await params;
 
-  const authHeader = req.headers.get("authorization") ?? "";
-  const expectedUser = process.env.ADMIN_BASIC_USER ?? "";
-  const expectedPass = process.env.ADMIN_BASIC_PASS ?? "";
-  const expected = "Basic " + Buffer.from(`${expectedUser}:${expectedPass}`).toString("base64");
-  if (authHeader !== expected) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = requireAdminBasic(req);
+  if (!auth.ok) return auth.response;
 
   const rows = await prisma.$queryRaw`
     SELECT
