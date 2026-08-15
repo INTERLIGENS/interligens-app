@@ -6,6 +6,7 @@ import { processEvent } from "@/lib/events/processor";
 import { alertEventBacklog, alertIdentityBacklog } from "@/lib/ops/alerting";
 import { HUMAN_REVIEW_TYPES } from "@/lib/events/processor";
 import { timingSafeEqual } from "crypto";
+import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,6 +34,12 @@ export async function GET(req: NextRequest) {
   if (!verifyCronSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Barrière d'écriture production. Un Preview porte le même CRON_SECRET et
+  // la même DATABASE_URL que la Production : l'authentification ci-dessus ne
+  // distingue pas les deux. Voir docs/PREVIEW_PROD_ISOLATION.md.
+  const blockedByProdGuard = prodWriteGuardResponse("/api/cron/process-events");
+  if (blockedByProdGuard) return blockedByProdGuard;
 
   const now = new Date();
   const pending = await prisma.domainEvent.findMany({
