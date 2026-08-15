@@ -475,6 +475,35 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour P0-1 — GATE DES LECTURES NOMINATIVES DE L'API.
+# Corrige une ASYMÉTRIE constatée EN PRODUCTION le 2026-08-15 : src/proxy.ts met
+# toutes les pages produit derrière le cookie beta mais exempte explicitement
+# /api/* ("API routes have their own per-route guards"). Or 18 routes servaient
+# handle / displayName / tier / rôle / association case-token en ANONYME —
+# /api/watchlist (75 KB, 52 profils non publiés), /api/v1/kol ("Brandon
+# Kokoski", label "serial_scammer"), /api/casefile/public (PDF nominatif),
+# /api/scan/grounding (nom + proceeds, ni auth ni rate-limit), etc.
+# Purement défensif : un gate en tête de proxy + un module de décision. Aucune
+# nouvelle surface, aucune logique métier / scoring / KolTokenLink touchée, aucune
+# écriture DB, aucune migration. Les appelants légitimes inventoriés (front
+# interne via cookie beta, admin, x-partner-key, x-mobile-api-token) sont
+# préservés ; les deux appels SERVEUR→serveur qui auraient cassé en silence sont
+# corrigés pour relayer le cookie entrant.
+# Autorisation humaine explicite (David, découplage P0-1 / P0-2) — voir PR.
+# Exemption STRICTEMENT limitée aux 3 fichiers gelés concernés ; AUCUN wildcard
+# sur src/app/api/ ni src/lib/security/. La page
+# src/app/en/kol/[handle]/class-action/page.tsx et les tests __tests__/ ne sont
+# pas des chemins gelés et passent hors exemption.
+# NE COUVRE PAS P0-2 (réversibilité éditoriale) : ni migrations/, ni
+# src/app/api/admin/watcher-drafts/, ni les filtres visibility. Lot séparé.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-nominative-api-gate$ ]]; then
+    EXEMPT_P0_NOMINATIVE_GATE_PATTERNS=(
+        "^src/proxy\.ts$"
+        "^src/lib/security/nominativeApiGate\.ts$"
+        "^src/app/api/investigator/kols/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +707,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche p0-nominative-api-gate, exempter les 3 fichiers du gate.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-nominative-api-gate$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_P0_NOMINATIVE_GATE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
