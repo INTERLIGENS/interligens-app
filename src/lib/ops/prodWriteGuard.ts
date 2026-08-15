@@ -37,6 +37,23 @@
 // crons de production de façon bruyante et réversible, au lieu de rouvrir
 // silencieusement l'écriture depuis les Preview.
 //
+// PAS DE REPLI PERMISSIF — et c'est une décision, pas un oubli.
+// On a envisagé un mode « si VERCEL_ENV est absente mais que d'autres marqueurs
+// indiquent la production, autoriser quand même », pour éviter de couper les
+// crons au cas où la plateforme n'exposerait pas ses variables système. Vérifié
+// le 2026-08-15 sur l'API Vercel, ce risque n'existe pas ici :
+//
+//     GET /v9/projects/prj_HJRHuMSyoh8i7RYmeSizyJxhRCoQ
+//     → autoExposeSystemEnvs: true
+//
+// VERCEL_ENV est donc bien injectée sur ce projet. Or les marqueurs qui auraient
+// servi de repli (VERCEL_PROJECT_PRODUCTION_URL, VERCEL_URL, VERCEL_REGION) sont
+// présents *aussi* sur un déploiement Preview : un repli fondé sur eux
+// autoriserait précisément ce que ce module existe pour interdire. Ajouter ce
+// repli affaiblirait le garde pour parer un risque dont on a prouvé l'absence.
+// Si `autoExposeSystemEnvs` repassait un jour à false, le bon geste est de le
+// remettre à true, pas d'assouplir ce fichier.
+//
 // `??` vs `||`
 // Quatrième apparition du piège dans ce repo. Aucune valeur de repli ne doit
 // pouvoir rendre le garde permissif : une variable posée à la chaîne vide ne
