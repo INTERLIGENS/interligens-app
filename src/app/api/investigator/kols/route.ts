@@ -6,7 +6,19 @@ export async function GET(req: NextRequest) {
   if (deny) return deny;
 
   try {
-    const internal = await fetch(new URL("/api/v1/kol?limit=100", req.nextUrl.origin));
+    // P0-1 — /api/v1/kol est désormais derrière le gate nominatif du proxy.
+    // Cet appel est un vrai aller-retour HTTP same-origin : sans en-tête
+    // Cookie il repart en anonyme et se prend un 401, ce qui viderait
+    // silencieusement la liste (le catch plus bas renvoie { kols: [] }).
+    // On refait donc porter à l'appel la session de l'appelant — déjà validée
+    // par requireInvestigatorSession trois lignes plus haut. Aucun secret
+    // supplémentaire, aucune élévation de privilège : l'appel interne ne peut
+    // pas voir plus que celui qui l'a déclenché.
+    const cookie = req.headers.get("cookie");
+    const internal = await fetch(new URL("/api/v1/kol?limit=100", req.nextUrl.origin), {
+      headers: cookie === null ? {} : { cookie },
+    });
+    if (!internal.ok) return NextResponse.json({ kols: [] });
     const data = await internal.json();
     const all = data.results ?? data.profiles ?? [];
 

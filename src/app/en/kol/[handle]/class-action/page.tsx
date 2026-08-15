@@ -2,6 +2,7 @@
 // Sprint 5 — Class Action Builder UI
 
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 
 interface ClassActionPackage {
   reportId: string;
@@ -19,7 +20,15 @@ interface ClassActionPackage {
 async function getClassAction(handle: string): Promise<ClassActionPackage | null> {
   try {
     const base = process.env.NEXT_PUBLIC_APP_URL || "https://interligens-app.vercel.app";
-    const res = await fetch(`${base}/api/kol/${handle}/class-action`, { cache: "no-store" });
+    // P0-1 — /api/kol/* est derrière le gate nominatif du proxy. Ce fetch part
+    // du SERVEUR : il ne porte pas spontanément le cookie du visiteur, et
+    // repartirait en anonyme → 401 → notFound() sur une page pourtant
+    // légitimement ouverte. On relaie la session de la requête entrante.
+    const cookie = (await headers()).get("cookie");
+    const res = await fetch(`${base}/api/kol/${handle}/class-action`, {
+      cache: "no-store",
+      headers: cookie === null ? {} : { cookie },
+    });
     if (!res.ok) return null;
     const data = await res.json();
     return data.classAction ?? null;

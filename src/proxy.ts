@@ -1,6 +1,12 @@
 // src/proxy.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/security/adminAuth";
+import {
+  isNominativeApiPath,
+  resolveNominativeCaller,
+  nominativeAccessDenied,
+  applyNominativeCacheHeaders,
+} from "@/lib/security/nominativeApiGate";
 
 function basicAuthFail() {
   return new NextResponse("Unauthorized", {
@@ -39,7 +45,10 @@ function isBetaExempt(pathname: string): boolean {
   if (pathname.startsWith("/access")) return true;
   // Simulator (educational prototype — no backend, no data)
   if (pathname === "/simulator" || pathname.startsWith("/simulator/")) return true;
-  // API routes have their own per-route guards
+  // API routes have their own per-route guards. ATTENTION : cette exemption
+  // est la source de l'asymétrie corrigée par le gate nominatif ci-dessous
+  // (isNominativeApiPath). Elle reste vraie pour le RESTE de /api/* — scans
+  // on-chain, marché, santé — qui ne sert pas de nominatif.
   if (pathname.startsWith("/api/")) return true;
   // Admin has its own basic auth
   if (pathname.startsWith("/admin")) return true;
@@ -157,6 +166,20 @@ export function proxy(req: NextRequest) {
     }
   }
 
+  // ── P0-1 — Gate des lectures NOMINATIVES de l'API ──────────────────────
+  // Les pages produit sont derrière le cookie beta ; leurs sources de données
+  // ne l'étaient pas. Une route qui renvoie handle / displayName / tier / rôle
+  // / association à un case ou un token n'est plus appelable en anonyme.
+  // Fail-closed, aucune branche NODE_ENV. Les appelants légitimes (front
+  // interne via cookie beta, admin, partenaire, app iOS) sont préservés —
+  // voir src/lib/security/nominativeApiGate.ts.
+  if (isNominativeApiPath(pathname)) {
+    if (resolveNominativeCaller(req) === null) {
+      return nominativeAccessDenied();
+    }
+    return applyNominativeCacheHeaders(NextResponse.next());
+  }
+
   // ── Beta gating — all public demo pages ────────────────────────────────
   // Fail-closed: if not exempt, must have a session cookie.
   if (!isBetaExempt(pathname)) {
@@ -181,6 +204,26 @@ export const config = {
     "/api/investigator/:path*",
     // Investigator onboarding — needs admin-bypass check in middleware
     "/investigators/onboarding/:path*",
+    // P0-1 — surfaces API nominatives. `/x/:path*` compile en `/x(?:/(.*))?`
+    // (path-to-regexp) : la racine `/x` est donc DÉJÀ couverte, pas besoin
+    // d'une seconde entrée. Cette liste doit rester alignée sur
+    // NOMINATIVE_EXACT / NOMINATIVE_PREFIXES / NOMINATIVE_PATTERNS
+    // (src/lib/security/nominativeApiGate.ts) : un chemin déclaré nominatif
+    // que le matcher n'atteint pas est un gate qui ne s'exécute jamais.
+    // L'alignement est verrouillé par __tests__/security/nominative-api-gate.test.ts,
+    // qui recompile ces motifs avec le path-to-regexp de Next lui-même.
+    "/api/kol/:path*",
+    "/api/cluster/:path*",
+    "/api/coordination/:path*",
+    "/api/laundry/:path*",
+    "/api/watchlist/:path*",
+    "/api/explorer/:path*",
+    "/api/casefile/public",
+    "/api/v1/kol/:path*",
+    "/api/v1/shill-to-exit",
+    "/api/token/:chain/:address/kol-alert",
+    // Chemin EXACT — surtout pas "/api/scan/:path*", qui fermerait le scan public.
+    "/api/scan/grounding",
     // Beta gating — all locale pages + root
     "/",
     "/en/:path*",
