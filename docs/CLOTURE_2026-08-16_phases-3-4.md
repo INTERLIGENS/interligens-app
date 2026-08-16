@@ -202,3 +202,95 @@ qui sont un constat d'absence de mesure, **pas** une mesure à zéro.
 ⚠️ `KolTokenInvolvement` est classé `KEEP + OPERATE` malgré ses 15 lignes gelées **parce qu'il
 alimente un chiffre publié**. Le geler serait figer un montant affiché ; le couper le ferait
 disparaître d'une surface. C'est le sous-système le plus urgent à trancher.
+
+---
+
+## Phase 1 — Bouton d'archivage (livré, déployé `1178ab8`)
+
+Rendu vérifié à l'origine, hors Cloudflare, session admin : HTTP 200, sections
+`Published links` / `Archive (unpublish)` / `Registre des décisions **VIDE**` présentes.
+
+Refus serveur, 14 tests sur le **handler de route** avec les charges utiles que l'UI ne
+produit jamais :
+
+| Charge utile | Réponse |
+|---|---|
+| sans session admin | 401 |
+| motif absent / espaces / non textuel / corps absent | 400 `missing_reason` |
+| code inconnu | 400 `invalid_reason_code` + liste des 6 codes |
+| `approved` / `rejected` | 400 — codes de mise en ligne, pas de retrait |
+| lien `draft` | 409 `not_public` |
+| lien déjà archivé | 200 `noop_already_archived`, sans rejournaliser |
+| lien inexistant | 404 `not_found` |
+
+**Aucun refus n'écrit quoi que ce soit** (test de bilan global). Mutation testing : 5 mutants
+(motif de dépublication `approved` accepté / session admin non vérifiée / draft archivable /
+motif vide accepté / route rendant 200 sur tout refus) → **5 tués**.
+
+Preuve en production sur un id inexistant : 401 sans auth, **404** avec auth et entrées
+valides — la route atteint bien la base. Jamais de 500.
+
+## Phase 2 — Mode économique X (appliqué)
+
+Valeurs réelles avant écriture, lues via `vercel env ls` :
+
+| Variable | Avant | Après | Scope |
+|---|---|---|---|
+| `WATCHER_MAX_HANDLES` | existait (96 j) — valeur exacte **non lisible** | **20** | Production |
+| `WATCHER_MAX_POSTS_PER_HANDLE` | **n'existait pas** → défaut code 15 | **3** | Production |
+| `X_API_HARD_CAP_POSTS` | **n'existait pas** → défaut code 24 000 | **3500** | Production |
+| `WATCHER_BRIDGE_ENABLED` | existait (2 j) | **false** | Production |
+
+Toutes mono-scope Production — aucun risque prod+preview. Format validé à l'octet avant
+écriture (`od -c` + `wc -c`) : `20` = 2 o, `3` = 1 o, `3500` = 4 o, `false` = 5 o, aucun `\n`.
+
+`WATCHER_MAX_HANDLES` : valeur exacte **jamais lue** (`vercel env pull` interdit, l'entrée est
+chiffrée dans `env ls`, les logs runtime hors fenêtre). Mais `handlesV2.slice(0, maxHandles)`
+avec `handlesV2.length = 108` rend **toute valeur ≥ 108 behaviouralement identique** — et
+l'observation empirique (candidats issus de l'index 107 sur 7 jours) prouve que la liste
+entière était scannée. Le chiffrage tient.
+
+**Effet chiffré.** Usage réel du cycle X lu le 2026-08-16 : `project_usage = 15 514` posts,
+reset jour 21.
+
+* Avant : ~127 $/mois projeté (août au 15 : 61,35 $ / 10 577 posts, soit 4,09 $/j).
+* Pire cas après : 19 × 3 + 100 (GordonGekko, **codé en dur**) = **157 posts/run** → 4 710/mois
+  → 27,32 $/mois.
+* Plafond absolu `X_API_HARD_CAP_POSTS = 3500` → **20,30 $/cycle**, quoi qu'il arrive.
+* **Économie ≈ 107 $/mois, −84 %.**
+
+**Effet immédiat assumé** : `15 514 + 157 ≥ 3500` → le Watcher saute tous ses runs jusqu'au
+reset du 21 août. C'est la pause décidée, pas un effet de bord. Reprise ensuite à ~157/run.
+
+**Non vérifiable avant le prochain run.** Les 4 entrées sont créées « Sensitive » donc
+non relisibles. Point de contrôle : le cron du 2026-08-17 06:00 UTC journalise
+`Budget mode: scanning 20 of 108 handles (WATCHER_MAX_HANDLES=20)` et `cap=3 posts/handle`.
+
+**Piège latent signalé** : `envBool` teste `v === "true"`. Une valeur `"true\n"` posée depuis
+l'UI Vercel donnerait **false** silencieusement. À savoir pour qui réactivera le bridge.
+
+## État de la base après ce chantier
+
+| | |
+|---|---|
+| `KolTokenLinkStatusLog` | **0 ligne** — la règle absolue tient |
+| `KolTokenLink` | public **187** (inchangé), draft **104**, rejected 1 |
+| `KolProfile` publiés | **32** (inchangé) |
+| Dépense X août | 65,51 $ / 11 295 posts |
+
+Les drafts sont passés de 92 à 104 : le run bridge de **06:57 (avant déploiement)** en a créé
+12. Les runs suivants (07:49, 07:57) sont `disabled`. L'alternance `success`/`disabled`
+constatée hier reste **inexpliquée** — elle précède le changement d'env ; celui-ci ne prendra
+effet qu'au prochain run.
+
+## Ce qui reste réellement humain
+
+| # | Sujet | Pourquoi une machine ne peut pas trancher |
+|---|---|---|
+| 1 | **Revoir les 104 drafts** | chaque draft est une accusation nominative ; l'approuver est une décision éditoriale engageant la responsabilité, pas une validation technique |
+| 2 | **Trancher les 3 chiffres de proceeds** | 94 644 $ / 579 645 $ / 40 627 $ pour GordonGekko : décider lequel fait autorité suppose de savoir ce qu'on veut *dire* par « proceeds » — définition produit, pas bug |
+| 3 | **Décider du sort des 165 liens** | publier 13 profils ou archiver 165 liens : les deux sont des décisions éditoriales de masse |
+| 4 | **Recalculer ou retirer `sxyz500`** | un montant `high` de 111 jours est publié ; le laisser, le rafraîchir ou le dépublier engage |
+| 5 | **Rouvrir la collecte X** | dépend des seuils de reprise (% revus, diversité, délai médian), c'est-à-dire d'un jugement sur la capacité de revue |
+| 6 | **Corriger la doc Phantom Guard / LIBERTAS** | décider si c'est une erreur de doc ou un projet abandonné |
+| 7 | **Le 403 Cloudflare sur les pages** | seul un humain avec un navigateur non challengé peut dire si l'incident est réel ou limité à mon client |
