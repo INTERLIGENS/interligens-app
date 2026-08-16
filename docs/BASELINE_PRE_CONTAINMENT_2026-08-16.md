@@ -112,149 +112,129 @@ proceeds et n'est pas concerné par le containment.
 
 ## 2. Les tokens dont le score change
 
+> ### ⚠️ CORRECTION DU 2026-08-16 19:01 UTC
+>
+> **La première version de cette section annonçait 68 bascules ORANGE → RED.
+> Ce chiffre était FAUX, et il était faux à cause d'un artefact de méthode.**
+> Il est conservé ci-dessous, en §2.2, parce qu'il est la preuve que l'artefact
+> existait et qu'il aurait été livré en production.
+>
+> `getTokenLargestAccounts` rend les plus gros **comptes de tokens**. Sur
+> Solana, la courbe de bonding pump.fun, un pool Raydium / Orca / Meteora, un
+> vault ou un escrow en sont aussi. Les compter comme des « détenteurs »
+> produit une concentration proche de 100 % sur des tokens où **aucune
+> personne** ne détient quoi que ce soit.
+>
+> Blocage posé par David avant déploiement. Correction appliquée, mesure
+> refaite. Chiffres définitifs en §2.3.
+
 ### 2.1 Ce qui provoque le changement
 
-`public-api.solscan.io` rend **HTTP 404**. Conséquence mesurée : sur les **84 tokens sondés,
-`topHolderPct` vaut `null` dans 84 réponses sur 84**. Les signaux
-`holders_concentrated_80` (+15), `holders_concentrated_60` (+10) et le `cluster_risk` (+10)
-qui en dépend ne se déclenchent donc **jamais** aujourd'hui.
+`public-api.solscan.io` rend **HTTP 404**. Conséquence mesurée : sur les
+**84 tokens sondés, `topHolderPct` vaut `null` dans 84 réponses sur 84**. Les
+signaux `holders_concentrated_80` (+15), `holders_concentrated_60` (+10) et le
+`cluster_risk` (+10) qui en dépend ne se déclenchent donc **jamais**
+aujourd'hui. Le remplacement de la source les réactive.
 
-Le remplacement de la source les réactive.
+Ce constat-là est inchangé et reste exact.
 
-### 2.2 Ampleur — le point à lire avant de déployer
+### 2.2 Première mesure — méthode naïve, résultat DISQUALIFIÉ
+
+Comptage de tous les comptes de tokens, sans distinguer leur propriétaire.
 
 | Mesure | Valeur |
 |---|---:|
-| Mints du corpus mesurés | **108** |
-| Concentration lisible | 94 (14 indisponibles) |
+| Concentration lisible | 94 / 108 |
 | top 10 > 80 % du supply | **70** |
-| top 10 entre 60 et 80 % | **11** |
-| Tokens sondés en production | **84** (tous `HTTP 200`) |
-| **Score modifié** | **81** |
-| **Verdict modifié** | **77** |
+| dont exactement 100 % | **10** |
+| Scores modifiés | 81 / 84 |
+| Verdicts modifiés | 77 |
 | dont **ORANGE → RED** | **68** |
-| dont GREEN → ORANGE | **9** |
-| `cluster_risk` nouvellement déclenché | **61** |
-| Delta moyen sur les tokens modifiés | **+21,9** |
+| Delta moyen | +21,9 |
 
-> ⚠️ **Le déploiement fait basculer 68 tokens en RED d'un coup.**
-> Ce n'est pas un ajustement à la marge. C'est la correction d'une sous-évaluation
-> systématique, mais elle sera visible immédiatement par tout utilisateur bêta, et le
-> volume la rend difficile à présenter comme un simple correctif.
+**Ces 68 verdicts RED auraient été des verdicts fondés sur un artefact.**
+Vérification manuelle sur OLTSESON (`2WnQohaM…pump`) : le compte n°1 détient
+958 881 801 tokens, soit 99,9 % du supply, et son propriétaire est une PDA du
+programme `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA` — l'**AMM pump.fun**.
+Le compte n°17 appartient à `LBUZKhRxPF…`, **Meteora DLMM**.
 
-**Limite de la mesure, à connaître.** `getTokenLargestAccounts` compte des *comptes de
-tokens*, y compris la courbe de bonding pump.fun et les pools de liquidité. Sur un token
-mort dont l'essentiel du supply est resté dans la courbe, la concentration mesurée approche
-100 % sans qu'un détenteur humain concentre quoi que ce soit — **10 tokens du corpus sont
-exactement à 100 %**. La mesure est factuellement exacte ; son interprétation comme
-« risque de concentration » est une décision produit, pas une évidence technique. Le
-comportement est celui que le signal a toujours été censé produire — il était simplement
-éteint depuis que la source est morte.
+### 2.3 Mesure corrigée — comptes de programme exclus
 
-### 2.3 Contrôles
+Classification déterministe, sans liste de programmes à maintenir : un vrai
+portefeuille est une autorité dont le compte appartient au **System Program**
+(`1111…1111`) et n'est pas exécutable. Tout le reste est une PDA de programme,
+et est exclu du numérateur.
 
-| Token | Avant | top 10 mesuré | Après | Commentaire |
+Pour les autorités **absentes de la chaîne** — indiscernables entre « PDA jamais
+financée » et « portefeuille vidé » — la conclusion est **encadrée** : borne
+basse (tous programmes) et borne haute (tous portefeuilles). Si les deux bornes
+tombent dans la même bande de signal, la conclusion ne dépend pas de
+l'hypothèse et on conclut ; sinon on refuse, et la confiance tombe à `Low` avec
+le motif.
+
+| Mesure | Naïf | **Corrigé** |
+|---|---:|---:|
+| Mesure aboutie | 94 | **83 / 84 (99 %)** |
+| Refus explicite | 14 | **1** |
+| Tokens à 100 % | **10** | **0** |
+| top 10 > 80 % | **70** | **0** |
+| top 10 entre 60 et 80 % | 11 | **1** |
+| **Scores modifiés** | 81 | **1** |
+| **Verdicts modifiés** | 77 | **0** |
+| **ORANGE → RED** | **68** | **0** |
+
+**Le déploiement ne fait basculer aucun token.** Un seul score bouge :
+
+| Token | top 10 corrigé | dont programmes | score | verdict |
+|---|---:|---:|---|---|
+| **ANSEM** | 62,6 % (borne haute 62,6 %) | 0,5 % | 50 → **60** | ORANGE → ORANGE |
+
+C'est une concentration de **portefeuilles réels** — seuls 0,5 % du supply sont
+dans un programme. Le signal fait exactement ce pour quoi il a été écrit.
+
+**Ce que l'exclusion a écarté**, tous tokens confondus : AMM pump.fun (81
+tokens), Token-2022 (7), Meteora DLMM (4), Raydium CLMM (3), courbe de bonding
+pump.fun (2), Orca Whirlpool (1), 2 programmes non étiquetés.
+
+**75 des 83 tokens mesurés ont plus de 50 % de leur supply immobilisé dans un
+programme** ; 25 en ont plus de 95 %. L'artefact n'était pas marginal, il était
+systémique.
+
+### 2.4 Contrôles
+
+| Token | Naïf | **Corrigé** | dont programmes | Effet |
 |---|---:|---:|---:|---|
-| **BOTIFY** (`BYZ9CcZG…69xb`) | score 13, GREEN | **53,4 %** | **13, GREEN — inchangé** | sous le seuil de 60 % : aucun signal, aucun effet |
-| **GHOST** (`De4ULouu…pump`) | voir tableau §2.4 | **93,5 %** | +15 puis +10 | le dossier de référence bascule |
+| **GHOST** (`De4ULouu…pump`) | 93,5 % | **9,5 %** | 84,4 % (AMM pump.fun) | **aucun signal** |
+| **BOTIFY** (`BYZ9CcZG…69xb`) | 53,4 % | sous le seuil | — | aucun signal, score 13 GREEN inchangé |
 
-BOTIFY est le contrôle négatif : il prouve que le seuil discrimine réellement et que la
-réactivation n'ajoute pas un delta à tout le monde.
+⚠️ GHOST à 93,5 % avait été présenté comme la preuve d'exécution du point 3 au
+STOP 2. **C'était l'artefact lui-même.** La concentration réelle des
+portefeuilles y est de 9,5 % : le dossier de référence ne bascule pas, et ne
+doit pas basculer.
 
-### 2.4 Tableau complet — 81 tokens, avant → après
+### 2.5 Les 20 tokens les plus touchés par la correction
 
-Projection calculée depuis les signaux réellement servis en production et les règles de
-`src/lib/tigerscore/engine.ts` (`holders_concentrated_80` +15 au-delà de 80 %,
-`holders_concentrated_60` +10 entre 60 et 80 %, `cluster_risk` +10 dès 3 signaux forts
-simultanés — les signaux forts étant `liquidity_very_low`, `liquidity_low`,
-`token_young_7d`, `token_young_30d` et la concentration elle-même).
-
-**Ce sont des projections, pas des mesures post-déploiement.** Elles seront à confirmer sur
-la production après l'étape 3.
-
-| # | symbole | mint | score avant | verdict avant | top 10 mesuré | +concentration | +cluster_risk | score après | verdict après |
-|---|---|---|---:|---|---:|---:|---:|---:|---|
-| 1 | CYBERUNC2077 | `2jFYTf1j…pump` | 62 | ORANGE | 98 % | +15 | +10 | **87** | **RED** |
-| 2 | PWOG | `3LhFf7hj…pump` | 62 | ORANGE | 98.3 % | +15 | +10 | **87** | **RED** |
-| 3 | FOMOPERPS | `4Zu4zbJN…pump` | 62 | ORANGE | 96.5 % | +15 | +10 | **87** | **RED** |
-| 4 | SEALON | `72uv3iPK…pump` | 62 | ORANGE | 92.7 % | +15 | +10 | **87** | **RED** |
-| 5 | RAMPAGE | `7Xdftxa2…pump` | 62 | ORANGE | 98.4 % | +15 | +10 | **87** | **RED** |
-| 6 | OPENLIVING | `7icY7J9U…pump` | 62 | ORANGE | 97 % | +15 | +10 | **87** | **RED** |
-| 7 | MELANIA64 | `7pAexbqx…pump` | 62 | ORANGE | 99.7 % | +15 | +10 | **87** | **RED** |
-| 8 | KING | `9A5QWVQu…pump` | 62 | ORANGE | 93.6 % | +15 | +10 | **87** | **RED** |
-| 9 | LUNA | `9ZDZYJNm…pump` | 62 | ORANGE | 97.6 % | +15 | +10 | **87** | **RED** |
-| 10 | FART | `9bde4zbM…pump` | 62 | ORANGE | 99.1 % | +15 | +10 | **87** | **RED** |
-| 11 | HOOKPAD | `B3NtgzdS…pump` | 62 | ORANGE | 97.9 % | +15 | +10 | **87** | **RED** |
-| 12 | SH | `CG82j2ad…pump` | 62 | ORANGE | 99 % | +15 | +10 | **87** | **RED** |
-| 13 | PUMPFROG | `DKHbtzo7…pump` | 62 | ORANGE | 94.1 % | +15 | +10 | **87** | **RED** |
-| 14 | MUDWIG | `EjbK4C7B…pump` | 62 | ORANGE | 86.4 % | +15 | +10 | **87** | **RED** |
-| 15 | NEMO | `GJ5S5Nxh…pump` | 62 | ORANGE | 97.1 % | +15 | +10 | **87** | **RED** |
-| 16 | THESIS | `H4ZrjWPj…pump` | 62 | ORANGE | 99.2 % | +15 | +10 | **87** | **RED** |
-| 17 | OLTSESON | `2WnQohaM…pump` | 57 | ORANGE | 100 % | +15 | +10 | **82** | **RED** |
-| 18 | DREAMCOIN | `3UGJHrLq…pump` | 57 | ORANGE | 95.7 % | +15 | +10 | **82** | **RED** |
-| 19 | HITLERHAUS | `47pWDLGY…pump` | 57 | ORANGE | 98.7 % | +15 | +10 | **82** | **RED** |
-| 20 | WAGMI | `5agBrU27…pump` | 57 | ORANGE | 98.3 % | +15 | +10 | **82** | **RED** |
-| 21 | REDDIT | `5tYCSAFH…pump` | 57 | ORANGE | 97.8 % | +15 | +10 | **82** | **RED** |
-| 22 | NIGGAHOUSE | `6Sk1NgWh…pump` | 57 | ORANGE | 96.7 % | +15 | +10 | **82** | **RED** |
-| 23 | MEMOLUTION | `6a4TCQoC…pump` | 57 | ORANGE | 96.9 % | +15 | +10 | **82** | **RED** |
-| 24 | JIMHOOD | `6wCpTaxL…pump` | 57 | ORANGE | 95.7 % | +15 | +10 | **82** | **RED** |
-| 25 | SEAL | `7GPdC9F5…pump` | 57 | ORANGE | 99.1 % | +15 | +10 | **82** | **RED** |
-| 26 | EMBERCAT | `94jVx7XR…pump` | 57 | ORANGE | 90.5 % | +15 | +10 | **82** | **RED** |
-| 27 | DLM | `AEgyF6YL…pump` | 57 | ORANGE | 97.8 % | +15 | +10 | **82** | **RED** |
-| 28 | LENNY  | `ApMrbYXQ…pump` | 57 | ORANGE | 81.6 % | +15 | +10 | **82** | **RED** |
-| 29 | MURPHY | `AxQSeybK…pump` | 57 | ORANGE | 86.4 % | +15 | +10 | **82** | **RED** |
-| 30 | CHIBBI | `BSiKCMF2…pump` | 57 | ORANGE | 88.3 % | +15 | +10 | **82** | **RED** |
-| 31 | USTC | `F1KW9nmn…pump` | 57 | ORANGE | 100 % | +15 | +10 | **82** | **RED** |
-| 32 | PODUM | `GAcMLQLW…pump` | 57 | ORANGE | 98.5 % | +15 | +10 | **82** | **RED** |
-| 33 | CATDANCE | `HcNWQPmv…pump` | 57 | ORANGE | 90.8 % | +15 | +10 | **82** | **RED** |
-| 34 | BBC | `MXHTEbFc…pump` | 57 | ORANGE | 98.1 % | +15 | +10 | **82** | **RED** |
-| 35 | ANSEMOTHY | `cdxxwBUA…pump` | 57 | ORANGE | 85.4 % | +15 | +10 | **82** | **RED** |
-| 36 | RAVECAT | `mNzssXQ9…pump` | 57 | ORANGE | 95.4 % | +15 | +10 | **82** | **RED** |
-| 37 | ANONS | `5PCZHS3C…pump` | 53 | ORANGE | 99.4 % | +15 | +10 | **78** | **RED** |
-| 38 | NEEGYCOIN | `2bkkpApC…pump` | 52 | ORANGE | 100 % | +15 | +10 | **77** | **RED** |
-| 39 | RIANG | `4hUC4L81…pump` | 52 | ORANGE | 97.1 % | +15 | +10 | **77** | **RED** |
-| 40 | WHITEBULL | `4xQ94116…pump` | 52 | ORANGE | 99.9 % | +15 | +10 | **77** | **RED** |
-| 41 | KNOX | `4z3fS34V…pump` | 52 | ORANGE | 98 % | +15 | +10 | **77** | **RED** |
-| 42 | SVG | `5jEBmD6V…pump` | 52 | ORANGE | 100 % | +15 | +10 | **77** | **RED** |
-| 43 | NEEG | `6ANcFRdR…pump` | 52 | ORANGE | 100 % | +15 | +10 | **77** | **RED** |
-| 44 | NEEGYCOIN | `BC8tsBtq…pump` | 52 | ORANGE | 100 % | +15 | +10 | **77** | **RED** |
-| 45 | SCALER | `BLHdKeaB…pump` | 52 | ORANGE | 100 % | +15 | +10 | **77** | **RED** |
-| 46 | NIBZ | `CbzkNcwV…pump` | 52 | ORANGE | 100 % | +15 | +10 | **77** | **RED** |
-| 47 | COAL | `EDWMuNrF…pump` | 52 | ORANGE | 97.9 % | +15 | +10 | **77** | **RED** |
-| 48 | RIZZCATE | `FiNd8X5h…pump` | 52 | ORANGE | 99.1 % | +15 | +10 | **77** | **RED** |
-| 49 | BIND | `9Tvkqa2C…BiND` | 32 | GREEN | 98.2 % | +15 | +10 | **57** | **ORANGE** |
-| 50 | NORMOIDS | `57HrLUAX…2vmh` | 27 | GREEN | 88.7 % | +15 | +10 | **52** | **ORANGE** |
-| 51 | PRESCIENCE | `Dwm6hJL8…h2Yi` | 27 | GREEN | 98.2 % | +15 | +10 | **52** | **ORANGE** |
-| 52 | VICTOR | `6J4fmDst…pump` | 57 | ORANGE | 72.9 % | +10 | +10 | **77** | **RED** |
-| 53 | OMOJI | `7WmG1z9y…pump` | 57 | ORANGE | 79.8 % | +10 | +10 | **77** | **RED** |
-| 54 | JORDAN | `8TLxeYnn…pump` | 57 | ORANGE | 78.8 % | +10 | +10 | **77** | **RED** |
-| 55 | FORTNITE | `ERRZ89iF…pump` | 57 | ORANGE | 78.9 % | +10 | +10 | **77** | **RED** |
-| 56 | TARDIMALS | `77rUTY78…pump` | 52 | ORANGE | 67.1 % | +10 | +10 | **72** | **RED** |
-| 57 | BR1 | `8T6rjb3e…pump` | 52 | ORANGE | 78.2 % | +10 | +10 | **72** | **RED** |
-| 58 | WAGMI | `AKsiofzf…pump` | 52 | ORANGE | 74 % | +10 | +10 | **72** | **RED** |
-| 59 | TURTLENECK | `F6Tbmw6b…pump` | 52 | ORANGE | 68 % | +10 | +10 | **72** | **RED** |
-| 60 | FROGE | `FVZhiS1u…pump` | 52 | ORANGE | 63.3 % | +10 | +10 | **72** | **RED** |
-| 61 | WIG | `Gs2LiwnY…pump` | 52 | ORANGE | 70.6 % | +10 | +10 | **72** | **RED** |
-| 62 | MOX | `3Knru44n…pump` | 67 | ORANGE | 96.1 % | +15 | +0 | **82** | **RED** |
-| 63 | BEANIE | `6ZyA44Kz…pump` | 67 | ORANGE | 94.3 % | +15 | +0 | **82** | **RED** |
-| 64 | FARMER | `ARW3iLiJ…pump` | 67 | ORANGE | 85.8 % | +15 | +0 | **82** | **RED** |
-| 65 | TREE | `Eqq9cQMF…pump` | 67 | ORANGE | 98.6 % | +15 | +0 | **82** | **RED** |
-| 66 | PUMPERS | `Hi2VTgk4…pump` | 67 | ORANGE | 89.1 % | +15 | +0 | **82** | **RED** |
-| 67 | CLOUT | `5jUwEEKM…pump` | 62 | ORANGE | 95.9 % | +15 | +0 | **77** | **RED** |
-| 68 | CATSEM | `5upMUvnB…pump` | 62 | ORANGE | 89.2 % | +15 | +0 | **77** | **RED** |
-| 69 | MEMECOIN | `7NG9CYXh…pump` | 62 | ORANGE | 89.7 % | +15 | +0 | **77** | **RED** |
-| 70 | TORTUGA | `8v23vrVz…pump` | 62 | ORANGE | 95.7 % | +15 | +0 | **77** | **RED** |
-| 71 | PLANSEM | `j8RdRQ8t…pump` | 62 | ORANGE | 91.9 % | +15 | +0 | **77** | **RED** |
-| 72 | WSG | `3zPBkMhk…pump` | 50 | ORANGE | 93.9 % | +15 | +0 | **65** | ORANGE |
-| 73 | GHOST | `De4ULouu…pump` | 42 | ORANGE | 93.5 % | +15 | +0 | **57** | ORANGE |
-| 74 | FARTATM  | `6oGVn8NC…pump` | 30 | GREEN | 100 % | +15 | +0 | **45** | **ORANGE** |
-| 75 | TAYLOR | `7MkBrQ95…pump` | 30 | GREEN | 99.4 % | +15 | +0 | **45** | **ORANGE** |
-| 76 | BOING | `CvrvvCTU…pump` | 30 | GREEN | 99.7 % | +15 | +0 | **45** | **ORANGE** |
-| 77 | GOGLZ | `D4Eeq1uH…pump` | 30 | GREEN | 100 % | +15 | +0 | **45** | **ORANGE** |
-| 78 | MINER | `GMaQLYXT…pump` | 30 | GREEN | 99.9 % | +15 | +0 | **45** | **ORANGE** |
-| 79 | BLOWIE | `RNc9b5qK…pump` | 30 | GREEN | 99.7 % | +15 | +0 | **45** | **ORANGE** |
-| 80 | TG | `3SDjJTCS…gsCs` | 17 | GREEN | 83.2 % | +15 | +0 | **32** | GREEN |
-| 81 | ANSEM | `9cRCn9rG…pump` | 50 | ORANGE | 62.7 % | +10 | +0 | **60** | ORANGE |
+| symbole | mint | top 10 méthode NAÏVE | top 10 corrigé | dont programmes | verdict avant | verdict après |
+| OLTSESON | `2WnQohaM…pump` | 100 % | **0.1 %** | 99.8 % | ORANGE | ORANGE |
+| NEEGYCOIN | `2bkkpApC…pump` | 100 % | **0.2 %** | 99.8 % | ORANGE | ORANGE |
+| SVG | `5jEBmD6V…pump` | 100 % | **0.1 %** | 99.9 % | ORANGE | ORANGE |
+| NEEG | `6ANcFRdR…pump` | 100 % | **0 %** | 99.9 % | ORANGE | ORANGE |
+| FARTATM  | `6oGVn8NC…pump` | 100 % | **0.9 %** | 99 % | GREEN | GREEN |
+| NEEGYCOIN | `BC8tsBtq…pump` | 100 % | **0.1 %** | 99.7 % | ORANGE | ORANGE |
+| SCALER | `BLHdKeaB…pump` | 100 % | **0 %** | 100 % | ORANGE | ORANGE |
+| NIBZ | `CbzkNcwV…pump` | 100 % | **0.3 %** | 99.7 % | ORANGE | ORANGE |
+| GOGLZ | `D4Eeq1uH…pump` | 100 % | **0.2 %** | 99.8 % | GREEN | GREEN |
+| USTC | `F1KW9nmn…pump` | 100 % | **0.1 %** | 99.7 % | ORANGE | ORANGE |
+| WHITEBULL | `4xQ94116…pump` | 99.9 % | **0.4 %** | 99.2 % | ORANGE | ORANGE |
+| MINER | `GMaQLYXT…pump` | 99.9 % | **0.3 %** | 99.5 % | GREEN | GREEN |
+| MELANIA64 | `7pAexbqx…pump` | 99.7 % | **0.5 %** | 99.2 % | ORANGE | ORANGE |
+| BOING | `CvrvvCTU…pump` | 99.7 % | **0.9 %** | 98.7 % | GREEN | GREEN |
+| BLOWIE | `RNc9b5qK…pump` | 99.7 % | **2.7 %** | 96.9 % | GREEN | GREEN |
+| ANONS | `5PCZHS3C…pump` | 99.4 % | **8.7 %** | 90.8 % | ORANGE | ORANGE |
+| TAYLOR | `7MkBrQ95…pump` | 99.4 % | **1.8 %** | 97.4 % | GREEN | GREEN |
+| THESIS | `H4ZrjWPj…pump` | 99.2 % | **2.7 %** | 96.4 % | ORANGE | ORANGE |
+| SEAL | `7GPdC9F5…pump` | 99.1 % | **4 %** | 94.5 % | ORANGE | ORANGE |
+| FART | `9bde4zbM…pump` | 99.1 % | **8.6 %** | 90.6 % | ORANGE | ORANGE |
 
 ---
 
