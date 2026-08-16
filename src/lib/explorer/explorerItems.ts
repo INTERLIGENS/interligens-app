@@ -335,7 +335,9 @@ export async function getExplorerStats() {
       _sum: { totalDocumented: true },
     }),
     prisma.kolWallet.count({ where: { isPubliclyUsable: true, kol: where } }),
-    prisma.kolTokenLink.findMany({ where: { kol: where }, select: { tokenSymbol: true }, distinct: ['tokenSymbol'] }).then(r => r.length),
+    // P0-2 — le compteur public « launches » filtrait sur le profil (kol: where)
+    // mais pas sur le lien : il comptait les drafts, et compterait les archives.
+    prisma.kolTokenLink.findMany({ where: { kol: where, visibility: 'public' }, select: { tokenSymbol: true }, distinct: ['tokenSymbol'] }).then(r => r.length),
     prisma.kolProfile.count({ where: { ...where, evidenceDepth: { in: ['strong', 'comprehensive'] } } }),
   ])
 
