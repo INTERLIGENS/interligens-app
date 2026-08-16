@@ -61,7 +61,11 @@ export async function GET(req: Request) {
     top3_pct: holders.top3Pct,
     excluded_count: 0,
     holders_source: holders.source,
-    holders_counted: holders.holdersCounted,
+    holders_counted: holders.walletsCounted,
+    // Ce que la mesure a ecarte : courbe de bonding, pools, vaults. Publie
+    // pour que le chiffre soit reproductible par un tiers.
+    program_held_pct: holders.programHeldPct,
+    excluded_programs: holders.excludedPrograms,
     fetched_at,
     cache_hit: false,
   });

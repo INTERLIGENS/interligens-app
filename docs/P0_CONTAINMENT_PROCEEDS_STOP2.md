@@ -13,6 +13,9 @@ main                                        5bed649   (inchangé)
 hotfix/guard-p0-proceeds-containment        3808be1   chore(guard): ouvre … sur 25 fichiers nommés
 feat/cc-offline-60-p0-proceeds-containment  a7945ce   feat(governance): containment des proceeds
                                             2536492   fix(scoring): l'absence de données …
+                                            f43ca18   docs(stop2)
+                                            2e5b3d9   docs(baseline)
+                                            (+ 1)     fix(scoring): exclusion des comptes de programme
 ```
 
 `main` n'a reçu aucun commit. Les deux branches sont locales, non poussées.
@@ -27,9 +30,9 @@ feat/cc-offline-60-p0-proceeds-containment  a7945ce   feat(governance): containm
 |---|---|
 | `git diff --quiet HEAD` | ✅ arbre de travail identique à HEAD — prérequis de `vercel --prod` satisfait |
 | `npx tsc --noEmit` | ✅ aucune erreur |
-| `npx vitest run` | ✅ **3 012 verts**, 2 ignorés, 290 fichiers, **0 échec** |
+| `npx vitest run` | ✅ **3 016 verts**, 2 ignorés, 290 fichiers, **0 échec** |
 | Guard sur le diff du chantier | ✅ `aucun chemin interdit modifié` (29 puis 12 fichiers) |
-| Tests dédiés | 56 (containment) + 32 (dégradation) = **88**, dont **16 mutants tués** |
+| Tests dédiés | 56 (containment) + 33 (dégradation) + 9 (concentration) = **98**, dont **16 mutants tués** |
 | Snapshots anti-régression | **126 insertions, 0 suppression** |
 
 Le seul fichier non suivi est `AGENTS.md`, présent avant ce chantier et étranger à celui-ci.
@@ -66,7 +69,24 @@ Aucun montant ne bouge. Ce qui change quand même :
 | Échec de lookup renseignement | indiscernable d'une adresse propre | `intelligenceStatus: "UNKNOWN"` |
 | Token concentré (top 10 > 80 %) | signal jamais déclenché | **+15**, et `cluster_risk` redevient atteignable |
 
-⚠️ **Le point 3 fait MONTER des scores.** Mesure réelle du 2026-08-16 : GHOST (top 10 = **93,5 %**) passe de **0 à 45**. C'est la correction d'une sous-évaluation, pas une régression — mais des tokens vont changer de tier après le déploiement, et c'est attendu.
+⚠️ **Le point 3 peut faire monter des scores — mais beaucoup moins qu'annoncé initialement.**
+
+Une première mesure annonçait 68 bascules ORANGE → RED. **Ce chiffre était un artefact de
+méthode** : `getTokenLargestAccounts` comptait la courbe de bonding pump.fun et les pools
+comme des détenteurs. Blocage posé par David, correction appliquée (exclusion des comptes
+détenus par un programme), mesure refaite le 2026-08-16 à 19:01 UTC :
+
+| | Naïf (disqualifié) | **Corrigé** |
+|---|---:|---:|
+| Tokens à 100 % | 10 | **0** |
+| top 10 > 80 % | 70 | **0** |
+| Scores modifiés | 81 | **1** |
+| **Verdicts modifiés** | 77 | **0** |
+| **ORANGE → RED** | **68** | **0** |
+
+**Le déploiement ne fait basculer aucun token.** Un seul score bouge : ANSEM, 50 → 60,
+ORANGE → ORANGE, sur une concentration de portefeuilles réels (0,5 % seulement dans un
+programme). Détail complet : `docs/BASELINE_PRE_CONTAINMENT_2026-08-16.md` §2.
 
 ### 2.3 Après l'étape 4 (les six retraits)
 
@@ -106,7 +126,17 @@ Aucun montant ne bouge. Ce qui change quand même :
 - **Le gate est fail-closed**, donc un oubli fait disparaître un chiffre au lieu d'en publier un. Deux fixtures de test l'ont démontré en échouant : `watchlist.publish-gate` et `publication-lifecycle-cycle` ne déclaraient pas l'état de publication et ont vu leur montant retiré. Corrigées en déclarant l'état, pas en affaiblissant le gate.
 - **Aucune suppression.** Vérifié par test sur les deux fichiers SQL : aucun `DROP`, `DELETE` ou `TRUNCATE`, et aucune écriture de `NULL` dans un montant.
 
-### 3.3 Les deux limites connues
+### 3.3 Correction post-STOP 2 — l'artefact des comptes de programme
+
+Documentée ici parce qu'elle change ce que le déploiement fait. La mesure de concentration
+exclut désormais les comptes détenus par un programme (courbe de bonding, pools AMM, vaults),
+identifiés par une règle déterministe : un portefeuille est une autorité dont le compte
+appartient au System Program. Les autorités absentes de la chaîne sont encadrées — on conclut
+si les deux bornes tombent dans la même bande de signal, on refuse sinon.
+
+Effet : 68 bascules RED annoncées → **0**. 10 tokens à 100 % → **0**.
+
+### 3.4 Les deux limites connues
 
 1. **`getTokenLargestAccounts` échoue sur les tokens à très grand nombre de comptes.** Mesuré : USDC → `Too many accounts requested (10000000 pubkeys)` chez Helius, `HTTP 429` sur le RPC public. Ces tokens sortent donc en `holders_unavailable: true`, confiance `Low`. C'est le comportement voulu — on préfère dire « inconnu » — mais cela concerne les stablecoins et les majors, pour lesquels la concentration n'est pas le signal pertinent. **Non traité dans ce lot.**
 2. **Le cache mémoire de `/api/solana/holders` reste par instance de lambda.** L'échec y est désormais mis en cache 60 s au lieu de 5 min. Le problème de fond (cache par instance) est celui de tout le dépôt et sort du périmètre.
@@ -152,12 +182,17 @@ Les **31 archives PDF R2** sont intactes et le resteront. Le retour arrière du 
 **Concentration des détenteurs, contre le réseau, 2026-08-16 :**
 
 ```
-GHOST   De4ULouuU2c…pump   top10 = 93,5 %   source=helius   -> holders_concentrated_80 (+15), score 0 -> 45
-BOTIFY  BYZ9CcZGKAX…69xb   top10 = 53,4 %   source=helius   -> aucun signal (sous le seuil de 60 %)
-mint invalide                INDISPONIBLE                   -> confiance Low, missing=[holders]
-USDC                         INDISPONIBLE (limite §3.3)     -> confiance Low, missing=[holders]
+GHOST   De4ULouuU2c…pump   naïf 93,5 %  ->  CORRIGÉ 9,5 %   (84,4 % dans l'AMM pump.fun)
+                           -> aucun signal. Le « 93,5 % » cité dans la première version de
+                              ce document ÉTAIT l'artefact ; il est retiré.
+BOTIFY  BYZ9CcZGKAX…69xb   53,4 %  -> aucun signal (sous le seuil de 60 %), score 13 GREEN
+ANSEM                      62,6 %, dont 0,5 % en programme -> holders_concentrated_60 (+10)
+                              seul token du corpus dont le score change : 50 -> 60
+mint invalide                INDISPONIBLE  -> confiance Low, missing=[holders]
 
-Seuils : 95 % -> _80(+15) · 85 % -> _80(+15) · 70 % -> _60(+10) · 45 % -> aucun · 12 % -> aucun
+Seuils sur valeurs forcées : 95 % -> _80(+15) · 85 % -> _80(+15) · 70 % -> _60(+10)
+                             45 % -> aucun · 12 % -> aucun
+Classification : 83 mesures abouties sur 84 (99 %), 1 refus pour bornes ambiguës.
 ```
 
 **RPC indisponible :**

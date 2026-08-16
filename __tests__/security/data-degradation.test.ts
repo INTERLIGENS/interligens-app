@@ -210,8 +210,13 @@ describe("3. concentration des détenteurs", () => {
   });
 
   it("le seuil se déclenche réellement sur un token concentré", () => {
-    // Mesure réelle du 2026-08-16 sur GHOST (dossier INTERLIGENS) : 93,5 %.
-    // Avant ce lot, solscan rendant 404, ce token était noté comme distribué.
+    // ⚠️ La première version de ce test citait GHOST à 93,5 % comme preuve.
+    // C'était FAUX, et c'était un artefact de méthode : 84,4 % de ce supply est
+    // détenu par l'AMM pump.fun, pas par des personnes. Concentration réelle
+    // des portefeuilles : 9,5 % — aucun signal. Voir le §« piège » de
+    // src/lib/token/holderConcentration.ts.
+    // Le seuil est donc éprouvé sur des valeurs forcées, et la mesure réelle
+    // est vérifiée séparément par la classification des propriétaires.
     const concentre = computeTigerScore({ ...SOL_TOKEN, top10_holder_pct: 93.5 });
     const ids = concentre.drivers.map((d) => d.id);
     expect(ids).toContain("holders_concentrated_80");
@@ -235,6 +240,26 @@ describe("3. concentration des détenteurs", () => {
   });
 
   // La seconde moitié du correctif : la source retombera un jour.
+  it("un compte de programme n'est pas un détenteur", async () => {
+    const { classifyOwner } = await import("@/lib/token/holderConcentration");
+    // Portefeuille ordinaire : son compte appartient au System Program.
+    expect(classifyOwner({ owner: "11111111111111111111111111111111", executable: false })).toEqual({
+      cls: "wallet",
+      program: null,
+    });
+    // PDA d'un programme (courbe de bonding, pool AMM, vault) : exclue, et le
+    // programme est nommé. Cas réel mesuré sur OLTSESON, compte n°1, 99,9 % du
+    // supply : propriétaire détenu par l'AMM pump.fun.
+    expect(
+      classifyOwner({ owner: "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA", executable: false }),
+    ).toEqual({ cls: "program", program: "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA" });
+    // Un programme lui-même.
+    expect(classifyOwner({ owner: "anything", executable: true }).cls).toBe("program");
+    // Compte absent de la chaîne : INDÉTERMINÉ, jamais « portefeuille par défaut ».
+    expect(classifyOwner(null)).toEqual({ cls: "unknown", program: null });
+    expect(classifyOwner({} as never).cls).toBe("unknown");
+  });
+
   it("indisponible ≠ non concentré — la confiance tombe et la source est nommée", () => {
     const inconnu = computeTigerScore({ ...SOL_TOKEN, holders_unavailable: true });
     expect(inconnu.confidence).toBe("Low");
