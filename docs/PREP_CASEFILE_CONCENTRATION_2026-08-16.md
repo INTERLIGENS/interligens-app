@@ -10,6 +10,65 @@ constantes du PDF.** Ce document suit cet ordre.
 
 ---
 
+# 🛑 AVERTISSEMENT — NE PAS « CORRIGER » LA COQUILLE DU MINT
+
+## `UnZacja4` / `UnZacija4` n'est pas une faute de frappe à nettoyer
+
+Deux chaînes cohabitent dans le dépôt, à une lettre près :
+
+```
+UnZacja4    ← clé de routage : CASE_DB, handleToMint.ts:19, presets.ts:150, pdf/route.ts:44
+UnZacija4   ← mint réel, on-chain, affiché dans presets.ts:57
+```
+
+Cela **ressemble** à une coquille. Un passage de nettoyage, une revue de cohérence, un
+linter maison, un « tiens, il y a deux mints BOTIFY » — n'importe lequel de ces gestes
+conduit à les aligner.
+
+**Les aligner ARME la promotion des claims. Cela ne la répare pas.**
+
+Aujourd'hui, `CASE_DB` est indexé sur le mint synthétique. La chaîne le refuse
+(`Invalid param: not a Token mint`, vérifié). Les 8 claims du dossier BOTIFY et les données
+on-chain sont donc indexées sur deux mints différents et **ne se rencontrent jamais**. C'est
+la seule raison pour laquelle C5 et C7 ne passent pas en « Corroborated ».
+
+Le jour où quelqu'un met la même valeur des deux côtés :
+
+- `fetchHolders` reçoit un mint qui existe et rend un chiffre ;
+- ce chiffre est le rapport **top-10 / top-20**, ≥ 50 % par construction ;
+- le seuil de 40 % est franchi ;
+- **C5 (« Fake metrics / bots ») et C7 (« Friends & Family insiders ») passent en
+  « Corroborated »**, et +10 s'ajoute au score.
+
+Sur une allégation nominative — C7 nomme « Mom », « Dad », « Illya », « SAM insiders » —
+c'est un changement de **statut probatoire** déclenché par une correction cosmétique.
+
+## Rien ne doit être touché ici avant que DEUX choses soient tranchées
+
+1. **Le dénominateur.** Voir §1.2. Il n'est pas le supply.
+2. **Le seuil de 40 %.** Il a été choisi pour un rapport top-10 / top-20. Il ne veut rien
+   dire sur une vraie concentration.
+
+Tant que ces deux points ne sont pas arbitrés, la divergence des mints est la **seule chose
+qui empêche** la promotion de se déclencher. Elle tient lieu de garde-fou involontaire. On ne
+retire pas un garde-fou parce qu'il a l'air d'être là par erreur.
+
+## Et le fond du problème n'est pas un filtrage
+
+Le lot précédent a corrigé une mesure de concentration qui comptait la courbe de bonding et
+les pools comme des détenteurs : c'était une concentration **mal filtrée**.
+
+Ici, ce n'est pas de la même nature. **Le rapport top-10 / top-20 n'est pas une mesure de
+concentration du tout.** Il ne dit pas quelle part du supply est détenue par les plus gros ;
+il dit quelle part des 20 plus gros comptes est détenue par les 10 premiers d'entre eux —
+une quantité qui vaut ≥ 50 % pour n'importe quel token de l'univers, y compris parfaitement
+distribué. Mesuré : **TOESCOIN, concentration réelle 19,2 %, produit 62,9 %.**
+
+Aucun filtrage, aucune exclusion de programme, aucun ajustement de seuil ne rend cette
+formule correcte. Elle doit être remplacée, pas améliorée.
+
+---
+
 ## 0. Verdict en cinq lignes
 
 `/api/casefile` promeut deux claims de « Referenced » à **« Corroborated »** sur un seuil de
@@ -64,7 +123,7 @@ C5 et C7 sont des allégations nominatives — C7 nomme « Mom 0,055 %, Dad 0,05
 affirmation du statut de *référencée* à celui de *corroborée par la chaîne*. C'est un
 changement de **statut probatoire**, pas d'affichage.
 
-### 1.2 Le défaut — le dénominateur n'est pas le supply
+### 1.2 Le défaut — ce n'est pas une mesure de concentration
 
 `src/app/api/casefile/route.ts:112-133`, fonction `fetchHolders` :
 
@@ -82,6 +141,12 @@ return { …, top10_pct: ((top10/total)*100).toFixed(1) };
 mécaniquement ≥ 50 % puisque les 10 premiers sont les plus gros des 20.
 
 **Aucun appel à `getTokenSupply` n'existe dans cette route.**
+
+Il ne s'agit donc pas d'une concentration mal filtrée, comme celle corrigée dans le lot
+précédent. **Ce n'est pas une mesure de concentration.** La quantité calculée ne répond pas à
+la question « quelle part du supply les plus gros détiennent-ils ? » mais à « quelle part des
+20 plus gros comptes les 10 premiers représentent-ils ? » — dont la réponse est ≥ 50 % pour
+tout token existant. Elle doit être remplacée, pas ajustée.
 
 ### 1.3 Mesure — ce que la route calculerait si le fournisseur répondait
 
