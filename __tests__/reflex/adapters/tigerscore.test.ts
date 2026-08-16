@@ -35,7 +35,7 @@ describe("tigerscore adapter", () => {
     const fakeResult: TigerResult = {
       score: 70,
       tier: "RED",
-      confidence: "High",
+      confidence: "High", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] },
       drivers: [
         { id: "unlimited_approvals", label: "Unlimited approvals detected", severity: "critical", delta: 70, why: "x" },
         { id: "high_approvals", label: "High approval count", severity: "high", delta: 35, why: "y" },
@@ -56,7 +56,7 @@ describe("tigerscore adapter", () => {
     mockSync.mockReturnValue({
       score: 50,
       tier: "ORANGE",
-      confidence: "Medium",
+      confidence: "Medium", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] },
       drivers: [{ id: "x", label: "x", severity: "med", delta: 10, why: "x" }],
     });
     const r = await runTigerScore({ resolvedInput: SAMPLE_INPUT, tigerInput: SAMPLE_TIGER_INPUT });
@@ -67,7 +67,7 @@ describe("tigerscore adapter", () => {
     mockSync.mockReturnValue({
       score: 100,
       tier: "RED",
-      confidence: "High",
+      confidence: "High", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] },
       drivers: [{ id: "x", label: "x", severity: "critical", delta: 70, why: "x" }],
     });
     const r = await runTigerScore({ resolvedInput: SAMPLE_INPUT, tigerInput: SAMPLE_TIGER_INPUT });
@@ -76,8 +76,8 @@ describe("tigerscore adapter", () => {
 
   it("calls computeTigerScoreWithIntel when withIntel=true and address present", async () => {
     mockAsync.mockResolvedValue({
-      score: 80, tier: "RED", confidence: "High", drivers: [],
-      intelligence: null, finalScore: 80, finalTier: "RED",
+      score: 80, tier: "RED", confidence: "High", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] }, drivers: [],
+      intelligence: null, intelligenceStatus: "NO_MATCH", finalScore: 80, finalTier: "RED",
     });
     await runTigerScore({
       resolvedInput: SAMPLE_INPUT,
@@ -89,7 +89,7 @@ describe("tigerscore adapter", () => {
   });
 
   it("falls back to sync engine when withIntel=true but no address (e.g. TICKER input)", async () => {
-    mockSync.mockReturnValue({ score: 0, tier: "GREEN", confidence: "Low", drivers: [] });
+    mockSync.mockReturnValue({ score: 0, tier: "GREEN", confidence: "Low", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] }, drivers: [] });
     const tickerInput: ReflexResolvedInput = { type: "TICKER", ticker: "BTC", raw: "BTC" };
     await runTigerScore({
       resolvedInput: tickerInput,
@@ -113,7 +113,7 @@ describe("tigerscore adapter", () => {
   // ── Filter NON_RISK_TIGERSCORE_DRIVER_IDS (Day-1 shadow hot-fix) ──────
   it("skips informational drivers (NON_RISK_TIGERSCORE_DRIVER_IDS)", async () => {
     mockSync.mockReturnValue({
-      score: 0, tier: "GREEN", confidence: "Medium",
+      score: 0, tier: "GREEN", confidence: "Medium", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] },
       drivers: [
         // These 4 ids are in NON_RISK_TIGERSCORE_DRIVER_IDS and must be skipped.
         { id: "evm_contract_interaction", label: "x", severity: "low", delta: 0, why: "x" },
@@ -132,7 +132,7 @@ describe("tigerscore adapter", () => {
 
   it("emits ALL signals when none are informational (clean risk-only scenario)", async () => {
     mockSync.mockReturnValue({
-      score: 105, tier: "RED", confidence: "High",
+      score: 105, tier: "RED", confidence: "High", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] },
       drivers: [
         { id: "unlimited_approvals", label: "x", severity: "critical", delta: 70, why: "x" },
         { id: "freeze_authority", label: "x", severity: "critical", delta: 70, why: "x" },
@@ -144,7 +144,7 @@ describe("tigerscore adapter", () => {
 
   it("emits zero signals when ALL drivers are informational (USDC ETH scenario)", async () => {
     mockSync.mockReturnValue({
-      score: 0, tier: "GREEN", confidence: "Medium",
+      score: 0, tier: "GREEN", confidence: "Medium", dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] },
       drivers: [
         { id: "evm_contract_interaction", label: "x", severity: "low", delta: 0, why: "x" },
         { id: "evm_dormant_wallet", label: "x", severity: "med", delta: 0, why: "x" },

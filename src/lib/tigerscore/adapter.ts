@@ -7,6 +7,14 @@ export type ScanNormalized = {
   rpc_fallback_used?: boolean;
   rpc_down?: boolean;
   rpc_error?: string | null;
+  /**
+   * La répartition des détenteurs n'a pas pu être lue (fournisseur mort,
+   * timeout, réponse vide). Sans elle, les signaux de concentration ne peuvent
+   * pas se déclencher : le token n'est pas « bien réparti », il est inconnu.
+   */
+  holders_unavailable?: boolean;
+  /** La consultation du renseignement a échoué — à ne pas lire comme « propre ». */
+  intelligence_lookup_failed?: boolean;
   data_source?: string;
   source_detail?: string | null;
   // ── Market context for SOL token boosters ──
@@ -67,6 +75,20 @@ export function computeTigerScoreFromScan(input: ScanNormalized): TigerScanResul
     fdv_usd: input.fdv_usd,
     volume_24h_usd: input.volume_24h_usd,
     top10_holder_pct: input.top10_holder_pct,
+
+    // ── Le correctif ────────────────────────────────────────────────────────
+    //
+    // Ces deux drapeaux arrivaient déjà ici (ScanNormalized les déclare depuis
+    // toujours) et repartaient vers buildOnChainEvidence — c'est-à-dire vers
+    // l'AFFICHAGE — sans jamais entrer dans TigerInput. Le moteur ignorait donc
+    // que ses entrées étaient incomplètes, et la confiance rendue restait
+    // « Medium » sur un scan où aucun RPC n'avait répondu.
+    //
+    // Ils gouvernent la CONFIANCE, jamais le score.
+    rpc_down: input.rpc_down,
+    rpc_fallback_used: input.rpc_fallback_used,
+    holders_unavailable: input.holders_unavailable,
+    intelligence_lookup_failed: input.intelligence_lookup_failed,
   };
 
   const tigerResult = computeTigerScore(tigerInput);

@@ -28,6 +28,14 @@ export type PublicScoreResponse = {
   pairAgeDays?: number | null;
   liquidityUsd?: number | null;
   topHolderPct?: number | null;
+  /**
+   * D'ou vient `topHolderPct`, ou pourquoi il manque. `topHolderPct: null`
+   * seul ne permettait pas de distinguer « concentration faible » de
+   * « concentration inconnue » — et la source historique
+   * (public-api.solscan.io) rendait 404, donc null, en permanence.
+   */
+  topHolderSource?: "helius" | "solana_public_rpc" | null;
+  topHolderUnavailableReason?: string | null;
   mintAuthority?: boolean | null;
   freezeAuthority?: boolean | null;
   communityScans?: number | null;

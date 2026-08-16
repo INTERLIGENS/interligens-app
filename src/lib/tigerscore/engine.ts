@@ -1,3 +1,9 @@
+import {
+  computeConfidenceLevel,
+  CONFIDENCE_RANK,
+  type ConfidenceLevel,
+} from "@/lib/tigerscore/confidence";
+
 export type TigerTier = "GREEN" | "ORANGE" | "RED";
 
 export type TigerDriver = {
@@ -43,7 +49,47 @@ export type TigerInput = {
   // ── Cross-chain signals — pre-computed by async detectors ──
   /** Address-poisoning lookalike hit (see src/lib/tigerscore/signals/addressPoisoning.ts). */
   addressPoisoning?: boolean;
+
+  // ── Qualité de donnée ────────────────────────────────────────────────────
+  //
+  // NO DATA ≠ NO RISK. Tous les signaux ci-dessus sont conditionnés par
+  // `!= null` / `=== true` : un fournisseur muet ne fait pas baisser le score,
+  // il fait DISPARAÎTRE le facteur de risque. Le score sort donc plus bas, et
+  // rien dans la sortie ne le disait.
+  //
+  // Ces drapeaux réintroduisent l'information manquante dans le calcul de la
+  // CONFIANCE (jamais dans le score : un fournisseur en panne n'est pas un
+  // indice de danger, c'est une absence de connaissance).
+
+  /** Aucun RPC n'a répondu — la couverture on-chain est nulle. */
+  rpc_down?: boolean;
+  /** Le RPC primaire a échoué, un repli a servi — couverture partielle. */
+  rpc_fallback_used?: boolean;
+  /**
+   * La consultation du renseignement (OFAC / sanctions / listes) a ÉCHOUÉ.
+   * À ne jamais confondre avec « aucune correspondance » : le plancher de 15
+   * imposé par un match OFAC ne s'est pas appliqué parce qu'on ne sait pas,
+   * pas parce que l'adresse est propre.
+   */
+  intelligence_lookup_failed?: boolean;
+  /**
+   * La répartition des détenteurs n'a pas pu être lue. Sans elle,
+   * `holders_concentrated_80` (+15), `holders_concentrated_60` (+10) et le
+   * `cluster_risk` associé ne peuvent PAS se déclencher : un token dont le
+   * top 10 détient 95 % du supply est alors noté comme un token distribué.
+   */
+  holders_unavailable?: boolean;
 };
+
+/** Vrai si au moins une source du calcul est absente ou dégradée. */
+export function hasDegradedInputs(input: TigerInput): boolean {
+  return (
+    input.rpc_down === true ||
+    input.rpc_fallback_used === true ||
+    input.intelligence_lookup_failed === true ||
+    input.holders_unavailable === true
+  );
+}
 
 // ── Pump-like detection ──────────────────────────────────────────────────────
 export function isPumpLikeToken(mintAddress?: string, marketUrl?: string | null): boolean {
@@ -52,11 +98,30 @@ export function isPumpLikeToken(mintAddress?: string, marketUrl?: string | null)
   return false;
 }
 
+/**
+ * Ce que le calcul n'a PAS pu voir. Présent dans toutes les réponses : un
+ * consommateur doit pouvoir distinguer « aucun risque détecté » de « rien
+ * n'a pu être vérifié ». C'est le marqueur qui manquait — l'ancienne sortie
+ * rendait les deux cas identiques.
+ */
+export type TigerDataQuality = {
+  /** Vrai dès qu'une source manque. */
+  degraded: boolean;
+  /** Les sources absentes, nommées. Vide si tout a répondu. */
+  missing: string[];
+  /**
+   * Signaux qui n'ont PAS pu être évalués faute de données. Ils ne sont ni
+   * absents ni négatifs : ils sont inconnus.
+   */
+  unevaluatedSignals: string[];
+};
+
 export type TigerResult = {
   score: number;
   tier: TigerTier;
   drivers: TigerDriver[];
   confidence: "Low" | "Medium" | "High";
+  dataQuality: TigerDataQuality;
 };
 
 export function computeTigerScore(input: TigerInput): TigerResult {
@@ -298,10 +363,81 @@ export function computeTigerScore(input: TigerInput): TigerResult {
 
   const clampedScore = Math.min(100, Math.max(0, score));
   const tier: TigerTier = clampedScore >= 70 ? "RED" : clampedScore >= 35 ? "ORANGE" : "GREEN";
-  const confidence: "Low" | "Medium" | "High" =
+
+  // ── Confiance ─────────────────────────────────────────────────────────────
+  //
+  // L'heuristique historique compte les DRIVERS. Elle ne sait rien de la
+  // couverture : un scan où aucun fournisseur n'a répondu mais où `pump_fun`
+  // s'est déclenché (ce driver teste le suffixe de l'adresse et ne demande
+  // AUCUN fournisseur) rendait « Medium ».
+  //
+  // `computeConfidenceLevel` — écrit, testé, et jusqu'ici sans aucun appelant —
+  // porte la règle qui manquait : « RPC down / missing data → Low, always ».
+  // On le rebranche ici comme PLAFOND, pas comme remplacement : tant que les
+  // données sont complètes, le comportement est inchangé (aucune régression
+  // sur les 14 sites d'appel) ; dès qu'une source manque, il abaisse.
+  //
+  // La dégradation ne touche JAMAIS le score. Un fournisseur en panne n'est pas
+  // un indice de danger — c'est une absence de connaissance. Mélanger les deux
+  // produirait l'erreur symétrique de celle qu'on corrige.
+  const baseConfidence: ConfidenceLevel =
     drivers.length === 0 ? "Low" : input.deep ? "High" : "Medium";
 
-  return { score: clampedScore, tier, drivers, confidence };
+  const degraded = hasDegradedInputs(input);
+  const confidence: ConfidenceLevel = degraded
+    ? lowerConfidence(
+        baseConfidence,
+        computeConfidenceLevel({
+          drivers,
+          score: clampedScore,
+          // Une source de risque muette vaut « on ne sait pas », donc Low.
+          rpcDown:
+            input.rpc_down === true ||
+            input.intelligence_lookup_failed === true ||
+            input.holders_unavailable === true,
+          rpcFallbackUsed: input.rpc_fallback_used === true,
+        }),
+      )
+    : baseConfidence;
+
+  return {
+    score: clampedScore,
+    tier,
+    drivers,
+    confidence,
+    dataQuality: buildDataQuality(input),
+  };
+}
+
+/** Le plus BAS des deux niveaux. La dégradation ne remonte jamais la confiance. */
+function lowerConfidence(a: ConfidenceLevel, b: ConfidenceLevel): ConfidenceLevel {
+  return CONFIDENCE_RANK[a] <= CONFIDENCE_RANK[b] ? a : b;
+}
+
+/** Nomme ce qui a manqué, et les signaux devenus inévaluables. */
+export function buildDataQuality(input: TigerInput): TigerDataQuality {
+  const missing: string[] = [];
+  const unevaluatedSignals: string[] = [];
+
+  if (input.rpc_down === true) {
+    missing.push("rpc");
+    unevaluatedSignals.push("freeze_authority", "mint_authority", "unknown_programs", "low_tx_count");
+  } else if (input.rpc_fallback_used === true) {
+    missing.push("rpc_primary");
+  }
+
+  if (input.intelligence_lookup_failed === true) {
+    missing.push("intelligence");
+    // Le plancher OFAC de 15 ne s'est pas applique : on ne sait pas s'il aurait du.
+    unevaluatedSignals.push("intelligence_overlay", "sanctions_floor");
+  }
+
+  if (input.holders_unavailable === true) {
+    missing.push("holders");
+    unevaluatedSignals.push("holders_concentrated_80", "holders_concentrated_60", "cluster_risk");
+  }
+
+  return { degraded: missing.length > 0, missing, unevaluatedSignals };
 }
 
 // ── Intelligence-enhanced TigerScore ──────────────────────────────────────
@@ -311,8 +447,29 @@ export function computeTigerScore(input: TigerInput): TigerResult {
 import { lookupValue } from "@/lib/intelligence";
 import { computeFromSignal, type IntelligenceResult } from "@/lib/intelligence/scorer";
 
+/**
+ * Résultat de la consultation du renseignement.
+ *
+ *   MATCHED   — l'adresse figure dans au moins une source. `intelligence` est
+ *               renseigné, le plancher/plafond s'est appliqué.
+ *   NO_MATCH  — la consultation a ABOUTI et n'a rien trouvé. C'est une
+ *               information : l'adresse n'est dans aucune de nos sources.
+ *   UNKNOWN   — la consultation a ÉCHOUÉ (base indisponible, erreur, timeout).
+ *               Ce n'est PAS « rien trouvé ». On ne sait pas.
+ *
+ * Les deux derniers cas rendaient exactement la même chose : `intelligence:
+ * null` et un score inchangé. Une panne de la base de sanctions était donc
+ * indiscernable d'une adresse propre — et le plancher de 15 imposé par un
+ * match OFAC disparaissait en silence.
+ *
+ *     LOOKUP FAILED ≠ CLEAN
+ */
+export type IntelligenceStatus = "MATCHED" | "NO_MATCH" | "UNKNOWN";
+
 export interface TigerResultWithIntel extends TigerResult {
   intelligence: IntelligenceResult | null;
+  /** Voir {@link IntelligenceStatus}. Jamais omis. */
+  intelligenceStatus: IntelligenceStatus;
   /** Final score after intelligence overlay (may differ from base score) */
   finalScore: number;
   finalTier: TigerTier;
@@ -329,12 +486,15 @@ export async function computeTigerScoreWithIntel(
   input: TigerInput,
   address?: string
 ): Promise<TigerResultWithIntel> {
-  const base = computeTigerScore(input);
-
+  // Sans adresse, il n'y a rien a consulter : ce n'est ni un echec ni une
+  // absence de correspondance, c'est hors sujet. On rend NO_MATCH sans degrader
+  // — degrader ici crierait au loup sur tous les scans de token sans adresse.
   if (!address) {
+    const base = computeTigerScore(input);
     return {
       ...base,
       intelligence: null,
+      intelligenceStatus: "NO_MATCH",
       finalScore: base.score,
       finalTier: base.tier,
     };
@@ -352,10 +512,15 @@ export async function computeTigerScoreWithIntel(
 
     const signal = await lookupValue(address, chain);
 
+    // La consultation a ABOUTI : on calcule le score de base sans drapeau de
+    // degradation.
+    const base = computeTigerScore(input);
+
     if (signal.matchCount === 0) {
       return {
         ...base,
         intelligence: null,
+        intelligenceStatus: "NO_MATCH",
         finalScore: base.score,
         finalTier: base.tier,
       };
@@ -388,17 +553,32 @@ export async function computeTigerScoreWithIntel(
       ...base,
       score: base.score,
       intelligence: intel,
+      intelligenceStatus: "MATCHED",
       finalScore,
       finalTier,
     };
   } catch (err) {
-    // Intelligence lookup failure → continue with base score
-    console.warn("[tigerscore] Intelligence lookup failed, using base score:", err);
+    // ── ÉCHEC DE CONSULTATION ────────────────────────────────────────────────
+    //
+    // Avant : on rendait `intelligence: null` et le score de base — exactement
+    // la même sortie que « aucune correspondance ». Une panne de la base de
+    // sanctions était donc servie au client comme une adresse propre, et le
+    // plancher de 15 d'un match OFAC ne s'appliquait pas sans que personne
+    // puisse le savoir.
+    //
+    // Maintenant : le score de base est RECALCULÉ avec
+    // `intelligence_lookup_failed`, ce qui abaisse la confiance à « Low » et
+    // nomme la source manquante dans `dataQuality`. Le score lui-même n'est pas
+    // gonflé — on n'invente pas un risque —, mais la réponse cesse d'affirmer
+    // ce qu'elle ne sait pas.
+    console.warn("[tigerscore] Intelligence lookup failed, degrading confidence:", err);
+    const degradedBase = computeTigerScore({ ...input, intelligence_lookup_failed: true });
     return {
-      ...base,
+      ...degradedBase,
       intelligence: null,
-      finalScore: base.score,
-      finalTier: base.tier,
+      intelligenceStatus: "UNKNOWN",
+      finalScore: degradedBase.score,
+      finalTier: degradedBase.tier,
     };
   }
 }

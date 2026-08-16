@@ -3,6 +3,11 @@
 exports[`TigerScore snapshot — 'EVM — Arbitrum fresh contract' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 0,
@@ -20,6 +25,11 @@ exports[`TigerScore snapshot — 'EVM — Arbitrum fresh contract' > matches the
 exports[`TigerScore snapshot — 'EVM — address-poisoning lookalike' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 45,
@@ -37,6 +47,11 @@ exports[`TigerScore snapshot — 'EVM — address-poisoning lookalike' > matches
 exports[`TigerScore snapshot — 'EVM — clean EOA on ETH (no flags)' > matches the locked output 1`] = `
 {
   "confidence": "Low",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [],
   "score": 0,
   "tier": "GREEN",
@@ -46,6 +61,11 @@ exports[`TigerScore snapshot — 'EVM — clean EOA on ETH (no flags)' > matches
 exports[`TigerScore snapshot — 'EVM — clean contract on Base' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 10,
@@ -70,6 +90,11 @@ exports[`TigerScore snapshot — 'EVM — clean contract on Base' > matches the 
 exports[`TigerScore snapshot — 'EVM — high approvals (no unlimited)' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 35,
@@ -87,6 +112,11 @@ exports[`TigerScore snapshot — 'EVM — high approvals (no unlimited)' > match
 exports[`TigerScore snapshot — 'EVM — known-bad + unlimited approvals…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 70,
@@ -118,6 +148,11 @@ exports[`TigerScore snapshot — 'EVM — known-bad + unlimited approvals…' > 
 exports[`TigerScore snapshot — 'EVM — known-bad address (high-confide…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 100,
@@ -142,6 +177,11 @@ exports[`TigerScore snapshot — 'EVM — known-bad address (high-confide…' > 
 exports[`TigerScore snapshot — 'EVM — unlimited approval × 1' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 70,
@@ -159,6 +199,11 @@ exports[`TigerScore snapshot — 'EVM — unlimited approval × 1' > matches the
 exports[`TigerScore snapshot — 'EVM — wallet active on 3 chains' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 0,
@@ -176,6 +221,11 @@ exports[`TigerScore snapshot — 'EVM — wallet active on 3 chains' > matches t
 exports[`TigerScore snapshot — 'EVM — watchlist hit' > matches the locked output 1`] = `
 {
   "confidence": "Low",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [],
   "score": 0,
   "tier": "GREEN",
@@ -185,6 +235,11 @@ exports[`TigerScore snapshot — 'EVM — watchlist hit' > matches the locked ou
 exports[`TigerScore snapshot — 'SOL — benign top-cap (deep liquidity,…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 20,
@@ -202,6 +257,11 @@ exports[`TigerScore snapshot — 'SOL — benign top-cap (deep liquidity,…' > 
 exports[`TigerScore snapshot — 'SOL — casefile match + 2 confirmed cr…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 70,
@@ -226,6 +286,11 @@ exports[`TigerScore snapshot — 'SOL — casefile match + 2 confirmed cr…' > 
 exports[`TigerScore snapshot — 'SOL — freeze + mint authority both ac…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 70,
@@ -250,6 +315,11 @@ exports[`TigerScore snapshot — 'SOL — freeze + mint authority both ac…' > 
 exports[`TigerScore snapshot — 'SOL — fresh pump-like (young pair, lo…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 30,
@@ -288,6 +358,11 @@ exports[`TigerScore snapshot — 'SOL — fresh pump-like (young pair, lo…' > 
 exports[`TigerScore snapshot — 'SOL — full red flag stack (everything…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 35,
@@ -340,6 +415,11 @@ exports[`TigerScore snapshot — 'SOL — full red flag stack (everything…' > 
 exports[`TigerScore snapshot — 'SOL — mutable metadata + freeze autho…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 70,
@@ -364,6 +444,11 @@ exports[`TigerScore snapshot — 'SOL — mutable metadata + freeze autho…' > 
 exports[`TigerScore snapshot — 'SOL — scam_lineage REFERENCED (no cas…' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 50,
@@ -388,6 +473,11 @@ exports[`TigerScore snapshot — 'SOL — scam_lineage REFERENCED (no cas…' > 
 exports[`TigerScore snapshot — 'SOL — top10 holder concentration 85%' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 15,
@@ -405,6 +495,11 @@ exports[`TigerScore snapshot — 'SOL — top10 holder concentration 85%' > matc
 exports[`TigerScore snapshot — 'SOL — unknown programs interaction' > matches the locked output 1`] = `
 {
   "confidence": "Medium",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [
     {
       "delta": 35,
@@ -422,6 +517,11 @@ exports[`TigerScore snapshot — 'SOL — unknown programs interaction' > matche
 exports[`TigerScore snapshot — 'SOL — wallet scan (no casefile/market…' > matches the locked output 1`] = `
 {
   "confidence": "Low",
+  "dataQuality": {
+    "degraded": false,
+    "missing": [],
+    "unevaluatedSignals": [],
+  },
   "drivers": [],
   "score": 0,
   "tier": "GREEN",

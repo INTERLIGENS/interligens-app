@@ -18,6 +18,7 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 import { prisma } from "@/lib/prisma";
+import { fetchTop10HolderPct } from "@/lib/token/holderConcentration";
 
 async function upsertScanAggregate(mint: string): Promise<number | null> {
   try {
@@ -32,22 +33,11 @@ async function upsertScanAggregate(mint: string): Promise<number | null> {
   }
 }
 
-async function fetchTopHolderPct(mint: string): Promise<number | null> {
-  try {
-    const res = await fetch(
-      `https://public-api.solscan.io/token/holders?tokenAddress=${mint}&limit=10&offset=0`,
-      { headers: { "User-Agent": "interligens/1.0" }, signal: AbortSignal.timeout(4_000) }
-    );
-    if (!res.ok) return null;
-    const d = await res.json();
-    const holders: { amount?: unknown }[] = d?.data ?? [];
-    if (holders.length === 0 || typeof d?.total !== "number" || d.total <= 0) return null;
-    const top10 = holders.slice(0, 10).reduce((s, h) => s + Number(h.amount ?? 0), 0);
-    return Math.round((top10 / d.total) * 100 * 10) / 10;
-  } catch {
-    return null;
-  }
-}
+// La lecture de la concentration vit desormais dans
+// src/lib/token/holderConcentration.ts. L'implementation qui etait ici
+// interrogeait public-api.solscan.io, mort (HTTP 404 verifie le 2026-08-16),
+// et rendait `null` sans un log — ce qui faisait disparaitre les signaux de
+// concentration au lieu de signaler qu'on ne savait pas.
 
 async function fetchMintFreeze(mint: string): Promise<{ mintAuthority: boolean | null; freezeAuthority: boolean | null }> {
   const key = process.env.HELIUS_API_KEY;
@@ -223,10 +213,10 @@ export async function GET(request: NextRequest) {
     const caseFile = loadCaseByMint(mint);
 
     // 2. Fetch market snapshot, token website, top holders, and mint/freeze in parallel
-    const [market, website, topHolderPct, mintFreeze] = await Promise.all([
+    const [market, website, holders, mintFreeze] = await Promise.all([
       getMarketSnapshot("solana", mint),
       fetchTokenWebsite(mint),
-      fetchTopHolderPct(mint),
+      fetchTop10HolderPct(mint),
       fetchMintFreeze(mint),
     ]);
 
@@ -244,6 +234,13 @@ export async function GET(request: NextRequest) {
     } catch { /* fail-open */ }
 
     // 4. Compute TigerScore via adapter
+    //
+    // `holders.available === false` n'est PAS `top10_holder_pct = 0`. On passe
+    // `holders_unavailable` pour que le moteur sache que la concentration n'a
+    // pas pu etre evaluee : la confiance tombe a « Low » et `dataQuality.missing`
+    // nomme la source. Sans ce drapeau, un token dont le top 10 detient 95 % du
+    // supply serait note comme un token distribue.
+    const topHolderPct = holders.available ? holders.top10Pct : null;
     const rawClaims = caseFile?.claims ?? [];
     const tigerScan = computeTigerScoreFromScan({
       chain: "SOL",
@@ -256,6 +253,7 @@ export async function GET(request: NextRequest) {
       fdv_usd: market.fdv_usd,
       volume_24h_usd: market.volume_24h_usd,
       top10_holder_pct: topHolderPct,
+      holders_unavailable: !holders.available,
       scam_lineage: scamLineage,
       signals: {
         confirmedCriticalClaims: rawClaims.filter(
@@ -329,7 +327,11 @@ export async function GET(request: NextRequest) {
       website: website ?? null,
       pairAgeDays: market.pair_age_days ?? null,
       liquidityUsd: market.liquidity_usd ?? null,
-      topHolderPct: topHolderPct ?? null,
+      topHolderPct,
+      // Le client doit pouvoir distinguer « concentration faible » de
+      // « concentration inconnue ». `null` seul ne le permettait pas.
+      topHolderSource: holders.available ? holders.source : null,
+      topHolderUnavailableReason: holders.available ? null : holders.reason,
       mintAuthority: mintFreeze.mintAuthority,
       freezeAuthority: mintFreeze.freezeAuthority,
       communityScans,
