@@ -475,35 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour P0-2 — RÉVERSIBILITÉ ÉDITORIALE (chemin de dépublication).
-# Implémente le cycle draft → approved_public → archived avec HISTORIQUE
-# CONSERVÉ, que le commentaire de reviewDraftLink.ts:135 promettait sans qu'il
-# existe nulle part : aucun code n'écrivait visibility='archived', vérifié en
-# base ep-square-band (public=187 / draft=92 / rejected=1, zéro 'archived').
-# Sans ce chemin, une association nominative publiée ne pouvait être ni
-# corrigée ni retirée proprement.
-#
-# La table KolTokenLinkStatusLog est DÉJÀ créée en base par David dans le Neon
-# SQL Editor (contrôle : 14 colonnes, 3 contraintes, 5 index, CHECK à 8 codes
-# identique au fichier) ; le .sql versionné ne fait que consigner ce qui a été
-# exécuté — anti-drift, aucune exécution par Claude Code.
-#
-# Exemption STRICTEMENT limitée aux 2 chemins gelés du lot :
-#   migrations/MIGRATION_publication_lifecycle_v1.sql   la migration, pour trace
-#   .../admin/watcher-drafts/[id]/archive/route.ts      l'action admin POST
-# AUCUN wildcard sur src/app/api/ ni migrations/. Le reste du lot vit hors
-# chemins gelés et passe sans exemption : src/lib/watcher-bridge/ (journal,
-# rollup campagne, archivage), src/lib/{cluster,coordination,explorer}/ (les 5
-# lectures publiques qui n'avaient AUCUN filtre visibility et servaient donc
-# déjà les drafts), et __tests__/.
-# Autorisation humaine explicite (David) — voir PR description.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-publication-lifecycle$ ]]; then
-    EXEMPT_P0_PUBLICATION_LIFECYCLE_PATTERNS=(
-        "^migrations/MIGRATION_publication_lifecycle_v1\.sql$"
-        "^src/app/api/admin/watcher-drafts/\[id\]/archive/route\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -707,18 +678,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche p0-publication-lifecycle, exempter la migration + la route archive.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-publication-lifecycle$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_P0_PUBLICATION_LIFECYCLE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
