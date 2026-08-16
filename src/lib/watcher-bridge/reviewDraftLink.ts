@@ -7,6 +7,8 @@
 // touched (internal evidence stays internal). Idempotent.
 
 import { transitionCandidate, StaleStatusError } from "@/lib/watcher-bridge/candidateStateMachine";
+import { recomputeCampaignReviewStatus } from "@/lib/watcher-bridge/campaignReviewStatus";
+import { recordPublicationDecisionSafe } from "@/lib/watcher-bridge/linkPublicationJournal";
 
 export interface RawDb {
   $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
@@ -14,7 +16,10 @@ export interface RawDb {
 
 interface LinkRow {
   id: string;
+  kolHandle: string;
+  tokenSymbol: string | null;
   visibility: string;
+  reviewStatus: string | null;
   canonicalMint: string | null;
   tokenResolutionConfidence: string | null;
   socialPostCandidateId: string | null;
@@ -30,12 +35,15 @@ export interface ReviewResult {
   candidateTransition?: string;
   campaignReviewStatus?: string;
   reason?: string;
+  /** Entrée créée dans KolTokenLinkStatusLog (P0-2). */
+  logId?: string;
   warning?: string;
 }
 
 async function loadLink(db: RawDb, linkId: string): Promise<LinkRow | null> {
   const rows = await db.$queryRawUnsafe<LinkRow[]>(
-    `SELECT id, visibility, "canonicalMint", "tokenResolutionConfidence",
+    `SELECT id, "kolHandle", "tokenSymbol", visibility, "reviewStatus",
+            "canonicalMint", "tokenResolutionConfidence",
             "socialPostCandidateId", "watcherCampaignId"
        FROM "KolTokenLink" WHERE id = $1 LIMIT 1`,
     linkId,
@@ -43,29 +51,9 @@ async function loadLink(db: RawDb, linkId: string): Promise<LinkRow | null> {
   return rows[0] ?? null;
 }
 
-// Roll up the campaign review status from its bridge-origin links.
-async function recomputeCampaignReviewStatus(db: RawDb, campaignId: string | null): Promise<string | undefined> {
-  if (!campaignId) return undefined;
-  const rows = await db.$queryRawUnsafe<Array<{ total: number; pub: number; rej: number }>>(
-    `SELECT count(*)::int AS total,
-            count(*) FILTER (WHERE visibility = 'public')::int   AS pub,
-            count(*) FILTER (WHERE visibility = 'rejected')::int AS rej
-       FROM "KolTokenLink"
-      WHERE "watcherCampaignId" = $1 AND "createdByBridge" = true`,
-    campaignId,
-  );
-  const { total, pub, rej } = rows[0] ?? { total: 0, pub: 0, rej: 0 };
-  let status = "pending";
-  if (total > 0 && pub === total) status = "approved_public";
-  else if (total > 0 && rej === total) status = "rejected";
-  else if (pub > 0) status = "partially_approved";
-  await db.$queryRawUnsafe(
-    `UPDATE "WatcherCampaign" SET "reviewStatus" = $2, "updatedAt" = now() WHERE id = $1`,
-    campaignId,
-    status,
-  );
-  return status;
-}
+// Le rollup du reviewStatus de campagne vit désormais dans
+// campaignReviewStatus.ts : le chemin de dépublication (P0-2) doit le
+// recalculer avec les mêmes règles, plus la branche 'archived'.
 
 async function moveCandidate(
   db: RawDb,
@@ -115,10 +103,36 @@ export async function approveDraftLink(
     linkId,
     reviewedBy,
   );
+  // P0-2 — la mise en ligne entre au journal des décisions, pas seulement la
+  // dépublication : sans elle, l'historique d'un lien archivé commencerait au
+  // milieu du cycle. Ici le journal vient APRÈS la mutation (l'inverse du
+  // chemin archive) : le lien est déjà public, échouer sur le journal
+  // n'annulerait rien et transformerait une publication réussie en erreur.
+  // Un défaut de journal est donc remonté en warning, pas en échec.
+  const journal = await recordPublicationDecisionSafe(db, {
+    linkId,
+    kolHandle: link.kolHandle,
+    tokenSymbol: link.tokenSymbol,
+    canonicalMint: link.canonicalMint,
+    fromVisibility: "draft",
+    toVisibility: "public",
+    fromReviewStatus: link.reviewStatus,
+    toReviewStatus: "approved_public",
+    reasonCode: "approved",
+    reason: "admin approve",
+    actorId: reviewedBy,
+  });
   const cand = await moveCandidate(db, link.socialPostCandidateId, "approved_public", "admin approve", reviewedBy);
   const campaignReviewStatus = await recomputeCampaignReviewStatus(db, link.watcherCampaignId);
 
-  return { linkId, action: "approved", candidateTransition: cand.transition, campaignReviewStatus, warning: cand.warning };
+  return {
+    linkId,
+    action: "approved",
+    candidateTransition: cand.transition,
+    campaignReviewStatus,
+    logId: journal.logId,
+    warning: cand.warning ?? journal.warning,
+  };
 }
 
 export async function rejectDraftLink(
@@ -132,7 +146,10 @@ export async function rejectDraftLink(
   if (!link) return { linkId, action: "not_found" };
   if (link.visibility === "rejected") return { linkId, action: "noop_already_rejected" };
   // Only a draft can be rejected — never un-publish an approved public link this
-  // way (use the approved_public→archived path for that).
+  // way. Le chemin de dépublication existe désormais et vit dans
+  // archiveLinkPublication.ts (P0-2) : public → archived, motif obligatoire,
+  // journalisé dans KolTokenLinkStatusLog. Jusqu'à ce chantier, ce commentaire
+  // renvoyait à un chemin qui n'existait nulle part.
   if (link.visibility !== "draft") return { linkId, action: "not_draft", reason: `link visibility=${link.visibility}` };
 
   await db.$queryRawUnsafe(
@@ -144,8 +161,29 @@ export async function rejectDraftLink(
     reviewedBy,
     reason.trim(),
   );
+  const journal = await recordPublicationDecisionSafe(db, {
+    linkId,
+    kolHandle: link.kolHandle,
+    tokenSymbol: link.tokenSymbol,
+    canonicalMint: link.canonicalMint,
+    fromVisibility: "draft",
+    toVisibility: "rejected",
+    fromReviewStatus: link.reviewStatus,
+    toReviewStatus: "rejected",
+    reasonCode: "rejected",
+    reason: reason.trim(),
+    actorId: reviewedBy,
+  });
   const cand = await moveCandidate(db, link.socialPostCandidateId, "rejected", `admin reject: ${reason.trim()}`, reviewedBy);
   const campaignReviewStatus = await recomputeCampaignReviewStatus(db, link.watcherCampaignId);
 
-  return { linkId, action: "rejected", candidateTransition: cand.transition, campaignReviewStatus, reason: reason.trim(), warning: cand.warning };
+  return {
+    linkId,
+    action: "rejected",
+    candidateTransition: cand.transition,
+    campaignReviewStatus,
+    reason: reason.trim(),
+    logId: journal.logId,
+    warning: cand.warning ?? journal.warning,
+  };
 }

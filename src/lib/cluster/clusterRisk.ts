@@ -180,8 +180,11 @@ export async function getRelatedActorsForProfile(handle: string): Promise<Cluste
 export async function getClusterContextForLaunch(tokenSymbol: string): Promise<LaunchClusterContext> {
   const published = await getPublishedSet()
 
+  // P0-2 — liste blanche `visibility: 'public'`. Le Sprint 8 avait gate la
+  // variante Profile mais laisse les variantes Launch et Case : les 92 drafts
+  // du bridge y remontaient deja, et un lien ARCHIVE y serait reste.
   const links = await prisma.kolTokenLink.findMany({
-    where: { tokenSymbol, documentationStatus: { not: 'review' } },
+    where: { tokenSymbol, documentationStatus: { not: 'review' }, visibility: 'public' },
     select: { kolHandle: true, role: true, caseId: true },
   })
 
@@ -216,8 +219,10 @@ export async function getClusterSignalsForCase(caseId: string): Promise<CaseClus
   const handles = caseEntries.map(c => c.kolHandle).filter(h => published.has(h))
 
   const tokenLinks = handles.length > 0
+    // P0-2 — meme liste blanche : un draft ou un archive ne compte pas comme
+    // un lancement partage entre acteurs.
     ? await prisma.kolTokenLink.findMany({
-        where: { kolHandle: { in: handles }, documentationStatus: { not: 'review' } },
+        where: { kolHandle: { in: handles }, documentationStatus: { not: 'review' }, visibility: 'public' },
         select: { kolHandle: true, tokenSymbol: true },
       })
     : []

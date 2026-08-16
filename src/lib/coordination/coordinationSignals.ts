@@ -191,7 +191,12 @@ export async function getCoordinationSignalsForLaunch(tokenSymbol: string): Prom
   const published = await prisma.kolProfile.findMany({ where: PUBLIC_KOL_FILTER, select: { handle: true, behaviorFlags: true, walletAttributionStrength: true } })
   const publishedMap = new Map(published.map(p => [p.handle, p]))
 
-  const links = await prisma.kolTokenLink.findMany({ where: { tokenSymbol, documentationStatus: { not: 'review' } }, select: { kolHandle: true, caseId: true } })
+  // P0-2 — liste blanche `visibility: 'public'`. Cette requête était la seule
+  // lecture publique de KolTokenLink à ne PAS filtrer : le Sprint 8 avait gaté
+  // getCoordinationSignalsForProfile (2 requêtes) mais laissé les variantes
+  // Launch et Case. Conséquence : les 92 drafts du bridge comptaient déjà dans
+  // les signaux servis par /api/scan/ask, et un lien ARCHIVÉ y serait resté.
+  const links = await prisma.kolTokenLink.findMany({ where: { tokenSymbol, documentationStatus: { not: 'review' }, visibility: 'public' }, select: { kolHandle: true, caseId: true } })
   const actors = links.filter(l => publishedMap.has(l.kolHandle))
   const caseIds = [...new Set(links.map(l => l.caseId).filter(Boolean))]
 
@@ -231,7 +236,9 @@ export async function getCoordinationSignalsForCase(caseId: string): Promise<Coo
 
   // Find shared tokens
   const tokenLinks = actorHandles.length > 0
-    ? await prisma.kolTokenLink.findMany({ where: { kolHandle: { in: actorHandles }, documentationStatus: { not: 'review' } }, select: { kolHandle: true, tokenSymbol: true } })
+    // P0-2 — même liste blanche que ci-dessus : un lien draft ou archivé ne
+    // doit jamais gonfler le compteur « actors linked to N launches ».
+    ? await prisma.kolTokenLink.findMany({ where: { kolHandle: { in: actorHandles }, documentationStatus: { not: 'review' }, visibility: 'public' }, select: { kolHandle: true, tokenSymbol: true } })
     : []
   const tokenCount = new Set(tokenLinks.map(t => t.tokenSymbol).filter(Boolean)).size
 
