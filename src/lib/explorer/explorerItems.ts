@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
+import { PUBLISHED_PROCEEDS_FILTER, redactProceeds } from '@/lib/kol/proceedsGate'
 import { parseBehaviorFlags, type BehaviorFlagKey } from '@/lib/kol/behaviorFlags'
 import { getSnapshotCountByDossier } from '@/lib/evidence/evidenceSnapshots'
 
@@ -41,10 +42,10 @@ export interface ExplorerFilters {
 }
 
 // Published handle set — used to filter actors
-async function getPublishedHandles(): Promise<Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null }>> {
+async function getPublishedHandles(): Promise<Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null; proceedsPublication: string }>> {
   const profiles = await prisma.kolProfile.findMany({
     where: PUBLIC_KOL_FILTER,
-    select: { handle: true, displayName: true, tier: true, evidenceDepth: true, behaviorFlags: true, totalDocumented: true },
+    select: { handle: true, displayName: true, tier: true, evidenceDepth: true, behaviorFlags: true, totalDocumented: true, proceedsPublication: true },
   })
   return new Map(profiles.map(p => [p.handle, p]))
 }
@@ -58,7 +59,7 @@ function strongestDepth(depths: string[]): string {
   return DEPTH_REVERSE[best] ?? 'none'
 }
 
-export async function getCaseDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null }>): Promise<DossierItem[]> {
+export async function getCaseDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null; proceedsPublication: string }>): Promise<DossierItem[]> {
   const cases = await prisma.kolCase.findMany({
     select: { id: true, caseId: true, kolHandle: true, role: true, paidUsd: true, evidence: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
@@ -99,9 +100,12 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
       for (const f of parseBehaviorFlags(profile.behaviorFlags)) allFlags.add(f)
       if (e.evidence) evidenceSnippets.push(e.evidence)
 
-      // Sum totalDocumented per unique handle (avoid double-counting)
-      if (!seenHandles.has(e.kolHandle) && profile.totalDocumented != null && profile.totalDocumented > 0) {
-        totalProceeds += profile.totalDocumented
+      // Sum totalDocumented per unique handle (avoid double-counting).
+      // P0 containment — redactProceeds rend null si la publication du montant
+      // est retiree : le dossier n'agrege alors plus rien pour cet acteur.
+      const publishedProceeds = redactProceeds(profile, profile.totalDocumented)
+      if (!seenHandles.has(e.kolHandle) && publishedProceeds != null && publishedProceeds > 0) {
+        totalProceeds += publishedProceeds
         hasProceeds = true
         seenHandles.add(e.kolHandle)
       }
@@ -138,7 +142,7 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
   return dossiers
 }
 
-export async function getLaunchDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null }>): Promise<DossierItem[]> {
+export async function getLaunchDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null; proceedsPublication: string }>): Promise<DossierItem[]> {
   const tokens = await prisma.kolTokenLink.findMany({
     // Evidence Intake Bridge (S8): only public curated links surface publicly —
     // never bridge drafts (visibility='draft') or rejected ones.
@@ -331,7 +335,8 @@ export async function getExplorerStats() {
   const [publishedProfiles, proceedsAgg, documentedWallets, linkedLaunches, strongEvidenceCount] = await Promise.all([
     prisma.kolProfile.count({ where }),
     prisma.kolProfile.aggregate({
-      where: { ...where, totalDocumented: { not: null, gt: 0 } },
+      // P0 containment — l'agregat public ne somme que des montants publies.
+      where: { ...where, ...PUBLISHED_PROCEEDS_FILTER, totalDocumented: { not: null, gt: 0 } },
       _sum: { totalDocumented: true },
     }),
     prisma.kolWallet.count({ where: { isPubliclyUsable: true, kol: where } }),

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { PUBLIC_KOL_FILTER } from './publishGate'
 import { parseBehaviorFlags } from './behaviorFlags'
+import { PUBLISHED_PROCEEDS_FILTER, redactProceeds } from './proceedsGate'
 
 export type LeaderboardSort = 'proceeds' | 'evidence' | 'completeness' | 'flags' | 'recent'
 
@@ -35,7 +36,9 @@ export async function getLeaderboardProfiles(filters: LeaderboardFilters = {}) {
     ...PUBLIC_KOL_FILTER,
     ...(filterDepth ? { evidenceDepth: filterDepth } : {}),
     ...(filterCompleteness ? { completenessLevel: filterCompleteness } : {}),
-    ...(filterHasProceeds ? { totalDocumented: { gt: 0 } } : {}),
+    // P0 containment — « a des proceeds » ne peut pas etre vrai sur un montant
+    // dont la publication est retiree.
+    ...(filterHasProceeds ? { totalDocumented: { gt: 0 }, ...PUBLISHED_PROCEEDS_FILTER } : {}),
     ...(search ? { handle: { contains: search, mode: 'insensitive' } } : {}),
   }
 
@@ -48,6 +51,7 @@ export async function getLeaderboardProfiles(filters: LeaderboardFilters = {}) {
       tier: true,
       summary: true,
       totalDocumented: true,
+      proceedsPublication: true,
       proceedsCoverage: true,
       evidenceDepth: true,
       completenessLevel: true,
@@ -74,7 +78,7 @@ export async function getLeaderboardProfiles(filters: LeaderboardFilters = {}) {
       displayName: p.displayName,
       tier: p.tier,
       summary: p.summary,
-      observedProceedsTotal: p.totalDocumented ?? null,
+      observedProceedsTotal: redactProceeds(p, p.totalDocumented),
       proceedsCoverage: p.proceedsCoverage,
       evidenceDepth: p.evidenceDepth,
       completenessLevel: p.completenessLevel,
@@ -111,7 +115,8 @@ export async function getLeaderboardStats() {
   ] = await Promise.all([
     prisma.kolProfile.count({ where }),
     prisma.kolProfile.aggregate({
-      where: { ...where, totalDocumented: { not: null, gt: 0 } },
+      // P0 containment — un total public ne somme que des montants publies.
+      where: { ...where, ...PUBLISHED_PROCEEDS_FILTER, totalDocumented: { not: null, gt: 0 } },
       _sum: { totalDocumented: true },
     }),
     prisma.kolWallet.count({
@@ -119,7 +124,7 @@ export async function getLeaderboardStats() {
     }),
     prisma.kolTokenLink.findMany({ where: { kol: where, visibility: 'public' }, select: { tokenSymbol: true }, distinct: ['tokenSymbol'] }).then(r => r.length),
     prisma.kolProfile.count({
-      where: { ...where, totalDocumented: { not: null, gt: 0 } },
+      where: { ...where, ...PUBLISHED_PROCEEDS_FILTER, totalDocumented: { not: null, gt: 0 } },
     }),
     prisma.kolProfile.count({
       where: { ...where, evidenceDepth: { in: ['strong', 'comprehensive'] } },

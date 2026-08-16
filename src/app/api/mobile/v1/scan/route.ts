@@ -106,7 +106,9 @@ export async function POST(request: NextRequest) {
     const kolAlert = await buildKolAlertSafe(chain, address);
 
     // Mobile snapshot — if KOL resolved, merge totalDocumented / freshness / topWallets.
-    let kolSnapshot: { totalDocumented: number; freshness: string; topWallets: { address: string; chain: string; label: string | null }[] } | null = null;
+    // totalDocumented est nullable depuis le P0 containment : `null` = chiffre
+  // retiré de la publication, à ne pas confondre avec 0.
+  let kolSnapshot: { totalDocumented: number | null; freshness: string; topWallets: { address: string; chain: string; label: string | null }[] } | null = null;
     if (kolAlert.hasAlert && kolAlert.kols.length > 0) {
       const snap = await buildMobileScanSnapshot(kolAlert.kols[0].handle).catch(() => null);
       if (snap) {

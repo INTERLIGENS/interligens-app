@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { buildPlainteHtml } from "@/lib/plainte/htmlTemplate";
 import { PRESET_MAP, type PlainteInput, type PlainteTheme } from "@/lib/plainte/data";
+import { prisma } from "@/lib/prisma";
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
 
@@ -24,6 +25,52 @@ export async function POST(req: NextRequest) {
   }
 
   const theme: PlainteTheme = body.theme === "interligens" ? "interligens" : "print";
+
+  // ── P0 containment — le prereglage `botify` est gele ────────────────────
+  //
+  // Ses montants sont des LITTERAUX du code (src/lib/plainte/data.ts:183-224),
+  // pas des lectures de la base :
+  //
+  //   suspects : GordonGekko cashout 40 627 $  (certitude « ETABLI »)
+  //              EduRio      cashout 347 237 $
+  //              MoneyLord   cashout  85 484 $
+  //              ElonTrades  cashout  53 313 $
+  //   piece D-002 : « 41 KOLs scannes — 295 evenements — 604 489 $ documentes »
+  //                 (statut « CONSTATE », force probante « HAUTE »)
+  //
+  // Confrontation a ep-square-band le 2026-08-16 : EduRio, MoneyLord et
+  // ElonTrades n'ont AUCUNE ligne dans KolProceedsEvent et totalDocumented = 0 ;
+  // le total non ambigu toutes personnes confondues vaut 17 489 927 $, pas
+  // 604 489 $. Cinq des huit assertions chiffrees ne sont pas reproductibles —
+  // computeProceedsForHandle supprime les evenements avant de les reecrire
+  // (proceeds.ts:231), l'etat du scan qui les a produits n'existe plus.
+  //
+  // On refuse donc de GENERER un nouveau document tant que le containment est
+  // actif sur GordonGekko. Les donnees restent dans data.ts : non supprimees,
+  // non reecrites. Corriger les montants est une decision juridique et
+  // editoriale, pas une operation technique.
+  //
+  // Voir docs/AUDIT_BOTIFY_PROCEEDS_2026-08.md.
+  if (body.preset === "botify") {
+    const gate = await prisma.kolProfile.findUnique({
+      where: { handle: "GordonGekko" },
+      select: { proceedsPublication: true },
+    });
+    if (gate?.proceedsPublication !== "published") {
+      return NextResponse.json(
+        {
+          error: "preset_frozen",
+          detail:
+            "The 'botify' preset carries hardcoded proceeds figures that are not " +
+            "reproducible from the current database, while the corresponding " +
+            "published figures are withdrawn. Generating this document is blocked. " +
+            "See docs/AUDIT_BOTIFY_PROCEEDS_2026-08.md.",
+          preset: "botify",
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   let input: PlainteInput;
   if (body.preset && PRESET_MAP[body.preset]) {

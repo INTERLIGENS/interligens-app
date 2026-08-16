@@ -38,6 +38,11 @@ function profile(handle: string, published: boolean) {
     tier: "T1",
     riskFlag: "high",
     totalDocumented: 12345,
+    // P0 containment — le gate proceeds est fail-closed : une fixture qui
+    // n'expose pas cet etat voit son montant ET ses buckets cashout retires.
+    // C'est le comportement voulu (voir src/lib/kol/proceedsGate.ts) ; la
+    // fixture doit donc declarer explicitement l'etat qu'elle veut tester.
+    proceedsPublication: "published",
     totalScammed: 67890,
     proceedsCoverage: "partial",
     evidenceDepth: "strong",

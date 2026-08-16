@@ -246,6 +246,9 @@ async function explorerLaunchActors(): Promise<string[]> {
         evidenceDepth: p.evidenceDepth as string,
         behaviorFlags: p.behaviorFlags as string,
         totalDocumented: p.totalDocumented as number | null,
+        // P0 containment — le gate proceeds exige l'etat de publication ; sans
+        // lui, redactProceeds fail-close (voir src/lib/kol/proceedsGate.ts).
+        proceedsPublication: (p.proceedsPublication as string | undefined) ?? "published",
       },
     ]),
   );

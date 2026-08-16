@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { redactProceeds } from "@/lib/kol/proceedsGate";
 
 export type EnrichedEntity = {
   id: string;
@@ -234,6 +235,10 @@ export async function buildCaseIntelligencePack(
               displayName: true,
               rugCount: true,
               totalDocumented: true,
+              // P0 containment — le pack alimente le dossier investigateur et,
+              // en bout de chaine, l'annexe police. Un montant retire de la
+              // publication ne doit pas y entrer.
+              proceedsPublication: true,
               totalScammed: true,
               riskFlag: true,
               label: true,
@@ -246,6 +251,7 @@ export async function buildCaseIntelligencePack(
       displayName: string | null;
       rugCount: number;
       totalDocumented: number | null;
+      proceedsPublication: string;
       totalScammed: number | null;
       riskFlag: string;
       label: string;
@@ -349,9 +355,9 @@ export async function buildCaseIntelligencePack(
             flags.push(profile.label);
           if (profile.tier) flags.push(`tier:${profile.tier}`);
           cross.kolRiskFlags = flags;
-          if (profile.totalDocumented || profile.totalScammed) {
+          if (redactProceeds(profile, profile.totalDocumented) || profile.totalScammed) {
             cross.proceedsSummary = {
-              totalUSD: profile.totalDocumented ?? profile.totalScammed ?? 0,
+              totalUSD: redactProceeds(profile, profile.totalDocumented) ?? profile.totalScammed ?? 0,
               eventCount: profile.rugCount ?? 0,
               topRoutes: [],
               alignsWithPromoWindows: false,
@@ -388,9 +394,9 @@ export async function buildCaseIntelligencePack(
           flags.push(profile.label);
         if (profile.tier) flags.push(`tier:${profile.tier}`);
         cross.kolRiskFlags = flags;
-        if (profile.totalDocumented || profile.totalScammed) {
+        if (redactProceeds(profile, profile.totalDocumented) || profile.totalScammed) {
           cross.proceedsSummary = {
-            totalUSD: profile.totalDocumented ?? profile.totalScammed ?? 0,
+            totalUSD: redactProceeds(profile, profile.totalDocumented) ?? profile.totalScammed ?? 0,
             eventCount: profile.rugCount ?? 0,
             topRoutes: [],
             alignsWithPromoWindows: false,
@@ -758,9 +764,12 @@ export async function buildCaseIntelligencePack(
     const summaryRows = await safeQuery(
       () =>
         prisma.$queryRaw<SummaryRow[]>`
-          SELECT "kolHandle", "totalProceedsUsd", "eventCount"
-          FROM "KolProceedsSummary"
-          WHERE "kolHandle" = ANY(${Array.from(allMatchedHandles)})
+          SELECT s."kolHandle", s."totalProceedsUsd", s."eventCount"
+            FROM "KolProceedsSummary" s
+            JOIN "KolProfile" p ON p.handle = s."kolHandle"
+           WHERE s."kolHandle" = ANY(${Array.from(allMatchedHandles)})
+             AND s."reviewStatus" = 'published'
+             AND p."proceedsPublication" = 'published'
         `,
       [] as SummaryRow[]
     );
@@ -1022,19 +1031,21 @@ export async function buildCaseIntelligenceSummary(
             select: {
               handle: true,
               totalDocumented: true,
+              proceedsPublication: true,
               totalScammed: true,
             },
           }),
     [] as Array<{
       handle: string;
       totalDocumented: number | null;
+      proceedsPublication: string;
       totalScammed: number | null;
     }>
   );
 
   const kolMatches = profiles.length;
   const proceedsTotal = profiles.reduce(
-    (sum, p) => sum + (p.totalDocumented ?? p.totalScammed ?? 0),
+    (sum, p) => sum + (redactProceeds(p, p.totalDocumented) ?? p.totalScammed ?? 0),
     0
   );
 

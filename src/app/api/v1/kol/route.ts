@@ -44,7 +44,22 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.kolProfile.count({ where }),
-    prisma.$queryRaw`SELECT "kolHandle", "totalProceedsUsd", confidence as "proceedsConfidence" FROM "KolProceedsSummary"` as Promise<any[]>,
+    // P0 containment — deux defauts corriges ici.
+    //
+    // 1. La requete n'avait AUCUNE clause WHERE : elle servait les 28 resumes,
+    //    y compris les 24 en reviewStatus='draft'. `/api/kol/{h}/proceeds`
+    //    filtre pourtant sur 'published' depuis toujours — un consommateur sur
+    //    trois respectait l'interrupteur.
+    // 2. Elle ignorait la decision de retrait : la jointure se fait sur le
+    //    handle, donc il faut exclure les profils dont la publication du
+    //    montant est retiree.
+    prisma.$queryRaw`
+      SELECT s."kolHandle", s."totalProceedsUsd", s.confidence AS "proceedsConfidence"
+        FROM "KolProceedsSummary" s
+        JOIN "KolProfile" p ON p.handle = s."kolHandle"
+       WHERE s."reviewStatus" = 'published'
+         AND p."proceedsPublication" = 'published'
+    ` as Promise<any[]>,
   ]);
 
   const proceedsMap = new Map(proceedsList.map((r: any) => [r.kolHandle, r]));

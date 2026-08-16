@@ -224,6 +224,8 @@ export const config = {
     "/api/token/:chain/:address/kol-alert",
     // Chemin EXACT — surtout pas "/api/scan/:path*", qui fermerait le scan public.
     "/api/scan/grounding",
+    // P0 containment — seule surface de proceeds joignable en anonyme.
+    "/api/scan/ask",
     // Beta gating — all locale pages + root
     "/",
     "/en/:path*",

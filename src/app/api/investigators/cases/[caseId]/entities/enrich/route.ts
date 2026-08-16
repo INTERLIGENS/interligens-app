@@ -5,6 +5,7 @@ import {
   assertCaseOwnership,
   logAudit,
 } from "@/lib/vault/auth.server";
+import { redactProceeds } from "@/lib/kol/proceedsGate";
 
 type RouteCtx = { params: Promise<{ caseId: string }> };
 
@@ -97,13 +98,17 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             select: {
               handle: true,
               totalDocumented: true,
+              // P0 containment — le dossier investigateur est justement le
+              // support qui finit en annexe d'un depot. Il ne doit pas recevoir
+              // un montant retire de la publication.
+              proceedsPublication: true,
               totalScammed: true,
               rugCount: true,
               riskFlag: true,
             },
           });
           for (const p of profiles) {
-            const usd = p.totalDocumented ?? p.totalScammed ?? 0;
+            const usd = redactProceeds(p, p.totalDocumented) ?? p.totalScammed ?? 0;
             if (usd > 0) kolProceedsByHandle.set(p.handle.toLowerCase(), usd);
             kolFlagsByHandle.set(p.handle.toLowerCase(), {
               rugCount: p.rugCount ?? 0,
@@ -116,9 +121,12 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             const summaries = await prisma.$queryRaw<
               Array<{ kolHandle: string; totalProceedsUsd: number | null }>
             >`
-              SELECT "kolHandle", "totalProceedsUsd"
-              FROM "KolProceedsSummary"
-              WHERE "kolHandle" = ANY(${matchedKolHandles})
+              SELECT s."kolHandle", s."totalProceedsUsd"
+                FROM "KolProceedsSummary" s
+                JOIN "KolProfile" p ON p.handle = s."kolHandle"
+               WHERE s."kolHandle" = ANY(${matchedKolHandles})
+                 AND s."reviewStatus" = 'published'
+                 AND p."proceedsPublication" = 'published'
             `;
             for (const s of summaries) {
               if (s.totalProceedsUsd && s.totalProceedsUsd > 0) {
@@ -170,6 +178,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             displayName: true,
             rugCount: true,
             totalDocumented: true,
+            proceedsPublication: true,
             totalScammed: true,
             riskFlag: true,
             publishable: true,
@@ -198,7 +207,7 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
             ) {
               result[e.id].inWatchlist = true;
             }
-            const proceeds = hit.totalDocumented ?? hit.totalScammed ?? 0;
+            const proceeds = redactProceeds(hit, hit.totalDocumented) ?? hit.totalScammed ?? 0;
             if (proceeds > 0) result[e.id].proceedsTotalUSD = proceeds;
           }
         }

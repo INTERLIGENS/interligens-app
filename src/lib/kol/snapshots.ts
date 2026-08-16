@@ -23,7 +23,8 @@ export type KolPublicSnapshot = {
   publishStatus: string;
   riskFlag: string | null;
   tier: string | null;
-  totalDocumented: number;
+  /** `null` = publication retirée (P0 containment), PAS « zéro encaissé ». */
+  totalDocumented: number | null;
   walletCount: number;
   evidenceCount: number;
   identityConfidence: WalletIdentityConfidence;
@@ -107,7 +108,8 @@ export type MobileScanSnapshot = {
   displayName: string | null;
   riskFlag: string | null;
   tier: string | null;
-  totalDocumented: number;
+  /** `null` = publication retirée (P0 containment), PAS « zéro encaissé ». */
+  totalDocumented: number | null;
   freshness: KolSnapshotFreshness;
   topWallets: TopWallet[];
 };
