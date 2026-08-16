@@ -105,3 +105,97 @@ export async function loadWatcherDraftQueue(): Promise<WatcherDraftQueue> {
     counts: { drafts: drafts.length, needsResolution: needsResolution.length },
   };
 }
+
+// ─── P0-2 / Phase 1 — liens PUBLIÉS + registre des décisions ───────────────
+//
+// La file de revue ne montrait que des drafts. Un bouton d'archivage n'a
+// d'objet que sur un lien DÉJÀ public : il faut donc les lister. On y joint
+// l'historique lu dans KolTokenLinkStatusLog — la traçabilité ne sert à rien
+// si elle n'est visible nulle part.
+
+export interface PublishedLinkRow {
+  id: string;
+  kolHandle: string;
+  tokenSymbol: string | null;
+  canonicalMint: string | null;
+  contractAddress: string;
+  chain: string;
+  visibility: string;
+  reviewStatus: string | null;
+  caseId: string | null;
+  createdByBridge: boolean;
+  reviewedBy: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface DecisionRow {
+  id: string;
+  linkId: string;
+  fromVisibility: string;
+  toVisibility: string;
+  reasonCode: string;
+  reason: string;
+  actorId: string;
+  contestationRef: string | null;
+  createdAt: Date;
+}
+
+export interface PublishedLinksView {
+  published: PublishedLinkRow[];
+  /** Décisions indexées par linkId, plus récente d'abord. */
+  decisionsByLink: Map<string, DecisionRow[]>;
+  totalPublished: number;
+  /**
+   * false quand KolTokenLinkStatusLog est injoignable (migration non appliquée
+   * sur cet environnement). L'écran le DIT au lieu de laisser croire à un
+   * registre vide — un registre absent et un registre vide ne racontent pas la
+   * même histoire.
+   */
+  journalAvailable: boolean;
+}
+
+const PUBLISHED_DISPLAY_LIMIT = 250;
+
+export async function loadPublishedLinks(): Promise<PublishedLinksView> {
+  const published = await prisma.$queryRawUnsafe<PublishedLinkRow[]>(
+    `SELECT k.id, k."kolHandle", k."tokenSymbol", k."canonicalMint",
+            k."contractAddress", k.chain, k.visibility, k."reviewStatus",
+            k."caseId", k."createdByBridge", k."reviewedBy", k."reviewedAt",
+            k."createdAt"
+       FROM "KolTokenLink" k
+      WHERE k.visibility = 'public'
+      ORDER BY k."createdAt" DESC
+      LIMIT ${PUBLISHED_DISPLAY_LIMIT}`,
+  );
+
+  const totalRows = await prisma.$queryRawUnsafe<Array<{ n: number }>>(
+    `SELECT count(*)::int AS n FROM "KolTokenLink" WHERE visibility = 'public'`,
+  );
+
+  const decisionsByLink = new Map<string, DecisionRow[]>();
+  let journalAvailable = true;
+  try {
+    const decisions = await prisma.$queryRawUnsafe<DecisionRow[]>(
+      `SELECT id, "linkId", "fromVisibility", "toVisibility", "reasonCode",
+              reason, "actorId", "contestationRef", "createdAt"
+         FROM "KolTokenLinkStatusLog"
+        ORDER BY "createdAt" DESC, id DESC`,
+    );
+    for (const d of decisions) {
+      const list = decisionsByLink.get(d.linkId);
+      if (list) list.push(d);
+      else decisionsByLink.set(d.linkId, [d]);
+    }
+  } catch {
+    // Table absente sur cet environnement → on le signale, on ne ment pas.
+    journalAvailable = false;
+  }
+
+  return {
+    published,
+    decisionsByLink,
+    totalPublished: totalRows[0]?.n ?? 0,
+    journalAvailable,
+  };
+}

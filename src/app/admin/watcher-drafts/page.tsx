@@ -16,10 +16,14 @@ import { redirect } from "next/navigation";
 import { isAdminSessionFromCookies } from "@/lib/security/adminAuth";
 import {
   loadWatcherDraftQueue,
+  loadPublishedLinks,
   type DraftQueueRow,
   type NeedsResolutionRow,
+  type PublishedLinkRow,
+  type DecisionRow,
 } from "@/lib/watcher-bridge/loadWatcherDraftQueue";
 import DraftActions from "./DraftActions";
+import ArchiveAction from "./ArchiveAction";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -64,15 +68,17 @@ export default async function WatcherDraftsPage() {
   if (!(await isAdminSessionFromCookies())) redirect("/admin/login");
 
   const { drafts, needsResolution, counts } = await loadWatcherDraftQueue();
+  const { published, decisionsByLink, totalPublished, journalAvailable } = await loadPublishedLinks();
+  const totalDecisions = Array.from(decisionsByLink.values()).reduce((n, l) => n + l.length, 0);
 
   return (
     <div style={{ background: C.bg, color: C.text, minHeight: "100vh", padding: "28px 32px", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 6 }}>
         <h1 style={{ ...label, fontSize: 18, color: C.accent, margin: 0 }}>Watcher Draft Queue</h1>
-        <span style={{ color: C.dim, fontSize: 12 }}>read-only · review pending (approve/reject = Sprint 7)</span>
+        <span style={{ color: C.dim, fontSize: 12 }}>approve / reject / archive · toute décision est consignée au registre</span>
       </div>
       <p style={{ color: C.dim, fontSize: 12, marginBottom: 24 }}>
-        {counts.drafts} draft link{counts.drafts === 1 ? "" : "s"} · {counts.needsResolution} needs-resolution · none public
+        {counts.drafts} draft link{counts.drafts === 1 ? "" : "s"} · {counts.needsResolution} needs-resolution · {totalPublished} published
       </p>
 
       {/* ── DRAFTS ─────────────────────────────────────────────────────── */}
@@ -114,6 +120,86 @@ export default async function WatcherDraftsPage() {
                     </td>
                   </tr>
                 ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── LIENS PUBLIÉS — chemin de DÉPUBLICATION ───────────────────── */}
+      <section style={{ marginBottom: 40 }}>
+        <h2 style={{ ...label, color: C.accent, fontSize: 13, marginBottom: 10 }}>
+          Published links ({totalPublished}){published.length < totalPublished ? ` — affichage limité aux ${published.length} plus récents` : ""}
+        </h2>
+
+        {/* Le registre est affiché même vide : un registre absent et un registre
+            vide ne racontent pas la même chose. */}
+        <p style={{ fontSize: 11, color: journalAvailable ? C.dim : C.danger, marginBottom: 10, lineHeight: 1.5 }}>
+          {!journalAvailable ? (
+            <>Registre des décisions <strong>INJOIGNABLE</strong> sur cet environnement — la table
+            KolTokenLinkStatusLog n&apos;existe pas. L&apos;archivage échouera : il journalise avant de muter.</>
+          ) : totalDecisions === 0 ? (
+            <>Registre des décisions <strong>VIDE</strong> — aucune décision de publication ou de
+            dépublication n&apos;a encore été consignée. Ce n&apos;est pas une erreur : le registre
+            n&apos;enregistre que ce qui passe par ce chemin, et il n&apos;a jamais servi.</>
+          ) : (
+            <>{totalDecisions} décision{totalDecisions === 1 ? "" : "s"} consignée{totalDecisions === 1 ? "" : "s"} au registre.</>
+          )}
+        </p>
+
+        <div style={{ overflowX: "auto", border: `1px solid ${C.line}`, background: C.panel, borderRadius: 6 }}>
+          <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1100 }}>
+            <thead>
+              <tr>
+                {["KOL", "Symbol", "Canonical mint", "Case", "Origine", "Dernière revue", "Historique des décisions", "Actions"].map((h) => (
+                  <th key={h} style={th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {published.length === 0 ? (
+                <tr><td style={{ ...td, color: C.dim }} colSpan={8}>Aucun lien publié.</td></tr>
+              ) : (
+                published.map((l: PublishedLinkRow) => {
+                  const history = decisionsByLink.get(l.id) ?? [];
+                  return (
+                    <tr key={l.id}>
+                      <td style={td}>{l.kolHandle}</td>
+                      <td style={td}>{l.tokenSymbol ? `$${l.tokenSymbol}` : <span style={{ color: C.dim }}>—</span>}</td>
+                      <td style={td}><Mint value={l.canonicalMint ?? l.contractAddress} /> <span style={{ color: C.dim, fontSize: 11 }}>{l.chain}</span></td>
+                      <td style={td}>{l.caseId ?? <span style={{ color: C.dim }}>—</span>}</td>
+                      <td style={td}><Pill text={l.createdByBridge ? "bridge" : "seed manuel"} tone="dim" /></td>
+                      <td style={{ ...td, color: C.dim, fontSize: 11 }}>
+                        {l.reviewedBy ? <>{l.reviewedBy}<br />{l.reviewedAt ? new Date(l.reviewedAt).toISOString().slice(0, 10) : ""}</> : "—"}
+                      </td>
+                      <td style={{ ...td, maxWidth: 340 }}>
+                        {!journalAvailable ? (
+                          <span style={{ color: C.danger, fontSize: 11 }}>registre injoignable</span>
+                        ) : history.length === 0 ? (
+                          <span style={{ color: C.dim, fontSize: 11 }}>aucune décision consignée</span>
+                        ) : (
+                          history.map((d: DecisionRow) => (
+                            <div key={d.id} style={{ fontSize: 11, marginBottom: 4, lineHeight: 1.4 }}>
+                              <span style={{ color: C.accent }}>{d.fromVisibility} → {d.toVisibility}</span>{" "}
+                              <Pill text={d.reasonCode} tone="dim" />{" "}
+                              <span style={{ color: C.dim }}>{new Date(d.createdAt).toISOString().slice(0, 16).replace("T", " ")} · {d.actorId}</span>
+                              <div style={{ color: C.text }}>{d.reason}</div>
+                              {d.contestationRef && <div style={{ color: C.dim }}>ref : {d.contestationRef}</div>}
+                            </div>
+                          ))
+                        )}
+                      </td>
+                      <td style={td}>
+                        <ArchiveAction
+                          linkId={l.id}
+                          visibility={l.visibility}
+                          kolHandle={l.kolHandle}
+                          tokenSymbol={l.tokenSymbol}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
