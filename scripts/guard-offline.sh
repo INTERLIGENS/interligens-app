@@ -168,6 +168,56 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
     )
 fi
 
+# Exceptions pour le chantier P0 — CONTAINMENT DES PROCEEDS.
+#
+# Retrait de publication des six montants nominatifs dont la part adossee a une
+# observation on-chain primaire ne soutient pas le chiffre affiche (95,5 % du
+# total publie provenait de six lignes d'import CSV), + correction des trois
+# conclusions silencieusement fausses (RPC mort / lookup OFAC en echec /
+# concentration des detenteurs sur une source morte).
+#
+# Autorisation humaine explicite (David, STOP 1 valide) — voir
+# docs/P0_CONTAINMENT_PROCEEDS_STOP1.md et docs/AUDIT_BOTIFY_PROCEEDS_2026-08.md.
+#
+# FICHIERS NOMMES UNIQUEMENT, aucun wildcard de repertoire : ne couvre ni
+# l'ensemble de prisma/, ni de migrations/, ni de src/app/api/, ni de
+# src/lib/kol/, ni de src/lib/tigerscore/, ni de src/lib/security/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-proceeds-containment$ ]]; then
+    EXEMPT_PROCEEDS_CONTAINMENT_PATTERNS=(
+        # Schema + migrations (additif : 1 colonne, 1 table, aucun DROP)
+        "^prisma/schema\.prod\.prisma$"
+        "^migrations/MIGRATION_proceeds_containment_v1\.sql$"
+        "^migrations/RETRAIT_proceeds_2026-08-16\.sql$"
+        # Le gate de publication des proceeds + ses points d'application
+        "^src/lib/kol/proceedsGate\.ts$"
+        "^src/lib/kol/canonical\.ts$"
+        "^src/lib/kol/snapshots\.ts$"
+        "^src/lib/kol/kolLeaderboard\.ts$"
+        "^src/lib/kol/kolDossier\.ts$"
+        # Surfaces API qui publiaient un montant
+        "^src/app/api/kol/\[handle\]/proceeds/route\.ts$"
+        "^src/app/api/watchlist/route\.ts$"
+        "^src/app/api/watchlist/signals/\[id\]/route\.ts$"
+        "^src/app/api/v1/kol/route\.ts$"
+        "^src/app/api/v1/kol/\[handle\]/route\.ts$"
+        "^src/app/api/mobile/v1/scan/route\.ts$"
+        "^src/app/api/investigators/cases/\[caseId\]/entities/enrich/route\.ts$"
+        # Gel des documents : PDF fige + prereglage de plainte
+        "^src/app/api/pdf/\[handle\]/route\.ts$"
+        "^src/app/api/cron/helius-scan/route\.ts$"
+        "^src/app/api/admin/plainte/generate/route\.ts$"
+        # Fermeture de POST /api/scan/ask (seule surface anonyme de proceeds)
+        "^src/proxy\.ts$"
+        "^src/lib/security/nominativeApiGate\.ts$"
+        # Conclusions silencieusement fausses
+        "^src/lib/tigerscore/engine\.ts$"
+        "^src/lib/tigerscore/adapter\.ts$"
+        "^src/app/api/v1/score/route\.ts$"
+        "^src/app/api/solana/holders/route\.ts$"
+        "^src/app/api/solana/holders/route\.test\.ts$"
+    )
+fi
+
 # Exceptions pour le module PRE-BUY GUARD V1 (admin-only, shadow mode — couche
 # de convergence REFLEX + shill correlation + KOL referral, pas de surface
 # publique, additif uniquement, zéro modification de REFLEX).
@@ -834,6 +884,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche P0 containment des proceeds, exempter STRICTEMENT les
+    # fichiers nommes du chantier (aucun wildcard de repertoire).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-proceeds-containment$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_PROCEEDS_CONTAINMENT_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
