@@ -283,7 +283,11 @@ describe("runReflex — persisted row shape", () => {
       ran: true,
       ms: 0,
       signals: [],
-      raw: { score: 72, tier: "ORANGE", drivers: [], confidence: "Medium" },
+      raw: {
+        score: 72, tier: "ORANGE", drivers: [], confidence: "Medium",
+        dataQuality: { degraded: false, missing: [], unevaluatedSignals: [] },
+        intelligence: null, finalScore: 72, finalTier: "ORANGE",
+      },
     });
     await runReflex("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "SHADOW", {
       enrichment: { tigerInput: { chain: "ETH" } },

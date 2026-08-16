@@ -133,6 +133,8 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap A' > matches the locked respons
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "GREEN",
   "website": null,
 }
@@ -156,6 +158,8 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap B' > matches the locked respons
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "GREEN",
   "website": null,
 }
@@ -179,6 +183,8 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap C' > matches the locked respons
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "GREEN",
   "website": null,
 }
@@ -209,6 +215,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — BONK' > matches the locked 
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "GREEN",
   "website": null,
 }
@@ -239,6 +247,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — JUP' > matches the locked r
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "GREEN",
   "website": null,
 }
@@ -269,6 +279,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDC' > matches the locked 
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "GREEN",
   "website": null,
 }
@@ -299,6 +311,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDT' > matches the locked 
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "GREEN",
   "website": null,
 }
@@ -335,6 +349,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — wSOL' > matches the locked 
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "ORANGE",
   "website": null,
 }
@@ -366,6 +382,8 @@ exports[`/api/v1/score snapshot — 'casefile — BOTIFY (real)' > matches the l
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "RED",
   "website": null,
 }
@@ -414,6 +432,8 @@ exports[`/api/v1/score snapshot — 'casefile — GHOST (synthetic)' > matches t
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "RED",
   "website": null,
 }
@@ -468,6 +488,8 @@ exports[`/api/v1/score snapshot — 'casefile — RAVE (synthetic)' > matches th
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "RED",
   "website": null,
 }
@@ -516,6 +538,8 @@ exports[`/api/v1/score snapshot — 'casefile — SOLAXY (synthetic)' > matches 
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "ORANGE",
   "website": null,
 }
@@ -570,6 +594,8 @@ exports[`/api/v1/score snapshot — 'casefile — VINE (synthetic)' > matches th
   ],
   "timestamp": "2026-05-13T10:00:00.000Z",
   "topHolderPct": null,
+  "topHolderSource": null,
+  "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
   "verdict": "RED",
   "website": null,
 }
