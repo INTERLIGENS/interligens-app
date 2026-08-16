@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { parseBehaviorFlags } from './behaviorFlags'
+import { redactProceeds } from './proceedsGate'
 
 export async function getKolDossier(handle: string) {
   const h = handle.trim().toLowerCase().replace(/^@/, '')
@@ -22,7 +23,10 @@ export async function getKolDossier(handle: string) {
 
   const behaviorFlagsList = parseBehaviorFlags(profile.behaviorFlags)
   const hasLaundryTrail = profile.laundryTrails.length > 0
-  const hasObservedProceeds = (profile.totalDocumented ?? 0) > 0
+  // P0 containment — un montant retiré de la publication ne fonde plus
+  // `hasObservedProceeds`, qui est lui-même une affirmation sur la personne.
+  const publishedProceeds = redactProceeds(profile, profile.totalDocumented)
+  const hasObservedProceeds = (publishedProceeds ?? 0) > 0
 
   const completeness = computeCompletenessBadge({
     completenessLevel: profile.completenessLevel,
@@ -42,6 +46,8 @@ export async function getKolDossier(handle: string) {
 
   return {
     ...profileFields,
+    // Écrase la valeur brute étalée par `...profileFields`.
+    totalDocumented: publishedProceeds,
     behaviorFlagsList,
     aliases,
     wallets: kolWallets,
@@ -57,7 +63,7 @@ export async function getKolDossier(handle: string) {
       linkedCasesCount: kolCases.length,
       hasLaundryTrail,
       hasObservedProceeds,
-      observedProceedsTotal: profile.totalDocumented ?? 0,
+      observedProceedsTotal: publishedProceeds,
       behaviorFlagsList,
     },
     completeness,

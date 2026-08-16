@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 import { getRelatedActorsForProfile } from '@/lib/cluster/clusterRisk'
 import { getCoordinationSignalsForProfile, type CoordinationSignal } from '@/lib/coordination'
+import { redactProceeds } from '@/lib/kol/proceedsGate'
 
 export interface ScanGroundingContext {
   handle: string
@@ -34,6 +35,9 @@ export async function buildGroundingContext(
     select: {
       handle: true,
       totalDocumented: true,
+      // P0 containment — sans cette selection, redactProceeds fail-close et le
+      // montant ne part pas dans le prompt. C'est le comportement voulu.
+      proceedsPublication: true,
       proceedsCoverage: true,
       walletAttributionStrength: true,
       evidenceDepth: true,
@@ -54,11 +58,18 @@ export async function buildGroundingContext(
   const laundryRisk = hasLaundryTrail ? String(profile.laundryTrails[0].laundryRisk) : undefined
 
   // Build proceeds summary
+  //
+  // P0 containment — c'est la surface la plus difficile a rattraper apres coup :
+  // le montant ne part pas dans un champ JSON mais dans un PROMPT, et ressort
+  // en prose librement reformulee par le modele (« Min. $580K observed »).
+  // Aucun filtre applique en aval de la generation ne peut le rattraper : il
+  // faut qu'il n'entre jamais dans le contexte.
+  const publishedProceeds = redactProceeds(profile, profile.totalDocumented)
   let proceedsSummary: string | undefined
-  if (profile.totalDocumented != null && profile.totalDocumented > 0) {
-    const amt = profile.totalDocumented >= 1000
-      ? '$' + (profile.totalDocumented / 1000).toFixed(0) + 'K'
-      : '$' + profile.totalDocumented.toLocaleString('en-US')
+  if (publishedProceeds != null && publishedProceeds > 0) {
+    const amt = publishedProceeds >= 1000
+      ? '$' + (publishedProceeds / 1000).toFixed(0) + 'K'
+      : '$' + publishedProceeds.toLocaleString('en-US')
     if (profile.proceedsCoverage === 'partial' || profile.proceedsCoverage === 'estimated') {
       proceedsSummary = locale === 'fr'
         ? `Min. ${amt} observe — couverture partielle`

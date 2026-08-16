@@ -1,9 +1,17 @@
 // src/lib/kol/canonical.ts
 // Single source of truth for KOL profile data consumed by all public surfaces.
 // totalDocumented is NEVER recomputed here — always read from KolProfile (Writer A).
+//
+// P0 containment — totalDocumented devient `number | null`. `null` signifie
+// « nous ne publions pas de chiffre », et se distingue de `0` qui affirmerait
+// « cette personne n'a rien encaissé ». La bascule est décidée par
+// src/lib/kol/proceedsGate.ts et journalisée dans KolProceedsPublicationLog.
+// Ce fichier est le point d'étranglement : /api/kol, les snapshots publics, le
+// dossier KOL et le scan mobile en dépendent tous.
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { redactProceeds } from "@/lib/kol/proceedsGate";
 
 export type KolSnapshotFreshness = "fresh" | "stale" | "unknown";
 
@@ -20,7 +28,16 @@ export type KolCanonicalSnapshot = {
   publishStatus: string;
   riskFlag: string | null;
   tier: string | null;
-  totalDocumented: number;
+  /** `null` = publication retirée (P0 containment), PAS « zéro encaissé ». */
+  totalDocumented: number | null;
+  /**
+   * État de publication du chiffre — 'published' | 'withdrawn'. Exposé sur le
+   * snapshot pour que les consommateurs qui agrègent une SECONDE source de
+   * proceeds (KolTokenInvolvement dans /api/watchlist) puissent appliquer la
+   * même décision, au lieu de déduire le retrait d'un `totalDocumented === null`
+   * qui vaut aussi pour un profil simplement sans montant.
+   */
+  proceedsPublication: string;
   totalScammed: number | null;
   walletCount: number;
   evidenceCount: number;
@@ -99,6 +116,9 @@ const KOL_SELECT = {
   riskFlag: true,
   tier: true,
   totalDocumented: true,
+  // P0 containment — sans cette sélection, redactProceeds fail-close et le
+  // chiffre disparaît partout. C'est volontaire : l'oubli ne publie jamais.
+  proceedsPublication: true,
   totalScammed: true,
   lastHeliusScan: true,
   platform: true,
@@ -145,7 +165,10 @@ function toSnapshot(row: RawRow): KolProfileRow {
     publishStatus: row.publishStatus,
     riskFlag: row.riskFlag,
     tier: row.tier,
-    totalDocumented: row.totalDocumented ?? 0,
+    // `?? 0` supprimé : un profil sans montant et un profil dont le montant est
+    // retiré rendent tous deux `null`. Zéro serait une affirmation.
+    totalDocumented: redactProceeds(row, row.totalDocumented),
+    proceedsPublication: row.proceedsPublication,
     totalScammed: row.totalScammed,
     walletCount: row._count.kolWallets,
     evidenceCount: row._count.evidences,

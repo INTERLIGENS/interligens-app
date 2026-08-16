@@ -1,6 +1,7 @@
 // src/app/api/watchlist/signals/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { redactProceeds } from "@/lib/kol/proceedsGate";
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +57,7 @@ export async function GET(
         tier: true,
         riskFlag: true,
         totalDocumented: true,
+        proceedsPublication: true,
         evidenceDepth: true,
         completenessLevel: true,
         behaviorFlags: true,
@@ -119,7 +121,7 @@ export async function GET(
         displayName: kolProfile.displayName,
         tier: kolProfile.tier,
         riskFlag: kolProfile.riskFlag,
-        totalProceeds: kolProfile.totalDocumented,
+        totalProceeds: redactProceeds(kolProfile, kolProfile.totalDocumented),
         evidenceDepth: kolProfile.evidenceDepth,
         completenessLevel: kolProfile.completenessLevel,
         evidenceCount: kolProfile._count.evidences,

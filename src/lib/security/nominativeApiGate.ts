@@ -72,6 +72,18 @@ const NOMINATIVE_EXACT: readonly string[] = [
   // Ni auth, ni rate-limit. Chemin EXACT : le reste de /api/scan/* (resolve,
   // solana, eth, timeline...) ne sert pas de nominatif et doit rester ouvert.
   "/api/scan/grounding",
+  // P0 containment — POST /api/scan/ask etait la SEULE surface de proceeds
+  // joignable en ANONYME : sonde du 2026-08-16, corps vide -> 400
+  // `missing_fields`, pas 401. Il construit son contexte via
+  // buildGroundingContext, qui y injecte handle, tier, cluster, signaux de
+  // coordination et le montant (« Min. $580K observed — partial coverage »),
+  // puis rend une reponse en PROSE generee par le modele.
+  //
+  // C'est la surface la plus difficile a rattraper apres coup : le montant ne
+  // sort pas dans un champ JSON filtrable, il est reformule librement dans du
+  // texte. Le filtre de proceedsGate l'empeche desormais d'entrer dans le
+  // prompt ; ce gate ferme la lecture nominative elle-meme.
+  "/api/scan/ask",
 ];
 
 /** Préfixes nominatifs (le chemin doit commencer par, slash final inclus). */

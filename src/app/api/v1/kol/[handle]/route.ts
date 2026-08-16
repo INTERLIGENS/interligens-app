@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
+import { redactProceeds } from "@/lib/kol/proceedsGate";
 export const maxDuration = 15;
 export async function GET(
   req: NextRequest,
@@ -44,7 +45,7 @@ export async function GET(
       tier: kol.tier, rugCount: kol.rugCount, followerCount: kol.followerCount, verified: kol.verified,
       tags: kol.tags, pricePerPost: kol.pricePerPost,
       exitDate: kol.exitDate,
-      exitPostUrl: kol.exitPostUrl, totalDocumented: kol.totalDocumented, totalScammed: kol.totalScammed,
+      exitPostUrl: kol.exitPostUrl, totalDocumented: redactProceeds(kol, kol.totalDocumented), totalScammed: kol.totalScammed,
       stats: { evidenceItems: kol._count.evidences, rugLinkedCases: kol._count.kolCases, totalPaidUsd, proceedsSource: "KolProceedsEvent" },
       evidences: kol.evidences, cases: kol.kolCases,
       profileUrl: `https://interligens.com/en/kol/${kol.handle}`,

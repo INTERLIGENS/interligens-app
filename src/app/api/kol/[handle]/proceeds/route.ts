@@ -1,14 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import {
+  isProceedsPublished,
+  PROCEEDS_WITHDRAWN_CODE,
+  PROCEEDS_WITHDRAWN_DETAIL,
+} from "@/lib/kol/proceedsGate";
 
 const prisma = new PrismaClient();
 
-async function getCanonicalTotalDocumented(handle: string): Promise<number | null> {
+/**
+ * P0 containment — cette route est celle qui composait le document
+ * auto-contradictoire : `totalProceedsUsd` venait de KolProfile.totalDocumented
+ * tandis que `proceedsByYear`, `eventCount`, `pricingQuality` et `computedAt`
+ * venaient de KolProceedsSummary. Pour bkokoski, cela publiait 210 900 $ en
+ * total et 900,06 $ dans sa propre ventilation — un facteur 234, estampillé
+ * `pricingQuality: "high"`.
+ *
+ * On rend donc aussi l'état de publication : si le chiffre est retiré, la route
+ * ne sert plus rien du tout. Servir la ventilation sans le total serait publier
+ * un second chiffre à la place du premier.
+ */
+async function getCanonicalProceeds(
+  handle: string,
+): Promise<{ totalDocumented: number | null; proceedsPublication: string } | null> {
   const row = await prisma.kolProfile.findFirst({
     where: { handle: { equals: handle, mode: "insensitive" } },
-    select: { totalDocumented: true },
+    select: { totalDocumented: true, proceedsPublication: true },
   });
-  return row?.totalDocumented ?? null;
+  return row ?? null;
 }
 
 export async function GET(
@@ -18,6 +37,25 @@ export async function GET(
   const { handle } = await params;
 
   try {
+    // P0 containment — la decision de retrait precede TOUTE lecture. Servir la
+    // ventilation sans le total reviendrait a publier un second chiffre a la
+    // place du premier ; on ne sert donc rien.
+    // 409 et pas 404 : un 404 dirait « cette personne n'existe pas ». Le 409 dit
+    // ce qui s'est reellement passe et reste vrai pour un auditeur. La donnee
+    // sous-jacente est conservee en base.
+    const canonical = await getCanonicalProceeds(handle);
+    if (!isProceedsPublished(canonical)) {
+      return NextResponse.json(
+        {
+          found: false,
+          handle,
+          code: PROCEEDS_WITHDRAWN_CODE,
+          detail: PROCEEDS_WITHDRAWN_DETAIL,
+        },
+        { status: 409 },
+      );
+    }
+
     const summary = await prisma.$queryRaw`
       SELECT
         "kolHandle", "totalProceedsUsd", "proceedsByYear",
@@ -43,7 +81,7 @@ export async function GET(
     const toNum = (v: any) => (v == null ? 0 : Number(v));
     // Pin totalProceedsUsd to KolProfile.totalDocumented (authoritative Writer A value).
     // KolProceedsSummary may lag if computeProceedsForHandle ran while summary was stale.
-    const canonicalTotal = await getCanonicalTotalDocumented(handle);
+    const canonicalTotal = canonical?.totalDocumented ?? null;
     return NextResponse.json({
       found: true,
       handle,

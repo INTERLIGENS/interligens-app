@@ -12,6 +12,7 @@ import { emitProceedsRecomputed } from "@/lib/events/producer";
 import { generateCasePdf } from "@/lib/pdf/engine";
 import { scanWalletForCexDeposits } from "@/lib/kol/cexTracker";
 import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
+import { isProceedsPublished } from "@/lib/kol/proceedsGate";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -24,6 +25,7 @@ type ScanRow = {
   scanError?: string;
   pdfScore?: number;
   pdfUrl?: string;
+  pdfSkipped?: string;
   pdfError?: string;
 };
 
@@ -85,7 +87,17 @@ export async function GET(req: NextRequest) {
     };
     if (scanError) row.scanError = scanError;
 
-    if (after !== before) {
+    // P0 containment — un handle dont la publication du montant est retiree ne
+    // doit plus produire de dossier. Sans cette garde, le cron creerait chaque
+    // nuit une 32e archive horodatee portant le chiffre qu'on vient de retirer.
+    const proceedsGate = await prisma.kolProfile.findUnique({
+      where: { handle },
+      select: { proceedsPublication: true },
+    });
+    const proceedsPublishedForPdf = isProceedsPublished(proceedsGate);
+    if (!proceedsPublishedForPdf) row.pdfSkipped = "proceeds_withdrawn";
+
+    if (after !== before && proceedsPublishedForPdf) {
       const pdf = await generateCasePdf(handle);
       if (pdf.success) {
         row.pdfScore = pdf.score;

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { buildKolCanonicalSnapshotBatch, type KolProfileRow } from '@/lib/kol/canonical'
 import { handlesV2 } from '@/lib/watcher/handles'
 import { parseBehaviorFlags } from '@/lib/kol/behaviorFlags'
+import { isProceedsPublished } from '@/lib/kol/proceedsGate'
 
 export const dynamic = 'force-dynamic'
 
@@ -89,9 +90,18 @@ export async function GET() {
       ytd: number
       total: number
     }
+    // P0 containment — KolTokenInvolvement est une SECONDE source de proceeds,
+    // independante de KolProfile.totalDocumented. Elle publie ici `cashout.total`
+    // (40 627 $ pour GordonGekko, la aux cotes de 579 645 $ dans le meme objet).
+    // Le retrait de publication doit donc la couvrir aussi, sinon on retire un
+    // chiffre et on laisse l'autre.
+    const withdrawnHandles = new Set(
+      kolProfiles.filter(k => !isProceedsPublished(k)).map(k => k.handle.toLowerCase()),
+    )
     const cashoutByHandle = new Map<string, Bucket>()
     for (const inv of involvements) {
       const key = inv.kolHandle.toLowerCase()
+      if (withdrawnHandles.has(key)) continue
       const usd = inv.proceedsUsd ? Number(inv.proceedsUsd) : 0
       if (!usd) continue
       const b = cashoutByHandle.get(key) ?? { d1: 0, d7: 0, d30: 0, ytd: 0, total: 0 }

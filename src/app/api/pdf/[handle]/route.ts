@@ -14,6 +14,11 @@ import { isAdminApi } from "@/lib/security/adminAuth";
 import { getSessionTokenFromReq, validateSession } from "@/lib/security/investigatorAuth";
 import { getSignedDownloadUrl, isStorageEnabled } from "@/lib/storage/pdfStorage";
 import { prisma } from "@/lib/prisma";
+import {
+  isProceedsPublished,
+  PROCEEDS_WITHDRAWN_CODE,
+  PROCEEDS_WITHDRAWN_DETAIL,
+} from "@/lib/kol/proceedsGate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,13 +49,34 @@ export async function GET(
 
   const profile = await prisma.kolProfile.findUnique({
     where: { handle },
-    select: { handle: true, pdfUrl: true },
+    select: { handle: true, pdfUrl: true, proceedsPublication: true },
   });
   if (!profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
   if (!profile.pdfUrl) {
     return NextResponse.json({ error: "No PDF generated for this profile" }, { status: 404 });
+  }
+
+  // P0 containment — reports/{handle}/latest.pdf est un objet R2 FIGE. Il porte
+  // le chiffre tel qu'il etait au moment de sa generation ; aucun filtre de
+  // lecture applique en base ne le modifie. Le dossier @GordonGekko du
+  // 2026-08-16 affiche « CASHOUTS DOCUMENTES $580K » et « TOTAL $579 645 »,
+  // dont 485 000 $ proviennent d'une seule ligne d'import CSV, sous la mention
+  // « CONFIDENTIEL — usage judiciaire ».
+  //
+  // On CESSE DE LE SERVIR. On ne le supprime pas : les 31 archives horodatees
+  // sont la seule trace de ce qui a ete affirme, et a quelle date. Elles restent
+  // accessibles avec les identifiants R2, pour l'audit et pour le dossier.
+  if (!isProceedsPublished(profile)) {
+    return NextResponse.json(
+      {
+        error: PROCEEDS_WITHDRAWN_CODE,
+        detail: PROCEEDS_WITHDRAWN_DETAIL,
+        handle: profile.handle,
+      },
+      { status: 409 },
+    );
   }
 
   if (!isStorageEnabled()) {

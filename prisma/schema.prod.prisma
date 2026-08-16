@@ -396,6 +396,11 @@ model KolProfile {
   evidenceStatus            String                @default("none")
   proceedsStatus            String                @default("none")
   editorialStatus           String                @default("pending")
+  // P0 containment — 'published' | 'withdrawn'. Interrupteur de PUBLICATION du
+  // chiffre de proceeds ; totalDocumented n'est jamais effacé. Toute bascule est
+  // journalisée dans KolProceedsPublicationLog. Voir src/lib/kol/proceedsGate.ts
+  // et migrations/MIGRATION_proceeds_containment_v1.sql.
+  proceedsPublication       String                @default("published")
   summary                   String?
   observedBehaviorSummary   String?
   documentedFacts           String?
