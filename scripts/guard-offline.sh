@@ -490,6 +490,26 @@ fi
 #   package.json                     vitest ^4.0.18 → ^4.1.10 (seule CVE critical)
 #   pnpm-lock.yaml                   le lockfile correspondant
 #
+# QUATRIÈME FICHIER, AJOUTÉ LE 2026-08-18, AVEC SON PROPRE MOTIF :
+#
+#   src/app/admin/intel-vault/compliance/page.tsx   → `force-dynamic`
+#
+# La lecture statique des accès base au build (D1) a trouvé cette page
+# prérendue (`○`) SANS aucun `revalidate`, alors que son unique donnée est
+# `auditLog.count()` — le compteur d'usages du jeton hérité. Prérendu, ce
+# compteur est figé dans l'artefact JUSQU'À LA CONSTRUCTION SUIVANTE ; et son
+# `try/catch` rend `-1`, donc sans base joignable au build c'est « inconnu »
+# qui serait gelé. Une page de conformité affichant un chiffre de conformité
+# vieux de plusieurs déploiements est un défaut en soi.
+#
+# Le motif n'est PAS « faire verdir la CI » — le build passait déjà cette page,
+# le `try/catch` avalant l'échec. Sortir du prérendu est l'effet de bord ; la
+# correction est que la page cesse de mentir sur sa fraîcheur. Elle entre dans
+# cette fenêtre parce qu'elle sort de la même lecture, sur le même chantier —
+# pas parce que le périmètre s'élargit.
+#
+# EXEMPTION NOMMÉE AU FICHIER EXACT : ni `^src/app/`, ni `^src/app/admin/`.
+#
 # PÉRIMÈTRE VOLONTAIREMENT NOMMÉ FICHIER PAR FICHIER : pas de `^\.github/`, pas
 # de wildcard. Un chantier de CI n'a aucune raison de pouvoir toucher
 # guard-offline.yml, et l'exemption ne le lui permet pas.
@@ -502,6 +522,7 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-bloc2$ ]]; then
         "^\.github/workflows/security\.yml$"
         "^package\.json$"
         "^pnpm-lock\.yaml$"
+        "^src/app/admin/intel-vault/compliance/page\.tsx$"
     )
 fi
 
