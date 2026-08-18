@@ -1,0 +1,41 @@
+diff --git a/src/lib/kol/canonical.ts b/src/lib/kol/canonical.ts
+index 1ee9fa4..926984f 100644
+--- a/src/lib/kol/canonical.ts
++++ b/src/lib/kol/canonical.ts
+@@ -12,6 +12,7 @@
+ import { prisma } from "@/lib/prisma";
+ import type { Prisma } from "@prisma/client";
+ import { redactProceeds } from "@/lib/kol/proceedsGate";
++import { redactMonetary, MONETARY_PUBLICATION_SELECT } from "@/lib/publication/monetaryGate";
+ 
+ export type KolSnapshotFreshness = "fresh" | "stale" | "unknown";
+ 
+@@ -118,7 +119,12 @@ const KOL_SELECT = {
+   totalDocumented: true,
+   // P0 containment — sans cette sélection, redactProceeds fail-close et le
+   // chiffre disparaît partout. C'est volontaire : l'oubli ne publie jamais.
+-  proceedsPublication: true,
++  // A14 — `monetaryClaimsPublication` posé par MIGRATION_monetary_claims_v1.
++  // Le cast est temporaire : la colonne n'est pas encore dans le client Prisma
++  // généré (prisma/ est gelé). Il disparaît au premier `pnpm prisma:generate`
++  // postérieur à la migration. Sans cette sélection, le garde fail-close et
++  // AUCUN montant d'ampleur n'est servi — c'est le sens du refus, pas un bug.
++  ...(MONETARY_PUBLICATION_SELECT as { proceedsPublication: true }),
+   totalScammed: true,
+   lastHeliusScan: true,
+   platform: true,
+@@ -168,8 +174,13 @@ function toSnapshot(row: RawRow): KolProfileRow {
+     // `?? 0` supprimé : un profil sans montant et un profil dont le montant est
+     // retiré rendent tous deux `null`. Zéro serait une affirmation.
+     totalDocumented: redactProceeds(row, row.totalDocumented),
++    // A14 — même traitement pour l'ampleur du préjudice. Avant ce correctif,
++    // `totalScammed` était servi brut À CÔTÉ d'un champ redacted : sur
++    // bkokoski, 210 900 $ retirés et 4 500 000 $ servis par la même ligne.
++    // Famille `scam_scale` : ce n'est pas la même affirmation que
++    // l'encaissement, et elle a son propre interrupteur.
+     proceedsPublication: row.proceedsPublication,
+-    totalScammed: row.totalScammed,
++    totalScammed: redactMonetary(row, row.totalScammed, "scam_scale") as number | null,
+     walletCount: row._count.kolWallets,
+     evidenceCount: row._count.evidences,
+     lastScannedAt: row.lastHeliusScan,
