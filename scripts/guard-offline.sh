@@ -528,6 +528,44 @@ if [[ "$BRANCH" =~ ^hotfix/guard-[a-z0-9-]+$ ]]; then
     fi
 fi
 
+# ── FENÊTRE D'EXEMPTION — A4 · DEUX DÉFAUTS D'AUTORISATION D'OBJET ──────────
+#
+# Motif, seul et entier : le balayage IDOR (A4, docs/prep/RAPPORT_A4_IDOR.md)
+# a établi PAR EXÉCUTION deux défauts d'autorisation sur objet appartenant à
+# un autre locataire. Aucun des deux n'est théorique : les tests figés dans
+# __tests__/security/a4-idor-sweep.test.ts les reproduisent.
+#
+#   1. POST /api/investigators/feedback — `body.caseId` n'est confronté à
+#      rien. Il est écrit dans VaultAuditLog. Un investigateur inscrit donc
+#      dans LA PIÈCE QUI FAIT FOI une entrée liant son workspace au dossier
+#      d'un autre. Ni VaultFeedback.caseId ni VaultAuditLog.caseId ne portent
+#      de clé étrangère : le schema ne rattrape rien, et une chaîne
+#      arbitraire passe aussi bien. C'est une atteinte à l'INTÉGRITÉ DU
+#      JOURNAL D'AUDIT, pas une fuite — et elle prime.
+#
+#   2. PATCH /api/investigators/messages/[id] — aucun contrôle de
+#      participation, là où le GET de la MÊME route en fait un. A obtient le
+#      volume de n'importe quelle conversation et y écrit des lignes
+#      MessageRead à son nom.
+#
+# DEUX FICHIERS NOMMÉS, aucun wildcard : ne couvre pas src/app/api/ dans son
+# ensemble, ni src/app/api/investigators/ dans son ensemble.
+#
+# Portée volontairement étroite : rien d'adjacent. Les trois autres constats
+# d'A4 (oracle de collision, gate nominatif sur cookie non validé, deux
+# routes [param] sans seconde couche) NE SONT PAS dans cette fenêtre — ce
+# sont des décisions, pas des correctifs.
+#
+# À REFERMER par hotfix/guard-a4-autorisation-objet-fermeture dès la PR du
+# hotfix fusionnée.
+if [[ "$BRANCH" =~ ^hotfix/a4-autorisation-objet$ ]]; then
+    EXEMPT_A4_AUTORISATION_OBJET_PATTERNS=(
+        "^src/app/api/investigators/feedback/route\.ts$"
+        "^src/app/api/investigators/messages/\[id\]/route\.ts$"
+    )
+fi
+
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -857,6 +895,19 @@ while IFS= read -r file; do
 
 
 
+
+    # Sur la branche hotfix/a4-autorisation-objet, exempter STRICTEMENT les 2
+    # routes du hotfix. Aucun wildcard src/app/api/.
+    if [[ "$BRANCH" =~ ^hotfix/a4-autorisation-objet$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_A4_AUTORISATION_OBJET_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
