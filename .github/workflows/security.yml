@@ -2,13 +2,16 @@ name: Security Gates
 
 on:
   push:
-    # `prep/**` : les branches de préparation doivent pouvoir prouver un run
-    # CI complet AVANT toute PR. Sur un évènement `push`, GitHub exécute le
-    # fichier de workflow DE LA BRANCHE POUSSÉE — c'est le seul déclencheur
-    # qui fonctionne sans passer d'abord par `main`. (`workflow_dispatch`,
+    # `feat/cc-offline-**` : la convention de branche imposée par
+    # scripts/guard-offline.sh. Une branche de chantier doit pouvoir prouver un
+    # run CI complet AVANT sa PR. Sur un évènement `push`, GitHub exécute le
+    # fichier de workflow DE LA BRANCHE POUSSÉE — c'est le seul déclencheur qui
+    # fonctionne sans passer d'abord par `main`. (`workflow_dispatch`,
     # ci-dessous, exige que le déclencheur existe déjà sur la branche par
     # défaut : inutilisable tant que ce fichier n'est pas sur `main`.)
-    branches: [main, master, develop, 'prep/**']
+    #
+    # `hotfix/**` : la voie de maintenance du guard passe par là.
+    branches: [main, master, develop, 'feat/cc-offline-**', 'hotfix/**']
   pull_request:
     branches: [main, master, develop]
   # Lancement manuel (`gh workflow run security.yml --ref <branche>`).
