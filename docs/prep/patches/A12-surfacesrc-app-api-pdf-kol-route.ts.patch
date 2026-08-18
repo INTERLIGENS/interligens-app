@@ -1,0 +1,31 @@
+diff --git a/src/app/api/pdf/kol/route.ts b/src/app/api/pdf/kol/route.ts
+index 14f7514..55d7567 100644
+--- a/src/app/api/pdf/kol/route.ts
++++ b/src/app/api/pdf/kol/route.ts
+@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
+ import { renderKolPdf } from "@/lib/pdf/kol/templateKol"
+ import { renderKolPdfLegal } from "@/lib/pdf/kol/templateKolLegal"
+ import { checkAuth } from "@/lib/security/auth"
++import { PUBLISHED_LAUNDRY_FILTER, redactLaundryTrail } from "@/lib/laundry/publicationGate"
+ 
+ export async function GET(request: NextRequest) {
+   // P0 SEC: gate the KOL dossier PDF behind ADMIN_TOKEN. Same pattern as
+@@ -73,13 +74,16 @@ export async function GET(request: NextRequest) {
+       return true
+     })
+ 
++    // Le PDF « mode lawyer » sort de la maison : un narratif retiré ne doit y
++    // figurer sous aucune forme. Filtre dans le `where`, revérifié ensuite.
+     const laundryTrail = await prisma.laundryTrail.findFirst({
+-      where: { kolHandle: handle },
++      where: { kolHandle: handle, ...PUBLISHED_LAUNDRY_FILTER },
+       include: { signals: true },
+       orderBy: { createdAt: "desc" },
+     })
+ 
+-    const html = mode === "lawyer" ? renderKolPdfLegal(kol) : renderKolPdf(kol, mode, laundryTrail, lang)
++    const publishedTrail = redactLaundryTrail(laundryTrail as { publication?: unknown } | null)
++    const html = mode === "lawyer" ? renderKolPdfLegal(kol) : renderKolPdf(kol, mode, publishedTrail, lang)
+ 
+     if (format === "html") {
+       return new NextResponse(html, { headers: { "Content-Type": "text/html" } })
