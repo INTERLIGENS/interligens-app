@@ -63,6 +63,11 @@
 // n'était publié. C'est volontairement plus strict que l'état actuel.
 
 /** Les deux seuls états. Aligné sur le CHECK de la migration. */
+// Types du CLIENT GÉNÉRÉ, à dessein : un `Record<string, string>` acceptait
+// n'importe quelle clé, et c'est ce qui rendait le typecheck vert alors que
+// la colonne n'existait dans aucun schéma. Ici, une clé fausse ne compile pas.
+import type { Prisma } from "@prisma/client";
+
 export const LAUNDRY_PUBLICATION_STATES = ["published", "withdrawn"] as const;
 export type LaundryPublicationState = (typeof LAUNDRY_PUBLICATION_STATES)[number];
 
@@ -99,10 +104,10 @@ export type LaundryPublicationCarrier = { publication?: unknown } | null | undef
  * `pnpm prisma:generate` tourne après la migration, ce type se resserre sans
  * changer une ligne d'appelant.
  */
-export const LAUNDRY_PUBLICATION_SELECT: Record<string, true> = { publication: true };
+export const LAUNDRY_PUBLICATION_SELECT = { publication: true } satisfies Prisma.LaundryTrailSelect;
 
 /** À étaler dans tout `where` Prisma qui lira un trail destiné à être servi. */
-export const PUBLISHED_LAUNDRY_FILTER: Record<string, string> = { publication: "published" };
+export const PUBLISHED_LAUNDRY_FILTER = { publication: "published" } satisfies Prisma.LaundryTrailWhereInput;
 
 /**
  * L'unique prédicat. Fail-closed par construction : seule la chaîne exacte

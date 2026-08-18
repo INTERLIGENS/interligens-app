@@ -424,6 +424,13 @@ model KolProfile {
   // journalisée dans KolProceedsPublicationLog. Voir src/lib/kol/proceedsGate.ts
   // et migrations/MIGRATION_proceeds_containment_v1.sql.
   proceedsPublication       String                @default("published")
+  // A14 — 'published' | 'withdrawn'. Second interrupteur, distinct du premier :
+  // il couvre les revendications monétaires AUTRES que les proceeds (ampleur,
+  // montants de preuve, sommes calculées à la volée). Un profil publié peut
+  // porter un chiffre retiré — publication du profil n'est pas publication du
+  // chiffre. Voir src/lib/publication/monetaryGate.ts et
+  // docs/prep/patches/A14-MIGRATION_monetary_claims_v1.sql.
+  monetaryClaimsPublication String                @default("published")
   summary                   String?
   observedBehaviorSummary   String?
   documentedFacts           String?
@@ -1221,10 +1228,57 @@ model LaundryTrail {
   narrativeTextFr    String?
   evidenceNote       String             @default("Pattern detected via on-chain analysis. INTERLIGENS does not assert intent.")
   evidenceNoteFr     String?            @default("Schéma détecté via une analyse on-chain. INTERLIGENS ne se prononce pas sur l'intention.")
+  // A12 — 'published' | 'withdrawn'. Interrupteur de PUBLICATION du narratif de
+  // blanchiment ; narrativeText et narrativeTextFr ne sont jamais effacés. Toute
+  // bascule est journalisée dans LaundryTrailPublicationLog. Voir
+  // src/lib/laundry/publicationGate.ts et
+  // docs/prep/patches/A12-MIGRATION_laundry_publication_v1.sql.
+  publication        String             @default("published")
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   signals            LaundrySignal[]
   kolProfile         KolProfile?        @relation(fields: [kolHandle], references: [handle])
+
+  @@index([publication])
+  @@index([kolHandle, publication])
+}
+
+/// A12 — registre des décisions de publication du narratif de blanchiment.
+/// Append-only : une décision ne se corrige qu'en s'ajoutant à elle-même.
+/// Dénormalisation volontaire, AUCUNE clé étrangère : le registre doit survivre
+/// à la disparition de la ligne qu'il décrit — même doctrine que
+/// VaultAuditLog.caseId. Les contraintes CHECK vivent en base
+/// (docs/prep/patches/A12-MIGRATION_laundry_publication_v1.sql) : Prisma ne sait
+/// pas les déclarer, et les dupliquer ici les ferait diverger en silence.
+model LaundryTrailPublicationLog {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  trailId               String
+  kolHandle             String
+  /// 'trail_full' | 'trail_narrative' | 'trail_risk'
+  scope                 String
+  /// 'published' | 'withdrawn'
+  fromStatus            String
+  /// 'published' | 'withdrawn'
+  toStatus              String
+  /// sha256 du narratif AU MOMENT de la décision. Sans lui on saurait qu'un
+  /// retrait a eu lieu, pas sur quelle version du texte.
+  narrativeSha256       String
+  assertedValueUsd      Decimal?
+  primaryEvidenceUsd    Decimal?
+  laundryRiskAtDecision String?
+  /// Liste fermée en base, alignée sur KolProceedsPublicationLog.
+  reasonCode            String
+  reason                String
+  /// Doit désigner une personne réelle ou un acteur machine nommé.
+  /// La base refuse 'admin' : non attribuable.
+  actorId               String
+  createdAt             DateTime @default(now())
+  contestationRef       String?
+
+  @@index([trailId, createdAt(sort: Desc)])
+  @@index([kolHandle, createdAt(sort: Desc)])
+  @@index([reasonCode])
+  @@index([contestationRef])
 }
 
 model LaundrySignal {

@@ -19,6 +19,39 @@ et `KolProfile.monetaryClaimsPublication`. Elles valent `'published'` partout.
 
 ## PASSE 1 — juste après le déploiement, avant le BLOC 3
 
+### 0. AVANT DE DÉPLOYER — le contrôle hors réseau, hors base
+
+**Le seul test de cette page qui s'exécute AVANT le déploiement, et le seul qui
+évite la panne au lieu de la constater.**
+
+Le code servi interroge `LaundryTrail.publication` et
+`KolProfile.monetaryClaimsPublication`. La migration les crée **en base** ; le
+client Prisma, lui, ne les connaît que si le **schéma** les déclare. Le
+2026-08-18, il ne les déclarait pas : le déploiement aurait cassé six familles
+de routes malgré une migration réussie.
+
+```bash
+D=$(ls -d node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client)
+grep -c "monetaryClaimsPublication" "$D/index.d.ts"      # ATTENDU : > 0
+grep -c "LaundryTrailPublicationLog" "$D/index.d.ts"     # ATTENDU : > 0
+grep -A18 "LaundryTrailScalarFieldEnum: {" "$D/index.d.ts" | grep -c "publication: 'publication'"   # ATTENDU : 1
+```
+
+**Témoin :** `grep -c "proceedsPublication"` doit rendre le même ordre de
+grandeur. C'est la colonne équivalente posée en août, et elle prouve que la
+convention du dépôt est bien de déclarer la colonne dans le schéma.
+
+**N'EXÉCUTE PAS `vercel --prod` si l'un des trois rend 0.** La migration peut
+être passée, la production tombera quand même.
+
+> **Attention à ce que ce contrôle mesure.** Il lit le client **local**.
+> `node_modules` n'est pas versionné : la production utilise le client que
+> **Vercel régénère** au build, via `vercel-build` →
+> `prisma generate --schema prisma/schema.prod.prisma`. Le contrôle local est
+> donc un proxy — il est valide parce qu'il lit le **même schéma**, à condition
+> que l'arbre déployé soit celui-ci. Vérifier `git status` propre et la branche
+> avant de déployer fait partie du test.
+
 ### 1. La brique de base — 30 secondes
 
 | # | Quoi | Attendu |
