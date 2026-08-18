@@ -1,0 +1,33 @@
+diff --git a/src/components/kol/KolNarrative.tsx b/src/components/kol/KolNarrative.tsx
+index 35ecb8b..4c48097 100644
+--- a/src/components/kol/KolNarrative.tsx
++++ b/src/components/kol/KolNarrative.tsx
+@@ -14,7 +14,18 @@ const extractCA = (text: string) => {
+   const m = text.match(/CA:\s*([A-Za-z0-9]{32,44}(?:pump)?)/i)
+   return m ? m[1] : null
+ }
+-const fmtUsd = (n?: number) => !n ? 'an undisclosed amount' : n >= 1000000 ? '$' + (n/1000000).toFixed(1) + 'M' : '$' + (n/1000).toFixed(0) + 'K'
++const fmtUsd = (n?: number | null) => !n ? 'an undisclosed amount' : n >= 1000000 ? '$' + (n/1000000).toFixed(1) + 'M' : '$' + (n/1000).toFixed(0) + 'K'
++
++// A15 — POURQUOI ON SUPPRIME LA PHRASE ET PAS LE NOMBRE.
++//
++// `fmtUsd(null)` rend « an undisclosed amount ». La phrase devient alors
++// « Estimated proceeds from these activities: an undisclosed amount — derived
++// from verifiable on-chain transactions. » : l'accusation reste, la source
++// reste affirmée, seul le chiffre disparaît. C'est PIRE que de tout retirer —
++// on publie une imputation qu'on ne peut plus étayer.
++//
++// Quand un montant n'est pas publiable, la phrase qui le porte n'est pas
++// écrite. `null` veut dire « ne rien dire », pas « dire sans chiffrer ».
+ 
+ export default function KolNarrative({ kol }: NarrativeProps) {
+   const [expanded, setExpanded] = useState(false)
+@@ -39,7 +50,7 @@ export default function KolNarrative({ kol }: NarrativeProps) {
+ 
+   if (promoterCases.length > 0) {
+     const promoterProceeds = promoterCases.reduce((s, c) => s + (c.paidUsd ?? 0), 0)
+-    sentences.push('Promoter activity on ' + promoterCases.map(c => c.caseId).join(', ') + ' is source-attributed in public investigation threads. Estimated proceeds from these activities: ' + fmtUsd(promoterProceeds) + ' — derived from verifiable on-chain transactions.')
++    if (promoterProceeds) sentences.push('Promoter activity on ' + promoterCases.map(c => c.caseId).join(', ') + ' is source-attributed in public investigation threads. Estimated proceeds from these activities: ' + fmtUsd(promoterProceeds) + ' — derived from verifiable on-chain transactions.')
+   }
+ 
+   if (associatedWallets.length > 0) {

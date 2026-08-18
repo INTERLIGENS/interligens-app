@@ -1,0 +1,23 @@
+diff --git a/src/app/api/watchlist/route.ts b/src/app/api/watchlist/route.ts
+index fd0a969..0b94ccd 100644
+--- a/src/app/api/watchlist/route.ts
++++ b/src/app/api/watchlist/route.ts
+@@ -5,6 +5,7 @@ import { buildKolCanonicalSnapshotBatch, type KolProfileRow } from '@/lib/kol/ca
+ import { handlesV2 } from '@/lib/watcher/handles'
+ import { parseBehaviorFlags } from '@/lib/kol/behaviorFlags'
+ import { isProceedsPublished } from '@/lib/kol/proceedsGate'
++import { redactMonetary } from '@/lib/publication/monetaryGate'
+ 
+ export const dynamic = 'force-dynamic'
+ 
+@@ -172,7 +173,9 @@ export async function GET() {
+         tier: kol?.tier ?? null,
+         riskFlag: kol?.riskFlag ?? null,
+         totalProceeds: kol?.totalDocumented ?? null,
+-        totalScammed: kol?.totalScammed ?? null,
++        // A15 — `proceedsUsd` était déjà filtré plus haut par `withdrawnHandles`,
++        // `totalScammed` ne l'était pas : famille `scam_scale`, interrupteur propre.
++        totalScammed: redactMonetary(kol, kol?.totalScammed, 'scam_scale') as number | null,
+         proceedsCoverage: kol?.proceedsCoverage ?? null,
+         evidenceDepth: kol?.evidenceDepth ?? null,
+         completenessLevel: kol?.completenessLevel ?? null,

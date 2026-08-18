@@ -1,0 +1,36 @@
+diff --git a/src/app/api/pdf/kol/route.ts b/src/app/api/pdf/kol/route.ts
+index 14f7514..a51d391 100644
+--- a/src/app/api/pdf/kol/route.ts
++++ b/src/app/api/pdf/kol/route.ts
+@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
+ import { renderKolPdf } from "@/lib/pdf/kol/templateKol"
+ import { renderKolPdfLegal } from "@/lib/pdf/kol/templateKolLegal"
+ import { checkAuth } from "@/lib/security/auth"
++import { isMonetaryClaimPublished, redactEvidenceAmount } from "@/lib/publication/monetaryGate"
+ 
+ export async function GET(request: NextRequest) {
+   // P0 SEC: gate the KOL dossier PDF behind ADMIN_TOKEN. Same pattern as
+@@ -26,9 +27,22 @@ export async function GET(request: NextRequest) {
+     })
+     if (!kol) return NextResponse.json({ error: "Not found" }, { status: 404 })
+ 
++    // A15 — le PDF est un objet qui SORT de la maison, et il est archivé dans R2.
++    // Le filtre porte donc sur la GÉNÉRATION : on ne fabrique pas un document
++    // qui porte un montant retiré. (Il ne porte PAS sur les objets déjà écrits
++    // dans R2 — voir docs/prep/RAPPORT_A15_CABLAGE_COMPLET.md § archive.)
++    const proceedsPublished = isMonetaryClaimPublished(kol, "proceeds")
++
++    // Chaque montant de preuve passe par le point de filtrage, quel que soit
++    // son type : `redactEvidenceAmount` classe lui-même encaissement / ampleur.
++    kol.evidences = kol.evidences.map((e: any) => ({ ...e, amountUsd: redactEvidenceAmount(kol, e) })) as typeof kol.evidences
++
+     // Build cashout evidence from KolProceedsEvent if no onchain_cashout in KolEvidence
+     const hasCashoutEvidence = kol.evidences.some((e: any) => e.type === "onchain_cashout")
+-    if (!hasCashoutEvidence) {
++    // `proceedsPublished` en tête de condition : quand la publication est
++    // retirée, on ne SYNTHÉTISE même pas la preuve d'encaissement. La calculer
++    // puis la masquer laisserait le total transiter par le gabarit.
++    if (proceedsPublished && !hasCashoutEvidence) {
+       const cashoutRows: any[] = await prisma.$queryRawUnsafe(`
+         SELECT
+           pe."walletAddress",
