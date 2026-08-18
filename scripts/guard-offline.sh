@@ -528,54 +528,6 @@ if [[ "$BRANCH" =~ ^hotfix/guard-[a-z0-9-]+$ ]]; then
     fi
 fi
 
-# ── FENÊTRE D'EXEMPTION — INTERRUPTEURS DE PUBLICATION (A12 · A14 · A15) ────
-#
-# Motif unique et entier : CÂBLER LES POINTS D'APPLICATION des interrupteurs
-# de publication déjà fusionnés. Les interrupteurs eux-mêmes vivent hors
-# chemins gelés — src/lib/laundry/publicationGate.ts (PR #110) et
-# src/lib/publication/monetaryGate.ts (PR #111/#112). Ce qui reste, ce sont
-# les surfaces qui les APPELLENT, et elles sont gelées.
-#
-# Un seul motif, trois chantiers, parce que c'est une seule question : quand
-# une décision de retrait est prise, TOUS les porteurs du même fait se
-# taisent-ils ? A12 le pose pour le narratif de blanchiment, A14 pour le
-# chiffre, A15 pour les douze surfaces qui le portent. Les grouper ne mélange
-# rien ; les séparer ferait trois fenêtres pour un même geste.
-#
-# DOUZE FICHIERS NOMMÉS, aucun wildcard : ne couvre ni src/app/api/, ni
-# src/components/, ni src/lib/kol/ dans leur ensemble.
-#
-# COLLISION TRANCHÉE : src/app/api/pdf/kol/route.ts est visé par A12 ET par
-# A15. Vérifié par exécution — les deux patches se refusent mutuellement,
-# dans les DEUX sens, sur le hunk d'import. Ils sont donc remplacés par un
-# patch unique de fusion. Les deux modifications sont sémantiquement
-# disjointes (kol.evidences d'un côté, laundryTrail de l'autre) : la fusion
-# ne tranche aucun arbitrage, elle résout un conflit de texte.
-#
-# À REFERMER par hotfix/guard-publication-interrupteurs-fermeture dès la PR
-# du chantier fusionnée.
-if [[ "$BRANCH" =~ ^hotfix/publication-interrupteurs$ ]]; then
-    EXEMPT_PUBLICATION_INTERRUPTEURS_PATTERNS=(
-        # A12 — narratif de blanchiment
-        "^src/app/api/kol/\[handle\]/pedigree/route\.ts$"
-        "^src/app/api/laundry/\[handle\]/route\.ts$"
-        "^src/components/LaundryTrailCard\.tsx$"
-        # A12 + A15 — collision tranchée, patch unique de fusion
-        "^src/app/api/pdf/kol/route\.ts$"
-        # A14 — le chiffre
-        "^src/app/api/v1/kol/\[handle\]/route\.ts$"
-        "^src/lib/kol/canonical\.ts$"
-        # A15 — les surfaces qui le portent
-        "^src/app/api/kol/\[handle\]/cashout/route\.ts$"
-        "^src/app/api/kol/\[handle\]/class-action/route\.ts$"
-        "^src/app/api/watchlist/route\.ts$"
-        "^src/components/kol/CashoutProof\.tsx$"
-        "^src/components/kol/KolNarrative\.tsx$"
-        "^src/components/kol/ShillToExitCard\.tsx$"
-    )
-fi
-
-
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -905,20 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Sur la branche hotfix/publication-interrupteurs, exempter STRICTEMENT les
-    # 12 surfaces câblées. Aucun wildcard src/app/api/, src/components/ ni
-    # src/lib/kol/.
-    if [[ "$BRANCH" =~ ^hotfix/publication-interrupteurs$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_PUBLICATION_INTERRUPTEURS_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
