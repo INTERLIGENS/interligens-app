@@ -6,7 +6,25 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL_UNPOOLED")
+
+  // ── SCHEMA PAR DÉFAUT — celui que lit toute commande sans `--schema` ──
+  //
+  // Contrairement à ce que dit CLAUDE.md, ce fichier n'est PAS un schema « dev
+  // SQLite » : il est `postgresql`, et son `directUrl` désignait
+  // `env("DATABASE_URL_UNPOOLED")`, c'est-à-dire `ep-bold-sky` — le MÊME autre
+  // projet Neon que le schema de production. Mesures :
+  // docs/prep/RAPPORT_A6_DEUX_BASES.md.
+  //
+  // C'est le chemin qu'on emprunte en OUBLIANT le drapeau, et `package.json`
+  // l'emprunte déjà : `db:status = prisma migrate status`, sans `--schema`.
+  // Verrouiller le seul schema de production aurait donc laissé ouverte la
+  // porte la plus facile à pousser par accident.
+  //
+  // Même variable inexistante que dans `schema.prod.prisma`, et pour la même
+  // raison : le moteur de migration s'arrête sur P1012 à l'étape getConfig,
+  // avant toute résolution de `url` et avant tout accès réseau.
+  // `prisma generate` n'est pas affecté — il ne résout pas `directUrl`.
+  directUrl = env("PRISMA_MIGRATE_INTENTIONNELLEMENT_DESACTIVE_VOIR_CLAUDE_MD")
 }
 
 model SourceRegistry {
