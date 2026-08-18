@@ -278,3 +278,60 @@ dans le fichier, plafonnée à 30 req/min/IP.
   devrait être versé au lot d'A15 avant qu'A15 ne soit fusionné** — sinon le
   test de couverture des douze surfaces restera vert sur une justification que
   le code ne soutient pas.
+
+---
+
+## 6. La correction du test de couverture d'A15 — livrée sur A15
+
+**Elle ne pouvait pas voyager sur cette branche :**
+`__tests__/security/monetary-carrier-coverage.test.ts` n'existe que sur
+`feat/cc-offline-73-a15-cablage-complet`. Si la correction vivait ailleurs,
+fusionner A15 landerait le test faux.
+
+**Commit :** `7e06d26` — *« la couverture "en amont" cesse d'être une phrase et
+devient une assertion »*. Détail complet dans l'addendum de
+`docs/prep/RAPPORT_A15_CABLAGE_COMPLET.md`.
+
+Trois surfaces étaient classées « couvertes EN AMONT par la route qui les
+alimente » — un commentaire, asserté nulle part. Le champ `amont` **nomme**
+désormais la route ; le test vérifie que le composant l'appelle vraiment, puis
+qu'elle porte un garde (arbre · module `@/lib/*` importé, **un** saut · patch
+A14/A15). Ce qui n'est pas couvert est **inscrit** au registre `LACUNES_AMONT`,
+motivé, avec un **cliquet** : une lacune qui gagne un garde fait tomber le test
+et exige sa radiation.
+
+| Composant | Amont | État |
+|---|---|---|
+| `CashoutProof` | `/api/kol/[handle]/cashout` | couvert — patch A15, `monetaryGate` |
+| `ProceedsCard` | `/api/kol/[handle]/proceeds` | couvert — arbre, `isProceedsPublished` |
+| **`ShillToExitCard`** | `/api/kol/[handle]/shill-to-exit` | **LACUNE** — aucun garde |
+| **`KolAlert`** | `/api/token/[chain]/[address]/kol-alert` | **LACUNE** — voir ci-dessous |
+| `KolNarrative` | *(aucun `fetch` — props du rendu serveur)* | sans objet |
+
+**`KolAlert` est une seconde lacune, trouvée par le même mécanisme.**
+`src/lib/kol/alert.ts` filtre le **profil** (`publishable && publishStatus ===
+"published"`) mais sert `proceedsUsd` **sans garde monétaire**. C'est la thèse
+d'A14 retournée contre A15 : *publication du profil ≠ publication du chiffre*.
+
+**Rien n'est corrigé** — `src/app/api/` est gelé, et couvrir une surface
+monétaire est une décision. **Ce que ça ouvre :** verser
+`/api/kol/{handle}/shill-to-exit` au lot ferait **treize** surfaces, quand
+`A15-REGISTRE_elargissement_portee.sql` en décrit douze. Les deux doivent
+bouger ensemble, ou le journal datera faux.
+
+---
+
+## 7. Contrôle
+
+| Contrainte | État |
+|---|---|
+| Vulnérabilité corrigée | **aucune** — cinq constats figés, deux lacunes inscrites |
+| Fichier de production modifié | **aucun** — tout vit dans `__tests__/` et `docs/prep/` |
+| Écriture en base, déploiement, merge sur `main` | **aucun** |
+| Variable d'environnement posée | **aucune** |
+| `--no-verify`, chemin gelé forcé | **aucun** — guard vert sur les deux commits |
+| `BOTIFY_MINT`, `TSA_*`, `R2_PUBLIC_BASE_URL` | non touchés |
+| Nom civil transcrit | aucun — les deux sujets sont `SUJET-A` et `SUJET-B` |
+| Suite, branche A4 | **291 fichiers · 3 042 tests verts**, 2 ignorés · `typecheck` vert |
+| Suite, branche A15 | **292 fichiers · 3 085 tests verts**, 2 ignorés · `typecheck` vert |
+| Ancêtre A14 → A15 | **intact** (`merge-base --is-ancestor`) |
