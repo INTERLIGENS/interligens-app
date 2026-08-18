@@ -11,6 +11,14 @@
 // ces consommateurs (égalité, not, in, equals/mode, contains, gt, OR, relation
 // `kol`). Un opérateur non couvert lève, il ne renvoie jamais « pas de
 // filtre » silencieusement.
+//
+// A4 (balayage IDOR) réutilise ce magasin et lui ajoute ce qui lui manquait :
+// `findUnique`, `include`, les mutations, et un JOURNAL D'ÉCRITURES. La raison
+// est la même que ci-dessus — un mock par route ne prouverait rien. Ici les
+// handlers d'`/api/investigators/*` tournent INCHANGÉS, avec leurs vrais
+// helpers d'autorisation, et c'est leur propre clause `where` qui décide.
+// Ce qui est ajouté est ADDITIF : `select` conserve exactement son
+// comportement, `include` sans argument ne change rien.
 
 export type Row = Record<string, unknown>;
 
@@ -73,8 +81,15 @@ function matchScalar(value: unknown, cond: unknown): boolean {
 }
 
 export interface RelationResolver {
-  /** Nom de la clé relation -> (row) => la ligne liée, ou null. */
-  [relationKey: string]: (row: Row) => Row | null;
+  /**
+   * Nom de la clé relation -> (row) => la ligne liée, ou null.
+   *
+   * A4 : un résolveur peut aussi rendre un TABLEAU. La clause est alors
+   * interprétée comme une relation to-many (`some` / `none` / `every`), la
+   * forme qu'emploient `readBy: { none: … }` et `participants: { some: … }`.
+   * Rendre `Row | null` reste le comportement d'origine, inchangé.
+   */
+  [relationKey: string]: (row: Row) => Row | Row[] | null;
 }
 
 export function matchWhere(row: Row, where: unknown, relations: RelationResolver = {}): boolean {
@@ -98,6 +113,22 @@ export function matchWhere(row: Row, where: unknown, relations: RelationResolver
     }
     if (key in relations) {
       const related = relations[key](row);
+      if (Array.isArray(related)) {
+        const c = (cond ?? {}) as Record<string, unknown>;
+        const ops = Object.keys(c);
+        for (const op of ops) {
+          if (op === "some") {
+            if (!related.some((r) => matchWhere(r, c.some, relations))) return false;
+          } else if (op === "none") {
+            if (related.some((r) => matchWhere(r, c.none, relations))) return false;
+          } else if (op === "every") {
+            if (!related.every((r) => matchWhere(r, c.every, relations))) return false;
+          } else {
+            throw new UnsupportedOperatorError(`${key} -> ${op}`);
+          }
+        }
+        continue;
+      }
       if (related === null) return false;
       if (!matchWhere(related, cond, relations)) return false;
       continue;
@@ -107,10 +138,57 @@ export function matchWhere(row: Row, where: unknown, relations: RelationResolver
   return true;
 }
 
+/** Charge une relation demandée par `include`. `args` = la sous-clause. */
+export interface RelationLoader {
+  [relationKey: string]: (row: Row, args: unknown) => unknown;
+}
+
+/**
+ * Journal d'écritures — A4.
+ *
+ * La moitié lecture d'un balayage IDOR se lit dans le statut HTTP. La moitié
+ * ÉCRITURE ne s'y lit pas : une route peut rendre 200 en n'écrivant rien, ou
+ * rendre 200 en écrivant dans le journal d'audit d'un autre locataire. Le
+ * magasin enregistre donc chaque mutation, avec ses arguments, pour que le
+ * test puisse affirmer non pas « la route a répondu » mais « la route a écrit
+ * CECI, à cet endroit-là ».
+ */
+export interface WriteEntry {
+  model: string;
+  op: "create" | "createMany" | "update" | "updateMany" | "delete" | "deleteMany";
+  args: unknown;
+  /** Nombre de lignes réellement touchées (0 = mutation sans effet). */
+  affected: number;
+}
+
+export class WriteJournal {
+  readonly entries: WriteEntry[] = [];
+  record(e: WriteEntry): void {
+    this.entries.push(e);
+  }
+  clear(): void {
+    this.entries.length = 0;
+  }
+  /** Mutations d'un modèle donné, journal d'audit inclus si on le nomme. */
+  on(model: string): WriteEntry[] {
+    return this.entries.filter((e) => e.model === model);
+  }
+  /** Tout sauf le modèle nommé — sert à isoler l'effet métier de l'audit. */
+  except(...models: string[]): WriteEntry[] {
+    return this.entries.filter((e) => !models.includes(e.model));
+  }
+}
+
 interface ModelOptions {
   relations?: RelationResolver;
   /** Calcule les `_count` demandés dans un `select`. */
   counts?: (row: Row) => Record<string, number>;
+  /** Relations chargeables via `include`. */
+  includes?: RelationLoader;
+  /** Nom du modèle, tel qu'il apparaît dans le journal d'écritures. */
+  name?: string;
+  /** Journal partagé. Absent = les mutations ne sont pas enregistrées. */
+  journal?: WriteJournal;
 }
 
 function applySelect(
@@ -151,9 +229,33 @@ function applyOrderBy(rows: Row[], orderBy: unknown): Row[] {
   });
 }
 
+function applyInclude(row: Row, include: unknown, includes: RelationLoader): Row {
+  if (!include || typeof include !== "object") return { ...row };
+  const out: Row = { ...row };
+  for (const [key, sub] of Object.entries(include as Record<string, unknown>)) {
+    if (sub === false || sub === undefined) continue;
+    const loader = includes[key];
+    // Une relation demandée que le magasin ne sait pas charger doit LEVER.
+    // Rendre `undefined` en silence ferait passer un test pour la mauvaise
+    // raison — même doctrine que UnsupportedOperatorError.
+    if (!loader) throw new UnsupportedOperatorError(`include -> ${key}`);
+    out[key] = loader(row, sub);
+  }
+  return out;
+}
+
 export function makeModel(rows: Row[], opts: ModelOptions = {}) {
   const relations = opts.relations ?? {};
+  const includes = opts.includes ?? {};
+  const model = opts.name ?? "(anonyme)";
   const pick = (args: { where?: unknown }) => rows.filter((r) => matchWhere(r, args?.where, relations));
+  const shape = (row: Row, args: { select?: Record<string, unknown>; include?: unknown }) =>
+    args?.select
+      ? applySelect(row, args.select, opts.counts)
+      : applyInclude(row, args?.include, includes);
+  const note = (op: WriteEntry["op"], args: unknown, affected: number) => {
+    opts.journal?.record({ model, op, args, affected });
+  };
 
   return {
     rows,
@@ -180,14 +282,70 @@ export function makeModel(rows: Row[], opts: ModelOptions = {}) {
       }
       if (typeof args.skip === "number") out = out.slice(args.skip);
       if (typeof args.take === "number") out = out.slice(0, args.take);
-      return out.map((r) => applySelect(r, args.select, opts.counts));
+      return out.map((r) => shape(r, args));
     },
-    async findFirst(args: { where?: unknown; select?: Record<string, unknown> } = {}) {
+    async findFirst(args: { where?: unknown; select?: Record<string, unknown>; include?: unknown } = {}) {
       const hit = pick(args)[0];
-      return hit ? applySelect(hit, args.select, opts.counts) : null;
+      return hit ? shape(hit, args) : null;
+    },
+    // `findUnique` partage l'évaluateur de `findFirst` : les lignes du magasin
+    // portent un `id` unique, et toute clause non couverte lève au lieu de
+    // filtrer à vide.
+    async findUnique(args: { where?: unknown; select?: Record<string, unknown>; include?: unknown } = {}) {
+      const hit = pick(args)[0];
+      return hit ? shape(hit, args) : null;
+    },
+    async findUniqueOrThrow(
+      args: { where?: unknown; select?: Record<string, unknown>; include?: unknown } = {},
+    ) {
+      const hit = pick(args)[0];
+      if (!hit) throw new Error(`${model}: findUniqueOrThrow sans résultat`);
+      return shape(hit, args);
     },
     async count(args: { where?: unknown } = {}) {
       return pick(args).length;
+    },
+
+    // ── Mutations ───────────────────────────────────────────────────────────
+    // Elles existent pour A4 : prouver qu'une route rend 200 ne dit pas si
+    // elle a écrit, ni où. Chaque mutation passe par le journal.
+    async create(args: { data: Row; select?: Record<string, unknown>; include?: unknown }) {
+      const row: Row = { id: `${model}-${rows.length + 1}`, ...args.data };
+      rows.push(row);
+      note("create", args.data, 1);
+      return shape(row, args);
+    },
+    async createMany(args: { data: Row | Row[]; skipDuplicates?: boolean }) {
+      const list = Array.isArray(args.data) ? args.data : [args.data];
+      for (const d of list) rows.push({ id: `${model}-${rows.length + 1}`, ...d });
+      note("createMany", list, list.length);
+      return { count: list.length };
+    },
+    async update(args: { where?: unknown; data: Row; select?: Record<string, unknown>; include?: unknown }) {
+      const hit = pick(args)[0];
+      if (!hit) throw new Error(`${model}: update sans ligne correspondante`);
+      Object.assign(hit, args.data);
+      note("update", { where: args.where, data: args.data }, 1);
+      return shape(hit, args);
+    },
+    async updateMany(args: { where?: unknown; data: Row }) {
+      const hits = pick(args);
+      hits.forEach((h) => Object.assign(h, args.data));
+      note("updateMany", { where: args.where, data: args.data }, hits.length);
+      return { count: hits.length };
+    },
+    async delete(args: { where?: unknown; select?: Record<string, unknown> }) {
+      const hit = pick(args)[0];
+      if (!hit) throw new Error(`${model}: delete sans ligne correspondante`);
+      rows.splice(rows.indexOf(hit), 1);
+      note("delete", args.where, 1);
+      return applySelect(hit, args.select, opts.counts);
+    },
+    async deleteMany(args: { where?: unknown } = {}) {
+      const hits = pick(args);
+      for (const h of hits) rows.splice(rows.indexOf(h), 1);
+      note("deleteMany", args.where, hits.length);
+      return { count: hits.length };
     },
     async aggregate(args: { where?: unknown; _sum?: Record<string, boolean> } = {}) {
       const hits = pick(args);
