@@ -396,15 +396,58 @@ async function runChecks(client) {
   // Lecture seule. Le compte (b) alerte dès 1 — contrairement à TSA pending, il
   // n'existe aucun job de rattrapage : les octets sont perdus si la source l'est.
   try {
+    //   c) NI L'UN NI L'AUTRE — la classe que les deux filtres laissaient passer.
+    //      Une pièce à r2Key IS NULL dont les notes ne portent AUCUN des deux
+    //      marqueurs n'était comptée nulle part. Mesuré le 2026-08-18 :
+    //      count(*) = 1, accidental = 0, deliberate = 0. Le watchdog annonçait
+    //      « 0 accidentel, 0 délibéré » depuis quatre jours, sur une base qui
+    //      contenait une pièce orpheline — cmssyx6se… , ingérée le 14 août,
+    //      sans octets, sans marqueur, et sans la moindre ligne dans
+    //      EvidenceAccessLog, pas même son INGEST.
+    //
+    //      Deux catégories nommées ne font pas un inventaire. Le total, si.
+    //      C'est lui qui rend l'écart visible, et l'écart est la seule chose
+    //      qui signale ce que personne n'a pensé à nommer.
+    //
+    //      ⚠️ CE COMPTEUR CONDITIONNE LA SÛRETÉ D'ACTIVER LA TSA. Un horodatage
+    //      posé sur une pièce orpheline la rend indiscernable d'une pièce
+    //      complète : elle porterait un jeton TSA valide sur un contenu absent.
+    //      Tant que l'écart n'est pas à zéro — ou expliqué — ne pas configurer
+    //      TSA_PRIMARY_URL / TSA_URL_FALLBACK.
     const r = await client.query(
       `SELECT
+         count(*)::int                                                  AS total,
          count(*) FILTER (WHERE "notes" LIKE '[R2:UNAVAILABLE]%')::int AS accidental,
          count(*) FILTER (WHERE "notes" LIKE '%HASH-ONLY%')::int        AS deliberate
        FROM "EvidenceItem"
        WHERE "r2Key" IS NULL`
     );
+    const total = r.rows[0]?.total ?? 0;
     const accidental = r.rows[0]?.accidental ?? 0;
     const deliberate = r.rows[0]?.deliberate ?? 0;
+    // Une pièce peut porter les DEUX marqueurs ; l'écart se calcule donc sur
+    // le total moins les pièces qui en portent au moins un, pas sur la somme
+    // des deux compteurs — sinon un double marquage rendrait l'écart négatif
+    // et masquerait un orphelin réel.
+    const nomme = await client.query(
+      `SELECT count(*)::int AS n FROM "EvidenceItem"
+        WHERE "r2Key" IS NULL
+          AND ("notes" LIKE '[R2:UNAVAILABLE]%' OR "notes" LIKE '%HASH-ONLY%')`
+    );
+    const orphelins = total - (nomme.rows[0]?.n ?? 0);
+    if (orphelins > 0) {
+      problems.push({
+        key: "evidence_orphan_no_marker",
+        severity: "crit",
+        line:
+          `🔴 EVIDENCE ORPHELINE — ${orphelins} pièce(s) sans octets ET SANS MARQUEUR ` +
+          `(total sans r2Key ${total}, dont ${accidental} [R2:UNAVAILABLE] et ` +
+          `${deliberate} hash-only). Ni accidentelles ni délibérées : personne ne ` +
+          `sait pourquoi elles n'ont pas d'octets. NE PAS activer la TSA tant que ` +
+          `cet écart n'est pas à zéro — un horodatage les rendrait indiscernables ` +
+          `d'une pièce complète.`,
+      });
+    }
     if (accidental > 0) {
       problems.push({
         key: "evidence_no_bytes",
@@ -415,7 +458,10 @@ async function runChecks(client) {
           `R2_ACCOUNT_ID / R2_EVIDENCE_* / R2_* en Production. Aucun job ne rattrape.`,
       });
     }
-    lines.push(`• Evidence sans octets : ${accidental} accidentel(s) [R2:UNAVAILABLE], ${deliberate} hash-only délibéré(s)`);
+    lines.push(
+      `• Evidence sans octets : ${total} au total — ${accidental} accidentel(s) [R2:UNAVAILABLE], ` +
+      `${deliberate} hash-only délibéré(s), ${orphelins} SANS MARQUEUR`
+    );
   } catch (e) {
     lines.push(`• Evidence sans octets : ERREUR check (${e.message})`);
   }

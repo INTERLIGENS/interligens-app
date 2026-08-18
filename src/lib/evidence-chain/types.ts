@@ -108,6 +108,15 @@ export interface EvidenceStore {
   setTsa(id: string, tsaToken: Buffer, tsaProvider: string, tsaTimestampedAt: Date, tsaCertChain: string): Promise<void>;
   insertLink(link: NewEvidenceLink): Promise<EvidenceLinkRecord>;
   insertAccessLog(evidenceItemId: string, action: AccessAction, actor: string | null, context: string | null): Promise<void>;
+  /**
+   * Marque une pièce dont l'archivage des octets a ÉCHOUÉ après insertion.
+   *
+   * Distinct de `setR2` : celui-ci n'est appelé qu'en cas de succès. Sans ce
+   * marquage, une pièce dont le PUT a levé reste `r2Key IS NULL` avec des
+   * notes vierges — donc invisible aux deux filtres du watchdog, qui ne
+   * comptaient que `[R2:UNAVAILABLE]` et `HASH-ONLY`.
+   */
+  markR2Failed(id: string, marker: string, reason: string): Promise<void>;
   getItem(id: string): Promise<EvidenceItemRecord | null>;
   getCasefileItems(casefileId: string): Promise<EvidenceItemRecord[]>;
   getItemLinks(evidenceItemId: string): Promise<EvidenceLinkRecord[]>;

@@ -126,6 +126,15 @@ export class SqliteEvidenceStore implements EvidenceStore {
     this.db.prepare("INSERT INTO EvidenceAccessLog (id,evidenceItemId,action,actor,at,context) VALUES (?,?,?,?,?,?)")
       .run("al_" + randomUUID(), evidenceItemId, action, actor, new Date().toISOString(), context);
   }
+  markR2Failed(id: string, marker: string, reason: string): Promise<void> {
+    // Même contrat que PrismaEvidenceStore : le marqueur préfixe les notes,
+    // il ne les remplace pas.
+    const row = this.db.prepare(`SELECT notes FROM evidence_items WHERE id = ?`).get(id) as { notes?: string } | undefined;
+    const previous = row?.notes ?? "";
+    this.db.prepare(`UPDATE evidence_items SET notes = ? WHERE id = ?`).run(`${marker} ${reason} ${previous}`.trim(), id);
+    return Promise.resolve();
+  }
+
   async getItem(id: string): Promise<EvidenceItemRecord | null> {
     const r = this.db.prepare("SELECT * FROM EvidenceItem WHERE id=?").get(id) as Row | undefined;
     return r ? toItem(r) : null;
