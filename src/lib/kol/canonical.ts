@@ -119,12 +119,14 @@ const KOL_SELECT = {
   totalDocumented: true,
   // P0 containment — sans cette sélection, redactProceeds fail-close et le
   // chiffre disparaît partout. C'est volontaire : l'oubli ne publie jamais.
-  // A14 — `monetaryClaimsPublication` posé par MIGRATION_monetary_claims_v1.
-  // Le cast est temporaire : la colonne n'est pas encore dans le client Prisma
-  // généré (prisma/ est gelé). Il disparaît au premier `pnpm prisma:generate`
-  // postérieur à la migration. Sans cette sélection, le garde fail-close et
-  // AUCUN montant d'ampleur n'est servi — c'est le sens du refus, pas un bug.
-  ...(MONETARY_PUBLICATION_SELECT as { proceedsPublication: true }),
+  // A14 — `monetaryClaimsPublication`. Le cast temporaire qui vivait ici a été
+  // RETIRÉ le 2026-08-19 : la colonne est désormais déclarée dans
+  // schema.prod.prisma, donc connue du client généré. Sans ce retrait, le
+  // typecheck restait vert quelle que soit la réalité du schéma — c'est
+  // exactement ce qui a laissé passer le défaut. Sans cette sélection, le garde
+  // fail-close et AUCUN montant d'ampleur n'est servi : c'est le sens du refus,
+  // pas un bug.
+  ...MONETARY_PUBLICATION_SELECT,
   totalScammed: true,
   lastHeliusScan: true,
   platform: true,

@@ -120,16 +120,19 @@ export type MonetaryPublicationCarrier = {
 } | null | undefined;
 
 /** À étaler dans tout `select` Prisma qui précède un montant nominatif. */
-export const MONETARY_PUBLICATION_SELECT: Record<string, true> = {
+// Types du CLIENT GÉNÉRÉ, à dessein — voir publicationGate.ts.
+import type { Prisma } from "@prisma/client";
+
+export const MONETARY_PUBLICATION_SELECT = {
   proceedsPublication: true,
   monetaryClaimsPublication: true,
-};
+} satisfies Prisma.KolProfileSelect;
 
 /** À étaler dans un `where` d'agrégat (leaderboard, classement, somme). */
-export const PUBLISHED_MONETARY_FILTER: Record<string, string> = {
+export const PUBLISHED_MONETARY_FILTER = {
   proceedsPublication: "published",
   monetaryClaimsPublication: "published",
-};
+} satisfies Prisma.KolProfileWhereInput;
 
 function isOpen(value: unknown): boolean {
   return value === "published";
