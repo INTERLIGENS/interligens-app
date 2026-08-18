@@ -28,6 +28,10 @@ function subject() {
     handle: "publicguy", label: "promoter", platform: "twitter",
     evmAddress: "0xDEADBEEF", tier: "T1", verified: true,
     evidences: [{ amountUsd: 100 }], kolCases: [{ paidUsd: 50 }],
+    // A15 — les deux états de publication. Un état ABSENT ne publie pas
+    // (fail-closed, src/lib/publication/monetaryGate.ts) : sans eux, la route
+    // rend 409 et le test échoue — ce qui est le comportement voulu.
+    proceedsPublication: "published", monetaryClaimsPublication: "published",
   };
 }
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
 import { redactProceeds } from "@/lib/kol/proceedsGate";
+import { redactMonetary, redactEvidenceAmount, sumPublishedMonetary, MONETARY_PUBLICATION_SELECT } from "@/lib/publication/monetaryGate";
 export const maxDuration = 15;
 export async function GET(
   req: NextRequest,
@@ -36,7 +37,10 @@ export async function GET(
     },
   });
   if (!kol) return NextResponse.json({ found: false, handle, error: "KOL not found" }, { status: 404 });
-  const totalPaidUsd = kol.kolCases.reduce((sum, c) => sum + (c.paidUsd ?? 0), 0);
+  // A14 — une somme calculée à la volée est invisible à toute requête : aucun
+  // filtre Prisma ne l'atteint. `sumPublishedMonetary` rend `null`, jamais 0 —
+  // « 0 $ » serait une affirmation, et une affirmation fausse.
+  const totalPaidUsd = sumPublishedMonetary(kol, kol.kolCases.map((c) => c.paidUsd), "proceeds");
   return NextResponse.json({
     version: "1.0", found: true,
     kol: {
@@ -45,9 +49,18 @@ export async function GET(
       tier: kol.tier, rugCount: kol.rugCount, followerCount: kol.followerCount, verified: kol.verified,
       tags: kol.tags, pricePerPost: kol.pricePerPost,
       exitDate: kol.exitDate,
-      exitPostUrl: kol.exitPostUrl, totalDocumented: redactProceeds(kol, kol.totalDocumented), totalScammed: kol.totalScammed,
+      exitPostUrl: kol.exitPostUrl,
+      totalDocumented: redactProceeds(kol, kol.totalDocumented),
+      // A14 — LA ligne du rapport A13. `totalScammed` était servi brut juste
+      // ici, à côté d'un champ redacted : bkokoski, 210 900 $ retirés et
+      // 4 500 000 $ servis. Facteur 21, même énoncé.
+      totalScammed: redactMonetary(kol, kol.totalScammed, "scam_scale"),
       stats: { evidenceItems: kol._count.evidences, rugLinkedCases: kol._count.kolCases, totalPaidUsd, proceedsSource: "KolProceedsEvent" },
-      evidences: kol.evidences, cases: kol.kolCases,
+      // Les montants portés par les preuves et les dossiers passent par le
+      // même point : le chiffre retiré d'un endroit ne doit pas ressortir par
+      // une table voisine (A13 — les 210 000 $ existent trois fois).
+      evidences: kol.evidences.map((e) => ({ ...e, amountUsd: redactEvidenceAmount(kol, e) })),
+      cases: kol.kolCases.map((c) => ({ ...c, paidUsd: redactMonetary(kol, c.paidUsd, "proceeds") })),
       profileUrl: `https://interligens.com/en/kol/${kol.handle}`,
       legalReportUrl: `https://interligens.com/api/kol/${kol.handle}/pdf-legal`,
     },

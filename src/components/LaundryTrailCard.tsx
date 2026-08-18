@@ -1,5 +1,6 @@
 'use client'
 import React, { useState } from 'react'
+import { isLaundryTrailPublished } from '@/lib/laundry/publicationGate'
 
 interface LaundrySignal {
   id: string
@@ -93,6 +94,14 @@ function getRetailText(signals: LaundrySignal[], trailBreakHop: number | null | 
 
 export default function LaundryTrailCard({ laundryTrail, lang = 'en' }: { laundryTrail: LaundryTrailData; lang?: string }) {
   const [expanded, setExpanded] = useState(false)
+
+  // DERNIÈRE BARRIÈRE, côté rendu. Les routes filtrent déjà, mais ce composant
+  // reçoit son objet d'un appel client (`fetch('/api/laundry/' + handle)`) et
+  // pourrait demain le recevoir d'une autre source. Fail-closed : sans état
+  // `published` lisible, on n'affiche rien — pas une carte vide qui porterait
+  // encore le nom de la personne.
+  if (!isLaundryTrailPublished(laundryTrail as { publication?: unknown })) return null
+
   const isFr = lang === 'fr'
   const l = isFr ? LABELS.fr : LABELS.en
 
