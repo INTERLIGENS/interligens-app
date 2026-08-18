@@ -77,7 +77,7 @@ décision, c'est celle de fusionner.**
 | 2 | Migration — colonne + 4 portées de registre | `docs/prep/patches/A14-MIGRATION_monetary_claims_v1.sql` | **affichée, NON exécutée** |
 | 3 | Câblage des surfaces gelées | `docs/prep/patches/A14-surface*.patch` (2) | **patches vérifiés** |
 | 4 | Tests, dont celui des trois porteurs | `__tests__/security/monetary-publication-gate.test.ts` | **40 tests verts** |
-| 5 | Garde anti-récidive | `docs/prep/patches/A14-garde-anti-recidive.test.ts` | **préparé, NON livré** |
+| 5 | Garde anti-récidive | `docs/prep/patches/A14-garde-anti-recidive.test.ts.prepared` | **préparé, NON livré** |
 
 ---
 
@@ -146,10 +146,17 @@ affirmation, et une affirmation fausse.
 
 ## LE GARDE ANTI-RÉCIDIVE — PRÉPARÉ, NON LIVRÉ
 
-`docs/prep/patches/A14-garde-anti-recidive.test.ts`, destiné à
-`__tests__/security/monetary-surface-coverage.test.ts`. **Il ne s'exécute pas** :
-il fige un état qui n'est pas encore le bon, et le poser aujourd'hui
-calibrerait le cliquet avant les correctifs de surface.
+`docs/prep/patches/A14-garde-anti-recidive.test.ts.prepared`, destiné à
+`__tests__/security/monetary-surface-coverage.test.ts`. Non livré
+délibérément : il fige un état qui n'est pas encore le bon, et le poser
+aujourd'hui calibrerait le cliquet **avant** les correctifs de surface.
+
+**Le suffixe `.prepared` a été gagné.** Le fichier portait d'abord l'extension
+`.test.ts`, en supposant que Vitest ne parcourait que `__tests__/` et `tests/`.
+Faux — le motif d'inclusion par défaut balaye tout le dépôt. Le garde a été
+collecté, exécuté, et il a échoué : il exige `src/lib/laundry/publicationGate.ts`,
+qui vit sur la branche A12. **Un fichier « préparé, non livré » qui casse la
+suite n'est pas préparé, il est livré à moitié.** Renommé, la suite est verte.
 
 **Ce qu'il fait.** Il balaye les 18 répertoires qui servent du nominatif — dérivés
 du matcher de `src/proxy.ts` et de `NOMINATIVE_PREFIXES` — et compte les
