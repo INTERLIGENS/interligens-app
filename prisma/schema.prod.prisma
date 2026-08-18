@@ -6,7 +6,30 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL_UNPOOLED")
+
+  // `directUrl` est la connexion qu'utilise le MOTEUR DE MIGRATION Prisma
+  // (`prisma migrate deploy|dev|status`, `prisma db push`) — jamais le client.
+  //
+  // Elle pointait sur `env("DATABASE_URL_UNPOOLED")`, qui désigne
+  // `ep-bold-sky` : un AUTRE projet Neon (project_id, tenant_id, timeline_id et
+  // system_identifier tous différents de la production). Mesures :
+  // docs/prep/RAPPORT_A6_DEUX_BASES.md.
+  //
+  // Conséquence de l'état d'avant : `pnpm db:deploy` partait sur `ep-bold-sky`,
+  // y créait `_prisma_migrations` et rendait « succès » — sans avoir migré la
+  // production. Le danger n'était pas de casser la prod, c'était de croire
+  // l'avoir migrée.
+  //
+  // La variable ci-dessous N'EXISTE NULLE PART et NE DOIT JAMAIS ÊTRE POSÉE.
+  // Prisma s'arrête alors sur « Environment variable not found », c'est-à-dire
+  // exactement ce qu'on veut : un échec bruyant au lieu d'un succès à côté.
+  //
+  // Les migrations de production se font À LA MAIN dans le Neon SQL Editor sur
+  // `ep-square-band` — `migrations/MIGRATION_*.sql`, procédure dans
+  // `docs/reflex-v1-migration.md`. Rebrancher `directUrl` sur la production
+  // rendrait `prisma migrate` fonctionnel, donc capable de modifier le schéma
+  // servi sans relecture : c'est une décision, pas un correctif.
+  directUrl = env("PRISMA_MIGRATE_INTENTIONNELLEMENT_DESACTIVE_VOIR_CLAUDE_MD")
 }
 
 model SourceRegistry {
