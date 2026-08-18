@@ -1,0 +1,27 @@
+diff --git a/src/components/kol/ShillToExitCard.tsx b/src/components/kol/ShillToExitCard.tsx
+index b8ea8dc..1b4f376 100644
+--- a/src/components/kol/ShillToExitCard.tsx
++++ b/src/components/kol/ShillToExitCard.tsx
+@@ -9,7 +9,7 @@ type Signal = {
+   shillDate: string;
+   exitDate: string;
+   hoursToExit: number;
+-  amountUsd: number;
++  amountUsd: number | null;
+   severity: "CRITICAL" | "HIGH" | "MEDIUM";
+   evidence: string[];
+   postUrl?: string;
+@@ -87,7 +87,12 @@ function formatDelay(hours: number, lang: Lang): string {
+   return lang === "fr" ? `${days.toFixed(1)} jours` : `${days.toFixed(1)} days`;
+ }
+ 
+-function formatUsd(n: number): string {
++// A15 — fail-closed au rendu. `null` (montant retiré) ou `NaN` ne doivent
++// jamais produire « $NaN » ni « $0 » : le premier est un bug visible, le second
++// est une affirmation, et une affirmation fausse. On rend une chaîne vide, et
++// l'appelant n'affiche rien.
++function formatUsd(n: number | null | undefined): string {
++  if (typeof n !== "number" || !Number.isFinite(n)) return "";
+   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+   return `$${Math.round(n)}`;

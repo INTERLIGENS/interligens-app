@@ -1,0 +1,37 @@
+diff --git a/src/app/api/kol/[handle]/class-action/route.ts b/src/app/api/kol/[handle]/class-action/route.ts
+index 3b6f533..1da4bba 100644
+--- a/src/app/api/kol/[handle]/class-action/route.ts
++++ b/src/app/api/kol/[handle]/class-action/route.ts
+@@ -2,6 +2,7 @@
+ import { NextRequest, NextResponse } from "next/server";
+ import { prisma } from "@/lib/prisma";
+ import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
++import { isMonetaryClaimPublished, redactMonetary, redactEvidenceAmount, sumPublishedMonetary } from "@/lib/publication/monetaryGate";
+ 
+ export const maxDuration = 30;
+ 
+@@ -49,10 +50,21 @@ export async function GET(
+     include: { kolCases: true },
+   });
+ 
+-  const totalLoss = kol.kolCases.reduce((sum, c) => sum + (c.paidUsd ?? 0), 0);
++  // A15 — les deux sommes sont calculées à la volée : invisibles à toute
++  // requête, aucun filtre Prisma ne les atteint. Elles rendent `null` quand la
++  // publication est retirée — jamais 0, qui serait une affirmation fausse.
++  const totalLoss = sumPublishedMonetary(kol, kol.kolCases.map((c) => c.paidUsd), "proceeds") ?? 0;
+   const documentedProceeds = kol.evidences
+-    .filter((e) => e.amountUsd !== null)
+-    .reduce((sum, e) => sum + (e.amountUsd ?? 0), 0);
++    .map((e) => redactEvidenceAmount(kol, e))
++    .reduce<number>((sum, v) => sum + (v ?? 0), 0);
++  // Fail-closed sur le dossier entier : un paquet « class action » dont les
++  // montants sont retirés n'a pas d'objet. On ne sert pas une coquille.
++  if (!isMonetaryClaimPublished(kol, "proceeds")) {
++    return NextResponse.json(
++      { error: "proceeds_publication_withdrawn", handle },
++      { status: 409 },
++    );
++  }
+ 
+   const pkg: ClassActionPackage = {
+     reportId: `INTL-CA-${handle.toUpperCase()}-${Date.now()}`,
