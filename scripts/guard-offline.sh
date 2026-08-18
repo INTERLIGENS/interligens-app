@@ -528,6 +528,37 @@ if [[ "$BRANCH" =~ ^hotfix/guard-[a-z0-9-]+$ ]]; then
     fi
 fi
 
+# ── FENÊTRE D'EXEMPTION — A9 · VERROU DE COHÉRENCE DE LA CIBLE DE MIGRATION ──
+#
+# Motif, seul et entier : `directUrl` du schema de production désigne
+# `env("DATABASE_URL_UNPOOLED")`, c'est-à-dire `ep-bold-sky` — un AUTRE projet
+# Neon que la production (project_id, tenant_id, timeline_id et
+# system_identifier tous différents ; mesures dans
+# docs/prep/RAPPORT_A6_DEUX_BASES.md).
+#
+# Conséquence de l'état actuel : `prisma migrate deploy|dev|status` et
+# `prisma db push` partent sur `ep-bold-sky`, y créent `_prisma_migrations`, et
+# rendent « succès » SANS avoir migré la production. Le danger n'est pas de
+# casser la prod — c'est de croire l'avoir migrée.
+#
+# Aujourd'hui la seule protection est une INTERDICTION ÉCRITE dans CLAUDE.md,
+# donc une discipline humaine. Cette fenêtre sert à la remplacer par un refus
+# du système lui-même : `directUrl` bascule sur une variable qui n'existe
+# nulle part et ne doit jamais être posée, si bien que le moteur de migration
+# s'arrête sur « Environment variable not found » au lieu de réussir à côté.
+#
+# UN SEUL FICHIER, nommé, aucun wildcard : ne couvre pas `prisma/` dans son
+# ensemble, ni `migrations/`, ni quoi que ce soit d'autre.
+#
+# À REFERMER par hotfix/guard-a9-verrou-directurl-fermeture dès la PR du
+# chantier fusionnée.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-a9-verrou-directurl$ ]]; then
+    EXEMPT_A9_VERROU_DIRECTURL_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+    )
+fi
+
+
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -857,6 +888,19 @@ while IFS= read -r file; do
 
 
 
+
+    # Sur la branche A9, exempter STRICTEMENT le schema de production — et lui
+    # seul. Aucun wildcard prisma/.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-a9-verrou-directurl$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_A9_VERROU_DIRECTURL_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
