@@ -1,10 +1,19 @@
 // A14 — GARDE ANTI-RÉCIDIVE — **PRÉPARÉ, NON LIVRÉ.**
 //
 // EMPLACEMENT CIBLE : `__tests__/security/monetary-surface-coverage.test.ts`.
-// Ce fichier vit sous docs/prep/patches/ avec l'extension `.test.ts` mais HORS
-// des répertoires que Vitest parcourt : il ne s'exécute pas. C'est délibéré —
-// il fige un état qui n'est pas encore le bon, et le poser aujourd'hui rendrait
-// vert un cliquet qui doit être calibré après les correctifs de surface.
+//
+// SUFFIXE `.prepared` — et il a été gagné. Le fichier portait d'abord
+// l'extension `.test.ts` sous docs/prep/patches/, en supposant que Vitest ne
+// parcourait que `__tests__/` et `tests/`. Faux : le motif d'inclusion par
+// défaut balaye TOUT le dépôt. Le garde a donc été collecté et exécuté, et il
+// a échoué — il exige `src/lib/laundry/publicationGate.ts`, qui vit sur la
+// branche A12. Un fichier « préparé, non livré » qui casse la suite n'est pas
+// préparé, il est livré à moitié.
+//
+// Il est non livré délibérément : il fige un état qui n'est pas encore le bon,
+// et le poser aujourd'hui calibrerait le cliquet AVANT les correctifs de
+// surface. Pour l'activer : le renommer en `.test.ts` sous `__tests__/`,
+// APRÈS que les patches A12 et A14 aient été appliqués.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 // CE QU'IL EMPÊCHE
