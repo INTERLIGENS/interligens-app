@@ -2,9 +2,18 @@ name: Security Gates
 
 on:
   push:
-    branches: [main, master, develop]
+    # `prep/**` : les branches de préparation doivent pouvoir prouver un run
+    # CI complet AVANT toute PR. Sur un évènement `push`, GitHub exécute le
+    # fichier de workflow DE LA BRANCHE POUSSÉE — c'est le seul déclencheur
+    # qui fonctionne sans passer d'abord par `main`. (`workflow_dispatch`,
+    # ci-dessous, exige que le déclencheur existe déjà sur la branche par
+    # défaut : inutilisable tant que ce fichier n'est pas sur `main`.)
+    branches: [main, master, develop, 'prep/**']
   pull_request:
     branches: [main, master, develop]
+  # Lancement manuel (`gh workflow run security.yml --ref <branche>`).
+  # Ne devient effectif qu'une fois ce fichier présent sur `main`.
+  workflow_dispatch:
 
 # Annule les runs en cours si un nouveau push arrive sur la même branche
 concurrency:
@@ -18,12 +27,12 @@ jobs:
     name: Secret Scanning (Gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           fetch-depth: 0  # historique complet pour scanner tous les commits PR
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # La config est lue depuis .gitleaks.toml à la racine
@@ -35,7 +44,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Run Semgrep (TypeScript + OWASP)
         run: >
@@ -59,13 +68,13 @@ jobs:
     name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4.3.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: 20
           cache: pnpm
@@ -81,13 +90,13 @@ jobs:
     name: Quality Gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4.3.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: 20
           cache: pnpm
@@ -95,21 +104,112 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
+      # DÉCOUVERT PAR LE RÉORDONNANCEMENT — sans cette étape, `Type check`,
+      # `Tests` et `Build` sont tous les trois impossibles en CI.
+      #
+      # pnpm n'exécute pas les scripts de post-installation des dépendances
+      # ("Ignored build scripts: @prisma/client"), donc le client Prisma n'est
+      # jamais généré sur le runner. `@prisma/client` n'exporte alors NI
+      # `PrismaClient` NI `Prisma`, et tsc rend 523 erreurs — dont 316 `TS7006`
+      # qui ne sont que la retombée des types non résolus. En local le client
+      # existe déjà dans le magasin pnpm, ce qui rendait le typecheck vert au
+      # poste et rouge nulle part, puisque la CI ne l'a jamais exécuté.
+      #
+      # `pnpm prisma:generate` — jamais `npx prisma generate` : sans le flag
+      # `--schema prisma/schema.prod.prisma`, Prisma lit le schéma SQLite de
+      # développement et produit un client incomplet.
+      #
+      # `generate` ne se connecte à aucune base : il lit le schéma et écrit
+      # dans node_modules. Aucune variable d'environnement n'est posée ici.
+      - name: Generate Prisma client
+        id: prisma
+        run: pnpm prisma:generate
 
+      # ORDRE VOLONTAIRE — ne pas remettre `Lint` en tête.
+      #
+      # Les étapes d'un job GitHub Actions s'exécutent en séquence et la
+      # première qui échoue met les suivantes en `skipped`. Tant que `Lint`
+      # était la première étape, son échec (1 249 problèmes de dette legacy,
+      # dont 683 `no-explicit-any` qui ne cassent aucune compilation)
+      # empêchait `Type check`, `Tests` et `Build` de tourner : sur les 15
+      # derniers runs de `main`, ces trois étapes sont `skipped` — la CI n'a
+      # jamais exécuté les 3 016 tests ni le build.
+      #
+      # `Lint` passe donc en dernier : les trois gates qui protègent une
+      # conclusion publiée tournent d'abord, quel que soit l'état du lint.
+      # `Lint` reste bloquant pour le job — c'est la politique actuelle, et
+      # la changer (avertissement plutôt que blocage, ou ESLint sur le seul
+      # diff) est une décision produit, pas un réordonnancement.
+      # `if: !cancelled() && steps.prisma.outcome == 'success'` sur les QUATRE
+      # gates : aucune ne peut plus en masquer une autre.
+      #
+      # Le réordonnancement seul ne suffisait pas. Au premier run où `Type
+      # check` a pu s'exécuter, il a échoué (client Prisma non généré) et a
+      # remis `Tests`, `Build` et `Lint` en `skipped` — le défaut d'origine
+      # avait simplement changé de place. Une exécution indépendante par gate
+      # donne, en un seul run, l'état réel des quatre.
+      #
+      # Ça ne masque RIEN : chaque étape reste bloquante pour le job, et le
+      # job reste rouge si l'une échoue. La condition n'exempte que le cas où
+      # `Install` ou `Generate Prisma client` a échoué — là, les quatre gates
+      # n'auraient aucun sens.
+      #
+      # L'ordre reste Type check → Tests → Build → Lint : le plus informatif
+      # d'abord, le plus bruyant en dernier, pour la lecture du journal.
       - name: Type check
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm typecheck
 
       - name: Tests
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm test
 
+      # ┌──────────────────────────────────────────────────────────────────┐
+      # │ CE QUE CE GATE PROUVE, ET CE QU'IL NE PROUVE PAS                 │
+      # └──────────────────────────────────────────────────────────────────┘
+      #
+      # IL PROUVE : le projet compile, et le prérendu s'exécute jusqu'au bout
+      # sans lever — types résolus, imports valides, `Collecting page data`
+      # traversé pour chaque route, pages statiques rendues.
+      #
+      # IL NE PROUVE PAS que l'artefact prérendu est CORRECT.
+      #
+      # `DATABASE_URL` ci-dessous désigne un hôte inexistant. Une page
+      # interroge réellement la base pendant `next build` — mesuré, lecture
+      # statique en docs/prep/RAPPORT_D1_ACCES_BASE_BUILD.md :
+      #
+      #   src/app/en/news/page.tsx   3 requêtes Prisma (signal,
+      #                              socialPostCandidate, kolProfile), chacune
+      #                              sous `try { } catch { }` qui AVALE l'erreur.
+      #
+      # En CI, ces trois requêtes échouent, silencieusement, par construction.
+      # `/en/news` se prérend donc VIDE. Le build est vert et la page est fausse.
+      # Ce n'est pas grave ici — l'artefact de CI n'est jamais déployé, la
+      # production est reconstruite par `npx vercel --prod` avec le vrai
+      # environnement — mais ça borne ce que le vert signifie.
+      #
+      # CONSÉQUENCE À RETENIR : une régression qui ferait sortir une requête de
+      # son `try/catch` resterait INVISIBLE à ce gate. Il attrape ce qui ne
+      # compile pas et ce qui lève ; il n'attrape pas ce qui échoue en silence.
+      #
+      # POURQUOI UN HÔTE INEXISTANT ET PAS UNE VRAIE BASE : aucune connexion ne
+      # doit pouvoir s'établir depuis un runner CI. `.invalid` est un TLD réservé
+      # par la RFC 2606 — il ne résout nulle part, ne résoudra jamais, et ne peut
+      # être enregistré par personne. Cette valeur n'existe QUE dans ce fichier :
+      # jamais dans Vercel, jamais dans un `.env`.
       - name: Build
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm build
         env:
-          # Build sans variables secrètes — les routes qui en ont besoin
-          # doivent gérer l'absence gracieusement (feature flags / fallback)
           NODE_ENV: production
+          # Hôte inexistant (RFC 2606). Satisfait le garde fail-fast de
+          # src/lib/config/env.ts, qui exige DATABASE_URL quand NODE_ENV=production
+          # — et ne permet aucune connexion.
+          DATABASE_URL: postgresql://ci:ci@db.invalid:5432/none?sslmode=disable
+
+      - name: Lint
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
+        run: pnpm lint
 
   # ── 5. Job récapitulatif (branch protection: 1 seul job à surveiller) ────────
   all-gates-passed:
