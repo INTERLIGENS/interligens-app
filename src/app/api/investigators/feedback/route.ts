@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getVaultWorkspace, logAudit } from "@/lib/vault/auth.server";
+import {
+  getVaultWorkspace,
+  assertCaseOwnership,
+  logAudit,
+} from "@/lib/vault/auth.server";
 
 async function sendEmail(handle: string, message: string, caseId: string | null) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -48,6 +52,28 @@ export async function POST(request: NextRequest) {
 
   if (!message) {
     return NextResponse.json({ error: "message_required" }, { status: 400 });
+  }
+
+  // A4 — INTÉGRITÉ DU JOURNAL D'AUDIT.
+  //
+  // `caseId` vient du CORPS. Avant ce contrôle il n'était confronté à rien, et
+  // il partait tel quel dans `VaultFeedback.caseId` ET dans
+  // `VaultAuditLog.caseId`. Un investigateur pouvait donc inscrire, dans la
+  // pièce qui fait foi, une entrée liant SON workspace au dossier d'un AUTRE
+  // locataire — ou à une chaîne qui ne désigne rien.
+  //
+  // Le schema ne rattrape rien : les deux colonnes sont des `String?` NUS,
+  // sans relation ni clé étrangère (schema.prod.prisma). Et il ne DOIT pas les
+  // rattraper — le journal d'audit doit survivre à la suppression du dossier
+  // qu'il décrit, c'est écrit dans cases/[caseId]/route.ts. Le contrôle
+  // appartient donc au code, ici, et pas au schema.
+  //
+  // Ce n'est pas une fuite de lecture : rien de l'autre locataire n'est servi.
+  // C'est une écriture fausse dans le registre — d'où le 403, et non un
+  // silencieux `caseId = null` qui accepterait la requête en la corrigeant.
+  if (caseId) {
+    const owner = await assertCaseOwnership(ctx.workspace.id, caseId);
+    if (owner instanceof NextResponse) return owner;
   }
 
   const handle = ctx.profile.handle ?? ctx.access.label;

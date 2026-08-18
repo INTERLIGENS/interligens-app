@@ -16,7 +16,15 @@ exécutés. Aucune base, aucun réseau, aucune écriture, aucun nom civil.
 | `__tests__/security/helpers/a4TwoTenantVault.ts` | Le magasin à deux locataires. |
 | `__tests__/security/helpers/inMemoryPrisma.ts` | **Étendu, pas dupliqué** : `findUnique`, `include`, relations to-many, mutations, journal d'écritures. Ajouts additifs — les 349 tests qui l'utilisaient déjà restent verts. |
 
-**Aucun correctif.** Les cinq constats sont figés dans l'état mesuré : verts
+> **ÉTAT AU 2026-08-18, après la journée d'atterrissage.** Deux des cinq
+> constats sont CORRIGÉS par `hotfix/a4-autorisation-objet` : §1.1
+> (`PATCH messages/[id]`) et §1.2 (`POST feedback`). Leurs tests ont été
+> RETOURNÉS en contrôles de possession A/B — refus chez B **et**
+> fonctionnement chez A. Les trois autres (§1.3 oracle de collision, §1.4
+> cookie forgé, §1.5 shill-to-exit) restent figés : ce sont des décisions,
+> pas des correctifs.
+
+**Aucun correctif dans CETTE branche.** Les cinq constats y sont figés dans l'état mesuré : verts
 tant que le défaut est là, rouges le jour où quelqu'un y touche — dans un sens
 comme dans l'autre. Un correctif de septembre devra modifier ce fichier
 délibérément. C'est le but : ni correction silencieuse, ni régression

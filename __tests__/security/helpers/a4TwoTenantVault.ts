@@ -149,15 +149,23 @@ export function construireDeuxLocataires(): DeuxLocataires {
         updatedAt: EPOQUE,
       },
     ],
-    // Conversation à laquelle A n'appartient PAS.
-    conversation: [{ id: "conv-B", scopeType: "direct", status: "open", lastMessageAt: EPOQUE }],
+    // `conv-B` : A n'y appartient PAS. `conv-A` : il y appartient.
+    // Les deux sont nécessaires — un test qui ne vérifierait que le refus
+    // passerait aussi si la route refusait TOUT LE MONDE.
+    conversation: [
+      { id: "conv-B", scopeType: "direct", status: "open", lastMessageAt: EPOQUE },
+      { id: "conv-A", scopeType: "direct", status: "open", lastMessageAt: EPOQUE },
+    ],
     conversationParticipant: [
       { id: "cp-B", conversationId: "conv-B", accessId: "acc-B", joinedAt: EPOQUE, lastReadAt: null },
-      { id: "cp-F", conversationId: "conv-B", accessId: "founder", joinedAt: EPOQUE, lastReadAt: null },
+      { id: "cp-BF", conversationId: "conv-B", accessId: "founder", joinedAt: EPOQUE, lastReadAt: null },
+      { id: "cp-A", conversationId: "conv-A", accessId: "acc-A", joinedAt: EPOQUE, lastReadAt: null },
+      { id: "cp-AF", conversationId: "conv-A", accessId: "founder", joinedAt: EPOQUE, lastReadAt: null },
     ],
     message: [
       { id: "msg-B1", conversationId: "conv-B", senderAccessId: "founder", senderName: "founder", body: `message-1-${MARQUEUR_B}`, priority: "normal", kind: "message", createdAt: EPOQUE },
       { id: "msg-B2", conversationId: "conv-B", senderAccessId: "founder", senderName: "founder", body: `message-2-${MARQUEUR_B}`, priority: "normal", kind: "message", createdAt: EPOQUE },
+      { id: "msg-A1", conversationId: "conv-A", senderAccessId: "founder", senderName: "founder", body: "message-pour-A", priority: "normal", kind: "message", createdAt: EPOQUE },
     ],
     messageRead: [],
     vaultAuditLog: [],

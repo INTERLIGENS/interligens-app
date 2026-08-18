@@ -330,28 +330,54 @@ describe("A4 · ÉCRITURE — sujet A ne modifie rien de sujet B", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 3. CONSTATS NON CORRIGÉS — figés dans l'état mesuré le 2026-08-18
+// 3. POSSESSION A/B — les deux défauts corrigés par le hotfix
 //
-// Ces tests décrivent un DÉFAUT. Ils sont verts parce que le défaut est là.
-// Le jour où il est corrigé, ils tombent : c'est le signal, pas l'accident.
+// Ces tests étaient des CONSTATS : verts parce que le défaut était là. Le
+// hotfix hotfix/a4-autorisation-objet les a retournés. Ils exigent désormais
+// DEUX choses à chaque fois — le refus chez B, ET le fonctionnement chez A.
+// Un test qui ne vérifierait que le refus passerait aussi si la route
+// refusait tout le monde, ce qui n'est pas une correction mais une panne.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("A4 · CONSTAT — fuite de LECTURE, non corrigée", () => {
-  it("PATCH /messages/[id] : A obtient le VOLUME d'une conversation dont il n'est pas participant", async () => {
+describe("A4 · POSSESSION — PATCH /messages/[id] exige la participation", () => {
+  it("chez B — A n'est pas participant : 403, aucun volume révélé", async () => {
     const { PATCH } = await import("@/app/api/investigators/messages/[id]/route");
     const { statut, corps } = await lire(
       await PATCH(requeteDeA({ method: "PATCH" }), ctx({ id: B.conversationId })),
     );
 
-    // Le `GET` de la MÊME route vérifie la participation et rend 403. Le
-    // `PATCH` ne la vérifie pas : il part directement sur `message.findMany`.
-    expect(statut).toBe(200);
-    expect(JSON.parse(corps).markedRead).toBe(2); // = le nombre de messages de B
+    // Le `GET` de la MÊME route rendait déjà 403. Deux méthodes d'une route ne
+    // doivent pas avoir deux portes.
+    expect(statut).toBe(403);
+    expect(JSON.parse(corps).error).toBe("Not a participant");
 
-    // Le contenu, lui, ne sort pas : la fuite est un COMPTE, pas des octets.
+    // Le compte ne sort plus : c'était la fuite, elle est fermée.
+    expect(corps).not.toContain("markedRead");
     expect(corps).not.toContain(MARQUEUR_B);
   });
 
+  it("chez B — aucune ligne MessageRead écrite sur les messages d'autrui", async () => {
+    const { PATCH } = await import("@/app/api/investigators/messages/[id]/route");
+    await PATCH(requeteDeA({ method: "PATCH" }), ctx({ id: B.conversationId }));
+
+    expect(magasin.tables.messageRead).toHaveLength(0);
+    expect(mutationsMetier()).toHaveLength(0);
+  });
+
+  it("chez A — sa propre conversation continue de fonctionner", async () => {
+    const { PATCH } = await import("@/app/api/investigators/messages/[id]/route");
+    const { statut, corps } = await lire(
+      await PATCH(requeteDeA({ method: "PATCH" }), ctx({ id: "conv-A" })),
+    );
+
+    expect(statut).toBe(200);
+    expect(JSON.parse(corps).markedRead).toBe(1);
+    expect(magasin.tables.messageRead.map((r) => r.messageId)).toEqual(["msg-A1"]);
+    expect(magasin.tables.messageRead.every((r) => r.accessId === "acc-A")).toBe(true);
+  });
+});
+
+describe("A4 · CONSTAT — fuite de LECTURE, non corrigée (décision, pas correctif)", () => {
   it("GET /entities/collisions : oracle d'existence inter-locataires, sans limiteur", async () => {
     const { GET } = await import("@/app/api/investigators/entities/collisions/route");
     const { statut, corps } = await lire(await GET(requeteDeA({ query: `?caseId=${A.caseId}` })));
@@ -369,57 +395,65 @@ describe("A4 · CONSTAT — fuite de LECTURE, non corrigée", () => {
   });
 });
 
-describe("A4 · CONSTAT — ÉCRITURE chez autrui, non corrigée", () => {
-  it("PATCH /messages/[id] : A inscrit des lignes MessageRead sur les messages d'une conversation dont il n'est pas participant", async () => {
-    const { PATCH } = await import("@/app/api/investigators/messages/[id]/route");
-    await PATCH(requeteDeA({ method: "PATCH" }), ctx({ id: B.conversationId }));
-
-    const ecrites = magasin.tables.messageRead;
-    expect(ecrites).toHaveLength(2);
-    expect(ecrites.every((r) => r.accessId === "acc-A")).toBe(true);
-    expect(ecrites.map((r) => r.messageId).sort()).toEqual(["msg-B1", "msg-B2"]);
-
-    // Le second effet est nul, et c'est ce qui rend l'anomalie lisible : la
-    // route met à jour `lastReadAt` du PARTICIPANT — et A n'en est pas un.
-    const surParticipant = magasin.journal.on("conversationParticipant");
-    expect(surParticipant).toHaveLength(1);
-    expect(surParticipant[0].affected).toBe(0);
-  });
-});
-
-describe("A4 · CONSTAT — ATTEINTE À L'INTÉGRITÉ DU JOURNAL D'AUDIT, non corrigée", () => {
-  it("POST /feedback : A inscrit dans VaultAuditLog une entrée liant SON workspace au dossier d'un AUTRE locataire", async () => {
+describe("A4 · POSSESSION — POST /feedback : l'intégrité du journal d'audit", () => {
+  it("chez B — un caseId d'un autre locataire est refusé, et RIEN n'est écrit", async () => {
     const { POST } = await import("@/app/api/investigators/feedback/route");
-    const { statut } = await lire(
+    const { statut, corps } = await lire(
       await POST(requeteDeA({ method: "POST", corps: { message: "bonjour", caseId: B.caseId } })),
     );
-    expect(statut).toBe(200);
 
-    // Ce n'est PAS une fuite : rien de B n'est servi à A.
-    // C'est une entrée FAUSSE écrite dans la pièce qui fait foi.
-    const audit = magasin.tables.vaultAuditLog;
-    expect(audit).toHaveLength(1);
-    expect(audit[0]).toMatchObject({
-      investigatorAccessId: "acc-A",
-      workspaceId: "ws-A",
-      caseId: "case-B", // ← le dossier d'un autre locataire
-      action: "FEEDBACK_SENT",
-    });
+    expect(statut).toBe(403);
+    expect(JSON.parse(corps).error).toBe("forbidden");
 
-    // Même chose côté métier : la ligne de feedback porte la même incohérence.
-    expect(magasin.tables.vaultFeedback[0]).toMatchObject({ workspaceId: "ws-A", caseId: "case-B" });
+    // Le point entier du correctif : la pièce qui fait foi ne bouge pas.
+    expect(magasin.tables.vaultAuditLog).toHaveLength(0);
+    expect(magasin.tables.vaultFeedback).toHaveLength(0);
+    expect(magasin.tables.feedbackEntry).toHaveLength(0);
   });
 
-  it("POST /feedback : le schéma ne rattrape rien — `caseId` accepte une chaîne arbitraire", async () => {
-    // `VaultFeedback.caseId` et `VaultAuditLog.caseId` sont des `String?` NUS
-    // dans schema.prod.prisma : aucune relation, aucune clé étrangère. Ce test
-    // fige la conséquence — l'hypothèse « une FK rejetterait un caseId
-    // étranger » est fausse, et elle l'est pour toute valeur, pas seulement
-    // pour un identifiant d'un autre locataire.
+  it("chez B — un caseId qui ne désigne RIEN est refusé aussi", async () => {
+    // L'hypothèse « une clé étrangère rejetterait un caseId étranger » était
+    // fausse : `VaultFeedback.caseId` et `VaultAuditLog.caseId` sont des
+    // `String?` NUS, sans relation. Le contrôle appartient donc au code — et
+    // il doit couvrir toute chaîne, pas seulement l'identifiant d'un voisin.
     const { POST } = await import("@/app/api/investigators/feedback/route");
-    await POST(requeteDeA({ method: "POST", corps: { message: "bonjour", caseId: "dossier-qui-n-existe-pas" } }));
+    const { statut } = await lire(
+      await POST(
+        requeteDeA({ method: "POST", corps: { message: "bonjour", caseId: "dossier-qui-n-existe-pas" } }),
+      ),
+    );
 
-    expect(magasin.tables.vaultAuditLog[0]).toMatchObject({ caseId: "dossier-qui-n-existe-pas" });
+    expect(statut).toBe(403);
+    expect(magasin.tables.vaultAuditLog).toHaveLength(0);
+  });
+
+  it("chez A — son propre dossier passe, et le journal porte SON dossier", async () => {
+    const { POST } = await import("@/app/api/investigators/feedback/route");
+    const { statut } = await lire(
+      await POST(requeteDeA({ method: "POST", corps: { message: "bonjour", caseId: A.caseId } })),
+    );
+
+    expect(statut).toBe(200);
+    expect(magasin.tables.vaultAuditLog).toHaveLength(1);
+    expect(magasin.tables.vaultAuditLog[0]).toMatchObject({
+      investigatorAccessId: "acc-A",
+      workspaceId: "ws-A",
+      caseId: "case-A",
+      action: "FEEDBACK_SENT",
+    });
+  });
+
+  it("sans caseId — le chemin courant n'est pas cassé", async () => {
+    // Le correctif ne doit pas transformer un contrôle d'autorisation en
+    // obligation de joindre un dossier : la majorité des retours n'en visent
+    // aucun.
+    const { POST } = await import("@/app/api/investigators/feedback/route");
+    const { statut } = await lire(
+      await POST(requeteDeA({ method: "POST", corps: { message: "bonjour" } })),
+    );
+
+    expect(statut).toBe(200);
+    expect(magasin.tables.vaultAuditLog[0].caseId).toBeNull();
   });
 });
 
