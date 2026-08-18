@@ -528,49 +528,6 @@ if [[ "$BRANCH" =~ ^hotfix/guard-[a-z0-9-]+$ ]]; then
     fi
 fi
 
-# ── FENÊTRE D'EXEMPTION — CONTRAT DE SCHÉMA PRISMA (A12/A14) ────────────────
-#
-# Motif unique et entier : le code fusionné le 2026-08-18 (PR #114) interroge
-# trois objets que le SCHÉMA NE DÉCLARE PAS, donc que le client Prisma généré
-# ne connaît pas. Mesuré dans le client généré :
-#
-#   proceedsPublication         62 occurrences   <- le témoin
-#   monetaryClaimsPublication    0 occurrences
-#   LaundryTrailPublicationLog   0 occurrences
-#   LaundryTrailScalarFieldEnum  ne contient pas `publication`
-#
-# La migration SQL seule NE SUFFIT PAS : elle crée les colonnes en base, le
-# client continue de les ignorer. Sans cette fenêtre, le déploiement casse
-# `/api/laundry/{h}`, `/api/pdf/kol`, `/api/kol/{h}/pedigree`, `/api/kol`,
-# `/api/kol/{h}` et `/api/watchlist`.
-#
-# Le témoin `proceedsPublication` prouve que ce n'est pas une convention du
-# dépôt : quand la containment P0 a ajouté sa colonne, le schéma A ÉTÉ mis à
-# jour. A12 et A14 ne l'ont pas fait.
-#
-# DEUX FICHIERS NOMMÉS :
-#   prisma/schema.prod.prisma   le SEUL schéma qui génère le client servi
-#                               (voir docs/prep/CORRECTIF_CONTRAT_2026-08-19.md,
-#                               Q1 : `vercel-build` le nomme, et le postinstall
-#                               d'@prisma/client est bloqué par pnpm 10).
-#   src/lib/kol/canonical.ts    porte le cast `as { proceedsPublication: true }`
-#                               qui MENT au compilateur — c'est lui qui rendait
-#                               le typecheck vert avec zéro occurrence. Le
-#                               retirer est la seule preuve que le contrat est
-#                               refermé.
-#
-# HORS PÉRIMÈTRE, volontairement : `src/app/api/v1/kol/[handle]/route.ts`
-# (import mort, chemin gelé) — motif distinct, fenêtre distincte s'il faut.
-#
-# À REFERMER par hotfix/guard-contrat-prisma-fermeture dès la PR fusionnée.
-if [[ "$BRANCH" =~ ^hotfix/contrat-prisma-schema$ ]]; then
-    EXEMPT_CONTRAT_PRISMA_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-        "^src/lib/kol/canonical\.ts$"
-    )
-fi
-
-
 VIOLATIONS=0
 VIOLATING_FILES=()
 
@@ -900,19 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Sur la branche hotfix/contrat-prisma-schema, exempter STRICTEMENT les 2
-    # fichiers nommés. Aucun wildcard prisma/ ni src/lib/kol/.
-    if [[ "$BRANCH" =~ ^hotfix/contrat-prisma-schema$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_CONTRAT_PRISMA_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
