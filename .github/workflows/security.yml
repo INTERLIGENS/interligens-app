@@ -104,6 +104,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # DÉCOUVERT PAR LE RÉORDONNANCEMENT — sans cette étape, `Type check`,
+      # `Tests` et `Build` sont tous les trois impossibles en CI.
+      #
+      # pnpm n'exécute pas les scripts de post-installation des dépendances
+      # ("Ignored build scripts: @prisma/client"), donc le client Prisma n'est
+      # jamais généré sur le runner. `@prisma/client` n'exporte alors NI
+      # `PrismaClient` NI `Prisma`, et tsc rend 523 erreurs — dont 316 `TS7006`
+      # qui ne sont que la retombée des types non résolus. En local le client
+      # existe déjà dans le magasin pnpm, ce qui rendait le typecheck vert au
+      # poste et rouge nulle part, puisque la CI ne l'a jamais exécuté.
+      #
+      # `pnpm prisma:generate` — jamais `npx prisma generate` : sans le flag
+      # `--schema prisma/schema.prod.prisma`, Prisma lit le schéma SQLite de
+      # développement et produit un client incomplet.
+      #
+      # `generate` ne se connecte à aucune base : il lit le schéma et écrit
+      # dans node_modules. Aucune variable d'environnement n'est posée ici.
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
       # ORDRE VOLONTAIRE — ne pas remettre `Lint` en tête.
       #
       # Les étapes d'un job GitHub Actions s'exécutent en séquence et la
