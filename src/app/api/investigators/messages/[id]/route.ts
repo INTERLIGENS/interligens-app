@@ -75,6 +75,21 @@ export async function PATCH(
 
   const { id } = await ctx.params;
 
+  // A4 — le GET de CETTE MÊME route vérifie la participation ; le PATCH ne le
+  // faisait pas. Il partait directement sur `message.findMany`, si bien que
+  // A pouvait, sur N'IMPORTE QUEL conversationId :
+  //   - LIRE le volume de la conversation, via `markedRead` dans la réponse ;
+  //   - ÉCRIRE des lignes `MessageRead` à son `accessId` sur des messages
+  //     dont il n'est ni destinataire ni expéditeur.
+  // Même contrôle que le GET, même 403, même message : deux méthodes d'une
+  // route ne doivent pas avoir deux portes.
+  const participant = await prisma.conversationParticipant.findFirst({
+    where: { conversationId: id, accessId: session.accessId },
+  });
+  if (!participant) {
+    return NextResponse.json({ error: "Not a participant" }, { status: 403 });
+  }
+
   const unread = await prisma.message.findMany({
     where: {
       conversationId: id,
