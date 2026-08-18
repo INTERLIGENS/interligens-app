@@ -475,57 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# ── EXEMPTION DE CHANTIER — CI BLOC 2 ───────────────────────────────────────
-#
-# OUVERTE le 2026-08-18. À REFERMER dès le merge du chantier.
-#
-# MOTIF : la CI n'a jamais exécuté les tests, le typecheck ni le build sur main.
-# L'étape `Lint` échouait en premier dans le job `Quality Gates`, et `Type check`
-# / `Tests` / `Build` sortaient en `skipped` — 15 runs consécutifs. Les 3 016
-# tests verts étaient un fait local, jamais un fait CI. Le corriger exige de
-# toucher trois chemins gelés, et rien d'autre :
-#
-#   .github/workflows/security.yml   réordonnancement des gates, épinglage des
-#                                    9 tags d'action au SHA, étape prisma:generate
-#   package.json                     vitest ^4.0.18 → ^4.1.10 (seule CVE critical)
-#   pnpm-lock.yaml                   le lockfile correspondant
-#
-# QUATRIÈME FICHIER, AJOUTÉ LE 2026-08-18, AVEC SON PROPRE MOTIF :
-#
-#   src/app/admin/intel-vault/compliance/page.tsx   → `force-dynamic`
-#
-# La lecture statique des accès base au build (D1) a trouvé cette page
-# prérendue (`○`) SANS aucun `revalidate`, alors que son unique donnée est
-# `auditLog.count()` — le compteur d'usages du jeton hérité. Prérendu, ce
-# compteur est figé dans l'artefact JUSQU'À LA CONSTRUCTION SUIVANTE ; et son
-# `try/catch` rend `-1`, donc sans base joignable au build c'est « inconnu »
-# qui serait gelé. Une page de conformité affichant un chiffre de conformité
-# vieux de plusieurs déploiements est un défaut en soi.
-#
-# Le motif n'est PAS « faire verdir la CI » — le build passait déjà cette page,
-# le `try/catch` avalant l'échec. Sortir du prérendu est l'effet de bord ; la
-# correction est que la page cesse de mentir sur sa fraîcheur. Elle entre dans
-# cette fenêtre parce qu'elle sort de la même lecture, sur le même chantier —
-# pas parce que le périmètre s'élargit.
-#
-# EXEMPTION NOMMÉE AU FICHIER EXACT : ni `^src/app/`, ni `^src/app/admin/`.
-#
-# PÉRIMÈTRE VOLONTAIREMENT NOMMÉ FICHIER PAR FICHIER : pas de `^\.github/`, pas
-# de wildcard. Un chantier de CI n'a aucune raison de pouvoir toucher
-# guard-offline.yml, et l'exemption ne le lui permet pas.
-#
-# CE QU'ELLE NE COUVRE PAS, ET QUI RESTE BLOQUÉ : `^migrations/` (l'en-tête de
-# RETRAIT_proceeds_2026-08-16.sql attend sa propre fenêtre, avec son propre
-# motif), `^prisma/`, `^src/app/`, et tout le reste.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-bloc2$ ]]; then
-    EXEMPT_CI_BLOC2_PATTERNS=(
-        "^\.github/workflows/security\.yml$"
-        "^package\.json$"
-        "^pnpm-lock\.yaml$"
-        "^src/app/admin/intel-vault/compliance/page\.tsx$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -885,18 +834,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche CI bloc 2, exempter les 3 fichiers nommés (voir en-tête).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-bloc2$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_CI_BLOC2_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
