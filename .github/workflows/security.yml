@@ -122,6 +122,7 @@ jobs:
       # `generate` ne se connecte à aucune base : il lit le schéma et écrit
       # dans node_modules. Aucune variable d'environnement n'est posée ici.
       - name: Generate Prisma client
+        id: prisma
         run: pnpm prisma:generate
 
       # ORDRE VOLONTAIRE — ne pas remettre `Lint` en tête.
@@ -139,13 +140,32 @@ jobs:
       # `Lint` reste bloquant pour le job — c'est la politique actuelle, et
       # la changer (avertissement plutôt que blocage, ou ESLint sur le seul
       # diff) est une décision produit, pas un réordonnancement.
+      # `if: !cancelled() && steps.prisma.outcome == 'success'` sur les QUATRE
+      # gates : aucune ne peut plus en masquer une autre.
+      #
+      # Le réordonnancement seul ne suffisait pas. Au premier run où `Type
+      # check` a pu s'exécuter, il a échoué (client Prisma non généré) et a
+      # remis `Tests`, `Build` et `Lint` en `skipped` — le défaut d'origine
+      # avait simplement changé de place. Une exécution indépendante par gate
+      # donne, en un seul run, l'état réel des quatre.
+      #
+      # Ça ne masque RIEN : chaque étape reste bloquante pour le job, et le
+      # job reste rouge si l'une échoue. La condition n'exempte que le cas où
+      # `Install` ou `Generate Prisma client` a échoué — là, les quatre gates
+      # n'auraient aucun sens.
+      #
+      # L'ordre reste Type check → Tests → Build → Lint : le plus informatif
+      # d'abord, le plus bruyant en dernier, pour la lecture du journal.
       - name: Type check
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm typecheck
 
       - name: Tests
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm test
 
       - name: Build
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm build
         env:
           # Build sans variables secrètes — les routes qui en ont besoin
@@ -153,6 +173,7 @@ jobs:
           NODE_ENV: production
 
       - name: Lint
+        if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm lint
 
   # ── 5. Job récapitulatif (branch protection: 1 seul job à surveiller) ────────
