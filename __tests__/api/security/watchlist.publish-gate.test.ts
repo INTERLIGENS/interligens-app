@@ -43,6 +43,8 @@ function profile(handle: string, published: boolean) {
     // C'est le comportement voulu (voir src/lib/kol/proceedsGate.ts) ; la
     // fixture doit donc declarer explicitement l'etat qu'elle veut tester.
     proceedsPublication: "published",
+    // A15 — un état absent ne publie pas (fail-closed, monetaryGate.ts).
+    monetaryClaimsPublication: "published",
     totalScammed: 67890,
     proceedsCoverage: "partial",
     evidenceDepth: "strong",

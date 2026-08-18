@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { PUBLISHED_LAUNDRY_FILTER, LAUNDRY_PUBLICATION_SELECT, filterPublishedLaundryTrails } from "@/lib/laundry/publicationGate";
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 
@@ -59,7 +60,11 @@ export async function GET(
         },
       },
       laundryTrails: {
+        // Lecture imbriquée : le filtre doit être posé ICI, une extension de
+        // client Prisma n'intercepte pas les relations imbriquées.
+        where: PUBLISHED_LAUNDRY_FILTER,
         select: {
+          ...LAUNDRY_PUBLICATION_SELECT,
           id: true,
           walletAddress: true,
           chain: true,
@@ -103,7 +108,8 @@ export async function GET(
     cashoutLog,
     totalCashoutSOL,
     totalCashoutUSD,
-    laundryTrails: profile.laundryTrails,
+    // Défense en profondeur : le `where` a déjà filtré, on revérifie l'objet.
+    laundryTrails: filterPublishedLaundryTrails(profile.laundryTrails as Array<{ publication?: unknown }>),
     source: 'botify_leak_doc_confirmed',
   });
 }

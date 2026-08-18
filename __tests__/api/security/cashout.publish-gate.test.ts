@@ -34,7 +34,9 @@ describe("GET /api/kol/[handle]/cashout — publish gate", () => {
   });
 
   it("gates on PUBLIC_KOL_FILTER (OR clause)", async () => {
-    h.findFirst.mockResolvedValue({ handle: "publicguy", kolWallets: [] });
+    // A15 — les deux états de publication : un état ABSENT ne publie pas
+    // (fail-closed, src/lib/publication/monetaryGate.ts).
+    h.findFirst.mockResolvedValue({ handle: "publicguy", kolWallets: [], proceedsPublication: "published", monetaryClaimsPublication: "published" });
     await GET(req(), ctx("publicguy"));
     const call = h.findFirst.mock.calls[0]?.[0] as { where: any };
     expect(call.where.handle).toBe("publicguy");
@@ -42,7 +44,9 @@ describe("GET /api/kol/[handle]/cashout — publish gate", () => {
   });
 
   it("behaves normally for a published handle (no ca → found:false, 200)", async () => {
-    h.findFirst.mockResolvedValue({ handle: "publicguy", kolWallets: [] });
+    // A15 — les deux états de publication : un état ABSENT ne publie pas
+    // (fail-closed, src/lib/publication/monetaryGate.ts).
+    h.findFirst.mockResolvedValue({ handle: "publicguy", kolWallets: [], proceedsPublication: "published", monetaryClaimsPublication: "published" });
     const res = await GET(req(), ctx("publicguy"));
     expect(res.status).toBe(200);
     const body = await res.json();

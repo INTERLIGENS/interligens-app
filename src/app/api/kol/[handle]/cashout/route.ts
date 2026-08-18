@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getPriceAtDate } from "@/lib/kol/pricing";
 import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
+import { isMonetaryClaimPublished } from "@/lib/publication/monetaryGate";
 
 const prisma = new PrismaClient();
 const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`;
@@ -124,6 +125,18 @@ export async function GET(
 
     if (!profile) {
       return NextResponse.json({ error: "KOL not found" }, { status: 404 });
+    }
+
+    // A15 — les montants de cette route sont calculés en direct depuis Helius,
+    // donc absents de la base : aucun filtre de requête ne peut les atteindre.
+    // Le seul point d'arrêt est ici, avant de les produire.
+    // 409 comme /api/kol/{h}/proceeds : un 404 dirait « cette personne n'existe
+    // pas », le 409 dit ce qui s'est réellement passé.
+    if (!isMonetaryClaimPublished(profile, "proceeds")) {
+      return NextResponse.json(
+        { error: "proceeds_publication_withdrawn", handle },
+        { status: 409 },
+      );
     }
 
     if (!ca) {

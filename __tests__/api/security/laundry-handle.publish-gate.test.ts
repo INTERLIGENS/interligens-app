@@ -46,7 +46,11 @@ describe("GET /api/laundry/[handle] — publish gate", () => {
 
   it("returns the trail unchanged for a published handle", async () => {
     mockProfile.mockResolvedValue({ id: "k1" });
-    const trail = { id: "t1", kolHandle: "publicguy", signals: [] };
+    // `publication: "published"` — sans lui, la route filtrée par
+    // MIGRATION_laundry_publication_v1 rendrait `null` : un état absent NE
+    // PUBLIE PAS (fail-closed, src/lib/laundry/publicationGate.ts).
+    // Cette ligne encode le changement de doctrine, elle ne le contourne pas.
+    const trail = { id: "t1", kolHandle: "publicguy", publication: "published", signals: [] };
     mockTrail.mockResolvedValue(trail);
     const res = await GET(req(), ctx("publicguy"));
     expect(res.status).toBe(200);
