@@ -555,6 +555,22 @@ fi
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-a9-verrou-directurl$ ]]; then
     EXEMPT_A9_VERROU_DIRECTURL_PATTERNS=(
         "^prisma/schema\.prod\.prisma$"
+        # ÉLARGISSEMENT, MÊME MOTIF — mesuré après ouverture de la fenêtre.
+        #
+        # `prisma/schema.prisma` est le schema PAR DÉFAUT : toute commande
+        # prisma sans `--schema` le lit. Or `package.json` déclare
+        # `db:status = prisma migrate status` SANS `--schema`.
+        #
+        # CLAUDE.md décrit ce fichier comme « dev SQLite ». C'est FAUX :
+        # il déclare provider = "postgresql", url = env("DATABASE_URL") et
+        # directUrl = env("DATABASE_URL_UNPOOLED") — la même cible ep-bold-sky
+        # que le schema de production.
+        #
+        # Verrouiller le seul schema de production laisserait donc grand ouvert
+        # le chemin que l'on emprunte EN OUBLIANT le drapeau — précisément le
+        # mode de défaillance contre lequel le verrou existe. Un demi-verrou
+        # qui a l'air entier est pire que pas de verrou.
+        "^prisma/schema\.prisma$"
     )
 fi
 
