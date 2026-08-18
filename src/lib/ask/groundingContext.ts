@@ -3,6 +3,7 @@ import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 import { getRelatedActorsForProfile } from '@/lib/cluster/clusterRisk'
 import { getCoordinationSignalsForProfile, type CoordinationSignal } from '@/lib/coordination'
 import { redactProceeds } from '@/lib/kol/proceedsGate'
+import { readPublishedLaundryTrail } from '@/lib/laundry/publicationGate'
 
 export interface ScanGroundingContext {
   handle: string
@@ -42,7 +43,17 @@ export async function buildGroundingContext(
       walletAttributionStrength: true,
       evidenceDepth: true,
       completenessLevel: true,
-      laundryTrails: { select: { laundryRisk: true }, take: 1 },
+      // `laundryTrails` N'EST PLUS sélectionné ici.
+      //
+      // Il l'était sans condition, sept lignes sous `proceedsPublication` et
+      // son commentaire « P0 containment » : dans la même requête, le montant
+      // était soumis au containment et le trail de blanchiment ne l'était pas.
+      // Or c'est la surface la plus difficile à rattraper — le drapeau ne sort
+      // pas dans un champ JSON filtrable, il est reformulé librement en prose
+      // par un modèle de langage.
+      //
+      // La lecture passe désormais par `readPublishedLaundryTrail`, point de
+      // filtrage unique et fail-closed (src/lib/laundry/publicationGate.ts).
       _count: { select: { kolWallets: true, kolCases: true, tokenLinks: true } },
     },
   })
@@ -54,8 +65,15 @@ export async function buildGroundingContext(
     getCoordinationSignalsForProfile(handle),
   ])
 
-  const hasLaundryTrail = profile.laundryTrails.length > 0
-  const laundryRisk = hasLaundryTrail ? String(profile.laundryTrails[0].laundryRisk) : undefined
+  // Fail-closed : `null` si le trail est retiré, si l'état est illisible, ou si
+  // la colonne n'existe pas encore (migration non exécutée). Dans les trois
+  // cas, le modèle n'apprend rien — au lieu d'apprendre quelque chose qui n'a
+  // plus le droit d'être dit.
+  const publishedTrail = await readPublishedLaundryTrail(prisma, profile.handle, {
+    laundryRisk: true,
+  })
+  const hasLaundryTrail = publishedTrail !== null
+  const laundryRisk = hasLaundryTrail ? String(publishedTrail.laundryRisk ?? '') || undefined : undefined
 
   // Build proceeds summary
   //
