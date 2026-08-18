@@ -163,21 +163,94 @@ describe("UN RETRAIT, N PORTEURS — aucun ne doit échapper", () => {
  *                 sont couverts EN AMONT par la route qui les alimente. Exiger
  *                 d'eux un import de garde reviendrait à exiger qu'ils
  *                 refassent le travail de la route.
+ *
+ * ── CORRECTION (A4, 2026-08-18) ───────────────────────────────────────────
+ *
+ * « Couverts EN AMONT par la route qui les alimente » était une PHRASE, pas
+ * une assertion. Rien ne vérifiait ni quelle route alimente le composant, ni
+ * si cette route porte un garde. Le balayage IDOR (A4) a trouvé que pour
+ * `ShillToExitCard` la phrase est FAUSSE : le composant appelle
+ * `/api/kol/{handle}/shill-to-exit` (ShillToExitCard.tsx:109), route qui ne
+ * figure pas dans les douze surfaces et qui ne porte AUCUN garde — elle sert
+ * `amountUsd` par événement, et la phrase « Sold on … — $X ». Le test passait
+ * vert pendant que la surface fuyait, et l'aurait redit à chaque vérification.
+ *
+ * Le champ `amont` rend la phrase vérifiable : il NOMME la route, le test
+ * vérifie que le composant l'appelle vraiment, puis qu'elle porte un garde —
+ * dans l'arbre, dans un de ses modules `@/lib/*`, ou dans un patch vérifié.
+ * Ce qui n'est pas couvert est inscrit au registre `LACUNES_AMONT`, avec sa
+ * raison. Le registre est à cliquet : une lacune qui gagne un garde fait
+ * TOMBER le test, qui exige alors sa radiation. Rien ne peut redevenir
+ * silencieux, ni dans un sens ni dans l'autre.
  */
 type Via = "arbre" | "patch" | "patch-rendu";
-const SURFACES: Array<{ label: string; fichier: string; via: Via }> = [
+const SURFACES: Array<{ label: string; fichier: string; via: Via; amont?: string }> = [
   { label: "GET /api/v1/kol/{handle}", fichier: "src/app/api/v1/kol/[handle]/route.ts", via: "patch" },
   { label: "canonical.ts (liste KOL, explorer, leaderboard)", fichier: "src/lib/kol/canonical.ts", via: "patch" },
   { label: "GET /api/kol/{handle}/class-action", fichier: "src/app/api/kol/[handle]/class-action/route.ts", via: "patch" },
   { label: "GET /api/kol/{handle}/cashout", fichier: "src/app/api/kol/[handle]/cashout/route.ts", via: "patch" },
   { label: "GET /api/watchlist", fichier: "src/app/api/watchlist/route.ts", via: "patch" },
   { label: "GET /api/pdf/kol", fichier: "src/app/api/pdf/kol/route.ts", via: "patch" },
+  // KolNarrative ne fait aucun `fetch` : il reçoit ses données en props, du
+  // rendu serveur qui a déjà appliqué le garde. Pas d'`amont` à vérifier.
   { label: "KolNarrative", fichier: "src/components/kol/KolNarrative.tsx", via: "patch-rendu" },
-  { label: "ShillToExitCard", fichier: "src/components/kol/ShillToExitCard.tsx", via: "patch-rendu" },
-  { label: "CashoutProof", fichier: "src/components/kol/CashoutProof.tsx", via: "patch-rendu" },
+  {
+    label: "ShillToExitCard",
+    fichier: "src/components/kol/ShillToExitCard.tsx",
+    via: "patch-rendu",
+    amont: "src/app/api/kol/[handle]/shill-to-exit/route.ts",
+  },
+  {
+    label: "CashoutProof",
+    fichier: "src/components/kol/CashoutProof.tsx",
+    via: "patch-rendu",
+    amont: "src/app/api/kol/[handle]/cashout/route.ts",
+  },
   { label: "GET /api/kol/{handle}/proceeds", fichier: "src/app/api/kol/[handle]/proceeds/route.ts", via: "arbre" },
-  { label: "ProceedsCard", fichier: "src/components/kol/ProceedsCard.tsx", via: "arbre" },
-  { label: "KolAlert", fichier: "src/components/token/KolAlert.tsx", via: "arbre" },
+  {
+    label: "ProceedsCard",
+    fichier: "src/components/kol/ProceedsCard.tsx",
+    via: "arbre",
+    amont: "src/app/api/kol/[handle]/proceeds/route.ts",
+  },
+  {
+    label: "KolAlert",
+    fichier: "src/components/token/KolAlert.tsx",
+    via: "arbre",
+    amont: "src/app/api/token/[chain]/[address]/kol-alert/route.ts",
+  },
+];
+
+/**
+ * Registre des amonts NON couverts, au 2026-08-18.
+ *
+ * Y figurer n'excuse rien : c'est l'inverse d'une exemption. Une entrée dit
+ * « cette surface fuit, on le sait, c'est écrit ». Le test à cliquet plus bas
+ * vérifie que chaque entrée est TOUJOURS une lacune — le jour où la route
+ * gagne un garde, il tombe et exige la radiation.
+ *
+ * Aucun correctif ici : `src/app/api/` est gelé par `guard-offline.sh`, et
+ * corriger une surface monétaire est une décision, pas une retouche de test.
+ */
+const LACUNES_AMONT: Array<{ amont: string; pour: string; raison: string }> = [
+  {
+    amont: "src/app/api/kol/[handle]/shill-to-exit/route.ts",
+    pour: "ShillToExitCard",
+    raison:
+      "sert amountUsd par événement de sortie et la phrase « Sold on … — $X » " +
+      "(shill-to-exit/detector.ts:195) sans PUBLIC_KOL_FILTER ni garde monétaire. " +
+      "Le montant sort en TEXTE, pas en champ filtrable — même forme que /api/scan/ask. " +
+      "À verser au lot d'A15 avant fusion, ou à décider en septembre.",
+  },
+  {
+    amont: "src/app/api/token/[chain]/[address]/kol-alert/route.ts",
+    pour: "KolAlert",
+    raison:
+      "src/lib/kol/alert.ts filtre bien le PROFIL (publishable && publishStatus === 'published') " +
+      "mais sert proceedsUsd et proceedsLabel sans garde MONÉTAIRE. " +
+      "Or c'est toute la thèse d'A14 : un profil publié peut porter un chiffre retiré. " +
+      "Publication du profil ≠ publication du chiffre.",
+  },
 ];
 
 const PATCH_DIR = path.join(process.cwd(), "docs/prep/patches");
@@ -236,5 +309,130 @@ describe("couverture des douze surfaces", () => {
     expect(sql).toContain("monetary_all");
     const statements = sql.replace(/^\s*--.*$/gm, "");
     expect(statements).not.toMatch(/\bDROP\b|\bDELETE\s+FROM\b|\bTRUNCATE\b/i);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. LA COUVERTURE EN AMONT — vérifiée, plus supposée
+//
+// Correction A4. « Couvert en amont par la route qui l'alimente » était une
+// justification écrite en commentaire et assertée nulle part. Ici elle est
+// exécutée : quelle route, appelée par qui, portant quel garde.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const lire = (f: string) => fs.readFileSync(path.join(process.cwd(), f), "utf8");
+
+/**
+ * Fragments LITTÉRAUX d'un chemin de route de fichier.
+ * `src/app/api/kol/[handle]/shill-to-exit/route.ts` -> ["/api/kol", "/shill-to-exit"]
+ *
+ * Un composant qui appelle cette route DOIT contenir ces fragments, dans
+ * l'ordre — quelle que soit la façon dont il construit l'URL (gabarit,
+ * concaténation, `encodeURIComponent`). C'est volontairement grossier : le
+ * test doit survivre à une réécriture de style, pas à un changement de cible.
+ */
+function fragmentsDUrl(fichierDeRoute: string): string[] {
+  return fichierDeRoute
+    .replace(/^src\/app/, "")
+    .replace(/\/route\.tsx?$/, "")
+    .split(/\[[^\]]+\]/)
+    .map((f) => f.replace(/\/$/, ""))
+    .filter((f) => f.length > 1);
+}
+
+/**
+ * Le fichier porte-t-il un garde ? Trois endroits, dans cet ordre :
+ *   1. lui-même ;
+ *   2. un module `@/lib/*` qu'il importe — UN saut, pas de fermeture
+ *      transitive : au-delà, « couvert » cesserait d'être vérifiable à l'œil ;
+ *   3. un patch A14/A15 vérifié, pour les chemins gelés.
+ * Rend l'endroit trouvé (pour le message d'erreur), ou `null`.
+ */
+function ouEstLeGarde(fichier: string): string | null {
+  const src = lire(fichier);
+  const direct = GARDES.find((g) => src.includes(g));
+  if (direct) return `${fichier} → ${direct}`;
+
+  for (const m of src.matchAll(/from\s+["'](@\/lib\/[^"']+)["']/g)) {
+    const base = m[1].replace(/^@\//, "src/");
+    for (const suffixe of [".ts", ".tsx", "/index.ts"]) {
+      const chemin = path.join(process.cwd(), base + suffixe);
+      if (!fs.existsSync(chemin)) continue;
+      const g = GARDES.find((x) => fs.readFileSync(chemin, "utf8").includes(x));
+      if (g) return `${base}${suffixe} → ${g}`;
+    }
+  }
+
+  const patch = fs
+    .readdirSync(PATCH_DIR)
+    .filter((f) => /^A1[45]-surface/.test(f))
+    .map((f) => fs.readFileSync(path.join(PATCH_DIR, f), "utf8"))
+    .find((body) => body.includes(fichier) && /monetaryGate/.test(body));
+  if (patch) return `patch A14/A15 → monetaryGate`;
+
+  return null;
+}
+
+const AVEC_AMONT = SURFACES.filter((s): s is typeof s & { amont: string } => Boolean(s.amont));
+
+describe("la couverture EN AMONT est vérifiée, pas supposée", () => {
+  for (const s of AVEC_AMONT) {
+    it(`${s.label} — appelle bien ${s.amont}`, () => {
+      const src = lire(s.fichier);
+      let curseur = -1;
+      for (const fragment of fragmentsDUrl(s.amont)) {
+        const trouve = src.indexOf(fragment, curseur + 1);
+        expect(
+          trouve,
+          `${s.fichier} n'appelle plus « ${fragment} » — l'amont déclaré n'est plus le bon`,
+        ).toBeGreaterThan(curseur);
+        curseur = trouve;
+      }
+    });
+
+    it(`${s.label} — son amont porte un garde, ou la lacune est inscrite`, () => {
+      const garde = ouEstLeGarde(s.amont);
+      if (garde) return; // couvert, et on sait par quoi
+
+      const lacune = LACUNES_AMONT.find((l) => l.amont === s.amont);
+      expect(
+        lacune,
+        `${s.amont} ne porte aucun garde et n'est pas au registre. ` +
+          `Classer ${s.label} « couvert en amont » serait faux. ` +
+          `Inscrire la lacune, ou couvrir la route.`,
+      ).toBeDefined();
+    });
+  }
+
+  // ── Le cliquet ────────────────────────────────────────────────────────────
+  it("registre à cliquet — une lacune qui gagne un garde doit être radiée", () => {
+    for (const l of LACUNES_AMONT) {
+      const garde = ouEstLeGarde(l.amont);
+      expect(
+        garde,
+        `${l.amont} porte désormais un garde (${garde}). ` +
+          `La lacune de ${l.pour} est comblée : la radier de LACUNES_AMONT.`,
+      ).toBeNull();
+    }
+  });
+
+  it("le registre ne décrit que des amonts réellement déclarés", () => {
+    const declares = new Set(AVEC_AMONT.map((s) => s.amont));
+    for (const l of LACUNES_AMONT) {
+      expect(declares.has(l.amont), `${l.amont} est au registre sans surface qui le déclare`).toBe(true);
+      expect(fs.existsSync(path.join(process.cwd(), l.amont)), `${l.amont} n'existe plus`).toBe(true);
+      expect(l.raison.length, `la lacune de ${l.pour} n'est pas motivée`).toBeGreaterThan(80);
+    }
+  });
+
+  it("le décompte est dit — combien de surfaces sont couvertes en amont, et combien fuient", () => {
+    const couvertes = AVEC_AMONT.filter((s) => ouEstLeGarde(s.amont) !== null).map((s) => s.label);
+    const fuient = LACUNES_AMONT.map((l) => l.pour);
+
+    // Ce test n'est pas décoratif : il fige le décompte. Passer une surface de
+    // « fuit » à « couverte » sans toucher au registre le fait tomber.
+    expect(couvertes.sort()).toEqual(["CashoutProof", "ProceedsCard"]);
+    expect(fuient.sort()).toEqual(["KolAlert", "ShillToExitCard"]);
+    expect(couvertes.length + fuient.length).toBe(AVEC_AMONT.length);
   });
 });

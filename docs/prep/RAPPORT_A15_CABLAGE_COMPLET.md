@@ -256,3 +256,91 @@ déploiement ne les atteint. Voir § `pdf/kol`.
 | Fichiers de l'arbre modifiés | **créé** : le test des N porteurs, les patches, ce rapport. **Aucun fichier existant modifié.** |
 | `BOTIFY_MINT`, `TSA_*`, `R2_PUBLIC_BASE_URL` | non touchés |
 | Nom civil | aucun transcrit |
+
+---
+
+# ADDENDUM — 2026-08-18 · corrigé par le balayage A4
+
+## Ce que le test de couverture affirmait sans le vérifier
+
+Trois surfaces étaient classées « couvertes **EN AMONT** par la route qui les
+alimente ». C'était une **phrase de commentaire**, assertée nulle part : rien
+ne vérifiait quelle route alimente le composant, ni si cette route porte un
+garde.
+
+Le balayage IDOR (A4) a trouvé que pour **`ShillToExitCard` la phrase est
+fausse.**
+
+`ShillToExitCard.tsx:109` appelle `/api/kol/{handle}/shill-to-exit`. Cette
+route ne figure pas dans les douze surfaces, et ne porte **aucun** garde — ni
+`PUBLIC_KOL_FILTER`, ni `proceedsGate`, ni `isProceedsPublished`, ni
+`monetaryGate`. Elle sert `amountUsd` par événement de sortie, et une phrase :
+
+```
+src/lib/shill-to-exit/detector.ts:195  →  « Sold on 2026-03-14 — $210,900 »
+```
+
+Le montant sort **en texte**, pas en champ filtrable — la forme même que le
+rapport d'août signale comme la plus difficile à rattraper après coup, à propos
+de `/api/scan/ask`.
+
+**Le test passait au vert pendant que la surface fuyait, et l'aurait redit à
+chaque vérification.** C'est ce qu'il fallait corriger en premier : une lacune
+qu'un test déclare couverte est plus coûteuse que la lacune seule.
+
+## Ce qui a été changé — dans le test, nulle part ailleurs
+
+Le champ **`amont`** nomme désormais la route qui alimente chaque composant, et
+une section 3 l'exécute :
+
+1. **le composant appelle-t-il vraiment cette route** — fragments littéraux du
+   chemin, cherchés dans l'ordre dans la source ; survit à une réécriture de
+   style, pas à un changement de cible ;
+2. **cette route porte-t-elle un garde** — dans l'arbre, dans un module
+   `@/lib/*` qu'elle importe (**un** saut, pas de fermeture transitive : au-delà,
+   « couvert » cesserait d'être vérifiable à l'œil), ou dans un patch A14/A15 ;
+3. **sinon**, la lacune doit être inscrite au registre `LACUNES_AMONT`, motivée.
+
+Le registre est **à cliquet** : une lacune qui gagne un garde fait **tomber** le
+test, qui exige alors sa radiation. Un décompte figé (`2 couvertes, 2 fuient`)
+ferme la dernière porte : faire passer une surface d'une colonne à l'autre sans
+toucher au registre est impossible en silence.
+
+## Le décompte, dit plutôt que supposé
+
+| Composant | Amont | État |
+|---|---|---|
+| `CashoutProof` | `/api/kol/[handle]/cashout` | **couvert** — patch A15, `monetaryGate` |
+| `ProceedsCard` | `/api/kol/[handle]/proceeds` | **couvert** — arbre, `isProceedsPublished` |
+| `ShillToExitCard` | `/api/kol/[handle]/shill-to-exit` | **LACUNE** — aucun garde |
+| `KolAlert` | `/api/token/[chain]/[address]/kol-alert` | **LACUNE** — voir ci-dessous |
+| `KolNarrative` | *(aucun `fetch` — props du rendu serveur)* | sans objet |
+
+**`KolAlert` mérite sa propre phrase, parce qu'elle a l'air couverte.**
+`src/lib/kol/alert.ts` filtre bien le **profil**
+(`publishable && publishStatus === "published"`) — mais sert `proceedsUsd` et
+`proceedsLabel` **sans garde monétaire**. Or c'est exactement la thèse d'A14 :
+**publication du profil ≠ publication du chiffre.** Un profil publié peut
+porter un chiffre retiré. Le filtre présent ne couvre pas ce que le test
+prétendait couvrir.
+
+## Ce qui n'a PAS été fait, et pourquoi
+
+**Aucune des deux lacunes n'est corrigée.** `src/app/api/` est gelé par
+`guard-offline.sh`, et couvrir une surface monétaire est une **décision** — la
+même famille de décision que les douze autres, prise en connaissance de ce
+qu'elle élargit. Ce sont des décisions de septembre.
+
+**Ce que ça ouvre, dit d'avance :** verser
+`/api/kol/{handle}/shill-to-exit` au lot d'A15 ferait **treize** surfaces, pas
+douze — et le registre d'élargissement de portée (`A15-REGISTRE_*.sql`) décrit
+douze. Les deux doivent bouger ensemble, ou le journal datera faux. C'est
+précisément pourquoi la lacune est **inscrite** plutôt que rattrapée à la
+sauvette.
+
+| Contrainte | État |
+|---|---|
+| Fichier de production modifié | **aucun** — la correction vit dans le test |
+| Vulnérabilité corrigée | **aucune** — deux lacunes inscrites, motivées |
+| Écriture en base, déploiement, merge, `--no-verify` | **aucun** |
+| Suite | **418 tests verts** (14 fichiers), `typecheck` vert |
