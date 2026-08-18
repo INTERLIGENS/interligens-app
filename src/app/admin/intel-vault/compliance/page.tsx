@@ -2,6 +2,23 @@
 import { ENV_KEYS } from "@/lib/vault/complianceEnvKeys";
 import { prisma } from "@/lib/prisma";
 
+// D1 — `force-dynamic`, et ce n'est PAS un compromis pour faire verdir la CI.
+//
+// Cette page était classée `○` (prérendue au build) et n'a AUCUN `revalidate`.
+// Son unique donnée est `auditLog.count()` : le compteur d'usages du jeton
+// hérité. Prérendu, ce compteur est figé dans l'artefact **jusqu'à la
+// construction suivante** — une page de conformité qui affiche un chiffre de
+// conformité vieux de plusieurs déploiements.
+//
+// Le `try/catch` de `getLegacyUsageCount()` rend `-1` en cas d'échec : au build,
+// sans base joignable, c'est `-1` qui serait gelé. Une page de conformité qui
+// affiche « inconnu » en dur est pire qu'une page lente.
+//
+// Effet de bord utile, pas motif : elle sort du prérendu, donc elle n'interroge
+// plus la base pendant `next build`.
+
+export const dynamic = "force-dynamic";
+
 async function getLegacyUsageCount(): Promise<number> {
   try {
     return await prisma.auditLog.count({
