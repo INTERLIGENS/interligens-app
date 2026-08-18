@@ -89,8 +89,13 @@ export async function chainOperatorEvidence(
   capturedBy: string,
 ): Promise<ChainOperatorResult> {
   const store = new PrismaEvidenceStore(prisma);
+  // `itemId` est HORS du `try` — et c'est le correctif. Quand le chaînage
+  // échoue APRÈS l'insertion de la pièce, le `catch` rendait
+  // `evidenceItemId: null` : la réponse ne permettait pas d'identifier la
+  // ligne orpheline qui venait d'être créée. On ne peut pas retirer, marquer
+  // ni réparer une ligne dont on ignore l'identifiant.
+  let itemId: string | null = null;
   try {
-    let itemId: string;
     let mode: ChainOperatorResult["mode"];
     let tsaPending = true;
 
@@ -165,7 +170,12 @@ export async function chainOperatorEvidence(
     return { sha256: e.sha256, mode, evidenceItemId: itemId, tsaPending, error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[evidenceCommitBridge] échec chaînage:", msg);
-    return { sha256: e.sha256, mode: "failed", evidenceItemId: null, tsaPending: true, error: msg };
+    console.error(
+      `[evidenceCommitBridge] échec chaînage sha256=${e.sha256}` +
+        (itemId ? ` — pièce ORPHELINE créée: ${itemId}` : " — aucune pièce créée") + ` : ${msg}`,
+    );
+    // `itemId` et non `null` : si la pièce a été insérée avant l'échec, son
+    // identifiant est la seule chose qui rende l'orpheline retrouvable.
+    return { sha256: e.sha256, mode: "failed", evidenceItemId: itemId, tsaPending: true, error: msg };
   }
 }

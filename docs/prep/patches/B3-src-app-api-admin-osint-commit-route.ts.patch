@@ -1,0 +1,39 @@
+diff --git a/src/app/api/admin/osint/commit/route.ts b/src/app/api/admin/osint/commit/route.ts
+index 7b959bc..c43a899 100644
+--- a/src/app/api/admin/osint/commit/route.ts
++++ b/src/app/api/admin/osint/commit/route.ts
+@@ -246,6 +246,32 @@ export async function POST(req: NextRequest) {
+     );
+   }
+ 
+-  const ok = report.links.failed.length === 0 && report.evidences.failed.length === 0;
+-  return NextResponse.json({ ok, ...report }, { status: ok ? 200 : 207 });
++  // B3 — `report.evidenceChain` entre enfin dans le calcul.
++  //
++  // Le commentaire trois blocs plus haut affirme « jamais un échec silencieux
++  // du commit ». Il l'était pourtant : `ok` ne regardait que `links.failed` et
++  // `evidences.failed`. Une pièce dont le chaînage échouait — donc une ligne
++  // EvidenceItem potentiellement orpheline — sortait en **200 ok:true**.
++  //
++  // L'appelant n'avait aucun moyen de le savoir : ni le statut, ni `ok`, ni un
++  // champ dédié. Il fallait relire `evidenceChain` élément par élément pour
++  // découvrir un `mode: "failed"`, et rien n'y invitait.
++  const chainFailed = report.evidenceChain.filter((c) => c.mode === "failed");
++  const ok =
++    report.links.failed.length === 0 &&
++    report.evidences.failed.length === 0 &&
++    chainFailed.length === 0;
++
++  // Les identifiants des pièces orphelines, remontés au premier niveau de la
++  // réponse. `chainOperatorEvidence` rend désormais `evidenceItemId` même en
++  // échec : sans lui, une ligne créée puis abandonnée n'est identifiable par
++  // aucun appelant, et personne ne peut la marquer ni la réparer.
++  const orphanEvidenceItemIds = chainFailed
++    .map((c) => c.evidenceItemId)
++    .filter((id): id is string => typeof id === "string" && id.length > 0);
++
++  return NextResponse.json(
++    { ok, orphanEvidenceItemIds, ...report },
++    { status: ok ? 200 : 207 },
++  );
+ }

@@ -1,0 +1,35 @@
+diff --git a/src/app/api/admin/osint/commit/route.test.ts b/src/app/api/admin/osint/commit/route.test.ts
+index 72066ef..9efb289 100644
+--- a/src/app/api/admin/osint/commit/route.test.ts
++++ b/src/app/api/admin/osint/commit/route.test.ts
+@@ -2,6 +2,30 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
+ 
+ vi.mock("@/lib/security/adminAuth", () => ({ requireAdminApi: () => null }));
+ 
++// B3 — `chainOperatorEvidence` n'était pas simulé. Il tournait donc pour de
++// vrai contre le client Prisma simulé, échouait à chaque exécution, et rendait
++// `mode: "failed"` — pendant que ce test affirmait `status === 200`.
++//
++// C'est précisément le défaut que B3 corrige : `ok` ne regardait que
++// `links.failed` et `evidences.failed`, jamais `evidenceChain`. Le test ne
++// mentait pas, il ne pouvait pas voir.
++//
++// Le simulacre rend un chaînage RÉUSSI : ce fichier teste le mode ombre des
++// liens, pas la chaîne de preuve. Le cas d'échec est couvert par
++// __tests__/security/evidence-observability.test.ts.
++vi.mock("@/lib/osint/evidenceCommitBridge", async (importOriginal) => ({
++  // Le reste du module est conservé — `validateCommitImages` notamment, que la
++  // route appelle avant le chaînage. Ne simuler QUE ce qu'on veut neutraliser.
++  ...(await importOriginal<typeof import("@/lib/osint/evidenceCommitBridge")>()),
++  chainOperatorEvidence: vi.fn(async (e: { sha256: string }) => ({
++    sha256: e.sha256,
++    mode: "bytes" as const,
++    evidenceItemId: "evi_simule",
++    tsaPending: false,
++    error: null,
++  })),
++}));
++
+ // prisma mock — capture upsert args, control raw results
+ const kolProfileUpsert = vi.fn().mockResolvedValue({ handle: "captain_meme1" });
+ const kolTokenLinkUpsert = vi.fn().mockResolvedValue({});

@@ -74,6 +74,19 @@ export class PrismaEvidenceStore implements EvidenceStore {
   async insertAccessLog(evidenceItemId: string, action: AccessAction, actor: string | null, context: string | null): Promise<void> {
     await this.prisma.evidenceAccessLog.create({ data: { evidenceItemId, action, actor, context } });
   }
+  /**
+   * Préfixe les notes du marqueur, sans jamais écraser ce qu'elles portaient.
+   * Une pièce ne doit pas perdre son contexte d'origine parce que son
+   * archivage a échoué — c'est justement le moment où ce contexte compte.
+   */
+  async markR2Failed(id: string, marker: string, reason: string): Promise<void> {
+    const current = await this.prisma.evidenceItem.findUnique({ where: { id }, select: { notes: true } });
+    const previous = current?.notes ?? "";
+    await this.prisma.evidenceItem.update({
+      where: { id },
+      data: { notes: `${marker} ${reason} ${previous}`.trim() },
+    });
+  }
   async getItem(id: string): Promise<EvidenceItemRecord | null> {
     const r = await this.prisma.evidenceItem.findUnique({ where: { id } });
     return r ? toItem(r as unknown as PItem) : null;

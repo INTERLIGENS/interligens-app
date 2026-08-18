@@ -67,6 +67,11 @@ export interface IngestResult {
    * ne passe jamais par ingestBuffer/ingestFile.
    */
   r2Unavailable: boolean;
+  /**
+   * true quand la config R2 était présente mais que le PUT a levé. La pièce
+   * existe, ses octets non — et elle est marquée `[R2:PUT-FAILED]`.
+   */
+  r2PutFailed: boolean;
   tsa: { attempted: boolean; done: boolean; pending: boolean; provider?: string; tsaUsed?: "primary" | "fallback" };
 }
 
@@ -82,6 +87,22 @@ export interface IngestResult {
  * Compté séparément par src/scripts/watchdog/watcher-health.mjs.
  */
 export const R2_UNAVAILABLE_MARKER = "[R2:UNAVAILABLE]";
+
+/**
+ * Marqueur posé quand R2 était CONFIGURÉ mais que le PUT a été REJETÉ.
+ *
+ * Distinct de `R2_UNAVAILABLE_MARKER`, qui dit « la config manquait ». Le mode
+ * dégradé bruyant existant ne couvrait que ce premier cas ; il ne couvrait pas
+ * « R2 configuré, PUT rejeté » — et c'est exactement ce qui est arrivé le
+ * 2026-08-14. La pièce a été insérée, `putEvidenceObject` a levé, et
+ * `insertAccessLog(item.id, "INGEST")` n'a jamais été atteint : ligne en base,
+ * sans octets, sans marqueur, et sans la moindre entrée de journal.
+ *
+ * Deux marqueurs et non un : « la config manquait » et « le stockage a refusé »
+ * n'appellent pas la même action. Les confondre ferait chercher une variable
+ * d'environnement là où il faut regarder un bucket.
+ */
+export const R2_PUT_FAILED_MARKER = "[R2:PUT-FAILED]";
 
 function assertProvenance(input: IngestCommon): void {
   // Chaîne de possession : qui a capturé est OBLIGATOIRE. Pas de null silencieux.
@@ -114,7 +135,7 @@ async function ingestCore(
   const existing = await store.findBySha256(sha256);
   if (existing) {
     await store.insertAccessLog(existing.id, "READ", actor, `duplicate ingest skipped for ${displayName}`);
-    return { item: existing, duplicate: true, r2Key: existing.r2Key, r2Unavailable: false, tsa: { attempted: false, done: !!existing.tsaToken, pending: !existing.tsaToken } };
+    return { item: existing, duplicate: true, r2Key: existing.r2Key, r2Unavailable: false, r2PutFailed: false, tsa: { attempted: false, done: !!existing.tsaToken, pending: !existing.tsaToken } };
   }
 
   // MODE DÉGRADÉ BRUYANT — on arrive ici avec des octets EN MAIN (ingestFile et
@@ -151,17 +172,62 @@ async function ingestCore(
   });
 
   // Copy to the evidence bucket (content-addressed). Degraded retention: not WORM.
+  //
+  // ENVELOPPÉ — et c'est le correctif. Sans ce `try`, un PUT qui lève propage
+  // l'exception et abandonne la ligne DÉJÀ ÉCRITE : `setR2` n'est pas appelé,
+  // `insertAccessLog(item.id, "INGEST")` non plus. La pièce reste en base sans
+  // octets, sans marqueur, et sans une seule entrée de journal — invisible aux
+  // deux filtres du watchdog, qui ne comptaient que `[R2:UNAVAILABLE]` et
+  // `HASH-ONLY`. C'est l'état exact de la pièce cmssyx6se… depuis le 14 août.
+  //
+  // On n'échoue PAS l'ingestion : la pièce et son empreinte ont une valeur même
+  // sans octets. On la rend bruyante, marquée et journalisée — ce qui est le
+  // contraire de ce qui se passait.
   let r2Key: string | null = null;
+  let r2PutFailed = false;
+  let r2PutError: string | null = null;
   if (opts.r2) {
-    r2Key = contentAddressedKey(sha256, ext);
-    const body = await loadBody();
-    await putEvidenceObject(opts.r2.s3, opts.r2.bucket, r2Key, body, input.mimeType ?? undefined);
-    await store.setR2(item.id, r2Key, false, "degraded:no-object-lock");
-    item.r2Key = r2Key;
+    const key = contentAddressedKey(sha256, ext);
+    try {
+      const body = await loadBody();
+      await putEvidenceObject(opts.r2.s3, opts.r2.bucket, key, body, input.mimeType ?? undefined);
+      await store.setR2(item.id, key, false, "degraded:no-object-lock");
+      item.r2Key = key;
+      r2Key = key;
+    } catch (err) {
+      r2PutFailed = true;
+      r2PutError = err instanceof Error ? err.message : String(err);
+      r2Key = null;
+      console.error(
+        `[evidence-chain] R2 PUT REJETÉ — octets NON archivés pour sha256=${sha256} ` +
+          `(${byteSize} o, ${displayName}, clé ${key}) : ${r2PutError}. La pièce est ` +
+          `conservée et marquée ${R2_PUT_FAILED_MARKER}.`,
+      );
+      // Marquage AVANT le journal : si la seconde écriture échoue à son tour,
+      // la ligne dit au moins la vérité sur ses octets.
+      try {
+        await store.markR2Failed(item.id, R2_PUT_FAILED_MARKER, `key=${key} error=${r2PutError}`);
+      } catch (markErr) {
+        console.error(
+          `[evidence-chain] marquage ${R2_PUT_FAILED_MARKER} impossible pour ${item.id} :`,
+          markErr instanceof Error ? markErr.message : markErr,
+        );
+      }
+    }
   }
 
-  // Access log (INGEST).
+  // Access log (INGEST). Désormais atteint même quand le PUT a levé — c'est ce
+  // qui manquait à la pièce orpheline, qui n'a pas même son INGEST.
   await store.insertAccessLog(item.id, "INGEST", actor, `sha256=${sha256} bytes=${byteSize} src=${input.sourceType} provenance=${input.provenanceType} tsmode=${input.timestampMode}`);
+
+  // Journal dédié de l'échec, calqué sur celui de `r2Unavailable` : traçable,
+  // requêtable, et impossible à confondre avec une config manquante.
+  if (r2PutFailed) {
+    await store.insertAccessLog(
+      item.id, "INGEST", actor,
+      `r2 put failed — bytes NOT archived (R2 configured, PUT rejected); bytes=${byteSize} error=${r2PutError}`,
+    );
+  }
 
   // Access log dédié, calqué sur « tsa pending » : traçable, requêtable, et
   // impossible à confondre avec le log d'un hash-only délibéré.
@@ -175,7 +241,7 @@ async function ingestCore(
   // Phase 3 — timestamp; never blocks ingestion (échec/openssl absent → pending,
   // rattrapé par stamp-pending.ts sur Host-001).
   const tsaEnabled = opts.tsa?.enabled ?? !!opts.tsa;
-  const result: IngestResult = { item, duplicate: false, r2Key, r2Unavailable, tsa: { attempted: tsaEnabled, done: false, pending: tsaEnabled } };
+  const result: IngestResult = { item, duplicate: false, r2Key, r2Unavailable, r2PutFailed, tsa: { attempted: tsaEnabled, done: false, pending: tsaEnabled } };
   if (tsaEnabled) {
     let routed: Awaited<ReturnType<typeof timestampWithRouting>> = null;
     try {
