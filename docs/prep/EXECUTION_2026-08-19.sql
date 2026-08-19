@@ -24,7 +24,7 @@
 --   BLOC 1b  migration A14                  ÉCRITURE        additif + 1 DROP gardé
 --   BLOC 2   vérifications post-migration   LECTURE SEULE   verdict
 --   ──────   ⟶ DÉPLOIEMENT ⟵   (hors SQL — docs/prep/SMOKE_TESTS_2026-08-19.md)
---   BLOC 3   versement des 34 archives      ÉCRITURE        IRRÉVERSIBLE
+--   BLOC 3   versement de 32 archives / 34  ÉCRITURE        IRRÉVERSIBLE
 --   BLOC 4   dépublication conservatoire    ÉCRITURE        réversible
 --   BLOC 5   entrée de registre             ÉCRITURE        IRRÉVERSIBLE
 --
@@ -71,7 +71,9 @@
 -- BLOC 0 — CONTRÔLES PRÉALABLES                              LECTURE SEULE
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- STATUS : NON EXÉCUTÉ.  IRRÉVERSIBLE : rien, aucune écriture.
+-- STATUS : **EXÉCUTÉ le 2026-08-19**, Neon SQL Editor, ep-square-band
+--          (projet plain-hill-77595267, branche br-square-dawn). Vert.
+-- IRRÉVERSIBLE : rien, aucune écriture.
 -- ORDRE  : avant tout. Si un seul contrôle ne rend pas la valeur attendue,
 --          ARRÊT — la session n'est pas sur la bonne base.
 --
@@ -114,7 +116,8 @@ SELECT
 -- BLOC 1a — MIGRATION A12 · publication du narratif LaundryTrail   ÉCRITURE
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- STATUS : NON EXÉCUTÉ.  IRRÉVERSIBLE : rien. Additif, ré-exécutable.
+-- STATUS : **EXÉCUTÉ le 2026-08-19**, vert. Vérifié par le BLOC 2 rejoué.
+-- IRRÉVERSIBLE : rien. Additif, ré-exécutable.
 -- ORDRE  : après le BLOC 0. Indépendant d'A14 — mais les deux avant le
 --          déploiement, et le déploiement avant toute dépublication.
 -- AJOUTE : 1 colonne `publication` (DEFAULT 'published'), 1 table de registre,
@@ -259,7 +262,8 @@ COMMIT;
 -- BLOC 1b — MIGRATION A14 · publication des revendications monétaires ÉCRITURE
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- STATUS : NON EXÉCUTÉ.
+-- STATUS : **EXÉCUTÉ le 2026-08-19**, vert. Le DROP/ADD a bien remis les
+--          HUIT portées — vérifié en base, portée par portée.
 -- IRRÉVERSIBLE : rien, SAUF le §2 — le seul DROP CONSTRAINT de tout le lot. Il
 --          est encadré d'un contrôle qui FAIT ÉCHOUER la transaction si une
 --          ligne existante sortait de la nouvelle liste de portées. Et la
@@ -354,7 +358,9 @@ COMMIT;
 -- BLOC 2 — VÉRIFICATIONS POST-MIGRATION                      LECTURE SEULE
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- STATUS : NON EXÉCUTÉ.  IRRÉVERSIBLE : rien, aucune écriture.
+-- STATUS : **EXÉCUTÉ le 2026-08-19**, puis REJOUÉ en lecture seule et
+--          confronté ligne à ligne — docs/prep/VERIF_BLOC2_2026-08-19.md.
+-- IRRÉVERSIBLE : rien, aucune écriture.
 -- ORDRE  : immédiatement après le BLOC 1, AVANT le déploiement.
 --
 -- Ces requêtes ne demandent pas « la migration a-t-elle rendu succès ». Elles
@@ -397,7 +403,28 @@ SELECT indexname FROM pg_indexes
      OR indexname LIKE 'KolProfile%onetary%'
      OR indexname = 'KolProfile_publication_pair_idx')
  ORDER BY indexname;
--- ATTENDU : 6 index — 4 pour A12, 2 pour A14.
+-- ATTENDU : 9 index. Vérifié en base le 2026-08-19 — l'annotation « 6 » qui
+--           vivait ici était FAUSSE, et c'est elle qui a créé l'écart, pas la
+--           migration. Le compte se décompose ainsi :
+--
+--             1a · LaundryTrailPublicationLog_trailId_createdAt_idx
+--             1a · LaundryTrailPublicationLog_kolHandle_createdAt_idx
+--             1a · LaundryTrailPublicationLog_reasonCode_idx
+--             1a · LaundryTrailPublicationLog_contestationRef_idx
+--             1a · LaundryTrail_publication_idx
+--             1a · LaundryTrail_kolHandle_publication_idx
+--             1b · KolProfile_monetaryClaimsPublication_idx
+--             1b · KolProfile_publication_pair_idx
+--             -- · LaundryTrailPublicationLog_pkey
+--
+--           Les huit premiers sont les huit `CREATE INDEX` des BLOCS 1a et 1b,
+--           nom pour nom. Le neuvième n'est créé par aucun bloc : Postgres le
+--           fabrique tout seul pour la PRIMARY KEY du CREATE TABLE. Il se
+--           reconnaît à ce qu'il est le SEUL de la liste à porter une
+--           contrainte associée (pg_constraint.contype = 'p') et à être UNIQUE.
+--
+--           Un dixième index, ou un neuvième qui ne serait pas le pkey,
+--           signifierait qu'un objet est arrivé par une voie non tracée : ARRÊT.
 
 -- 2.5 — LE CONTRÔLE QUI COMPTE : aucune ligne existante n'a changé d'état.
 --       Le DEFAULT ne doit avoir produit aucune valeur hors liste, et aucune
@@ -437,7 +464,7 @@ SELECT "scope", count(*) FROM "KolProceedsPublicationLog"
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- BLOC 3 — VERSEMENT DES 34 ARCHIVES · legacy / importé          ÉCRITURE
+-- BLOC 3 — VERSEMENT DE 32 ARCHIVES SUR 34 · legacy / importé    ÉCRITURE
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- STATUS : NON EXÉCUTÉ. 32 INSERT (34 objets inventoriés, 2 écartés — voir §4).
@@ -902,12 +929,12 @@ COMMIT;
 -- FIN — RÉCAPITULATIF DES ÉTATS
 -- ═══════════════════════════════════════════════════════════════════════════
 --
---   BLOC 0   NON EXÉCUTÉ   lecture seule
---   BLOC 1a  NON EXÉCUTÉ   écriture · additif · ré-exécutable
---   BLOC 1b  NON EXÉCUTÉ   écriture · additif SAUF un DROP CONSTRAINT gardé
---   BLOC 2   NON EXÉCUTÉ   lecture seule
+--   BLOC 0   EXÉCUTÉ 2026-08-19   lecture seule · vert
+--   BLOC 1a  EXÉCUTÉ 2026-08-19   écriture · additif · vert
+--   BLOC 1b  EXÉCUTÉ 2026-08-19   écriture · DROP CONSTRAINT gardé · vert
+--   BLOC 2   EXÉCUTÉ + REJOUÉ     lecture seule · 6/6 conformes
 --   DÉPLOI.  NON FAIT      hors SQL
---   BLOC 3   NON EXÉCUTÉ   écriture · IRRÉVERSIBLE — ouvre la chaîne
+--   BLOC 3   NON EXÉCUTÉ   écriture · IRRÉVERSIBLE — ouvre la chaîne · 32 pièces
 --   BLOC 4   NON EXÉCUTÉ   écriture · réversible par seconde décision
 --   BLOC 5   NON EXÉCUTÉ   écriture · IRRÉVERSIBLE — append-only
 --
