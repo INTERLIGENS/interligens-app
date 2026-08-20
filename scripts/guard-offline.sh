@@ -109,38 +109,6 @@ FORBIDDEN_PATTERNS=(
     "^src/lib/osint/retail/ipHash\.ts$"         # pseudonymisation IP (RGPD)
 )
 
-# ── FENÊTRE D'EXEMPTION — HOTFIX SÉCURITÉ B2 · COOKIE BÊTA FORGEABLE ───────
-#
-# Motif unique et entier : mesuré le 2026-08-20 en production, un cookie
-# `investigator_session=<n'importe quoi>` transforme 401 en 200 sur dix
-# familles d'endpoints nominatifs. `resolveNominativeCaller`
-# (src/lib/security/nominativeApiGate.ts:193) reconnaissait la branche « front
-# interne » sur simple PRÉSENCE du cookie — `betaCookie.length > 0` — sans
-# jamais valider la session. Les quatre autres classes d'appelant comparent à
-# un secret ; celle-ci ne comparait rien.
-#
-# B2 remplace la constatation par `validateSession` (jeton haché SHA-256,
-# `revokedAt: null`, `expiresAt > now`, accès `isActive`). La fonction devient
-# async, donc `proxy` aussi, donc le call-site `await`.
-#
-# QUATRE FICHIERS, exactement ceux des patches docs/prep/patches/B2-* :
-#   src/lib/security/nominativeApiGate.ts   le correctif — validation au lieu de présence
-#   src/proxy.ts                            proxy async + await resolveNominativeCaller
-#   src/middleware/__tests__/middleware.test.ts   test middleware mis à async
-#   (le 4e — __tests__/security/nominative-api-gate.test.ts — n'est PAS gelé)
-#
-# HORS PÉRIMÈTRE, volontairement : aucun refactor adjacent, aucun
-# « puisqu'on est dans le fichier ». A2 (Evidence/R2) est gelée en parallèle.
-#
-# À REFERMER par hotfix/guard-fenetre-b2-cookie-gate-fermeture dès la PR fusionnée.
-if [[ "$BRANCH" =~ ^hotfix/b2-cookie-gate$ ]]; then
-    EXEMPT_B2_COOKIE_GATE_PATTERNS=(
-        "^src/lib/security/nominativeApiGate\.ts$"
-        "^src/proxy\.ts$"
-        "^src/middleware/__tests__/middleware\.test\.ts$"
-    )
-fi
-
 # Exceptions sur la branche setup uniquement
 if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     # Cette branche pose les garde-fous, elle a le droit de créer .github/, scripts/, CLAUDE.offline.md, etc.
@@ -889,19 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Sur la branche du hotfix B2, exempter STRICTEMENT les 3 fichiers gelés
-    # nommés. Aucun wildcard src/lib/security/ ni src/app/api/.
-    if [[ "$BRANCH" =~ ^hotfix/b2-cookie-gate$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_B2_COOKIE_GATE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
