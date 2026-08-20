@@ -109,52 +109,6 @@ FORBIDDEN_PATTERNS=(
     "^src/lib/osint/retail/ipHash\.ts$"         # pseudonymisation IP (RGPD)
 )
 
-# ── FENÊTRE D'EXEMPTION — PARSEUR POSTGRESQL HORS LIGNE (C1) ───────────────
-#
-# Motif unique et entier : le 2026-08-19, `docs/prep/EXECUTION_2026-08-19.sql`
-# portait une virgule orpheline — la dernière ligne `VALUES` se terminait par
-# `'retroactive'),` suivie de `ON CONFLICT (id) DO NOTHING;`. PostgreSQL a
-# rendu `ERROR: syntax error at or near "ON"` (SQLSTATE 42601), sur un fichier
-# destiné à ouvrir une chaîne de conservation.
-#
-# Le défaut n'était pas la virgule. C'est que TOUTES nos vérifications
-# portaient sur le SENS — compter les lignes, comparer les colonnes, relire les
-# garde-fous — et AUCUNE sur la GRAMMAIRE. Personne n'a demandé si le fichier
-# se parsait, parce que rien sur cette machine ne sait le faire :
-#
-#   psql · postgres · pgsanity · Docker : absents
-#   sqlparse · pglast (Python)          : absents
-#   sqlite3                             : présent, mais FAUX AMI — il rejette
-#                                         DO $$, ::text, TIMESTAMP(3) et
-#                                         gen_random_uuid(), qui sont du
-#                                         PostgreSQL parfaitement valide
-#
-# UN SEUL PAQUET NOMMÉ :
-#   @libpg-query/parser   le parseur de PostgreSQL lui-même, compilé en WASM.
-#                         Hors connexion une fois installé : aucun appel réseau,
-#                         aucune base, aucun serveur. Il rend l'arbre syntaxique
-#                         ou il lève. C'est la seule dépendance ajoutée.
-#
-# DEUX FICHIERS, par nécessité mécanique — on n'ajoute pas une dépendance à l'un
-# sans l'autre, et pnpm refuserait un lockfile désynchronisé :
-#   package.json      la déclaration
-#   pnpm-lock.yaml    le verrouillage de version et d'intégrité
-#
-# HORS PÉRIMÈTRE, volontairement : le linter structurel de la PR #123
-# (`__tests__/security/sql-execution-file-lint.test.ts`) RESTE. Il couvre ce que
-# la grammaire ne voit pas — empreintes sha256 en double, nombre de lignes
-# VALUES confronté au garde-fou. Un fichier peut se parser parfaitement et
-# verser deux fois la même preuve. Le parseur ne remplace jamais le linter ;
-# il ferme l'angle mort d'à côté.
-#
-# À REFERMER par hotfix/guard-fenetre-parseur-sql-fermeture dès la PR fusionnée.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-parseur-sql$ ]]; then
-    EXEMPT_PARSEUR_SQL_PATTERNS=(
-        "^package\.json$"
-        "^pnpm-lock\.yaml$"
-    )
-fi
-
 # Exceptions sur la branche setup uniquement
 if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     # Cette branche pose les garde-fous, elle a le droit de créer .github/, scripts/, CLAUDE.offline.md, etc.
@@ -903,20 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Sur la branche du parseur SQL, exempter STRICTEMENT les 2 fichiers de
-    # dépendance nommés. Aucun wildcard : ni .github/, ni vercel.json, ni
-    # tsconfig — la fenêtre ne porte que sur l'ajout d'@libpg-query/parser.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-parseur-sql$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_PARSEUR_SQL_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
