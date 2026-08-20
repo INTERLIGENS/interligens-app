@@ -1,6 +1,7 @@
 // src/proxy.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/security/adminAuth";
+import { validateSession } from "@/lib/security/investigatorAuth";
 import {
   isNominativeApiPath,
   resolveNominativeCaller,
@@ -93,6 +94,22 @@ function isLocalizedAdminRoute(pathname: string): boolean {
 // runtime », vérifié par build), donc Prisma y est disponible et aucun réglage
 // de next.config.ts n'est nécessaire. Toutes les branches synchrones qui
 // précèdent restent synchrones : seul le chemin nominatif attend.
+// P0-GUARD — la PRÉSENCE d'un cookie n'est pas une session. Les deux gates de
+// page ci-dessous testaient `!!cookie` ; c'est le défaut que B2 a corrigé pour
+// l'API nominative. On réutilise ici la MÊME validation : validateSession fait
+// le hash SHA-256, exige `revokedAt: null`, `expiresAt > now`, accès `isActive`.
+// Fail-closed : cookie absent/vide, session invalide, ou base injoignable → false.
+async function hasValidBetaSession(req: NextRequest): Promise<boolean> {
+  const cookie = req.cookies.get(BETA_COOKIE)?.value;
+  if (typeof cookie !== "string" || cookie.length === 0) return false;
+  try {
+    return (await validateSession(cookie)) !== null;
+  } catch {
+    // Une validation qui échoue n'ouvre rien, et ne fait pas tomber la requête.
+    return false;
+  }
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -160,7 +177,7 @@ export async function proxy(req: NextRequest) {
     !pathname.startsWith("/api/investigator/auth");
 
   if (isInvestigatorPage || isInvestigatorApi) {
-    const hasSession = !!req.cookies.get(BETA_COOKIE)?.value;
+    const hasSession = await hasValidBetaSession(req);
     if (!hasSession) {
       if (isInvestigatorApi) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -193,7 +210,7 @@ export async function proxy(req: NextRequest) {
   // ── Beta gating — all public demo pages ────────────────────────────────
   // Fail-closed: if not exempt, must have a session cookie.
   if (!isBetaExempt(pathname)) {
-    const hasSession = !!req.cookies.get(BETA_COOKIE)?.value;
+    const hasSession = await hasValidBetaSession(req);
     if (!hasSession) {
       const accessUrl = req.nextUrl.clone();
       accessUrl.pathname = "/access";
