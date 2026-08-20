@@ -38,6 +38,30 @@ function sha256hex(buf: Buffer): string {
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
 
+// ── A2 — LE POINTEUR MUTABLE « DERNIÈRE VERSION » ─────────────────────────
+//
+// `pointers/{handle}/latest.pdf` vit HORS de `reports/` et de `evidence/` —
+// les deux préfixes qu'un Bucket Lock de conservation couvrira (A4). Le point
+// est structurel : un verrou prefix-scoped posé sur `reports/` NE DOIT PAS
+// atteindre ce pointeur, sinon le second PUT de chaque génération rendrait 403
+// (`ObjectLockedByBucketPolicy`) et `/api/pdf/{handle}` servirait à jamais la
+// version figée au moment du verrou, sans que rien ne le signale.
+//
+// Même compartiment que l'archive (`R2_BUCKET_NAME`, privé, AUCUNE URL publique
+// activée — `pub-interligens.r2.dev` rend 401, mesuré), donc servi par le même
+// mécanisme d'URL signée, sans nouveau credential ni bucket public. Seul le
+// préfixe de tête change.
+//
+// Cette fonction est la SOURCE DE VÉRITÉ de la clé : l'écrivain (engine.ts) et
+// le lecteur (/api/pdf/[handle]/route.ts) l'importent tous deux. Un pointeur
+// dont l'écrivain et le lecteur divergeraient serait un 404 silencieux en
+// production. Le fichier n'est pas gelé, à dessein : les deux gelés en dépendent.
+export const POINTER_PREFIX = "pointers";
+
+export function pointerLatestKey(handle: string): string {
+  return `${POINTER_PREFIX}/${handle}/latest.pdf`;
+}
+
 export function buildPdfKey(input: PdfUploadInput, sha256: string): string {
   const env = getStorageEnv();
   const now = new Date();

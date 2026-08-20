@@ -3,7 +3,8 @@
 // Signed proxy for R2-hosted KOL dossier PDFs.
 //
 //   GET /api/pdf/:handle
-//     → 302 redirect to a short-lived R2 signed URL for reports/<handle>/latest.pdf
+//     → 302 redirect to a short-lived R2 signed URL for pointers/<handle>/latest.pdf
+//       (A2 : le pointeur mutable vit hors de reports/, hors du futur Bucket Lock)
 //
 // Auth: admin token (x-admin-token / cookie) OR valid investigator session.
 // Returns 401 if neither is present.
@@ -12,7 +13,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { isAdminApi } from "@/lib/security/adminAuth";
 import { getSessionTokenFromReq, validateSession } from "@/lib/security/investigatorAuth";
-import { getSignedDownloadUrl, isStorageEnabled } from "@/lib/storage/pdfStorage";
+import { getSignedDownloadUrl, isStorageEnabled, pointerLatestKey } from "@/lib/storage/pdfStorage";
 import { prisma } from "@/lib/prisma";
 import {
   isProceedsPublished,
@@ -58,9 +59,10 @@ export async function GET(
     return NextResponse.json({ error: "No PDF generated for this profile" }, { status: 404 });
   }
 
-  // P0 containment — reports/{handle}/latest.pdf est un objet R2 FIGE. Il porte
-  // le chiffre tel qu'il etait au moment de sa generation ; aucun filtre de
-  // lecture applique en base ne le modifie. Le dossier @GordonGekko du
+  // P0 containment — le pointeur pointers/{handle}/latest.pdf est un objet R2
+  // MUTABLE (réécrit à chaque génération), mais servi tel quel : aucun filtre de
+  // lecture applique en base ne le modifie. Il porte le chiffre tel qu'il etait
+  // au moment de sa derniere generation. Le dossier @GordonGekko du
   // 2026-08-16 affiche « CASHOUTS DOCUMENTES $580K » et « TOTAL $579 645 »,
   // dont 485 000 $ proviennent d'une seule ligne d'import CSV, sous la mention
   // « CONFIDENTIEL — usage judiciaire ».
@@ -83,7 +85,11 @@ export async function GET(
     return NextResponse.json({ error: "R2 storage disabled" }, { status: 503 });
   }
 
-  const key = `reports/${handle}/latest.pdf`;
+  // A2 — le pointeur mutable vit désormais hors de reports/ (pointers/), pour
+  // qu'un Bucket Lock de conservation sur reports/ (A4) fige les archives sans
+  // figer ce pointeur. La clé est la source de vérité partagée avec l'écrivain
+  // (engine.ts) : écrivain et lecteur ne peuvent pas diverger.
+  const key = pointerLatestKey(handle);
   const signedUrl = await getSignedDownloadUrl(key);
   if (!signedUrl) {
     return NextResponse.json({ error: "Failed to sign PDF URL" }, { status: 500 });
