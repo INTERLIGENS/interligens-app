@@ -148,3 +148,26 @@ En cas de doute entre les deux : **l'interdit gagne**.
 > qu'une feature livrée et un enquêteur qui voit un bug.
 
 L'enquêteur est plus précieux que toute la wishlist.
+
+---
+
+## Exception ponctuelle — 24 mai 2026
+
+Le 24 mai 2026, David Douville a explicitement autorisé une session exceptionnelle
+de merge/tag/cleanup via un workflow PR-driven, avec autorisations qui dérogent aux
+règles offline par défaut :
+
+- Merge de 6 PRs corpus sur main (squash)
+- Pose du tag `corpus-pedagogique-v1-2026-05-23`
+- Suppression de branches locales mergées
+- Drop de stashes artefacts test runner uniquement
+
+**Cette exception ne modifie PAS les règles offline par défaut.**
+
+Toute nouvelle exception doit être :
+- explicitement redonnée par David dans le prompt de session
+- datée
+- limitée à un périmètre clair
+- rappelée dans le prompt avant exécution
+
+Arbitrage GPT du 24 mai 2026 : acceptée pour cette session unique.
