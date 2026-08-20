@@ -17,7 +17,7 @@ describe("proxy Basic Auth", () => {
     vi.resetModules();
     const { proxy } = await import("../../proxy");
     const req = new NextRequest("http://localhost/api/admin/sources");
-    const res = proxy(req);
+    const res = await proxy(req);
     expect(res.status).toBe(401);
   });
 
@@ -28,7 +28,7 @@ describe("proxy Basic Auth", () => {
     vi.resetModules();
     const { proxy } = await import("../../proxy");
     const req = new NextRequest("http://localhost/api/admin/sources");
-    const res = proxy(req);
+    const res = await proxy(req);
     expect(res.status).toBe(401);
   });
 
@@ -42,7 +42,7 @@ describe("proxy Basic Auth", () => {
     const req = new NextRequest("http://localhost/api/admin/sources", {
       headers: { authorization: `Basic ${creds}` },
     });
-    const res = proxy(req);
+    const res = await proxy(req);
     expect(res.status).not.toBe(401);
   });
 });

@@ -88,7 +88,12 @@ function isLocalizedAdminRoute(pathname: string): boolean {
   return /^\/[a-z]{2}\/admin(\/|$)/.test(pathname);
 }
 
-export function proxy(req: NextRequest) {
+// B2 — `async` : la validation de session nominative interroge la base. Next 16
+// impose le runtime Node.js pour ce fichier (« Proxy always runs on Node.js
+// runtime », vérifié par build), donc Prisma y est disponible et aucun réglage
+// de next.config.ts n'est nécessaire. Toutes les branches synchrones qui
+// précèdent restent synchrones : seul le chemin nominatif attend.
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ── Admin founder shortcut on investigator onboarding ──────────────────
@@ -174,7 +179,12 @@ export function proxy(req: NextRequest) {
   // interne via cookie beta, admin, partenaire, app iOS) sont préservés —
   // voir src/lib/security/nominativeApiGate.ts.
   if (isNominativeApiPath(pathname)) {
-    if (resolveNominativeCaller(req) === null) {
+    // B2 — `await` : la branche « session investigateur » interroge désormais la
+    // base (session hachée, révocable, expirante) au lieu de tester la présence
+    // d'un cookie. Le proxy tourne sur le runtime Node.js — Next 16 l'impose et
+    // refuse tout `export const runtime` dans ce fichier — donc Prisma y est
+    // disponible sans changer next.config.ts.
+    if ((await resolveNominativeCaller(req)) === null) {
       return nominativeAccessDenied();
     }
     return applyNominativeCacheHeaders(NextResponse.next());

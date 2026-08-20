@@ -467,19 +467,30 @@ describe("A4 · POSSESSION — POST /feedback : l'intégrité du journal d'audit
 // routes paramétrées qui n'ont aucune seconde couche derrière elle.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("A4 · CONSTAT — le gate nominatif accepte un cookie non validé", () => {
-  it("un cookie forgé est reconnu comme `beta_session`, un absent ne l'est pas", async () => {
+describe("A4 · RÉGRESSION — B2 a retourné le CONSTAT : un cookie non validé n'ouvre plus rien", () => {
+  it("un cookie forgé N'EST PLUS reconnu comme `beta_session` — fail-closed", async () => {
     const { resolveNominativeCaller } = await import("@/lib/security/nominativeApiGate");
     const requete = (cookie?: string) =>
       new NextRequest("https://app.invalid/api/cluster/exemple", {
         headers: cookie ? { cookie } : {},
       });
 
-    expect(resolveNominativeCaller(requete())).toBeNull();
-    expect(resolveNominativeCaller(requete("investigator_session="))).toBeNull();
-    expect(resolveNominativeCaller(requete("investigator_session=ceci-n-est-pas-une-session"))).toBe(
-      "beta_session",
-    );
+    // Ce test était un CONSTAT vert : il asservissait le défaut, où
+    // `investigator_session=<n'importe quoi>` rendait `beta_session` sur
+    // simple présence. B2 (2026-08-20) remplace la présence par
+    // `validateSession` — jeton haché SHA-256, session non révoquée, non
+    // expirée, accès actif. `resolveNominativeCaller` est désormais async.
+    //
+    // Sans session en base — et sans DATABASE_URL en environnement de test,
+    // où l'appel Prisma lève et tombe dans le `catch` fail-closed — les trois
+    // cas rendent `null`. La couverture positive (session valide → passe) et
+    // les cas expiré/révoqué sont dans nominative-session-validation.test.ts,
+    // qui simule le client Prisma.
+    expect(await resolveNominativeCaller(requete())).toBeNull();
+    expect(await resolveNominativeCaller(requete("investigator_session="))).toBeNull();
+    expect(
+      await resolveNominativeCaller(requete("investigator_session=ceci-n-est-pas-une-session")),
+    ).toBeNull();
   });
 
   it("les routes paramétrées qui n'ont QUE ce gate sont nommées, et la liste ne grandit pas en silence", async () => {
