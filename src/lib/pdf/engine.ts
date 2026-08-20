@@ -8,6 +8,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
 import { prisma } from "@/lib/prisma";
+import { pointerLatestKey } from "@/lib/storage/pdfStorage";
 
 type RawProceedsEvent = {
   id: string;
@@ -456,20 +457,43 @@ export async function generateCasePdf(handle: string): Promise<PdfGenerationResu
     if (!bucket) throw new Error("R2_BUCKET_NAME missing");
     const r2 = buildR2();
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const archiveKey = `reports/${handle}/CASE_${handle}_${ts}.pdf`;
-    const latestKey = `reports/${handle}/latest.pdf`;
 
-    for (const Key of [archiveKey, latestKey]) {
-      await r2.send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key,
-          Body: pdfBytes,
-          ContentType: "application/pdf",
-          CacheControl: "no-cache",
-        })
-      );
-    }
+    // A2 — DEUX ÉCRITURES DISJOINTES, plus une seule boucle.
+    //
+    // L'archive datée est IMMUABLE : sa clé porte l'horodatage, elle n'est
+    // jamais réécrite, et elle reste sous `reports/` — le préfixe qu'un Bucket
+    // Lock de conservation figera (A4).
+    //
+    // Le pointeur « dernière version » est MUTABLE : chaque génération le
+    // réécrit. Il vit désormais HORS de `reports/` (voir pointerLatestKey),
+    // pour qu'un verrou sur `reports/` fige l'archive SANS jamais bloquer ce
+    // PUT. Sous un préfixe partagé, ces deux propriétés — figer l'une, réécrire
+    // l'autre — sont contradictoires ; c'est exactement ce qu'A2 sépare.
+    const archiveKey = `reports/${handle}/CASE_${handle}_${ts}.pdf`;
+    const pointerKey = pointerLatestKey(handle);
+
+    // 1/2 — l'archive immuable, sous reports/.
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: archiveKey,
+        Body: pdfBytes,
+        ContentType: "application/pdf",
+        CacheControl: "no-cache",
+      })
+    );
+
+    // 2/2 — le pointeur mutable, hors reports/. Un verrou sur reports/ ne
+    // l'atteint pas : ce PUT ne rendra jamais 403 à cause du verrou d'archive.
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: pointerKey,
+        Body: pdfBytes,
+        ContentType: "application/pdf",
+        CacheControl: "no-cache",
+      })
+    );
 
     const pdfUrl = `/api/pdf/${encodeURIComponent(handle)}`;
     const archiveUrl = `${publicBase}/${archiveKey}`;
