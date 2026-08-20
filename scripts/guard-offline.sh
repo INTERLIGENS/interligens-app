@@ -109,6 +109,40 @@ FORBIDDEN_PATTERNS=(
     "^src/lib/osint/retail/ipHash\.ts$"         # pseudonymisation IP (RGPD)
 )
 
+# ── FENÊTRE D'EXEMPTION — A2 · SORTIR latest.pdf DU NAMESPACE IMMUABLE ─────
+#
+# Motif unique et entier : src/lib/pdf/engine.ts:459-471 écrit l'archive datée
+# (reports/{handle}/CASE_…pdf, immuable) ET le pointeur mutable
+# (reports/{handle}/latest.pdf) dans la MÊME boucle, sous le même préfixe
+# reports/. Tant qu'ils le partagent, aucun Bucket Lock de conservation (A4)
+# ne peut figer les archives sans figer aussi le pointeur : le second PUT de
+# chaque génération rendrait 403, et /api/pdf/{handle} servirait à jamais la
+# version gelée au moment du verrou, en silence.
+#
+# A2 déplace le pointeur vers un préfixe de tête distinct — pointers/ — que le
+# verrou prefix-scoped de reports/ ne couvrira pas. Même compartiment privé
+# (R2_BUCKET_NAME, aucune URL publique activée), aucun nouveau credential.
+# A2 est le PRÉALABLE à A4 ; A2 ne pose AUCUN verrou et ne migre AUCUN objet.
+#
+# DEUX FICHIERS GELÉS, exactement ceux qui portent la clé latest.pdf :
+#   src/lib/pdf/engine.ts                       l'écriture — boucle séparée, pointeur hors reports/
+#   src/app/api/pdf/[handle]/route.ts           la lecture — sert la nouvelle clé
+#
+# La source de vérité de la clé (pointerLatestKey) vit dans
+# src/lib/storage/pdfStorage.ts — chemin NON gelé — pour que l'écrivain et le
+# lecteur ne puissent jamais diverger. Un lecteur oublié = un 404 silencieux.
+#
+# HORS PÉRIMÈTRE, volontairement : aucun Bucket Lock (A4), aucune migration des
+# latest.pdf existants, aucun refactor du reste d'engine.ts.
+#
+# À REFERMER par hotfix/guard-fenetre-a2-pointeur-fermeture dès la PR fusionnée.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-a2-pointeur-mutable$ ]]; then
+    EXEMPT_A2_POINTEUR_PATTERNS=(
+        "^src/lib/pdf/engine\.ts$"
+        "^src/app/api/pdf/\[handle\]/route\.ts$"
+    )
+fi
+
 # Exceptions sur la branche setup uniquement
 if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     # Cette branche pose les garde-fous, elle a le droit de créer .github/, scripts/, CLAUDE.offline.md, etc.
@@ -857,6 +891,19 @@ while IFS= read -r file; do
 
 
 
+
+    # Sur la branche A2, exempter STRICTEMENT les 2 fichiers gelés nommés.
+    # Aucun wildcard src/lib/pdf/ ni src/app/api/.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-a2-pointeur-mutable$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_A2_POINTEUR_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
