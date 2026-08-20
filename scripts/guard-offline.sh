@@ -109,6 +109,37 @@ FORBIDDEN_PATTERNS=(
     "^src/lib/osint/retail/ipHash\.ts$"         # pseudonymisation IP (RGPD)
 )
 
+# ── FENÊTRE D'EXEMPTION — P0-GUARD · GATES DE PAGE (proxy.ts:156/196) ──────
+#
+# Registre : P0-GUARD / DEFENSE-IN-DEPTH — no active disclosure measured.
+# Ce n'est PAS une exposition active. La mesure du 2026-08-20
+# (docs/prep/MESURE_PAGE_2026-08-20.md) a établi : un cookie forgé n'ouvre que
+# des COQUILLES, aucun nominatif protégé ne fuit — les APIs qui l'alimentent
+# sont fermées par B2. On ferme une faiblesse d'architecture AVANT qu'elle ne
+# devienne une fuite.
+#
+# Le défaut : proxy.ts:156 (pages /en/investigator + /api/investigator) et
+# proxy.ts:196 (beta-gate final) gardent par PRÉSENCE du cookie
+# (`!!req.cookies.get(BETA_COOKIE)?.value`) — le même défaut que B2 a corrigé
+# pour l'API nominative, resté sur les pages. Atteignable via l'origine
+# *.vercel.app qui contourne Cloudflare.
+#
+# Correctif : réutiliser `validateSession` (introduite/câblée par B2) au lieu
+# de la présence. Hash SHA-256, revokedAt null, expiresAt > now, isActive.
+#
+# UN SEUL FICHIER GELÉ :
+#   src/proxy.ts   les deux gates de page + un helper local hasValidBetaSession
+#
+# HORS PÉRIMÈTRE, volontairement : aucun refactor adjacent, aucune autre garde.
+# Fenêtre DÉDIÉE — distincte de la fenêtre B2 (fermée et vérifiée). A2 gelée.
+#
+# À REFERMER par hotfix/guard-fenetre-page-gate-fermeture dès la PR fusionnée.
+if [[ "$BRANCH" =~ ^hotfix/page-gate-session$ ]]; then
+    EXEMPT_PAGE_GATE_PATTERNS=(
+        "^src/proxy\.ts$"
+    )
+fi
+
 # Exceptions sur la branche setup uniquement
 if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     # Cette branche pose les garde-fous, elle a le droit de créer .github/, scripts/, CLAUDE.offline.md, etc.
@@ -857,6 +888,18 @@ while IFS= read -r file; do
 
 
 
+
+    # Sur la branche du hotfix page-gate, exempter STRICTEMENT src/proxy.ts.
+    if [[ "$BRANCH" =~ ^hotfix/page-gate-session$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_PAGE_GATE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
