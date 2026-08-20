@@ -44,6 +44,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/security/adminAuth";
+import { validateSession } from "@/lib/security/investigatorAuth";
 
 /** Cookie de session beta — identique à celui du gate pages dans proxy.ts. */
 const BETA_COOKIE = "investigator_session";
@@ -174,7 +175,7 @@ export type NominativeCaller =
  * dev — le code de production ne connaît pas la notion d'« environnement de
  * test » (même doctrine que `requireSalt`).
  */
-export function resolveNominativeCaller(req: NextRequest): NominativeCaller | null {
+export async function resolveNominativeCaller(req: NextRequest): Promise<NominativeCaller | null> {
   // 1. Admin — cookie de session HMAC.
   if (verifyAdminSession(req)) return "admin_session";
 
@@ -189,9 +190,42 @@ export function resolveNominativeCaller(req: NextRequest): NominativeCaller | nu
     }
   }
 
-  // 3. Front interne — cookie beta, même niveau de confiance que les pages.
+  // 3. Front interne — session investigateur, VALIDÉE.
+  //
+  // Avant B2, cette branche rendait `"beta_session"` dès que le cookie était
+  // une chaîne non vide : `if (typeof betaCookie === "string" && betaCookie.length > 0)`.
+  // Elle testait la PRÉSENCE, pas la VALIDITÉ. N'importe quelle valeur —
+  // `investigator_session=x` — ouvrait les douze familles d'endpoints
+  // nominatifs, et une session révoquée ou expirée continuait d'ouvrir.
+  //
+  // `validateSession` (src/lib/security/investigatorAuth.ts:186) fait déjà ce
+  // qu'il faut, et il n'y avait rien à écrire : le jeton est haché en SHA-256
+  // avant comparaison (jamais stocké en clair), la session doit être
+  // `revokedAt: null`, `expiresAt > now`, et son accès `isActive`. Elle met
+  // aussi `lastSeenAt` à jour, en tir-et-oublie.
+  //
+  // FAIL-CLOSED, quatre fois :
+  //   · cookie absent ou vide              → on ne valide rien, on continue ;
+  //   · session inconnue / révoquée /
+  //     expirée / accès désactivé          → `validateSession` rend `null` ;
+  //   · base injoignable ou requête qui
+  //     lève                               → `catch` → on continue, sans ouvrir ;
+  //   · aucune branche `NODE_ENV`, aucun bypass de développement.
+  //
+  // On ne rend PAS `null` tout de suite en cas d'échec : les branches 4 et 5
+  // doivent rester atteignables. Un appelant partenaire porteur d'un cookie
+  // périmé était, avant ce correctif, reconnu comme `beta_session` — la
+  // branche 3 court-circuitait les suivantes sur simple présence.
   const betaCookie = req.cookies.get(BETA_COOKIE)?.value;
-  if (typeof betaCookie === "string" && betaCookie.length > 0) return "beta_session";
+  if (typeof betaCookie === "string" && betaCookie.length > 0) {
+    try {
+      const session = await validateSession(betaCookie);
+      if (session !== null) return "beta_session";
+    } catch {
+      // Une validation qui échoue n'ouvre rien. Elle ne fait pas non plus
+      // tomber la requête : les quatre autres branches restent jugées.
+    }
+  }
 
   // 4. Intégrations partenaires — x-partner-key.
   const partnerKey = envSecret("PARTNER_API_KEY_V2") ?? envSecret("PARTNER_API_KEY");

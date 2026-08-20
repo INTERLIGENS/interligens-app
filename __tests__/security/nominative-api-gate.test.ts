@@ -16,6 +16,23 @@ import { NextRequest } from "next/server";
 import { createRequire } from "node:module";
 import { isNominativeApiPath } from "@/lib/security/nominativeApiGate";
 
+// B2 — le front interne ne passe plus sur simple présence du cookie : la
+// session est désormais VALIDÉE en base (hachée, révocable, expirante). Les
+// deux tests qui exercent ce chemin simulent donc une session valide.
+// Simuler le client Prisma et non `validateSession` : simuler la fonction
+// testerait le simulacre.
+const sessionFindFirst = vi.fn();
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    investigatorSession: {
+      findFirst: (...a: unknown[]) => sessionFindFirst(...a),
+      update: () => ({ catch: () => {} }),
+    },
+    investigatorAuditLog: { create: vi.fn() },
+  },
+}));
+const SESSION_VALIDE = { id: "s1", access: { id: "a1", label: "test", isActive: true } };
+
 const ADMIN_TOKEN = "admin-token-for-tests-not-a-real-secret";
 const PARTNER_KEY = "partner-key-for-tests-not-a-real-secret";
 const MOBILE_TOKEN = "mobile-token-for-tests-not-a-real-secret";
@@ -88,7 +105,7 @@ describe("isNominativeApiPath — classification", () => {
 describe("proxy — refus anonyme sur les chemins nominatifs", () => {
   it.each(NOMINATIVE_PATHS)("401 sans credential sur %s", async (path) => {
     const { proxy } = await loadProxy();
-    const res = proxy(req(path));
+    const res = await proxy(req(path));
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.code).toBe("NOMINATIVE_ACCESS_REQUIRED");
@@ -96,7 +113,7 @@ describe("proxy — refus anonyme sur les chemins nominatifs", () => {
 
   it("le 401 n'est pas cachable par un cache partagé", async () => {
     const { proxy } = await loadProxy();
-    const res = proxy(req("/api/watchlist"));
+    const res = await proxy(req("/api/watchlist"));
     expect(res.headers.get("Cache-Control")).toContain("no-store");
     expect(res.headers.get("Vary")).toContain("Cookie");
   });
@@ -104,28 +121,29 @@ describe("proxy — refus anonyme sur les chemins nominatifs", () => {
   it("laisse passer les surfaces non nominatives sans y toucher", async () => {
     const { proxy } = await loadProxy();
     for (const path of NON_NOMINATIVE_PATHS) {
-      const res = proxy(req(path));
+      const res = await proxy(req(path));
       expect(res.status, path).not.toBe(401);
     }
   });
 });
 
 describe("proxy — chaque appelant légitime passe", () => {
-  it("front interne : cookie beta investigator_session", async () => {
+  it("front interne : cookie beta investigator_session — session VALIDE", async () => {
+    sessionFindFirst.mockResolvedValue(SESSION_VALIDE);
     const { proxy } = await loadProxy();
-    const res = proxy(req("/api/watchlist", { cookie: "investigator_session=sess-abc" }));
+    const res = await proxy(req("/api/watchlist", { cookie: "investigator_session=sess-abc" }));
     expect(res.status).not.toBe(401);
   });
 
   it("admin : en-tête x-admin-token", async () => {
     const { proxy } = await loadProxy();
-    const res = proxy(req("/api/kol", { "x-admin-token": ADMIN_TOKEN }));
+    const res = await proxy(req("/api/kol", { "x-admin-token": ADMIN_TOKEN }));
     expect(res.status).not.toBe(401);
   });
 
   it("admin : cookie admin_token", async () => {
     const { proxy } = await loadProxy();
-    const res = proxy(req("/api/kol", { cookie: `admin_token=${ADMIN_TOKEN}` }));
+    const res = await proxy(req("/api/kol", { cookie: `admin_token=${ADMIN_TOKEN}` }));
     expect(res.status).not.toBe(401);
   });
 
@@ -135,25 +153,26 @@ describe("proxy — chaque appelant légitime passe", () => {
     const { computeAdminSessionToken } = await import("@/lib/security/adminAuth");
     const token = computeAdminSessionToken();
     expect(token).not.toBeNull();
-    const res = proxy(req("/api/kol", { cookie: `admin_session=${token}` }));
+    const res = await proxy(req("/api/kol", { cookie: `admin_session=${token}` }));
     expect(res.status).not.toBe(401);
   });
 
   it("intégration partenaire : en-tête x-partner-key", async () => {
     const { proxy } = await loadProxy();
-    const res = proxy(req("/api/v1/kol", { "x-partner-key": PARTNER_KEY }));
+    const res = await proxy(req("/api/v1/kol", { "x-partner-key": PARTNER_KEY }));
     expect(res.status).not.toBe(401);
   });
 
   it("app iOS : en-tête x-mobile-api-token", async () => {
     const { proxy } = await loadProxy();
-    const res = proxy(req("/api/v1/kol", { "x-mobile-api-token": MOBILE_TOKEN }));
+    const res = await proxy(req("/api/v1/kol", { "x-mobile-api-token": MOBILE_TOKEN }));
     expect(res.status).not.toBe(401);
   });
 
   it("une réponse autorisée n'est jamais mise en cache partagé", async () => {
+    sessionFindFirst.mockResolvedValue(SESSION_VALIDE);
     const { proxy } = await loadProxy();
-    const res = proxy(req("/api/watchlist", { cookie: "investigator_session=sess-abc" }));
+    const res = await proxy(req("/api/watchlist", { cookie: "investigator_session=sess-abc" }));
     expect(res.headers.get("Cache-Control")).toContain("no-store");
     expect(res.headers.get("Vary")).toContain("Cookie");
   });
@@ -162,17 +181,17 @@ describe("proxy — chaque appelant légitime passe", () => {
 describe("proxy — credentials invalides", () => {
   it("refuse un mauvais token admin", async () => {
     const { proxy } = await loadProxy();
-    expect(proxy(req("/api/kol", { "x-admin-token": "wrong" })).status).toBe(401);
+    expect((await proxy(req("/api/kol", { "x-admin-token": "wrong" }))).status).toBe(401);
   });
 
   it("refuse une mauvaise clé partenaire", async () => {
     const { proxy } = await loadProxy();
-    expect(proxy(req("/api/v1/kol", { "x-partner-key": "wrong" })).status).toBe(401);
+    expect((await proxy(req("/api/v1/kol", { "x-partner-key": "wrong" }))).status).toBe(401);
   });
 
   it("refuse un cookie beta VIDE (présence ≠ chaîne vide)", async () => {
     const { proxy } = await loadProxy();
-    expect(proxy(req("/api/watchlist", { cookie: "investigator_session=" })).status).toBe(401);
+    expect((await proxy(req("/api/watchlist", { cookie: "investigator_session=" }))).status).toBe(401);
   });
 
   // ?? vs || — cinquième famille de ce bug dans ce repo. Une variable
@@ -184,16 +203,16 @@ describe("proxy — credentials invalides", () => {
     vi.stubEnv("MOBILE_API_TOKEN", "");
     vi.stubEnv("ADMIN_TOKEN", "");
     const { proxy } = await loadProxy();
-    expect(proxy(req("/api/v1/kol", { "x-partner-key": "" })).status).toBe(401);
-    expect(proxy(req("/api/v1/kol", { "x-mobile-api-token": "" })).status).toBe(401);
-    expect(proxy(req("/api/kol", { "x-admin-token": "" })).status).toBe(401);
+    expect((await proxy(req("/api/v1/kol", { "x-partner-key": "" }))).status).toBe(401);
+    expect((await proxy(req("/api/v1/kol", { "x-mobile-api-token": "" }))).status).toBe(401);
+    expect((await proxy(req("/api/kol", { "x-admin-token": "" }))).status).toBe(401);
   });
 
   it("un secret d'env ABSENT n'autorise rien", async () => {
     vi.stubEnv("PARTNER_API_KEY_V2", undefined as unknown as string);
     vi.stubEnv("PARTNER_API_KEY", undefined as unknown as string);
     const { proxy } = await loadProxy();
-    expect(proxy(req("/api/v1/kol", { "x-partner-key": PARTNER_KEY })).status).toBe(401);
+    expect((await proxy(req("/api/v1/kol", { "x-partner-key": PARTNER_KEY }))).status).toBe(401);
   });
 });
 
