@@ -39,10 +39,20 @@ const store: {
   batches: Batch[];
   entities: Entity[];
   observations: Obs[];
-  auditLog: any[];
+  auditLog: AuditEntry[];
 } = { batches: [], entities: [], observations: [], auditLog: [] };
 
-function inRange(v: Date, r: { gte?: Date; lt?: Date; gt?: Date }): boolean {
+type Range = { gte?: Date; lt?: Date; gt?: Date };
+type WhereBatch = { status?: string; startedAt?: Range; sourceSlug?: string; id?: string };
+type AuditEntry = {
+  actor: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  detail: Record<string, unknown>;
+};
+
+function inRange(v: Date, r: Range): boolean {
   if (r.gte && v < r.gte) return false;
   if (r.gt && v <= r.gt) return false;
   if (r.lt && v >= r.lt) return false;
@@ -52,20 +62,23 @@ function inRange(v: Date, r: { gte?: Date; lt?: Date; gt?: Date }): boolean {
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     intelIngestionBatch: {
-      findMany: vi.fn(async ({ where }: any) => {
+      findMany: vi.fn(async ({ where }: { where: WhereBatch }) => {
         return store.batches
           .filter((b) => b.status === where.status)
           .filter((b) => (where.startedAt ? inRange(b.startedAt, where.startedAt) : true))
           .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
       }),
-      findFirst: vi.fn(async ({ where }: any) => {
+      findFirst: vi.fn(
+        async ({ where }: { where: WhereBatch & { startedAt: Range } }) => {
         const hits = store.batches
           .filter((b) => b.sourceSlug === where.sourceSlug)
           .filter((b) => inRange(b.startedAt, where.startedAt))
           .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
         return hits[0] ?? null;
-      }),
-      updateMany: vi.fn(async ({ where, data }: any) => {
+        }
+      ),
+      updateMany: vi.fn(
+        async ({ where, data }: { where: WhereBatch; data: Partial<Batch> }) => {
         // fidèle au vrai updateMany : n'affecte que les lignes qui matchent
         // TOUS les critères — c'est le garde d'idempotence.
         const rows = store.batches.filter(
@@ -76,21 +89,22 @@ vi.mock("@/lib/prisma", () => ({
       }),
     },
     intelAuditLog: {
-      create: vi.fn(async ({ data }: any) => {
+      create: vi.fn(async ({ data }: { data: AuditEntry }) => {
         store.auditLog.push(data);
         return data;
       }),
     },
     canonicalEntity: {
-      count: vi.fn(async ({ where }: any) =>
+      count: vi.fn(async ({ where }: { where: { createdAt: Range } }) =>
         store.entities.filter((e) => inRange(e.createdAt, where.createdAt)).length
       ),
     },
     sourceObservation: {
-      count: vi.fn(async ({ where }: any) =>
-        store.observations
-          .filter((o) => o.sourceSlug === where.sourceSlug)
-          .filter((o) => inRange(o.ingestedAt, where.ingestedAt)).length
+      count: vi.fn(
+        async ({ where }: { where: { sourceSlug: string; ingestedAt: Range } }) =>
+          store.observations
+            .filter((o) => o.sourceSlug === where.sourceSlug)
+            .filter((o) => inRange(o.ingestedAt, where.ingestedAt)).length
       ),
     },
   },
@@ -338,10 +352,10 @@ describe("C5 — idempotence : rejouer ne double rien", () => {
     const started = ago(REAPER_TTL_SECONDS + 600);
     store.batches.push(batch({ id: "zombie", startedAt: started }));
 
-    const { prisma } = (await import("@/lib/prisma")) as any;
+    const { prisma } = await import("@/lib/prisma");
     const vraiUpdateMany = prisma.intelIngestionBatch.updateMany;
     let premierAppel = true;
-    prisma.intelIngestionBatch.updateMany = vi.fn(async (args: any) => {
+    prisma.intelIngestionBatch.updateMany = vi.fn(async (args: never) => {
       if (premierAppel) {
         premierAppel = false;
         // simule la fermeture manuelle concurrente, juste avant notre écriture
@@ -459,7 +473,7 @@ describe("C4 — TIMED_OUT_NO_WRITES_VERIFIED est réservé, jamais émis", () =
 
     for (const v of report.verdicts) {
       expect(v.status).not.toBe(RESERVED_STATUS_NO_WRITES_VERIFIED);
-      expect(EMITTED_STATUSES).toContain(v.status as any);
+      expect(EMITTED_STATUSES).toContain(v.status as (typeof EMITTED_STATUSES)[number]);
     }
     for (const row of store.batches) {
       expect(row.status).not.toBe("TIMED_OUT_NO_WRITES_VERIFIED");
