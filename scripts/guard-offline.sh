@@ -109,49 +109,6 @@ FORBIDDEN_PATTERNS=(
     "^src/lib/osint/retail/ipHash\.ts$"         # pseudonymisation IP (RGPD)
 )
 
-# ── FENÊTRE D'EXEMPTION — REAPER ZOMBIES · CRON DÉDIÉ (CC-OFFLINE-94) ──────
-#
-# Registre : FIABILITÉ / BOOKKEEPING — aucune exposition, aucune surface publique.
-#
-# Le défaut : un batch d'ingestion tué par le timeout serverless
-# (`maxDuration = 300`) reste `running` À VIE. Le kill n'est pas une exception
-# JS : ni le finalize `success` (ingest.ts:164) ni le `catch` (l.202) ne
-# s'exécutent, et il n'y a aucun `finally`. Mesuré le 2026-08-21 :
-# 10 batches zombies, dont 7 accumulés à 1/jour depuis le 2026-08-15. Un
-# `running` éternel est indiscernable d'un import en cours.
-#
-# Correctif : un reaper (src/lib/intelligence/reaper.ts — NON gelé, déjà
-# mergé) qui passe tout `running` au-delà d'un TTL de 900 s en statut terminal
-# explicite, journalisé dans intel_audit_log. Il ne prétend JAMAIS que le run
-# a fini proprement.
-#
-# POURQUOI UN CRON DÉDIÉ, et pas un appel en tête d'ingestSource() :
-# décision GPT/fondateur du 2026-08-21 — le reaper doit tourner MÊME quand le
-# pipeline d'ingestion est en panne. Il ne peut pas dépendre de ce qu'il
-# surveille. Un reaper câblé dans l'ingestion meurt avec elle, et c'est
-# précisément quand l'ingestion va mal que les zombies s'accumulent.
-#
-# DEUX CHEMINS GELÉS, ET DEUX SEULEMENT :
-#   src/app/api/cron/reaper/   la route cron dédiée (créée, additive)
-#   vercel.json                l'entrée cron qui la déclenche
-#
-# Précédent identique : feat/cc-offline-NN-watcher-budget-cadence a exempté la
-# même paire (une route cron + vercel.json) pour la même raison.
-#
-# HORS PÉRIMÈTRE, volontairement : ingest.ts n'est PAS touché (le défaut de
-# fond — 347 k lignes qui ne tiennent pas dans 300 s — reste entier et relève
-# d'un autre chantier), aucune autre route, aucune migration. La fermeture des
-# 10 zombies existants est faite À LA MAIN par le fondateur dans Neon, APRÈS
-# ce merge — elle n'est pas dans ce périmètre.
-#
-# À REFERMER par hotfix/guard-fenetre-reaper-cron-fermeture dès la PR fusionnée.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-reaper-zombies$ ]]; then
-    EXEMPT_REAPER_CRON_PATTERNS=(
-        "^src/app/api/cron/reaper/"
-        "^vercel\.json$"
-    )
-fi
-
 # Exceptions sur la branche setup uniquement
 if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
     # Cette branche pose les garde-fous, elle a le droit de créer .github/, scripts/, CLAUDE.offline.md, etc.
@@ -900,19 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Fenêtre REAPER ZOMBIES (CC-OFFLINE-94) : exempter STRICTEMENT la route
-    # cron dédiée + l'entrée vercel.json qui la déclenche. Rien d'autre.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-reaper-zombies$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_REAPER_CRON_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
