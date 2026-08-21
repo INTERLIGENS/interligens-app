@@ -35,7 +35,30 @@ inventaire corrige — pas une case à cocher.
 | `/api/cron/retail-process-queue` | 05:00 | `OsintSubmission` → cerveau A (ajouté 2026-08-14) |
 | `/api/intelligence/ingest/ofac` | 01:00 | `intel_source_observations` → floor OFAC TigerScore |
 | `/api/intelligence/ingest/scamsniffer` | 01:30 | idem |
+| `/api/cron/reaper` | 02:30 | `intel_ingestion_batches` zombies → statut terminal + `intel_audit_log` (ajouté 2026-08-21) |
 | `/api/cron/mm-batch-scan` | 09:00 | `MmScore` → badge public + mobile (ajouté 2026-08-14) |
+
+### Note — `reaper` (ajouté 2026-08-21)
+
+Un batch d'ingestion tué par le timeout serverless (`maxDuration = 300`) reste
+`running` à vie : le kill n'est pas une exception JS, ni le finalize `success`
+ni le `catch` ne s'exécutent, et il n'y a aucun `finally`. Mesuré le
+2026-08-21 : **10 batches zombies**, dont 7 accumulés à 1/jour depuis le 08-15.
+
+Le reaper passe tout `running` au-delà d'un TTL de **900 s** en statut terminal
+explicite (`TIMED_OUT_WITH_WRITES` / `TIMED_OUT_UNKNOWN_WRITES`), journalise
+chaque fermeture dans `intel_audit_log` (`action = ingest.batch.reaped`) et ne
+supprime **aucune** ligne historique. Il est idempotent : l'`updateMany` est
+gardé par `status = 'running'`.
+
+**Pourquoi un cron dédié plutôt qu'un appel en tête d'`ingestSource()`** —
+décision GPT/fondateur : le reaper surveille le pipeline d'ingestion, il ne
+doit pas mourir avec lui. C'est quand l'ingestion tombe que les zombies
+s'accumulent.
+
+**Créneau 02:30** — une heure après le démarrage de l'ingestion scamsniffer
+(01:30), donc un zombie né cette nuit est clos la même nuit ; et bien au-delà
+des 300 s d'un run vivant, qui reste protégé par le TTL.
 
 ### Note — `watch-rescan` / `watch-alerts`
 
