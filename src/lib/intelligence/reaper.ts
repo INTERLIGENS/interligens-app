@@ -20,14 +20,15 @@
 // `success` serait un mensonge ; le marquer `failed` en serait un autre,
 // parce que les données, elles, sont bien passées.
 //
-// LA DISTINCTION CENTRALE — ET SA LIMITE HONNÊTE
-// ----------------------------------------------
-// Le reaper sépare deux cas :
+// LA FAMILLE D'ÉTATS — ET SA LIMITE HONNÊTE
+// -----------------------------------------
+// Trois états terminaux, décidés avec GPT/fondateur le 2026-08-21. Deux sont
+// émis aujourd'hui, le troisième est RÉSERVÉ :
 //
-//   `timed_out_with_writes`    — PREUVE POSITIVE que le run a écrit avant de
+//   TIMED_OUT_WITH_WRITES      — PREUVE POSITIVE que le run a écrit avant de
 //                                mourir. Le contenu est en base, le compte ne
 //                                l'est pas.
-//   `timed_out_unknown_writes` — AUCUNE preuve positive d'écriture. Ce n'est
+//   TIMED_OUT_UNKNOWN_WRITES   — AUCUNE preuve positive d'écriture. Ce n'est
 //                                PAS « il n'a rien écrit ». On ne peut pas
 //                                prouver l'absence d'écriture : un run qui
 //                                n'aurait fait que des UPDATE sur des lignes
@@ -35,9 +36,19 @@
 //                                jalon de progression, ne laisse aucune trace
 //                                durable. L'absence de preuve n'est pas la
 //                                preuve de l'absence, et le statut le dit.
+//   TIMED_OUT_NO_WRITES_VERIFIED — RÉSERVÉ, JAMAIS ÉMIS AUJOURD'HUI. Il
+//                                affirmerait qu'il est PROUVÉ que le run n'a
+//                                rien écrit. Aucune sonde actuelle ne peut
+//                                l'établir. Il attend la preuve C4 (par ex.
+//                                un marqueur d'ouverture de transaction posé
+//                                par l'ingestion elle-même, qui rendrait le
+//                                silence significatif). Le déclarer ici SANS
+//                                cette preuve serait exactement le mensonge
+//                                que ce module existe pour empêcher.
 //
-// C'est pourquoi il n'existe pas de statut `timed_out_no_writes` ici. Le
-// nommer ainsi affirmerait un fait que les données ne portent pas.
+// L'invariant qui les relie : `TIMED_OUT_UNKNOWN_WRITES` ne doit JAMAIS être
+// lu comme « rien écrit » — c'est `TIMED_OUT_NO_WRITES_VERIFIED` qui porterait
+// cette affirmation, et il est vide.
 //
 // LES SONDES, ET POURQUOI CELLES-LÀ
 // ---------------------------------
@@ -80,6 +91,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from "@/lib/prisma";
+import { SOURCES } from "@/lib/intelligence/sources/registry";
 
 /**
  * TTL — au-delà, un batch `running` est mort par construction.
@@ -104,7 +116,30 @@ export const REAPER_TTL_SECONDS = 900;
 /** Marge ajoutée à maxDuration pour borner la fenêtre d'attribution. */
 const ATTRIBUTION_WINDOW_SECONDS = 300 + 120;
 
-export type ReapedStatus = "timed_out_with_writes" | "timed_out_unknown_writes";
+/**
+ * La famille d'états terminaux du reaper.
+ *
+ * `TIMED_OUT_NO_WRITES_VERIFIED` fait partie du TYPE mais n'est produit par
+ * AUCUN chemin de code : il est réservé à une preuve C4 future. L'invariant
+ * est vérifié par test — voir `reaper-zombie-batches.test.ts`.
+ */
+export type ReapedStatus =
+  | "TIMED_OUT_WITH_WRITES"
+  | "TIMED_OUT_UNKNOWN_WRITES"
+  | "TIMED_OUT_NO_WRITES_VERIFIED";
+
+/** Les seuls statuts que le reaper émet réellement aujourd'hui. */
+export const EMITTED_STATUSES = [
+  "TIMED_OUT_WITH_WRITES",
+  "TIMED_OUT_UNKNOWN_WRITES",
+] as const satisfies readonly ReapedStatus[];
+
+/**
+ * Réservé à une preuve C4 future. Exporté pour que les tests puissent vérifier
+ * qu'il n'est jamais émis, et pour que la valeur soit nommée une seule fois.
+ */
+export const RESERVED_STATUS_NO_WRITES_VERIFIED: ReapedStatus =
+  "TIMED_OUT_NO_WRITES_VERIFIED";
 
 export interface ReapVerdict {
   batchId: string;
@@ -226,9 +261,10 @@ export async function judgeBatch(
     await collectWriteEvidence(batch);
 
   const hasWrites = evidence.length > 0;
+  // Jamais TIMED_OUT_NO_WRITES_VERIFIED : aucune sonde ne prouve l'absence.
   const status: ReapedStatus = hasWrites
-    ? "timed_out_with_writes"
-    : "timed_out_unknown_writes";
+    ? "TIMED_OUT_WITH_WRITES"
+    : "TIMED_OUT_UNKNOWN_WRITES";
 
   const computable = recordsRemovedWasComputable(
     batch.sourceSlug,
@@ -274,6 +310,8 @@ export interface ReapReport {
   dryRun: boolean;
   ttlSeconds: number;
   verdicts: ReapVerdict[];
+  /** Batches déjà fermés par ailleurs entre le scan et l'écriture (idempotence). */
+  alreadyClosed: string[];
 }
 
 /**
@@ -307,25 +345,95 @@ export async function reapZombieBatches(
   }
 
   if (dryRun) {
-    return { scanned: zombies.length, reaped: 0, dryRun, ttlSeconds, verdicts };
+    return {
+      scanned: zombies.length,
+      reaped: 0,
+      dryRun,
+      ttlSeconds,
+      verdicts,
+      alreadyClosed: [],
+    };
   }
 
   let reaped = 0;
+  const alreadyClosed: string[] = [];
+
   for (const v of verdicts) {
     // `completedAt` n'est PAS posé à now() : le run ne s'est pas terminé
     // maintenant, il est mort il y a longtemps. On l'ancre à la seule borne
     // que les données garantissent — la fin de la fenêtre serverless.
     const diedAt = new Date(v.startedAt.getTime() + 300 * 1000);
-    await prisma.intelIngestionBatch.update({
-      where: { id: v.batchId },
+
+    // IDEMPOTENCE — `updateMany` gardé par `status: "running"`, PAS `update`
+    // par id. Deux exécutions concurrentes du cron (ou un rejeu manuel après
+    // la fermeture SQL du fondateur) verraient le même batch : la seconde
+    // compte 0 ligne affectée et n'écrit NI le statut NI le journal. Sans ce
+    // garde, un rejeu empilerait des lignes d'audit pour une fermeture déjà
+    // faite, et réécrirait `completedAt` d'un batch déjà clos.
+    const res = await prisma.intelIngestionBatch.updateMany({
+      where: { id: v.batchId, status: "running" },
       data: {
         status: v.status,
         completedAt: diedAt,
         errorMessage: v.errorMessage.slice(0, 500),
       },
     });
+
+    if (res.count === 0) {
+      // Quelqu'un d'autre l'a fermé entre le scan et l'écriture. Rien à dire.
+      alreadyClosed.push(v.batchId);
+      continue;
+    }
+
+    // JOURNAL — append-only, dans la table d'audit déjà utilisée par
+    // l'ingestion (`intel_audit_log`). AUCUNE ligne historique n'est
+    // supprimée ni écrasée : le reaper ne fait que des INSERT ici et un
+    // UPDATE ciblé sur la ligne zombie elle-même.
+    const tier = SOURCES[v.sourceSlug as keyof typeof SOURCES]?.tier ?? null;
+    await prisma.intelAuditLog.create({
+      data: {
+        actor: "cron:reaper",
+        action: "ingest.batch.reaped",
+        targetType: "IntelIngestionBatch",
+        targetId: v.batchId,
+        detail: {
+          // raison
+          reason: "serverless_timeout_no_finalize",
+          reasonHuman: v.errorMessage,
+          // durée
+          startedAt: v.startedAt.toISOString(),
+          closedAtAnchor: diedAt.toISOString(),
+          stuckSeconds: v.ageSeconds,
+          maxDurationSeconds: 300,
+          ttlSeconds,
+          // type de source
+          sourceSlug: v.sourceSlug,
+          sourceTier: tier,
+          sourceType:
+            tier === 1 ? "regulatory" : tier === 2 ? "technical" : "unknown",
+          // état d'écriture connu / inconnu
+          writeState: v.status,
+          writesProven: v.evidence.length > 0,
+          evidence: v.evidence,
+          entitiesCreated: v.entitiesCreated,
+          observationsCreated: v.observationsCreated,
+          recordsFetched: v.recordsFetched,
+          recordsRemoved: v.recordsRemovedWasComputable
+            ? "UNKNOWN_LOST_WITH_RUN"
+            : "NOT_APPLICABLE_STALE_MARKING_SKIPPED",
+        },
+      },
+    });
+
     reaped += 1;
   }
 
-  return { scanned: zombies.length, reaped, dryRun, ttlSeconds, verdicts };
+  return {
+    scanned: zombies.length,
+    reaped,
+    dryRun,
+    ttlSeconds,
+    verdicts,
+    alreadyClosed,
+  };
 }

@@ -35,11 +35,12 @@ interface Batch {
 interface Entity { createdAt: Date }
 interface Obs { sourceSlug: string; ingestedAt: Date }
 
-const store: { batches: Batch[]; entities: Entity[]; observations: Obs[] } = {
-  batches: [],
-  entities: [],
-  observations: [],
-};
+const store: {
+  batches: Batch[];
+  entities: Entity[];
+  observations: Obs[];
+  auditLog: any[];
+} = { batches: [], entities: [], observations: [], auditLog: [] };
 
 function inRange(v: Date, r: { gte?: Date; lt?: Date; gt?: Date }): boolean {
   if (r.gte && v < r.gte) return false;
@@ -64,11 +65,20 @@ vi.mock("@/lib/prisma", () => ({
           .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
         return hits[0] ?? null;
       }),
-      update: vi.fn(async ({ where, data }: any) => {
-        const row = store.batches.find((b) => b.id === where.id);
-        if (!row) throw new Error(`no batch ${where.id}`);
-        Object.assign(row, data);
-        return row;
+      updateMany: vi.fn(async ({ where, data }: any) => {
+        // fidèle au vrai updateMany : n'affecte que les lignes qui matchent
+        // TOUS les critères — c'est le garde d'idempotence.
+        const rows = store.batches.filter(
+          (b) => b.id === where.id && b.status === where.status
+        );
+        rows.forEach((r) => Object.assign(r, data));
+        return { count: rows.length };
+      }),
+    },
+    intelAuditLog: {
+      create: vi.fn(async ({ data }: any) => {
+        store.auditLog.push(data);
+        return data;
       }),
     },
     canonicalEntity: {
@@ -90,6 +100,8 @@ import {
   reapZombieBatches,
   recordsRemovedWasComputable,
   REAPER_TTL_SECONDS,
+  EMITTED_STATUSES,
+  RESERVED_STATUS_NO_WRITES_VERIFIED,
 } from "@/lib/intelligence/reaper";
 
 const NOW = new Date("2026-08-21T12:00:00.000Z");
@@ -110,6 +122,7 @@ beforeEach(() => {
   store.batches = [];
   store.entities = [];
   store.observations = [];
+  store.auditLog = [];
 });
 
 describe("C2 — le reaper mord", () => {
@@ -183,7 +196,7 @@ describe("C3 — le reaper épargne les vivants", () => {
     await reapZombieBatches({ dryRun: false, now: NOW });
 
     expect(store.batches.find((b) => b.id === "vivant")!.status).toBe("running");
-    expect(store.batches.find((b) => b.id === "zombie")!.status).toMatch(/^timed_out_/);
+    expect(store.batches.find((b) => b.id === "zombie")!.status).toMatch(/^TIMED_OUT_/);
   });
 });
 
@@ -195,7 +208,7 @@ describe("C2b — writes et no-writes reçoivent des statuts DISTINCTS", () => {
 
     await reapZombieBatches({ dryRun: false, now: NOW });
 
-    expect(store.batches.find((b) => b.id === "avec")!.status).toBe("timed_out_with_writes");
+    expect(store.batches.find((b) => b.id === "avec")!.status).toBe("TIMED_OUT_WITH_WRITES");
   });
 
   it("aucune trace durable => timed_out_unknown_writes", async () => {
@@ -204,7 +217,7 @@ describe("C2b — writes et no-writes reçoivent des statuts DISTINCTS", () => {
     await reapZombieBatches({ dryRun: false, now: NOW });
 
     const row = store.batches.find((b) => b.id === "sans")!;
-    expect(row.status).toBe("timed_out_unknown_writes");
+    expect(row.status).toBe("TIMED_OUT_UNKNOWN_WRITES");
     // Le statut ne doit pas AFFIRMER l'absence d'écriture.
     expect(row.status).not.toContain("no_writes");
     expect(row.errorMessage).toMatch(/absence de preuve, PAS preuve d'absence/i);
@@ -236,7 +249,7 @@ describe("C2b — writes et no-writes reçoivent des statuts DISTINCTS", () => {
 
     const report = await reapZombieBatches({ dryRun: false, now: NOW });
 
-    expect(store.batches.find((b) => b.id === "ofac")!.status).toBe("timed_out_with_writes");
+    expect(store.batches.find((b) => b.id === "ofac")!.status).toBe("TIMED_OUT_WITH_WRITES");
     expect(report.verdicts[0].observationsCreated).toBe(225);
   });
 
@@ -263,11 +276,11 @@ describe("C2b — writes et no-writes reçoivent des statuts DISTINCTS", () => {
 
     const zombie = report.verdicts.find((v) => v.batchId === "zombie")!;
     expect(zombie.observationsCreated).toBe(0);
-    expect(zombie.status).toBe("timed_out_unknown_writes");
+    expect(zombie.status).toBe("TIMED_OUT_UNKNOWN_WRITES");
     // et le suivant, lui, la revendique
     const suiv = report.verdicts.find((v) => v.batchId === "suivant")!;
     expect(suiv.observationsCreated).toBe(1);
-    expect(suiv.status).toBe("timed_out_with_writes");
+    expect(suiv.status).toBe("TIMED_OUT_WITH_WRITES");
   });
 });
 
@@ -289,7 +302,7 @@ describe("C2c — le reaper n'écrit rien sans qu'on le lui demande", () => {
 
     const report = await reapZombieBatches({ now: NOW });
 
-    expect(report.verdicts[0].status).toBe("timed_out_with_writes");
+    expect(report.verdicts[0].status).toBe("TIMED_OUT_WITH_WRITES");
     expect(report.verdicts[0].evidence).toContain("recordsFetched=260000");
   });
 });
@@ -301,5 +314,174 @@ describe("recordsRemoved — perdu, ou jamais calculé", () => {
 
   it("ofac : calculable, donc réellement perdu par le timeout", () => {
     expect(recordsRemovedWasComputable("ofac", null)).toBe(true);
+  });
+});
+
+describe("C5 — idempotence : rejouer ne double rien", () => {
+  it("deux passes consécutives ne ferment qu'une fois et ne journalisent qu'une fois", async () => {
+    store.batches.push(batch({ id: "zombie", startedAt: ago(REAPER_TTL_SECONDS + 600) }));
+
+    const first = await reapZombieBatches({ dryRun: false, now: NOW });
+    const second = await reapZombieBatches({ dryRun: false, now: NOW });
+
+    expect(first.reaped).toBe(1);
+    // au 2e passage le batch n'est plus 'running' : il n'est même plus scanné
+    expect(second.scanned).toBe(0);
+    expect(second.reaped).toBe(0);
+    expect(store.auditLog).toHaveLength(1);
+  });
+
+  it("un batch fermé ENTRE le scan et l'écriture n'est ni réécrit ni journalisé", async () => {
+    // La course réelle : le fondateur ferme les zombies à la main dans Neon
+    // pendant que le cron tourne. Le garde `status: 'running'` de l'updateMany
+    // doit absorber ça sans rien écraser.
+    const started = ago(REAPER_TTL_SECONDS + 600);
+    store.batches.push(batch({ id: "zombie", startedAt: started }));
+
+    const { prisma } = (await import("@/lib/prisma")) as any;
+    const vraiUpdateMany = prisma.intelIngestionBatch.updateMany;
+    let premierAppel = true;
+    prisma.intelIngestionBatch.updateMany = vi.fn(async (args: any) => {
+      if (premierAppel) {
+        premierAppel = false;
+        // simule la fermeture manuelle concurrente, juste avant notre écriture
+        const row = store.batches.find((b) => b.id === "zombie")!;
+        row.status = "closed_by_hand";
+        row.errorMessage = "fermé à la main dans Neon";
+      }
+      return vraiUpdateMany(args);
+    });
+
+    const report = await reapZombieBatches({ dryRun: false, now: NOW });
+
+    expect(report.scanned).toBe(1);
+    expect(report.reaped).toBe(0);
+    expect(report.alreadyClosed).toEqual(["zombie"]);
+    // la fermeture manuelle n'est PAS écrasée
+    const row = store.batches.find((b) => b.id === "zombie")!;
+    expect(row.status).toBe("closed_by_hand");
+    expect(row.errorMessage).toBe("fermé à la main dans Neon");
+    // et rien n'est journalisé pour une fermeture qu'on n'a pas faite
+    expect(store.auditLog).toHaveLength(0);
+
+    prisma.intelIngestionBatch.updateMany = vraiUpdateMany;
+  });
+});
+
+describe("C6 — journal : raison · durée · type de source · état d'écriture", () => {
+  it("consigne les quatre dimensions exigées", async () => {
+    const started = ago(REAPER_TTL_SECONDS + 600);
+    store.batches.push(
+      batch({ id: "z", startedAt: started, sourceSlug: "ofac", recordsFetched: null })
+    );
+    store.observations.push({
+      sourceSlug: "ofac",
+      ingestedAt: new Date(started.getTime() + 5_000),
+    });
+
+    await reapZombieBatches({ dryRun: false, now: NOW });
+
+    expect(store.auditLog).toHaveLength(1);
+    const e = store.auditLog[0];
+    expect(e.actor).toBe("cron:reaper");
+    expect(e.action).toBe("ingest.batch.reaped");
+    expect(e.targetType).toBe("IntelIngestionBatch");
+    expect(e.targetId).toBe("z");
+
+    // raison
+    expect(e.detail.reason).toBe("serverless_timeout_no_finalize");
+    // durée
+    expect(e.detail.stuckSeconds).toBe(REAPER_TTL_SECONDS + 600);
+    expect(e.detail.maxDurationSeconds).toBe(300);
+    expect(e.detail.ttlSeconds).toBe(REAPER_TTL_SECONDS);
+    // type de source — ofac = tier 1 = réglementaire
+    expect(e.detail.sourceSlug).toBe("ofac");
+    expect(e.detail.sourceTier).toBe(1);
+    expect(e.detail.sourceType).toBe("regulatory");
+    // état d'écriture
+    expect(e.detail.writeState).toBe("TIMED_OUT_WITH_WRITES");
+    expect(e.detail.writesProven).toBe(true);
+    expect(e.detail.recordsRemoved).toBe("UNKNOWN_LOST_WITH_RUN");
+  });
+
+  it("distingue le type de source technique (scamsniffer = tier 2)", async () => {
+    store.batches.push(batch({ id: "z", startedAt: ago(REAPER_TTL_SECONDS + 600) }));
+
+    await reapZombieBatches({ dryRun: false, now: NOW });
+
+    const e = store.auditLog[0];
+    expect(e.detail.sourceTier).toBe(2);
+    expect(e.detail.sourceType).toBe("technical");
+    // scamsniffer : le marquage stale est sauté, rien n'a été « perdu »
+    expect(e.detail.recordsRemoved).toBe("NOT_APPLICABLE_STALE_MARKING_SKIPPED");
+    expect(e.detail.writeState).toBe("TIMED_OUT_UNKNOWN_WRITES");
+    expect(e.detail.writesProven).toBe(false);
+  });
+
+  it("le dry-run ne journalise RIEN", async () => {
+    store.batches.push(batch({ id: "z", startedAt: ago(REAPER_TTL_SECONDS + 600) }));
+
+    await reapZombieBatches({ now: NOW });
+
+    expect(store.auditLog).toHaveLength(0);
+  });
+
+  it("aucune suppression de ligne historique n'est possible", async () => {
+    // Le reaper ne doit exposer AUCUN chemin de suppression. Le mock prisma
+    // ne fournit ni delete ni deleteMany : si le code en appelait un, il
+    // planterait. Ce test verrouille l'absence.
+    store.batches.push(batch({ id: "z", startedAt: ago(REAPER_TTL_SECONDS + 600) }));
+    store.batches.push(batch({ id: "vieux", startedAt: ago(999_999), status: "success" }));
+
+    await reapZombieBatches({ dryRun: false, now: NOW });
+
+    expect(store.batches).toHaveLength(2);
+    expect(store.batches.find((b) => b.id === "vieux")!.status).toBe("success");
+    const src = await import("node:fs").then((fs) =>
+      fs.readFileSync("src/lib/intelligence/reaper.ts", "utf8")
+    );
+    expect(src).not.toMatch(/\.delete\(|\.deleteMany\(/);
+  });
+});
+
+describe("C4 — TIMED_OUT_NO_WRITES_VERIFIED est réservé, jamais émis", () => {
+  it("n'est produit par aucun chemin, quelles que soient les preuves", async () => {
+    // avec écritures, sans écritures, petite source, grosse source
+    const t = ago(REAPER_TTL_SECONDS + 600);
+    store.batches.push(batch({ id: "a", startedAt: t }));
+    store.batches.push(batch({ id: "b", startedAt: ago(REAPER_TTL_SECONDS + 500), sourceSlug: "ofac" }));
+    store.batches.push(
+      batch({ id: "c", startedAt: ago(REAPER_TTL_SECONDS + 400), recordsFetched: 260000 })
+    );
+    store.observations.push({ sourceSlug: "scamsniffer", ingestedAt: new Date(t.getTime() + 1_000) });
+
+    const report = await reapZombieBatches({ dryRun: false, now: NOW });
+
+    for (const v of report.verdicts) {
+      expect(v.status).not.toBe(RESERVED_STATUS_NO_WRITES_VERIFIED);
+      expect(EMITTED_STATUSES).toContain(v.status as any);
+    }
+    for (const row of store.batches) {
+      expect(row.status).not.toBe("TIMED_OUT_NO_WRITES_VERIFIED");
+    }
+  });
+
+  it("le code source ne contient aucune AFFECTATION de ce statut", async () => {
+    const src = await import("node:fs").then((fs) =>
+      fs.readFileSync("src/lib/intelligence/reaper.ts", "utf8")
+    );
+    // il apparaît dans le type et la constante réservée, mais jamais
+    // comme valeur choisie pour un verdict
+    expect(src).not.toMatch(/status\s*[:=]\s*"TIMED_OUT_NO_WRITES_VERIFIED"/);
+    expect(src).not.toMatch(/\?\s*"TIMED_OUT_NO_WRITES_VERIFIED"/);
+    // Hors commentaires, il ne subsiste que ses deux emplacements légitimes :
+    // le membre de l'union de types, et la valeur de la constante réservée.
+    // Toute occurrence supplémentaire dans du code exécutable signalerait
+    // une émission.
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    const occurrences = code.match(/TIMED_OUT_NO_WRITES_VERIFIED/g) ?? [];
+    expect(occurrences).toHaveLength(2);
   });
 });
