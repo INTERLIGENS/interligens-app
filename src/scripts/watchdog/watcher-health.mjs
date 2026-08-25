@@ -86,6 +86,7 @@ function loadC4() {
     return {
       probe: require(path.join(REPO_ROOT, "src/lib/watchdog/watcherHealthProbe.ts")),
       adapter: require(path.join(REPO_ROOT, "src/lib/watchdog/jobRunLogAdapter.ts")),
+      arm: require(path.join(REPO_ROOT, "src/lib/watchdog/probeArming.ts")),
     };
   } finally {
     unregister();
@@ -234,32 +235,31 @@ async function runChecks(client) {
 
   // 1. Santé du Watcher — SONDE C4 sur JobRunLog (la fraîcheur se lit sur un RUN)
   try {
-    const { probe, adapter } = loadC4();
+    const { probe, adapter, arm } = loadC4();
     const runs = await adapter.loadWatcherRuns(adapter.fromPgClient(client), {
       windowDays: C4_WINDOW_DAYS,
     });
     const report = probe.evaluateWatcherHealth(runs, new Date(now));
-    const observed = report.liveCronRunCount + report.ignoredRunCount;
 
-    if (observed === 0) {
-      // ── ARMEMENT ────────────────────────────────────────────────────────
-      // Aucune ligne watcher-v2 du tout : la migration JobRunLog est passée
-      // mais l'écrivain n'est pas encore déployé (ou l'inverse). La sonde ne
-      // peut RIEN affirmer sur la santé du watcher dans cet état.
-      //
-      // On rend donc WARNING, pas CRITICAL. Un CRITICAL ici serait un faux
-      // positif structurel pendant toute la fenêtre migration→déploiement, et
-      // une alerte qui crie faux pendant une journée est une alerte qu'on
-      // apprend à ignorer — exactement ce qu'on essaie de réparer. La sonde
-      // s'arme d'elle-même au premier run journalisé.
+    // ── ARMEMENT ──────────────────────────────────────────────────────────
+    // La sonde ne juge que lorsque l'écrivain qu'elle observe a eu une CHANCE
+    // d'écrire. Deux états la suspendent : aucune ligne du tout, et un
+    // écrivain plus jeune qu'un cycle cron complet. Voir probeArming.ts — la
+    // garde ne peut jamais masquer un ordonnanceur mort plus d'une cadence.
+    const arming = arm.evaluateArming({
+      runs,
+      liveCronRunCount: report.liveCronRunCount,
+      now: new Date(now),
+      cadenceMs: probe.DEFAULT_C4_CONFIG.cadenceMs,
+    });
+
+    if (!arming.armed) {
       problems.push({
         key: "c4_non_arme",
         severity: "warn",
-        line:
-          `🟠 SONDE C4 NON ARMÉE — aucun run watcher-v2 journalisé sur ${C4_WINDOW_DAYS}j. ` +
-          `L'écrivain JobRunLog n'est pas encore déployé, ou n'écrit pas.`,
+        line: `🟠 SONDE C4 NON ARMÉE — ${arming.reason}.`,
       });
-      lines.push(`• Watcher C4 : non armée (0 run journalisé sur ${C4_WINDOW_DAYS}j)`);
+      lines.push(`• Watcher C4 : non armée — ${arming.reason}`);
     } else {
       if (report.overall !== "HEALTHY") {
         problems.push({
