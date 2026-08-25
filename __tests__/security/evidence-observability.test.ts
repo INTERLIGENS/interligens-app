@@ -176,37 +176,19 @@ describe("2. le PUT qui lève n'abandonne plus la ligne", () => {
 // 3. LE 200 SUR UN CHAÎNAGE ÉCHOUÉ
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("3. la route de commit ne rend plus 200 sur un chaînage échoué", () => {
-  // `src/app/api/**` est un chemin GELÉ par scripts/guard-offline.sh. Le
-  // correctif a été écrit, appliqué, vérifié (typecheck vert, suite complète
-  // verte), capturé en patch, puis le fichier a été remis à son état d'origine.
-  // Aucun `--no-verify`.
-  //
-  // Le test lit donc l'arbre s'il porte déjà le correctif, le patch sinon —
-  // et il échoue si NI L'UN NI L'AUTRE ne le porte. Une couverture qui n'est
-  // pas encore appliquée reste une couverture vérifiable ; une couverture
-  // absente, non.
-  const ROUTE = "src/app/api/admin/osint/commit/route.ts";
-  const PATCH = "docs/prep/patches/B3-src-app-api-admin-osint-commit-route.ts.patch";
-  const tree = fs.readFileSync(path.join(process.cwd(), ROUTE), "utf8");
-  const src = tree.includes("orphanEvidenceItemIds")
-    ? tree
-    : fs.readFileSync(path.join(process.cwd(), PATCH), "utf8");
-
-  it("EFFET 3/4 — `ok` inclut désormais report.evidenceChain", () => {
-    expect(src).toMatch(/evidenceChain\.filter\(\(c\) => c\.mode === "failed"\)/);
-    expect(src).toMatch(/chainFailed\.length === 0/);
-  });
-
-  it("EFFET 4/4 — les identifiants des orphelines remontent au premier niveau", () => {
-    expect(src).toContain("orphanEvidenceItemIds");
-    expect(src).toMatch(/\{ ok, orphanEvidenceItemIds, \.\.\.report \}/);
-  });
-
-  it("le statut 207 est bien lié à `ok`", () => {
-    expect(src).toMatch(/status: ok \? 200 : 207/);
-  });
-});
+// ── BLOC 3 DÉPLACÉ — voir __tests__/security/b3-commit-route-behaviour.test.ts
+//
+// Les trois tests qui vivaient ici lisaient un fichier `.patch` quand l'arbre
+// ne portait pas le correctif (`src/app/api/**` est gelé par le guard). Comme
+// l'arbre ne le porte jamais, ils lisaient TOUJOURS le patch : ils affirmaient
+// que le patch contient ce que son auteur y a écrit. Mesuré le 2026-08-22 :
+// forcer `ok = true` dans la vraie route laissait 15/15 verts.
+//
+// Le remplacement importe la VRAIE route et observe la RÉPONSE, plus aucun
+// fichier n'est lu. Il exige donc que le correctif soit appliqué à l'arbre —
+// et il est ROUGE tant qu'il ne l'est pas. C'est le but : un test vert pendant
+// qu'un bug de production est vivant est un test qui ment.
+// Voir docs/prep/FIX_B3_TESTS_2026-08-25.md.
 
 describe("4. le chaînage échoué rend l'identifiant de l'orpheline", () => {
   it("evidenceItemId n'est plus null quand la pièce a été créée avant l'échec", async () => {
