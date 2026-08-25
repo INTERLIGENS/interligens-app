@@ -475,6 +475,26 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour la remédiation P0-B1 — fermeture des TROIS voies de promotion
+# RETAIL_SAFE. Recensement du 2026-08-25 : ces 3 routes sont les seules du dépôt
+# capables de porter une entité à RETAIL_SAFE ; toute autre écriture de
+# displaySafety pose INTERNAL_ONLY en dur ou laisse le défaut Prisma. Les 3
+# appellent la même primitive guardRetailPromotion() — contenu nominatif
+# interdit (détection sur la VALEUR, pas sur le type déclaré), identité de
+# reviewer réelle, refus des valeurs génériques, audit dans la même
+# transaction, fail-closed avant toute écriture. Aucune écriture DB, aucune
+# migration, aucun cron. La primitive (src/lib/intelligence/reviewIdentity.ts)
+# et les tests communs (__tests__/security/p0b-retail-promotion.test.ts) vivent
+# HORS chemin gelé et ne sont pas exemptés. Exemption STRICTEMENT limitée aux 3
+# fichiers nommés ; AUCUN wildcard sur src/app/api/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0b-forta-remediation$ ]]; then
+    EXEMPT_P0B_PROMOTION_PATTERNS=(
+        "^src/app/api/admin/intelligence/entities/route\.ts$"
+        "^src/app/api/admin/intelligence/safety/route\.ts$"
+        "^src/app/api/intelligence/admin/entities/\[id\]/review/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -847,6 +867,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche p0b-forta-remediation, exempter STRICTEMENT les 3 routes de
+    # promotion RETAIL_SAFE (aucun wildcard src/app/api/).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0b-forta-remediation$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_P0B_PROMOTION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
