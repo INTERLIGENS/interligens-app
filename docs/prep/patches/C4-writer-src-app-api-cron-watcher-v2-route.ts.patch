@@ -1,0 +1,140 @@
+diff --git a/src/app/api/cron/watcher-v2/route.ts b/src/app/api/cron/watcher-v2/route.ts
+index 7ea1651..5f5bfa2 100644
+--- a/src/app/api/cron/watcher-v2/route.ts
++++ b/src/app/api/cron/watcher-v2/route.ts
+@@ -17,6 +17,13 @@ import { sendWatcherDigest, type BatchSignal, type CampaignSummary } from "@/lib
+ import { clusterSignals, type SignalInput } from "@/lib/watcher/campaignClusterer";
+ import { envInt, envFloat } from "@/lib/config/envNumber";
+ import { prodWriteGuardResponse } from "@/lib/ops/prodWriteGuard";
++import {
++  closeWatcherRun,
++  decideTerminalStatus,
++  markCollectionStarted,
++  openWatcherRun,
++  resolveTrigger,
++} from "@/lib/watchdog/jobRunLogWriter";
+ 
+ // Vercel cron route config — force dynamic execution and extend the default
+ // 10s serverless timeout to accommodate the per-handle sleep(1000) loop.
+@@ -231,7 +238,10 @@ export async function getProjectUsageWithRetry(
+   return null;
+ }
+ 
+-async function scanAll() {
++// `runId` est la ligne JobRunLog déjà ouverte par GET(). Elle vaut null si
++// l'ouverture a échoué : le scan continue quand même — une panne du journal ne
++// doit jamais tuer le collecteur qu'il sert à surveiller.
++async function scanAll(runId: string | null = null) {
+   const emailMode = (process.env.WATCHER_EMAIL_MODE ?? "digest").toLowerCase();
+   const scanStart = new Date();
+ 
+@@ -380,6 +390,16 @@ async function scanAll() {
+     stats.userLookups++; // not capped: the probe lookup is a real billed read
+   }
+ 
++  // ── La collecte X commence ICI, et nulle part avant ─────────────────────
++  //
++  // Ni la lecture d'usage, ni la sonde spend-cap ci-dessus ne comptent comme
++  // une collecte : ce sont des CONTRÔLES. C'est cette distinction qui donne à
++  // la sonde C4 sa signature de bail budgétaire — `startedAt` non nul,
++  // `collectionStartedAt` nul — et qui rend l'invariant C4-2 vrai. Poser
++  // l'horodatage plus haut rendrait la sonde Collecteur définitivement aveugle
++  // au seul état qu'elle existe pour voir.
++  if (watchlist.length > 0) await markCollectionStarted(prisma, runId);
++
+   // try/finally : on enregistre la conso X API réelle exactement une
+   // fois (les reads déjà faits sont facturés même si le scan s'arrête).
+   try {
+@@ -608,11 +628,91 @@ export async function GET(req: NextRequest) {
+     return NextResponse.json({ error: "X_BEARER_TOKEN not configured" }, { status: 500 });
+   }
+ 
++  // ── Journal de run (sonde C4) ────────────────────────────────────────────
++  //
++  // La ligne est ouverte AVANT le scan et fermée sur TOUS les chemins, y
++  // compris les sorties budgétaires précoces. C'est la correction de la cause
++  // racine du blackout du 17→24 août : la sortie sur `capReached` faisait
++  // `return { ok: true, capReached: true }` et n'écrivait rien — huit jours de
++  // panne sans un seul enregistrement en base.
++  //
++  // `trigger` n'est marqué CRON que sur preuve positive (voir resolveTrigger) :
++  // un curl manuel ne doit pas remettre l'ordonnanceur au vert (invariant C4-6).
++  const startedMs = Date.now();
++  const runId = await openWatcherRun(prisma, {
++    trigger: resolveTrigger({
++      userAgent: req.headers.get("user-agent"),
++      vercelCronHeader: req.headers.get("x-vercel-cron"),
++      explicitTrigger: new URL(req.url).searchParams.get("trigger"),
++    }),
++  });
++
+   try {
+-    const result = await scanAll();
++    const result = await scanAll(runId);
++    const r = result as Record<string, unknown>;
++    const n = (k: string) => (typeof r[k] === "number" ? (r[k] as number) : 0);
++
++    // Les quatre sorties se distinguent par ce que la route pose déjà : seules
++    // les sorties PRÉCOCES ajoutent un drapeau de premier niveau. Le plafond
++    // franchi en cours de boucle ne laisse que `xApiCapReached` dans les stats.
++    const usageUnavailable = r.usageUnavailable === true;
++    const spendCapped = r.spendCapped === true;
++    const capReachedBeforeScan = r.capReached === true && !usageUnavailable;
++    const cappedMidScan =
++      r.xApiCapReached === true && !capReachedBeforeScan && !spendCapped && !usageUnavailable;
++
++    const handlesSucceeded = n("scanned");
++    const handlesAttempted = handlesSucceeded + n("failed");
++    const status = decideTerminalStatus({
++      usageUnavailable,
++      capReachedBeforeScan,
++      spendCapped,
++      cappedMidScan,
++      threw: false,
++      handlesAttempted,
++      handlesSucceeded,
++      tweetsFetched: n("tweetsFetched"),
++      candidatesProduced: n("candidates"),
++    });
++
++    await closeWatcherRun(prisma, runId, status, {
++      handlesAttempted,
++      handlesSucceeded,
++      tweetsFetched: n("tweetsFetched"),
++      // L'entonnoir : posts lus ≥ posts PORTEURS DE SIGNAL vus (neufs +
++      // déjà connus) ≥ candidats réellement insérés. C'est ce qui permettra
++      // de distinguer « la collecte est morte » de « le signal s'est tari ».
++      newPostsObserved: n("candidates") + n("skipped"),
++      candidatesProduced: n("candidates"),
++      xApiErrors: n("failed"),
++      durationMs: Date.now() - startedMs,
++      exitReason: typeof r.note === "string" ? r.note : `scan terminé (${status})`,
++      summary: r,
++    });
++
+     return NextResponse.json(result);
+   } catch (err) {
+     console.error("[watcher-v2] cron error:", err);
++    await closeWatcherRun(prisma, runId, decideTerminalStatus({
++      usageUnavailable: false,
++      capReachedBeforeScan: false,
++      spendCapped: false,
++      cappedMidScan: false,
++      threw: true,
++      handlesAttempted: 0,
++      handlesSucceeded: 0,
++      tweetsFetched: 0,
++      candidatesProduced: 0,
++    }), {
++      handlesAttempted: 0,
++      handlesSucceeded: 0,
++      tweetsFetched: 0,
++      newPostsObserved: 0,
++      candidatesProduced: 0,
++      xApiErrors: 0,
++      durationMs: Date.now() - startedMs,
++      exitReason: err instanceof Error ? err.message : String(err),
++    });
+     return NextResponse.json({ error: "Internal error" }, { status: 500 });
+   } finally {
+     await prisma.$disconnect();

@@ -16,9 +16,20 @@
  *   - État (anti-spam + heartbeat) stocké dans un fichier local, pas en DB.
  *
  * CHECKS :
- *   1. Watcher muet : MAX(discoveredAtUtc) WHERE sourceProvider='x_api_v2'.
- *      Filtre x_api_v2 OBLIGATOIRE — les rows playwright_local / seeders manuels
- *      pollueraient sinon le signal et masqueraient un watcher mort (faux vert).
+ *   1. Santé du Watcher : SONDE C4 sur `JobRunLog` (src/lib/watchdog/).
+ *      La fraîcheur se lit sur un RUN — trigger=CRON, ingestionMode=LIVE,
+ *      source=WATCHER_V2 — jamais sur une écriture.
+ *
+ *      ── POURQUOI CE CHECK A CHANGÉ ────────────────────────────────────────
+ *      L'ancienne mesure était `MAX(discoveredAtUtc)` sur les candidats : une
+ *      MESURE D'ÉCRITURE. Du 17 au 24 août 2026 le collecteur était mort et un
+ *      backfill manuel de 261 lignes a repoussé cette date de trois jours —
+ *      le watchdog est resté VERT pendant huit jours de panne. Une date de
+ *      dernière écriture ne distingue pas un cron vivant d'un humain qui colle
+ *      des lignes à la main.
+ *      `MAX(discoveredAtUtc)` SUBSISTE en ligne informative (1bis) mais ne
+ *      décide plus RIEN : il sert à trancher, en cas d'alerte C4, entre « le
+ *      watcher est mort » et « le watcher va bien mais son journal est cassé ».
  *   2. Spend cap : totalCostUsd du mois courant vs cap configurable.
  *   3. TSA pending : EvidenceItem sans horodatage (warn au-delà d'un seuil).
  *   4. Evidence sans octets : DEUX compteurs séparés sur r2Key IS NULL —
@@ -34,7 +45,8 @@
  *   DATABASE_URL            (requis)  — DB prod read-only
  *   TELEGRAM_BOT_TOKEN      (requis)  — bot Telegram
  *   TELEGRAM_OPS_CHAT_ID    (requis)  — chat de destination des alertes
- *   WATCHDOG_SILENCE_DAYS   (déf 3.5) — seuil silence watcher, en jours
+ *   WATCHDOG_C4_WINDOW_DAYS (déf 14)  — profondeur de la fenêtre de runs lue
+ *                                       par la sonde C4 (seuils: DEFAULT_C4_CONFIG)
  *   WATCHDOG_SPEND_CAP_USD  (déf 100) — cap mensuel X API (réel ~$100, 2026-06-25)
  *   WATCHDOG_WARN_PCT       (déf 80)  — % du cap déclenchant un warn
  *   WATCHDOG_STATE_FILE     (déf ~/.interligens-watchdog-state.json)
@@ -43,12 +55,42 @@
 
 import fs from "fs";
 import path from "path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "url";
 import { Client } from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // src/scripts/watchdog/ -> repo root = trois niveaux au-dessus
 const REPO_ROOT = path.resolve(__dirname, "../../..");
+
+// --- Chargement de la sonde C4 (TypeScript) depuis ce script Node nu --------
+//
+// launchd lance `node watcher-health.mjs` sans passer par un bundler. La sonde
+// C4 vit en TypeScript dans src/lib/watchdog/ — c'est ce qui permet de prouver
+// ses 6 invariants par mutation en Vitest, et c'est non négociable : dupliquer
+// sa logique ici en JavaScript créerait deux sondes qui divergeraient au
+// premier correctif, et celle qui alerte serait justement celle qui n'est pas
+// testée.
+//
+// `tsx/cjs/api` enregistre un hook de résolution qui compile le TS à la volée.
+// Le `.plist` n'a donc PAS à changer et reste sur `node` nu.
+//
+// Si le chargement échoue (node_modules absent, tsx retiré), on ne se tait
+// pas : `loadC4()` remonte l'erreur et le check la transforme en problème
+// visible. Une sonde qui n'a pas pu se charger est un incident, pas un silence.
+const require = createRequire(import.meta.url);
+function loadC4() {
+  const { register } = require("tsx/cjs/api");
+  const unregister = register();
+  try {
+    return {
+      probe: require(path.join(REPO_ROOT, "src/lib/watchdog/watcherHealthProbe.ts")),
+      adapter: require(path.join(REPO_ROOT, "src/lib/watchdog/jobRunLogAdapter.ts")),
+    };
+  } finally {
+    unregister();
+  }
+}
 
 // --- Chargement .env.local (le cwd de launchd n'est pas garanti) -------------
 function loadEnvLocal() {
@@ -67,7 +109,17 @@ function loadEnvLocal() {
 loadEnvLocal();
 
 // --- Config ------------------------------------------------------------------
-const SILENCE_DAYS = parseFloat(process.env.WATCHDOG_SILENCE_DAYS ?? "3.5");
+// Profondeur de la fenêtre de runs lue pour la sonde C4. 14 j couvre très large
+// les seuils de la sonde (24 h au plus) tout en donnant du recul pour compter
+// les runs capés consécutifs et pour que `oldestUnsatisfiedSlot` ait de quoi
+// borner sa remontée de créneaux.
+//
+// WATCHDOG_SILENCE_DAYS a été RETIRÉ ici le 2026-08-25 : il réglait le seuil de
+// l'ancienne mesure `MAX(discoveredAtUtc)`, qui ne décide plus rien. Les seuils
+// de la sonde C4 vivent dans DEFAULT_C4_CONFIG (src/lib/watchdog/), avec les
+// tests qui les prouvent. Laisser traîner une variable d'env qui ne change plus
+// rien serait pire que de la supprimer : on la tournerait en croyant agir.
+const C4_WINDOW_DAYS = parseInt(process.env.WATCHDOG_C4_WINDOW_DAYS ?? "14", 10);
 const SPEND_CAP_USD = parseFloat(process.env.WATCHDOG_SPEND_CAP_USD ?? "100");
 const WARN_PCT = parseFloat(process.env.WATCHDOG_WARN_PCT ?? "80");
 const DRY_RUN = process.env.WATCHDOG_DRY_RUN === "1";
@@ -94,7 +146,6 @@ const STATE_FILE =
   process.env.WATCHDOG_STATE_FILE ||
   path.join(process.env.HOME || REPO_ROOT, ".interligens-watchdog-state.json");
 
-const SILENCE_MS = SILENCE_DAYS * 86_400_000;
 const REALERT_MS = 24 * 3_600_000; // ré-alerte au plus une fois / 24h pour le même problème
 
 // --- Retry connexion DB (anti-faux-positif réseau) ---------------------------
@@ -181,24 +232,88 @@ async function runChecks(client) {
   const problems = []; // { key, severity: 'crit'|'warn', line }
   const lines = []; // résumé complet (heartbeat)
 
-  // 1. Watcher muet
+  // 1. Santé du Watcher — SONDE C4 sur JobRunLog (la fraîcheur se lit sur un RUN)
+  try {
+    const { probe, adapter } = loadC4();
+    const runs = await adapter.loadWatcherRuns(adapter.fromPgClient(client), {
+      windowDays: C4_WINDOW_DAYS,
+    });
+    const report = probe.evaluateWatcherHealth(runs, new Date(now));
+    const observed = report.liveCronRunCount + report.ignoredRunCount;
+
+    if (observed === 0) {
+      // ── ARMEMENT ────────────────────────────────────────────────────────
+      // Aucune ligne watcher-v2 du tout : la migration JobRunLog est passée
+      // mais l'écrivain n'est pas encore déployé (ou l'inverse). La sonde ne
+      // peut RIEN affirmer sur la santé du watcher dans cet état.
+      //
+      // On rend donc WARNING, pas CRITICAL. Un CRITICAL ici serait un faux
+      // positif structurel pendant toute la fenêtre migration→déploiement, et
+      // une alerte qui crie faux pendant une journée est une alerte qu'on
+      // apprend à ignorer — exactement ce qu'on essaie de réparer. La sonde
+      // s'arme d'elle-même au premier run journalisé.
+      problems.push({
+        key: "c4_non_arme",
+        severity: "warn",
+        line:
+          `🟠 SONDE C4 NON ARMÉE — aucun run watcher-v2 journalisé sur ${C4_WINDOW_DAYS}j. ` +
+          `L'écrivain JobRunLog n'est pas encore déployé, ou n'écrit pas.`,
+      });
+      lines.push(`• Watcher C4 : non armée (0 run journalisé sur ${C4_WINDOW_DAYS}j)`);
+    } else {
+      if (report.overall !== "HEALTHY") {
+        problems.push({
+          // La clé porte le verdict : passer de DEGRADED à CRITICAL change la
+          // signature et re-déclenche une alerte, au lieu d'être avalé par
+          // l'anti-spam 24h comme « problème déjà signalé ».
+          key: `watcher_c4_${report.overall.toLowerCase()}`,
+          severity: report.overall === "CRITICAL" ? "crit" : "warn",
+          line: probe.formatWatcherHealthReport(report),
+        });
+      }
+      lines.push(
+        `• Watcher C4 : ${report.overall} — dernier run sain ` +
+          `${report.successfulFreshness ? fmtAge(now - new Date(report.successfulFreshness).getTime()) : "jamais"}` +
+          ` (runs LIVE+CRON retenus : ${report.liveCronRunCount}, écartés : ${report.ignoredRunCount})`,
+      );
+    }
+  } catch (e) {
+    // Colonnes absentes (42703) = migration JobRunLog pas encore appliquée.
+    // C'est un état ATTENDU de la mise en service, pas une panne du watcher :
+    // on le nomme précisément au lieu de le noyer dans « ERREUR check ».
+    const notMigrated = e.code === "42703";
+    problems.push({
+      key: notMigrated ? "c4_non_migre" : "c4_err",
+      severity: notMigrated ? "warn" : "crit",
+      line: notMigrated
+        ? `🟠 SONDE C4 NON ARMÉE — la migration JobRunLog n'est pas appliquée (${e.message})`
+        : `🔴 Sonde C4 impossible : ${e.message}`,
+    });
+    lines.push(`• Watcher C4 : ${notMigrated ? "migration absente" : `ERREUR (${e.message})`}`);
+  }
+
+  // 1bis. Ancienne mesure — INFORMATIVE, ne décide plus rien.
+  //
+  // `MAX(discoveredAtUtc)` ne distingue pas une écriture cron d'un backfill
+  // manuel : c'est ce qui a masqué le blackout du 17→24 août. On la garde
+  // affichée parce qu'elle reste le meilleur moyen, en cas d'alerte C4, de
+  // trancher entre « le watcher est mort » (les deux sont vieux) et « le
+  // journal est cassé » (C4 crie, mais les signaux sont frais).
+  //
+  // ⚠️ Le nombre affiché est APPROXIMATIF : `discoveredAtUtc` est
+  // `timestamp without time zone` et `pg` le parse dans le fuseau local du
+  // process — l'âge est surestimé de l'offset local (8 h depuis Lombok).
+  // C'est le défaut SI-01. La sonde C4, elle, lit ses dates via
+  // `AT TIME ZONE 'UTC'` et n'en souffre pas.
   try {
     const r = await client.query(
       `SELECT MAX("discoveredAtUtc") AS last FROM social_post_candidates WHERE "sourceProvider"='x_api_v2'`
     );
     const last = r.rows[0]?.last ? new Date(r.rows[0].last).getTime() : null;
     const age = last == null ? null : now - last;
-    if (last == null || age > SILENCE_MS) {
-      problems.push({
-        key: "silence",
-        severity: "crit",
-        line: `🔴 WATCHER MUET — dernier signal x_api_v2 il y a ${fmtAge(age)} (seuil ${SILENCE_DAYS}j)`,
-      });
-    }
-    lines.push(`• Watcher : dernier signal il y a ${fmtAge(age)} (seuil ${SILENCE_DAYS}j)`);
+    lines.push(`• Signaux x_api_v2 (indicatif, ±offset local) : dernier il y a ${fmtAge(age)}`);
   } catch (e) {
-    problems.push({ key: "silence_err", severity: "crit", line: `🔴 Check watcher impossible : ${e.message}` });
-    lines.push(`• Watcher : ERREUR check (${e.message})`);
+    lines.push(`• Signaux x_api_v2 : ERREUR check (${e.message})`);
   }
 
   // 2. Spend cap (lecture de NOTRE table d'estimation, pas d'appel X API)
