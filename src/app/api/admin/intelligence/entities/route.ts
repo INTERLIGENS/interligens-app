@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { buildDedupKey, normalizeValue } from "@/lib/intelligence/normalize";
+import { guardRetailPromotion } from "@/lib/intelligence/reviewIdentity";
 import type { IntelEntityType } from "@/lib/intelligence";
 
 export async function GET(req: NextRequest) {
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
     chain?: string;
     riskClass?: string;
     displaySafety?: string;
+    reviewedBy?: string;
   };
   try {
     body = await req.json();
@@ -84,7 +86,24 @@ export async function POST(req: NextRequest) {
   const dedupKey = buildDedupKey(body.type as IntelEntityType, normalized);
   const now = new Date();
 
-  const entity = await prisma.canonicalEntity.upsert({
+  // ── P0-B — publier au retail est un acte de revue, pas un champ de payload ──
+  // Garde commun aux trois voies de promotion. Refus AVANT toute écriture.
+  const guard = guardRetailPromotion({
+    displaySafety: body.displaySafety,
+    entityType: body.type,
+    value: normalized,
+    reviewedBy: body.reviewedBy,
+    now,
+  });
+  if (guard.promotes && !guard.ok) {
+    return NextResponse.json(
+      { error: guard.reason, code: guard.code },
+      { status: guard.status }
+    );
+  }
+  const stamp = guard.promotes && guard.ok ? guard.stamp : {};
+
+  const upsertArgs = {
     where: { dedupKey },
     create: {
       type: body.type as any,
@@ -97,12 +116,41 @@ export async function POST(req: NextRequest) {
       lastSeenAt: now,
       dedupKey,
       displaySafety: (body.displaySafety as any) ?? "INTERNAL_ONLY",
+      ...stamp,
     },
     update: {
       lastSeenAt: now,
       ...(body.riskClass ? { riskClass: body.riskClass as any } : {}),
       ...(body.displaySafety ? { displaySafety: body.displaySafety as any } : {}),
+      ...stamp,
     },
+  };
+
+  // Hors promotion retail : comportement d'origine, inchangé.
+  if (!guard.promotes || !guard.ok) {
+    const entity = await prisma.canonicalEntity.upsert(upsertArgs);
+    return NextResponse.json({ entity }, { status: 201 });
+  }
+
+  // Promotion : l'entité et sa trace d'audit vivent ou meurent ensemble.
+  const entity = await prisma.$transaction(async (tx) => {
+    const created = await tx.canonicalEntity.upsert(upsertArgs);
+    await tx.intelAuditLog.create({
+      data: {
+        actor: guard.actor,
+        action: "entity.reviewed",
+        targetType: "CanonicalEntity",
+        targetId: created.id,
+        detail: {
+          to: "RETAIL_SAFE",
+          reviewedBy: guard.handle,
+          type: created.type,
+          value: created.value,
+          route: "POST /api/admin/intelligence/entities",
+        },
+      },
+    });
+    return created;
   });
 
   return NextResponse.json({ entity }, { status: 201 });

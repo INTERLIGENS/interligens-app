@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/security/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { guardRetailPromotion } from "@/lib/intelligence/reviewIdentity";
 
 export async function POST(
   req: NextRequest,
@@ -30,19 +31,42 @@ export async function POST(
     return NextResponse.json({ error: "Entity not found" }, { status: 404 });
   }
 
+  // ── P0-B — garde commun aux trois voies de promotion retail ────────────────
+  // Avant ce garde, cette route écrivait `reviewedBy ?? "admin"` et
+  // `actor: admin:${reviewedBy ?? "unknown"}` : elle publiait au retail sous
+  // une identité de rôle, sans garde PERSON. Refus AVANT toute écriture.
+  const now = new Date();
+  const guard = guardRetailPromotion({
+    displaySafety,
+    entityType: entity.type,
+    value: entity.value,
+    reviewedBy,
+    now,
+  });
+  if (guard.promotes && !guard.ok) {
+    return NextResponse.json(
+      { error: guard.reason, code: guard.code },
+      { status: guard.status }
+    );
+  }
+
   const updated = await prisma.canonicalEntity.update({
     where: { id },
     data: {
       displaySafety,
-      reviewedBy: reviewedBy ?? "admin",
-      reviewedAt: new Date(),
+      ...(guard.promotes && guard.ok
+        ? guard.stamp
+        : { reviewedBy: reviewedBy ?? "admin", reviewedAt: now }),
     },
   });
 
   // Audit log
   await prisma.intelAuditLog.create({
     data: {
-      actor: `admin:${reviewedBy ?? "unknown"}`,
+      actor:
+        guard.promotes && guard.ok
+          ? guard.actor
+          : `admin:${reviewedBy ?? "unknown"}`,
       action: "entity.reviewed",
       targetType: "CanonicalEntity",
       targetId: id,
@@ -51,6 +75,9 @@ export async function POST(
         to: displaySafety,
         value: entity.value,
         type: entity.type,
+        ...(guard.promotes && guard.ok
+          ? { reviewedBy: guard.handle }
+          : {}),
       },
     },
   });
