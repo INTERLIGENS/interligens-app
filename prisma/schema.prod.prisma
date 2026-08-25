@@ -1122,7 +1122,32 @@ model IntelIngestionBatch {
   triggeredBy    String?
   createdAt      DateTime  @default(now())
 
+  // ── Instrumentation chunk-aware ScamSniffer ────────────────────────────────
+  // Appliquées À LA MAIN dans le Neon SQL Editor sur ep-square-band (jamais
+  // prisma migrate / db push). Vérifié en lecture seule le 2026-08-25 :
+  // 7 colonnes, TOUTES nullables, SANS défaut — les lignes existantes ne sont
+  // ni réécrites ni invalidées, et tout lecteur qui les ignore fonctionne à
+  // l'identique. Ce bloc ne fait que refléter la base : il ne la modifie pas.
+  //
+  // Le curseur de reprise est DÉRIVÉ des chunks d'un cycle — aucune ligne ne le
+  // porte, il est recalculé (deriveCoverage / chunkCursor.ts). L'invariant
+  // « un chunk mort n'est jamais compté comme couvrant » vit donc dans le code,
+  // pas en base : la table ne porte AUCUNE contrainte CHECK (mesuré — la seule
+  // contrainte est la clé primaire).
+  cycleId        String?
+  chunkIndex     Int?
+  sourceVersion  String?
+  startOffset    Int?
+  cursorNext     Int?
+  // dedupKey = sha256 hexadécimal, 64 caractères → text, jamais uuid/varchar
+  anchorKey      String?
+  processedCount Int?
+
   @@index([sourceSlug, startedAt])
+  // Chemin chaud : reconstruction du curseur dérivé sur les chunks d'un cycle.
+  @@index([cycleId, chunkIndex])
+  // Reprise de cycle : cycle ouvert le plus récent pour une source.
+  @@index([sourceSlug, cycleId])
   @@map("intel_ingestion_batches")
 }
 
