@@ -475,22 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour le recalage du schema sur l'instrumentation chunker ScamSniffer
-# (CC-OFFLINE-101). Fichier SEUL : anti-drift pur. La migration additive
-# (7 colonnes nullables + 2 index sur intel_ingestion_batches) a DÉJÀ été
-# appliquée à la main par David dans le Neon SQL Editor sur ep-square-band
-# (jamais prisma migrate / db push) ; vérifiée en lecture seule le 2026-08-25 :
-# 19 colonnes, 4 index, 1 seule contrainte (pkey), empreinte des 12 colonnes
-# préexistantes inchangée (5bd6d559df37704c3efb0741358ab4b2). Ce commit ne fait
-# que refléter cette réalité dans schema.prod.prisma. AUCUNE écriture DB, aucun
-# câblage, aucune route, aucun cron. Exemption ciblée UNIQUEMENT sur le schema —
-# ne couvre PAS l'ensemble de prisma/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-chunker-schema-recale$ ]]; then
-    EXEMPT_CHUNKER_SCHEMA_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -863,18 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche chunker-schema-recale, exempter le schema prod (anti-drift).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-chunker-schema-recale$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_CHUNKER_SCHEMA_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
