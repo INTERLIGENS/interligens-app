@@ -19,7 +19,8 @@ construit et testé (§2), la **sonde est branchée sur la vraie base** et rempl
 **3 416 tests verts** (304 fichiers, +42 tests, aucune régression), `tsc` 0 erreur,
 `eslint` 0 warning, guard vert, et **tout le SQL parsé par PostgreSQL lui-même**.
 Le chemin gelé est livré en `.patch` vérifié aller-retour (§4), avec son bloc
-d'exemption (§5). Il reste **3 gestes fondateur** : migration, exemption, deploy.
+d'exemption (§5). Il reste **3 gestes fondateur** : appliquer la migration, merger le hotfix guard
+`38bf73d` dans `main`, déployer. L'exemption elle-même est **commitée** (§5).
 
 ---
 
@@ -311,61 +312,86 @@ et les 3 requêtes de l'écrivain : **11 blocs, tous `VALID`**.
 
 ---
 
-## 5. LE BLOC D'EXEMPTION — pour David
+## 5. L'EXEMPTION — **AUTORISÉE ET COMMITÉE**, reste à faire atterrir dans `main`
 
-⚠️ **`scripts/guard-offline.sh` se gèle lui-même.** Cette modification doit passer
-par la **voie de maintenance** : branche `^hotfix/guard-[a-z0-9-]+$` **et le guard
-seul dans le diff**. Les deux conditions sont vérifiées par le guard lui-même.
+**Autorisation David du 2026-08-25**, portée : la route cron watcher-v2, scopée à
+ce chantier, refermée après.
 
-⚠️ **Il faut DEUX insertions**, pas une : la déclaration *et* la boucle de
-consommation. Le guard n'a pas de collecte générique des `EXEMPT_*_PATTERNS`.
+### 5.1 Ce qui est fait
 
-### 5.1 Déclaration — à insérer près des autres blocs `if [[ "$BRANCH" =~ … ]]` (vers la ligne 219)
+Branche **`hotfix/guard-watchdog-c4`**, commit **`38bf73d`**, `scripts/guard-offline.sh`
+**seul dans le diff** (+41 lignes). La voie de maintenance s'est bien engagée :
 
-```bash
-# Exceptions pour l'écrivain JobRunLog du watcher-v2 (sonde C4 « WATCHER HEALTH »).
-# Additif : la route ouvre une ligne JobRunLog par run, pose collectionStartedAt
-# au début de la boucle, et la ferme avec un statut terminal + 7 métriques. Toute
-# la logique (table de décision des statuts, résolution du trigger, SQL) vit dans
-# src/lib/watchdog/ qui n'est PAS gelé ; la route ne contient que des appels.
-# Aucune logique de scan modifiée, aucun appel X API supplémentaire, aucune
-# migration exécutée par le code (colonnes posées à la main dans Neon).
-# Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 ;
-# ne couvre PAS le reste de src/app/api/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchdog-c4$ ]]; then
-    EXEMPT_WATCHDOG_C4_PATTERNS=(
-        "^src/app/api/cron/watcher-v2/route\.ts$"
-    )
-fi
+```
+🔧 GUARD: mode maintenance — branche dédiée + système de garde seul dans le diff.
+✅ GUARD: aucun chemin interdit modifié.
 ```
 
-### 5.2 Consommation — à insérer à la suite des autres blocs de la boucle (vers la ligne 640)
+Deux insertions, car le guard n'a **pas** de collecte générique des
+`EXEMPT_*_PATTERNS` — chaque exemption a sa déclaration *et* sa boucle de
+consommation :
+
+| Insertion | Emplacement |
+|---|---|
+| `EXEMPT_WATCHDOG_C4_PATTERNS` sur `^feat/cc-offline-[0-9]+-watchdog-c4$` | juste avant la « VOIE DE MAINTENANCE DU GUARD » |
+| la boucle `for ex in …` correspondante | après le bloc `hotfix/xapi-usage-authoritative`, avant la boucle `FORBIDDEN_PATTERNS` |
+
+Un seul chemin exempté, **aucun wildcard `src/app/api/`** :
 
 ```bash
-    # Sur la branche watchdog-c4, exempter la route cron watcher-v2.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchdog-c4$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_WATCHDOG_C4_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
+"^src/app/api/cron/watcher-v2/route\.ts$"
 ```
 
-> La branche active `feat/cc-offline-101-watchdog-c4` correspond bien à
-> `^feat/cc-offline-[0-9]+-watchdog-c4$` — vérifié.
+> **« Scopée à ce commit » — ce que le guard sait faire, et ce qu'il ne sait pas.**
+> Le guard n'a pas de granularité au commit : sa maille la plus fine est
+> **branche + chemin exact**. L'exemption est donc scopée au couple
+> (`feat/cc-offline-…-watchdog-c4`, cette unique route). C'est le plus étroit que
+> le mécanisme permette ; le dire plutôt que laisser croire à un verrou plus fin
+> qu'il n'est.
 
-**Une seule exemption est nécessaire.** `prisma/schema.prod.prisma` **n'a pas
-besoin d'être touché** : l'écrivain et l'adaptateur passent par `$queryRawUnsafe`,
-donc aucun modèle Prisma n'est requis pour que ça marche. Refléter les 12 colonnes
-dans le schema reste de l'**hygiène anti-dérive**, à faire dans une PR séparée —
-ce n'est **pas un bloqueur** et ça n'appelle pas d'exemption dans ce chantier.
+### 5.2 ⛔ Le geste qui manque, et pourquoi il ne pouvait pas être fait ici
 
----
+**L'exemption n'a aucun effet tant qu'elle n'est pas dans `main`.** Vérifié en
+exécution, pas supposé — patch appliqué sur la branche feature, `git add`, commit :
+
+```
+📋 GUARD: branche=feat/cc-offline-101-watchdog-c4, mode=staged (pre-commit), fichiers=1
+🛑 BLOCKED — 1 violation(s) :
+   ❌ src/app/api/cron/watcher-v2/route.ts (matched ^src/app/api/)
+```
+
+La raison est structurelle : le hook pre-commit exécute la version **arbre de
+travail** de `guard-offline.sh`, et sur la branche feature cet arbre est celui de
+`main` — sans l'exemption. Or **on ne peut pas commiter l'exemption sur la branche
+feature** : `scripts/guard-offline.sh` est auto-gelé, et le mode maintenance exige
+une branche `^hotfix/guard-*$` avec le guard seul dans le diff.
+
+**Rebaser la feature sur le hotfix ne marche pas non plus** : `guard-offline.sh`
+entrerait alors dans le diff branche-vs-`main`, la CI le verrait comme un chemin
+gelé, et le mode maintenance ne s'engagerait pas (nom de branche + diff non
+exclusif). Ça échangerait un blocage local contre un échec CI.
+
+**La seule porte est donc : `hotfix/guard-watchdog-c4` → PR → `main`.** C'est un
+merge dans `main`, protégée (PR-only + linéaire) — geste fondateur, non pris ici.
+
+Le patch **n'a pas été laissé appliqué** dans l'arbre de travail : la route est
+bit-à-bit l'originale (`sha256 3cf6c2a2…`), parce que `vercel --prod` expédie
+l'arbre de travail et non le commit.
+
+### 5.3 La refermeture — **après le merge, jamais avant**
+
+L'exemption est une exemption de chantier. Elle se retire par une seconde PR
+`hotfix/guard-*`, **une fois `feat/cc-offline-101-watchdog-c4` mergée dans `main`**.
+
+> ⚠️ **La retirer plus tôt casse la CI.** Tant que la branche n'est pas mergée, la
+> route reste dans son diff vs `main` : sans l'exemption, `guard-offline.yml`
+> échoue à chaque push. L'avertissement est écrit dans le bloc lui-même, au-dessus
+> du `if`, pour que le prochain qui passe n'ait pas à le redécouvrir.
+
+**Une seule exemption suffit.** `prisma/schema.prod.prisma` **n'a pas besoin d'être
+touché** : l'écrivain et l'adaptateur passent par `$queryRawUnsafe`, donc aucun
+modèle Prisma n'est requis. Refléter les 12 colonnes reste de l'hygiène
+anti-dérive, dans une PR séparée — pas un bloqueur.
 
 ## 6. ORDRE D'APPLICATION ET CHECKLIST DE VÉRIF POST-DEPLOY
 
@@ -374,8 +400,9 @@ ce n'est **pas un bloqueur** et ça n'appelle pas d'exemption dans ce chantier.
 | # | Geste | Qui | Bloquant pour |
 |---|---|---|---|
 | 1 | Appliquer le pack de migration dans le **Neon SQL Editor** (Parties 1 → 2 → 3) | **David** | 4 |
-| 2 | Ajouter le bloc d'exemption via `hotfix/guard-…` (guard seul dans le diff) | **David** | 3 |
-| 3 | Appliquer le `.patch` sur la branche, commiter, merger | — | 4 |
+| 2 | **Merger `hotfix/guard-watchdog-c4` dans `main`** (PR — le commit `38bf73d` est prêt) | **David** | 3 |
+| 3 | Rebaser la feature sur `main`, appliquer le `.patch`, commiter, merger | — | 4 |
+| 3bis | Après merge : refermer l'exemption par une 2ᵉ PR `hotfix/guard-*` (§5.3) | **David** | — |
 | 4 | `npx vercel --prod` | **David** | 5 |
 | 5 | Vérifier au cron de 06:00 UTC suivant (§6.2) | — | — |
 
