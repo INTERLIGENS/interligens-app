@@ -475,6 +475,34 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour l'écrivain JobRunLog du watcher-v2 (sonde C4 « WATCHER HEALTH »).
+# Additif : la route ouvre une ligne JobRunLog par run, pose collectionStartedAt au
+# début de la boucle sur les handles, et la ferme avec un statut terminal + 7
+# métriques. Elle ne contient AUCUNE décision — la table de décision des statuts,
+# la résolution du trigger et tout le SQL vivent dans src/lib/watchdog/, qui n'est
+# pas gelé. Diff mesuré : +102 / -2 lignes sur le seul fichier exempté.
+#
+# Corrige la cause racine du blackout du 17→24 août 2026 : la sortie sur
+# `capReached` faisait `return { ok: true, capReached: true }` et n'écrivait rien
+# en base — huit jours de panne sans un seul enregistrement.
+#
+# Aucune logique de scan modifiée, aucun appel X API supplémentaire, aucune
+# migration exécutée par le code (les 12 colonnes sont posées à la main dans Neon).
+# Autorisation humaine explicite (David, 2026-08-25) — voir PR description.
+#
+# ⚠️ EXEMPTION DE CHANTIER, À REFERMER. Elle doit être retirée par une PR
+# `hotfix/guard-*` APRÈS le merge de feat/cc-offline-101-watchdog-c4 dans main —
+# pas avant : tant que la branche n'est pas mergée, la route reste dans son diff
+# vs main et la CI échouerait sans cette exemption.
+#
+# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 ;
+# ne couvre PAS le reste de src/app/api/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchdog-c4$ ]]; then
+    EXEMPT_WATCHDOG_C4_PATTERNS=(
+        "^src/app/api/cron/watcher-v2/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -847,6 +875,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche watchdog-c4, exempter STRICTEMENT la route cron watcher-v2
+    # (écrivain JobRunLog de la sonde C4). Aucun wildcard src/app/api/.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchdog-c4$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_WATCHDOG_C4_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
