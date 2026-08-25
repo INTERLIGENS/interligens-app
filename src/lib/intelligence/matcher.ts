@@ -63,6 +63,20 @@ function computeIMS(
   return { ims, ics };
 }
 
+// ── Classe de risque réellement portée par les observations actives ─────────
+// Ne sert qu'au garde-fou P0-B2. `obs` est non vide à l'appel (retour anticipé
+// plus haut quand aucune observation active n'existe).
+
+function strongestActiveRiskClass(
+  obs: SourceObservationMinimal[]
+): IntelRiskClass {
+  return obs.reduce<IntelRiskClass>((best, o) => {
+    const wBest = RISK_WEIGHT[best] ?? 0;
+    const wCur = RISK_WEIGHT[o.riskClass] ?? 0;
+    return wCur > wBest ? o.riskClass : best;
+  }, obs[0].riskClass);
+}
+
 // ── Detect entity types to check for a given value ──────────────────────────
 
 function guessEntityTypes(value: string): IntelEntityType[] {
@@ -122,7 +136,20 @@ export async function matchEntity(
 
   const { ims, ics } = computeIMS(obs);
   const hasSanction = obs.some((o) => o.riskClass === "SANCTION");
-  const topRiskClass = entity.riskClass as IntelRiskClass;
+
+  // P0-B2 — `entity.riskClass` est un RÉSUMÉ dérivé, figé au moment où il a été
+  // calculé : il survit à la désactivation de l'observation qui l'a produit
+  // (retrait d'une liste OFAC, ligne fabriquée neutralisée). `obs` ne contient
+  // QUE les observations actives. Affirmer « SANCTION » alors qu'aucune
+  // observation active ne la porte, c'est publier une sanction que plus rien ne
+  // soutient — mesuré en production sur 0xa5b0edf6…01d41, servi avec
+  // hasSanction:false ET topRiskClass:"SANCTION". Dans ce seul cas on retombe
+  // sur la classe la plus forte réellement portée. Hors SANCTION : inchangé.
+  const summaryRiskClass = entity.riskClass as IntelRiskClass;
+  const topRiskClass: IntelRiskClass =
+    summaryRiskClass === "SANCTION" && !hasSanction
+      ? strongestActiveRiskClass(obs)
+      : summaryRiskClass;
 
   // Winner = highest weighted observation
   const winner = obs.reduce((best, o) => {
