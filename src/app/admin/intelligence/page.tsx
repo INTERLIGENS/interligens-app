@@ -1507,6 +1507,23 @@ export default function IntelligencePage() {
                 {ingestResult.recordsUnchanged} unchanged
               </>
             )}
+            {/*
+              Invariant de couverture. Un run qui n'a pas tout parcouru doit se
+              voir : `completed` est une conjonction (couverture pleine ET
+              statut terminal sain), pas un synonyme de `status`.
+            */}
+            {ingestResult.coveragePct != null && (
+              <>
+                {" · "}
+                <span
+                  style={{ color: ingestResult.completed ? "#00FF94" : "#FFB800" }}
+                  title={`${ingestResult.processedCount}/${ingestResult.expectedCount} parcourues (après dédup)`}
+                >
+                  coverage {ingestResult.coveragePct}%
+                  {ingestResult.completed ? "" : " — INCOMPLET"}
+                </span>
+              </>
+            )}
           </span>
           <button
             onClick={() => setIngestResult(null)}
