@@ -475,29 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour le CI Ratchet — C0 Enforceability, phase 1. Le câblage du
-# cliquet touche deux chemins gelés : package.json (4 scripts npm : lint:ci,
-# lint:baseline, ratchet:check, audit:classify) et
-# .github/workflows/security.yml (2 étapes de CI). Le cliquet lui-même, la
-# baseline eslint-suppressions.json, les deux scripts et les 22 tests vivent
-# HORS chemin gelé et ne sont PAS exemptés. La phase 1 ne rend AUCUN check
-# required : les deux étapes portent continue-on-error: true et
-# all-gates-passed.needs est inchangé. Aucune dépendance ajoutée, aucune
-# écriture DB, aucun cron.
-#
-# .github/workflows/guard-offline.yml n'est VOLONTAIREMENT pas couvert : il
-# fait partie du système de garde (GUARD_SYSTEM_FILES) et ne doit pas devenir
-# modifiable par une branche de chantier.
-#
-# Exemption STRICTEMENT limitée aux 2 fichiers nommés ; AUCUN wildcard sur
-# .github/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-ratchet-c0$ ]]; then
-    EXEMPT_C0_RATCHET_PATTERNS=(
-        "^package\.json$"
-        "^\.github/workflows/security\.yml$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -870,19 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche ci-ratchet-c0, exempter STRICTEMENT package.json et le
-    # workflow security.yml (aucun wildcard .github/ ; guard-offline.yml exclu).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-ratchet-c0$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_C0_RATCHET_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
