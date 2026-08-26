@@ -294,6 +294,16 @@ export async function ingestSource(
 
 // ── Bulk upsert via raw SQL (for large sources like ScamSniffer) ────────────
 
+// Taille de lot du chemin bulk. Chaque lot coûte DEUX allers-retours Neon
+// (upsert entités + id, puis upsert observations) : à 275 000 lignes, 5 000
+// donne 55 lots soit 110 allers-retours, contre 1 650 avec l'ancien lot de 500
+// et ses trois requêtes. Dimensionnement vérifié sur la production par EXPLAIN
+// (sans ANALYZE, donc sans exécution) : à 5 000, l'instruction fait 0,48 Mo et
+// se planifie en ~112 ms. 10 000 et 20 000 planifient aussi, mais le coût
+// d'analyse croît plus vite que le gain (300 ms à 20 000) et l'instruction
+// dépasse 1 Mo. `statement_timeout` vaut 0 sur cet endpoint, `work_mem` 4 Mo.
+const BULK_CHUNK_SIZE = 5000;
+
 // ── Amplification d'écriture ────────────────────────────────────────────────
 // Les deux `ON CONFLICT DO UPDATE` ci-dessous portent une garde
 // `WHERE (…) IS DISTINCT FROM (EXCLUDED.…)` : sans elle, chaque run réécrit
@@ -333,36 +343,63 @@ async function bulkUpsert(
   let obsSubmitted = 0;
   let obsAffected = 0;
 
-  const chunks500 = chunk(records, 500);
+  const chunksN = chunk(records, BULK_CHUNK_SIZE);
   let processed = 0;
+  let chunkIndex = 0;
 
-  for (const ch of chunks500) {
-    // 1. Bulk upsert CanonicalEntity
-    const entityValues = ch.map((r) => {
+  for (const ch of chunksN) {
+    // 1. Upsert des entités ET récupération des id, en UNE requête.
+    //
+    // Le `RETURNING` d'un `ON CONFLICT` ne rend QUE les lignes réellement
+    // écrites — or la garde `IS DISTINCT FROM` en écarte la quasi-totalité en
+    // régime stationnaire (mesuré le 2026-08-26 : 206 lignes écrites sur
+    // 275 000 soumises, soit 0,07 %). Un `RETURNING` nu ferait donc perdre
+    // 99,93 % des id, et les observations correspondantes seraient
+    // silencieusement abandonnées.
+    //
+    // D'où le CTE : `ins` porte les lignes écrites, et l'`UNION ALL` y ajoute
+    // les lignes déjà présentes que la garde a écartées. Le SELECT extérieur
+    // lit l'instantané d'avant l'instruction : il ne peut pas voir les lignes
+    // insérées par `ins`, d'où l'absence de doublon — et le `NOT EXISTS` écarte
+    // celles qui y sont déjà.
+    const vValues = ch.map((r) => {
       const dk = buildDedupKey(r.entityType, r.value);
-      return `(gen_random_uuid()::text, ${esc(r.entityType)}, ${esc(r.value)}, ${esc(r.chain ?? null)}, ${esc(r.riskClass)}, ${esc(slug)}, 1, '${nowISO}'::timestamptz, '${nowISO}'::timestamptz, ${esc(dk)}, 'INTERNAL_ONLY', true, now(), now())`;
+      return `(${esc(dk)}, ${esc(r.entityType)}, ${esc(r.value)}, ${esc(r.chain ?? null)}, ${esc(r.riskClass)})`;
     });
 
     const entitySQL = `
-      INSERT INTO intel_canonical_entities
-        (id, type, value, chain, "riskClass", "strongestSource", "sourceCount", "firstSeenAt", "lastSeenAt", "dedupKey", "displaySafety", "isActive", "createdAt", "updatedAt")
-      VALUES ${entityValues.join(",\n")}
-      ON CONFLICT ("dedupKey") DO UPDATE SET
-        "lastSeenAt" = '${nowISO}'::timestamptz,
-        "isActive" = true,
-        "updatedAt" = now()
-      WHERE (intel_canonical_entities."isActive")
-              IS DISTINCT FROM (EXCLUDED."isActive")
+      WITH v("dedupKey", type, value, chain, "riskClass") AS (
+        VALUES ${vValues.join(",\n")}
+      ),
+      ins AS (
+        INSERT INTO intel_canonical_entities
+          (id, type, value, chain, "riskClass", "strongestSource", "sourceCount", "firstSeenAt", "lastSeenAt", "dedupKey", "displaySafety", "isActive", "createdAt", "updatedAt")
+        SELECT gen_random_uuid()::text, v.type::"IntelEntityType", v.value::text,
+               v.chain::text, v."riskClass"::"IntelRiskClass", ${esc(slug)}, 1,
+               '${nowISO}'::timestamptz, '${nowISO}'::timestamptz, v."dedupKey"::text,
+               'INTERNAL_ONLY', true, now(), now()
+          FROM v
+        ON CONFLICT ("dedupKey") DO UPDATE SET
+          "lastSeenAt" = '${nowISO}'::timestamptz,
+          "isActive" = true,
+          "updatedAt" = now()
+        WHERE (intel_canonical_entities."isActive")
+                IS DISTINCT FROM (EXCLUDED."isActive")
+        RETURNING id, "dedupKey"
+      )
+      SELECT id, "dedupKey" FROM ins
+      UNION ALL
+      SELECT e.id, e."dedupKey"
+        FROM intel_canonical_entities e
+       WHERE e."dedupKey" IN (SELECT "dedupKey"::text FROM v)
+         AND NOT EXISTS (SELECT 1 FROM ins WHERE ins."dedupKey" = e."dedupKey")
     `;
 
-    await prisma.$executeRawUnsafe(entitySQL);
-
-    // 2. Look up entity IDs for this chunk
-    const dedupKeys = ch.map((r) => buildDedupKey(r.entityType, r.value));
-    const entities = await prisma.canonicalEntity.findMany({
-      where: { dedupKey: { in: dedupKeys } },
-      select: { id: true, dedupKey: true },
-    });
+    const entities = await prisma.$queryRawUnsafe<
+      { id: string; dedupKey: string }[]
+    >(entitySQL);
+    // Appariement par dedupKey, JAMAIS par position : l'UNION ALL ne garantit
+    // aucun ordre.
     const dkToId = new Map(entities.map((e) => [e.dedupKey, e.id]));
 
     // 3. Bulk upsert SourceObservation
@@ -413,9 +450,14 @@ async function bulkUpsert(
     }
 
     processed += ch.length;
+    chunkIndex++;
 
-    // Progress update every 5000 records
-    if (processed % 5000 < 500) {
+    // Jalon de progression. Il coûte un aller-retour : avec un lot de 5 000,
+    // l'écrire à chaque lot annulerait un tiers du gain. On l'écrit donc au
+    // PREMIER lot — le reaper s'appuie sur `recordsFetched > 0` pour prouver
+    // qu'un run mort avait écrit (reaper.ts) et cette sonde doit se poser tôt —
+    // puis tous les 10 lots.
+    if (chunkIndex === 1 || chunkIndex % 10 === 0) {
       await prisma.intelIngestionBatch.update({
         where: { id: batchId },
         data: {
