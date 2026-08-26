@@ -1,0 +1,1452 @@
+{
+  "__tests__/api/security/cashout.publish-gate.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "__tests__/api/security/class-action.publish-gate.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "__tests__/api/security/laundry-handle.publish-gate.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "__tests__/api/security/ratelimit-graph-jobs.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "__tests__/api/security/v1-kol-handle.publish-gate.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "__tests__/api/security/wallet-history.publish-gate.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "__tests__/api/security/watchlist.publish-gate.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "__tests__/security/cronFailClosed.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "__tests__/security/page-gate-session.test.ts": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "backups/20260225-2112/MarketWeather.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "backups/20260225-2112/WhatToDoNow.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "backups/20260225-2112/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "check.js": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    }
+  },
+  "intel-vault-normalizer.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 12
+    }
+  },
+  "lib/marketProviders.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "migrate.js": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 3
+    }
+  },
+  "migrate2.js": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    }
+  },
+  "migrate_watcher.js": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    }
+  },
+  "packages/widget/dist/InterligensWidget.js": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    }
+  },
+  "prisma/seed-kol-kokoski.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "prisma/seed-kol-ravedao.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "scripts/audit-tokens-to-track.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "scripts/backfill-price-cache.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "scripts/diagnose-intelligence.mjs": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 4
+    }
+  },
+  "scripts/diagnose-tickers-lombok.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "scripts/export-tickers-to-investigate.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "scripts/osint/uploadBotifyDoc.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "scripts/osint/uploadEvidence.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "scripts/securityCenterCheck.ts": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "scripts/seed/densify.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "scripts/seed/securityCenter.ts": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "scripts/seedLaundryTrail.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "scripts/seeds/seed-kol-dione.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "scripts/watcher/test-usage-tracking.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/app/[locale]/admin/graph/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react-hooks/static-components": {
+      "count": 1
+    }
+  },
+  "src/app/[locale]/demo/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 27
+    }
+  },
+  "src/app/[locale]/scan/[address]/timeline/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/access/nda/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/app/access/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/app/admin/alerts/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/admin/ask-qa/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "src/app/admin/casefile-generator/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "src/app/admin/cases/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/admin/corroboration/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/admin/documents/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/app/admin/evidence-vault/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "src/app/admin/export/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-function-type": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "src/app/admin/identity/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/admin/inbox/page.tsx": {
+    "react-hooks/immutability": {
+      "count": 1
+    },
+    "react-hooks/purity": {
+      "count": 1
+    }
+  },
+  "src/app/admin/intake/[id]/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/intake/new/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/admin/intake/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/intel-vault/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/app/admin/intel-vault/review/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/intel-vault/submissions/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "src/app/admin/intelligence/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 18
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 6
+    }
+  },
+  "src/app/admin/kol/network/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 18
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/kol/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/labels/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/pdf/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "src/app/admin/plainte-generator/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "src/app/admin/rwa-registry/contracts/[id]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/rwa-registry/issuers/[id]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/stats/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "src/app/admin/threads/page.tsx": {
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "src/app/admin/watch-sources/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/admin/watcher/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 3
+    }
+  },
+  "src/app/api/admin/batches/[id]/route.ts": {
+    "prefer-const": {
+      "count": 2
+    }
+  },
+  "src/app/api/admin/casefiles/[id]/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/graph/cases/[id]/edges/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/graph/cases/[id]/nodes/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/graph/cases/[id]/pdf/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/graph/cases/[id]/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/graph/cases/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/admin/graph/edges/[id]/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/graph/nodes/[id]/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/influencers/scores/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/ingest/pdf/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/intelligence/cases/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/admin/intelligence/entities/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/app/api/admin/kol/[handle]/proceeds/status/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/app/api/admin/kol/evidence/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/kol/investigate/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 13
+    }
+  },
+  "src/app/api/admin/kol/network/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/app/api/admin/kol/publishability/batch/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/kol/publishability/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/app/api/admin/kol/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/kol/wallet/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/kol/watch-scan/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/admin/labels/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/admin/signals/[id]/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/admin/signals/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/casefile/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 16
+    }
+  },
+  "src/app/api/community/submit/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/cron/price-cache-refresh/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "src/app/api/intelligence/admin/audit/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/intelligence/admin/batches/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/intelligence/admin/cases/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/intelligence/admin/entities/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/kol/[handle]/cashout/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "src/app/api/kol/[handle]/proceeds/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/app/api/kol/[handle]/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/kol/[handle]/wallet-history/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/app/api/laundry/analyze/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/mobile/v1/scan/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/app/api/osint/insights/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/pdf/kol/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "src/app/api/report/casefile/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    },
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "src/app/api/report/pdf/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/app/api/report/v2/route.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 4
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/resolve/hyper-token/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/scan/arbitrum/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/scan/base/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/scan/bsc/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/scan/cluster/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/scan/corroboration/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/app/api/scan/eth/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 15
+    }
+  },
+  "src/app/api/scan/hyper/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/scan/solana/graph/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/app/api/scan/solana/route.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 4
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/scan/timeline/[address]/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/app/api/scan/timeline/auto/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/scan/tron/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/social/discord/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/social/heat/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/token/intel/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/api/v1/kol/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/api/v1/scan-context/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 6
+    }
+  },
+  "src/app/api/wallet/scan/route.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/app/en/cases/botify/evidence/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 4
+    }
+  },
+  "src/app/en/correction/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/en/demo/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 7
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 25
+    }
+  },
+  "src/app/en/demo/review/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "src/app/en/developers/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/en/explorer/[caseId]/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "src/app/en/explorer/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/en/investors/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 4
+    }
+  },
+  "src/app/en/kol/[handle]/error.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/en/kol/[handle]/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 8
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 12
+    },
+    "react-hooks/purity": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 10
+    }
+  },
+  "src/app/en/kol/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/en/legal/disclaimer/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/en/legal/kol-data-doctrine/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 6
+    }
+  },
+  "src/app/en/legal/mentions-legales/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/en/legal/privacy/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 4
+    }
+  },
+  "src/app/en/legal/terms/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/en/methodology/kol-risk/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/en/methodology/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 8
+    }
+  },
+  "src/app/en/methodology/proof-graph/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/en/methodology/tigerscore/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 3
+    }
+  },
+  "src/app/en/transparency/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "src/app/en/victim/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/app/en/victim/report/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/en/watchlist/page.tsx": {
+    "react-hooks/purity": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/en/watchlist/signals/[id]/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 3
+    }
+  },
+  "src/app/fr/correction/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 13
+    }
+  },
+  "src/app/fr/demo/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 23
+    }
+  },
+  "src/app/fr/explorer/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 4
+    }
+  },
+  "src/app/fr/guard/install/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/app/fr/kol/[handle]/error.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/fr/kol/[handle]/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 6
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 12
+    },
+    "react-hooks/purity": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 5
+    }
+  },
+  "src/app/fr/kol/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "src/app/fr/legal/disclaimer/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/fr/legal/kol-data-doctrine/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 6
+    }
+  },
+  "src/app/fr/legal/mentions-legales/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/fr/legal/privacy/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 4
+    }
+  },
+  "src/app/fr/legal/terms/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/fr/methodology/kol-risk/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    }
+  },
+  "src/app/fr/methodology/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 5
+    },
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "src/app/fr/methodology/proof-graph/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/fr/methodology/tigerscore/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 3
+    }
+  },
+  "src/app/fr/transparency/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    },
+    "react/no-unescaped-entities": {
+      "count": 8
+    }
+  },
+  "src/app/fr/victim/report/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/fr/wallet-scan/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "src/app/fr/watchlist/page.tsx": {
+    "react-hooks/purity": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/fr/watchlist/signals/[id]/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 3
+    }
+  },
+  "src/app/guard/install/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/app/history/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/investigators/mm/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 6
+    }
+  },
+  "src/app/methodology/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/mm/[slug]/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/mm/methodology/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/mm/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/app/review-policy/page.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 4
+    }
+  },
+  "src/app/shared/case/[token]/page.tsx": {
+    "react-hooks/purity": {
+      "count": 1
+    }
+  },
+  "src/app/simulator/_components/DebriefScreen.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "src/app/simulator/_components/ScenarioScreen.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "src/components/AnimatedScoreRing.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/CaseFileCTA.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/components/DemoScanLanding.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 17
+    }
+  },
+  "src/components/ErrorBoundary.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/components/ExitSecurity.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/components/KOLPressure.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/components/MarketWeather.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/TechnicalEvidence.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "src/components/TigerRevealCard.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/components/V3Addon.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/components/WhaleRisk.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/components/WhatToDoNow.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/components/admin/AdminSidebar.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 1
+    }
+  },
+  "src/components/beta/BetaNav.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/graph/GraphCanvas.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/components/intelligence/CaseIntelBadge.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "src/components/kol/CashoutProof.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/components/kol/ShillToExitCard.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/mm/MmMethodologyFooter.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 8
+    }
+  },
+  "src/components/mm/MmPageShell.tsx": {
+    "@next/next/no-html-link-for-pages": {
+      "count": 2
+    }
+  },
+  "src/components/pdf/pdfRenderer.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "src/components/scan/AdvancedSignals.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/components/scan/EvidencePanel.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/components/scan/MiniSignalRow.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/components/scan/RecidivismAlertBanner.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/scan/TigreVideoPlayer.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/timeline/ScamTimeline.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/vault/FeedbackButton.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "src/components/vault/IntelVaultBadge.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/vault/__tests__/IntelVaultBadge.test.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/hooks/useScanStages.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/lib/community/ipHash.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/community/validate.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/evidence/txPreview.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/lib/evm/__tests__/base-arbitrum.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/evm/client.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "src/lib/evm/scorer.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/lib/explanation/normalizer.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/intake/extract.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/lib/intelligence/__tests__/ingestCountersHonest.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/lib/intelligence/__tests__/ingestCoverageInvariant.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/lib/intelligence/__tests__/ingestRiskActiveOnly.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/lib/intelligence/__tests__/ingestRoundTrips.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/intelligence/__tests__/ingestUpsertIsDistinct.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/intelligence/ingest.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/lib/intelligence/matcher.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/kol/kolLeaderboard.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/kol/pricing.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/kol/proceeds.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 20
+    }
+  },
+  "src/lib/marketProviders.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/lib/mm/reporting/pdfReport.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/lib/pdf/graph/templateGraph.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "src/lib/pdf/kol/templateKol.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "src/lib/pdf/kol/templateKolLegal.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "src/lib/pdf/v2/detectiveTrade.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "src/lib/pdf/v2/templateV2.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 31
+    }
+  },
+  "src/lib/rpc.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/lib/scoring.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/solana/walletSummary.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/lib/solanaGraph/__tests__/graph.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/lib/solanaGraph/related.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/solanaGraph/seed.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/lib/storage/evidenceStorage.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/surveillance/alerts/deliverAlerts.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/lib/surveillance/etherscan/client.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/lib/surveillance/evidencePack.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/lib/surveillance/onchain/ingest.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/lib/surveillance/reports/generateCaseFile.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/lib/surveillance/signals/detectSellWhileShilling.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/lib/surveillance/social/jobs.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/lib/tigerscore/adapter.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/token-resolution/resolveCanonicalToken.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/lib/tron/rpc.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "src/lib/watcher/__tests__/campaignClusterer.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 15
+    }
+  },
+  "src/scripts/evidence-chain/recover-snapshots-d.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/scripts/export/botifySpreadsheet.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/scripts/seed/tokenLaunchMetric.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  }
+}
