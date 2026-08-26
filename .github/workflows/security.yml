@@ -88,6 +88,15 @@ jobs:
       - name: pnpm audit (moderate+)
         run: pnpm audit --audit-level=moderate
 
+      # Classement prod / dev / transitif. « 57 high » indistincts ne disent pas
+      # lesquelles atteignent le code livré : mesuré sur ce dépôt, 29 des 57
+      # vivent dans l'outillage. Phase 1 MESURE et ne bloque pas — d'où le
+      # `continue-on-error`. Le durcissement (`--fail-on-prod`) est la phase 3.
+      - name: Dependency audit — classement prod / dev
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: pnpm audit:classify
+
   # ── 4. Quality gates ──────────────────────────────────────────────────────────
   quality:
     name: Quality Gates
@@ -212,7 +221,17 @@ jobs:
 
       - name: Lint
         if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
-        run: pnpm lint
+        run: pnpm lint:ci
+
+      # Le cliquet. Il compare DEUX BASELINES versionnées, jamais la sortie
+      # d'ESLint : le verdict ne dépend donc ni de la version d'ESLint, ni de
+      # l'ordre des fichiers, ni du parallélisme. Phase 1 : `continue-on-error`,
+      # le filet se voit sans bloquer personne. Le rendre required est la
+      # phase 3, et c'est une décision distincte.
+      - name: CI Ratchet — la dette de lint ne croît pas
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: pnpm ratchet:check origin/${{ github.base_ref }}
 
   # ── 5. Job récapitulatif (branch protection: 1 seul job à surveiller) ────────
   all-gates-passed:
