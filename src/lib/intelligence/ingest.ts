@@ -116,7 +116,34 @@ export interface IngestResult {
    * dédup : la soustraction confondrait sinon « inchangé » et « doublon ».
    */
   recordsUnchanged: number | null;
+  /**
+   * Population attendue : ce qui reste APRÈS normalisation ET déduplication.
+   * Ce n'est PAS `recordsFetched`, qui compte les entrées reçues : entre les
+   * deux il y a les doublons de la source.
+   */
+  expectedCount: number;
+  /**
+   * Population réellement PARCOURUE — soumise aux upserts. Peut être inférieure
+   * à `expectedCount` : une ligne dont l'identifiant d'entité n'est pas revenu
+   * est écartée en silence (`if (!entityId) continue`). C'est précisément ce
+   * trou que l'invariant rend visible.
+   */
+  processedCount: number;
+  /** `processedCount / expectedCount`, en pourcentage. 0 sur 0 vaut 100. */
+  coveragePct: number;
+  /**
+   * Conjonction, pas un synonyme de `status`. VRAI seulement si la couverture
+   * est pleine ET le statut terminal sain : une couverture pleine sur un run
+   * qui a échoué ne vaut rien, et un run réussi qui a sauté des lignes non plus.
+   */
+  completed: boolean;
   error?: string;
+}
+
+/** 0 sur 0 est une couverture pleine, pas une couverture nulle. */
+function computeCoveragePct(processed: number, expected: number): number {
+  if (expected === 0) return 100;
+  return Math.round((processed / expected) * 100 * 1000) / 1000;
 }
 
 export async function ingestSource(
@@ -156,6 +183,10 @@ export async function ingestSource(
       recordsRemoved: 0,
       recordsAffected: 0,
       recordsUnchanged: 0,
+      expectedCount: 0,
+      processedCount: 0,
+      coveragePct: 0,
+      completed: false,
       error: `No fetcher for source: ${slug}`,
     };
   }
@@ -166,6 +197,8 @@ export async function ingestSource(
   let recordsRemoved = 0;
   let recordsAffected: number | null = null;
   let recordsUnchanged: number | null = null;
+  let expectedCount = 0;
+  let processedCount = 0;
 
   try {
     rows = await fetcher();
@@ -181,6 +214,10 @@ export async function ingestSource(
       }
     }
 
+    // La population ATTENDUE est celle qui reste après normalisation ET
+    // déduplication — pas `rows.length`, qui compte les doublons de la source.
+    expectedCount = unique.length;
+
     // Use raw SQL bulk upsert for large sources (>500 records)
     if (unique.length > 500) {
       const result = await bulkUpsert(unique, slug, nowISO, batch.id);
@@ -188,12 +225,14 @@ export async function ingestSource(
       recordsUpdated = result.recordsUpdated;
       recordsAffected = result.recordsAffected;
       recordsUnchanged = result.recordsUnchanged;
+      processedCount = result.processedCount;
     } else {
       const result = await prismaUpsert(unique, slug, now);
       recordsNew = result.recordsNew;
       recordsUpdated = result.recordsUpdated;
       recordsAffected = result.recordsAffected;
       recordsUnchanged = result.recordsUnchanged;
+      processedCount = result.processedCount;
     }
 
     // Mark stale observations (skip for very large sources — too expensive)
@@ -218,11 +257,30 @@ export async function ingestSource(
       }
     }
 
+    // ── Invariant de couverture ──────────────────────────────────────────
+    // Un run qui ne dit pas s'il a tout parcouru oblige à le reconstituer à la
+    // main plus tard. Il le dit maintenant, et dégrade son propre statut s'il
+    // a sauté des lignes.
+    const coveragePct = computeCoveragePct(processedCount, expectedCount);
+    const couvertureComplete = processedCount === expectedCount;
+    const status: IngestResult["status"] = couvertureComplete
+      ? "success"
+      : "partial";
+    const completed = couvertureComplete && status === "success";
+
+    if (!couvertureComplete) {
+      console.warn(
+        `[ingest:${slug}] couverture INCOMPLÈTE — ${processedCount}/${expectedCount} ` +
+          `(${coveragePct} %) : ${expectedCount - processedCount} ligne(s) attendues ` +
+          `n'ont pas été parcourues. Statut dégradé en "partial".`
+      );
+    }
+
     // Finalize batch
     await prisma.intelIngestionBatch.update({
       where: { id: batch.id },
       data: {
-        status: "success",
+        status,
         completedAt: new Date(),
         recordsFetched: rows.length,
         recordsNew,
@@ -246,6 +304,10 @@ export async function ingestSource(
           removed: recordsRemoved,
           affected: recordsAffected,
           unchanged: recordsUnchanged,
+          expected: expectedCount,
+          processed: processedCount,
+          coveragePct,
+          completed,
         },
       },
     });
@@ -253,13 +315,17 @@ export async function ingestSource(
     return {
       batchId: batch.id,
       sourceSlug: slug,
-      status: "success",
+      status,
       recordsFetched: rows.length,
       recordsNew,
       recordsUpdated,
       recordsRemoved,
       recordsAffected,
       recordsUnchanged,
+      expectedCount,
+      processedCount,
+      coveragePct,
+      completed,
     };
   } catch (err: any) {
     const errorMsg = String(err?.message || err);
@@ -287,6 +353,12 @@ export async function ingestSource(
       recordsRemoved,
       recordsAffected,
       recordsUnchanged,
+      expectedCount,
+      processedCount,
+      // Statut terminal non sain : `completed` est FAUX même si la couverture
+      // est pleine. C'est le sens de la conjonction.
+      coveragePct: computeCoveragePct(processedCount, expectedCount),
+      completed: false,
       error: errorMsg,
     };
   }
@@ -336,6 +408,7 @@ async function bulkUpsert(
   recordsUpdated: null;
   recordsAffected: number;
   recordsUnchanged: number;
+  processedCount: number;
 }> {
   // `INSERT … ON CONFLICT` ne distingue pas proprement insert et update : on ne
   // devine pas. On mesure ce qui est mesurable — lignes soumises, lignes
@@ -472,6 +545,9 @@ async function bulkUpsert(
     recordsUpdated: null,
     recordsAffected: obsAffected,
     recordsUnchanged: obsSubmitted - obsAffected,
+    // Ce qui a RÉELLEMENT été soumis. Une ligne dont l'identifiant d'entité
+    // n'est pas revenu n'y figure pas : c'est le trou que l'invariant révèle.
+    processedCount: obsSubmitted,
   };
 }
 
@@ -486,6 +562,7 @@ async function prismaUpsert(
   recordsUpdated: number;
   recordsAffected: number;
   recordsUnchanged: number;
+  processedCount: number;
 }> {
   let recordsNew = 0;
   let recordsUpdated = 0;
@@ -646,6 +723,8 @@ async function prismaUpsert(
     recordsUpdated,
     recordsAffected: recordsNew + recordsUpdated,
     recordsUnchanged: 0,
+    // Ce chemin traite chaque enregistrement soumis, sans filtre intermédiaire.
+    processedCount: records.length,
   };
 }
 
