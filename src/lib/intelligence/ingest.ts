@@ -230,6 +230,28 @@ export async function ingestSource(
 
 // ── Bulk upsert via raw SQL (for large sources like ScamSniffer) ────────────
 
+// ── Amplification d'écriture ────────────────────────────────────────────────
+// Les deux `ON CONFLICT DO UPDATE` ci-dessous portent une garde
+// `WHERE (…) IS DISTINCT FROM (EXCLUDED.…)` : sans elle, chaque run réécrit
+// TOUTES les lignes reçues, même strictement identiques — ~340 000 UPDATE par
+// cycle ScamSniffer pour, en régime stationnaire, aucun changement de contenu.
+//
+// `IS DISTINCT FROM` et non `<>` : `<>` rend NULL dès qu'un opérande est NULL,
+// donc NULL → valeur et valeur → NULL ne déclencheraient PAS l'UPDATE.
+//
+// La garde ne compare QUE les colonnes de CONTENU. Les horodatages de
+// battement — `lastSeenAt`, `updatedAt`, `lastVerifiedAt` — valent `now()` à
+// chaque run : les inclure rendrait la garde toujours vraie et n'économiserait
+// rien. Conséquence assumée : sur une ligne inchangée, ces horodatages ne sont
+// plus rafraîchis. Aucune logique métier n'en dépend (vérifié : seuls
+// l'affichage admin et un `orderBy lastSeenAt desc` les lisent), et le reaper
+// les a explicitement REJETÉS comme sonde (reaper.ts:70). Ses sondes retenues
+// — `recordsFetched`, `ingestedAt`, `createdAt` — ne sont écrites qu'à
+// l'INSERT et ne sont pas touchées par cette garde.
+//
+// Le marquage stale, donc `recordsRemoved`, est indexé sur
+// `entity.value NOT IN (livraison)` et JAMAIS sur un horodatage : sa
+// sémantique est inchangée.
 async function bulkUpsert(
   records: SourceRaw[],
   slug: string,
@@ -257,6 +279,8 @@ async function bulkUpsert(
         "lastSeenAt" = '${nowISO}'::timestamptz,
         "isActive" = true,
         "updatedAt" = now()
+      WHERE (intel_canonical_entities."isActive")
+              IS DISTINCT FROM (EXCLUDED."isActive")
     `;
 
     await prisma.$executeRawUnsafe(entitySQL);
@@ -293,6 +317,19 @@ async function bulkUpsert(
           "externalUrl" = EXCLUDED."externalUrl",
           "listIsActive" = true,
           "lastVerifiedAt" = now()
+        WHERE (
+                intel_source_observations."riskClass",
+                intel_source_observations.label,
+                intel_source_observations."matchBasis",
+                intel_source_observations."externalUrl",
+                intel_source_observations."listIsActive"
+              ) IS DISTINCT FROM (
+                EXCLUDED."riskClass",
+                EXCLUDED.label,
+                EXCLUDED."matchBasis",
+                EXCLUDED."externalUrl",
+                EXCLUDED."listIsActive"
+              )
       `;
 
       const affected = await prisma.$executeRawUnsafe(obsSQL);
