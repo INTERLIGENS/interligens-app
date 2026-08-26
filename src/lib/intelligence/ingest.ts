@@ -336,7 +336,14 @@ async function prismaUpsert(
       where: { dedupKey: { in: dedupKeys } },
       include: {
         observations: {
-          select: { riskClass: true, sourceSlug: true },
+          // `listIsActive` est LU, pas filtré ici : les deux calculs qui suivent
+          // n'ont pas le même besoin. Le risque courant ne doit voir que les
+          // observations actives ; `alreadyHasSource`, lui, doit voir AUSSI les
+          // radiées — sinon une source qui re-livre après radiation serait prise
+          // pour une source nouvelle et ferait dériver `sourceCount` à la hausse,
+          // alors que l'upsert d'observation (unique sur entityId+sourceSlug) ne
+          // fait que réactiver la ligne existante.
+          select: { riskClass: true, sourceSlug: true, listIsActive: true },
         },
       },
     });
@@ -349,8 +356,17 @@ async function prismaUpsert(
       const existing = entityMap.get(dedupKey);
 
       if (existing) {
+        // Le résumé décrit ce qui est VRAI AUJOURD'HUI. Une observation radiée
+        // — listIsActive=false, cas normal d'une sortie de liste OFAC — décrit
+        // le passé : elle ne doit plus peser. Sans ce filtre, une SANCTION
+        // radiée tirait le résumé à perpétuité (0xa5b0edf6…01d41, mesuré le
+        // 2026-08-26 : riskClass=SANCTION, ofac radiée le 2026-08-15, seule une
+        // observation forta HIGH encore active).
+        // La livraison du jour (`raw`) est active par définition : elle amorce
+        // le pli.
         let strongest = raw.riskClass;
         for (const obs of existing.observations) {
+          if (!obs.listIsActive) continue;
           strongest = strongerRisk(strongest, obs.riskClass as IntelRiskClass);
         }
 
