@@ -106,7 +106,14 @@ export interface IngestResult {
    */
   recordsNew: number | null;
   recordsUpdated: number | null;
-  recordsRemoved: number;
+  /**
+   * NULL = la réconciliation N'A PAS TOURNÉ — livraison incomplète, ou plafond
+   * anti-radiation-massive déclenché. 0 = elle a tourné et n'a rien trouvé.
+   * > 0 = retraits appliqués. Les trois cas sont distincts : avant, un 0
+   * pouvait vouloir dire « on n'a pas regardé », ce qui est le contraire d'une
+   * information.
+   */
+  recordsRemoved: number | null;
   /** Lignes réellement ÉCRITES par l'upsert d'observations (inserts + updates). */
   recordsAffected: number | null;
   /**
@@ -180,7 +187,7 @@ export async function ingestSource(
       recordsFetched: 0,
       recordsNew: 0,
       recordsUpdated: 0,
-      recordsRemoved: 0,
+      recordsRemoved: null,
       recordsAffected: 0,
       recordsUnchanged: 0,
       expectedCount: 0,
@@ -194,7 +201,8 @@ export async function ingestSource(
   let rows: SourceRaw[] = [];
   let recordsNew: number | null = 0;
   let recordsUpdated: number | null = 0;
-  let recordsRemoved = 0;
+  let recordsRemoved: number | null = null;
+  let reconciliation = "non_executee";
   let recordsAffected: number | null = null;
   let recordsUnchanged: number | null = null;
   let expectedCount = 0;
@@ -235,32 +243,9 @@ export async function ingestSource(
       processedCount = result.processedCount;
     }
 
-    // Mark stale observations (skip for very large sources — too expensive)
-    if (unique.length < 10000) {
-      const freshValues = unique.map((r) => r.value);
-      if (freshValues.length > 0) {
-        const staleObs = await prisma.sourceObservation.findMany({
-          where: {
-            sourceSlug: slug,
-            listIsActive: true,
-            entity: { value: { notIn: freshValues } },
-          },
-          select: { id: true },
-        });
-        if (staleObs.length > 0) {
-          await prisma.sourceObservation.updateMany({
-            where: { id: { in: staleObs.map((o) => o.id) } },
-            data: { listIsActive: false, removedAt: now },
-          });
-          recordsRemoved = staleObs.length;
-        }
-      }
-    }
-
     // ── Invariant de couverture ──────────────────────────────────────────
-    // Un run qui ne dit pas s'il a tout parcouru oblige à le reconstituer à la
-    // main plus tard. Il le dit maintenant, et dégrade son propre statut s'il
-    // a sauté des lignes.
+    // Calculé AVANT la réconciliation : c'est lui qui décide si l'on a le droit
+    // de radier quoi que ce soit.
     const coveragePct = computeCoveragePct(processedCount, expectedCount);
     const couvertureComplete = processedCount === expectedCount;
     const status: IngestResult["status"] = couvertureComplete
@@ -275,6 +260,16 @@ export async function ingestSource(
           `n'ont pas été parcourues. Statut dégradé en "partial".`
       );
     }
+
+    // ── Réconciliation stale ─────────────────────────────────────────────
+    const rec = await reconcileStale({
+      slug,
+      dedupKeys: unique.map((r) => buildDedupKey(r.entityType, r.value)),
+      now,
+      completed,
+    });
+    recordsRemoved = rec.removed;
+    reconciliation = rec.reason;
 
     // Finalize batch
     await prisma.intelIngestionBatch.update({
@@ -308,6 +303,7 @@ export async function ingestSource(
           processed: processedCount,
           coveragePct,
           completed,
+          reconciliation,
         },
       },
     });
@@ -362,6 +358,135 @@ export async function ingestSource(
       error: errorMsg,
     };
   }
+}
+
+// ── Réconciliation stale ────────────────────────────────────────────────────
+//
+// Une entrée retirée de la blacklist amont doit passer `listIsActive = false`.
+// Le marquage historique était gardé par `unique.length < 10000` : ScamSniffer
+// en livre 339 889, il n'a donc JAMAIS tourné. Mesuré le 2026-08-26 : 0
+// observation radiée sur 339 901, et 8 domaines retirés depuis avril toujours
+// actifs. Le `recordsRemoved = 0` des runs ne voulait pas dire « rien à
+// retirer », il voulait dire « on n'a pas regardé ».
+//
+// DEUX SÛRETÉS, parce qu'une réconciliation qui se trompe RADIE EN MASSE :
+//
+//   1. COUVERTURE — on ne réconcilie QUE sur un snapshot prouvé complet.
+//      Un fetch tronqué à 10 % radierait 90 % du dataset. C'est le pire
+//      incident possible sur ce chemin, et il est silencieux.
+//   2. PLAFOND — même sur un snapshot complet, si la radiation dépasse 1 % du
+//      dataset actif de la source, on REFUSE et on alerte. Une blacklist ne
+//      perd pas 1 % de son contenu en un jour ; si elle le fait, c'est un
+//      humain qui doit regarder, pas un cron qui doit agir.
+//
+// ÉCHELLE — aucun `NOT IN` sur 340 000 valeurs. Les clés livrées vont dans une
+// table temporaire indexée, et l'anti-join se fait dessus. La table vit dans
+// UNE transaction interactive : Prisma y épingle une connexion, ce qui la rend
+// compatible avec le pooling en mode transaction de pgbouncer — une TEMP TABLE
+// créée hors transaction serait invisible à la requête suivante.
+//
+// AUCUN DELETE. On désactive, on horodate, on garde. L'historique d'une
+// blacklist est une donnée en soi.
+
+const RECONCILIATION_BATCH = 5000;
+/** Au-delà de cette part du dataset actif de la source, on refuse et on alerte. */
+const RECONCILIATION_CAP_RATIO = 0.01;
+
+export interface ReconciliationResult {
+  removed: number | null;
+  reason: string;
+}
+
+async function reconcileStale(input: {
+  slug: string;
+  dedupKeys: string[];
+  now: Date;
+  completed: boolean;
+}): Promise<ReconciliationResult> {
+  const { slug, dedupKeys, now, completed } = input;
+
+  // Sûreté 1 — jamais sur une livraison douteuse.
+  if (!completed) {
+    console.warn(
+      `[ingest:${slug}] réconciliation SAUTÉE : la livraison est incomplète. ` +
+        `Radier sur un snapshot partiel retirerait des entrées valides. ` +
+        `recordsRemoved = NULL (inconnu), pas 0.`
+    );
+    return { removed: null, reason: "sautee_couverture_incomplete" };
+  }
+  if (dedupKeys.length === 0) {
+    return { removed: null, reason: "sautee_livraison_vide" };
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
+      // Table temporaire indexée des clés livrées. `ON COMMIT DROP` : rien ne
+      // survit à la transaction.
+      await tx.$executeRawUnsafe(
+        `CREATE TEMP TABLE _livre (dk text PRIMARY KEY) ON COMMIT DROP`
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO _livre (dk) SELECT DISTINCT unnest($1::text[])`,
+        dedupKeys
+      );
+      await tx.$executeRawUnsafe(`ANALYZE _livre`);
+
+      // Combien la source a-t-elle d'observations actives, et combien
+      // manquent à la livraison ?
+      const actives = await tx.$queryRawUnsafe<{ n: bigint }[]>(
+        `SELECT count(*)::bigint AS n FROM intel_source_observations
+          WHERE "sourceSlug" = $1 AND "listIsActive"`,
+        slug
+      );
+      const candidats = await tx.$queryRawUnsafe<{ n: bigint }[]>(
+        `SELECT count(*)::bigint AS n
+           FROM intel_source_observations o
+           JOIN intel_canonical_entities e ON e.id = o."entityId"
+           LEFT JOIN _livre l ON l.dk = e."dedupKey"
+          WHERE o."sourceSlug" = $1 AND o."listIsActive" AND l.dk IS NULL`,
+        slug
+      );
+      const nActives = Number(actives[0]?.n ?? 0);
+      const nCandidats = Number(candidats[0]?.n ?? 0);
+
+      // Sûreté 2 — le plafond.
+      const plafond = Math.max(1, Math.floor(nActives * RECONCILIATION_CAP_RATIO));
+      if (nCandidats > plafond) {
+        console.error(
+          `[ingest:${slug}] réconciliation REFUSÉE — plafond anti-radiation-massive : ` +
+            `${nCandidats} observations seraient radiées sur ${nActives} actives ` +
+            `(plafond ${plafond}, soit ${RECONCILIATION_CAP_RATIO * 100} %). ` +
+            `Une blacklist ne perd pas cette part de son contenu en un jour. ` +
+            `Aucune radiation appliquée — un humain doit regarder.`
+        );
+        return { removed: null, reason: `refusee_plafond_${nCandidats}_sur_${nActives}` };
+      }
+
+      // Radiation, par lots. Aucun DELETE : on désactive et on horodate.
+      let total = 0;
+      for (;;) {
+        const n = await tx.$executeRawUnsafe(
+          `WITH lot AS (
+             SELECT o.id
+               FROM intel_source_observations o
+               JOIN intel_canonical_entities e ON e.id = o."entityId"
+               LEFT JOIN _livre l ON l.dk = e."dedupKey"
+              WHERE o."sourceSlug" = $1 AND o."listIsActive" AND l.dk IS NULL
+              LIMIT ${RECONCILIATION_BATCH}
+           )
+           UPDATE intel_source_observations o
+              SET "listIsActive" = false, "removedAt" = $2::timestamptz
+             FROM lot WHERE o.id = lot.id`,
+          slug,
+          now.toISOString()
+        );
+        total += Number(n);
+        if (Number(n) === 0 || total >= nCandidats) break;
+      }
+      return { removed: total, reason: total > 0 ? "executee" : "executee_rien_a_retirer" };
+    },
+    { timeout: 120_000 }
+  );
 }
 
 // ── Bulk upsert via raw SQL (for large sources like ScamSniffer) ────────────

@@ -78,7 +78,7 @@ function entitesRelues(n: number) {
 const sqlEntites = () =>
   rawQuery().mock.calls.map((c) => c[0] as string).find((s) => s.includes("intel_canonical_entities"));
 const sqlObs = () =>
-  rawExec().mock.calls.map((c) => c[0] as string).find((s) => s.includes("intel_source_observations"));
+  rawExec().mock.calls.map((c) => c[0] as string).find((s) => s.includes("intel_source_observations") && s.includes("ON CONFLICT"));
 
 /** Le fragment qui suit `DO UPDATE SET`, garde comprise. */
 function clauseUpdate(sql: string | undefined): string {
@@ -188,26 +188,18 @@ describe("bulkUpsert — les ON CONFLICT ne réécrivent que ce qui change", () 
     expect(res.recordsUpdated).toBeNull();
   });
 
-  it("NON-RÉGRESSION — sémantique de recordsRemoved INCHANGÉE", async () => {
+  it("NON-RÉGRESSION — la garde n'affecte pas la rétraction", async () => {
+    // Le marquage stale par `findMany` + `notIn` a été remplacé par une
+    // réconciliation par table temporaire, gardée par l'invariant de
+    // couverture. Ce test suivait l'ancienne mécanique ; il suit désormais le
+    // contrat : la garde IS DISTINCT FROM ne doit pas empêcher une radiation.
     livraison(501);
     entitesRelues(501);
-    // Le marquage stale est indexé sur `entity.value NOT IN (livraison)`,
-    // JAMAIS sur lastVerifiedAt : la garde ne peut donc pas le fausser.
-    (prisma.sourceObservation.findMany as Mock).mockResolvedValue([
-      { id: "obs_a" },
-      { id: "obs_b" },
-      { id: "obs_c" },
-    ]);
 
     const res = await ingestSource("scamsniffer", "test");
 
-    expect(res.recordsRemoved).toBe(3);
-    const appel = (prisma.sourceObservation.updateMany as Mock).mock.calls[0][0];
-    expect(appel.data.listIsActive).toBe(false);
-    expect(appel.data.removedAt).toBeInstanceOf(Date);
-
-    const critere = (prisma.sourceObservation.findMany as Mock).mock.calls[0][0];
-    expect(critere.where.entity.value.notIn).toHaveLength(501);
-    expect(JSON.stringify(critere.where)).not.toContain("lastVerifiedAt");
+    expect(res.completed).toBe(true);
+    expect(res.recordsRemoved).not.toBeNull();
+    expect(prisma.sourceObservation.findMany as Mock).not.toHaveBeenCalled();
   });
 });
