@@ -27,6 +27,7 @@ vi.mock("@/lib/prisma", () => {
     sourceObservation: { findMany: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     intelAuditLog: { create: vi.fn() },
     $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
   };
   prisma.$transaction = vi.fn(async (ops: unknown) =>
     Array.isArray(ops) ? Promise.all(ops) : (ops as (p: unknown) => unknown)(prisma)
@@ -42,6 +43,7 @@ import { fetchScamSniffer } from "../sources/scamsniffer";
 import { buildDedupKey } from "../normalize";
 
 const rawExec = () => prisma.$executeRawUnsafe as unknown as Mock;
+const rawQuery = () => prisma.$queryRawUnsafe as unknown as Mock;
 
 function livraison(n: number) {
   (fetchScamSniffer as unknown as Mock).mockResolvedValue(
@@ -59,7 +61,7 @@ function livraison(n: number) {
 }
 
 function entitesRelues(n: number) {
-  (prisma.canonicalEntity.findMany as Mock).mockResolvedValue(
+  rawQuery().mockResolvedValue(
     Array.from({ length: n }, (_, i) => ({
       id: `ent_${i}`,
       dedupKey: buildDedupKey("DOMAIN", `phish-${i}.example`),
@@ -69,8 +71,8 @@ function entitesRelues(n: number) {
 
 /**
  * Le moteur écrit `parAppelObs` lignes sur CHAQUE appel d'upsert d'observations
- * (un par chunk de 500), 0 sur celui d'entités. 501 enregistrements = 2 chunks,
- * donc 2 appels : le test vérifie aussi l'ACCUMULATION entre chunks.
+ * (un par lot). Depuis le lot de 5 000, 501 enregistrements tiennent en UN lot ;
+ * la signature variadique reste pour couvrir l'accumulation multi-lots.
  */
 function moteurEcrit(...parAppelObs: number[]) {
   let i = 0;
@@ -109,7 +111,7 @@ describe("ingest — compteurs honnêtes", () => {
   it("chemin BULK — recordsNew et recordsUpdated valent NULL, pas un chiffre inventé", async () => {
     livraison(501);
     entitesRelues(501);
-    moteurEcrit(12, 0);
+    moteurEcrit(12);
 
     const res = await ingestSource("scamsniffer", "test");
 
@@ -122,7 +124,7 @@ describe("ingest — compteurs honnêtes", () => {
   it("chemin BULK — recordsAffected = lignes réellement écrites", async () => {
     livraison(501);
     entitesRelues(501);
-    moteurEcrit(12, 0);
+    moteurEcrit(12);
 
     const res = await ingestSource("scamsniffer", "test");
 
@@ -132,12 +134,11 @@ describe("ingest — compteurs honnêtes", () => {
   it("chemin BULK — recordsUnchanged = soumises - affectées, sur la population dédupliquée", async () => {
     livraison(501);
     entitesRelues(501);
-    moteurEcrit(12, 0);
+    moteurEcrit(12);
 
     const res = await ingestSource("scamsniffer", "test");
 
-    // 501 observations soumises sur 2 chunks (500 + 1), 12 écrites au total
-    // → 489 écartées par la garde. Le compteur accumule bien entre chunks.
+    // 501 observations soumises, 12 écrites → 489 écartées par la garde.
     expect(res.recordsUnchanged).toBe(489);
     expect(res.recordsAffected! + res.recordsUnchanged!).toBe(501);
   });
@@ -145,7 +146,7 @@ describe("ingest — compteurs honnêtes", () => {
   it("régime stationnaire — 0 ligne écrite, tout est inchangé", async () => {
     livraison(501);
     entitesRelues(501);
-    moteurEcrit(0, 0);
+    moteurEcrit(0);
 
     const res = await ingestSource("scamsniffer", "test");
 
@@ -156,7 +157,7 @@ describe("ingest — compteurs honnêtes", () => {
   it("le journal d'audit publie les deux compteurs mesurables", async () => {
     livraison(501);
     entitesRelues(501);
-    moteurEcrit(12, 0);
+    moteurEcrit(12);
 
     await ingestSource("scamsniffer", "test");
 
@@ -170,7 +171,7 @@ describe("ingest — compteurs honnêtes", () => {
   it("recordsFetched reste le nombre d'entrées REÇUES, avant dédup", async () => {
     livraison(501);
     entitesRelues(501);
-    moteurEcrit(12, 0);
+    moteurEcrit(12);
 
     const res = await ingestSource("scamsniffer", "test");
 
@@ -197,7 +198,7 @@ describe("ingest — compteurs honnêtes", () => {
   it("NON-RÉGRESSION — recordsRemoved intact sur le chemin bulk", async () => {
     livraison(501);
     entitesRelues(501);
-    moteurEcrit(12, 0);
+    moteurEcrit(12);
     (prisma.sourceObservation.findMany as Mock).mockResolvedValue([{ id: "a" }, { id: "b" }]);
 
     const res = await ingestSource("scamsniffer", "test");

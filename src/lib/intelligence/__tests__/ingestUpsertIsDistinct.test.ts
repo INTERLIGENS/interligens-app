@@ -27,6 +27,7 @@ vi.mock("@/lib/prisma", () => {
     sourceObservation: { findMany: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     intelAuditLog: { create: vi.fn() },
     $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
   };
   prisma.$transaction = vi.fn(async (ops: unknown) =>
     Array.isArray(ops) ? Promise.all(ops) : (ops as (p: unknown) => unknown)(prisma)
@@ -42,6 +43,7 @@ import { fetchScamSniffer } from "../sources/scamsniffer";
 import { buildDedupKey } from "../normalize";
 
 const rawExec = () => prisma.$executeRawUnsafe as unknown as Mock;
+const rawQuery = () => prisma.$queryRawUnsafe as unknown as Mock;
 
 /** bulkUpsert n'est emprunté qu'au-delà de 500 enregistrements. */
 function livraison(n: number) {
@@ -60,9 +62,12 @@ function livraison(n: number) {
   return rows;
 }
 
-/** Les entités que la 2ᵉ étape de bulkUpsert relit pour mapper dedupKey → id. */
+/**
+ * Depuis la réduction des allers-retours, l'upsert d'entités rend lui-même les
+ * couples (id, dedupKey) : plus de `findMany` intermédiaire.
+ */
 function entitesRelues(n: number) {
-  (prisma.canonicalEntity.findMany as Mock).mockResolvedValue(
+  rawQuery().mockResolvedValue(
     Array.from({ length: n }, (_, i) => ({
       id: `ent_${i}`,
       dedupKey: buildDedupKey("DOMAIN", `phish-${i}.example`),
@@ -71,7 +76,7 @@ function entitesRelues(n: number) {
 }
 
 const sqlEntites = () =>
-  rawExec().mock.calls.map((c) => c[0] as string).find((s) => s.includes("intel_canonical_entities"));
+  rawQuery().mock.calls.map((c) => c[0] as string).find((s) => s.includes("intel_canonical_entities"));
 const sqlObs = () =>
   rawExec().mock.calls.map((c) => c[0] as string).find((s) => s.includes("intel_source_observations"));
 
