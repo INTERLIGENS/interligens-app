@@ -173,8 +173,14 @@ describe("bulkUpsert — les ON CONFLICT ne réécrivent que ce qui change", () 
 
     expect(res.status).toBe("success");
     expect(res.recordsFetched).toBe(501);
-    expect(res.recordsNew).toBe(501);
     expect(res.recordsRemoved).toBe(0);
+    // `recordsNew` valait 501 ici, mais c'était le MENSONGE du chemin bulk :
+    // `recordsNew += obsValues.length` comptait tout comme nouveau. Depuis
+    // l'instrumentation honnête, ce chemin rend NULL (= inconnu), parce que
+    // INSERT … ON CONFLICT ne sait pas distinguer insert et update.
+    // Les compteurs mesurables sont couverts par ingestCountersHonest.test.ts.
+    expect(res.recordsNew).toBeNull();
+    expect(res.recordsUpdated).toBeNull();
   });
 
   it("NON-RÉGRESSION — sémantique de recordsRemoved INCHANGÉE", async () => {

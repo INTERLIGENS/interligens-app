@@ -17,6 +17,34 @@ import { fetchScamSniffer } from "./sources/scamsniffer";
 import { fetchForta } from "./sources/forta";
 import { fetchAmf } from "./sources/amf";
 
+// ── LEGACY — horodatages non fiables comme preuve de dernière observation ───
+//
+// `intel_canonical_entities.lastSeenAt`, `intel_canonical_entities.updatedAt`
+// et `intel_source_observations.lastVerifiedAt` sont désormais des champs
+// LEGACY au sens suivant : ils ne prouvent PAS qu'une entité a été revue lors
+// du dernier cycle.
+//
+// Depuis la garde `IS DISTINCT FROM` posée sur les deux `ON CONFLICT DO UPDATE`
+// de `bulkUpsert`, une ligne dont rien n'a changé n'est plus réécrite — donc
+// ces trois horodatages ne bougent plus. Ils datent le dernier CHANGEMENT, pas
+// la dernière observation.
+//
+// DOCTRINE (actée) :
+//   • fraîcheur d'une SOURCE ou d'un CYCLE  → JobRunLog / le cycle, pas ces champs
+//   • état courant d'une ENTITÉ             → la ligne elle-même
+//   • dernière confirmation PAR ENTITÉ      → NON GARANTIE aujourd'hui.
+//     Dit explicitement pour qu'aucune sonde ne s'y adosse et ne produise un
+//     faux positif — cf. reaper.ts:70, qui avait déjà REJETÉ ces trois champs
+//     comme sondes, précisément parce qu'ils étaient réécrits à chaque run.
+//
+// Aucun rafraîchissement périodique ni `lastConfirmedCycleId` n'est introduit
+// ici : ce serait une architecture nouvelle, et elle n'est pas décidée.
+//
+// Le même avertissement devrait figurer au point de DÉFINITION
+// (`prisma/schema.prod.prisma`, modèles CanonicalEntity et SourceObservation).
+// Ce fichier est un chemin GELÉ : le commentaire de schema demande une fenêtre
+// de guard dédiée. Il est donc porté ici, au point d'écriture, en attendant.
+//
 // ── Risk priority (lower index = stronger) ──────────────────────────────────
 const RISK_ORDER: IntelRiskClass[] = [
   "SANCTION",
@@ -63,10 +91,31 @@ export interface IngestResult {
   batchId: string;
   sourceSlug: string;
   status: "success" | "partial" | "failed";
+  /** Entrées REÇUES de la source, avant déduplication. */
   recordsFetched: number;
-  recordsNew: number;
-  recordsUpdated: number;
+  /**
+   * NULL = INCONNU, pas zéro.
+   *
+   * `INSERT … ON CONFLICT` ne permet pas de distinguer proprement une ligne
+   * insérée d'une ligne mise à jour : le seul procédé connu, `RETURNING
+   * xmax = 0`, repose sur un détail d'implémentation non contractuel. Sur le
+   * chemin bulk on ne devine donc pas — on publie NULL et on s'en tient à
+   * `recordsAffected` / `recordsUnchanged`, qui sont mesurés.
+   * Le chemin Prisma (< 500 lignes), lui, connaît la distinction : il rend des
+   * chiffres.
+   */
+  recordsNew: number | null;
+  recordsUpdated: number | null;
   recordsRemoved: number;
+  /** Lignes réellement ÉCRITES par l'upsert d'observations (inserts + updates). */
+  recordsAffected: number | null;
+  /**
+   * Lignes SOUMISES mais non écrites, écartées par la garde IS DISTINCT FROM.
+   * Calculé sur la population soumise à l'upsert — donc APRÈS déduplication —
+   * et jamais depuis `recordsFetched`, qui compte les entrées reçues avant
+   * dédup : la soustraction confondrait sinon « inchangé » et « doublon ».
+   */
+  recordsUnchanged: number | null;
   error?: string;
 }
 
@@ -105,14 +154,18 @@ export async function ingestSource(
       recordsNew: 0,
       recordsUpdated: 0,
       recordsRemoved: 0,
+      recordsAffected: 0,
+      recordsUnchanged: 0,
       error: `No fetcher for source: ${slug}`,
     };
   }
 
   let rows: SourceRaw[] = [];
-  let recordsNew = 0;
-  let recordsUpdated = 0;
+  let recordsNew: number | null = 0;
+  let recordsUpdated: number | null = 0;
   let recordsRemoved = 0;
+  let recordsAffected: number | null = null;
+  let recordsUnchanged: number | null = null;
 
   try {
     rows = await fetcher();
@@ -133,10 +186,14 @@ export async function ingestSource(
       const result = await bulkUpsert(unique, slug, nowISO, batch.id);
       recordsNew = result.recordsNew;
       recordsUpdated = result.recordsUpdated;
+      recordsAffected = result.recordsAffected;
+      recordsUnchanged = result.recordsUnchanged;
     } else {
       const result = await prismaUpsert(unique, slug, now);
       recordsNew = result.recordsNew;
       recordsUpdated = result.recordsUpdated;
+      recordsAffected = result.recordsAffected;
+      recordsUnchanged = result.recordsUnchanged;
     }
 
     // Mark stale observations (skip for very large sources — too expensive)
@@ -183,9 +240,12 @@ export async function ingestSource(
         targetId: batch.id,
         detail: {
           fetched: rows.length,
+          // NULL = inconnu sur le chemin bulk — voir IngestResult.recordsNew.
           new: recordsNew,
           updated: recordsUpdated,
           removed: recordsRemoved,
+          affected: recordsAffected,
+          unchanged: recordsUnchanged,
         },
       },
     });
@@ -198,6 +258,8 @@ export async function ingestSource(
       recordsNew,
       recordsUpdated,
       recordsRemoved,
+      recordsAffected,
+      recordsUnchanged,
     };
   } catch (err: any) {
     const errorMsg = String(err?.message || err);
@@ -223,6 +285,8 @@ export async function ingestSource(
       recordsNew,
       recordsUpdated,
       recordsRemoved,
+      recordsAffected,
+      recordsUnchanged,
       error: errorMsg,
     };
   }
@@ -257,9 +321,17 @@ async function bulkUpsert(
   slug: string,
   nowISO: string,
   batchId: string
-): Promise<{ recordsNew: number; recordsUpdated: number }> {
-  let recordsNew = 0;
-  let recordsUpdated = 0;
+): Promise<{
+  recordsNew: null;
+  recordsUpdated: null;
+  recordsAffected: number;
+  recordsUnchanged: number;
+}> {
+  // `INSERT … ON CONFLICT` ne distingue pas proprement insert et update : on ne
+  // devine pas. On mesure ce qui est mesurable — lignes soumises, lignes
+  // écrites — et on laisse le reste à NULL.
+  let obsSubmitted = 0;
+  let obsAffected = 0;
 
   const chunks500 = chunk(records, 500);
   let processed = 0;
@@ -332,10 +404,12 @@ async function bulkUpsert(
               )
       `;
 
-      const affected = await prisma.$executeRawUnsafe(obsSQL);
-      // ON CONFLICT counts as updated, pure inserts as new
-      // approximate: affected = total rows touched
-      recordsNew += obsValues.length;
+      // Retour de $executeRawUnsafe = lignes RÉELLEMENT écrites : inserts +
+      // updates, hors lignes écartées par la garde IS DISTINCT FROM. C'est
+      // exactement `recordsAffected` — et ce n'est PAS `recordsUpdated`, qui
+      // exigerait de séparer les deux.
+      obsAffected += await prisma.$executeRawUnsafe(obsSQL);
+      obsSubmitted += obsValues.length;
     }
 
     processed += ch.length;
@@ -346,13 +420,17 @@ async function bulkUpsert(
         where: { id: batchId },
         data: {
           recordsFetched: processed,
-          recordsNew,
         },
       });
     }
   }
 
-  return { recordsNew, recordsUpdated };
+  return {
+    recordsNew: null,
+    recordsUpdated: null,
+    recordsAffected: obsAffected,
+    recordsUnchanged: obsSubmitted - obsAffected,
+  };
 }
 
 // ── Prisma-based upsert (for small sources <500 records) ────────────────────
@@ -361,7 +439,12 @@ async function prismaUpsert(
   records: SourceRaw[],
   slug: string,
   now: Date
-): Promise<{ recordsNew: number; recordsUpdated: number }> {
+): Promise<{
+  recordsNew: number;
+  recordsUpdated: number;
+  recordsAffected: number;
+  recordsUnchanged: number;
+}> {
   let recordsNew = 0;
   let recordsUpdated = 0;
 
@@ -513,7 +596,15 @@ async function prismaUpsert(
     }
   }
 
-  return { recordsNew, recordsUpdated };
+  // Ce chemin ne porte AUCUNE garde : toute ligne soumise est écrite. Le
+  // nombre d'écartées est donc structurellement 0 — ce n'est pas une
+  // approximation, c'est la propriété du chemin.
+  return {
+    recordsNew,
+    recordsUpdated,
+    recordsAffected: recordsNew + recordsUpdated,
+    recordsUnchanged: 0,
+  };
 }
 
 // ── Ingest all sources ──────────────────────────────────────────────────────

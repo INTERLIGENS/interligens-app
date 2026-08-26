@@ -293,23 +293,49 @@ function EntitiesTab() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #1a1a1a", background: "#111111" }}>
-              {["TYPE", "VALUE", "CHAIN", "RISK", "SOURCES", "CASES", "LAST SEEN", "SAFETY"].map(
-                (h) => (
-                  <th
-                    key={h}
-                    style={{
-                      padding: "10px 12px",
-                      textAlign: "left",
-                      color: "#64748b",
-                      fontWeight: 700,
-                      fontSize: 10,
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    {h}
-                  </th>
-                )
-              )}
+              {/*
+                « LAST CHANGE » et non « LAST SEEN ».
+                `entity.lastSeenAt` n'est plus rafraîchi à chaque passage
+                d'ingestion : depuis la garde IS DISTINCT FROM des upserts, une
+                ligne dont rien n'a changé n'est pas réécrite, donc son
+                horodatage ne bouge pas. Ce champ date le dernier CHANGEMENT,
+                pas la dernière observation. L'intitulé doit dire ce que la
+                colonne montre.
+                Fraîcheur d'une source ou d'un cycle : JobRunLog / cycle.
+                Dernière confirmation PAR entité : non garantie aujourd'hui.
+              */}
+              {[
+                { label: "TYPE" },
+                { label: "VALUE" },
+                { label: "CHAIN" },
+                { label: "RISK" },
+                { label: "SOURCES" },
+                { label: "CASES" },
+                {
+                  label: "LAST CHANGE",
+                  title:
+                    "Date du dernier CHANGEMENT de cette entité, pas de la dernière " +
+                    "observation : une ligne inchangée n'est pas réécrite. Pour la " +
+                    "fraîcheur d'une source, voir le cycle / JobRunLog.",
+                },
+                { label: "SAFETY" },
+              ].map((h) => (
+                <th
+                  key={h.label}
+                  title={h.title}
+                  style={{
+                    padding: "10px 12px",
+                    textAlign: "left",
+                    color: "#64748b",
+                    fontWeight: 700,
+                    fontSize: 10,
+                    letterSpacing: "0.05em",
+                    ...(h.title ? { cursor: "help" } : {}),
+                  }}
+                >
+                  {h.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -1464,8 +1490,23 @@ export default function IntelligencePage() {
               {ingestResult.status}
             </span>
             {" — "}
-            {ingestResult.recordsFetched} fetched, {ingestResult.recordsNew} new,{" "}
-            {ingestResult.recordsUpdated} updated, {ingestResult.recordsRemoved} removed
+            {/*
+              `recordsNew` / `recordsUpdated` valent NULL sur le chemin bulk :
+              INSERT … ON CONFLICT ne permet pas de distinguer proprement un
+              insert d'un update. On affiche « unknown » plutôt qu'un zéro qui
+              mentirait. `affected` / `unchanged`, eux, sont mesurés.
+            */}
+            {ingestResult.recordsFetched} fetched,{" "}
+            {ingestResult.recordsNew ?? "unknown"} new,{" "}
+            {ingestResult.recordsUpdated ?? "unknown"} updated,{" "}
+            {ingestResult.recordsRemoved} removed
+            {ingestResult.recordsAffected != null && (
+              <>
+                {" · "}
+                {ingestResult.recordsAffected} written,{" "}
+                {ingestResult.recordsUnchanged} unchanged
+              </>
+            )}
           </span>
           <button
             onClick={() => setIngestResult(null)}
