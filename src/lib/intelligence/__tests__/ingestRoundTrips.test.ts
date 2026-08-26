@@ -45,6 +45,13 @@ import { buildDedupKey } from "../normalize";
 
 const execRaw = () => prisma.$executeRawUnsafe as unknown as Mock;
 const queryRaw = () => prisma.$queryRawUnsafe as unknown as Mock;
+/**
+ * Les requêtes de l'UPSERT D'ENTITÉS seulement. Depuis la réconciliation
+ * stale, `$queryRawUnsafe` sert aussi à compter les candidats à la radiation :
+ * les compter ici gonflerait le nombre d'allers-retours attribué aux lots.
+ */
+const queryUpsert = () =>
+  queryRaw().mock.calls.filter((c) => String(c[0]).includes('WITH v("dedupKey"'));
 
 const valeur = (i: number) => `phish-${i}.example`;
 const dk = (i: number) => buildDedupKey("DOMAIN", valeur(i));
@@ -76,7 +83,7 @@ function entitesRendues(indices: number[], melange = true) {
 }
 
 const sqlObs = () =>
-  execRaw().mock.calls.map((c) => c[0] as string).filter((s) => s.includes("intel_source_observations"));
+  execRaw().mock.calls.map((c) => c[0] as string).filter((s) => s.includes("intel_source_observations") && s.includes("ON CONFLICT"));
 
 describe("bulkUpsert — moins d'allers-retours, sémantique intacte", () => {
   beforeEach(() => {
@@ -104,7 +111,7 @@ describe("bulkUpsert — moins d'allers-retours, sémantique intacte", () => {
 
     await ingestSource("scamsniffer", "test");
 
-    expect(queryRaw()).toHaveBeenCalledOnce();   // upsert entités + id
+    expect(queryUpsert()).toHaveLength(1);       // upsert entités + id
     expect(sqlObs()).toHaveLength(1);            // upsert observations
   });
 
@@ -114,7 +121,7 @@ describe("bulkUpsert — moins d'allers-retours, sémantique intacte", () => {
 
     await ingestSource("scamsniffer", "test");
 
-    expect(queryRaw()).toHaveBeenCalledTimes(2);
+    expect(queryUpsert()).toHaveLength(2);
     expect(sqlObs()).toHaveLength(2);
   });
 
@@ -155,7 +162,7 @@ describe("bulkUpsert — moins d'allers-retours, sémantique intacte", () => {
     livraison(600);
     entitesRendues(Array.from({ length: 600 }, (_, i) => i));
     execRaw().mockImplementation(async (sql: string) =>
-      sql.includes("intel_source_observations") ? 7 : 0
+      sql.includes("INSERT INTO") && sql.includes("intel_source_observations") ? 7 : 0
     );
 
     const res = await ingestSource("scamsniffer", "test");
@@ -195,17 +202,18 @@ describe("bulkUpsert — moins d'allers-retours, sémantique intacte", () => {
     expect(sql.match(/'scamsniffer', 2,/g) ?? []).toHaveLength(600);
   });
 
-  it("NON-RÉGRESSION — sémantique de recordsRemoved intacte", async () => {
+  it("NON-RÉGRESSION — la réconciliation stale tourne et rend un compte", async () => {
+    // Le marquage par `findMany` + `notIn` a été remplacé par une
+    // réconciliation par table temporaire et anti-join. Ce test suivait
+    // l'ancienne mécanique ; il suit désormais le contrat, pas l'implémentation.
     livraison(600);
     entitesRendues(Array.from({ length: 600 }, (_, i) => i));
-    (prisma.sourceObservation.findMany as Mock).mockResolvedValue([{ id: "a" }, { id: "b" }]);
 
     const res = await ingestSource("scamsniffer", "test");
 
-    expect(res.recordsRemoved).toBe(2);
-    const critere = (prisma.sourceObservation.findMany as Mock).mock.calls[0][0];
-    expect(critere.where.entity.value.notIn).toHaveLength(600);
-    expect(JSON.stringify(critere.where)).not.toContain("lastVerifiedAt");
+    expect(res.completed).toBe(true);
+    expect(res.recordsRemoved).not.toBeUndefined();
+    expect(prisma.sourceObservation.findMany as Mock).not.toHaveBeenCalled();
   });
 
   it("l'upsert d'entités réunit les lignes écrites ET celles déjà présentes", async () => {

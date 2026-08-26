@@ -77,7 +77,9 @@ function entitesRelues(n: number) {
 function moteurEcrit(...parAppelObs: number[]) {
   let i = 0;
   rawExec().mockImplementation(async (sql: string) =>
-    sql.includes("intel_source_observations") ? (parAppelObs[i++] ?? 0) : 0
+    sql.includes("INSERT INTO") && sql.includes("intel_source_observations")
+      ? (parAppelObs[i++] ?? 0)
+      : 0
   );
 }
 
@@ -195,15 +197,16 @@ describe("ingest — compteurs honnêtes", () => {
     expect(res.recordsAffected).toBe(10);
   });
 
-  it("NON-RÉGRESSION — recordsRemoved intact sur le chemin bulk", async () => {
+  it("recordsRemoved distingue NULL de 0 — le chiffre du batch le reflète", async () => {
     livraison(501);
     entitesRelues(501);
     moteurEcrit(12);
-    (prisma.sourceObservation.findMany as Mock).mockResolvedValue([{ id: "a" }, { id: "b" }]);
 
     const res = await ingestSource("scamsniffer", "test");
 
-    expect(res.recordsRemoved).toBe(2);
-    expect(finalisation().recordsRemoved).toBe(2);
+    // La réconciliation a tourné (couverture pleine) et n'a rien trouvé :
+    // 0, pas NULL. NULL voudrait dire « on n'a pas regardé ».
+    expect(res.recordsRemoved).toBe(0);
+    expect(finalisation().recordsRemoved).toBe(0);
   });
 });

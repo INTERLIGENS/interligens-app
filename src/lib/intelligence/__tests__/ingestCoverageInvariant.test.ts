@@ -164,9 +164,10 @@ describe("invariant de couverture d'un run", () => {
   it("statut terminal NON SAIN — completed=false même si tout a été parcouru", async () => {
     livraison(600);
     entitesRendues(Array.from({ length: 600 }, (_, i) => i));
-    // L'échec survient APRÈS les upserts, au marquage stale : la couverture est
-    // pleine, mais le run n'a pas abouti. `completed` doit rester faux.
-    (prisma.sourceObservation.findMany as Mock).mockRejectedValue(new Error("Neon indisponible"));
+    // L'échec survient APRÈS les upserts, dans la réconciliation stale : la
+    // couverture est pleine, mais le run n'a pas abouti. `completed` doit
+    // rester faux — c'est le sens de la conjonction.
+    (prisma.$transaction as Mock).mockRejectedValueOnce(new Error("Neon indisponible"));
 
     const res = await ingestSource("scamsniffer", "test");
 
@@ -217,7 +218,7 @@ describe("invariant de couverture d'un run", () => {
     livraison(600);
     entitesRendues(Array.from({ length: 600 }, (_, i) => i));
     rawExec().mockImplementation(async (sql: string) =>
-      sql.includes("intel_source_observations") ? 4 : 0
+      sql.includes("INSERT INTO") && sql.includes("intel_source_observations") ? 4 : 0
     );
 
     const res = await ingestSource("scamsniffer", "test");
@@ -227,6 +228,7 @@ describe("invariant de couverture d'un run", () => {
     expect(res.recordsUnchanged).toBe(596);
     expect(res.recordsNew).toBeNull();
     expect(res.recordsUpdated).toBeNull();
+    // La réconciliation a tourné sans rien trouver : 0, pas NULL.
     expect(res.recordsRemoved).toBe(0);
   });
 });
