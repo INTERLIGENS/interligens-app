@@ -475,26 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour le landing B3 — Evidence Guard. La route de commit OSINT ne
-# signalait pas les pièces orphelines : un chaînage de preuve en échec rendait
-# 200 ok:true, et l'identifiant de la pièce abandonnée n'apparaissait nulle
-# part. Le correctif rend 207 ok:false et remonte orphanEvidenceItemIds au
-# premier niveau de la réponse. Les 4 tests de comportement importent la VRAIE
-# route et lisent la RÉPONSE : sans ce correctif dans l'arbre ils sont ROUGES,
-# par conception — un test qui reste vert alors que le bug de production est
-# vivant est un test qui ment. Le second fichier est le test préexistant de la
-# route, qui attendait 200 et doit désormais attendre 207. Aucune écriture DB,
-# aucune migration, aucun cron. Les 10 autres fichiers de B3 vivent HORS chemin
-# gelé (src/lib/evidence-chain/, src/lib/osint/, src/scripts/watchdog/,
-# __tests__/security/) et ne sont PAS exemptés. Exemption STRICTEMENT limitée
-# aux 2 fichiers nommés ; AUCUN wildcard sur src/app/api/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-b3-tests-vacants$ ]]; then
-    EXEMPT_B3_EVIDENCE_PATTERNS=(
-        "^src/app/api/admin/osint/commit/route\.ts$"
-        "^src/app/api/admin/osint/commit/route\.test\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -867,19 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche b3-tests-vacants, exempter STRICTEMENT les 2 fichiers de la
-    # route de commit OSINT (aucun wildcard src/app/api/).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-b3-tests-vacants$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_B3_EVIDENCE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
