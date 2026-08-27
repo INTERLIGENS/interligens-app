@@ -58,6 +58,11 @@ export async function GET(req: NextRequest) {
 
   let succeeded = 0;
   let failed = 0;
+  // Cause dominante de l'échec, pour que la réponse dise POURQUOI et pas
+  // seulement COMBIEN. Un MODEL_NOT_FOUND se corrige en changeant un
+  // identifiant ; un RATE_LIMIT se corrige en attendant. La distinction n'a de
+  // valeur que si elle sort de la route.
+  const errorKinds: Record<string, number> = {};
 
   for (const item of items) {
     const userContent =
@@ -85,16 +90,45 @@ export async function GET(req: NextRequest) {
       });
       succeeded++;
     } else {
+      const kind = res.errorKind ?? "UPSTREAM_ERROR";
+      errorKinds[kind] = (errorKinds[kind] ?? 0) + 1;
       await prisma.founderIntelItem.update({
         where: { id: item.id },
         data: {
           summaryAttempts: { increment: 1 },
-          lastSummaryError: res.error?.slice(0, 200) ?? "unknown",
+          lastSummaryError: `${kind}: ${res.error?.slice(0, 180) ?? "unknown"}`,
         },
       });
       failed++;
     }
   }
 
-  return NextResponse.json({ ok: true, processed: items.length, succeeded, failed });
+  // ─── Doctrine C4 — ne jamais affirmer une propriété autre que la mesurée ──
+  // Cette route répondait `{ok: true}` quels que soient les compteurs. Pendant
+  // deux mois, le modèle épinglé était retiré : zéro résumé produit, et une
+  // supervision branchée sur `ok` n'a rien vu. Le verdict se déduit désormais
+  // du résultat, jamais de l'achèvement de la boucle.
+  //
+  //   rien à faire ou tout réussi → ok:true   · status "ok"      · HTTP 200
+  //   succès partiel             → ok:false  · status "partial" · HTTP 200
+  //   échec total                → ok:false  · status "failed"  · HTTP 500
+  //
+  // Le 500 sur échec total est délibéré : c'est le seul signal que le tableau
+  // de bord Vercel affiche en rouge. Un `ok:false` en 200 reste invisible pour
+  // qui ne lit pas le corps — c'est exactement ce qui a permis l'incident.
+  const status: "ok" | "partial" | "failed" =
+    failed === 0 ? "ok" : succeeded > 0 ? "partial" : "failed";
+  const totalFailure = status === "failed" && items.length > 0;
+
+  return NextResponse.json(
+    {
+      ok: status === "ok",
+      status,
+      processed: items.length,
+      succeeded,
+      failed,
+      ...(failed > 0 ? { errorKinds } : {}),
+    },
+    { status: totalFailure ? 500 : 200 },
+  );
 }
