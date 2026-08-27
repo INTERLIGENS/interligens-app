@@ -19,11 +19,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
 
 vi.mock("@/lib/prisma", () => {
-  const tx: Record<string, any> = {
+  const tx: Record<string, unknown> = {
     $executeRawUnsafe: vi.fn(),
     $queryRawUnsafe: vi.fn(),
   };
-  const prisma: Record<string, any> = {
+  const prisma: Record<string, unknown> = {
     intelIngestionBatch: { create: vi.fn(), update: vi.fn() },
     canonicalEntity: { findMany: vi.fn(), update: vi.fn(), create: vi.fn() },
     sourceObservation: { findMany: vi.fn(), updateMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn(), delete: vi.fn() },
@@ -45,7 +45,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchScamSniffer } from "../sources/scamsniffer";
 import { buildDedupKey } from "../normalize";
 
-const tx = () => (prisma as any).__tx;
+const tx = () => (prisma as unknown as { __tx: Record<string, Mock> }).__tx;
 const txExec = () => tx().$executeRawUnsafe as Mock;
 const txQuery = () => tx().$queryRawUnsafe as Mock;
 const rawQuery = () => prisma.$queryRawUnsafe as unknown as Mock;

@@ -93,6 +93,18 @@ function loadC4() {
   }
 }
 
+// Même mécanique que loadC4() : la logique de la sonde « Veille LLM » vit dans
+// un module TS testable, ce fichier ne fait que la requête et l'appel.
+function loadLlmVeille() {
+  const { register } = require("tsx/cjs/api");
+  const unregister = register();
+  try {
+    return require(path.join(REPO_ROOT, "src/lib/watchdog/llmVeilleProbe.ts"));
+  } finally {
+    unregister();
+  }
+}
+
 // --- Chargement .env.local (le cwd de launchd n'est pas garanti) -------------
 function loadEnvLocal() {
   const envPath = path.join(REPO_ROOT, ".env.local");
@@ -135,6 +147,9 @@ const DRY_RUN = process.env.WATCHDOG_DRY_RUN === "1";
 // affirmation que rien ne soutient.
 const INTEL_TIER1_SLUGS = new Set(["ofac", "amf", "fca"]);
 const INTEL_MAX_AGE_DAYS_DEFAULT = parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_DAYS ?? "30", 10);
+// Veille LLM — doit rester aligné sur MAX_ATTEMPTS de la route cron
+// intel-summarize : au-delà, l'item n'est plus repris et sort de la file.
+const LLM_MAX_ATTEMPTS = parseInt(process.env.WATCHDOG_LLM_MAX_ATTEMPTS ?? "5", 10);
 const INTEL_MAX_AGE_DAYS = {
   ofac: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_OFAC ?? "7", 10),
   amf: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_AMF ?? "14", 10),
@@ -564,6 +579,32 @@ async function runChecks(client) {
     lines.push(`• Batches intel zombies : ${zombies}`);
   } catch (e) {
     lines.push(`• Batches intel zombies : ERREUR check (${e.message})`);
+  }
+
+  // 7. Veille LLM — le modèle de résumé est-il joignable ?
+  //
+  // POURQUOI CE CHECK EXISTE — incident du 2026-08-27. `llm.service.ts`
+  // épinglait claude-sonnet-4-20250514, retiré le 2026-06-15 : chaque appel
+  // revenait en 404, le cron intel-summarize répondait {ok:true} quand même, et
+  // personne n'a rien vu pendant deux mois. Le cron ne rend plus vert sur échec
+  // (doctrine C4), mais un cron rouge que personne ne regarde reste muet — il
+  // faut que ça sorte ici, sur le seul canal d'alerte qui existe.
+  //
+  // Le verdict vit dans src/lib/watchdog/llmVeilleProbe.ts (pur, testé) ; ici,
+  // uniquement la requête — un SELECT, aucune écriture.
+  try {
+    const veille = loadLlmVeille();
+    const r = await client.query(veille.LLM_VEILLE_QUERY, [
+      LLM_MAX_ATTEMPTS,
+      veille.LLM_MODEL_OFF_PATTERN,
+    ]);
+    const report = veille.evaluateLlmVeille(veille.countsFromRow(r.rows[0]));
+    if (report.problem) problems.push(report.problem);
+    lines.push(report.line);
+  } catch (e) {
+    // Une sonde qui n'a pas pu se charger ou lire est un incident, pas un
+    // silence — même règle que la sonde C4.
+    lines.push(`• Veille LLM : ERREUR check (${e.message})`);
   }
 
   // Canal email digest (Resend) : ABANDONNÉ le 2026-06-25 au profit de
