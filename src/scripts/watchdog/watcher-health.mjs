@@ -105,6 +105,73 @@ function loadLlmVeille() {
   }
 }
 
+// L'identifiant RÉELLEMENT épinglé en production. On le lit à la source plutôt
+// que de le recopier : une copie dériverait au premier changement de modèle, et
+// la sonde certifierait alors un modèle que la prod n'utilise plus.
+function loadPinnedModel() {
+  const { register } = require("tsx/cjs/api");
+  const unregister = register();
+  try {
+    return require(path.join(REPO_ROOT, "src/lib/llm/llm.service.ts")).ANTHROPIC_MODEL;
+  } finally {
+    unregister();
+  }
+}
+
+// Appel de contrôle au modèle. Un ping, pas un résumé : max_tokens=1, aucun
+// contenu d'article, aucune donnée sensible en sortie — de l'ordre de 0,00002 $
+// par run de watchdog.
+//
+// POURQUOI UN APPEL RÉEL. La question posée est « le modèle répond-il
+// MAINTENANT », et la base ne sait pas y répondre : FounderIntelItem n'a aucune
+// colonne de mise à jour, lastSummaryError ne porte pas d'heure, et le cron
+// intel-summarize n'écrit rien dans JobRunLog. Déduire la fraîcheur d'un
+// compteur de backlog, c'est ce que faisait la première version de cette sonde
+// — elle a crié la panne une heure après la remise en service.
+//
+// WATCHDOG_NO_LLM_PROBE=1 désactive l'appel : le digest affiche alors « NON
+// MESURÉ », jamais un vert par défaut.
+async function probeLlmModelLive(model) {
+  if (process.env.WATCHDOG_NO_LLM_PROBE === "1") {
+    return { model, skippedReason: "appel désactivé (WATCHDOG_NO_LLM_PROBE=1)" };
+  }
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return { model, skippedReason: "ANTHROPIC_API_KEY absente de l'environnement watchdog" };
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1,
+        messages: [{ role: "user", content: "ping" }],
+      }),
+      signal: ctrl.signal,
+    });
+    if (res.ok) return { model, httpStatus: res.status };
+    let errorMessage = "";
+    try {
+      const body = await res.json();
+      errorMessage = String(body?.error?.message ?? "");
+    } catch {
+      // Corps illisible : le code HTTP suffit à conclure.
+    }
+    return { model, httpStatus: res.status, errorMessage: errorMessage.slice(0, 160) };
+  } catch (e) {
+    return { model, errorName: e.name, errorMessage: String(e.message).slice(0, 160) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // --- Chargement .env.local (le cwd de launchd n'est pas garanti) -------------
 function loadEnvLocal() {
   const envPath = path.join(REPO_ROOT, ".env.local");
@@ -598,7 +665,18 @@ async function runChecks(client) {
       LLM_MAX_ATTEMPTS,
       veille.LLM_MODEL_OFF_PATTERN,
     ]);
-    const report = veille.evaluateLlmVeille(veille.countsFromRow(r.rows[0]));
+    // L'état du MODÈLE vient de l'appel réel ; l'état de la FILE, des
+    // compteurs. Seul le premier peut produire un critique.
+    let live;
+    try {
+      live = veille.classifyLiveProbe(await probeLlmModelLive(loadPinnedModel()));
+    } catch (e) {
+      live = veille.classifyLiveProbe({
+        model: "(non chargé)",
+        skippedReason: `sonde modèle indisponible : ${e.message}`,
+      });
+    }
+    const report = veille.evaluateLlmVeille(veille.countsFromRow(r.rows[0]), live);
     if (report.problem) problems.push(report.problem);
     lines.push(report.line);
   } catch (e) {
