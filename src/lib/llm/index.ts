@@ -1,5 +1,6 @@
-export { llmComplete } from "./llm.service"
+export { llmComplete, classifyLLMError } from "./llm.service"
 export type {
+  LLMErrorKind,
   LLMRequest,
   LLMResponse,
   LLMUseCase,
