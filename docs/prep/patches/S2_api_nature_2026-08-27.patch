@@ -1,0 +1,46 @@
+diff --git a/src/app/api/scan/intelligence/route.ts b/src/app/api/scan/intelligence/route.ts
+index 29414ae..a731c9b 100644
+--- a/src/app/api/scan/intelligence/route.ts
++++ b/src/app/api/scan/intelligence/route.ts
+@@ -4,6 +4,7 @@
+ // ─────────────────────────────────────────────────────────────────────────────
+ 
+ import { NextResponse } from "next/server";
++import { natureOfTransformation } from "@/lib/data-nature/dto";
+ import {
+   checkRateLimit,
+   rateLimitResponse,
+@@ -67,6 +68,10 @@ async function handleLookup(req: Request, value: string, type?: string, chain?:
+     sourceSlug: signal.sourceSlug,
+     externalUrl: signal.externalUrl,
+     matchBasis: signal.matchBasis,
++    // S2 — topRiskClass est CALCULÉ à partir d'observations tierces : c'est une
++    // INFERENCE, pas un fait rapporté par la source. natureBasis retient que son
++    // plancher est un flux tiers (Q3). Additif : aucun champ existant ne change.
++    _nature: natureOfTransformation("compute", ["THIRD_PARTY_DATA"]),
+   });
+ }
+ 
+diff --git a/src/app/api/scan/resolve/route.ts b/src/app/api/scan/resolve/route.ts
+index 0f0b522..d06e1b3 100644
+--- a/src/app/api/scan/resolve/route.ts
++++ b/src/app/api/scan/resolve/route.ts
+@@ -24,6 +24,7 @@
+ 
+ import { NextResponse } from 'next/server'
+ import { prisma } from '@/lib/prisma'
++import { natureForResolveSource } from '@/lib/data-nature/sources'
+ import {
+   searchDexScreenerPairs,
+   normalizeSymbol,
+@@ -306,6 +307,10 @@ function serialize(c: ResolvedTokenCandidate) {
+     // legacy aliases — do not remove (fr/demo + en/demo)
+     symbol: c.ticker,
+     address: c.mint,
++    // S2 — `source` portait déjà la nature sans la nommer : curated est une
++    // affirmation éditoriale, mentions une observation du produit, dexscreener
++    // et coingecko des données tierces. Additif, aucun champ existant ne change.
++    _nature: natureForResolveSource(c.source),
+   }
+ }
+ 
