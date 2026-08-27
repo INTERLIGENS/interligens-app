@@ -10,6 +10,7 @@
 // pas une preuve d'inexistence, et confondre les deux ferait disparaître des
 // tokens réels.
 
+import { instrumentedCall } from "./instrument";
 import type { ProviderContext } from "./types";
 
 const TTL_MS = 30 * 60 * 1000; // l'existence d'un mint ne se défait pas
@@ -32,8 +33,7 @@ export async function heliusMintExists(
   const apiKey = ctx.env.heliusApiKey;
   if (!apiKey) return "unknown";
   const key = `helius:mint:${mint}`;
-  return ctx.cache.wrap(key, TTL_MS, async () => {
-    ctx.telemetry.heliusCalls++;
+  return instrumentedCall<MintExistence>(ctx, "helius", key, TTL_MS, "unknown", async () => {
     const res = await ctx.http.postJson(heliusUrl(apiKey), {
       jsonrpc: "2.0",
       id: 1,

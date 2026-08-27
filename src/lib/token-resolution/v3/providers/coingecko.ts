@@ -11,6 +11,7 @@
 import { normalizeChain } from "../chain";
 import { normalizeAddress } from "../address";
 import { cleanTicker, normalizeSymbol } from "../symbol";
+import { instrumentedCall } from "./instrument";
 import type { ProviderContext, ProviderMarket } from "./types";
 
 const BASE = "https://api.coingecko.com/api/v3";
@@ -45,11 +46,13 @@ export async function coinGeckoByTicker(
   const q = cleanTicker(ticker);
   if (!q) return { markets: [], truncated: 0 };
 
-  const coins = await ctx.cache.wrap<SearchCoin[]>(
+  const coins = await instrumentedCall<SearchCoin[]>(
+    ctx,
+    "coinGecko",
     `coingecko:search:${q}`,
     TTL_SEARCH_MS,
+    [],
     async () => {
-      ctx.telemetry.coinGeckoCalls++;
       const res = await ctx.http.getJson(`${BASE}/search?query=${encodeURIComponent(q)}`);
       if (!res.ok) return [];
       return ((res.json as { coins?: SearchCoin[] } | null)?.coins ?? []) as SearchCoin[];
@@ -65,11 +68,13 @@ export async function coinGeckoByTicker(
   const markets: ProviderMarket[] = [];
   for (const c of kept) {
     if (!c.id) continue;
-    const detail = await ctx.cache.wrap<CoinDetail | null>(
+    const detail = await instrumentedCall<CoinDetail | null>(
+      ctx,
+      "coinGecko",
       `coingecko:coin:${c.id}`,
       TTL_DETAIL_MS,
+      null,
       async () => {
-        ctx.telemetry.coinGeckoCalls++;
         const res = await ctx.http.getJson(
           `${BASE}/coins/${encodeURIComponent(c.id as string)}` +
             `?localization=false&tickers=false&market_data=false` +

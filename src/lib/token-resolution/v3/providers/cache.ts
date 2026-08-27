@@ -54,6 +54,22 @@ export class ResolutionCache {
     this.now = opts.now ?? (() => Date.now());
   }
 
+  /**
+   * Lecture SANS effet de bord sur les compteurs de succès/défaut.
+   * L'instrumentation provider a besoin de savoir si la valeur est là avant de
+   * décider de consommer du budget ; elle ne doit pas pour autant fausser les
+   * statistiques du cache, qui sont tenues par wrap().
+   */
+  peek<T>(key: string): { hit: true; value: T } | { hit: false } {
+    const e = this.store.get(key) as Entry<T> | undefined;
+    if (!e) return { hit: false };
+    if (this.now() >= e.expiresAt) {
+      this.store.delete(key);
+      return { hit: false };
+    }
+    return { hit: true, value: e.value };
+  }
+
   get<T>(key: string): { hit: true; value: T } | { hit: false } {
     const e = this.store.get(key) as Entry<T> | undefined;
     if (!e) {

@@ -6,12 +6,14 @@
 
 import { ResolutionCache, type ResolutionCacheOptions } from "./cache";
 import { realHttpClient } from "./http";
-import type { HttpClient, ProviderContext, ProviderEnv } from "./types";
+import type { HttpClient, ProviderBudget, ProviderContext, ProviderEnv } from "./types";
 import { emptyTelemetry, type ResolutionTelemetry } from "../types";
+import { DEFAULT_POLICY } from "../policy";
 
 export { ResolutionCache } from "./cache";
 export { realHttpClient } from "./http";
 export * from "./types";
+export { instrumentedCall, syncCacheTelemetry, type ProviderName } from "./instrument";
 export { dexScreenerByAddress, dexScreenerSearchTicker } from "./dexscreener";
 export { heliusMintExists, type MintExistence } from "./helius";
 export { coinGeckoByTicker, type CoinGeckoResult } from "./coingecko";
@@ -23,6 +25,7 @@ export interface CreateProviderContextOptions {
   cacheOptions?: ResolutionCacheOptions;
   telemetry?: ResolutionTelemetry;
   env?: ProviderEnv;
+  budget?: ProviderBudget;
 }
 
 /**
@@ -38,5 +41,7 @@ export function createProviderContext(
     cache: opts.cache ?? new ResolutionCache(opts.cacheOptions),
     telemetry: opts.telemetry ?? emptyTelemetry(),
     env: opts.env ?? { heliusApiKey: process.env.HELIUS_API_KEY ?? null },
+    // Plafond par défaut aligné sur DEFAULT_POLICY.maxProviderCallsPerRun.
+    budget: opts.budget ?? { maxCallsPerProvider: DEFAULT_POLICY.maxProviderCallsPerRun },
   };
 }
