@@ -1,3 +1,19 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// @legacy-v1-do-not-extend
+//
+// RÉSOLVEUR V1 — CONSERVÉ PARCE QU'IL TOURNE, PAS PARCE QU'IL FAIT AUTORITÉ.
+//
+// Le module canonique de résolution de token est : src/lib/token-resolution/v3/
+// (@canonical-resolver). Tout nouveau consommateur, tout backtest et tout
+// harness doivent viser v3/ — jamais ce fichier.
+//
+// Ce code reste en place uniquement parce que src/lib/watcher-bridge/
+// promoteWatcherSignalsToDraft.ts l'appelle encore en production. Sa bascule
+// vers v3/ est une étape séparée et ordonnée. Ne pas l'étendre, ne pas s'en
+// inspirer : trois de ses cadrages ont été identifiés comme faux
+// (identité par symbole, temps ignoré, préférence de chaîne implicite) et sont
+// corrigés en v3/. Voir docs/prep/BUILD1_V3_1_4_2026-08-27.md.
+// ═══════════════════════════════════════════════════════════════════════════
 // ─── Canonical token resolution service ────────────────────────────────────
 // THE single ticker/CA → canonical token resolver. Three consumers (scan,
 // watcher-bridge, retail-upload) call this so there is never a second

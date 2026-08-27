@@ -451,7 +451,7 @@ export function decide(input: DecisionInput): Decision {
       limitations: [
         ...limitations,
         "candidat soutenu uniquement par des sources sans donnée de marché " +
-          "(CoinGecko, CA_MAP, preset) — l'absence de donnée n'est pas une donnée favorable",
+          "(CoinGecko, index de dossiers, preset) — l'absence de donnée n'est pas une donnée favorable",
       ],
     };
   }

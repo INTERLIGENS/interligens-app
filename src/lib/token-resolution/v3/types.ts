@@ -22,7 +22,7 @@ export type CandidateSource =
   | "casefile" // token_casefiles, publishStatus='published'
   | "casefile_preset" // BOTIFY / VINE — pas de ligne DB
   | "curated" // KolTokenLink, visibility='public' — tier CURATED de la V1
-  | "ca_map" // table ticker→CA curée (src/lib/kol/proceeds.ts)
+  | "ca_map" // index caseId→contrat (src/lib/kol/proceeds.ts) — JAMAIS par ticker, cf. UR-12
   | "mentions" // KolPromotionMention
   | "involvement" // KolTokenInvolvement
   | "launch_metric" // TokenLaunchMetric
@@ -196,6 +196,13 @@ export interface ResolutionRequest {
   observedAt?: Date | null;
   kolHandle?: string | null;
   watcherCampaignId?: string | null;
+  /**
+   * UR-12 — identifiants de DOSSIER d'enquête (KolCase.caseId), quand
+   * l'appelant en détient. Jamais des tickers : l'index des dossiers ne porte
+   * pas de symbole, et « SERIAL-12RUGS » est un motif d'enquête, pas un token.
+   * Voir sources/caseIndex.ts.
+   */
+  caseIds?: readonly string[];
   audience: Audience;
 }
 

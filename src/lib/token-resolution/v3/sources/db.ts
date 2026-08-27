@@ -10,7 +10,8 @@
 //
 // Deux temps, jamais mélangés :
 //   DÉCOUVERTE   ticker/adresse → identités candidates  (curated, mentions,
-//                dossiers, CA_MAP, presets)
+//                dossiers, presets ; les identifiants de dossier passent
+//                par sources/caseIndex.ts — voir UR-12)
 //   ENRICHISSEMENT  identités → signaux  (prix, implication KOL, lancement, scans)
 // L'enrichissement ne crée JAMAIS de candidat : sinon un token simplement
 // présent dans TokenPriceTracker (340 lignes) remonterait sur n'importe quelle
@@ -33,7 +34,6 @@
 // doublé côté moteur (gateForAudience retire les sources internes).
 // Cf. __tests__/security/koltokenlink-visibility-invariant.test.ts
 
-import { CA_MAP } from "@/lib/kol/proceeds";
 import { mintToCasefilePreset } from "@/lib/casefile/presets";
 import { inferAddressShape, isPlaceholderAddress, normalizeAddress } from "../address";
 import { normalizeChain, type CanonicalChain } from "../chain";
@@ -399,25 +399,6 @@ export async function findCasefilesByAddress(
 }
 
 // ─── Sources locales sans base ────────────────────────────────────────────
-
-/**
- * CA_MAP : la seule table ticker → CA curée à la main du dépôt
- * (src/lib/kol/proceeds.ts, chemin gelé — importé, jamais réécrit).
- * Elle ne portait jusqu'ici qu'un seul consommateur, le module shill.
- */
-export function findCaMapByTicker(ticker: string): RawCandidate[] {
-  const key = cleanTicker(ticker);
-  if (!key) return [];
-  const hit = CA_MAP[key];
-  if (!hit) return [];
-  const cand = toRawCandidate({
-    rawAddress: hit,
-    rawChain: null, // CA_MAP ne stocke pas la chaîne — déduite de la forme
-    symbol: key,
-    source: "ca_map",
-  });
-  return cand ? [cand] : [];
-}
 
 /**
  * Dossiers phares sans ligne en base (BOTIFY / VINE). Le recensement note que
