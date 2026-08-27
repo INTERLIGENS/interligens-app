@@ -263,7 +263,11 @@ export type ConflictKind =
   /** La source curée et le marché ne pointent pas le même contrat. */
   | "internal_vs_market"
   /** D2 — le seul candidat plausible est temporellement impossible. */
-  | "temporal_impossibility";
+  | "temporal_impossibility"
+  /** E7b — la requête porte plusieurs contrats explicites, tous plausibles. */
+  | "multiple_explicit_addresses"
+  /** Frontière A — la recherche de rivaux a échoué : l'absence n'est pas prouvée. */
+  | "rival_search_degraded";
 
 export interface ResolutionConflict {
   kind: ConflictKind;
@@ -284,6 +288,12 @@ export interface ResolutionTelemetry {
   providerCalls: ProviderCallCounts;
   /** Appels évités par le cache, par provider. */
   providerCacheHits: ProviderCallCounts;
+  /**
+   * Appels PARTIS et ÉCHOUÉS (HTTP non-2xx, timeout, parse), par provider.
+   * Distinct d'un résultat vide légitime : c'est la différence entre « il n'y a
+   * pas de rival » et « je n'ai pas pu regarder ». Frontière A repose dessus.
+   */
+  providerFailures: ProviderCallCounts;
   dbQueries: number;
   cacheHits: number;
   cacheMisses: number;
@@ -300,6 +310,7 @@ export function emptyTelemetry(): ResolutionTelemetry {
   return {
     providerCalls: emptyProviderCalls(),
     providerCacheHits: emptyProviderCalls(),
+    providerFailures: emptyProviderCalls(),
     dbQueries: 0,
     cacheHits: 0,
     cacheMisses: 0,

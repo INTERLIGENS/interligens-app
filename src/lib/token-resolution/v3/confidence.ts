@@ -61,6 +61,26 @@ export function isMarketlessOnly(c: TokenCandidate): boolean {
   return c.sources.every((s) => MARKETLESS_SOURCES.has(s));
 }
 
+/**
+ * E7b — un contrat explicitement fourni est-il PLAUSIBLE comme réponse ?
+ *
+ * Sert uniquement à départager plusieurs contrats collés dans la même requête
+ * (« CA flooding »). Un contrat est plausible s'il vit : une source interne le
+ * documente, un dossier le couvre, ou le marché lui donne une liquidité
+ * au-dessus du plancher.
+ *
+ * ATTENTION — cette fonction n'est JAMAIS appliquée à un contrat explicite
+ * UNIQUE. Quand l'appelant ne colle qu'une adresse, l'identité est tranchée par
+ * la requête : le token doit se résoudre même mort, même illiquide. Le plancher
+ * de liquidité gouverne le choix entre candidats, pas la confirmation d'une
+ * adresse donnée.
+ */
+export function isExplicitPlausible(c: TokenCandidate, policy: ResolutionPolicy): boolean {
+  if (hasInternalBacking(c)) return true;
+  if (c.signals.hasPublishedCasefile) return true;
+  return (c.signals.liquidityUsd ?? 0) >= policy.minLiquidityUsdForAutoResolve;
+}
+
 export function methodForCandidate(c: TokenCandidate): ResolutionMethod {
   if (c.matchType === "explicit_ca") return "explicit_ca";
   if (hasSource(c, "casefile") || hasSource(c, "casefile_preset")) return "casefile";
@@ -85,6 +105,12 @@ export interface ConflictInput {
   ticker?: string | null;
   /** Identités dont le contrat a été fourni par l'appelant. */
   explicitIdentityKeys: ReadonlySet<string>;
+  /**
+   * Frontière A — la recherche de contrats rivaux a été TENTÉE et a ÉCHOUÉ
+   * (panne provider, budget épuisé). L'absence de rival n'est alors pas une
+   * information : c'est un trou.
+   */
+  rivalSearchDegraded?: boolean;
   policy?: ResolutionPolicy;
 }
 
@@ -150,6 +176,40 @@ export function detectConflicts(input: ConflictInput): ResolutionConflict[] {
               between: [eKey, ...rivals.map((r) => identityKey(r.chain, r.address))],
             },
       );
+    }
+  }
+
+  // E7b — plusieurs contrats collés dans la MÊME requête, tous plausibles.
+  //   L'ordre du texte n'est pas une preuve d'intention : servir le premier
+  //   arrivé revient à laisser un attaquant choisir le verdict en plaçant son
+  //   adresse en tête. Un seul plausible → il tranche ; deux ou plus → ambiguïté.
+  if (explicit.length >= 2) {
+    const plausible = explicit.filter((c) => isExplicitPlausible(c, policy));
+    if (plausible.length >= 2) {
+      out.push({
+        kind: "multiple_explicit_addresses",
+        detail:
+          `${plausible.length} contrats distincts et vivants sont fournis dans la même requête — ` +
+          "l'ordre du texte ne désigne pas lequel est visé",
+        between: plausible.map((c) => identityKey(c.chain, c.address)).sort(),
+      });
+    }
+  }
+
+  // Frontière A — on a cherché des rivaux et on n'a pas pu regarder.
+  //   Ne jamais conclure « pas de rival » d'un appel en échec. Le conflit n'est
+  //   émis que si RIEN d'interne ne corrobore : une source interne qui confirme
+  //   l'identité rend la panne du marché sans conséquence (cas T04).
+  if (input.rivalSearchDegraded && explicit.length > 0) {
+    const uncorroborated = explicit.filter((c) => !hasInternalBacking(c));
+    if (uncorroborated.length > 0) {
+      out.push({
+        kind: "rival_search_degraded",
+        detail:
+          "la recherche de contrats rivaux a échoué (panne fournisseur ou budget épuisé) — " +
+          "aucune source interne ne corrobore : l'absence de contradiction n'est pas établie",
+        between: uncorroborated.map((c) => identityKey(c.chain, c.address)).sort(),
+      });
     }
   }
 
@@ -238,6 +298,8 @@ export interface DecisionInput {
   conflicts: ResolutionConflict[];
   /** Une date d'observation a-t-elle été fournie ? Change le plafond de confiance. */
   observedAtProvided?: boolean;
+  /** Frontière A — la recherche de rivaux a échoué. */
+  rivalSearchDegraded?: boolean;
   policy?: ResolutionPolicy;
 }
 
@@ -258,7 +320,10 @@ function isPlausibleCompetitor(
   if (identityKey(c.chain, c.address) === identityKey(top.chain, top.address)) return false;
   if (c.matchType !== top.matchType) return false;
   if (hasInternalBacking(c)) return true;
-  if (isMarketlessOnly(c) && !policy.marketlessSourcesCanAutoResolve) return false;
+  // Une source sans marché revendique quand même une identité pour ce ticker.
+  // Depuis la ratification de I3 elle peut résoudre ; elle peut donc aussi
+  // faire obstacle. Sous le régime strict (knob à false) elle ne pèse rien.
+  if (isMarketlessOnly(c)) return policy.marketlessSourcesCanAutoResolve;
   return (c.signals.liquidityUsd ?? 0) >= policy.minLiquidityUsdForAutoResolve;
 }
 
@@ -340,29 +405,58 @@ export function decide(input: DecisionInput): Decision {
     };
   }
 
-  // E5 — plusieurs contrats sous un même symbole.
-  //   • deux sources INTERNES qui se contredisent = nos données sont en conflit
-  //     → CONFLICT, ça demande une revue humaine ;
-  //   • sinon = l'utilisateur doit choisir → AMBIGUOUS.
-  // Dans les deux cas : jamais RESOLVED, jamais HIGH.
+  // E5 — plusieurs contrats sous un même symbole. Jamais RESOLVED, jamais HIGH.
+  //
+  //   FRONTIÈRE B, ratifiée — quand la contradiction est INTERNE À LA REQUÊTE
+  //   (l'appelant colle un contrat A et demande un ticker que le contrat B
+  //   porte), le verdict est CONFLICT, pas AMBIGUOUS. « Ces deux affirmations
+  //   sont incompatibles » n'est pas « choisissez » : c'est le post lui-même qui
+  //   se contredit, et pour un produit d'enquête cette distinction porte de
+  //   l'information.
+  //
+  //   Sinon : CONFLICT si deux de NOS sources internes se contredisent (nos
+  //   données sont fausses, revue humaine) ; AMBIGUOUS quand c'est à
+  //   l'utilisateur de choisir.
   const identityConflict = conflicts.find((c) => c.kind === "contract_identity");
   if (identityConflict) {
     const colliding = candidates.filter((c) =>
       identityConflict.between.includes(identityKey(c.chain, c.address)),
     );
+    const selfContradiction = identityConflict.between.some((k) =>
+      input.explicitIdentityKeys.has(k),
+    );
     const internallyContested = colliding.filter((c) => hasInternalBacking(c)).length >= 2;
     return {
-      status: internallyContested ? "CONFLICT" : "AMBIGUOUS",
+      status: selfContradiction || internallyContested ? "CONFLICT" : "AMBIGUOUS",
       confidence: "LOW",
       method: methodForCandidate(candidates[0]),
       callerSupport: "supported",
       selected: null,
       limitations: [
         identityConflict.detail,
+        ...(selfContradiction
+          ? [
+              "la requête se contredit elle-même : le contrat fourni et le ticker demandé " +
+                "désignent des tokens différents",
+            ]
+          : []),
         ...(internallyContested
           ? ["deux sources internes désignent des contrats différents — arbitrage humain requis"]
           : []),
       ],
+    };
+  }
+
+  // E7b — plusieurs contrats explicites plausibles dans la même requête.
+  const multiExplicit = conflicts.find((c) => c.kind === "multiple_explicit_addresses");
+  if (multiExplicit) {
+    return {
+      status: "AMBIGUOUS",
+      confidence: "LOW",
+      method: "explicit_ca",
+      callerSupport: "supported",
+      selected: null,
+      limitations: [multiExplicit.detail],
     };
   }
 
@@ -371,6 +465,26 @@ export function decide(input: DecisionInput): Decision {
 
   // ─ 2. Contrat fourni par l'appelant : l'identité est déjà tranchée.
   if (topIsExplicit) {
+    // FRONTIÈRE A, ratifiée — on ne résout JAMAIS par ABSENCE de rival quand on
+    // n'a pas pu chercher. Une source interne qui corrobore rend la panne du
+    // marché sans conséquence ; sans elle, on cesse d'affirmer.
+    if (input.rivalSearchDegraded && !hasInternalBacking(top)) {
+      return {
+        status: "AMBIGUOUS",
+        confidence: "LOW",
+        method: "explicit_ca",
+        callerSupport: "supported",
+        selected: null,
+        limitations: [
+          "recherche de contrats rivaux en échec et aucune corroboration interne — " +
+            "l'absence de contradiction n'est pas établie, résolution suspendue",
+        ],
+      };
+    }
+
+    // Le PLANCHER DE LIQUIDITÉ NE S'APPLIQUE PAS ICI. L'appelant a fourni le
+    // contrat : l'identité vient de la requête, pas du marché. Un token mort,
+    // rugué, à zéro de liquidité doit se résoudre — c'est le sujet du produit.
     const confirmedByMarket = top.signals.liquidityUsd != null || !!top.symbol;
     if (confirmedByMarket) {
       return {
@@ -460,19 +574,52 @@ export function decide(input: DecisionInput): Decision {
 
   const ceiling = temporalCeiling(top, observedAtProvided);
 
-  // I3 — sources sans marché seules : jamais auto-résolu.
-  if (isMarketlessOnly(top) && !policy.marketlessSourcesCanAutoResolve) {
+  // ─ I3, ratifié — une source SANS MARCHÉ peut identifier, jamais certifier.
+  //   Les trois conditions sont déjà acquises à ce point du parcours :
+  //     • contrat unique — aucun conflit d'identité n'a été levé (étape 1) ;
+  //     • dans le périmètre déclaré — sinon le candidat aurait été écarté ;
+  //     • aucun concurrent plausible — règle d'or, étape 4.
+  //   Reste le plafond MODERATE, qui n'est pas un curseur : sans donnée de
+  //   marché on ne peut pas dire HIGH. DexScreener enrichit ce candidat quand il
+  //   le connaît ; il n'est pas requis pour l'identifier.
+  if (isMarketlessOnly(top)) {
+    if (!policy.marketlessSourcesCanAutoResolve) {
+      return {
+        status: "AMBIGUOUS",
+        confidence: "LOW",
+        method: methodForCandidate(top),
+        callerSupport: "supported",
+        selected: null,
+        limitations: [
+          ...limitations,
+          "régime strict : aucune résolution sur des sources sans donnée de marché",
+        ],
+      };
+    }
+    if (top.matchType === "unknown") {
+      return {
+        status: "AMBIGUOUS",
+        confidence: "LOW",
+        method: methodForCandidate(top),
+        callerSupport: "supported",
+        selected: null,
+        limitations: [
+          ...limitations,
+          "source sans marché et symbole non comparable au ticker — rien ne relie ce contrat à la requête",
+        ],
+      };
+    }
+    limitations.push(
+      "aucune donnée de marché sur ce contrat (catalogue, index de dossiers ou chaîne seule) — " +
+        "identité retenue, certitude plafonnée",
+    );
     return {
-      status: "AMBIGUOUS",
-      confidence: "LOW",
+      status: "RESOLVED",
+      confidence: cap("MODERATE", ceiling),
       method: methodForCandidate(top),
       callerSupport: "supported",
-      selected: null,
-      limitations: [
-        ...limitations,
-        "candidat soutenu uniquement par des sources sans donnée de marché " +
-          "(CoinGecko, index de dossiers, preset) — l'absence de donnée n'est pas une donnée favorable",
-      ],
+      selected: top,
+      limitations,
     };
   }
 

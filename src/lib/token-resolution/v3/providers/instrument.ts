@@ -54,6 +54,14 @@ export async function instrumentedCall<T>(
   });
 }
 
+/**
+ * Signale qu'un appel PARTI a échoué. À appeler par l'adaptateur, qui est le
+ * seul à savoir distinguer « réponse vide » de « pas de réponse ».
+ */
+export function recordProviderFailure(ctx: ProviderContext, provider: ProviderName): void {
+  ctx.telemetry.providerFailures[provider]++;
+}
+
 /** Recopie les compteurs du cache dans la télémétrie, en fin d'exécution. */
 export function syncCacheTelemetry(ctx: ProviderContext): void {
   const s = ctx.cache.stats();

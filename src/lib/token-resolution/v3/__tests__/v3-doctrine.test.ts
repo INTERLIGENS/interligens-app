@@ -483,10 +483,12 @@ describe("V3-4 / J3 — le ticker générique est bloqué sur TOUS les chemins",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-describe("V3-4 / I3 — l'absence de donnée n'est pas une donnée favorable", () => {
-  it("CoinGecko seul ne résout jamais", () => {
-    // La V1 fabriquait matchType:'exact' + lowLiquidity:false en dur pour
-    // CoinGecko, ce qui suffisait au décideur pour auto-résoudre.
+describe("V3-4 / I3 — ratifié : identifier sans marché, jamais certifier", () => {
+  it("un catalogue seul RÉSOUT, mais jamais au-delà de MODERATE", () => {
+    // Doctrine ratifiée : contrat unique + périmètre + aucun rival → RESOLVED,
+    // plafonné MODERATE. Ce que la V1 faisait de faux, ce n'était pas de
+    // résoudre : c'était de fabriquer matchType:'exact' + lowLiquidity:false en
+    // dur et d'annoncer HIGH.
     const cg = cand({ sources: ["coingecko"], signals: { ...emptySignals() } });
     expect(isMarketlessOnly(cg)).toBe(true);
     const d = decide({
@@ -495,24 +497,69 @@ describe("V3-4 / I3 — l'absence de donnée n'est pas une donnée favorable", (
       explicitIdentityKeys: new Set(),
       conflicts: [],
     });
-    expect(d.status).toBe("AMBIGUOUS");
-    expect(d.limitations.join(" ")).toMatch(/sans donnée de marché/);
+    expect(d.status).toBe("RESOLVED");
+    expect(d.confidence).toBe("MODERATE");
+    expect(d.limitations.join(" ")).toMatch(/aucune donnée de marché/);
   });
 
-  it("CoinGecko ne compte pas comme concurrent plausible face à un vrai marché", () => {
-    const real = cand({ address: ORIGINAL, signals: { ...emptySignals(), liquidityUsd: 80_000 } });
-    const cg = cand({ address: IMITATOR, symbol: "AUTRE", sources: ["coingecko"], signals: { ...emptySignals() } });
+  it("jamais HIGH sans marché, même avec un dossier publié derrière", () => {
+    const preset = cand({
+      sources: ["casefile_preset"],
+      signals: { ...emptySignals(), hasPublishedCasefile: true },
+    });
     const d = decide({
-      candidates: [real, cg],
+      candidates: [preset],
       ticker: "SWIF",
       explicitIdentityKeys: new Set(),
       conflicts: [],
     });
     expect(d.status).toBe("RESOLVED");
-    expect(d.selected?.address).toBe(ORIGINAL);
+    expect(d.confidence).not.toBe("HIGH");
   });
 
-  it("CA_MAP et presets sont soumis à la même règle", () => {
+  it("un rival sans marché fait obstacle comme un autre — l'identité prime", () => {
+    // Une entrée de catalogue revendique une identité pour ce ticker ; puisqu'elle
+    // peut résoudre, elle peut aussi bloquer.
+    const real = cand({ address: ORIGINAL, signals: { ...emptySignals(), liquidityUsd: 80_000 } });
+    const cg = cand({ address: IMITATOR, sources: ["coingecko"], signals: { ...emptySignals() } });
+    const conflicts = detectConflicts({
+      candidates: [real, cg],
+      ticker: "SWIF",
+      explicitIdentityKeys: new Set(),
+    });
+    const d = decide({
+      candidates: [real, cg],
+      ticker: "SWIF",
+      explicitIdentityKeys: new Set(),
+      conflicts,
+    });
+    expect(d.status).not.toBe("RESOLVED");
+  });
+
+  it("symbole non comparable au ticker : rien ne relie le contrat à la requête", () => {
+    const cg = cand({ sources: ["coingecko"], matchType: "unknown", symbol: null });
+    const d = decide({
+      candidates: [cg],
+      ticker: "SWIF",
+      explicitIdentityKeys: new Set(),
+      conflicts: [],
+    });
+    expect(d.status).toBe("AMBIGUOUS");
+  });
+
+  it("le régime strict d'avant ratification reste disponible pour le backtest", () => {
+    const cg = cand({ sources: ["coingecko"], signals: { ...emptySignals() } });
+    const d = decide({
+      candidates: [cg],
+      ticker: "SWIF",
+      explicitIdentityKeys: new Set(),
+      conflicts: [],
+      policy: { ...DEFAULT_POLICY, marketlessSourcesCanAutoResolve: false },
+    });
+    expect(d.status).toBe("AMBIGUOUS");
+  });
+
+  it("index de dossiers et presets relèvent de la même règle", () => {
     expect(isMarketlessOnly(cand({ sources: ["ca_map"] }))).toBe(true);
     expect(isMarketlessOnly(cand({ sources: ["casefile_preset"] }))).toBe(true);
     expect(isMarketlessOnly(cand({ sources: ["ca_map", "dexscreener"] }))).toBe(false);
