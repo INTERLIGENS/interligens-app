@@ -17,13 +17,23 @@
 // présent dans TokenPriceTracker (340 lignes) remonterait sur n'importe quelle
 // requête.
 //
-// ─── D2 — chaque source rapporte ce qu'elle sait DATER ───────────────────
-// Les lecteurs remontent une date d'antériorité quand ils en ont une, avec sa
-// provenance. Elles ne bornent pas toutes la même chose (voir temporal.ts) :
-//   KolTokenLink.createdAt        date de la LIGNE, preuve indirecte
-//   KolPromotionMention.postedAt  date du POST — le contrat existait au plus tard alors
-//   TokenLaunchMetric.launchAt    lancement déclaré, preuve directe
-//   token_casefiles.tgeDate       génération du token, preuve directe
+// ─── D2 — seules les dates RELATIVES AU CONTRAT sont remontées ───────────
+// Pour écarter un candidat comme temporellement impossible, il faut une borne
+// portant sur le CONTRAT lui-même. Deux dates ont été retirées de ce calcul :
+//
+//   KolTokenLink.createdAt        date d'ÉCRITURE DE LA RELATION en base. Elle
+//                                 dit quand nous avons saisi le lien, pas quand
+//                                 le contrat est né. Un lien saisi en 2026 sur un
+//                                 token de 2023 aurait « fait naître » le token
+//                                 en 2026 et écarté le vrai candidat.
+//   KolPromotionMention.postedAt  date du POST. C'est une borne HAUTE de
+//                                 l'observation : elle prouve que le contrat
+//                                 existait AU PLUS TARD à cette date. Elle ne
+//                                 prouve rien sur sa naissance. Un post daté 2025
+//                                 ne démontre pas que le contrat est né en 2025.
+//
+// Restent : TokenLaunchMetric.launchAt (lancement déclaré) et
+// token_casefiles.tgeDate (génération du token), plus pairCreatedAt côté marché.
 // C'est le moteur, pas le lecteur, qui décide de ce qu'une date autorise.
 //
 // ─── Invariant visibility ────────────────────────────────────────────────
@@ -158,10 +168,11 @@ interface CuratedRow {
   canonicalMint: string | null;
   canonicalChain: string | null;
   visibility: string;
-  createdAt: string | Date | null;
 }
 
-const CURATED_COLUMNS = `"contractAddress", "chain", "tokenSymbol", "kolHandle", "canonicalMint", "canonicalChain", "visibility", "createdAt"`;
+// createdAt n'est PAS lu : c'est la date d'écriture de la relation, pas une
+// borne sur la naissance du contrat. Voir l'en-tête de ce fichier.
+const CURATED_COLUMNS = `"contractAddress", "chain", "tokenSymbol", "kolHandle", "canonicalMint", "canonicalChain", "visibility"`;
 
 /**
  * Liens curés PUBLICS. Liste blanche stricte : visibility = 'public'.
@@ -217,7 +228,6 @@ function curatedRowsToCandidates(rows: CuratedRow[]): RawCandidate[] {
       rawChain: chain,
       symbol: r.tokenSymbol,
       source,
-      signals: { firstSeenAt: toEpochMs(r.createdAt), firstSeenSource: source },
     });
     if (!cand) continue;
     const key = `${cand.chain}:${cand.address}:${source}`;
@@ -274,7 +284,6 @@ interface MentionRow {
   chain: string | null;
   tokenSymbol: string | null;
   kolHandle: string;
-  postedAt: string | Date | null;
 }
 
 function mentionRowsToCandidates(rows: MentionRow[]): RawCandidate[] {
@@ -285,8 +294,6 @@ function mentionRowsToCandidates(rows: MentionRow[]): RawCandidate[] {
       rawChain: r.chain,
       symbol: r.tokenSymbol,
       source: "mentions",
-      // Le post atteste que le contrat existait AU PLUS TARD à cette date.
-      signals: { firstSeenAt: toEpochMs(r.postedAt), firstSeenSource: "mentions" },
     });
     if (!cand) continue;
     const key = `${cand.chain}:${cand.address}`;
@@ -305,7 +312,7 @@ export async function findMentionsByTicker(
   ticker: string,
 ): Promise<RawCandidate[]> {
   const rows = await db.query<MentionRow>(
-    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle", "postedAt"
+    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle"
        FROM "KolPromotionMention"
       WHERE upper(regexp_replace(coalesce("tokenSymbol", ''), '[$[:space:]_-]', '', 'g')) LIKE $1`,
     [buildLikeArg(ticker)],
@@ -320,7 +327,7 @@ export async function findMentionsByAddress(
   const variants = addressMatchVariants(addresses);
   if (variants.length === 0) return [];
   const rows = await db.query<MentionRow>(
-    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle", "postedAt"
+    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle"
        FROM "KolPromotionMention"
       WHERE "tokenMint" IN (${placeholders(variants.length)})`,
     variants,

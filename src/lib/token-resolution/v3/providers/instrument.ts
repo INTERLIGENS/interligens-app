@@ -14,6 +14,7 @@
 // pas de table, pas de migration. Sur Vercel, cron et requête web ne partagent
 // pas d'instance — ce cache borne le coût d'UNE exécution, pas celui du jour.
 
+import { DEFAULT_POLICY } from "../policy";
 import type { ProviderContext } from "./types";
 import type { ProviderCallCounts } from "../types";
 
@@ -38,7 +39,11 @@ export async function instrumentedCall<T>(
     return cached.value;
   }
 
-  if (ctx.telemetry.providerCalls[provider] >= ctx.budget.maxCallsPerProvider) {
+  // Sans budget explicite dans le contexte (appel direct d'adaptateur), on
+  // retombe sur la valeur par défaut de la politique. resolveToken, lui, pose
+  // toujours le budget issu de la politique qu'on lui a passée.
+  const ceiling = ctx.budget?.maxCallsPerProvider ?? DEFAULT_POLICY.maxProviderCallsPerRun;
+  if (ctx.telemetry.providerCalls[provider] >= ceiling) {
     ctx.telemetry.budgetRefusals++;
     return fallback;
   }

@@ -38,12 +38,24 @@ export interface ProviderBudget {
   maxCallsPerProvider: number;
 }
 
+/**
+ * Le budget est OPTIONNEL dans le contexte : c'est resolveToken qui l'impose,
+ * à partir de la politique qu'on lui passe (policy.maxProviderCallsPerRun).
+ * Le renseigner ici ne sert qu'aux appels DIRECTS d'adaptateur, hors
+ * orchestrateur — diagnostic, tests unitaires d'un provider.
+ *
+ * L'ancien comportement lisait DEFAULT_POLICY au moment de construire le
+ * contexte : régler la politique à 5 laissait alors le plafond à 40, en
+ * silence. Un curseur qu'on peut tourner sans que rien ne bouge est pire qu'un
+ * curseur absent.
+ */
+
 export interface ProviderContext {
   http: HttpClient;
   cache: ResolutionCache;
   telemetry: ResolutionTelemetry;
   env: ProviderEnv;
-  budget: ProviderBudget;
+  budget?: ProviderBudget;
 }
 
 /** Marché d'un token vu par un provider. Forme neutre, sans dette de provider. */

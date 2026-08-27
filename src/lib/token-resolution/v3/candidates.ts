@@ -16,12 +16,18 @@
 // périmètre de chaînes est désormais DÉCLARÉ (allowedChains), donc explicite.
 
 import { identityKey } from "./address";
-import { isChainAllowed, type ResolutionPolicy } from "./policy";
+import { DEFAULT_POLICY, isChainAllowed, type ResolutionPolicy } from "./policy";
 import { classifySymbolMatch, matchRank } from "./symbol";
-import { applyTemporal, isStrongBirthEvidence, temporalRank } from "./temporal";
+import {
+  applyTemporal,
+  isContractRelativeDate,
+  isStrongBirthEvidence,
+  temporalRank,
+} from "./temporal";
 import {
   INTERNAL_ONLY_SOURCES,
   SOURCE_AUTHORITY,
+  CURATED_SOURCES,
   emptySignals,
   type Audience,
   type CandidateSignals,
@@ -69,8 +75,12 @@ export function mergeSignals(
   // l'impossibilité sous la tolérance stricte.
   let firstSeenAt = base.firstSeenAt;
   let firstSeenSource = base.firstSeenSource;
-  const inAt = incoming.firstSeenAt ?? null;
   const inSource = incoming.firstSeenSource ?? incomingSource ?? null;
+  // REGLE TEMPORELLE CANONIQUE — seule une source qui date LE CONTRAT peut
+  // alimenter firstSeenAt. Une date d'ecriture de relation ou de post est
+  // refusee ici meme si un lecteur la remontait : le garde-fou est dans le
+  // moteur, pas seulement dans le SQL.
+  const inAt = isContractRelativeDate(inSource) ? (incoming.firstSeenAt ?? null) : null;
   if (inAt != null) {
     const strictlyEarlier = firstSeenAt == null || inAt < firstSeenAt;
     const sameDateButStronger =
@@ -182,18 +192,39 @@ export function gateForAudience(
 }
 
 // ─── 3. Liaison de chaîne — périmètre DÉCLARÉ par l'appelant ──────────────
+/** Le candidat est-il porté par une revue humaine ? */
+export function hasCuratedBacking(c: TokenCandidate): boolean {
+  return c.sources.some((s) => CURATED_SOURCES.has(s));
+}
+
 /**
  * Un candidat hors périmètre n'est pas faux : il est simplement hors de ce que
  * l'appelant sait traiter. Il est MARQUÉ, jamais supprimé — la résolution devra
  * pouvoir dire « ce token existe, mais pas pour toi » (UNSUPPORTED_BY_CALLER)
  * au lieu de « introuvable », qui ferait conclure à tort à l'utilisateur.
+ *
+ * ─── Curseur curatedRequiresChainBinding ────────────────────────────────
+ * L'invariant encodé : une curation humaine ne peut pas ÉCRASER une
+ * contradiction de chaîne. Un lien curé sur BSC ne répond pas à un appelant qui
+ * ne sait traiter que Solana — la revue atteste un contrat, pas une chaîne.
+ *
+ *   true  (défaut) : le curé est soumis au périmètre, comme tout le monde.
+ *   false          : permissif EXPLICITE — le curé survit hors périmètre.
+ *                    Réservé aux tests et aux backtests qui veulent mesurer
+ *                    l'effet du curseur ; jamais une valeur de production
+ *                    choisie par défaut.
  */
 export function bindChains(
   candidates: TokenCandidate[],
   allowedChains: CanonicalChainList | undefined,
+  policy: ResolutionPolicy = DEFAULT_POLICY,
 ): TokenCandidate[] {
   return candidates.map((c) => {
     if (isChainAllowed(allowedChains, c.chain)) return c;
+    if (!policy.curatedRequiresChainBinding && hasCuratedBacking(c)) {
+      // Régime permissif assumé : on garde le candidat ET on garde la trace.
+      return { ...c, chainBindingWaived: true };
+    }
     return {
       ...c,
       excluded: {
@@ -298,7 +329,7 @@ export function buildCandidateSet(
   const merged = mergeCandidates(raws);
   const { kept, dropped } = gateForAudience(merged, opts.audience);
   const matched = applyTickerMatch(kept, opts.ticker);
-  const bound = bindChains(matched, opts.allowedChains);
+  const bound = bindChains(matched, opts.allowedChains, opts.policy);
   const timed = applyTemporal(bound, opts.observedAt, opts.policy);
   const ranked = rankCandidates(timed);
   return {

@@ -63,6 +63,19 @@ export const INTERNAL_ONLY_SOURCES: ReadonlySet<CandidateSource> = new Set<Candi
  * source sans marché ne peut jamais satisfaire un seuil de liquidité :
  * l'absence de donnée n'est pas une donnée favorable.
  */
+/**
+ * Sources issues d'une REVUE HUMAINE. Ce sont elles que gouvernent les deux
+ * curseurs curatedRequiresChainBinding / curatedRequiresTemporalCompatibility :
+ * la question posee est « une curation humaine peut-elle ecraser une
+ * contradiction de chaine ou une impossibilite temporelle ? ».
+ */
+export const CURATED_SOURCES: ReadonlySet<CandidateSource> = new Set<CandidateSource>([
+  "curated",
+  "curated_draft",
+  "casefile",
+  "casefile_preset",
+]);
+
 export const MARKETLESS_SOURCES: ReadonlySet<CandidateSource> = new Set<CandidateSource>([
   "coingecko",
   "onchain",
@@ -159,6 +172,14 @@ export interface TokenCandidate {
   temporal: TemporalVerdict;
   /** Renseigné ⇒ le candidat est écarté et ne peut plus être sélectionné. */
   excluded?: CandidateExclusion;
+  /**
+   * Régime permissif explicite : ce candidat aurait dû être écarté (chaîne hors
+   * périmètre / temps impossible) et a été retenu parce que la politique
+   * autorise la curation à passer outre. Toujours tracé — un contournement
+   * silencieux serait pire que le contournement lui-même.
+   */
+  chainBindingWaived?: boolean;
+  temporalWaived?: boolean;
 }
 
 export interface RawCandidate {

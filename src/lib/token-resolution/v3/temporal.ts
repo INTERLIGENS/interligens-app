@@ -25,21 +25,64 @@
 // l'impossibilité qu'au-delà d'un écart franc. Confondre les deux ferait
 // disparaître des tokens réels — l'erreur inverse, et tout aussi grave.
 
-import type { CandidateSource, TemporalVerdict, TokenCandidate } from "./types";
+import { CURATED_SOURCES, type CandidateSource, type TemporalVerdict, type TokenCandidate } from "./types";
 import type { ResolutionPolicy } from "./policy";
 
 /**
- * Sources dont la date borne SÉRIEUSEMENT la naissance du contrat.
- * Tout le reste est traité comme preuve indirecte.
+ * RÈGLE TEMPORELLE CANONIQUE
+ * ──────────────────────────
+ * Pour écarter un candidat comme temporellement impossible, il faut une borne
+ * portant sur le CONTRAT / le token lui-même. Rien d'autre ne compte.
+ *
+ * Ce qui compte :
+ *   launch_metric  launchAt        — lancement declare du token
+ *   casefile       tgeDate         — generation du token
+ *   dexscreener    pairCreatedAt   — premiere paire de marche du contrat
+ *
+ * Ce qui NE compte PAS, et n'est plus lu du tout :
+ *   KolTokenLink.createdAt        date d'ecriture de la relation en base
+ *   KolPromotionMention.postedAt  date du post — borne HAUTE de l'observation
+ *
+ * Un post date 2025 ne prouve PAS que le contrat est ne en 2025 : il prouve
+ * seulement que le contrat existait au plus tard a cette date. Lire une date de
+ * post comme une date de naissance inverse la charge de la preuve et ecarte de
+ * vrais tokens.
+ *
+ * ─── Deux regimes, et pourquoi ──────────────────────────────────────────
+ * NAISSANCE (launch_metric, casefile) : la date vise l'apparition du token.
+ *   Tolerance stricte — decalages d'horloge et dates declarees a la journee.
+ * ACTIVITE (dexscreener) : pairCreatedAt vise la premiere PAIRE. Une paire ne
+ *   peut pas preceder son contrat, mais elle peut lui succeder de loin — un
+ *   token peut exister, etre pousse, et n'obtenir sa paire que plus tard.
+ *   Tolerance elargie, pour que ce decalage ne supprime pas de vrais tokens.
  */
-export const STRONG_BIRTH_EVIDENCE: ReadonlySet<CandidateSource> = new Set<CandidateSource>([
+export const CONTRACT_BIRTH_SOURCES: ReadonlySet<CandidateSource> = new Set<CandidateSource>([
   "launch_metric",
   "casefile",
 ]);
 
-export function isStrongBirthEvidence(source: CandidateSource | null): boolean {
-  return !!source && STRONG_BIRTH_EVIDENCE.has(source);
+export const CONTRACT_ACTIVITY_SOURCES: ReadonlySet<CandidateSource> = new Set<CandidateSource>([
+  "dexscreener",
+]);
+
+/**
+ * Une source peut-elle DATER LE CONTRAT ? Toute source hors de ces deux
+ * ensembles est refusee a la porte : mergeSignals ignore purement et simplement
+ * son firstSeenAt. Le garde-fou vit dans le moteur, pas seulement dans le
+ * lecteur — pour qu'une regression cote SQL ne puisse pas reintroduire une date
+ * de relation ou de post dans le calcul d'impossibilite.
+ */
+export function isContractRelativeDate(source: CandidateSource | null | undefined): boolean {
+  return !!source && (CONTRACT_BIRTH_SOURCES.has(source) || CONTRACT_ACTIVITY_SOURCES.has(source));
 }
+
+/** Preuve visant la naissance du contrat (par opposition a sa premiere activite). */
+export function isStrongBirthEvidence(source: CandidateSource | null): boolean {
+  return !!source && CONTRACT_BIRTH_SOURCES.has(source);
+}
+
+/** Conserve pour compatibilite de nommage : l'ensemble « naissance ». */
+export const STRONG_BIRTH_EVIDENCE = CONTRACT_BIRTH_SOURCES;
 
 export interface TemporalAssessment {
   verdict: TemporalVerdict;
@@ -80,7 +123,7 @@ export function assessTemporal(
       deltaMs,
       detail:
         `naissance attestée ${formatDelta(deltaMs)} après l'observation, dans la tolérance ` +
-        `${strong ? "stricte" : "indirecte"} — retenu`,
+        `${strong ? "stricte" : "elargie"} — retenu`,
     };
   }
 
@@ -89,7 +132,7 @@ export function assessTemporal(
     deltaMs,
     detail:
       `contrat attesté ${formatDelta(deltaMs)} APRÈS l'observation ` +
-      `(preuve ${strong ? "directe" : "indirecte"}: ${source}) — ne peut pas être le token observé`,
+      `(preuve ${strong ? "de naissance" : "d'activite"}: ${source}) — ne peut pas être le token observé`,
   };
 }
 
@@ -107,6 +150,15 @@ function formatDelta(ms: number): string {
  * Les impossibles ne sont pas supprimés : ils sont MARQUÉS écartés, avec le
  * motif. Un candidat qui disparaît sans trace est un candidat qu'on ne pourra
  * pas expliquer en revue.
+ *
+ * ─── Curseur curatedRequiresTemporalCompatibility ───────────────────────
+ * L'invariant encodé : une curation humaine ne peut pas ÉCRASER une
+ * impossibilité temporelle. Une revue peut être postérieure au fait ; elle
+ * n'inverse pas la flèche du temps.
+ *
+ *   true  (défaut) : le curé est écarté comme les autres s'il est impossible.
+ *   false          : permissif EXPLICITE — le curé survit, marqué
+ *                    temporalWaived. Tests et backtests seulement.
  */
 export function applyTemporal(
   candidates: TokenCandidate[],
@@ -117,6 +169,12 @@ export function applyTemporal(
     const a = assessTemporal(c, observedAt, policy);
     if (a.verdict !== "impossible") {
       return { ...c, temporal: a.verdict };
+    }
+    if (
+      !policy.curatedRequiresTemporalCompatibility &&
+      c.sources.some((s) => CURATED_SOURCES.has(s))
+    ) {
+      return { ...c, temporal: a.verdict, temporalWaived: true };
     }
     return {
       ...c,

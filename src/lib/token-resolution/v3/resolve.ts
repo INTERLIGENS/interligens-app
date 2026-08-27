@@ -155,6 +155,11 @@ export async function resolveToken(
 ): Promise<TokenResolution> {
   const policy = deps.policy ?? DEFAULT_POLICY;
   const telemetry = deps.providers.telemetry ?? emptyTelemetry();
+
+  // C — le plafond d'appels sortants vient de la POLITIQUE PASSÉE ICI, pas
+  // d'une valeur figée au moment de construire le contexte. Régler la politique
+  // à 5 doit donner 5.
+  deps.providers.budget = { maxCallsPerProvider: policy.maxProviderCallsPerRun };
   const limitations: string[] = [];
   const raws: RawCandidate[] = [];
   const explicitKeys = new Set<string>();

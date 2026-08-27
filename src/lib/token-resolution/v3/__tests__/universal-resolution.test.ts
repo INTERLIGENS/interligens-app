@@ -534,7 +534,12 @@ describe("UR-10 — conflit ticker ↔ adresse", () => {
     expect(d.selected).toBeNull();
   });
 
-  it("ne crie PAS au conflit quand le CA porte bien le ticker, homonyme ou pas", () => {
+  it("crie AU CONTRAIRE au conflit dès qu'un contrat rival porte le ticker", () => {
+    // ─── Ce test disait l'inverse, et il avait tort ────────────────────────
+    // Il verrouillait la sortie anticipée « le symbole est d'accord, donc pas de
+    // conflit ». Or le symbole est la seule variable qu'un imitateur contrôle :
+    // recopier le ticker suffisait à désarmer la détection. La porte se décide
+    // désormais sur les contrats rivaux, pas sur l'étiquette.
     const rightCa = candidate({
       address: SWIF,
       symbol: "SWIF",
@@ -542,16 +547,43 @@ describe("UR-10 — conflit ticker ↔ adresse", () => {
       sources: ["explicit_ca", "dexscreener"],
     });
     const homonym = candidate({ address: BOTIFY, symbol: "SWIF", matchType: "exact" });
+    const keys = new Set([identityKey("SOL", SWIF)]);
     const conflicts = detectConflicts({
       candidates: [rightCa, homonym],
       ticker: "SWIF",
-      explicitIdentityKeys: new Set([identityKey("SOL", SWIF)]),
+      explicitIdentityKeys: keys,
     });
-    expect(conflicts.map((c) => c.kind)).not.toContain("ticker_vs_address");
+    expect(conflicts.map((c) => c.kind)).toContain("contract_identity");
     const d = decide({
       candidates: [rightCa, homonym],
       ticker: "SWIF",
-      explicitIdentityKeys: new Set([identityKey("SOL", SWIF)]),
+      explicitIdentityKeys: keys,
+      conflicts,
+    });
+    expect(d.status).not.toBe("RESOLVED");
+    expect(d.confidence).not.toBe("HIGH");
+  });
+
+  it("un contrat fourni SANS rival reste résolu en explicit_ca", () => {
+    // Le contrôle n'est pas une paranoïa générale : sans contrat rival portant
+    // le ticker, l'adresse collée fait autorité et la résolution passe.
+    const rightCa = candidate({
+      address: SWIF,
+      symbol: "SWIF",
+      matchType: "explicit_ca",
+      sources: ["explicit_ca", "dexscreener"],
+    });
+    const keys = new Set([identityKey("SOL", SWIF)]);
+    const conflicts = detectConflicts({
+      candidates: [rightCa],
+      ticker: "SWIF",
+      explicitIdentityKeys: keys,
+    });
+    expect(conflicts).toEqual([]);
+    const d = decide({
+      candidates: [rightCa],
+      ticker: "SWIF",
+      explicitIdentityKeys: keys,
       conflicts,
     });
     expect(d.status).toBe("RESOLVED");
