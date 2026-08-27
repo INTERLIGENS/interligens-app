@@ -267,18 +267,38 @@ le code, comme demandé, il ne sera pas utilisé — et il n'y a rien à contour
 
 | Check | Avant | Après le correctif lint | Bloquant ? |
 |---|---|---|---|
-| Paths / branch guard | ✅ | ✅ | non (mais c'est celui qui juge le hotfix) |
-| Quality Gates (lint) | ❌ 3 erreurs | ✅ **0 erreur** | non |
+| **Paths / branch guard** | ✅ | ✅ | non — mais c'est le seul qui juge ce hotfix |
+| Quality Gates — étape **Lint** | ❌ **3 erreurs** | ✅ **0 erreur** (219 avertissements) | non |
+| Quality Gates — étape **Build** | ❌ | ❌ **inchangé** | non |
 | Secret Scanning | ✅ | ✅ | non |
-| Dependency Audit | ❌ 108 vulns | ❌ **inchangé** | non |
-| SAST (Semgrep) | ❌ | ❌ **inchangé** | non |
-| Vercel Preview | ❌ | ❌ **inchangé** | non |
+| Dependency Audit | ❌ 108 vulns | ❌ inchangé | non |
+| SAST (Semgrep) | ❌ | ❌ inchangé | non |
+| Vercel Preview | ❌ | ❌ inchangé | non |
 
-`Dependency Audit` et `SAST` restent rouges pour des raisons **préexistantes et
-sans rapport** (108 vulnérabilités de dépendances transitives, dont `undici` via
-`jsdom`). Elles ne bloquent rien puisqu'aucun check n'est requis — mais elles
-resteront rouges après ce merge. **Ce n'est pas à moi de trancher** si ces checks
-doivent devenir requis (ça touche le ratchet CI) : c'est signalé, pas décidé.
+**Correction d'une affirmation trop rapide de ma part.** Le correctif lint a bien
+fait son travail — le job passe désormais l'étape *Lint* (`✖ 219 problems
+(0 errors, 219 warnings)`) — mais **`Quality Gates` reste rouge** : il échoue une
+étape plus loin, au *Build*, sur
+
+```
+Error: [env] Missing required env var in prod: ADMIN_TOKEN
+Failed to collect page data for /api/admin/ingest/pdf
+```
+
+C'est un **trou de configuration CI**, pas un défaut de code : `ADMIN_TOKEN` n'est
+pas exposé aux GitHub Actions. Vérifié préexistant — `main` échoue à
+l'identique sur `5fe79b7`, un commit qui ne contient qu'un fichier `.sh`. C'est
+aussi la cause de l'échec du déploiement Vercel Preview. Je n'y ai pas touché :
+c'est du secret d'environnement, et la consigne exclut `vercel env pull`.
+
+`Dependency Audit` et `SAST` restent rouges pour des raisons également
+**préexistantes et sans rapport** (108 vulnérabilités de dépendances
+transitives, dont `undici` via `jsdom`).
+
+Aucun de ces checks ne bloque, puisqu'aucun n'est requis — mais **ils resteront
+rouges après ce merge**. Ce qui reste à trancher, et qui ne m'appartient pas :
+faut-il rendre certains checks requis (ça touche le ratchet CI), et faut-il
+donner `ADMIN_TOKEN` à la CI pour que le Build passe ? Signalé, pas décidé.
 
 ## 8-b. Les 3 erreurs lint — corrigées
 
