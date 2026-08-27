@@ -1,25 +1,25 @@
-// ─── Orchestrateur — résolution universelle V2 ─────────────────────────────
-// Enchaîne les étages dans un ordre qui n'est PAS négociable :
+// ─── Orchestrateur V3 — résolution universelle ─────────────────────────────
+// Étages, dans un ordre non négociable :
 //
-//   1. extraction     adresses de la requête + du texte brut
-//   2. interne        base d'abord, TOUJOURS (dossiers, curation, mentions, CA_MAP)
+//   1. extraction     contrats de la requête + du texte brut
+//   2. TIER CURATED   base d'abord, TOUJOURS — dossiers publiés, liens curés,
+//                     CA_MAP, mentions. Hérité du tier interne de la V1, mais
+//                     SOUMIS au périmètre de chaînes et à la compatibilité
+//                     temporelle : la curation atteste un contrat, elle n'est
+//                     pas une autorité qui échappe aux règles.
 //   3. marché         seulement si l'interne ne suffit pas, ou pour confirmer
-//                     une adresse explicite
-//   4. chaîne         seulement si le marché n'indexe rien (token neuf)
+//                     un contrat explicitement fourni
+//   4. chaîne         seulement si le marché n'indexe rien (contrat neuf)
 //   5. enrichissement signaux attachés aux identités déjà trouvées
 //   6. décision       confidence.ts, seul autorisé à dire RESOLVED
 //
-// L'ordre 2 → 3 reprend l'invariant explicite du scan public : DexScreener ne
-// tourne JAMAIS avant les sources internes, et CoinGecko ne tourne que si les
-// deux précédents sont vides. Un lien curé par un humain prime sur un marché.
-//
-// Aucune écriture. Aucune migration. Ce module ne possède aucune table.
+// Aucune écriture, aucune migration, aucun `fetch` hors instrumentation.
 
 import { extractAddressShapes, identityKey, normalizeAddress } from "./address";
 import { normalizeChain, type CanonicalChain } from "./chain";
 import { buildCandidateSet } from "./candidates";
 import { decide, detectConflicts } from "./confidence";
-import { DEFAULT_POLICY, type ResolutionPolicy } from "./policy";
+import { DEFAULT_POLICY, isChainAllowed, type ResolutionPolicy } from "./policy";
 import { cleanTicker } from "./symbol";
 import {
   emptyTelemetry,
@@ -49,6 +49,7 @@ import {
   dexScreenerSearchTicker,
   heliusMintExists,
   hyperliquidResolveTokenId,
+  syncCacheTelemetry,
   type ProviderContext,
   type ProviderMarket,
 } from "./providers";
@@ -61,18 +62,17 @@ export interface ResolveDeps {
 }
 
 /**
- * Ordre de sondage d'une adresse EVM dont la chaîne n'est pas donnée.
+ * Ordre de sondage d'un contrat EVM dont la chaîne n'est pas donnée.
  * Un hexadécimal 0x…40 ne dit PAS sur quelle chaîne EVM il vit ; deviner « ETH »
- * fabriquerait une identité fausse pour un token Base ou BSC. On sonde donc, en
- * s'arrêtant à la première chaîne qui indexe le token. Chaque sondage est mis en
- * cache : au pire quatre appels par adresse inconnue, une seule fois.
+ * fabriquerait une identité fausse. On sonde, en s'arrêtant au premier succès.
+ * Le sondage est RESTREINT au périmètre déclaré par l'appelant : sonder des
+ * chaînes qu'il ne sait pas traiter serait payer pour rien.
  */
 const EVM_PROBE_ORDER: CanonicalChain[] = ["ETH", "BASE", "BSC", "ARBITRUM"];
 
 const SOL_IN_TEXT_RE = /\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g;
 const EVM_IN_TEXT_RE = /\b0x[a-fA-F0-9]{40}\b/g;
 
-/** Adresses citées dans un texte libre (corps d'un post, légende d'une capture). */
 export function extractAddressesFromText(text: string | null | undefined): string[] {
   if (!text) return [];
   const out = new Set<string>();
@@ -96,25 +96,30 @@ function marketToRaw(m: ProviderMarket, source: "dexscreener" | "coingecko"): Ra
       liquidityUsd: m.liquidityUsd,
       volume24hUsd: m.volume24hUsd,
       isPumpFun: norm.isPumpFun,
+      // D2 : pairCreatedAt borne la PAIRE, pas le mint. Preuve INDIRECTE —
+      // c'est temporal.ts qui applique la tolérance élargie correspondante.
+      firstSeenAt: m.pairCreatedAt,
+      firstSeenSource: source,
     },
   };
 }
 
-/** Résout la chaîne d'une adresse explicite, en sondant le marché si nécessaire. */
-async function locateExplicitAddress(
-  deps: ResolveDeps,
-  raw: string,
-  chainHint: CanonicalChain | null,
-): Promise<{
+interface LocatedAddress {
   chain: CanonicalChain;
   address: string;
   market: ProviderMarket | null;
   isPumpFun: boolean;
-} | null> {
+}
+
+async function locateExplicitAddress(
+  deps: ResolveDeps,
+  raw: string,
+  chainHint: CanonicalChain | null,
+  allowedChains: readonly CanonicalChain[],
+): Promise<LocatedAddress | null> {
   const shape = extractAddressShapes([raw])[0]?.shape;
   if (!shape || !shape.normalized) return null;
 
-  // Identifiant Hyperliquid : un aller-retour spotMeta donne le contrat EVM.
   if (shape.kind === "hyper_token_id") {
     const hyper = await hyperliquidResolveTokenId(deps.providers, shape.normalized);
     if (!hyper) return null;
@@ -127,16 +132,17 @@ async function locateExplicitAddress(
     return { chain, address: shape.normalized, market, isPumpFun: shape.isPumpFun };
   }
 
-  // Hexadécimal EVM : la chaîne indiquée par l'appelant fait foi si elle est EVM.
+  // Hexadécimal EVM : indication de l'appelant d'abord, puis sondage borné au
+  // périmètre déclaré.
+  const inScope = EVM_PROBE_ORDER.filter((c) => isChainAllowed(allowedChains, c));
   const order =
-    chainHint && EVM_PROBE_ORDER.includes(chainHint)
-      ? [chainHint, ...EVM_PROBE_ORDER.filter((c) => c !== chainHint)]
-      : EVM_PROBE_ORDER;
+    chainHint && inScope.includes(chainHint)
+      ? [chainHint, ...inScope.filter((c) => c !== chainHint)]
+      : inScope;
   for (const chain of order) {
     const market = await dexScreenerByAddress(deps.providers, chain, shape.normalized);
     if (market) return { chain, address: shape.normalized, market, isPumpFun: false };
   }
-  // Aucune chaîne ne l'indexe : on retient l'indication de l'appelant, sinon rien.
   if (chainHint && EVM_PROBE_ORDER.includes(chainHint)) {
     return { chain: chainHint, address: shape.normalized, market: null, isPumpFun: false };
   }
@@ -155,6 +161,8 @@ export async function resolveToken(
 
   const ticker = cleanTicker(request.ticker) || null;
   const chainHint = normalizeChain(request.chainHint);
+  const allowedChains = request.allowedChains ?? [];
+  const observedAt = request.observedAt ?? null;
   const db = deps.db;
 
   const countedQuery = async <T>(fn: () => Promise<T>): Promise<T> => {
@@ -162,7 +170,7 @@ export async function resolveToken(
     return fn();
   };
 
-  // ─── 1. Adresses explicites ─────────────────────────────────────────────
+  // ─── 1. Contrats explicites ─────────────────────────────────────────────
   const providedAddresses = [
     ...(request.addresses ?? []),
     ...extractAddressesFromText(request.rawText),
@@ -170,15 +178,15 @@ export async function resolveToken(
   const shapes = extractAddressShapes(providedAddresses);
   if (providedAddresses.length > 0 && shapes.length === 0) {
     limitations.push(
-      "adresse(s) présente(s) dans la requête mais aucune n'est une adresse valide sur une chaîne connue",
+      "adresse(s) présente(s) dans la requête mais aucune n'est un contrat valide sur une chaîne connue",
     );
   }
 
   const explicitAddressStrings: string[] = [];
   for (const { raw } of shapes) {
-    const located = await locateExplicitAddress(deps, raw, chainHint);
+    const located = await locateExplicitAddress(deps, raw, chainHint, allowedChains);
     if (!located) {
-      limitations.push(`adresse ${raw.slice(0, 10)}… non rattachable à une chaîne connue`);
+      limitations.push(`contrat ${raw.slice(0, 10)}… non rattachable à une chaîne connue`);
       continue;
     }
     explicitAddressStrings.push(located.address);
@@ -200,8 +208,6 @@ export async function resolveToken(
       const m = marketToRaw({ ...located.market, chainRaw: located.chain }, "dexscreener");
       if (m) raws.push(m);
     } else if (located.chain === "SOL") {
-      // Aucun marché indexé : la chaîne reste la seule à pouvoir confirmer que
-      // ce mint existe. C'est le cas du lancement de quelques minutes.
       const exists = await heliusMintExists(deps.providers, located.address);
       if (exists === "exists") {
         raws.push({
@@ -212,19 +218,19 @@ export async function resolveToken(
         });
       } else if (exists === "unknown") {
         limitations.push(
-          "existence on-chain non vérifiable (clé RPC absente ou appel en échec) — absence de preuve, pas preuve d'absence",
+          "existence on-chain non vérifiable (clé RPC absente, appel en échec ou budget épuisé) — " +
+            "absence de preuve, pas preuve d'absence",
         );
       } else {
         limitations.push(
-          `mint ${located.address.slice(0, 8)}… introuvable on-chain et sur les marchés`,
+          `contrat ${located.address.slice(0, 8)}… introuvable on-chain et sur les marchés`,
         );
       }
     }
-    // Sources locales sans base attachées à cette adresse.
     raws.push(...findCasefilePresetsByAddress([located.address]));
   }
 
-  // ─── 2. Sources internes — TOUJOURS avant le marché ─────────────────────
+  // ─── 2. TIER CURATED — base d'abord, toujours ───────────────────────────
   if (db) {
     if (explicitAddressStrings.length > 0) {
       const [curated, mentions, casefiles] = await Promise.all([
@@ -249,13 +255,18 @@ export async function resolveToken(
 
   // ─── 3. Marché — uniquement si nécessaire ───────────────────────────────
   // Deux déclencheurs, et seulement ceux-là :
-  //   a. aucune source interne n'a produit de candidat pour ce ticker ;
-  //   b. une adresse explicite porte un symbole qui CONTREDIT le ticker — il
-  //      faut alors savoir si un autre token porte réellement ce ticker, sinon
-  //      le conflit ne peut pas être établi. C'est la vérification que le
-  //      résolveur du bridge faisait déjà, au même endroit.
-  const internalForTicker = raws.filter(
-    (r) => r.source !== "explicit_ca" && r.source !== "dexscreener" && r.source !== "onchain",
+  //   a. le tier curated n'a produit aucun candidat DANS LE PÉRIMÈTRE de
+  //      l'appelant — un lien curé sur une chaîne qu'il ne traite pas ne
+  //      dispense pas de chercher ;
+  //   b. un contrat explicite porte un symbole qui CONTREDIT le ticker : il
+  //      faut savoir si un autre contrat porte réellement ce ticker, sinon le
+  //      conflit ne peut pas être établi.
+  const internalInScope = raws.filter(
+    (r) =>
+      r.source !== "explicit_ca" &&
+      r.source !== "dexscreener" &&
+      r.source !== "onchain" &&
+      isChainAllowed(allowedChains, r.chain),
   );
   const explicitSymbols = raws
     .filter((r) => r.source === "explicit_ca" && r.symbol)
@@ -265,13 +276,13 @@ export async function resolveToken(
     explicitSymbols.length > 0 &&
     !explicitSymbols.some((s) => cleanTicker(s) === cleanTicker(ticker));
 
-  if (ticker && (internalForTicker.length === 0 || symbolContradiction)) {
+  if (ticker && (internalInScope.length === 0 || symbolContradiction)) {
     const markets = await dexScreenerSearchTicker(deps.providers, ticker);
     for (const m of markets) {
       const r = marketToRaw(m, "dexscreener");
       if (r) raws.push(r);
     }
-    // ─── 4. Dernier recours — CoinGecko, uniquement si tout le reste est vide.
+    // ─── 4. Dernier recours — CoinGecko, si tout le reste est vide.
     const anyCandidate = raws.some((r) => r.source !== "explicit_ca");
     if (markets.length === 0 && !anyCandidate) {
       const cg = await coinGeckoByTicker(deps.providers, ticker);
@@ -312,36 +323,58 @@ export async function resolveToken(
         });
       }
     }
-    // Un dossier publié trouvé par ADRESSE enrichit une identité déjà connue ;
-    // il n'en invente pas (findCasefilesByAddress ne porte que des identités
-    // déjà découvertes ci-dessus).
     for (const c of casefilesByAddr) {
       if (known.has(identityKey(c.chain, c.address))) raws.push(c);
     }
   }
 
   // ─── 6. Décision ────────────────────────────────────────────────────────
-  const { candidates, droppedInternal } = buildCandidateSet(raws, {
+  const set = buildCandidateSet(raws, {
     ticker,
     audience: request.audience,
+    allowedChains,
+    observedAt,
+    policy,
   });
-  if (droppedInternal > 0) {
+  if (set.droppedInternal > 0) {
     limitations.push(
-      `${droppedInternal} candidat(s) issus de sources internes retirés de la réponse publique`,
+      `${set.droppedInternal} candidat(s) issus de sources internes retirés de la réponse publique`,
+    );
+  }
+  for (const c of set.excluded) {
+    limitations.push(
+      `écarté ${identityKey(c.chain, c.address)} — ${c.excluded?.detail ?? c.excluded?.reason}`,
+    );
+  }
+  if (telemetry.budgetRefusals > 0) {
+    limitations.push(
+      `${telemetry.budgetRefusals} appel(s) provider refusé(s) par le plafond d'exécution — couverture partielle`,
     );
   }
 
-  const conflicts = detectConflicts({ candidates, ticker, explicitIdentityKeys: explicitKeys, policy });
-  const decision = decide({ candidates, ticker, explicitIdentityKeys: explicitKeys, conflicts, policy });
+  const conflicts = detectConflicts({
+    candidates: set.candidates,
+    excluded: set.excluded,
+    ticker,
+    explicitIdentityKeys: explicitKeys,
+    policy,
+  });
+  const decision = decide({
+    candidates: set.candidates,
+    excluded: set.excluded,
+    ticker,
+    explicitIdentityKeys: explicitKeys,
+    conflicts,
+    observedAtProvided: !!observedAt,
+    policy,
+  });
 
-  const cacheStats = deps.providers.cache.stats();
-  telemetry.cacheHits = cacheStats.hits;
-  telemetry.cacheMisses = cacheStats.misses;
+  syncCacheTelemetry(deps.providers);
 
-  const returned: TokenCandidate[] = candidates.slice(0, policy.maxCandidatesReturned);
-  if (candidates.length > returned.length) {
+  const returned: TokenCandidate[] = set.candidates.slice(0, policy.maxCandidatesReturned);
+  if (set.candidates.length > returned.length) {
     limitations.push(
-      `${candidates.length - returned.length} candidat(s) au-delà du plafond d'affichage (${policy.maxCandidatesReturned})`,
+      `${set.candidates.length - returned.length} candidat(s) au-delà du plafond d'affichage (${policy.maxCandidatesReturned})`,
     );
   }
 
@@ -349,8 +382,10 @@ export async function resolveToken(
     status: decision.status,
     confidence: decision.confidence,
     method: decision.method,
+    callerSupport: decision.callerSupport,
     selected: decision.selected,
     candidates: returned,
+    excluded: set.excluded,
     conflicts,
     limitations: [...limitations, ...decision.limitations],
     telemetry,

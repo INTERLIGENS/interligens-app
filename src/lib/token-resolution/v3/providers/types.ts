@@ -33,11 +33,17 @@ export interface ProviderEnv {
  * Contexte passé à chaque adapter. `cache` n'est PAS optionnel : il n'existe
  * aucune signature permettant d'appeler un provider sans cache.
  */
+export interface ProviderBudget {
+  /** Plafond dur d'appels sortants par provider et par exécution. */
+  maxCallsPerProvider: number;
+}
+
 export interface ProviderContext {
   http: HttpClient;
   cache: ResolutionCache;
   telemetry: ResolutionTelemetry;
   env: ProviderEnv;
+  budget: ProviderBudget;
 }
 
 /** Marché d'un token vu par un provider. Forme neutre, sans dette de provider. */

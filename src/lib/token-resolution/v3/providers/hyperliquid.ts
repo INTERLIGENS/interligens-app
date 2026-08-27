@@ -9,6 +9,7 @@
 
 import { normalizeAddress } from "../address";
 import { cleanTicker } from "../symbol";
+import { instrumentedCall } from "./instrument";
 import type { ProviderContext } from "./types";
 
 const SPOT_META_URL = "https://api.hyperliquid.xyz/info";
@@ -35,7 +36,7 @@ function contractAddress(t: SpotToken): string | null {
 
 /** Catalogue spotMeta complet, en cache. Un appel par exécution au maximum. */
 async function spotMeta(ctx: ProviderContext): Promise<SpotToken[]> {
-  return ctx.cache.wrap<SpotToken[]>("hyperliquid:spotMeta", TTL_MS, async () => {
+  return instrumentedCall<SpotToken[]>(ctx, "hyperliquid", "hyperliquid:spotMeta", TTL_MS, [], async () => {
     const res = await ctx.http.postJson(SPOT_META_URL, { type: "spotMeta" });
     if (!res.ok) return [];
     return ((res.json as { tokens?: SpotToken[] } | null)?.tokens ?? []) as SpotToken[];

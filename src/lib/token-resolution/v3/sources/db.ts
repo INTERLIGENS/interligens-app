@@ -16,6 +16,15 @@
 // présent dans TokenPriceTracker (340 lignes) remonterait sur n'importe quelle
 // requête.
 //
+// ─── D2 — chaque source rapporte ce qu'elle sait DATER ───────────────────
+// Les lecteurs remontent une date d'antériorité quand ils en ont une, avec sa
+// provenance. Elles ne bornent pas toutes la même chose (voir temporal.ts) :
+//   KolTokenLink.createdAt        date de la LIGNE, preuve indirecte
+//   KolPromotionMention.postedAt  date du POST — le contrat existait au plus tard alors
+//   TokenLaunchMetric.launchAt    lancement déclaré, preuve directe
+//   token_casefiles.tgeDate       génération du token, preuve directe
+// C'est le moteur, pas le lecteur, qui décide de ce qu'une date autorise.
+//
 // ─── Invariant visibility ────────────────────────────────────────────────
 // Toute lecture de KolTokenLink ci-dessous filtre en LISTE BLANCHE ÉNUMÉRÉE.
 // La lecture publique n'accepte que 'public'. La lecture d'enquête accepte
@@ -105,6 +114,14 @@ function resolveRowChain(
   return { chain: null, inferred: true };
 }
 
+/** Date SQL → millisecondes epoch, ou null. Une date invalide ne vaut rien. */
+function toEpochMs(v: unknown): number | null {
+  if (v == null) return null;
+  const d = v instanceof Date ? v : new Date(String(v));
+  const ms = d.getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
 /** Ligne exploitable → candidat normalisé, ou null si l'adresse ne tient pas. */
 function toRawCandidate(args: {
   rawAddress: string;
@@ -141,9 +158,10 @@ interface CuratedRow {
   canonicalMint: string | null;
   canonicalChain: string | null;
   visibility: string;
+  createdAt: string | Date | null;
 }
 
-const CURATED_COLUMNS = `"contractAddress", "chain", "tokenSymbol", "kolHandle", "canonicalMint", "canonicalChain", "visibility"`;
+const CURATED_COLUMNS = `"contractAddress", "chain", "tokenSymbol", "kolHandle", "canonicalMint", "canonicalChain", "visibility", "createdAt"`;
 
 /**
  * Liens curés PUBLICS. Liste blanche stricte : visibility = 'public'.
@@ -199,6 +217,7 @@ function curatedRowsToCandidates(rows: CuratedRow[]): RawCandidate[] {
       rawChain: chain,
       symbol: r.tokenSymbol,
       source,
+      signals: { firstSeenAt: toEpochMs(r.createdAt), firstSeenSource: source },
     });
     if (!cand) continue;
     const key = `${cand.chain}:${cand.address}:${source}`;
@@ -255,6 +274,7 @@ interface MentionRow {
   chain: string | null;
   tokenSymbol: string | null;
   kolHandle: string;
+  postedAt: string | Date | null;
 }
 
 function mentionRowsToCandidates(rows: MentionRow[]): RawCandidate[] {
@@ -265,6 +285,8 @@ function mentionRowsToCandidates(rows: MentionRow[]): RawCandidate[] {
       rawChain: r.chain,
       symbol: r.tokenSymbol,
       source: "mentions",
+      // Le post atteste que le contrat existait AU PLUS TARD à cette date.
+      signals: { firstSeenAt: toEpochMs(r.postedAt), firstSeenSource: "mentions" },
     });
     if (!cand) continue;
     const key = `${cand.chain}:${cand.address}`;
@@ -283,7 +305,7 @@ export async function findMentionsByTicker(
   ticker: string,
 ): Promise<RawCandidate[]> {
   const rows = await db.query<MentionRow>(
-    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle"
+    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle", "postedAt"
        FROM "KolPromotionMention"
       WHERE upper(regexp_replace(coalesce("tokenSymbol", ''), '[$[:space:]_-]', '', 'g')) LIKE $1`,
     [buildLikeArg(ticker)],
@@ -298,7 +320,7 @@ export async function findMentionsByAddress(
   const variants = addressMatchVariants(addresses);
   if (variants.length === 0) return [];
   const rows = await db.query<MentionRow>(
-    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle"
+    `SELECT "tokenMint", "chain", "tokenSymbol", "kolHandle", "postedAt"
        FROM "KolPromotionMention"
       WHERE "tokenMint" IN (${placeholders(variants.length)})`,
     variants,
@@ -318,9 +340,10 @@ interface CasefileRow {
   chain_label: string | null;
   addr: string | null;
   tokenName: string | null;
+  tgeDate: string | Date | null;
 }
 
-const CASEFILE_SELECT = `SELECT c."ref", c."ticker", c."tokenName", e.k AS chain_label, e.v AS addr
+const CASEFILE_SELECT = `SELECT c."ref", c."ticker", c."tokenName", c."tgeDate", e.k AS chain_label, e.v AS addr
        FROM token_casefiles c,
             LATERAL jsonb_each_text((c."contractAddresses")::jsonb) AS e(k, v)
       WHERE c."publishStatus" = 'published'
@@ -336,7 +359,13 @@ function casefileRowsToCandidates(rows: CasefileRow[]): RawCandidate[] {
       symbol: r.ticker,
       name: r.tokenName,
       source: "casefile",
-      signals: { hasPublishedCasefile: true, casefileRefs: r.ref ? [r.ref] : [] },
+      signals: {
+        hasPublishedCasefile: true,
+        casefileRefs: r.ref ? [r.ref] : [],
+        // tgeDate borne la génération du token : preuve DIRECTE d'antériorité.
+        firstSeenAt: toEpochMs(r.tgeDate),
+        firstSeenSource: "casefile",
+      },
     });
     if (cand) out.push(cand);
   }
@@ -439,6 +468,7 @@ interface LaunchRow {
   tokenMint: string;
   concentrationScore: number | null;
   holderCount: number | null;
+  launchAt: string | Date | null;
 }
 
 interface ScanRow {
@@ -523,7 +553,7 @@ export async function enrichFromLaunchMetric(
   const variants = addressMatchVariants(addresses);
   if (variants.length === 0) return [];
   const rows = await db.query<LaunchRow>(
-    `SELECT "chain", "tokenMint", "concentrationScore", "holderCount"
+    `SELECT "chain", "tokenMint", "concentrationScore", "holderCount", "launchAt"
        FROM "TokenLaunchMetric"
       WHERE "tokenMint" IN (${placeholders(variants.length)})`,
     variants,
@@ -541,6 +571,9 @@ export async function enrichFromLaunchMetric(
       signals: {
         concentrationScore: r.concentrationScore ?? null,
         holderCount: r.holderCount ?? null,
+        // launchAt est la preuve d'antériorité la plus DIRECTE dont on dispose.
+        firstSeenAt: toEpochMs(r.launchAt),
+        firstSeenSource: "launch_metric",
       },
     });
   }

@@ -68,6 +68,7 @@ function candidate(over: Partial<TokenCandidate> = {}): TokenCandidate {
     sources: ["dexscreener"],
     signals: { ...emptySignals(), liquidityUsd: 50_000 },
     chainInferred: false,
+    temporal: "unknown",
     ...over,
   };
 }
@@ -257,7 +258,7 @@ describe("UR-6 — le cache est obligatoire et se comporte", () => {
     await dexScreenerByAddress(ctx, "SOL", SWIF);
     await dexScreenerByAddress(ctx, "SOL", SWIF);
     expect(http.calls.filter((u) => u.includes("/tokens/v1/"))).toHaveLength(1);
-    expect(ctx.telemetry.dexScreenerCalls).toBe(1);
+    expect(ctx.telemetry.providerCalls.dexScreener).toBe(1);
   });
 
   it("dédouble les appels CONCURRENTS sur la même clé", async () => {
@@ -268,7 +269,7 @@ describe("UR-6 — le cache est obligatoire et se comporte", () => {
       dexScreenerByAddress(ctx, "SOL", SWIF),
       dexScreenerByAddress(ctx, "SOL", SWIF),
     ]);
-    expect(ctx.telemetry.dexScreenerCalls).toBe(1);
+    expect(ctx.telemetry.providerCalls.dexScreener).toBe(1);
   });
 
   it("repart en réseau une fois la durée de vie écoulée", async () => {
@@ -278,7 +279,7 @@ describe("UR-6 — le cache est obligatoire et se comporte", () => {
     await dexScreenerByAddress(ctx, "SOL", SWIF);
     clock.advance(5 * 60 * 1000 + 1);
     await dexScreenerByAddress(ctx, "SOL", SWIF);
-    expect(ctx.telemetry.dexScreenerCalls).toBe(2);
+    expect(ctx.telemetry.providerCalls.dexScreener).toBe(2);
   });
 
   it("ne fige pas un échec réseau en réponse", async () => {
@@ -297,14 +298,31 @@ describe("UR-6 — le cache est obligatoire et se comporte", () => {
     expect(attempts).toBe(2);
   });
 
-  it("compte séparément les succès et les défauts de cache", async () => {
+  it("compte les économies PAR PROVIDER, pas globalement", async () => {
+    // « on a économisé 12 appels » n'aide pas si on ignore lesquels. En V3
+    // l'instrumentation attribue chaque succès de cache à son provider.
     const http = httpWithDex();
     const ctx = ctxWith(http);
     await dexScreenerByAddress(ctx, "SOL", SWIF);
     await dexScreenerByAddress(ctx, "SOL", SWIF);
-    const s = ctx.cache.stats();
-    expect(s.misses).toBe(1);
-    expect(s.hits).toBe(1);
+    expect(ctx.telemetry.providerCalls.dexScreener).toBe(1);
+    expect(ctx.telemetry.providerCacheHits.dexScreener).toBe(1);
+    expect(ctx.telemetry.providerCacheHits.helius).toBe(0);
+  });
+
+  it("refuse les appels au-delà du plafond d'exécution, et les compte", async () => {
+    const http = httpWithDex();
+    const ctx = createProviderContext({
+      http,
+      cache: new ResolutionCache(),
+      env: { heliusApiKey: "test-key-not-real" },
+      budget: { maxCallsPerProvider: 1 },
+    });
+    await dexScreenerByAddress(ctx, "SOL", SWIF);
+    const second = await dexScreenerByAddress(ctx, "SOL", BOTIFY);
+    expect(second).toBeNull();
+    expect(ctx.telemetry.providerCalls.dexScreener).toBe(1);
+    expect(ctx.telemetry.budgetRefusals).toBe(1);
   });
 });
 
@@ -363,13 +381,14 @@ describe("UR-8 — l'interne passe toujours avant le marché", () => {
     canonicalMint: null,
     canonicalChain: null,
     visibility: "public",
+    createdAt: null,
   };
 
   it("n'appelle PAS DexScreener quand une source interne répond", async () => {
     const http = httpWithDex();
     const db = createFakeDb([{ match: 'FROM "KolTokenLink"', rows: [curatedRow] }]);
     const res = await resolveToken(
-      { ticker: "SWIF", audience: "public" },
+      { ticker: "SWIF", audience: "public", allowedChains: ["SOL"] },
       { db, providers: ctxWith(http) },
     );
     expect(res.status).toBe("RESOLVED");
@@ -380,7 +399,7 @@ describe("UR-8 — l'interne passe toujours avant le marché", () => {
   it("descend sur DexScreener quand l'interne est vide", async () => {
     const http = httpWithDex();
     const db = createFakeDb([]);
-    await resolveToken({ ticker: "TOES", audience: "public" }, { db, providers: ctxWith(http) });
+    await resolveToken({ ticker: "TOES", audience: "public", allowedChains: ["SOL"] }, { db, providers: ctxWith(http) });
     expect(http.calls.some((u) => u.includes("/latest/dex/search"))).toBe(true);
   });
 
@@ -390,20 +409,20 @@ describe("UR-8 — l'interne passe toujours avant le marché", () => {
       { match: "api.coingecko.com", json: { coins: [] } },
     ]);
     const db = createFakeDb([]);
-    await resolveToken({ ticker: "ZZZQQ", audience: "public" }, { db, providers: ctxWith(http) });
+    await resolveToken({ ticker: "ZZZQQ", audience: "public", allowedChains: ["SOL"] }, { db, providers: ctxWith(http) });
     expect(http.calls.some((u) => u.includes("coingecko"))).toBe(true);
   });
 
   it("ne consulte jamais CoinGecko quand DexScreener a répondu", async () => {
     const http = httpWithDex();
     const db = createFakeDb([]);
-    await resolveToken({ ticker: "TOES", audience: "public" }, { db, providers: ctxWith(http) });
+    await resolveToken({ ticker: "TOES", audience: "public", allowedChains: ["SOL"] }, { db, providers: ctxWith(http) });
     expect(http.calls.some((u) => u.includes("coingecko"))).toBe(false);
   });
 
   it("ne fait AUCUNE écriture : le SQL émis est exclusivement du SELECT", async () => {
     const db = createFakeDb([{ match: 'FROM "KolTokenLink"', rows: [curatedRow] }]);
-    await resolveToken({ ticker: "SWIF", audience: "public" }, { db, providers: ctxWith() });
+    await resolveToken({ ticker: "SWIF", audience: "public", allowedChains: ["SOL"] }, { db, providers: ctxWith() });
     expect(db.queries.length).toBeGreaterThan(0);
     for (const q of db.queries) {
       expect(q.sql.trim().toUpperCase().startsWith("SELECT")).toBe(true);
@@ -413,7 +432,7 @@ describe("UR-8 — l'interne passe toujours avant le marché", () => {
 
   it("toute lecture de KolTokenLink porte une liste blanche énumérée sur visibility", async () => {
     const db = createFakeDb([]);
-    await resolveToken({ ticker: "SWIF", audience: "internal" }, { db, providers: ctxWith() });
+    await resolveToken({ ticker: "SWIF", audience: "internal", allowedChains: ["SOL"] }, { db, providers: ctxWith() });
     const links = db.queries.filter((q) => q.sql.includes('FROM "KolTokenLink"'));
     expect(links.length).toBeGreaterThan(0);
     for (const q of links) {
@@ -452,7 +471,10 @@ describe("UR-9 — règle d'or : jamais HIGH tant qu'un rival plausible subsiste
     expect(d.limitations.join(" ")).toMatch(String(DEFAULT_POLICY.minLiquidityUsdForAutoResolve));
   });
 
-  it("une chaîne hors SOL plafonne à MODERATE, jamais HIGH", () => {
+  it("la chaîne ne plafonne PLUS la confiance — la préférence Solana cachée a disparu", () => {
+    // V2 plafonnait tout ce qui n'était pas Solana à MODERATE. C'était une
+    // préférence déguisée en prudence : un token BSC documenté par un dossier
+    // publié valait moins qu'un token SOL trouvé sur un marché.
     const evm = candidate({
       chain: "BSC",
       address: LAB_BSC.toLowerCase(),
@@ -460,9 +482,12 @@ describe("UR-9 — règle d'or : jamais HIGH tant qu'un rival plausible subsiste
       sources: ["casefile"],
       signals: { ...emptySignals(), hasPublishedCasefile: true },
     });
-    const d = decide({ candidates: [evm], ticker: "LAB", explicitIdentityKeys: new Set(), conflicts: [] });
-    expect(d.status).toBe("RESOLVED");
-    expect(d.confidence).toBe("MODERATE");
+    const sol = candidate({ symbol: "LAB", sources: ["casefile"], signals: { ...emptySignals(), hasPublishedCasefile: true } });
+    const dEvm = decide({ candidates: [evm], ticker: "LAB", explicitIdentityKeys: new Set(), conflicts: [] });
+    const dSol = decide({ candidates: [sol], ticker: "LAB", explicitIdentityKeys: new Set(), conflicts: [] });
+    expect(dEvm.status).toBe("RESOLVED");
+    expect(dEvm.confidence).toBe("HIGH");
+    expect(dEvm.confidence).toBe(dSol.confidence);
   });
 
   it("un lien curé unique tranche sur un préfixe, mais pas à HIGH", () => {
@@ -565,7 +590,7 @@ describe("UR-11 — le mint neuf non indexé n'est pas perdu", () => {
       env: { heliusApiKey: "test-key-not-real" },
     });
     const res = await resolveToken(
-      { addresses: [FRESH], audience: "internal" },
+      { addresses: [FRESH], audience: "internal", allowedChains: ["SOL"] },
       { db: null, providers: ctx },
     );
     expect(res.status).toBe("RESOLVED");
@@ -582,7 +607,7 @@ describe("UR-11 — le mint neuf non indexé n'est pas perdu", () => {
       env: { heliusApiKey: null },
     });
     const res = await resolveToken(
-      { addresses: [FRESH], audience: "internal" },
+      { addresses: [FRESH], audience: "internal", allowedChains: ["SOL"] },
       { db: null, providers: ctx },
     );
     expect(res.status).not.toBe("RESOLVED");
@@ -596,7 +621,7 @@ describe("UR-11 — le mint neuf non indexé n'est pas perdu", () => {
       env: { heliusApiKey: "test-key-not-real" },
     });
     const res = await resolveToken(
-      { rawText: `nouveau gem, Ca>> ${FRESH} ape maintenant`, audience: "internal" },
+      { rawText: `nouveau gem, Ca>> ${FRESH} ape maintenant`, audience: "internal", allowedChains: ["SOL"] },
       { db: null, providers: ctx },
     );
     expect(res.selected?.address).toBe(FRESH);
@@ -609,11 +634,11 @@ describe("UR-11 — le mint neuf non indexé n'est pas perdu", () => {
       env: { heliusApiKey: "test-key-not-real" },
     });
     const res = await resolveToken(
-      { addresses: [FRESH], audience: "internal" },
+      { addresses: [FRESH], audience: "internal", allowedChains: ["SOL"] },
       { db: null, providers: ctx },
     );
-    expect(res.telemetry.dexScreenerCalls).toBe(1);
-    expect(res.telemetry.heliusCalls).toBe(1);
+    expect(res.telemetry.providerCalls.dexScreener).toBe(1);
+    expect(res.telemetry.providerCalls.helius).toBe(1);
     expect(res.telemetry.dbQueries).toBe(0);
   });
 });
@@ -626,8 +651,8 @@ describe("garde-fou — le pipeline local reste déterministe de bout en bout", 
       { chain: "SOL", address: BOTIFY, symbol: "SWIF", source: "dexscreener" },
       { chain: "SOL", address: SWIF, symbol: "SWIF", source: "curated" },
     ];
-    const a = buildCandidateSet(raws, { ticker: "SWIF", audience: "public" });
-    const b = buildCandidateSet(raws.slice().reverse(), { ticker: "SWIF", audience: "public" });
+    const a = buildCandidateSet(raws, { ticker: "SWIF", audience: "public", allowedChains: ["SOL"], policy: DEFAULT_POLICY });
+    const b = buildCandidateSet(raws.slice().reverse(), { ticker: "SWIF", audience: "public", allowedChains: ["SOL"], policy: DEFAULT_POLICY });
     expect(JSON.stringify(a.candidates)).toBe(JSON.stringify(b.candidates));
   });
 });

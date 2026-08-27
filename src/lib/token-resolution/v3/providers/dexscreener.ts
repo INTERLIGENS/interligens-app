@@ -16,6 +16,7 @@
 import { normalizeChain, type CanonicalChain } from "../chain";
 import { normalizeAddress } from "../address";
 import { cleanTicker } from "../symbol";
+import { instrumentedCall } from "./instrument";
 import type { ProviderContext, ProviderMarket } from "./types";
 
 const BASE = "https://api.dexscreener.com";
@@ -87,8 +88,7 @@ export async function dexScreenerByAddress(
   const slug = CHAIN_SLUG[chain];
   if (!slug) return null;
   const key = `dexscreener:byAddress:${chain}:${address}`;
-  return ctx.cache.wrap(key, TTL_MS, async () => {
-    ctx.telemetry.dexScreenerCalls++;
+  return instrumentedCall<ProviderMarket | null>(ctx, "dexScreener", key, TTL_MS, null, async () => {
     const res = await ctx.http.getJson(`${BASE}/tokens/v1/${slug}/${address}`);
     if (!res.ok) return null;
     const raw = res.json;
@@ -114,8 +114,7 @@ export async function dexScreenerSearchTicker(
   const q = cleanTicker(ticker);
   if (!q) return [];
   const key = `dexscreener:search:${q}`;
-  return ctx.cache.wrap(key, TTL_MS, async () => {
-    ctx.telemetry.dexScreenerCalls++;
+  return instrumentedCall<ProviderMarket[]>(ctx, "dexScreener", key, TTL_MS, [], async () => {
     const res = await ctx.http.getJson(`${BASE}/latest/dex/search?q=${encodeURIComponent(q)}`);
     if (!res.ok) return [];
     const pairs = ((res.json as { pairs?: DexPair[] } | null)?.pairs ?? []) as DexPair[];
