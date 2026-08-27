@@ -12,7 +12,12 @@ import { emptyTelemetry, type ResolutionTelemetry } from "../types";
 export { ResolutionCache } from "./cache";
 export { realHttpClient } from "./http";
 export * from "./types";
-export { instrumentedCall, syncCacheTelemetry, type ProviderName } from "./instrument";
+export {
+  instrumentedCall,
+  recordProviderFailure,
+  syncCacheTelemetry,
+  type ProviderName,
+} from "./instrument";
 export { dexScreenerByAddress, dexScreenerSearchTicker } from "./dexscreener";
 export { heliusMintExists, type MintExistence } from "./helius";
 export { coinGeckoByTicker, type CoinGeckoResult } from "./coingecko";

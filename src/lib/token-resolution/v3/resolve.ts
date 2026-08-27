@@ -16,7 +16,7 @@
 // Aucune écriture, aucune migration, aucun `fetch` hors instrumentation.
 
 import { extractAddressShapes, identityKey, normalizeAddress } from "./address";
-import { normalizeChain, type CanonicalChain } from "./chain";
+import { CANONICAL_CHAINS, normalizeChain, type CanonicalChain } from "./chain";
 import { buildCandidateSet } from "./candidates";
 import { decide, detectConflicts } from "./confidence";
 import { DEFAULT_POLICY, isChainAllowed, type ResolutionPolicy } from "./policy";
@@ -278,6 +278,20 @@ export async function resolveToken(
       r.source !== "onchain" &&
       isChainAllowed(allowedChains, r.chain),
   );
+
+  // S04, ratifié (option D) — LA CURATION FAIT AUTORITÉ DANS SON PÉRIMÈTRE DE
+  // CHAÎNE, ET SEULEMENT LÀ.
+  //   Un lien curé sur ETH ne dit rien de ce qui vit sur BASE. Tant que le
+  //   périmètre déclaré par l'appelant contient une chaîne qu'aucune source
+  //   interne ne couvre, la curation ne peut pas trancher l'identité : il faut
+  //   regarder. Sans ce contrôle, la curation décidait sur des chaînes qu'elle
+  //   n'avait jamais consultées — le défaut exact que mesure S04.
+  //   Coût : un appel de recherche supplémentaire quand le périmètre déborde la
+  //   couverture interne. Un appelant mono-chaîne dont la curation couvre sa
+  //   chaîne ne paie rien.
+  const internalChains = new Set(internalInScope.map((r) => r.chain));
+  const scopeChains = allowedChains.length > 0 ? allowedChains : CANONICAL_CHAINS;
+  const curationCoversScope = scopeChains.every((c) => internalChains.has(c));
   const explicitSymbols = raws
     .filter((r) => r.source === "explicit_ca" && r.symbol)
     .map((r) => r.symbol as string);
@@ -286,11 +300,39 @@ export async function resolveToken(
     explicitSymbols.length > 0 &&
     !explicitSymbols.some((s) => cleanTicker(s) === cleanTicker(ticker));
 
-  if (ticker && (internalInScope.length === 0 || symbolContradiction)) {
+  const needMarketTier =
+    internalInScope.length === 0 || symbolContradiction || !curationCoversScope;
+
+  // FRONTIÈRE A — on distingue « aucun rival » de « je n'ai pas pu regarder ».
+  let rivalSearchDegraded = false;
+
+  // Quand le marché n'est consulté QUE pour couvrir les chaînes que la curation
+  // ne voit pas, ses résultats sur les chaînes DÉJÀ couvertes sont ignorés.
+  //   La doctrine S04 dit « la curation ne décide pas l'identité sur une AUTRE
+  //   chaîne » — pas « la curation ne décide plus rien ». Laisser entrer le bruit
+  //   de marché de la chaîne curée reviendrait à supprimer le tier interne, qui
+  //   est le seul mécanisme capable de casser correctement une collision de
+  //   symbole sur une même chaîne.
+  const marketForCoverageOnly = internalInScope.length > 0 && !symbolContradiction;
+
+  if (ticker && needMarketTier) {
+    const failuresBefore = telemetry.providerFailures.dexScreener;
+    const refusalsBefore = telemetry.budgetRefusals;
     const markets = await dexScreenerSearchTicker(deps.providers, ticker);
+    if (
+      telemetry.providerFailures.dexScreener > failuresBefore ||
+      telemetry.budgetRefusals > refusalsBefore
+    ) {
+      rivalSearchDegraded = true;
+      limitations.push(
+        "la recherche de contrats rivaux a échoué — l'absence de contradiction n'est pas établie",
+      );
+    }
     for (const m of markets) {
       const r = marketToRaw(m, "dexscreener");
-      if (r) raws.push(r);
+      if (!r) continue;
+      if (marketForCoverageOnly && internalChains.has(r.chain)) continue;
+      raws.push(r);
     }
     // ─── 4. Dernier recours — CoinGecko, si tout le reste est vide.
     const anyCandidate = raws.some((r) => r.source !== "explicit_ca");
@@ -367,6 +409,7 @@ export async function resolveToken(
     excluded: set.excluded,
     ticker,
     explicitIdentityKeys: explicitKeys,
+    rivalSearchDegraded,
     policy,
   });
   const decision = decide({
@@ -376,6 +419,7 @@ export async function resolveToken(
     explicitIdentityKeys: explicitKeys,
     conflicts,
     observedAtProvided: !!observedAt,
+    rivalSearchDegraded,
     policy,
   });
 

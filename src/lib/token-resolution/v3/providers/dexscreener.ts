@@ -16,7 +16,7 @@
 import { normalizeChain, type CanonicalChain } from "../chain";
 import { normalizeAddress } from "../address";
 import { cleanTicker } from "../symbol";
-import { instrumentedCall } from "./instrument";
+import { instrumentedCall, recordProviderFailure } from "./instrument";
 import type { ProviderContext, ProviderMarket } from "./types";
 
 const BASE = "https://api.dexscreener.com";
@@ -90,7 +90,10 @@ export async function dexScreenerByAddress(
   const key = `dexscreener:byAddress:${chain}:${address}`;
   return instrumentedCall<ProviderMarket | null>(ctx, "dexScreener", key, TTL_MS, null, async () => {
     const res = await ctx.http.getJson(`${BASE}/tokens/v1/${slug}/${address}`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      recordProviderFailure(ctx, "dexScreener");
+      return null;
+    }
     const raw = res.json;
     const pairs: DexPair[] = Array.isArray(raw)
       ? (raw as DexPair[])
@@ -116,7 +119,12 @@ export async function dexScreenerSearchTicker(
   const key = `dexscreener:search:${q}`;
   return instrumentedCall<ProviderMarket[]>(ctx, "dexScreener", key, TTL_MS, [], async () => {
     const res = await ctx.http.getJson(`${BASE}/latest/dex/search?q=${encodeURIComponent(q)}`);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // ÉCHEC, pas « aucun rival ». La distinction porte la frontière A :
+      // sans elle, une panne provider se lit comme une absence de contradiction.
+      recordProviderFailure(ctx, "dexScreener");
+      return [];
+    }
     const pairs = ((res.json as { pairs?: DexPair[] } | null)?.pairs ?? []) as DexPair[];
     const markets = pairs.map(toMarket).filter((m): m is ProviderMarket => !!m);
     return keepMostLiquidPerIdentity(markets);
