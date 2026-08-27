@@ -239,7 +239,125 @@ expose publiquement, pas sur ses internes.
 
 ---
 
+---
+
+# 8. FINITION — CI propre + alerte (2e passe)
+
+## 8-a. Quels checks BLOQUENT le merge de #164 ? — **aucun**
+
+`main` n'a **pas** de protection de branche classique (`/branches/main/protection`
+→ 404). La protection passe par le **ruleset `protect-main`** (actif), qui impose
+exactement quatre choses :
+
+| Règle | Paramètre |
+|---|---|
+| `pull_request` | `required_approving_review_count: 0`, threads de revue à résoudre, approbation supplémentaire pour changements non attribués |
+| `required_linear_history` | rebase ou squash, pas de commit de merge |
+| `non_fast_forward` | pas de force-push |
+| `deletion` | pas de suppression |
+
+**Il n'existe aucune règle `required_status_checks`.** Aucun check CI ne bloque
+le merge — ni Quality Gates, ni Dependency Audit, ni SAST, ni Paths/branch-guard.
+
+**Conséquence directe : `--admin` n'a jamais été nécessaire.** Je l'ai utilisé sur
+la PR #163 (exemption guard) ; c'était superflu, le merge serait passé sans. Sur
+le code, comme demandé, il ne sera pas utilisé — et il n'y a rien à contourner.
+
+**Rien ne bloque donc, mais tout n'est pas vert.** Distinction à garder :
+
+| Check | Avant | Après le correctif lint | Bloquant ? |
+|---|---|---|---|
+| Paths / branch guard | ✅ | ✅ | non (mais c'est celui qui juge le hotfix) |
+| Quality Gates (lint) | ❌ 3 erreurs | ✅ **0 erreur** | non |
+| Secret Scanning | ✅ | ✅ | non |
+| Dependency Audit | ❌ 108 vulns | ❌ **inchangé** | non |
+| SAST (Semgrep) | ❌ | ❌ **inchangé** | non |
+| Vercel Preview | ❌ | ❌ **inchangé** | non |
+
+`Dependency Audit` et `SAST` restent rouges pour des raisons **préexistantes et
+sans rapport** (108 vulnérabilités de dépendances transitives, dont `undici` via
+`jsdom`). Elles ne bloquent rien puisqu'aucun check n'est requis — mais elles
+resteront rouges après ce merge. **Ce n'est pas à moi de trancher** si ces checks
+doivent devenir requis (ça touche le ratchet CI) : c'est signalé, pas décidé.
+
+## 8-b. Les 3 erreurs lint — corrigées
+
+`src/lib/intelligence/__tests__/ingestStaleReconciliation.test.ts` portait trois
+`Unexpected any` (l. 22, 26, 48), introduites par le merge stale `12c66b9` et
+rougissant `main`. Remplacées par `Record<string, unknown>` et un cast nominal
+`{ __tx: Record<string, Mock> }`. Les 11 tests du fichier passent toujours.
+
+**Le dépôt entier repasse à `0 errors`** (222 avertissements subsistent, sans
+effet sur le gate).
+
+## 8-c. Alerte « modèle OFF » sur le digest Telegram
+
+**Aucune exemption nécessaire** : le watchdog vit dans `src/scripts/watchdog/`,
+qui n'est pas un chemin gelé (le guard le dit lui-même, l. 360).
+
+Nouveau check n°7 dans `watcher-health.mjs`, sur le canal existant, à côté de
+« source intel périmée » et « evidence orpheline ». La logique vit dans
+`src/lib/watchdog/llmVeilleProbe.ts` — pur, testé — le `.mjs` ne porte que la
+requête, **un SELECT**. Même découpage que la sonde C4.
+
+### Ce qu'on mesure, et pourquoi pas « le dernier run »
+
+Il n'existe **aucun journal de run** pour ce cron : `FounderIntelItem` n'a pas de
+colonne de mise à jour, et en ajouter une demanderait une migration — exclue.
+
+On lit donc la **trace durable que le cron laisse déjà**, item par item :
+`lastSummaryError`, effacée à chaque succès, réécrite à chaque échec. L'état
+décrit la **file**, pas un run isolé, et la ligne le dit ainsi. Affirmer un
+« dernier run FAILED » qu'on n'observe pas aurait refait exactement le défaut
+qu'on corrige.
+
+### Deux formats d'erreur, et pourquoi les deux comptent
+
+Depuis le correctif, un échec de modèle s'écrit `MODEL_NOT_FOUND: …`. Mais **247
+lignes sont déjà en base au format d'avant** (`Error:404 …`) — mesuré en lecture
+seule sur `ep-square-band`. Ne reconnaître que le format neuf aurait affiché vert
+sur un échec mesuré. La sonde reconnaît `^(MODEL_NOT_FOUND|NotFoundError|Error:404)`,
+ancré en début de chaîne pour ne pas attraper un « 404 » cité au milieu d'un
+message. Une mutation le vérifie.
+
+### Preuve — dry-run réel sur la production, lecture seule
+
+```
+🔴 MODÈLE LLM INDISPONIBLE — 247 item(s) de veille en échec MODEL_NOT_FOUND.
+   Le modèle épinglé dans llm.service.ts ne répond plus : plus aucun résumé
+   n'est produit, et l'assistant de dossier comme les synthèses passent par
+   le même service. Vérifier l'identifiant de modèle.
+
+• Veille LLM : FAILED — 6401 en attente, 560 résumés, 248 en erreur
+  (247 MODEL_NOT_FOUND), 86 abandonné(s)
+```
+
+Aux côtés des lignes existantes (`🔴 EVIDENCE ORPHELINE`, `⚠️ forta 141j`).
+Telegram court-circuité par `WATCHDOG_DRY_RUN=1` — **aucun message envoyé**.
+**Que des compteurs** : jamais de titre, jamais de résumé, jamais d'URL.
+
+### Tests — 19, dont deux mutations vérifiées
+
+| Groupe | Ce qui casserait |
+|---|---|
+| échec total | marqueur 🔴 absent · un seul item ne suffirait plus · l'alerte ne nommerait pas `llm.service.ts` ni la portée réelle |
+| autres états | erreurs sans modèle mort promues en critique · file saine qui alerte |
+| **jamais silencieuse** | une ligne de résumé manquante dans l'un des 4 états · compteurs absents |
+| deux formats | `Error:404` non reconnu · un 400 ou un quota pris pour un modèle mort · un « 404 » au milieu d'un message compté |
+| la requête | autre chose qu'un SELECT · entiers pg non normalisés · ligne absente devenant un silence |
+
+| Mutation | Effet |
+|---|---|
+| marqueur rouge retiré | **3 rouges** |
+| ancien format `Error:404` non reconnu | **2 rouges** |
+
+---
+
 ## STOP — j'attends le GO
 
-Rien n'est mergé, rien n'est déployé, rien n'est poussé. Trois choses à valider :
-le contenu du commit `0aec987`, le HTTP 500 du patch, et le bloc d'exemption.
+Rien n'est mergé, rien n'est déployé. **`--admin` ne sera pas utilisé sur le
+code — et n'est pas nécessaire, aucun check n'étant requis.**
+
+Trois choses à valider : le contenu des 4 commits, le HTTP 500 du cron, et le
+fait d'assumer `Dependency Audit` + `SAST` rouges au merge (préexistants, non
+requis, sans rapport).
