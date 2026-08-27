@@ -37,7 +37,7 @@ export interface ResolutionPolicy {
 
   /**
    * À RATIFIER — I3. Une source qui ne porte AUCUNE donnée de marché
-   * (CoinGecko, CA_MAP, preset, RPC) peut-elle auto-résoudre à elle seule ?
+   * (CoinGecko, index de dossiers, preset, RPC) peut-elle auto-résoudre à elle seule ?
    * Origine du problème : la V1 fabriquait pour CoinGecko `matchType:'exact'`
    * et `lowLiquidity:false` en dur ; `decideResolution` lisait « exact et pas
    * illiquide » et résolvait. L'absence de donnée était lue comme une donnée

@@ -3,7 +3,7 @@
 //
 //   1. extraction     contrats de la requête + du texte brut
 //   2. TIER CURATED   base d'abord, TOUJOURS — dossiers publiés, liens curés,
-//                     CA_MAP, mentions. Hérité du tier interne de la V1, mais
+//                     mentions. Hérité du tier interne de la V1, mais
 //                     SOUMIS au périmètre de chaînes et à la compatibilité
 //                     temporelle : la curation atteste un contrat, elle n'est
 //                     pas une autorité qui échappe aux règles.
@@ -33,7 +33,6 @@ import {
   enrichFromLaunchMetric,
   enrichFromPriceTracker,
   enrichFromScanAggregate,
-  findCaMapByTicker,
   findCasefilePresetsByAddress,
   findCasefilesByAddress,
   findCasefilesByTicker,
@@ -43,6 +42,7 @@ import {
   findMentionsByTicker,
   type DbClient,
 } from "./sources/db";
+import { asCaseId, findContractsByCaseIds } from "./sources/caseIndex";
 import {
   coinGeckoByTicker,
   dexScreenerByAddress,
@@ -251,7 +251,12 @@ export async function resolveToken(
   } else if (ticker || explicitAddressStrings.length > 0) {
     limitations.push("résolution sans base : dossiers, liens curés et mentions non consultés");
   }
-  if (ticker) raws.push(...findCaMapByTicker(ticker));
+  // UR-12 — l'index des dossiers est lu par IDENTIFIANT DE DOSSIER, jamais par
+  // ticker. Il ne porte aucun symbole : « SERIAL-12RUGS » y désigne un motif
+  // d'enquête, pas un token, et sa valeur est le contrat de BOTIFY.
+  if (request.caseIds?.length) {
+    raws.push(...findContractsByCaseIds(request.caseIds.map(asCaseId)));
+  }
 
   // ─── 3. Marché — uniquement si nécessaire ───────────────────────────────
   // Deux déclencheurs, et seulement ceux-là :
