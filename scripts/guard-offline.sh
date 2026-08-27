@@ -205,6 +205,26 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
     )
 fi
 
+# Exceptions pour le hotfix LLM (modèle retiré → silence du cron de veille).
+# Le cron intel-summarize répondait {ok:true} même quand ZÉRO item avait été
+# résumé : le modèle épinglé (claude-sonnet-4-20250514) était retiré depuis le
+# 2026-06-15, et la supervision est restée au vert deux mois. Doctrine C4 —
+# ne jamais affirmer une propriété différente de celle mesurée.
+# Additif : le verdict (ok / status / code HTTP) se déduit désormais des
+# compteurs DÉJÀ calculés, plus un champ errorKinds qui remonte la cause.
+# Aucune écriture DB nouvelle, aucune migration, aucun appel supplémentaire.
+# Auth, prodWriteGuard, taille de lot et cap de tentatives : inchangés.
+# Autorisation humaine explicite (David, GO du 2026-08-27) — voir PR description.
+# Exemption ciblée UNIQUEMENT sur la route cron intel-summarize, sans joker ;
+# ne couvre PAS le reste de src/app/api/. Le test associé
+# (__tests__/security/llm-cron-never-green.test.ts) n'a besoin d'aucune
+# exemption : __tests__/ n'est pas un chemin gelé.
+if [[ "$BRANCH" == "hotfix/llm-model-retire-2026-08-27" ]]; then
+    EXEMPT_LLM_CRON_PATTERNS=(
+        "^src/app/api/cron/intel-summarize/route\.ts$"
+    )
+fi
+
 # Exceptions pour le cleanup sweep (dette technique post-merge — additif uniquement).
 # Autorisation humaine explicite (David, FULL CLEANUP SWEEP) — voir PR description.
 # Périmètre ciblé : sync du schema sur la prod DB (colonnes lifecycle KolProfile
@@ -630,6 +650,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_WATCHER_WINDOW_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche du hotfix LLM, exempter la route cron intel-summarize.
+    if [[ "$BRANCH" == "hotfix/llm-model-retire-2026-08-27" ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_LLM_CRON_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
