@@ -168,6 +168,14 @@ export interface ResolutionPolicy {
   maxProviderCallsPerRun: number;
 }
 
+/**
+ * Version de la doctrine encodée par DEFAULT_POLICY. Journalisée par le hook
+ * shadow : une comparaison V1/V3 sans version est illisible six semaines plus
+ * tard, quand un seuil a bougé et qu'on ne sait plus lequel a produit la ligne.
+ * À incrémenter DÈS qu'une valeur ci-dessous change.
+ */
+export const POLICY_VERSION = "v3-ratifie-2026-08-27";
+
 export const DEFAULT_POLICY: ResolutionPolicy = {
   minLiquidityUsdForAutoResolve: 1000,
   marketlessSourcesCanAutoResolve: true,
