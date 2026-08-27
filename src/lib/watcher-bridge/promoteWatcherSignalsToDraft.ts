@@ -13,6 +13,12 @@
 // READ + write, idempotent, no public surface. Not wired into the cron.
 
 import { resolveCanonicalToken, type ApiCallTelemetry } from "@/lib/token-resolution/resolveCanonicalToken";
+import {
+  shadowEnabled,
+  startShadow,
+  buildShadowComparison,
+  emitShadowComparison,
+} from "./shadowResolveV3";
 import { createAutoEvidenceSnapshot } from "@/lib/watcher-bridge/createAutoEvidenceSnapshot";
 import { createDraftKolTokenLink } from "@/lib/watcher-bridge/createDraftKolTokenLink";
 import { advanceCandidateTo, logCandidateEvent } from "@/lib/watcher-bridge/candidateStateMachine";
@@ -200,6 +206,23 @@ export async function promoteCandidate(
 
   // A.2 — canonical resolution (Sprint 2 service). Telemetry counts its DexScreener
   // / Helius calls — done in dry-run too (resolution is real even in dry mode).
+  // ─── OMBRE V3 ────────────────────────────────────────────────────────────
+  // Lancée AVANT l'await de V1 pour tourner pendant lui, pas après : le hook ne
+  // doit rien coûter en temps de mur. Elle ne lève jamais, et son résultat n'est
+  // ni lu ni transmis — seulement journalisé. Le chemin V1 ci-dessous est, ligne
+  // pour ligne, celui d'avant le hook.
+  const shadowPromise = shadowEnabled()
+    ? startShadow(
+        {
+          ticker: tokens[0] ?? null,
+          addresses,
+          hasRawText: !!cand.rawText,
+          observedAt: cand.postedAtUtc ? new Date(cand.postedAtUtc) : null,
+        },
+        { prisma: db },
+      )
+    : null;
+
   const resolution = await resolveCanonicalToken(
     {
       rawText: cand.rawText ?? undefined,
@@ -212,6 +235,24 @@ export async function promoteCandidate(
     },
     opts.telemetry,
   );
+
+  if (shadowPromise) {
+    const shadow = await shadowPromise;
+    emitShadowComparison(
+      buildShadowComparison({
+        input: {
+          ticker: tokens[0] ?? null,
+          addresses,
+          hasRawText: !!cand.rawText,
+          observedAt: cand.postedAtUtc ? new Date(cand.postedAtUtc) : null,
+        },
+        v1: resolution,
+        v3: shadow.v3,
+        error: shadow.error,
+        latencyMs: shadow.latencyMs,
+      }),
+    );
+  }
 
   const resolvedHigh =
     resolution.status === "RESOLVED" &&

@@ -92,26 +92,50 @@ describe("nommage — un seul module de résolution canonique", () => {
     expect(barrelImports.map((f) => f.path)).toEqual([]);
   });
 
-  it("le résolveur V1 n'a qu'un seul consommateur : le bridge, non encore basculé", () => {
+  it("le résolveur V1 n'a que ses consommateurs déclarés — le bridge et son ombre", () => {
     const importers = SRC_FILES.filter(
       (f) =>
         !f.path.startsWith("src/lib/token-resolution/") &&
+        !f.path.includes("__tests__/") &&
         /@\/lib\/token-resolution\/(resolveCanonicalToken|normalizeSolanaMint|scoreTokenCandidate)/.test(
           f.source,
         ),
-    ).map((f) => f.path);
-    expect(importers).toEqual(["src/lib/watcher-bridge/promoteWatcherSignalsToDraft.ts"]);
+    ).map((f) => f.path).sort();
+    // Liste NOMMÉE, sans joker. `shadowResolveV3` n'appelle pas V1 : il en
+    // importe le TYPE de résultat, parce qu'il journalise ce résultat à côté du
+    // sien. Toute autre entrée dans cette liste est un consommateur non déclaré.
+    expect(importers).toEqual([
+      "src/lib/watcher-bridge/promoteWatcherSignalsToDraft.ts",
+      "src/lib/watcher-bridge/shadowResolveV3.ts",
+    ]);
   });
 
-  it("aucun fichier n'importe à la fois le V1 et le V3", () => {
+  it("un SEUL fichier touche le V1 et le V3 : le hook shadow, et il est nommé", () => {
     // Un fichier qui touche les deux est le point exact où un harness peut
-    // comparer, confondre, puis conclure sur la mauvaise implémentation.
+    // comparer, confondre, puis conclure sur la mauvaise implémentation. Il en
+    // existe désormais un, et un seul : l'ombre, dont c'est précisément le
+    // métier — comparer sans jamais conclure. Le tenir dans une liste nommée
+    // fait de tout NOUVEAU mélange une régression visible, au lieu de rouvrir
+    // la porte à tous.
     const both = SRC_FILES.filter(
       (f) =>
+        !f.path.includes("__tests__/") &&
         /@\/lib\/token-resolution\/(resolveCanonicalToken|scoreTokenCandidate|normalizeSolanaMint)/.test(
           f.source,
         ) && /token-resolution\/v3/.test(f.source),
     ).map((f) => f.path);
-    expect(both).toEqual([]);
+    expect(both).toEqual(["src/lib/watcher-bridge/shadowResolveV3.ts"]);
+  });
+
+  it("l'ombre ne renvoie AUCUN verdict V3 consommable", () => {
+    const src = readFileSync(
+      join(SRC, "lib/watcher-bridge/shadowResolveV3.ts"),
+      "utf8",
+    );
+    // Le hook n'exporte que des fabriques de LIGNE DE JOURNAL. S'il se mettait à
+    // exporter une résolution, un appelant pourrait la consommer sans que rien
+    // ne le signale.
+    expect(src).not.toMatch(/export\s+(async\s+)?function\s+\w*[Rr]esolve\w*\s*\([^)]*\)\s*:\s*Promise<TokenResolution>/);
+    expect(src).toContain("JOURNALISÉ puis");
   });
 });
