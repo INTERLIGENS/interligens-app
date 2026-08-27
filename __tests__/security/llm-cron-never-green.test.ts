@@ -7,14 +7,11 @@
 // Une supervision branchée sur `ok` voit un cron vert. Le modèle épinglé était
 // mort depuis le 15 juin ; plus aucun item n'a été résumé, et rien ne l'a dit.
 //
-// ─── Chemin gelé ──────────────────────────────────────────────────────────
+// ─── Chemin gelé — correctif appliqué ─────────────────────────────────────
 // src/app/api/cron/intel-summarize/route.ts est couvert par le motif
-// `^src/app/api/` de scripts/guard-offline.sh. Le correctif n'est PAS appliqué
-// ici : il est livré en patch (docs/prep/patches/) avec le bloc d'exemption à
-// valider. Les deux tests de comportement sont donc marqués `it.fails` — ils
-// consignent le défaut ET se retournent en rouge le jour où le patch est
-// appliqué, ce qui force leur conversion en `it` normal. Le patch contient
-// cette conversion.
+// `^src/app/api/` de scripts/guard-offline.sh. Le correctif a été appliqué sous
+// exemption nommée ; les deux tests de comportement, jusque-là épinglés en
+// `it.fails`, sont convertis en assertions normales.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -91,12 +88,12 @@ describe("cron intel-summarize — l'incident, mesuré", () => {
 
   // ── Les deux assertions que le correctif doit rendre vraies ──────────────
 
-  it.fails("PENDING PATCH — échec total → jamais ok:true", async () => {
+  it("échec total → jamais ok:true", async () => {
     const { body } = await runCron();
     expect(body.ok).not.toBe(true);
   });
 
-  it.fails("PENDING PATCH — la réponse remonte la CAUSE, pas qu'un compteur", async () => {
+  it("la réponse remonte la CAUSE, pas qu'un compteur", async () => {
     const { body } = await runCron();
     expect(JSON.stringify(body)).toMatch(/MODEL_NOT_FOUND/);
   });
