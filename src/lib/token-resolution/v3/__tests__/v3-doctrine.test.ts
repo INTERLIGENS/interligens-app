@@ -127,24 +127,51 @@ describe("V3-1 / E5 — l'égalité de symbole n'est jamais une preuve d'identit
     expect(d.status).toBe("AMBIGUOUS");
   });
 
-  it("un contrat fourni par l'appelant tranche l'identité — les homonymes ne comptent plus", () => {
+  it("un contrat fourni dit CE QU'ON A COLLÉ, pas que c'est le token nommé", () => {
+    // ─── Correction de cadrage ─────────────────────────────────────────────
+    // Ce test affirmait que fournir un contrat faisait disparaître la question
+    // des homonymes. Faux : coller une adresse tranche QUELLE adresse on parle,
+    // pas si cette adresse est bien le token appelé $SWIF. Tant que d'autres
+    // contrats répondent à ce ticker, la certitude n'est pas due.
     const keys = new Set([identityKey("SOL", ORIGINAL)]);
+    const withExplicit = [
+      {
+        ...twoContracts[0],
+        matchType: "explicit_ca" as const,
+        sources: ["explicit_ca" as const, "dexscreener" as const],
+      },
+      twoContracts[1],
+    ];
     const conflicts = detectConflicts({
-      candidates: twoContracts,
+      candidates: withExplicit,
       ticker: "SWIF",
       explicitIdentityKeys: keys,
     });
-    expect(conflicts.some((c) => c.kind === "contract_identity")).toBe(false);
-    const withExplicit = [
-      { ...twoContracts[0], matchType: "explicit_ca" as const, sources: ["explicit_ca" as const, "dexscreener" as const] },
-      twoContracts[1],
-    ];
+    expect(conflicts.map((c) => c.kind)).toContain("contract_identity");
     const d = decide({
       candidates: withExplicit,
       ticker: "SWIF",
       explicitIdentityKeys: keys,
       conflicts,
     });
+    expect(d.status).not.toBe("RESOLVED");
+  });
+
+  it("sans rival, le contrat fourni résout normalement", () => {
+    const keys = new Set([identityKey("SOL", ORIGINAL)]);
+    const alone = [
+      {
+        ...twoContracts[0],
+        matchType: "explicit_ca" as const,
+        sources: ["explicit_ca" as const, "dexscreener" as const],
+      },
+    ];
+    const conflicts = detectConflicts({
+      candidates: alone,
+      ticker: "SWIF",
+      explicitIdentityKeys: keys,
+    });
+    const d = decide({ candidates: alone, ticker: "SWIF", explicitIdentityKeys: keys, conflicts });
     expect(d.status).toBe("RESOLVED");
     expect(d.method).toBe("explicit_ca");
   });

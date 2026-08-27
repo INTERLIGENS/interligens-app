@@ -8,7 +8,6 @@ import { ResolutionCache, type ResolutionCacheOptions } from "./cache";
 import { realHttpClient } from "./http";
 import type { HttpClient, ProviderBudget, ProviderContext, ProviderEnv } from "./types";
 import { emptyTelemetry, type ResolutionTelemetry } from "../types";
-import { DEFAULT_POLICY } from "../policy";
 
 export { ResolutionCache } from "./cache";
 export { realHttpClient } from "./http";
@@ -41,7 +40,9 @@ export function createProviderContext(
     cache: opts.cache ?? new ResolutionCache(opts.cacheOptions),
     telemetry: opts.telemetry ?? emptyTelemetry(),
     env: opts.env ?? { heliusApiKey: process.env.HELIUS_API_KEY ?? null },
-    // Plafond par défaut aligné sur DEFAULT_POLICY.maxProviderCallsPerRun.
-    budget: opts.budget ?? { maxCallsPerProvider: DEFAULT_POLICY.maxProviderCallsPerRun },
+    // Pas de budget par défaut : resolveToken l'impose depuis la politique
+    // qu'on lui passe. Renseigné ici uniquement pour les appels directs
+    // d'adaptateur (diagnostic, test unitaire d'un provider).
+    budget: opts.budget,
   };
 }

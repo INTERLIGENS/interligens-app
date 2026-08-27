@@ -105,31 +105,51 @@ export function detectConflicts(input: ConflictInput): ResolutionConflict[] {
   );
   const exacts = candidates.filter((c) => c.matchType === "exact");
 
-  // 1. Le contrat fourni ne porte pas le ticker annoncé, et un AUTRE contrat le
-  //    porte exactement. Le lecteur croit acheter $X, l'adresse collée est $Y.
+  // 1. Un contrat a été fourni, et D'AUTRES contrats portent le même ticker.
+  //
+  //    ─── La porte se décide sur les RIVAUX D'IDENTITÉ, jamais sur le symbole ──
+  //    Une version antérieure ouvrait cette porte dès que le symbole du contrat
+  //    fourni « était d'accord » avec le ticker (correspondance exacte ou
+  //    préfixe), et la sautait aussi quand le symbole était inconnu. Deux sorties
+  //    anticipées, une seule conséquence : le symbole — LA SEULE VARIABLE QUE
+  //    L'IMITATEUR CONTRÔLE — désarmait la détection. Recopier « WORLDCUP » sur
+  //    son propre contrat suffisait à être servi comme certain, devant trois
+  //    contrats curés portant ce ticker.
+  //
+  //    La décision porte donc sur `rivals` : d'autres contrats (chain+address
+  //    distincts) répondent-ils exactement à ce ticker ? Si oui, il y a conflit
+  //    d'identité, que le symbole coïncide ou non. Le symbole ne sert plus qu'à
+  //    QUALIFIER le conflit, jamais à l'annuler.
   if (ticker) {
     for (const e of explicit) {
-      if (!e.symbol) continue;
-      // L'accord se juge sur le SYMBOLE, jamais sur matchType : un candidat issu
-      // d'une adresse explicite garde matchType "explicit_ca" même quand son
-      // symbole coïncide. Lire matchType déclarerait un conflit dès qu'un
-      // homonyme existe, alors même que le contrat est le bon.
-      const agreement = classifySymbolMatch(ticker, e.symbol);
-      if (agreement === "exact" || agreement === "prefix") continue;
-      const rivals = exacts.filter(
-        (c) => identityKey(c.chain, c.address) !== identityKey(e.chain, e.address),
-      );
+      const eKey = identityKey(e.chain, e.address);
+      const rivals = exacts.filter((c) => identityKey(c.chain, c.address) !== eKey);
       if (rivals.length === 0) continue;
-      out.push({
-        kind: "ticker_vs_address",
-        detail:
-          `le contrat fourni correspond à $${e.symbol} alors que le ticker demandé ` +
-          `$${ticker.replace(/^\$+/, "")} désigne un autre contrat — revue humaine requise`,
-        between: [
-          identityKey(e.chain, e.address),
-          ...rivals.map((r) => identityKey(r.chain, r.address)),
-        ],
-      });
+
+      const tickerLabel = ticker.replace(/^\$+/, "");
+      const symbolDisagrees =
+        !!e.symbol && !["exact", "prefix"].includes(classifySymbolMatch(ticker, e.symbol));
+
+      out.push(
+        symbolDisagrees
+          ? {
+              kind: "ticker_vs_address",
+              detail:
+                `le contrat fourni correspond à $${e.symbol} alors que le ticker demandé ` +
+                `$${tickerLabel} désigne ${rivals.length} autre(s) contrat(s) — revue humaine requise`,
+              between: [eKey, ...rivals.map((r) => identityKey(r.chain, r.address))],
+            }
+          : {
+              kind: "contract_identity",
+              detail:
+                `${rivals.length + 1} contrats distincts répondent au ticker $${tickerLabel}` +
+                (e.symbol
+                  ? ` ; le contrat fourni en porte le symbole, ce qui ne l'identifie pas —` +
+                    " un imitateur choisit son symbole"
+                  : " ; le contrat fourni n'a pas de symbole connu, rien ne le relie à ce ticker"),
+              between: [eKey, ...rivals.map((r) => identityKey(r.chain, r.address))],
+            },
+      );
     }
   }
 
