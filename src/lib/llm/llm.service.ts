@@ -79,7 +79,11 @@ export interface LLMResponse {
 // déjà l'identifiant utilisé par les trois autres appels Anthropic du dépôt
 // (scan/ask, mobile/ask, osint/vision). Changement d'identifiant seul : aucune
 // migration de paramètres, aucune centralisation.
-const ANTHROPIC_MODEL = "claude-sonnet-4-5"
+// Exporté : la sonde watchdog « Veille LLM » teste CE modèle, pas une copie.
+// Une constante dupliquée ailleurs dériverait au premier changement, et la
+// sonde certifierait alors la disponibilité d'un modèle que la prod n'utilise
+// plus — précisément le genre de mensonge que l'incident a coûté deux mois.
+export const ANTHROPIC_MODEL = "claude-sonnet-4-5"
 const DEFAULT_MAX_TOKENS = 1024
 const TIMEOUT_MS = 15_000
 
