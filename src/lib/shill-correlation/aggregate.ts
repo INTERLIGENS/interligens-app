@@ -15,6 +15,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeCandidateScores, type CandidateScores } from "./scoring";
 import { isKnownRouter } from "./known-routers";
+import { buildOccasions, observationDedupKey } from "./occasions";
 import type { VetVerdict } from "./vetting";
 
 export interface CandidateRow {
@@ -66,7 +67,9 @@ interface Agg {
   kolHandle: string;
   wallet: string;
   chain: string;
-  eventIds: Set<string>;
+  occasionIds: Set<string>;
+  /** Cles d'observation deja comptees, par occasion - evite le double comptage. */
+  countedObs: Set<string>;
   pre: number;
   near: number;
   post: number;
@@ -98,9 +101,25 @@ export async function aggregateCandidates(
       behaviorType: true,
       exitDeltaSeconds: true,
       firstSeenAt: true,
-      shillEvent: { select: { kolHandle: true } },
+      firstBuyTxSignature: true,
+      shillEvent: {
+        select: {
+          id: true,
+          kolHandle: true,
+          tokenMint: true,
+          tweetTimestamp: true,
+        },
+      },
     },
   });
+
+  // CORRECTNESS #1 - replier les evenements en occasions AVANT tout comptage.
+  // Deux tweets du meme KOL sur le meme mint a une minute d'intervalle sont une
+  // seule occasion : leurs fenetres se recouvrent et collectent les memes achats.
+  const eventsSeen = new Map<string, { id: string; kolHandle: string; tokenMint: string | null; tweetTimestamp: Date }>();
+  for (const o of obs) eventsSeen.set(o.shillEvent.id, o.shillEvent);
+  const occasions = buildOccasions([...eventsSeen.values()]);
+  const occasionOf = (eventId: string) => occasions.occasionByEvent.get(eventId) ?? eventId;
 
   const aggs = new Map<string, Agg>();
   const analyzableByKol = new Map<string, Set<string>>();
@@ -116,7 +135,8 @@ export async function aggregateCandidates(
         kolHandle: kol,
         wallet: o.wallet,
         chain: o.chain,
-        eventIds: new Set(),
+        occasionIds: new Set(),
+        countedObs: new Set(),
         pre: 0,
         near: 0,
         post: 0,
@@ -126,7 +146,19 @@ export async function aggregateCandidates(
       };
       aggs.set(k, a);
     }
-    a.eventIds.add(o.shillEventId);
+    const occ = occasionOf(o.shillEventId);
+    a.occasionIds.add(occ);
+
+    // Le meme achat collecte par deux evenements de la MEME occasion ne compte
+    // qu'une fois : c'est une seule transaction on-chain, pas deux achats.
+    const dedup = `${occ} ${observationDedupKey(o)}`;
+    if (a.countedObs.has(dedup)) {
+      if (o.firstSeenAt < a.firstSeenAt) a.firstSeenAt = o.firstSeenAt;
+      if (o.firstSeenAt > a.lastSeenAt) a.lastSeenAt = o.firstSeenAt;
+      continue;
+    }
+    a.countedObs.add(dedup);
+
     if (o.behaviorType === "pre_tweet") a.pre++;
     else if (o.behaviorType === "near_tweet") a.near++;
     else if (o.behaviorType === "post_tweet") a.post++;
@@ -135,7 +167,7 @@ export async function aggregateCandidates(
     if (o.firstSeenAt > a.lastSeenAt) a.lastSeenAt = o.firstSeenAt;
 
     if (!analyzableByKol.has(kol)) analyzableByKol.set(kol, new Set());
-    analyzableByKol.get(kol)!.add(o.shillEventId);
+    analyzableByKol.get(kol)!.add(occ);
 
     const wk = `${o.wallet} ${o.chain}`;
     if (!kolsByWallet.has(wk)) kolsByWallet.set(wk, new Set());
@@ -149,7 +181,7 @@ export async function aggregateCandidates(
     const distinctKolCount =
       kolsByWallet.get(`${a.wallet} ${a.chain}`)?.size ?? 1;
     const scores = computeCandidateScores({
-      observedShillCount: a.eventIds.size,
+      observedShillCount: a.occasionIds.size,
       analyzableShillCount,
       preTweetCount: a.pre,
       nearTweetCount: a.near,
@@ -161,7 +193,7 @@ export async function aggregateCandidates(
       kolHandle: a.kolHandle,
       wallet: a.wallet,
       chain: a.chain,
-      observedShillCount: a.eventIds.size,
+      observedShillCount: a.occasionIds.size,
       analyzableShillCount,
       preTweetCount: a.pre,
       nearTweetCount: a.near,
