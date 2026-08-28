@@ -458,6 +458,43 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour la correction tracée W2 — les 482 M$ du casefile $LAB.
+# Le montant est juste, mais il est rangé sous une affirmation qu'il ne
+# soutient pas : il mesure la valeur notionnelle de 100M LAB attribués à une
+# sortie d'insiders (tracée par ZachXBT), et non un préjudice retail. Le
+# casefile le nomme lui-même « Estimated exit value (100M LAB) ».
+#
+# DEUX exemptions distinctes, chacune sur UN fichier nommé.
+#
+# 1. Schema — 3 colonnes additives sur token_casefiles, posées à la main dans
+#    Neon (W2_PACK/00) : insiderExitNotionalValueUsd, sa colonne de nature, et
+#    insiderExitNotionalBasis (jsonb) qui porte le natureBasis exigé — quantité
+#    tierce, référence de prix, fenêtre de prix, formule. AUCUNE migration
+#    déclenchée ici.
+#
+# 2. Surface publique — TokenCasefileView.tsx cesse d'afficher
+#    « Estimated retail harm — $482M ». Aucun chiffre de remplacement inventé :
+#    estimatedRetailHarmUsd devient NULL (non estimé), et la valeur notionnelle
+#    s'affiche sous son vrai nom, avec son caveat de flottant et une échelle
+#    rapportée à la market cap circulante — jamais au FDV.
+#
+# ⚠️ ORDRE IMPOSÉ pour le schema, même leçon qu'en S4/S5 : Prisma sélectionne
+# tous les champs scalaires. La PR de schema ne peut être mergée qu'APRÈS
+# l'exécution de W2_PACK/00 dans Neon.
+#
+# Autorisation humaine explicite (David, arbitrage GPT W2 du 2026-08-29) —
+# voir PR description. Aucun wildcard : ni ^prisma/, ni ^src/components/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-w2-schema-sync$ ]]; then
+    EXEMPT_W2_SCHEMA_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+    )
+fi
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-w2-casefile-surface$ ]]; then
+    EXEMPT_W2_SURFACE_PATTERNS=(
+        "^src/components/cases/TokenCasefileView\.tsx$"
+    )
+fi
+
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -847,6 +884,30 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # W2 — schema : le SEUL schema.prod.prisma (aucun autre ^prisma/).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-w2-schema-sync$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_W2_SCHEMA_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # W2 — surface : le SEUL TokenCasefileView.tsx (aucun autre ^src/components/).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-w2-casefile-surface$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_W2_SURFACE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
