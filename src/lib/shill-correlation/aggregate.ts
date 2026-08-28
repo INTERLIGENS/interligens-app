@@ -43,6 +43,8 @@ export interface AggregateReport {
   dryRun: boolean;
   observationsScanned: number;
   analyzableEvents: number;
+  /** Unite de comptage reelle du scoring depuis le correctif #1. */
+  analyzableOccasions: number;
   analyzableKols: number;
   candidates: CandidateRow[];
   surviving: CandidateRow[];
@@ -50,9 +52,29 @@ export interface AggregateReport {
   byConfidence: Record<string, number>;
   shortlistEligible: number;
   seriousCandidates: number;
-  exclusions: { total: number; byReason: Record<string, number> };
+  exclusions: {
+    total: number;
+    byReason: Record<string, number>;
+    /** Exclusions HERITEES d'un run precedent, non requalifiees ici. */
+    preserved: number;
+    /** Exclusions posees ou confirmees par une regle du run courant. */
+    applied: number;
+  };
   walletsVetted: number;
   written?: number;
+}
+
+/**
+ * Etat d'exclusion deja persiste pour un (kol, wallet, chain).
+ * DOCTRINE RATIFIEE (2026-08-28) : une exclusion persistante ne disparait que
+ * par une DECISION EXPLICITE DE LEVEE - jamais par absence de requalification
+ * dans un run ulterieur. Elle vaut au-dela de high_frequency.
+ */
+export interface ExistingExclusion {
+  excludedReason: string | null;
+  walletTxCount30d: number | null;
+  walletTokenAccounts: number | null;
+  walletVettedAt: Date | null;
 }
 
 export interface AggregateOptions {
@@ -61,6 +83,31 @@ export interface AggregateOptions {
   vetWallet?: (wallet: string) => Promise<VetVerdict>;
   /** Injected clock for vettedAt (deterministic in tests). */
   now?: Date;
+  /**
+   * Exclusions deja en base, par cle (kol, wallet, chain). Injectable pour les
+   * tests ; par defaut lues sur ShillCorrelationCandidate.
+   */
+  loadExistingExclusions?: () => Promise<Map<string, ExistingExclusion>>;
+}
+
+async function defaultLoadExistingExclusions(): Promise<Map<string, ExistingExclusion>> {
+  const rows = await prisma.shillCorrelationCandidate.findMany({
+    select: {
+      kolHandle: true, wallet: true, chain: true, excludedReason: true,
+      walletTxCount30d: true, walletTokenAccounts: true, walletVettedAt: true,
+    },
+  });
+  return new Map(
+    rows.map((r) => [
+      key(r.kolHandle, r.wallet, r.chain),
+      {
+        excludedReason: r.excludedReason,
+        walletTxCount30d: r.walletTxCount30d,
+        walletTokenAccounts: r.walletTokenAccounts,
+        walletVettedAt: r.walletVettedAt,
+      } as ExistingExclusion,
+    ]),
+  );
 }
 
 interface Agg {
@@ -121,6 +168,10 @@ export async function aggregateCandidates(
   const occasions = buildOccasions([...eventsSeen.values()]);
   const occasionOf = (eventId: string) => occasions.occasionByEvent.get(eventId) ?? eventId;
 
+  // Exclusions deja persistees - chargees AVANT toute construction, pour que
+  // le defaut d'un candidat soit son etat connu, jamais `null`.
+  const existing = await (opts.loadExistingExclusions ?? defaultLoadExistingExclusions)();
+
   const aggs = new Map<string, Agg>();
   const analyzableByKol = new Map<string, Set<string>>();
   const kolsByWallet = new Map<string, Set<string>>();
@@ -180,6 +231,7 @@ export async function aggregateCandidates(
     const analyzableShillCount = analyzableByKol.get(a.kolHandle)?.size ?? 0;
     const distinctKolCount =
       kolsByWallet.get(`${a.wallet} ${a.chain}`)?.size ?? 1;
+    const prior = existing.get(key(a.kolHandle, a.wallet, a.chain));
     const scores = computeCandidateScores({
       observedShillCount: a.occasionIds.size,
       analyzableShillCount,
@@ -203,10 +255,13 @@ export async function aggregateCandidates(
       firstSeenAt: a.firstSeenAt,
       lastSeenAt: a.lastSeenAt,
       scores,
-      excludedReason: null,
-      walletTxCount30d: null,
-      walletTokenAccounts: null,
-      walletVettedAt: null,
+      // Herite de l'etat connu. Repartir de `null` aurait fait disparaitre une
+      // exclusion au seul motif que le candidat ne surface plus - c'est
+      // exactement ce que la doctrine du 2026-08-28 interdit.
+      excludedReason: prior?.excludedReason ?? null,
+      walletTxCount30d: prior?.walletTxCount30d ?? null,
+      walletTokenAccounts: prior?.walletTokenAccounts ?? null,
+      walletVettedAt: prior?.walletVettedAt ?? null,
       vetFlags: [],
     });
   }
@@ -216,15 +271,25 @@ export async function aggregateCandidates(
   // cached per wallet to avoid re-vetting a wallet that hits multiple KOLs.
   const vetCache = new Map<string, VetVerdict>();
   let walletsVetted = 0;
+  let preservedExclusions = 0;
+  let appliedExclusions = 0;
   for (const c of candidates) {
+    // Regle statique : inchangee, appliquee a chaque run, sans Helius.
     if (isKnownRouter(c.wallet)) {
       c.excludedReason = "known_router";
       c.vetFlags = ["known_router"];
+      appliedExclusions++;
       continue;
     }
     const surfacing =
       c.scores.classification !== "watch" || c.scores.shortlistEligible;
-    if (!surfacing || !opts.vetWallet) continue;
+    if (!surfacing || !opts.vetWallet) {
+      // Pas de requalification dans ce run : l'etat herite est CONSERVE tel
+      // quel. Ne rien faire ici est le comportement voulu - c'est le `null`
+      // d'initialisation d'avant qui effacait l'exclusion.
+      if (c.excludedReason != null) preservedExclusions++;
+      continue;
+    }
 
     let verdict = vetCache.get(c.wallet);
     if (!verdict) {
@@ -232,8 +297,11 @@ export async function aggregateCandidates(
       vetCache.set(c.wallet, verdict);
       walletsVetted++;
     }
+    // Requalification EXPLICITE par la regle de vetting : son verdict fait
+    // foi, y compris quand il leve l'exclusion (verdict.excludedReason null).
     c.excludedReason = verdict.excludedReason;
     c.vetFlags = verdict.flags;
+    if (verdict.excludedReason != null) appliedExclusions++;
     c.walletTxCount30d = verdict.txCount30d;
     c.walletTokenAccounts = verdict.distinctTokenAccounts;
     c.walletVettedAt = now;
@@ -248,6 +316,10 @@ export async function aggregateCandidates(
     dryRun,
     observationsScanned: obs.length,
     analyzableEvents: new Set(obs.map((o) => o.shillEventId)).size,
+    // Depuis le correctif #1, l'unite de comptage du scoring est l'occasion.
+    // Le nombre d'evenements reste affiche : il dit ce qui a ete collecte,
+    // pas ce qui a ete compte. Les deux sont vrais et ne disent pas la meme chose.
+    analyzableOccasions: occasions.eventsByOccasion.size,
     analyzableKols: analyzableByKol.size,
     candidates,
     surviving,
@@ -262,6 +334,8 @@ export async function aggregateCandidates(
           .map((c) => c.excludedReason)
           .filter((r): r is string => r != null),
       ),
+      preserved: preservedExclusions,
+      applied: appliedExclusions,
     },
     walletsVetted,
   };
