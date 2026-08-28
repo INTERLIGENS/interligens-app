@@ -458,25 +458,6 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
-# Exceptions pour BUILD 2 / S2 — la NATURE d'une donnée devient un contrat.
-# Deux routes de scan exposent désormais un champ `_nature` à côté de ce
-# qu'elles renvoyaient déjà : `topRiskClass` est une INFERENCE calculée sur des
-# observations tierces, et `source` portait déjà la nature d'un candidat sans
-# jamais la nommer (curated = affirmation éditoriale, mentions = observation du
-# produit, dexscreener/coingecko = données tierces). Un consommateur qui ne lit
-# pas `_nature` ne voit aucune différence.
-# STRICTEMENT ADDITIF : un import et un champ par route. Aucun champ existant
-# n'est modifié ni retiré, aucune écriture DB, aucune migration, aucun DDL.
-# Autorisation humaine explicite (David, GO BUILD 2 W1 du 2026-08-28) —
-# voir PR description. Exemption limitée aux 2 fichiers nommés ci-dessous ;
-# AUCUN wildcard sur src/app/api/ (toute autre route reste bloquée).
-if [[ "$BRANCH" =~ ^feat/cc-offline-40-data-nature-s0-s2$ ]]; then
-    EXEMPT_DATA_NATURE_S2_PATTERNS=(
-        "^src/app/api/scan/intelligence/route\.ts$"
-        "^src/app/api/scan/resolve/route\.ts$"
-    )
-fi
-
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -866,19 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche BUILD 2 / S2, exempter STRICTEMENT les 2 routes de scan
-    # nommées (aucun wildcard src/app/api/).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-40-data-nature-s0-s2$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_DATA_NATURE_S2_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
