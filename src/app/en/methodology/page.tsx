@@ -1,4 +1,5 @@
 import BetaNav from "@/components/beta/BetaNav";
+import { FINANCIAL_ESTIMATES_V1 } from "@/lib/methodology/artifact";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -225,43 +226,18 @@ export default function MethodologyPage() {
         {/* ── EVIDENCE METHODOLOGY ── */}
         <div style={{ marginBottom: 40 }}>
           <div style={{ fontSize: 10, color: "#FF6B00", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 12 }}>EVIDENCE METHODOLOGY</div>
-          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: 0, marginBottom: 8 }}>How INTERLIGENS Calculates Financial Estimates</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", margin: 0, marginBottom: 8 }}>{FINANCIAL_ESTIMATES_V1.title}</h2>
           <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7, marginTop: 8 }}>
-            INTERLIGENS publishes estimated financial figures derived from publicly available blockchain data. These figures are analytical estimates — not established facts, not legal conclusions.
+            {FINANCIAL_ESTIMATES_V1.intro}
           </div>
         </div>
 
-        {[
-          {
-            title: "Est. Investor Losses",
-            body: "Represents the estimated aggregate value lost by retail market participants in documented rug-linked cases associated with this profile. Calculated as the approximate USD value of tokens purchased by non-insider wallets minus any recovered value, based on contemporaneous market pricing at the time of collapse. This is an estimate. Individual loss figures may vary significantly.",
-          },
-          {
-            title: "Est. Proceeds",
-            body: "Represents the estimated USD value received by insider-linked or promoter-linked wallets through pre-launch token allocation, sell activity, or attributed promotion compensation. Derived from observable on-chain transfer and swap transactions valued at contemporaneous market or LP price data.",
-          },
-          {
-            title: "Pricing Reference",
-            body: "Token prices are sourced from DexScreener, GeckoTerminal, or on-chain LP pricing at the time of the relevant transaction. Where multiple sources conflict, INTERLIGENS uses the closest available data point to the transaction timestamp. Pricing sources are documented in the underlying evidence record.",
-          },
-          {
-            title: "Time Basis",
-            body: "Financial calculations cover all available on-chain history for the wallet addresses and token contracts referenced. The time range is noted in the profile evidence record. Figures are not forward-looking and do not include unrealized positions unless explicitly stated.",
-          },
-          {
-            title: "Inclusions and Exclusions",
-            body: "Only wallets with documented on-chain linkage (verified or source-attributed) are included in financial calculations. Wallets classified as provisional or heuristically linked are excluded from primary figures and noted separately. DEX router addresses and liquidity pool contracts are excluded.",
-          },
-          {
-            title: "Realized vs. Unrealized",
-            body: "Unless stated otherwise, all estimated proceeds figures reflect realized transactions — observable sell events or token transfers with corresponding value flows. Unrealized positions are excluded from the primary figure and noted where material.",
-          },
-          {
-            title: "Confidence and Revision",
-            body: "All methodology-based estimates carry inherent uncertainty. INTERLIGENS reviews published figures when new on-chain evidence emerges or when a correction request provides supporting data. Revised figures are logged with version notes. The methodology is reviewed quarterly.",
-          },
-        ].map((s) => (
-          <div key={s.title} style={{ marginBottom: 12, background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "20px 24px" }}>
+        {/* Rendu depuis l'artefact GELÉ content/methodologies/financial-estimates/v1.md.
+            Cette page est une VUE : elle n'écrit plus la méthode, elle l'affiche.
+            Modifier un texte ici n'a aucun effet — il faut créer une v2 de l'artefact,
+            car des lignes en base citent financial-estimates/<composant>@v1. */}
+        {FINANCIAL_ESTIMATES_V1.components.map((s) => (
+          <div key={s.id} style={{ marginBottom: 12, background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "20px 24px" }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.05em", marginBottom: 8 }}>{s.title}</div>
             <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.75 }}>{s.body}</div>
           </div>
