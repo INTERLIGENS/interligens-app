@@ -475,21 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exemption pour le recalage du schema sur les 7 colonnes additives de
-# ShillCorrelationCandidate (mesure : walletSampleSpanDays / walletSampleSize /
-# walletSampleSaturated ; audit de supersession : previousExcludedReason /
-# exclusionSupersededAt / exclusionSupersededBy / exclusionSupersededWhy).
-# Les colonnes sont DEJA en base — MIGRATION_shill_sample_span_2026-08-29.sql
-# passee a la main dans Neon le 2026-08-29. Ce recalage ne fait que declarer
-# l'existant : aucune migration, aucune lecture nouvelle.
-# UN SEUL chemin exempte. Ni migrations/, ni le reste de prisma/.
-# Fenetre a refermer, byte-identique, apres merge du schema-sync.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-span-schema-sync$ ]]; then
-    EXEMPT_SHILL_SPAN_SCHEMA_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -693,18 +678,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche shill-span-schema-sync, exempter le seul schema prod.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-span-schema-sync$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SHILL_SPAN_SCHEMA_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
