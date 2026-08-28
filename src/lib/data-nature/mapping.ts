@@ -51,8 +51,18 @@ export const VOCABULARY_MAPPINGS: VocabularyMapping[] = [
         note: "3 lignes — SYNONYME de verified_onchain, à fusionner (S4)",
       },
       analytical_estimate: {
-        kind: "DIRECT", nature: "ESTIMATE",
-        note: "29 lignes — exigeront un methodRef valide (Q5). Travail éditorial, pas technique.",
+        kind: "NEEDS_JOIN",
+        join: "KolWallet.sourceLabel",
+        resolve:
+          "sourceLabel non nul (ex. '@dethective — winrate 33.24%') → THIRD_PARTY_DATA : " +
+          "l'analyse est celle d'un tiers, nous la RELAYONS (Q3 'relay'), et sa méthode lui " +
+          "appartient — aucun methodRef ne nous est dû. " +
+          "sourceLabel nul → ESTIMATE, et methodRef devient exigible.",
+        note:
+          "29 lignes, toutes kolHandle='deployer_pool' et toutes porteuses d'un sourceLabel " +
+          "@dethective (mesuré 2026-08-28). Ce ne sont donc PAS nos estimations : c'est de " +
+          "l'analytique tierce étiquetée à tort 'analytical_estimate'. Le correctif est un " +
+          "RECLASSEMENT, pas une dette de documentation.",
       },
       self_posted: {
         kind: "DIRECT", nature: "THIRD_PARTY_DATA",
