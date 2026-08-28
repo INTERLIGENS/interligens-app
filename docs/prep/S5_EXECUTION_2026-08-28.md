@@ -51,9 +51,15 @@ estimations financières n'est publiée **qu'en anglais**.
 | Fichier | Écrit | Lignes |
 |---|---|---|
 | `00_PREREQ_nature_columns.sql` | `rowNature` sur `KolWallet` + `KolCase` | 0 |
-| `01_S5B_kolcase_methodref.sql` | `methodologyRef` | **10** |
+| `01_S5B_kolcase_estimate_methodref.sql` | `rowNature=ESTIMATE` + `methodologyRef` | **7** |
 | `02_S5C_kolwallet_third_party.sql` | `rowNature = THIRD_PARTY_DATA` | **29** |
 | `03_S5D_kolcase_inference.sql` | `rowNature = INFERENCE` | **3** |
+
+**Ratifié le 2026-08-28, resserré :** S5-B ne vise plus que les **7 lignes qui
+portent un chiffre** (`paidUsd IS NOT NULL`), et leur écrit `rowNature =
+ESTIMATE` en plus de la référence. Les 3 lignes sans montant ne reçoivent
+**aucune** `methodologyRef` — une méthode d'estimation sur une ligne qui
+n'estime rien serait la fausse référence que S5 combat.
 
 ### Le blocage qui a imposé le fichier 00
 
@@ -189,12 +195,27 @@ dans `src/lib/methodology/registry.ts`.
 
 ---
 
-## Ce qui reste à ratifier avant toute écriture
+## FINDING SUPPLÉMENTAIRE — DN-F3 · le `DEFAULT` reproduit la référence stale
 
-1. **Le fichier 00** (2 colonnes `rowNature`) — sans lui, S5-C et S5-D sont
-   inécrivables.
-2. **Les 7 `KolCase` avec montant** restent `rowNature = NULL`. `ESTIMATE`
-   serait cohérent, mais l'arbitrage ne l'a pas prononcé.
-3. **Le `methodRef` des 3 lignes sans montant** : le fichier 01 le leur écrit
-   (S5-B porte sur les 10). Pour les en exclure, ajouter
-   `AND "paidUsd" IS NOT NULL` — le compte passe de 10 à 7.
+Mesuré en écrivant la PR de schema : `KolCase.methodologyRef` porte
+`DEFAULT '/en/methodology'::text` **en base**. Le fichier 01 corrige les
+7 lignes existantes, mais **toute nouvelle ligne naîtra avec la route legacy**.
+La correction des données ne referme pas la source.
+
+Changer un `DEFAULT` est un DDL hors du périmètre ratifié : signalé, non corrigé.
+
+---
+
+## Chaîne d'exécution
+
+| Étape | État |
+|---|---|
+| S5-A — artefact gelé | **PR #178**, 10 tests verts |
+| Exemption guard (2 colonnes) | **mergée — `aa1a65f`** (PR #180) |
+| Pack S5 `00/B/C/D` | **PR #179**, non exécuté |
+| Recalage schema `rowNature` ×2 | **PR #181, draft** — après le fichier 00 |
+| Refermeture guard byte-identique | après #181 |
+
+## S5 n'est PAS clos
+
+Restent **W2** (les 482 M$ sans dérivation) et le passage **S6 / Q5**.
