@@ -54,6 +54,7 @@ export interface TokenCasefileData {
   keyWallets: TokenCasefileKeyWallet[];
   linkedTokens: string[];
   estimatedRetailHarmUsd: number | null;
+  insiderExitNotionalValueUsd?: number | null;
   currency: string;
   sources: TokenCasefileSource[];
   specterCollab: boolean;
@@ -80,7 +81,11 @@ const T: Record<Locale, Record<string, string>> = {
     tge: "TGE", claimedRaise: "Claimed raise",
     backers: "Stated backers", exchanges: "Trading venues",
     exitExchanges: "Insider cash-out exchanges", linkedTokens: "Same-playbook tokens",
-    estimatedHarm: "Estimated retail harm", currency: "Currency",
+    insiderExitNotional: "Insider exit notional value",
+    insiderExitNotionalNote: "Based on 100M LAB attributed to insider exit activity, valued at approximately $4.82/LAB. This is a notional valuation, not realized proceeds or estimated retail losses.",
+    insiderExitNotionalScale: "Notional value ≈ 144% of peak circulating market capitalization.",
+    insiderExitNotionalFloat: "Notional valuation only. The token quantity represents approximately 131% of the referenced circulating float; it could not have been liquidated at the quoted spot price without substantial market impact.",
+    currency: "Currency",
     founders: "Founders", keyWallets: "Key wallets",
     sources: "Investigation sources",
     published: "Published",
@@ -104,7 +109,11 @@ const T: Record<Locale, Record<string, string>> = {
     tge: "TGE", claimedRaise: "Levée déclarée",
     backers: "Investisseurs annoncés", exchanges: "Lieux de trading",
     exitExchanges: "Exchanges de cash-out", linkedTokens: "Tokens du même schéma",
-    estimatedHarm: "Préjudice retail estimé", currency: "Devise",
+    insiderExitNotional: "Insider exit notional value",
+    insiderExitNotionalNote: "Sur la base de 100M LAB attribués à une sortie d'insiders, valorisés à environ 4,82 $/LAB. Valorisation notionnelle — ni proceeds réalisés, ni pertes retail estimées.",
+    insiderExitNotionalScale: "Valeur notionnelle ≈ 144 % de la market cap circulante au pic.",
+    insiderExitNotionalFloat: "Valorisation notionnelle uniquement. La quantité de tokens représente environ 131 % du flottant circulant référencé ; elle n'aurait pas pu être liquidée au prix spot cité sans impact de marché substantiel.",
+    currency: "Devise",
     founders: "Fondateurs", keyWallets: "Wallets clés",
     sources: "Sources de l'investigation",
     published: "Publié",
@@ -260,9 +269,20 @@ export default function TokenCasefileView({ data, locale }: { data: TokenCasefil
               <Field label={t.fdvPeak}>
                 <span style={{ fontSize: 16, fontWeight: 900, color: "#FF3B5C", fontFamily: "monospace" }}>{fmtUsd(data.fdvPeakUsd)}</span>
               </Field>
-              <Field label={t.estimatedHarm}>
-                <span style={{ fontSize: 16, fontWeight: 900, color: "#FF3B5C", fontFamily: "monospace" }}>{fmtUsd(data.estimatedRetailHarmUsd)}</span>
-              </Field>
+              {/* W2 — le montant s'affiche sous la grandeur qu'il mesure.
+                  Il valorise 100M LAB attribués à une sortie d'insiders ; ce
+                  n'est ni un produit réalisé, ni une perte de particuliers.
+                  L'échelle est rapportée à la market cap CIRCULANTE : le FDV,
+                  affiché juste au-dessus, ne doit jamais servir de dénominateur
+                  — il ferait paraître ce montant modeste. */}
+              {data.insiderExitNotionalValueUsd != null && (
+                <Field label={t.insiderExitNotional}>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: "#FFB800", fontFamily: "monospace" }}>~{fmtUsd(data.insiderExitNotionalValueUsd)}</span>
+                  <div style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.6, marginTop: 6 }}>{t.insiderExitNotionalNote}</div>
+                  <div style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.6, marginTop: 4 }}>{t.insiderExitNotionalScale}</div>
+                  <div style={{ fontSize: 11, color: "#FFB800", lineHeight: 1.6, marginTop: 4 }}>{t.insiderExitNotionalFloat}</div>
+                </Field>
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
               <Field label={t.subtype}><Pill color="#8b5cf6">{subtype}</Pill></Field>
