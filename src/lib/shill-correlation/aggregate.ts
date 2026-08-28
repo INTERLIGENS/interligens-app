@@ -5,7 +5,7 @@
 // Unified exclusion model: every (kol,wallet,chain) gets a candidate row; the
 // ones that should not surface carry an excludedReason (audit trail kept in-DB):
 //   known_router    — static blacklist (PHASE 4.5, known-routers.ts)
-//   high_frequency / too_many_tokens / bot_infra — dynamic Helius vetting (4.6)
+//   indiscriminate_activity / bot_infra — vetting comportemental (4.6bis)
 // SURVIVING candidates = excludedReason IS NULL.
 //
 // Vetting is injected (opts.vetWallet) so this stays testable and so Helius is
@@ -79,8 +79,12 @@ export interface ExistingExclusion {
 
 export interface AggregateOptions {
   dryRun?: boolean;
-  /** Helius-backed vetter; called once per surfacing wallet (cached). */
-  vetWallet?: (wallet: string) => Promise<VetVerdict>;
+  /**
+   * Helius-backed vetter; called once per surfacing wallet (cached).
+   * Le contexte porte les dimensions de correlation que le profil de wallet
+   * ne connait pas - la dispersion inter-KOL notamment.
+   */
+  vetWallet?: (wallet: string, context: { distinctKolCount: number }) => Promise<VetVerdict>;
   /** Injected clock for vettedAt (deterministic in tests). */
   now?: Date;
   /**
@@ -293,7 +297,7 @@ export async function aggregateCandidates(
 
     let verdict = vetCache.get(c.wallet);
     if (!verdict) {
-      verdict = await opts.vetWallet(c.wallet);
+      verdict = await opts.vetWallet(c.wallet, { distinctKolCount: c.distinctKolCount });
       vetCache.set(c.wallet, verdict);
       walletsVetted++;
     }
