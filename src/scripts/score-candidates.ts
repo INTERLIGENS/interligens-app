@@ -51,11 +51,13 @@ async function main() {
   console.log(
     "observations:", r.observationsScanned,
     "| analyzableEvents:", r.analyzableEvents,
+    "| analyzableOccasions:", r.analyzableOccasions,
     "| analyzableKols:", r.analyzableKols,
     "| total candidates:", r.candidates.length,
   );
   console.log(
     "exclusions:", r.exclusions.total, JSON.stringify(r.exclusions.byReason),
+    "| preservees:", r.exclusions.preserved, "| appliquees:", r.exclusions.applied,
     "| walletsVetted:", r.walletsVetted,
     vetter ? `| heliusVettingCalls: ${vetter.getCalls()}` : "",
   );
