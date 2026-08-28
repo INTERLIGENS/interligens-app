@@ -458,6 +458,38 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour le recalage anti-drift du schema sur les colonnes DATA NATURE
+# (BUILD 2 / S3 + S4). Les colonnes concernées existent — ou existeront — en DB
+# ep-square-band, posées à la main dans Neon SQL Editor (jamais prisma migrate :
+# verrou A9, P1012 à getConfig). Ce chantier ne fait que refléter cette réalité
+# dans schema.prod.prisma. AUCUNE migration n'est déclenchée par ce commit.
+#
+# Périmètre STRICT — uniquement des champs de nature de donnée :
+#   enum DataNature                        (6 valeurs, créé par S3 fichier 00)
+#   EvidenceItem         rowNature + evidentiaryStatus + exclusionReason
+#   KolTokenLink         4 colonnes *Nature
+#   TokenPriceTracker    4 colonnes *Nature
+#   token_casefiles      3 colonnes *Nature
+#   KolTokenInvolvement  2 colonnes *Nature
+# Rien d'autre. Aucun modèle créé, aucun champ existant modifié ou retiré,
+# aucune relation touchée.
+#
+# ⚠️ ORDRE IMPOSÉ : evidentiaryStatus et exclusionReason n'existent PAS encore
+# en DB. Prisma sélectionne tous les champs scalaires d'un modèle : déclarer une
+# colonne absente de la base casse toute lecture d'EvidenceItem en production.
+# La PR de schema ne peut donc être mergée qu'APRÈS l'exécution du fichier
+# S4_PACK/05 dans Neon. L'exemption reste ouverte jusque-là.
+#
+# Autorisation humaine explicite (David, ordre GPT du 2026-08-28 :
+# exemption Prisma ciblée → S4 → post-check → S5) — voir PR description.
+# Exemption limitée au SEUL fichier nommé ci-dessous ; ne couvre ni
+# prisma/schema.prisma, ni prisma/migrations/, ni le reste de ^prisma/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-datanature-schema-sync$ ]]; then
+    EXEMPT_DATANATURE_SCHEMA_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+    )
+fi
+
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -847,6 +879,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche de recalage DATA NATURE, exempter le SEUL schema.prod.prisma
+    # (ni prisma/schema.prisma, ni prisma/migrations/, ni aucun autre ^prisma/).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-datanature-schema-sync$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_DATANATURE_SCHEMA_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
