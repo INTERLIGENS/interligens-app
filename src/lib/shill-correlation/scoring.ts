@@ -47,6 +47,34 @@ export const SCORING = {
   shortlist: { minShills: 3, minPreTweet: 2, minRatio: 0.25 },
   serious: { minShills: 5, minSpecificity: 50 }, // specificity>=50 => <=2 distinct KOLs
   confidence: { highScore: 70, mediumScore: 45 },
+
+  /**
+   * CORRECTNESS #2 - PLANCHER DE n. RATIFIE A 3 (2026-08-28).
+   *
+   * Le defaut mesure : sept candidats `deepnets_agent` obtiennent 77,00 avec
+   * observed=1, analyzable=1, ratio=1,00. Un ratio de 1 sur UNE observation
+   * n'est pas une recurrence - c'est un evenement isole dont le denominateur
+   * vaut aussi 1. Le score le lisait comme une regularite parfaite.
+   *
+   * SEMANTIQUE RATIFIEE (2026-08-28) : le plancher compte 3 OCCASIONS
+   * INDEPENDANTES, pas 3 evenements. Deux tweets du meme KOL sur le meme mint
+   * a une minute d'intervalle forment UNE occasion (correctif #1, occasions.ts)
+   * et ne valent donc qu'une unite ici. Sans cette regle, trois tweets d'un
+   * meme episode auraient suffi a franchir le plancher - ce qui aurait rendu le
+   * correctif #2 contournable par le defaut que le correctif #1 corrige.
+   *
+   * En dessous de ce plancher, le ratio ne compte PLUS comme recurrence : la
+   * composante recurrence retombe sur son seul terme de comptage. Le candidat
+   * n'est pas supprime ni exclu - il cesse simplement d'etre credite d'une
+   * regularite qu'une seule observation ne peut pas etablir.
+   *
+   * RAISON DU 3 : `shortlist.minShills` vaut deja 3, donc 3 aligne
+   * le plancher du ratio sur le seuil de mise en liste courte deja ratifie, et
+   * n'introduit pas un second seuil concurrent. 2 serait defendable (deux
+   * occasions font deja une repetition) ; 5 alignerait sur `serious.minShills`
+   * mais viderait la classe `candidate` sur le corpus actuel.
+   */
+  minObservationsForRatio: 3,
 } as const;
 
 const clamp100 = (n: number) => Math.max(0, Math.min(100, n));
@@ -68,10 +96,17 @@ export function computeCandidateScores(
 
   const ratioObserved = analyzable > 0 ? observed / analyzable : 0;
 
+  // CORRECTNESS #2 - sous le plancher, le ratio ne vaut pas recurrence.
+  // `ratioObserved` reste renvoye tel quel (il decrit un fait : ce wallet a ete
+  // vu sur n occasions sur m), mais il cesse d'alimenter le score.
+  const ratioCounts = observed >= SCORING.minObservationsForRatio;
+
   // recurrence: half ratio-driven, half count-driven (saturating at the cap).
   const countComponent = Math.min(1, observed / SCORING.recurrenceCountCap);
   const recurrenceScore = clamp100(
-    100 * (0.5 * ratioObserved + 0.5 * countComponent),
+    ratioCounts
+      ? 100 * (0.5 * ratioObserved + 0.5 * countComponent)
+      : 100 * (0.5 * countComponent),
   );
 
   // specificity: inverse of how many KOLs this wallet touches (1 KOL => 100).
@@ -104,6 +139,7 @@ export function computeCandidateScores(
   const correlationScore = clamp100(base - genericSniperPenalty);
 
   const shortlistEligible =
+    ratioCounts &&
     observed >= SCORING.shortlist.minShills &&
     pre >= SCORING.shortlist.minPreTweet &&
     ratioObserved >= SCORING.shortlist.minRatio;
