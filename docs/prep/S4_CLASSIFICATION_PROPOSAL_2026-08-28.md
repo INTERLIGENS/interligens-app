@@ -1,5 +1,28 @@
 # S4 — CLASSEMENT DÉFINITIF · EvidenceItem
-### 2026-08-28 · les 8 rulings appliqués · pack écrit, **non exécuté** · rien mergé hors l'exemption guard
+### 2026-08-28 · **CLÔTURÉ** — pack exécuté en base, recalage Prisma fermé, guard refermé
+
+> **État final mesuré** : `PRIMARY_OBSERVATION` 1 052 · `EDITORIAL_ASSERTION` 11
+> · `UNCLASSIFIED` 41 (34 mixtes + 7 exclues) · `INFERENCE` 0 ·
+> `THIRD_PARTY_DATA` 0 · `ESTIMATE` 0. Fichiers passés : 01, 02, 04, 05, 06.
+> Le **03 est RETIRÉ**, jamais exécuté.
+
+---
+
+## LA DOCTRINE DATA NATURE
+
+> Un `EvidenceItem` dont les affirmations sont de natures **non homogènes**
+> reste `UNCLASSIFIED` jusqu'à classification au niveau **assertion**.
+> `rowNature` ne force **jamais** une nature globale.
+
+**`UNCLASSIFIED` ≠ `EXCLUDED`.** Une pièce non classée est **dans** la chaîne
+probatoire : elle compte, elle est opposable, elle attend un classement plus
+fin. Une pièce `EXCLUDED` n'y participe plus. Deux colonnes, deux
+significations — les confondre ferait disparaître 34 pièces valides.
+
+Corollaire mesuré, et il n'était pas prévu : `INFERENCE`, `THIRD_PARTY_DATA` et
+`ESTIMATE` valent **0** sur `EvidenceItem`. Chaque artefact qui aurait pu les
+porter s'est révélé mixte à la lecture. Le corpus probatoire du produit ne
+contient presque aucun document mono-nature en dehors des captures d'écran.
 
 Mesures faites sur `ep-square-band` en **lecture seule** :
 `SET default_transaction_read_only = on`, `BEGIN READ ONLY`, sortie par
@@ -94,7 +117,7 @@ couverte, 0 recouvrement** (vérifié par requête).
 | 7 | `backfill` · `.webp` en `octet-stream` | **4** | `PRIMARY_OBSERVATION` | 01 | Pivot. `mimeType` mal deviné à l'ingestion. |
 | 8 | `backfill` · `EXPLORER` · json — **fiches de pièce** | **8** | `EDITORIAL_ASSERTION` | 02 | Fiches rédigées citant Helius / Arkham. **Corrigé** (§2). |
 | 9a | `INDEX.json` (sha `394fdc21…`) | **1** | `EDITORIAL_ASSERTION` | 02 | Sommaire de dossier : n'observe ni ne calcule. |
-| 9b | `sxyz500_hops.json` (`9cc752c6…`) | **1** | `INFERENCE` | 03 | Graphe de sauts dérivé de lectures on-chain. |
+| 9b | `sxyz500_hops.json` (`9cc752c6…`) | **1** | *aucune — OPTION C étendue* | 06 | `INFERENCE` (hopIndex, amountUsd) + `_note` rédigé sur **ses 6 entrées**. Fichier 03 **RETIRÉ**. |
 | 9c | `BOTIFY_KOL_SCAN_REPORT.json` (`1608ed3e…`) | **1** | *aucune — OPTION C* | 06 | Artefact mixte : agrégats `INFERENCE` + `solPriceEstimate` `ESTIMATE`. |
 | 10 | `backfill` · `X_POST` · json — transcriptions | **2** | `EDITORIAL_ASSERTION` | 02 | Transcription manuscrite, `screenshot_needed: true`. |
 | 11 | Archives ZIP conteneurs | **5** | *exclusion* | 05 | Membres déjà versés (R3). |
@@ -113,13 +136,18 @@ l'arbitrage a explicitement mise de côté.
 |---|---|
 | `PRIMARY_OBSERVATION` | 1 050 |
 | `EDITORIAL_ASSERTION` | 11 |
-| `INFERENCE` | 1 |
-| Exclues de la chaîne (restent `UNCLASSIFIED`) | 7 |
-| **Artefacts à affirmations mixtes — OPTION C** | **33** |
+| `INFERENCE` | 0 |
+| Exclues de la chaîne — `EXCLUDED` | 7 |
+| **Artefacts à affirmations mixtes — OPTION C** | **34** |
 | **Total** | **1 102** ✅ |
 
-État final attendu de la table (1 104 lignes) : `PRIMARY_OBSERVATION` 1 052
-(dont les 2 de S3), `EDITORIAL_ASSERTION` 11, `INFERENCE` 1, `UNCLASSIFIED` 40.
+État final **mesuré** sur 1 104 lignes : `PRIMARY_OBSERVATION` 1 052 (dont les
+2 de S3), `EDITORIAL_ASSERTION` 11, `UNCLASSIFIED` 41 = 34 mixtes + 7 exclues.
+
+Les 34 ont un prédicat canonique, sans colonne supplémentaire :
+`rowNature = 'UNCLASSIFIED' AND "evidentiaryStatus" IS NULL` — *non classé, et
+non exclu*. Ils sont inscrits au backlog `EvidenceItemAssertion`
+(`S4_PACK/BACKLOG_EvidenceItemAssertion.md`).
 
 `THIRD_PARTY_DATA` : **0**. `ESTIMATE` : **0** — la seule estimation repérée
 (`solPriceEstimate: 200`) est enfouie dans un artefact mixte, désormais non
@@ -178,18 +206,27 @@ manque n'est pas la règle : c'est l'endroit où l'écrire. **Aucune table
 `EvidenceItemAssertion` n'est créée** — chantier ultérieur, et son coût réel
 n'est pas la migration mais le dépouillement de 33 documents à la main.
 
-*Réserve écrite, fait postérieur à l'arbitrage :* `sxyz500_hops.json`, classé
-`INFERENCE`, porte un `_note` rédigé à la main sur **ses 6 entrées**. Par le
-critère qui a sorti `BOTIFY_KOL_SCAN_REPORT.json`, il relève du même sursis.
-L'arbitrage a été rendu sans cette mesure. Si OPTION C est étendue : ne pas
-exécuter le fichier 03 — un seul `UPDATE`, aucune dépendance.
+*Réserve levée — l'arbitrage a tranché.* `sxyz500_hops.json` portait un `_note`
+rédigé à la main sur **ses 6 entrées** ; par le critère qui avait sorti
+`BOTIFY_KOL_SCAN_REPORT.json`, il relevait du même sursis. **OPTION C a été
+étendue** : le fichier 03 n'a jamais été exécuté et il est marqué `RETIRED`,
+son `UPDATE` neutralisé en commentaire. L'ensemble passe de 33 à **34 pièces**.
+
+C'est la réserve écrite *avant* exécution qui a rendu cet arbitrage possible :
+sans elle, la pièce serait passée en `INFERENCE` sans que personne ne regarde
+son contenu.
 
 **4. Circularité — inexprimable en base.** « Un PDF généré n'est jamais preuve
 primaire de ses propres conclusions » est ratifié, mais aucune colonne ne le
 porte. La règle ne tient aujourd'hui que par le fait que ces 32 lignes restent
 non classées — une garantie par omission, donc fragile.
 
-**5. Dérive Prisma — EN COURS DE FERMETURE.** `schema.prod.prisma` ne déclare
+**5. Dérive Prisma — FERMÉE.** Schéma recalé (PR #173, main `dca38bc`),
+vérifié colonne par colonne contre `information_schema` : 0 divergence, enum
+identique valeur par valeur et dans le même ordre. Exemption guard refermée
+byte-identique (PR #176, main `090cc52`). *Détail de la fermeture ci-dessous.*
+
+**5-bis. Le contexte de la fermeture.** `schema.prod.prisma` ne déclare
 **aucune** des 16 colonnes Data Nature (14 de S3 déjà en base + 2 de S4).
 L'exemption guard ciblée est mergée (`0cf5c66`, PR #172), limitée au seul
 `^prisma/schema\.prod\.prisma$`.
@@ -237,3 +274,27 @@ et son compte attendu en commentaire. Un compte qui diverge = arrêt.
 `rowNature = 'UNCLASSIFIED'` y aurait produit 0 écriture si le fichier 01
 passait d'abord. Les fichiers 01, 02, 03, 05 sont mutuellement exclusifs ;
 le 04 est indépendant de l'ordre ; le 06 n'écrit rien.
+
+
+---
+
+## 7. Ce qui reste ouvert après la clôture
+
+**Le backlog `EvidenceItemAssertion`** — 34 pièces, sans date. Le coût n'est pas
+la migration mais le dépouillement de 34 documents à la main. Voir
+`S4_PACK/BACKLOG_EvidenceItemAssertion.md`.
+
+**La doctrine n'est pas exécutable.** `src/lib/data-nature/` ignore la notion
+d'artefact à affirmations mixtes : rien, dans le code, n'empêche d'écrire une
+`rowNature` sur l'une des 34. La règle de circularité — un PDF généré n'est
+jamais preuve primaire de ses propres conclusions — ne tient elle aussi que par
+le fait que ces lignes restent non classées. **Une garantie par omission**, qui
+disparaîtra sans bruit le jour où quelqu'un les classera sans connaître la
+règle. La rendre opposable (invariant ou test) reste à faire.
+
+**Le filtrage des pièces exclues** n'existe pas : `evidentiaryStatus` est posé,
+mais aucune lecture produit ne le consulte. Poser la colonne ne fait pas
+respecter l'exclusion.
+
+Aucun de ces trois points n'est dans S5, qui porte sur les `methodRef` des
+39 estimations sans méthode (`KolWallet` 29 + `KolCase` 10).
