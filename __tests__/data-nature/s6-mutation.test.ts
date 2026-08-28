@@ -63,8 +63,48 @@ describe("2 · une ESTIMATE sans méthode ni basis valide est refusée", () => {
 });
 
 describe("3 · un methodRef legacy est refusé", () => {
-  it("/en/methodology et les formules d'évitement ne passent pas", () => {
+  it("/en/methodology et les formules d'évitement ne passent pas — la BLOCKLIST", () => {
     for (const bad of ["/en/methodology", "legacy", "internal", "manual@1", "tbd"]) {
+      expect(isValidMethodRef(bad)).toBe(false);
+      expect(() => assertNatureWritable({ id: "x" }, { nature: "ESTIMATE", methodRef: bad }, WHERE))
+        .toThrow(UnauditableEstimateError);
+    }
+  });
+
+  // Le run de mutation a montré que le test ci-dessus ne prouvait RIEN sur la
+  // grammaire : ses cinq valeurs sont toutes arrêtées par la blocklist, AVANT
+  // que la regex ne soit consultée. Neutraliser METHOD_REF_RE laissait la suite
+  // verte. Ces valeurs-ci ne sont dans aucune blocklist : seule la FORME les
+  // rejette, et retirer la regex les fait passer.
+  it("la GRAMMAIRE seule rejette ce que la blocklist laisse passer", () => {
+    for (const bad of [
+      "retail-harm@2",                    // plat : pas de composant
+      "retail-harm@1.2.0",                // semver : hors convention
+      "financial-estimates@v1",           // pas de composant
+      "financial-estimates/est-proceeds", // pas de version
+      "financial-estimates/est-proceeds@1", // manque le v
+      "Financial-Estimates/Est@v1",       // majuscules
+      "financial estimates/est@v1",       // espace
+      "a/b@v1",                           // segments trop courts
+    ]) {
+      expect(isValidMethodRef(bad)).toBe(false);
+      expect(() => assertNatureWritable({ id: "x" }, { nature: "ESTIMATE", methodRef: bad }, WHERE))
+        .toThrow(UnauditableEstimateError);
+    }
+  });
+
+
+  // Encore un trou révélé par la mutation : la blocklist restait verte quand on
+  // la neutralisait, parce que la grammaire rejette déjà `legacy`, `internal`
+  // ou `/en/methodology` par leur FORME. Ce que la blocklist seule attrape,
+  // c'est un nom interdit dans une référence PARFAITEMENT BIEN FORMÉE.
+  it("la BLOCKLIST seule rejette un nom interdit bien formé", () => {
+    for (const bad of [
+      "legacy/est-proceeds@v1",
+      "internal/est-proceeds@v1",
+      "unknown/retail-harm@v2",
+      "todo/whatever@v1",
+    ]) {
       expect(isValidMethodRef(bad)).toBe(false);
       expect(() => assertNatureWritable({ id: "x" }, { nature: "ESTIMATE", methodRef: bad }, WHERE))
         .toThrow(UnauditableEstimateError);
