@@ -1,0 +1,22 @@
+--- FENÊTRE D'EXEMPTION À OUVRIR PAR LE FONDATEUR — je ne l'ouvre pas moi-même.
+--- Voie de maintenance de la maison : branche hotfix/guard-*, guard SEUL dans
+--- le diff, fenêtre refermée byte-identique après merge du schema-sync.
+--- À insérer dans scripts/guard-offline.sh, près des autres blocs EXEMPT_* :
+
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-span-schema-sync$ ]]; then
+    # Recalage de schema.prod.prisma sur les 7 colonnes additives posées à la
+    # main dans Neon (MIGRATION_shill_sample_span_2026-08-29.sql). AUCUN autre
+    # chemin : ni migrations/, ni le reste de prisma/.
+    EXEMPT_SHILL_SPAN_SCHEMA_PATTERNS=(
+        "^prisma/schema\\.prod\\.prisma$"
+    )
+fi
+
+--- et la boucle correspondante, à côté des autres :
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-span-schema-sync$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_SHILL_SPAN_SCHEMA_PATTERNS[@]}"; do
+            [[ "$f" =~ $ex ]] && EXEMPT=true && break
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
