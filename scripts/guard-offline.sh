@@ -458,6 +458,38 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour le recalage schema des 2 colonnes de nature S5 (BUILD 2).
+# S5 est le premier à vouloir écrire une nature sur KolWallet et KolCase — et
+# découvre qu'aucune des deux ne porte de colonne de nature. Le registre les
+# classe pourtant en régime ROW / étape S4, mais S4 s'était limité à
+# EvidenceItem. Les colonnes sont posées à la main dans Neon
+# (S5_PACK/00_PREREQ_nature_columns.sql) ; ce chantier ne fait que refléter
+# cette réalité dans schema.prod.prisma. AUCUNE migration déclenchée ici.
+#
+# Périmètre STRICT — exactement DEUX colonnes, rien d'autre :
+#     KolWallet.rowNature  DataNature?
+#     KolCase.rowNature    DataNature?
+# Aucun modèle créé, aucun champ existant modifié ou retiré, aucune relation
+# touchée. En particulier : AUCUNE colonne de méthode sur KolWallet (exclu par
+# l'arbitrage S5-C), et claimType n'est pas touché — c'est un vocabulaire
+# d'origine, pas une nature, et checkPublishability le lit.
+#
+# ⚠️ ORDRE IMPOSÉ, même leçon qu'en S4 : Prisma sélectionne tous les champs
+# scalaires d'un modèle. Déclarer une colonne absente de la base casse toute
+# lecture de KolWallet et KolCase en production. La PR de schema ne peut donc
+# être mergée qu'APRÈS l'exécution du fichier 00 dans Neon. L'exemption reste
+# ouverte jusque-là, puis se referme byte-identique.
+#
+# Autorisation humaine explicite (David, ratification GPT du 2026-08-28 :
+# pack S5 00+B+C+D GO) — voir PR description. Exemption limitée au SEUL fichier
+# nommé ci-dessous ; ne couvre ni prisma/schema.prisma, ni prisma/migrations/,
+# ni le reste de ^prisma/.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s5-nature-schema-sync$ ]]; then
+    EXEMPT_S5_NATURE_SCHEMA_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+    )
+fi
+
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -847,6 +879,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche de recalage des 2 colonnes de nature S5, exempter le SEUL
+    # schema.prod.prisma (ni prisma/schema.prisma, ni prisma/migrations/).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s5-nature-schema-sync$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_S5_NATURE_SCHEMA_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
