@@ -19,10 +19,10 @@ import { classifyWalletProfile, type VetVerdict } from "@/lib/shill-correlation/
 
 function makeVetter(nowSec: number) {
   let calls = 0;
-  const vet = async (wallet: string): Promise<VetVerdict> => {
+  const vet = async (wallet: string, context: { distinctKolCount: number }): Promise<VetVerdict> => {
     const profile = await fetchWalletProfile(wallet, nowSec);
     calls += profile.heliusCalls;
-    return classifyWalletProfile(profile);
+    return classifyWalletProfile(profile, context);
   };
   return { vet, getCalls: () => calls };
 }
