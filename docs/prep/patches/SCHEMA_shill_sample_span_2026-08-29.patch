@@ -1,0 +1,24 @@
+diff --git a/prisma/schema.prod.prisma b/prisma/schema.prod.prisma
+index 7bf6341..da6ec28 100644
+--- a/prisma/schema.prod.prisma
++++ b/prisma/schema.prod.prisma
+@@ -4129,6 +4129,19 @@ model ShillCorrelationCandidate {
+   walletTxCount30d     Int?
+   walletTokenAccounts  Int?
+   walletVettedAt       DateTime?
++  // SHILL-C1/C2 — état de MESURE, jamais une affirmation de comportement.
++  // La densité (walletSampleSize / walletSampleSpanDays) est la seule mesure de
++  // fréquence qui survive à la saturation du sampler de signatures.
++  walletSampleSpanDays   Float?
++  walletSampleSize       Int?
++  walletSampleSaturated  Boolean?
++  // Audit de supersession — la réévaluation n'efface pas l'historique.
++  // previousExcludedReason conserve le motif rendu sous la doctrine précédente ;
++  // exclusionSupersededWhy dit POURQUOI il ne vaut plus.
++  previousExcludedReason String?
++  exclusionSupersededAt  DateTime?
++  exclusionSupersededBy  String?
++  exclusionSupersededWhy String?
+   firstSeenAt          DateTime
+   lastSeenAt           DateTime
+   notes                String?
