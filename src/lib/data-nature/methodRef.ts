@@ -61,9 +61,20 @@ export const METHOD_REF_BLOCKLIST: ReadonlySet<string> = new Set([
 /** L'unique validateur. Tout le reste — app et base — en découle. */
 export function isValidMethodRef(ref: unknown): ref is string {
   if (typeof ref !== "string") return false;
-  if (METHOD_REF_BLOCKLIST.has(ref.toLowerCase())) return false;
+  // UNE seule vérification de blocklist, et elle porte sur l'IDENTIFIANT DE
+  // MÉTHODOLOGIE. Il y en avait deux — chaîne entière puis slug — et le run de
+  // mutation a montré que la première était strictement redondante : pour
+  // chaque entrée de la blocklist, le slug EST la chaîne, donc la seconde
+  // l'attrapait déjà. Une ligne qu'aucun test ne peut faire rougir n'est pas
+  // un garde, c'est du décor.
+  //
+  // La blocklist ne fait pas doublon avec la grammaire non plus : celle-ci
+  // rejette `legacy` ou `/en/methodology` par la FORME. Ce que la blocklist
+  // seule attrape, c'est un nom interdit dans une référence PARFAITEMENT bien
+  // formée — `legacy/est-proceeds@v1` passe la grammaire sans difficulté.
+  const methodologyId = ref.split("/")[0]?.toLowerCase() ?? "";
   const slug = ref.split("@")[0]?.toLowerCase() ?? "";
-  if (METHOD_REF_BLOCKLIST.has(slug)) return false;
+  if (METHOD_REF_BLOCKLIST.has(methodologyId) || METHOD_REF_BLOCKLIST.has(slug)) return false;
   return METHOD_REF_RE.test(ref);
 }
 
