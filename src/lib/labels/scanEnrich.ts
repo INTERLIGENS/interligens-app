@@ -2,7 +2,7 @@
 // Called at scan time to check if scanned address is known
 
 import { prisma } from '@/lib/prisma'
-import { decorate, type NatureEnvelope } from '@/lib/data-nature/dto'
+import { decorate, assertDtoPublishable, type NatureEnvelope } from '@/lib/data-nature/dto'
 
 export interface ScanLabelResult {
   found: boolean
@@ -65,6 +65,11 @@ export async function checkAddressLabel(address: string): Promise<ScanLabelResul
       },
       'checkAddressLabel',
     )
+    // S6-2 — CHOKEPOINT de publication. `decorate` pose l'enveloppe ; c'est ici
+    // qu'on refuse de la SORTIR si elle n'est pas publiable : UNCLASSIFIED, ou
+    // ESTIMATE sans méthode auditable. Sans cet appel, l'enveloppe était
+    // décorative — le module d'enforcement existait sans être branché.
+    assertDtoPublishable(dto, 'checkAddressLabel')
     return dto
   } catch {
     return { found: false }

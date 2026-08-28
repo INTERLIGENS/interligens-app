@@ -8,6 +8,7 @@ import { readdirSync, statSync } from "fs";
 import { join } from "path";
 import { sha256Buffer, sha256File } from "./hash";
 import { requestTimestampWithRetry, verifyTimestampOffline } from "./tsa";
+import { eligibleForEvidenceChain } from "./eligibility";
 import type { EvidenceStore, CorroborationLevel, ProvenanceType } from "./types";
 
 // v2 : + provenanceType / submittedBy par pièce. Les manifestes v1 déjà émis
@@ -60,6 +61,20 @@ export interface Manifest {
   disclaimer: string;
   itemCount: number;
   items: ManifestItem[];
+  /**
+   * S6-3 — la comptabilité de ce qui a été ÉCARTÉ.
+   *
+   * Un manifeste qui passe silencieusement de 1 104 à 1 097 pièces ment par
+   * omission. La doctrine « exclusion écrite, jamais silencieuse » de S3
+   * s'applique ici : le manifeste dit combien il a vu, combien il retient,
+   * combien il écarte, et lesquelles — avec leur motif.
+   */
+  custodyScope: {
+    totalInCasefile: number;
+    included: number;
+    excluded: number;
+    exclusions: { id: string; sha256: string; ref: string | null; reason: string | null }[];
+  };
   manifestHash: string;
   manifestTsa: { provider: string; timestampedAt: string; tokenB64: string; certChainPem: string } | null;
 }
@@ -83,7 +98,13 @@ export async function generateManifest(
   store: EvidenceStore,
   opts: { generatedAt: Date; tsaEnabled?: boolean; tsaUrl?: string; tsaCaUrl?: string } = { generatedAt: new Date() },
 ): Promise<Manifest> {
+  // Chaîne ACTIVE : les exclusions sont écartées par le store (S6-3).
   const items = await store.getCasefileItems(casefileId);
+  // Voie d'audit : le total réel, pour pouvoir DIRE ce qui manque. Le manifeste
+  // ne se contente pas d'ignorer les pièces exclues, il les inventorie comme
+  // exclues — c'est ce qui distingue un écart motivé d'une disparition.
+  const allItems = await store.getCasefileItemsForAuditIncludingExcluded(casefileId);
+  const excludedItems = allItems.filter((it) => !eligibleForEvidenceChain(it));
   const manifestItems: ManifestItem[] = [];
   for (const it of items) {
     const links = await store.getItemLinks(it.id);
@@ -108,7 +129,20 @@ export async function generateManifest(
       submittedBy: it.submittedBy ?? null,
     });
   }
-  const core = { version: MANIFEST_VERSION, generatedAt: opts.generatedAt.toISOString(), casefileId, disclaimer: MANIFEST_DISCLAIMER, items: manifestItems };
+  const custodyScope = {
+    totalInCasefile: allItems.length,
+    included: manifestItems.length,
+    excluded: excludedItems.length,
+    exclusions: excludedItems.map((it) => ({
+      id: it.id,
+      sha256: it.sha256,
+      ref: it.r2Key ?? it.filePath ?? null,
+      reason: it.exclusionReason ?? null,
+    })),
+  };
+  // custodyScope entre dans le hash : retirer une pièce de la chaîne change le
+  // manifeste de façon visible et horodatable, jamais en silence.
+  const core = { version: MANIFEST_VERSION, generatedAt: opts.generatedAt.toISOString(), casefileId, disclaimer: MANIFEST_DISCLAIMER, custodyScope, items: manifestItems };
   const manifestHash = sha256Buffer(stableStringify(core));
 
   let manifestTsa: Manifest["manifestTsa"] = null;
@@ -116,7 +150,8 @@ export async function generateManifest(
     const ts = await requestTimestampWithRetry(manifestHash, { tsaUrl: opts.tsaUrl, caUrl: opts.tsaCaUrl });
     if (ts) manifestTsa = { provider: ts.provider, timestampedAt: ts.genTime.toISOString(), tokenB64: ts.token.toString("base64"), certChainPem: ts.certChainPem };
   }
-  return { ...core, itemCount: manifestItems.length, manifestHash, manifestTsa };
+  return { ...core,
+    itemCount: manifestItems.length, manifestHash, manifestTsa };
 }
 
 // ─── Verification (self-contained; only manifest + files needed) ─────────────
@@ -140,8 +175,17 @@ function walkFiles(dir: string): string[] {
  * manifest at stamping time — no network, no external CA file. Verifiable
  * forever, even after the TSA certs expire or the authority disappears.
  */
+/**
+ * Ce que le vérificateur accepte : un manifeste ÉMIS AUJOURD'HUI, ou un
+ * manifeste legacy antérieur à S6 (sans custodyScope) voire à v2 (sans
+ * disclaimer). Le type d'émission reste strict — c'est la lecture qui tolère,
+ * jamais l'écriture.
+ */
+export type VerifiableManifest = Omit<Manifest, "custodyScope" | "disclaimer"> &
+  Partial<Pick<Manifest, "custodyScope" | "disclaimer">>;
+
 export async function verifyManifest(
-  manifest: Manifest,
+  manifest: VerifiableManifest,
   filesDir: string,
   opts: { verifyTsa?: boolean } = {},
 ): Promise<VerifyReport> {
@@ -153,6 +197,11 @@ export async function verifyManifest(
   const core = {
     version: manifest.version, generatedAt: manifest.generatedAt, casefileId: manifest.casefileId,
     ...(manifest.disclaimer !== undefined ? { disclaimer: manifest.disclaimer } : {}),
+    // S6-3 — custodyScope entre dans le hash quand il est présent. Même
+    // tolérance ascendante que pour `disclaimer` : les manifestes émis avant
+    // S6, qui n'en portent pas, restent vérifiables tels quels. Sans cette
+    // optionalité, S6 invaliderait rétroactivement toute la chaîne déjà émise.
+    ...(manifest.custodyScope !== undefined ? { custodyScope: manifest.custodyScope } : {}),
     items: manifest.items,
   };
   const manifestHashOk = sha256Buffer(stableStringify(core)) === manifest.manifestHash;

@@ -4,6 +4,7 @@
  * by this branch — run it in the Neon SQL Editor). Until then, runtime calls
  * here fail on missing relations; tests use the SQLite store instead.
  */
+import { eligibleForEvidenceChain } from "../eligibility";
 import type { PrismaClient } from "@prisma/client";
 import type {
   EvidenceStore, EvidenceItemRecord, EvidenceLinkRecord,
@@ -17,6 +18,7 @@ type PItem = {
   capturedBy: string | null; captureHost: string | null; captureTool: string | null;
   captureToolVersion: string | null; sourceUrl: string | null; sourceType: string;
   provenanceType: string | null; submittedBy: string | null; timestampMode: string | null;
+  evidentiaryStatus?: string | null; exclusionReason?: string | null;
   ingestedAt: Date; tsaToken: Uint8Array | null; tsaProvider: string | null;
   tsaTimestampedAt: Date | null; tsaCertChain: string | null; immutableStored: boolean;
   immutableRef: string | null; notes: string | null;
@@ -92,6 +94,13 @@ export class PrismaEvidenceStore implements EvidenceStore {
     return r ? toItem(r as unknown as PItem) : null;
   }
   async getCasefileItems(casefileId: string): Promise<EvidenceItemRecord[]> {
+    // S6-3 — chaîne ACTIVE. Le filtre est posé ICI, au seul point de passage,
+    // et pas chez les appelants : il n'y en a qu'un aujourd'hui (manifest.ts),
+    // et un filtre posé chez l'appelant serait à re-poser au suivant.
+    const rs = await this.prisma.evidenceItem.findMany({ where: { casefileId }, orderBy: { ingestedAt: "asc" } });
+    return (rs as unknown as PItem[]).map(toItem).filter(eligibleForEvidenceChain);
+  }
+  async getCasefileItemsForAuditIncludingExcluded(casefileId: string): Promise<EvidenceItemRecord[]> {
     const rs = await this.prisma.evidenceItem.findMany({ where: { casefileId }, orderBy: { ingestedAt: "asc" } });
     return (rs as unknown as PItem[]).map(toItem);
   }
