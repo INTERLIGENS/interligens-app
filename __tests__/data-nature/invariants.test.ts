@@ -182,6 +182,14 @@ describe("S1 — le mapping refuse ce qui n'est pas mappable seul", () => {
     expect(needsJoin("MmClaimType", "FACT")).toBe(true);
   });
 
+  it("KolWallet.analytical_estimate dépend de sourceLabel — relais tiers vs estimation nôtre", () => {
+    // Mesuré le 2026-08-28 : les 29 lignes portent un sourceLabel @dethective.
+    // Les traiter comme NOS estimations aurait créé une dette de méthode qui
+    // n'existe pas — la méthode appartient au tiers qui a produit l'analyse.
+    expect(mapVocabularyValue("KolWallet.claimType", "analytical_estimate")).toBeNull();
+    expect(needsJoin("KolWallet.claimType", "analytical_estimate")).toBe(true);
+  });
+
   it("MIGRATED_BACKFILL n'est pas une nature mais un mode d'ingestion", () => {
     const voc = VOCABULARY_MAPPINGS.find((v) => v.source === "EvidenceItem.provenanceType")!;
     expect(voc.values.MIGRATED_BACKFILL.kind).toBe("OTHER_AXIS");
