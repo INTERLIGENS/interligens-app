@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
+import { natureOfTransformation } from "@/lib/data-nature/dto";
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -67,6 +68,10 @@ async function handleLookup(req: Request, value: string, type?: string, chain?: 
     sourceSlug: signal.sourceSlug,
     externalUrl: signal.externalUrl,
     matchBasis: signal.matchBasis,
+    // S2 — topRiskClass est CALCULÉ à partir d'observations tierces : c'est une
+    // INFERENCE, pas un fait rapporté par la source. natureBasis retient que son
+    // plancher est un flux tiers (Q3). Additif : aucun champ existant ne change.
+    _nature: natureOfTransformation("compute", ["THIRD_PARTY_DATA"]),
   });
 }
 

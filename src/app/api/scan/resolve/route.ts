@@ -24,6 +24,7 @@
 
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { natureForResolveSource } from '@/lib/data-nature/sources'
 import {
   searchDexScreenerPairs,
   normalizeSymbol,
@@ -306,6 +307,10 @@ function serialize(c: ResolvedTokenCandidate) {
     // legacy aliases — do not remove (fr/demo + en/demo)
     symbol: c.ticker,
     address: c.mint,
+    // S2 — `source` portait déjà la nature sans la nommer : curated est une
+    // affirmation éditoriale, mentions une observation du produit, dexscreener
+    // et coingecko des données tierces. Additif, aucun champ existant ne change.
+    _nature: natureForResolveSource(c.source),
   }
 }
 
