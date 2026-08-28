@@ -742,6 +742,11 @@ model TokenCaseFile {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
+  // ── Data Nature (BUILD 2 / S3) — colonnes posées en base par S3_PACK ───
+  claimedRaiseUsdNature        DataNature?
+  estimatedRetailHarmUsdNature DataNature?
+  rowNature                    DataNature?
+
   @@index([family])
   @@index([publishStatus])
   @@index([ticker])
@@ -799,6 +804,20 @@ model KOLCaseLink {
 
   @@index([kolId])
   @@index([caseId])
+}
+
+/// Nature d'une AFFIRMATION portée par une donnée (BUILD 2 — Data Nature).
+/// Créé en base par S3_PACK/00_enum_DataNature.sql (Neon, à la main).
+/// Les 5 valeurs canoniques viennent de src/lib/data-nature/nature.ts ;
+/// UNCLASSIFIED est le transitoire — le code le tient hors du type canonique,
+/// la base doit pouvoir le porter.
+enum DataNature {
+  PRIMARY_OBSERVATION
+  THIRD_PARTY_DATA
+  INFERENCE
+  ESTIMATE
+  EDITORIAL_ASSERTION
+  UNCLASSIFIED
 }
 
 enum CaptureStatus {
@@ -1363,6 +1382,12 @@ model KolTokenLink {
   reviewNote                String?
   createdByBridge           Boolean  @default(false)
 
+  // ── Data Nature (BUILD 2 / S3) — colonnes posées en base par S3_PACK ───
+  contractAddressNature     DataNature?
+  canonicalMintNature       DataNature?
+  noteNature                DataNature?
+  rowNature                 DataNature?
+
   kol                 KolProfile @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
 
   @@unique([kolHandle, contractAddress, chain])
@@ -1676,6 +1701,10 @@ model KolTokenInvolvement {
   lastComputedAt        DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
+  // ── Data Nature (BUILD 2 / S3) — colonnes posées en base par S3_PACK ───
+  retailLossEstimateUsdNature DataNature?
+  rowNature                   DataNature?
 
   kol                KolProfile         @relation(fields: [kolHandle], references: [handle], onDelete: Cascade)
   wallet             KolWallet?         @relation(fields: [walletId], references: [id], onDelete: SetNull)
@@ -3731,6 +3760,12 @@ model TokenPriceTracker {
   createdAt       DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
 
+  // ── Data Nature (BUILD 2 / S3) — colonnes posées en base par S3_PACK ───
+  currentPriceNature DataNature?
+  peakPriceNature    DataNature?
+  dumpPctNature      DataNature?
+  rowNature          DataNature?
+
   @@unique([chain, contractAddress])
   @@index([chain])
   @@index([ticker])
@@ -4141,6 +4176,14 @@ model EvidenceItem {
   immutableStored    Boolean  @default(false)
   immutableRef       String?
   notes              String?
+
+  // ── Data Nature (BUILD 2 / S3) — colonnes posées en base par S3_PACK ───
+  rowNature          DataNature?
+  // S4 — posées par S4_PACK/05_exclusion_non_evidence.sql (PAS ENCORE EN BASE).
+  // NULL = aucune décision d'exclusion prononcée — JAMAIS « active ».
+  // exclusionReason est obligatoire dès que evidentiaryStatus = 'EXCLUDED'.
+  evidentiaryStatus  String?
+  exclusionReason    String?
 
   links      EvidenceLink[]
   accessLogs EvidenceAccessLog[]
