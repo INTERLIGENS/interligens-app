@@ -117,12 +117,13 @@ export const NATURE_REGISTRY: Record<string, TableNatureDecl> = {
       "d'un provider qui ne l'a jamais publié.",
   },
   token_casefiles: {
-    regime: "FIELD", rows: 1, stage: "S3",
+    regime: "FIELD", rows: 2, stage: "S3",
     fields: { claimedRaiseUsd: "THIRD_PARTY_DATA", estimatedRetailHarmUsd: "ESTIMATE" },
     rowDefault: () => "EDITORIAL_ASSERTION",
     why:
       "M3 — 482 M$ estimés à côté de 1,5 M$ revendiqués, même type numérique. " +
-      "estimatedRetailHarmUsd exigera un methodRef (Q5).",
+      "estimatedRetailHarmUsd exigera un methodRef (Q5). " +
+      "Remesuré le 2026-08-28 : 2 lignes, pas 1 — le comptage du 2026-08-27 était stale.",
   },
   EvidenceItem: {
     regime: "ROW", rows: 1_104, stage: "S3",
