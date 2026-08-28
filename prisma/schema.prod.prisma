@@ -737,6 +737,14 @@ model TokenCaseFile {
   keyWallets             Json      @default("[]")
   linkedTokens           Json      @default("[]")
   estimatedRetailHarmUsd BigInt?
+  // ── W2 (2026-08-29) — la valeur notionnelle a désormais son champ ──────
+  // 100M LAB attribués à une sortie d'insiders (THIRD_PARTY_DATA, ZachXBT),
+  // valorisés au prix de référence → ESTIMATE. Ni proceeds réalisés, ni
+  // pertes retail. insiderExitNotionalBasis porte le natureBasis : quantité,
+  // prix, fenêtre, formule. Colonnes posées en base par W2_PACK/00.
+  insiderExitNotionalValueUsd       BigInt?
+  insiderExitNotionalValueUsdNature DataNature?
+  insiderExitNotionalBasis          Json?
   currency               String    @default("USD")
   sources                Json      @default("[]")
   specterCollab          Boolean   @default(false)
