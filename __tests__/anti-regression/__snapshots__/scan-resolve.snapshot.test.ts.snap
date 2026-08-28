@@ -4,6 +4,7 @@ exports[`/api/scan/resolve snapshot — 'BONK — curated + mention overlap (cur
 {
   "candidates": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
       "chain": "SOL",
       "kolCount": 1,
@@ -25,6 +26,7 @@ exports[`/api/scan/resolve snapshot — 'BONK — curated + mention overlap (cur
   "query": "BONK",
   "results": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
       "chain": "SOL",
       "kolCount": 1,
@@ -41,6 +43,7 @@ exports[`/api/scan/resolve snapshot — 'BONK — curated + mention overlap (cur
     },
   ],
   "selected": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
     "chain": "SOL",
     "kolCount": 1,
@@ -58,6 +61,7 @@ exports[`/api/scan/resolve snapshot — 'BONK — curated + mention overlap (cur
   "source": "curated",
   "status": "resolved",
   "token": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
     "chain": "SOL",
     "kolCount": 1,
@@ -79,6 +83,7 @@ exports[`/api/scan/resolve snapshot — 'BOTIFY — mentions only' > matches the
 {
   "candidates": [
     {
+      "_nature": "PRIMARY_OBSERVATION",
       "address": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
       "chain": "SOL",
       "kolCount": 2,
@@ -100,6 +105,7 @@ exports[`/api/scan/resolve snapshot — 'BOTIFY — mentions only' > matches the
   "query": "BOTIFY",
   "results": [
     {
+      "_nature": "PRIMARY_OBSERVATION",
       "address": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
       "chain": "SOL",
       "kolCount": 2,
@@ -116,6 +122,7 @@ exports[`/api/scan/resolve snapshot — 'BOTIFY — mentions only' > matches the
     },
   ],
   "selected": {
+    "_nature": "PRIMARY_OBSERVATION",
     "address": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
     "chain": "SOL",
     "kolCount": 2,
@@ -133,6 +140,7 @@ exports[`/api/scan/resolve snapshot — 'BOTIFY — mentions only' > matches the
   "source": "mentions",
   "status": "resolved",
   "token": {
+    "_nature": "PRIMARY_OBSERVATION",
     "address": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
     "chain": "SOL",
     "kolCount": 2,
@@ -169,6 +177,7 @@ exports[`/api/scan/resolve snapshot — 'ETH — only coingecko (multi-platform)
 {
   "candidates": [
     {
+      "_nature": "THIRD_PARTY_DATA",
       "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
       "chain": "ETH",
       "kolCount": 0,
@@ -190,6 +199,7 @@ exports[`/api/scan/resolve snapshot — 'ETH — only coingecko (multi-platform)
   "query": "ETH",
   "results": [
     {
+      "_nature": "THIRD_PARTY_DATA",
       "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
       "chain": "ETH",
       "kolCount": 0,
@@ -206,6 +216,7 @@ exports[`/api/scan/resolve snapshot — 'ETH — only coingecko (multi-platform)
     },
   ],
   "selected": {
+    "_nature": "THIRD_PARTY_DATA",
     "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "chain": "ETH",
     "kolCount": 0,
@@ -223,6 +234,7 @@ exports[`/api/scan/resolve snapshot — 'ETH — only coingecko (multi-platform)
   "source": "coingecko",
   "status": "resolved",
   "token": {
+    "_nature": "THIRD_PARTY_DATA",
     "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "chain": "ETH",
     "kolCount": 0,
@@ -244,6 +256,7 @@ exports[`/api/scan/resolve snapshot — 'JUP — single curated SOL' > matches t
 {
   "candidates": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
       "chain": "SOL",
       "kolCount": 1,
@@ -265,6 +278,7 @@ exports[`/api/scan/resolve snapshot — 'JUP — single curated SOL' > matches t
   "query": "JUP",
   "results": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
       "chain": "SOL",
       "kolCount": 1,
@@ -281,6 +295,7 @@ exports[`/api/scan/resolve snapshot — 'JUP — single curated SOL' > matches t
     },
   ],
   "selected": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
     "chain": "SOL",
     "kolCount": 1,
@@ -298,6 +313,7 @@ exports[`/api/scan/resolve snapshot — 'JUP — single curated SOL' > matches t
   "source": "curated",
   "status": "resolved",
   "token": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
     "chain": "SOL",
     "kolCount": 1,
@@ -334,6 +350,7 @@ exports[`/api/scan/resolve snapshot — 'RAVE — mentions only' > matches the l
 {
   "candidates": [
     {
+      "_nature": "PRIMARY_OBSERVATION",
       "address": "RaveTokenSynthetic111111111111111111111111ab",
       "chain": "SOL",
       "kolCount": 1,
@@ -355,6 +372,7 @@ exports[`/api/scan/resolve snapshot — 'RAVE — mentions only' > matches the l
   "query": "RAVE",
   "results": [
     {
+      "_nature": "PRIMARY_OBSERVATION",
       "address": "RaveTokenSynthetic111111111111111111111111ab",
       "chain": "SOL",
       "kolCount": 1,
@@ -371,6 +389,7 @@ exports[`/api/scan/resolve snapshot — 'RAVE — mentions only' > matches the l
     },
   ],
   "selected": {
+    "_nature": "PRIMARY_OBSERVATION",
     "address": "RaveTokenSynthetic111111111111111111111111ab",
     "chain": "SOL",
     "kolCount": 1,
@@ -388,6 +407,7 @@ exports[`/api/scan/resolve snapshot — 'RAVE — mentions only' > matches the l
   "source": "mentions",
   "status": "resolved",
   "token": {
+    "_nature": "PRIMARY_OBSERVATION",
     "address": "RaveTokenSynthetic111111111111111111111111ab",
     "chain": "SOL",
     "kolCount": 1,
@@ -409,6 +429,7 @@ exports[`/api/scan/resolve snapshot — 'SOL — only coingecko' > matches the l
 {
   "candidates": [
     {
+      "_nature": "THIRD_PARTY_DATA",
       "address": "So11111111111111111111111111111111111111112",
       "chain": "SOL",
       "kolCount": 0,
@@ -430,6 +451,7 @@ exports[`/api/scan/resolve snapshot — 'SOL — only coingecko' > matches the l
   "query": "SOL",
   "results": [
     {
+      "_nature": "THIRD_PARTY_DATA",
       "address": "So11111111111111111111111111111111111111112",
       "chain": "SOL",
       "kolCount": 0,
@@ -446,6 +468,7 @@ exports[`/api/scan/resolve snapshot — 'SOL — only coingecko' > matches the l
     },
   ],
   "selected": {
+    "_nature": "THIRD_PARTY_DATA",
     "address": "So11111111111111111111111111111111111111112",
     "chain": "SOL",
     "kolCount": 0,
@@ -463,6 +486,7 @@ exports[`/api/scan/resolve snapshot — 'SOL — only coingecko' > matches the l
   "source": "coingecko",
   "status": "resolved",
   "token": {
+    "_nature": "THIRD_PARTY_DATA",
     "address": "So11111111111111111111111111111111111111112",
     "chain": "SOL",
     "kolCount": 0,
@@ -484,6 +508,7 @@ exports[`/api/scan/resolve snapshot — 'USDC — curated SOL (wins over coingec
 {
   "candidates": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       "chain": "SOL",
       "kolCount": 1,
@@ -505,6 +530,7 @@ exports[`/api/scan/resolve snapshot — 'USDC — curated SOL (wins over coingec
   "query": "USDC",
   "results": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       "chain": "SOL",
       "kolCount": 1,
@@ -521,6 +547,7 @@ exports[`/api/scan/resolve snapshot — 'USDC — curated SOL (wins over coingec
     },
   ],
   "selected": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     "chain": "SOL",
     "kolCount": 1,
@@ -538,6 +565,7 @@ exports[`/api/scan/resolve snapshot — 'USDC — curated SOL (wins over coingec
   "source": "curated",
   "status": "resolved",
   "token": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     "chain": "SOL",
     "kolCount": 1,
@@ -559,6 +587,7 @@ exports[`/api/scan/resolve snapshot — 'USDT — multiple curated across chains
 {
   "candidates": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
       "chain": "SOL",
       "kolCount": 1,
@@ -574,6 +603,7 @@ exports[`/api/scan/resolve snapshot — 'USDT — multiple curated across chains
       "volume24hUsd": null,
     },
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
       "chain": "ETH",
       "kolCount": 1,
@@ -595,6 +625,7 @@ exports[`/api/scan/resolve snapshot — 'USDT — multiple curated across chains
   "query": "USDT",
   "results": [
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
       "chain": "SOL",
       "kolCount": 1,
@@ -610,6 +641,7 @@ exports[`/api/scan/resolve snapshot — 'USDT — multiple curated across chains
       "volume24hUsd": null,
     },
     {
+      "_nature": "EDITORIAL_ASSERTION",
       "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
       "chain": "ETH",
       "kolCount": 1,
@@ -626,6 +658,7 @@ exports[`/api/scan/resolve snapshot — 'USDT — multiple curated across chains
     },
   ],
   "selected": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
     "chain": "SOL",
     "kolCount": 1,
@@ -643,6 +676,7 @@ exports[`/api/scan/resolve snapshot — 'USDT — multiple curated across chains
   "source": "curated",
   "status": "ambiguous",
   "token": {
+    "_nature": "EDITORIAL_ASSERTION",
     "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
     "chain": "SOL",
     "kolCount": 1,
