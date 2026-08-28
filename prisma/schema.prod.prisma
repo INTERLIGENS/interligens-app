@@ -478,6 +478,9 @@ model KolWallet {
   isPubliclyUsable  Boolean               @default(false)
   attributionStatus String                @default("review")
   discoveredAt      DateTime?
+  // ── Data Nature (BUILD 2 / S5) — colonne posée en base par S5_PACK/00 ──
+  rowNature         DataNature?
+
   kol               KolProfile            @relation(fields: [kolHandle], references: [handle])
   fundingEdgesFrom  WalletFundingEdge[]   @relation("FundingEdgeFrom")
   fundingEdgesTo    WalletFundingEdge[]   @relation("FundingEdgeTo")
@@ -500,6 +503,9 @@ model KolCase {
   sourceLabel     String?
   sourceUrl       String?
   versionNote     String?
+  // ── Data Nature (BUILD 2 / S5) — colonne posée en base par S5_PACK/00 ──
+  rowNature         DataNature?
+
   kol             KolProfile @relation(fields: [kolHandle], references: [handle])
 }
 
