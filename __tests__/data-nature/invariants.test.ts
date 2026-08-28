@@ -63,11 +63,21 @@ describe("I2 / Q5 — ESTIMATE exige une méthode versionnable et auditable", ()
     }
   });
 
-  it("exige la forme slug@version", () => {
-    expect(isValidMethodRef("retail-harm@2")).toBe(true);
-    expect(isValidMethodRef("retail-harm@1.2.0")).toBe(true);
-    expect(isValidMethodRef("retail-harm")).toBe(false);   // pas de version
-    expect(isValidMethodRef("retail harm@2")).toBe(false); // pas un slug
+  // S6-0 — la grammaire est passée à la forme hiérarchique ratifiée en S5-A :
+  //     <methodologie>/<composant>@v<N>
+  // Les formes plates (`retail-harm@2`, `retail-harm@1.2.0`) sont désormais
+  // REFUSÉES : elles ne nomment pas le composant qui fonde le chiffre, et la
+  // convention arbitrée impose `v<N>`. Ce test portait l'ancienne grammaire —
+  // c'est lui qui rougissait avant la correction.
+  it("exige la forme <methodologie>/<composant>@vN", () => {
+    expect(isValidMethodRef("financial-estimates/est-proceeds@v1")).toBe(true);
+    expect(isValidMethodRef("financial-estimates/est-investor-losses@v12")).toBe(true);
+    expect(isValidMethodRef("retail-harm@2")).toBe(false);        // plat : pas de composant
+    expect(isValidMethodRef("retail-harm@1.2.0")).toBe(false);    // semver : hors convention
+    expect(isValidMethodRef("financial-estimates/est-proceeds")).toBe(false); // pas de version
+    expect(isValidMethodRef("financial-estimates/est-proceeds@1")).toBe(false); // manque le v
+    expect(isValidMethodRef("retail harm@v2")).toBe(false);       // pas un slug
+    expect(isValidMethodRef("/en/methodology")).toBe(false);      // une route, pas une méthode
   });
 
   it("ne s'applique qu'à ESTIMATE", () => {

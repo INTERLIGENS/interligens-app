@@ -31,6 +31,9 @@ export type TimestampMode = (typeof TIMESTAMP_MODES)[number];
 export const UNATTRIBUTED = "unattributed";
 
 export interface EvidenceItemRecord {
+  /** S4 — NULL = aucune exclusion prononcée ; 'EXCLUDED' = hors chaîne active. */
+  evidentiaryStatus?: string | null;
+  exclusionReason?: string | null;
   id: string;
   casefileId: string | null;
   r2Key: string | null;
@@ -118,6 +121,20 @@ export interface EvidenceStore {
    */
   markR2Failed(id: string, marker: string, reason: string): Promise<void>;
   getItem(id: string): Promise<EvidenceItemRecord | null>;
+  /**
+   * Les pièces de la chaîne ACTIVE. Les artefacts exclus (S4) en sont écartés,
+   * par liste blanche des statuts éligibles — jamais par `<> 'EXCLUDED'`.
+   */
   getCasefileItems(casefileId: string): Promise<EvidenceItemRecord[]>;
+  /**
+   * Voie d'AUDIT — rend TOUT, exclusions comprises.
+   *
+   * Volontairement nommée en toutes lettres plutôt qu'un `includeExcluded:
+   * boolean` sur la méthode normale : un booléen se passe distraitement, un
+   * nom de vingt-huit caractères se lit dans une revue. Les 7 pièces exclues
+   * restent en base POUR l'audit de provenance — les rendre invisibles partout
+   * les rendrait inauditables.
+   */
+  getCasefileItemsForAuditIncludingExcluded(casefileId: string): Promise<EvidenceItemRecord[]>;
   getItemLinks(evidenceItemId: string): Promise<EvidenceLinkRecord[]>;
 }

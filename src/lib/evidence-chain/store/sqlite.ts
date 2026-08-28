@@ -5,6 +5,7 @@
  */
 import Database from "better-sqlite3";
 import { randomUUID } from "crypto";
+import { eligibleForEvidenceChain } from "../eligibility";
 import type {
   EvidenceStore, EvidenceItemRecord, EvidenceLinkRecord,
   NewEvidenceItem, NewEvidenceLink, AccessAction, EvidenceSourceType,
@@ -32,6 +33,10 @@ function toItem(r: Row): EvidenceItemRecord {
     provenanceType: ((r.provenanceType as string) ?? null) as ProvenanceType | null,
     submittedBy: (r.submittedBy as string) ?? null,
     timestampMode: ((r.timestampMode as string) ?? null) as TimestampMode | null,
+    // S6-3 — sans ces deux lignes, le filtre d'éligibilité voit toujours
+    // `undefined` et n'exclut jamais rien. Le test de mutation 5 l'a attrapé.
+    evidentiaryStatus: (r.evidentiaryStatus as string) ?? null,
+    exclusionReason: (r.exclusionReason as string) ?? null,
     ingestedAt: new Date(String(r.ingestedAt)),
     tsaToken: r.tsaToken ? Buffer.from(r.tsaToken as Buffer) : null,
     tsaProvider: (r.tsaProvider as string) ?? null,
@@ -69,7 +74,10 @@ export class SqliteEvidenceStore implements EvidenceStore {
         provenanceType TEXT, submittedBy TEXT, timestampMode TEXT,
         ingestedAt TEXT NOT NULL,
         tsaToken BLOB, tsaProvider TEXT, tsaTimestampedAt TEXT, tsaCertChain TEXT,
-        immutableStored INTEGER NOT NULL DEFAULT 0, immutableRef TEXT, notes TEXT);
+        immutableStored INTEGER NOT NULL DEFAULT 0, immutableRef TEXT, notes TEXT,
+        -- S4/S6-3 : la prod porte ces colonnes ; sans elles ici, le filtre
+        -- d'éligibilité serait intestable et validerait une réalité fictive.
+        evidentiaryStatus TEXT, exclusionReason TEXT);
       CREATE TABLE IF NOT EXISTS EvidenceLink (
         id TEXT PRIMARY KEY, evidenceItemId TEXT NOT NULL, linkType TEXT NOT NULL,
         externalId TEXT, externalUrl TEXT, corroborationLevel TEXT NOT NULL DEFAULT 'NONE',
@@ -140,6 +148,16 @@ export class SqliteEvidenceStore implements EvidenceStore {
     return r ? toItem(r) : null;
   }
   async getCasefileItems(casefileId: string): Promise<EvidenceItemRecord[]> {
+    // Même filtre que l'implémentation Prisma : les deux stores doivent rendre
+    // la même chaîne, sinon les tests valident une réalité que la prod n'a pas.
+    return (this.db.prepare("SELECT * FROM EvidenceItem WHERE casefileId=? ORDER BY ingestedAt").all(casefileId) as Row[])
+      .map(toItem).filter(eligibleForEvidenceChain);
+  }
+  /** Test-only : pose une exclusion, comme le fait S4_PACK/05 en prod. */
+  async setEvidentiaryStatus(id: string, status: string | null, reason: string | null): Promise<void> {
+    this.db.prepare("UPDATE EvidenceItem SET evidentiaryStatus=?, exclusionReason=? WHERE id=?").run(status, reason, id);
+  }
+  async getCasefileItemsForAuditIncludingExcluded(casefileId: string): Promise<EvidenceItemRecord[]> {
     return (this.db.prepare("SELECT * FROM EvidenceItem WHERE casefileId=? ORDER BY ingestedAt").all(casefileId) as Row[]).map(toItem);
   }
   async getItemLinks(evidenceItemId: string): Promise<EvidenceLinkRecord[]> {

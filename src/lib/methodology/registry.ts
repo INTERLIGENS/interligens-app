@@ -14,6 +14,7 @@
 // devra y être mappée ; elle ne bloque pas S5.
 
 import { FINANCIAL_ESTIMATES_V1, type MethodologyArtifact } from "./artifact";
+import { parseMethodRef } from "@/lib/data-nature/methodRef";
 
 export const METHODOLOGIES: readonly MethodologyArtifact[] = [FINANCIAL_ESTIMATES_V1];
 
@@ -25,7 +26,9 @@ export interface ResolvedMethodRef {
   readonly componentBody: string;
 }
 
-const REF_SHAPE = /^([a-z0-9-]+)\/([a-z0-9-]+)@(v\d+)$/;
+// La forme n'est plus définie ici : elle vient de data-nature/methodRef,
+// grammaire canonique unique (S6-0). Deux regex qui redérivent la même règle,
+// c'est exactement le défaut que S6-0 corrige.
 
 /**
  * Résout `<methodology>/<component>@<version>`.
@@ -34,9 +37,9 @@ const REF_SHAPE = /^([a-z0-9-]+)\/([a-z0-9-]+)@(v\d+)$/;
  * ne résout pas ne doit jamais être écrite en base.
  */
 export function resolveMethodRef(ref: string): ResolvedMethodRef | null {
-  const m = REF_SHAPE.exec(ref.trim());
-  if (!m) return null;
-  const [, id, componentId, version] = m;
+  const parsed = parseMethodRef(ref.trim());
+  if (!parsed) return null;
+  const { methodologyId: id, componentId, version } = parsed;
 
   const artifact = METHODOLOGIES.find((a) => a.id === id && a.version === version);
   if (!artifact) return null;

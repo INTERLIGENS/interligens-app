@@ -143,22 +143,14 @@ export class MissingMethodRefError extends Error {
 
 /**
  * Référence de méthode VERSIONNABLE et AUDITABLE (doctrine S2/Q5).
- * Forme imposée : `<slug>@<version>`, où slug est un identifiant stable et
- * version un entier ou un semver. « internal », « n/a », « manual » et les
- * autres formules d'évitement sont refusées — une méthode qu'on ne peut pas
- * retrouver n'est pas une méthode.
+ *
+ * La grammaire vit dans ./methodRef — source unique, partagée par l'app et
+ * reproduite par le CHECK SQL. Ce module ne la redéfinit PAS : c'est cette
+ * duplication qui avait produit deux grammaires incompatibles, invisibles tant
+ * que le validateur n'était appelé nulle part.
  */
-const METHOD_REF_RE = /^[a-z][a-z0-9-]{2,63}@(?:\d+|\d+\.\d+\.\d+)$/;
-const METHOD_REF_BLOCKLIST = new Set([
-  "internal", "n/a", "na", "none", "manual", "tbd", "todo", "unknown", "legacy",
-]);
-
-export function isValidMethodRef(ref: unknown): ref is string {
-  if (typeof ref !== "string") return false;
-  const slug = ref.split("@")[0]?.toLowerCase() ?? "";
-  if (METHOD_REF_BLOCKLIST.has(slug)) return false;
-  return METHOD_REF_RE.test(ref);
-}
+export { isValidMethodRef, parseMethodRef, METHOD_REF_SQL_PATTERN } from "./methodRef";
+import { isValidMethodRef } from "./methodRef";
 
 export function assertEstimateHasMethod(
   nature: NatureValue,
