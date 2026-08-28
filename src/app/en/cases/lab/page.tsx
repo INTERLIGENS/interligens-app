@@ -122,6 +122,7 @@ async function getLab(): Promise<TokenCasefileData | null> {
       keyWallets: asKeyWallets(r.keyWallets),
       linkedTokens: asStringArray(r.linkedTokens),
       estimatedRetailHarmUsd: bigToNum(r.estimatedRetailHarmUsd),
+      insiderExitNotionalValueUsd: bigToNum((r as { insiderExitNotionalValueUsd?: bigint | null }).insiderExitNotionalValueUsd ?? null),
       currency: r.currency,
       sources: asSources(r.sources),
       specterCollab: r.specterCollab,
