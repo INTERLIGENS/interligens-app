@@ -89,11 +89,11 @@ export interface EnginePolicy {
   liftGatesClassification: boolean;
 
   /**
-   * ██ DECISION FONDATEUR EN ATTENTE - CONSEQUENCE PRODUIT IMMEDIATE ██
+   * ██ RATIFIE le 2026-08-30 (fondateur). VALEUR FIGEE A `true`. ██
    *
-   * A RATIFIER - un lift NON MESURE plafonne-t-il la classification a `watch` ?
+   * Un lift NON MESURE plafonne la classification a `watch`.
    *
-   * Defaut `true`, par doctrine SHILL-C1 : `high_interest` affirme une
+   * `true` par doctrine SHILL-C1 : `high_interest` affirme une
    * correlation SUPERIEURE au taux de base ; l'affirmer sans avoir mesure le
    * taux de base, c'est franchir un seuil sur une non-mesure - precisement ce
    * que SHILL-C1 interdit.
@@ -104,8 +104,10 @@ export interface EnginePolicy {
    * produit alors que des pistes. C'est le comportement voulu : il rend le
    * cout de l'absence de temoin visible au lieu de le dissimuler dans un score.
    *
-   * Le passer a `false` est defendable - c'etait le comportement de -42 - mais
-   * c'est un arbitrage produit explicite, pas un defaut technique.
+   * Le passer a `false` etait le comportement de -42. C'est desormais un
+   * changement de DOCTRINE RATIFIEE, pas un reglage : il exige une nouvelle
+   * decision explicite du fondateur, au meme titre qu'une modification de
+   * `outputIsInferenceOnly`.
    */
   unmeasuredLiftCapsClassification: boolean;
 
@@ -181,5 +183,13 @@ export const AWAITING_RATIFICATION = [
   "baselineOffsetSeconds",
   "minLift",
   "liftGatesClassification",
-  "unmeasuredLiftCapsClassification",
+] as const;
+
+/**
+ * Valeurs RATIFIEES - sorties de AWAITING_RATIFICATION par decision datee.
+ * Une liste d'attente qui garde ce qui a ete tranche ment sur ce qui reste a
+ * trancher : c'est la seule raison d'etre de cette seconde liste.
+ */
+export const RATIFIED = [
+  { key: "unmeasuredLiftCapsClassification", value: true, on: "2026-08-30", by: "fondateur" },
 ] as const;

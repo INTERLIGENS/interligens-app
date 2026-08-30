@@ -17,6 +17,10 @@
 --   déclarée telle au registre (src/lib/data-nature/registry.ts, régime
 --   DECLARED), ce qui la couvre DÉJÀ, lignes legacy comprises.
 --
+--   Le type de `nature` est l'ENUM "DataNature" déjà en place (vérifié en base
+--   le 2026-08-30), pas TEXT — même type que les 17 colonnes de nature du
+--   produit.
+--
 --   Les trois colonnes n'ajoutent donc PAS la nature : elles ajoutent sa PISTE
 --   D'AUDIT, deux faits par ligne que le registre ne peut pas porter —
 --     natureBasis          : de quelles natures d'entrée CETTE ligne est tirée
@@ -49,11 +53,28 @@
 
 BEGIN;
 
--- 1. nature — NULLABLE, SANS DEFAULT. Écrite ligne par ligne par l'upsert du
---    moteur, via assertNatureWritable (S6). Voir le verrou anti-backfill dans
---    src/lib/shill-correlation/v2/persistence.ts.
+-- 1. nature — type ENUM "DataNature", NULLABLE, SANS DEFAULT. Écrite ligne par
+--    ligne par l'upsert du moteur, via assertNatureWritable (S6). Voir le
+--    verrou anti-backfill dans src/lib/shill-correlation/v2/persistence.ts.
+--
+--    PAS TEXT : le type est celui déjà en place sur les 17 colonnes de nature
+--    du produit (7 tables portent `rowNature "DataNature"`). Vérifié en base le
+--    2026-08-30 — le type existe et porte 6 labels :
+--      PRIMARY_OBSERVATION, THIRD_PARTY_DATA, INFERENCE, ESTIMATE,
+--      EDITORIAL_ASSERTION, UNCLASSIFIED
+--    Ce que l'enum apporte que TEXT n'apportait pas : une valeur hors domaine
+--    est refusée par la BASE (22P02) au lieu d'être stockée puis relue comme
+--    une nature valide. TEXT aurait laissé écrire 'inference', 'INFERENCE ',
+--    ou 'PRIMARY_OBSERVATION' à un script contournant le module TS.
+--
+--    ⚠ NOM DE COLONNE : la convention du produit est `rowNature` (7/7 tables).
+--    `nature` est un nom NOUVEAU, retenu sur instruction explicite du
+--    2026-08-30. Conséquence à connaître, pas un défaut : `natureForRow()`
+--    (registry.ts, régime ROW) lit `row.nature` — cette table est en régime
+--    DECLARED et ne passe jamais par cette branche, donc le nom n'a ici aucun
+--    effet fonctionnel. Il n'en aurait un que si la table changeait de régime.
 ALTER TABLE "ShillCorrelationCandidate"
-  ADD COLUMN IF NOT EXISTS "nature" TEXT;
+  ADD COLUMN IF NOT EXISTS "nature" "DataNature";
 
 -- 2. natureBasis — jsonb. L'enveloppe d'inférence de LA ligne :
 --    { natures: string[], occasionIds: string[], observationCount: int,
@@ -77,6 +98,9 @@ ALTER TABLE "ShillCorrelationCandidate"
 
 -- C1. La table est mono-nature. Une ligne porte INFERENCE, ou rien encore.
 --     NULL passe : c'est l'état legacy, explicitement autorisé.
+--     L'enum et ce CHECK ne font PAS le même travail : l'enum borne le DOMAINE
+--     (6 valeurs possibles), le CHECK borne CETTE TABLE à une seule d'entre
+--     elles. Sans le CHECK, un ESTIMATE serait un type valide ici.
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -85,7 +109,7 @@ BEGIN
   ) THEN
     ALTER TABLE "ShillCorrelationCandidate"
       ADD CONSTRAINT "shillcorrcand_nature_declared_chk"
-      CHECK ("nature" IS NULL OR "nature" = 'INFERENCE');
+      CHECK ("nature" IS NULL OR "nature" = 'INFERENCE'::"DataNature");
   END IF;
 END $$;
 
@@ -130,11 +154,16 @@ COMMIT;
 --          count(DISTINCT "naturePolicyVersion")::int AS versions
 --   FROM "ShillCorrelationCandidate";
 --
---   SELECT column_name, data_type, is_nullable, column_default
+--   SELECT column_name, data_type, udt_name, is_nullable, column_default
 --   FROM information_schema.columns
 --   WHERE table_name = 'ShillCorrelationCandidate'
 --     AND column_name IN ('nature','natureBasis','naturePolicyVersion');
---   -- column_default DOIT être NULL sur les trois.
+--   -- ATTENDU :
+--   --   nature              | USER-DEFINED | DataNature | YES | NULL
+--   --   natureBasis         | jsonb        | jsonb      | YES | NULL
+--   --   naturePolicyVersion | text         | text       | YES | NULL
+--   -- column_default DOIT être NULL sur les trois. `data_type = 'text'` sur
+--   -- `nature` signifierait que le type enum n'a PAS été appliqué.
 --
 --   SELECT conname, pg_get_constraintdef(oid)
 --   FROM pg_constraint

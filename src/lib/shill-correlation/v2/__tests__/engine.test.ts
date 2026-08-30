@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { runEngine } from "../engine";
 import { findInconsistencies, baselineStateAfterFetch, observedStateAfterFetch, notCollected } from "../journal";
 import { buildInferenceEnvelope, ENGINE_POLICY_VERSION, InferenceOnlyViolation } from "../nature";
-import { DEFAULT_ENGINE_POLICY, AWAITING_RATIFICATION, type EnginePolicy } from "../policy";
+import { DEFAULT_ENGINE_POLICY, AWAITING_RATIFICATION, RATIFIED, type EnginePolicy } from "../policy";
 import {
   baselineCollected,
   baselineCollectedEmpty,
@@ -54,7 +54,16 @@ describe("doctrine", () => {
   it("la politique declare encore ce qui n'est pas ratifie", () => {
     expect(AWAITING_RATIFICATION).toContain("minBaselineBuys");
     expect(AWAITING_RATIFICATION).toContain("minObservedBuys");
-    expect(AWAITING_RATIFICATION).toContain("unmeasuredLiftCapsClassification");
+  });
+
+  it("unmeasuredLiftCapsClassification est RATIFIE, donc hors liste d'attente", () => {
+    // Ratifie le 2026-08-30. Une liste d'attente qui garde ce qui a ete tranche
+    // ment sur ce qui reste a trancher.
+    expect(AWAITING_RATIFICATION).not.toContain("unmeasuredLiftCapsClassification");
+    const r = RATIFIED.find((x) => x.key === "unmeasuredLiftCapsClassification");
+    expect(r).toBeDefined();
+    expect(r!.value).toBe(true);
+    expect(DEFAULT_ENGINE_POLICY.unmeasuredLiftCapsClassification).toBe(true);
   });
 });
 
