@@ -1,0 +1,26 @@
+--- a/prisma/schema.prod.prisma
++++ b/prisma/schema.prod.prisma
+@@ -4149,6 +4149,20 @@ model ShillCorrelationCandidate {
+   previousExcludedReason String?
+   exclusionSupersededAt  DateTime?
+   exclusionSupersededBy  String?
+   exclusionSupersededWhy String?
++  // ── TÂCHE C — Data Nature S6. ADDITIF, NULLABLE, SANS DEFAULT. ────────────
++  // La table est DÉCLARÉE mono-nature INFERENCE au registre
++  // (src/lib/data-nature/registry.ts) : ces colonnes n'apportent PAS la nature,
++  // elles apportent sa PISTE D'AUDIT ligne par ligne.
++  //   natureBasis         jsonb — { natures, occasionIds, observationCount,
++  //                       baselineBuyCount } : de quoi CETTE ligne est tirée,
++  //                       volume témoin compté à part du volume observé.
++  //   naturePolicyVersion — sous quels seuils elle a été produite.
++  // AUCUN BACKFILL : écrites uniquement sur les lignes que le moteur
++  // (re)produit, via assertNatureWritable. Les 1 532 lignes legacy (mesurées le
++  // 2026-08-30) restent NULL jusqu'à leur propre recalcul. Un DEFAULT écrirait
++  // une version de politique fausse sur des lignes calculées sous d'autres
++  // seuils — d'où l'absence délibérée de @default.
++  nature               String?
++  natureBasis          Json?
++  naturePolicyVersion  String?
+   firstSeenAt          DateTime
+   lastSeenAt           DateTime
+   notes                String?

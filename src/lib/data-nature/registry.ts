@@ -74,6 +74,28 @@ export const NATURE_REGISTRY: Record<string, TableNatureDecl> = {
     regime: "DECLARED", rows: 73, nature: "PRIMARY_OBSERVATION", stage: "S1",
     why: "Post constaté par le watcher, avec sourceUrl et postedAt.",
   },
+  ShillCorrelationCandidate: {
+    regime: "DECLARED", rows: 1_532, nature: "INFERENCE",
+    basis: ["PRIMARY_OBSERVATION"], stage: "S6",
+    why:
+      "Sortie d'un moteur de corrélation : mono-nature PAR CONSTRUCTION. Le moteur lit des " +
+      "achats on-chain (PRIMARY_OBSERVATION) et une chronologie de publication, puis CALCULE. " +
+      "Q3 : la nature est celle de la dernière opération — jamais celle des entrées — donc " +
+      "INFERENCE, et aucune ligne de cette table ne peut porter autre chose. C'est le sens de " +
+      "DECLARED : il n'existe pas de seconde nature à séparer. " +
+      "Mesuré le 2026-08-30 sur ep-square-band : 1 532 lignes, 3 KOL, 0 revue humaine — " +
+      "reviewStatus='draft' partout, donc aucune ligne n'a encore été reprise à son compte " +
+      "par un humain (ce qui en ferait, ELLE, une EDITORIAL_ASSERTION portée ailleurs). " +
+      "POURQUOI DES COLONNES MALGRÉ « DECLARED = aucun DDL » : la nature elle-même n'a pas " +
+      "besoin de colonne — le registre la donne, pour les 1 532 lignes legacy comprises. Les " +
+      "trois colonnes additives (nature / natureBasis / naturePolicyVersion) ne sont PAS la " +
+      "source de vérité de la nature : elles sont la PISTE D'AUDIT de l'écriture. natureBasis " +
+      "dit de quelles natures d'entrée CETTE ligne est tirée (le résolveur V3 ajoute une " +
+      "INFERENCE quand il a tranché, pas sinon) et naturePolicyVersion dit sous quels seuils " +
+      "elle a été produite — deux faits par ligne, que le registre ne peut pas porter. " +
+      "AUCUN BACKFILL : une ligne ne reçoit ces colonnes qu'en étant (re)produite par le " +
+      "moteur. Les legacy restent NULL jusqu'à leur propre recalcul, jamais par UPDATE global.",
+  },
 
   // ── Régime DÉCLARÉ + PRÉDICAT — ≥2 natures, zéro écriture ───────────────
   AddressLabel: {
