@@ -43,6 +43,28 @@ import type { CandidateInference } from "./types";
 
 export const CANDIDATE_TABLE = "ShillCorrelationCandidate";
 
+/**
+ * ─── LE CONTRAT TS ↔ POSTGRES ────────────────────────────────────────────
+ *
+ * `nature` est une colonne de type ENUM `"DataNature"`, pas TEXT. C'est ce qui
+ * fait refuser une valeur hors domaine par la BASE — mais cela déplace aussi
+ * une classe d'erreur : sous TEXT, une nature ajoutée côté TS s'écrivait sans
+ * bruit ; sous enum, elle fait ÉCHOUER l'écriture (22P02, invalid_text_
+ * representation) au premier run, en production.
+ *
+ * Labels du type, MESURÉS sur ep-square-band le 2026-08-30 (pg_enum, lecture
+ * seule). Toute divergence avec `ALL_NATURE_VALUES` côté TS est une panne
+ * d'écriture qui attend son heure — d'où le test de dérive qui compare les deux.
+ */
+export const PG_DATA_NATURE_LABELS = [
+  "PRIMARY_OBSERVATION",
+  "THIRD_PARTY_DATA",
+  "INFERENCE",
+  "ESTIMATE",
+  "EDITORIAL_ASSERTION",
+  "UNCLASSIFIED",
+] as const;
+
 /** Fragment additif à fusionner dans le `create`/`update` de l'upsert. */
 export interface CandidateNatureWrite {
   nature: DataNature;
@@ -108,6 +130,17 @@ export function buildCandidateNatureWrite(
       `[shill-v2] nature ${validated} incompatible avec la nature DÉCLARÉE de ` +
         `${CANDIDATE_TABLE} (${declared}). Le registre et le moteur doivent dire la même ` +
         "chose ; l'un des deux a changé sans l'autre.",
+    );
+  }
+
+  // Le contrat enum, tenu à l'écriture : ce que l'on s'apprête à envoyer doit
+  // être un label du type Postgres. Échouer ici coûte un test ; échouer en base
+  // coûte un run de production interrompu au premier upsert.
+  if (!(PG_DATA_NATURE_LABELS as readonly string[]).includes(validated)) {
+    throw new Error(
+      `[shill-v2] nature « ${validated} » absente du type Postgres "DataNature" ` +
+        `(${PG_DATA_NATURE_LABELS.join(", ")}). L'écriture serait refusée en base ` +
+        "(22P02) : le type TS et le type SQL ont divergé.",
     );
   }
 

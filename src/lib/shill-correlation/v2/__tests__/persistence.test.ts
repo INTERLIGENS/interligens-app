@@ -1,11 +1,15 @@
 // --- C - la nature s'écrit via S6, et jamais en masse ---------------------
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { NatureTransitionError, UnknownNatureError } from "@/lib/data-nature/nature";
 import { natureForTable, NATURE_REGISTRY } from "@/lib/data-nature/registry";
+import { ALL_NATURE_VALUES } from "@/lib/data-nature/nature";
 import {
   BACKFILL_IS_FORBIDDEN,
   CANDIDATE_TABLE,
+  PG_DATA_NATURE_LABELS,
   buildCandidateNatureWrite,
 } from "../persistence";
 import { runEngine } from "../engine";
@@ -49,6 +53,44 @@ describe("C - registre", () => {
     // Le point de doctrine : la colonne est la piste d'audit, pas la source.
     // Une ligne à nature NULL n'est pas UNCLASSIFIED — le registre la couvre.
     expect(natureForTable(CANDIDATE_TABLE)).not.toBe("UNCLASSIFIED");
+  });
+});
+
+describe("C - le contrat enum TS ↔ Postgres", () => {
+  it("les labels TS et les labels Postgres sont le MÊME ensemble", () => {
+    // La colonne est un ENUM, pas du TEXT : une nature connue de TS mais
+    // absente du type Postgres ne produit plus une ligne douteuse, elle produit
+    // un 22P02 au premier upsert de production. Ce test est le seul endroit où
+    // cette divergence coûte moins cher qu'un run interrompu.
+    expect([...PG_DATA_NATURE_LABELS].sort()).toEqual([...ALL_NATURE_VALUES].sort());
+  });
+
+  it("INFERENCE, la seule nature que cette table peut porter, est un label valide", () => {
+    expect(PG_DATA_NATURE_LABELS).toContain("INFERENCE");
+    expect(buildCandidateNatureWrite(candidate()).nature).toBe("INFERENCE");
+  });
+
+  it("une valeur inventée est arrêtée par S0, AVANT même le contrôle enum", () => {
+    // Ordre réel des refus, et il compte : S0 (requireNatureValue) ne connaît
+    // que les 6 natures du produit et rejette tout le reste. Le contrôle enum
+    // de persistence.ts est donc INATTEIGNABLE par une valeur inventée — c'est
+    // voulu, il ne couvre pas ce cas-là.
+    const c = candidate();
+    const horsType = { ...c, _nature: { ...c._nature, nature: "INFERENCE_V2" as never } };
+    expect(() => buildCandidateNatureWrite(horsType)).toThrow(UnknownNatureError);
+  });
+
+  it("le contrôle enum couvre le cas que S0 ne PEUT PAS voir : la dérive TS→PG", () => {
+    // S0 valide contre la liste TS. Si quelqu'un ajoute une nature à
+    // DATA_NATURES sans l'ajouter au type Postgres, S0 dit oui et la base dit
+    // 22P02 — en production, au premier upsert. Le contrôle enum est la seule
+    // barrière sur ce chemin, et le test d'égalité d'ensembles ci-dessus est ce
+    // qui le rend inutile en pratique. Les deux se tiennent : on vérifie ici
+    // que la barrière existe bien dans le chemin d'écriture.
+    const src = readFileSync(join(__dirname, "..", "persistence.ts"), "utf8");
+    const corps = src.slice(src.indexOf("export function buildCandidateNatureWrite"));
+    expect(corps).toContain("PG_DATA_NATURE_LABELS");
+    expect(corps).toContain("22P02");
   });
 });
 

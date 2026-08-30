@@ -18,6 +18,7 @@ export * from "./types";
 export {
   DEFAULT_ENGINE_POLICY,
   AWAITING_RATIFICATION,
+  RATIFIED,
   FORBIDDEN_POLICY_KEYS,
   type EnginePolicy,
 } from "./policy";
