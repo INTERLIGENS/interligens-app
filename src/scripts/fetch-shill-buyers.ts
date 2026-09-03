@@ -53,7 +53,7 @@ async function main() {
     amb += r.ambiguous;
     if (!r.windowCovered) incomplete++;
     console.log(
-      `  ${r.shillEventId} ${r.tokenMint.slice(0, 8)}… ` +
+      `  ${r.shillEventId} ${r.tokenMint ? r.tokenMint.slice(0, 8) + "…" : "(non resolu)"} ` +
         `status=${r.status} pages=${r.pagesFetched} cov=${r.windowCovered} ` +
         `txInWin=${r.txInWindow} obs=${r.observations} amb=${r.ambiguous} ` +
         `written=${r.written}${r.error ? ` err=${r.error}` : ""}`,

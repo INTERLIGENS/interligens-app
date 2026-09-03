@@ -51,7 +51,7 @@ async function main() {
   );
   for (const x of r.heliusResults) {
     console.log(
-      `  ${x.tokenMint.slice(0, 10)}… pages=${x.pagesFetched} cov=${x.windowCovered} ` +
+      `  ${x.tokenMint ? x.tokenMint.slice(0, 10) + "…" : "(non resolu)"} pages=${x.pagesFetched} cov=${x.windowCovered} ` +
         `txInWin=${x.txInWindow} obs=${x.observations} amb=${x.ambiguous}` +
         (x.error ? ` err=${x.error}` : ""),
     );

@@ -73,7 +73,8 @@ export interface ProcessOptions extends WindowFetchOptions {
 
 interface ShillEventRow {
   id: string;
-  tokenMint: string;
+  /** `null` = identite de contrat non resolue. Le moteur Solana la refuse. */
+  tokenMint: string | null;
   chain: string;
   tweetTimestamp: Date;
 }
@@ -101,10 +102,19 @@ export async function processShillEvent(
   // Many ShillEvents (from SocialPostCandidate cashtags) carry a ticker symbol
   // in tokenMint rather than an address — Helius would 400. Short-circuit
   // before spending a credit; these need upstream symbol->mint resolution.
-  if (!looksLikeSolanaMint(event.tokenMint)) {
+  // BUILD 3-B - LA FRONTIERE DU MOTEUR SOLANA, EXPLICITE.
+  // Deux refus distincts, et les confondre serait perdre un diagnostic :
+  //   `null`      -> l'identite n'a JAMAIS ete resolue (unresolved_ticker) ;
+  //   non-base58  -> une valeur est la, mais ce n'est pas une adresse Solana.
+  // Le premier appelle B1 (resolution), le second un correctif de source.
+  const mint = event.tokenMint;
+  if (mint == null) {
+    return { ...base, error: "tokenMint is null (unresolved identity)" };
+  }
+  if (!looksLikeSolanaMint(mint)) {
     return {
       ...base,
-      error: `tokenMint is not a base58 address (symbol?): ${event.tokenMint}`,
+      error: `tokenMint is not a base58 address (symbol?): ${mint}`,
     };
   }
 
@@ -112,14 +122,14 @@ export async function processShillEvent(
 
   let win;
   try {
-    win = await fetchTokenWindowTransactions(event.tokenMint, tweetTs, opts);
+    win = await fetchTokenWindowTransactions(mint, tweetTs, opts);
   } catch (e) {
     return { ...base, error: `helius: ${(e as Error).message}` };
   }
 
   const drafts = extractBuyerObservations(
     win.txs,
-    event.tokenMint,
+    mint,
     tweetTs,
     event.chain,
   );
@@ -178,7 +188,7 @@ export async function processPendingSample(
   const events = (
     opts.mint
       ? candidates
-      : candidates.filter((e) => looksLikeSolanaMint(e.tokenMint))
+      : candidates.filter((e) => e.tokenMint != null && looksLikeSolanaMint(e.tokenMint))
   ).slice(0, limit);
 
   const results: BuyerFetchResult[] = [];

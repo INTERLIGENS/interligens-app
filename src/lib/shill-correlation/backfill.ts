@@ -32,7 +32,8 @@ const isNumericTweetId = (s: string) => /^[0-9]{8,25}$/.test(s);
 
 interface RawEvent {
   id: string;
-  tokenMint: string;
+  /** `null` = identite non resolue ; les resolveurs le tolerent ((raw ?? "")). */
+  tokenMint: string | null;
   tweetId: string;
   chain: string;
   tweetTimestamp: Date;
@@ -42,7 +43,8 @@ export interface EventPlan {
   id: string;
   tweetId: string;
   chain: string;
-  originalMint: string;
+  /** `null` quand l'evenement n'avait aucune identite a resoudre. */
+  originalMint: string | null;
   resolvedMint: string | null;
   tokenTicker: string | null;
   resolutionStatus: ResolutionStatus;
@@ -126,8 +128,8 @@ export async function runPhase2Followup(
     const fetchedTweet = !!tm;
 
     const res = fetchedTweet
-      ? resolveWithTweetText(e.tokenMint, tm.text)
-      : resolveTokenMint(e.tokenMint);
+      ? resolveWithTweetText(e.tokenMint ?? "", tm.text)
+      : resolveTokenMint(e.tokenMint ?? "");
 
     let effectiveTimestamp = e.tweetTimestamp;
     let timestampSource: TimestampSource;
