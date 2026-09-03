@@ -104,6 +104,14 @@ export function buildBaselineSide(records: readonly OccasionRecord[]): BaselineS
   const truncatedBy = new Set<string>();
 
   for (const r of records) {
+    // D/M1 - une occasion REFUSEE par le budget ne mesure rien, mais elle a
+    // ete TRONQUEE, et cela doit remonter. La sauter entierement ferait
+    // ressortir `BASELINE_NOT_COLLECTED` (« on n'a pas demande ») la ou le
+    // budget a refuse : un motif faux, donc un correctif au mauvais endroit.
+    if (r.baselineState === "budget_exhausted") {
+      if (r.baselineTruncatedBy) truncatedBy.add(r.baselineTruncatedBy);
+      continue;
+    }
     if (!BASELINE_MEASURED_STATES.includes(r.baselineState)) continue;
     measuredOccasionIds.add(r.occasion.occasionId);
     if (r.baselineTruncatedBy) truncatedBy.add(r.baselineTruncatedBy);

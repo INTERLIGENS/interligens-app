@@ -59,7 +59,21 @@ export type BaselineState =
   /** temoin collecte, achats trouves */
   | "collected_with_buys"
   /** collecte temoin tentee, echouee - jamais lue comme un vide */
-  | "collect_error";
+  | "collect_error"
+  /**
+   * D/M1 - la collecte a ete REFUSEE par le budget d'appels du run, avant
+   * d'avoir vu une seule page. Distinct de `not_collected` (personne n'a
+   * demande) et de `collected_empty` (on a regarde, il n'y avait rien).
+   *
+   * Sans cet etat, un temoin refuse par le budget ressortait
+   * `BASELINE_NOT_COLLECTED` : « on n'a pas demande » a la place de « le budget
+   * a refuse ». Le lift etait bien non mesure, mais pour un motif faux - et un
+   * motif faux envoie corriger au mauvais endroit. C'est une degradation
+   * silencieuse du DIAGNOSTIC, la ou la regle en interdit une de la MESURE.
+   *
+   * N'appartient PAS a BASELINE_MEASURED_STATES : rien n'a ete mesure.
+   */
+  | "budget_exhausted";
 
 /** Etats sous lesquels la fenetre d'observation compte au denominateur. */
 export const OBSERVED_ANALYZABLE_STATES: readonly ObservedState[] = [
