@@ -12,7 +12,12 @@
 
 import { prisma } from "@/lib/prisma";
 import type { ShillEventDraft, IngestSummary, IngestOptions } from "./types";
-import { resolveTokenMint, type MintResolution } from "./resolve";
+import { classifyTokenIdentity } from "./tokenIdentity";
+
+// Re-export : `classifyTokenIdentity` vit desormais dans tokenIdentity.ts, avec
+// le reste de la resolution. Le re-exporter garde les appelants existants
+// stables sans dupliquer une ligne de logique.
+export { classifyTokenIdentity };
 
 // -- Pure helpers (unit-tested) ----------------------------------------------
 
@@ -71,29 +76,6 @@ export function parseDetectedTokens(raw: unknown): string[] {
   } catch {
     return [];
   }
-}
-
-/**
- * B0 — L'IDENTITE DE CONTRAT, TRANCHEE A LA FRONTIERE DE CREATION.
- *
- * `resolveTokenMint` est SOLANA-ONLY par construction (`looksLikeSolanaMint`).
- * Lui passer une adresse EVM rendrait `unresolved_ticker` — et jeter une
- * identite de contrat parfaitement valide au motif qu'elle n'est pas base58
- * serait une seconde faute, symetrique de la premiere.
- *
- * Cette fonction ne cree AUCUN etat : `resolved_direct` signifie « la valeur
- * etait deja une adresse », ce qui est exactement le cas d'un `0x…`.
- *
- * La regle, en un mot : une ADRESSE est une identite, un SYMBOLE n'en est pas
- * une. Rien entre les deux.
- */
-export function classifyTokenIdentity(raw: string): MintResolution {
-  const value = (raw ?? "").trim();
-  // 40 hex apres 0x : la forme d'une adresse EVM, verifiee et non supposee.
-  if (/^0x[0-9a-fA-F]{40}$/.test(value)) {
-    return { mint: value, ticker: null, status: "resolved_direct" };
-  }
-  return resolveTokenMint(value);
 }
 
 /** KolPromotionMention row (minimal shape) -> ShillEventDraft, or null if unusable. */
