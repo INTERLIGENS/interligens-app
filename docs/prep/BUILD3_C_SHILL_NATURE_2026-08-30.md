@@ -12,7 +12,7 @@ Rien n'a été écrit en base. `prisma/` n'a pas été touché (chemin gelé).
 |---|---|
 | `src/lib/data-nature/registry.ts` | entrée `ShillCorrelationCandidate` — régime **DECLARED**, nature **INFERENCE**, `basis: ["PRIMARY_OBSERVATION"]`, stage S6 |
 | `src/lib/shill-correlation/v2/persistence.ts` | construit le fragment d'écriture et le fait valider par `assertNatureWritable` (S6). **Aucun import de prisma, aucune requête.** |
-| `src/lib/shill-correlation/v2/__tests__/persistence.test.ts` | 14 tests : registre, contrat enum TS↔PG, fragment, sérialisation jsonb, I1, cohérence registre↔moteur, unicité par ligne |
+| `src/lib/shill-correlation/v2/__tests__/persistence.test.ts` | 16 tests : registre, contrat enum TS↔PG, fragment, sérialisation jsonb, I1, cohérence registre↔moteur, unicité par ligne, nom de colonne |
 
 ## 2. Ce qui ATTEND une décision (chemins gelés, patches non appliqués)
 
@@ -28,22 +28,38 @@ Rien n'a été écrit en base. `prisma/` n'a pas été touché (chemin gelé).
    Valeur inchangée ; la clé sort de `AWAITING_RATIFICATION` et entre dans
    `RATIFIED` (date + auteur). Une liste d'attente qui garde ce qui a été
    tranché ment sur ce qui reste à trancher.
-2. `nature` est typée **`"DataNature"` (enum), pas TEXT.** Vérifié en base le
+2. `rowNature` est typée **`"DataNature"` (enum), pas TEXT.** Vérifié en base le
    2026-08-30 : le type existe avec 6 labels, et 17 colonnes du produit
    l'utilisent déjà. `natureBasis` (jsonb) et `naturePolicyVersion` (text)
    inchangés.
 
-### ⚠ Divergence de nom, signalée — décision non prise
+### Nom de colonne — TRANCHÉ le 2026-09-03 : `rowNature`
 
-La convention du produit est **`rowNature`** : 7 tables sur 7 la portent
-(`EvidenceItem`, `KolCase`, `KolTokenInvolvement`, `KolTokenLink`, `KolWallet`,
-`TokenPriceTracker`, `token_casefiles`). **Aucune colonne nommée `nature`
-n'existe en base.** Le nom `nature` est retenu sur instruction explicite.
+La colonne s'appelle **`rowNature`**, pas `nature`. C'est la convention du
+produit : 7 tables sur 7 la portent (`EvidenceItem`, `KolCase`,
+`KolTokenInvolvement`, `KolTokenLink`, `KolWallet`, `TokenPriceTracker`,
+`token_casefiles`) ; `ShillCorrelationCandidate` devient la 8e.
 
-Sans effet fonctionnel ici : `natureForRow()` lit `row.nature` pour le régime
-**ROW** ; cette table est en régime **DECLARED** et ne passe jamais par cette
-branche. Le nom ne compterait que si la table changeait de régime. Le passage à
-`rowNature` reste un mot à changer dans trois fichiers, si vous le préférez.
+**Le renommage ne coûte rien** : la migration n'a jamais été exécutée, aucune
+colonne `nature` n'existe en base, donc aucun DDL de rattrapage, aucune donnée
+à déplacer. Cinq fichiers touchés — le SQL, le patch `schema.prod.prisma`,
+`persistence.ts`, la prose du registre, et le test (qui verrouille désormais le
+nom de la clé du fragment).
+
+`natureBasis` et `naturePolicyVersion` sont **inchangés** : ils ne nomment pas
+la nature, ils nomment sa piste d'audit.
+
+Les **deux** `CHECK` suivent le nom de la colonne :
+
+- `shillcorrcand_nature_declared_chk` → **`shillcorrcand_rownature_declared_chk`**
+- `shillcorrcand_nature_auditable_chk` → **`shillcorrcand_rownature_auditable_chk`**
+
+C2 ne porte pas sur la colonne de nature mais sur sa piste d'audit ; il est
+renommé pour la cohérence de nommage avec C1, pas par nécessité technique.
+Conséquence à connaître : le `conname LIKE 'shillcorrcand_nature%'` de la
+requête de vérification ne ramènerait plus **aucun** des deux — et un LIKE qui
+rend zéro ligne se lit comme « pas de contrainte ». Le motif est donc recalé sur
+`'shillcorrcand_rownature%'`, qui les couvre tous les deux.
 
 ---
 
@@ -52,7 +68,7 @@ branche. Le nom ne compterait que si la table changeait de régime. Le passage �
 ```
 total : 1 532   |   kolHandle distincts : 3   |   reviewStatus <> 'draft' : 0
 première écriture : 2026-06-10   |   dernière : 2026-08-28
-colonnes nature / natureBasis / naturePolicyVersion : ABSENTES
+colonnes rowNature / natureBasis / naturePolicyVersion : ABSENTES
 ```
 
 Les 1 532 lignes sont toutes en `draft` : **aucune n'a encore été reprise à son
@@ -86,7 +102,7 @@ trois colonnes. Ce n'est pas une entorse, c'est une distinction :
 elles **étaient** toutes des captures live. Ici, aucune valeur ne peut être
 posée sans mentir :
 
-- `nature='INFERENCE'` partout serait **juste** ;
+- `rowNature='INFERENCE'` partout serait **juste** ;
 - `naturePolicyVersion=<version du jour>` sur des lignes calculées entre le
   10 juin et le 28 août serait **faux** — et une version fausse est pire
   qu'absente : elle rend comparables deux lignes qui ne le sont pas ;
@@ -110,7 +126,7 @@ runEngine() → CandidateInference._nature (INFERENCE, jamais autre chose)
             → buildCandidateNatureWrite(candidate, ligneExistante)
             → assertNatureWritable()          ← chokepoint S6
             → contrôle de cohérence avec le registre
-            → fragment { nature, natureBasis, naturePolicyVersion }
+            → fragment { rowNature, natureBasis, naturePolicyVersion }
             → fusionné dans le `create`/`update` de l'upsert  ← PAS ENCORE CÂBLÉ
 ```
 

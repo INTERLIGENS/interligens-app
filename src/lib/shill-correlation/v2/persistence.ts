@@ -24,7 +24,8 @@
 // Une ligne legacy reste donc NULL jusqu'à son propre recalcul. NULL veut dire
 // ici « produite avant que la nature ne soit tracée », pas « sans nature » :
 // la nature de la table est DÉCLARÉE au registre (S1) et vaut pour les 1 532
-// lignes, colonne ou pas. La colonne est la piste d'audit, pas la source.
+// lignes, colonne ou pas. La colonne `rowNature` est la piste d'audit, pas la
+// source.
 //
 // ─── S6 ───────────────────────────────────────────────────────────────────
 // Toute écriture passe par `assertNatureWritable`. Il refuse une nature
@@ -46,8 +47,8 @@ export const CANDIDATE_TABLE = "ShillCorrelationCandidate";
 /**
  * ─── LE CONTRAT TS ↔ POSTGRES ────────────────────────────────────────────
  *
- * `nature` est une colonne de type ENUM `"DataNature"`, pas TEXT. C'est ce qui
- * fait refuser une valeur hors domaine par la BASE — mais cela déplace aussi
+ * `rowNature` est une colonne de type ENUM `"DataNature"`, pas TEXT. C'est ce
+ * qui fait refuser une valeur hors domaine par la BASE — mais cela déplace aussi
  * une classe d'erreur : sous TEXT, une nature ajoutée côté TS s'écrivait sans
  * bruit ; sous enum, elle fait ÉCHOUER l'écriture (22P02, invalid_text_
  * representation) au premier run, en production.
@@ -67,7 +68,8 @@ export const PG_DATA_NATURE_LABELS = [
 
 /** Fragment additif à fusionner dans le `create`/`update` de l'upsert. */
 export interface CandidateNatureWrite {
-  nature: DataNature;
+  /** Colonne `rowNature` — convention du produit, 7 tables sur 7. */
+  rowNature: DataNature;
   /** jsonb — l'enveloppe, pas seulement le tableau de natures. */
   natureBasis: {
     natures: DataNature[];
@@ -84,7 +86,7 @@ export interface CandidateNatureWrite {
  */
 export interface ExistingCandidateNature {
   id?: string | null;
-  nature?: NatureValue | null;
+  rowNature?: NatureValue | null;
 }
 
 /**
@@ -106,7 +108,7 @@ export function buildCandidateNatureWrite(
     // Une ligne candidate n'a pas de sha256 : elle n'est pas une pièce.
     sha256: null,
     ref: `${CANDIDATE_TABLE}(${candidate.kolHandle}, ${candidate.wallet}, ${candidate.chain})`,
-    currentNature: existing.nature ?? null,
+    currentNature: existing.rowNature ?? null,
   };
 
   const natureBasis: CandidateNatureWrite["natureBasis"] = {
@@ -145,7 +147,7 @@ export function buildCandidateNatureWrite(
   }
 
   return {
-    nature: validated as DataNature,
+    rowNature: validated as DataNature,
     natureBasis,
     naturePolicyVersion: env.policyVersion,
   };
@@ -160,7 +162,7 @@ export function buildCandidateNatureWrite(
  *
  * Le seul chemin d'écriture légitime des trois colonnes est l'upsert du moteur,
  * ligne par ligne, avec le fragment ci-dessus. Toute requête de la forme
- * `UPDATE "ShillCorrelationCandidate" SET nature = ...` sans clause portant sur
- * une ligne que le moteur vient de recalculer viole la règle de C.
+ * `UPDATE "ShillCorrelationCandidate" SET "rowNature" = ...` sans clause
+ * portant sur une ligne que le moteur vient de recalculer viole la règle de C.
  */
 export const BACKFILL_IS_FORBIDDEN = true as const;
