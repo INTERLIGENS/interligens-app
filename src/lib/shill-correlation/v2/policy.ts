@@ -196,11 +196,6 @@ export const AWAITING_RATIFICATION = [
   "minOccasionsForRatio",
   "minBaselineBuys",
   "minObservedBuys",
-  "baselineOffsetSeconds",
-  // Cible GPT du 2026-09-03 : 24 h / 300 pages / NOT_MEASURABLE au depassement.
-  // Reste EN ATTENTE : la sonde a livre un resultat qui doit etre tranche avant
-  // de figer (temoin anterieur a l'existence du token sur 78 % du corpus).
-  "baselineMaxPagesPerOccasion",
   "minLift",
   "liftGatesClassification",
 ] as const;
@@ -212,4 +207,62 @@ export const AWAITING_RATIFICATION = [
  */
 export const RATIFIED = [
   { key: "unmeasuredLiftCapsClassification", value: true, on: "2026-08-30", by: "fondateur" },
+  // ── M1 fige DANS SON DOMAINE DE VALIDITE, 2026-09-03 ────────────────────
+  // Ratifie APRES la sonde reelle (1 token, 46 appels), pas avant : 44 pages
+  // ont suffi a epuiser l'historique complet d'un token pump.fun shille, 300
+  // laisse 256 pages de marge sur ce cas. Le decalage de 24 h est conserve
+  // parce que le probleme mesure n'est PAS le decalage - a 2 h comme a 24 h,
+  // un token ne 31 minutes avant le tweet n'a pas de pre-histoire. Reduire le
+  // decalage aurait deplace un cout sans reparer un dispositif.
+  { key: "baselineOffsetSeconds", value: 86_400, on: "2026-09-03", by: "architecte" },
+  { key: "baselineMaxPagesPerOccasion", value: 300, on: "2026-09-03", by: "architecte" },
 ] as const;
+
+/**
+ * ═══ DOCTRINE SHILL-M1 — LE DOMAINE DE VALIDITE DU TEMOIN ═══════════════════
+ *
+ * Ratifiee le 2026-09-03 (architecte), apres la sonde reelle. Elle dit ce que
+ * M1 mesure, ce qu'il refuse de mesurer, et - le point le plus important - ce
+ * qu'il n'a PAS le droit de faire au reste du signal.
+ *
+ * Encodee ici plutot que dans un document : une doctrine qu'aucun test ne lit
+ * derive en silence. Voir __tests__/baseline.test.ts.
+ */
+export const SHILL_M1_DOCTRINE = {
+  /** Pre-histoire suffisante et integralement vue -> le temoin est mesurable. */
+  validPrehistory: "MEASURABLE",
+  /** Token trop jeune : la fenetre precede sa premiere transaction. */
+  tokenTooYoung: "NOT_MEASURABLE / BASELINE_PRECEDES_TOKEN_EXISTENCE",
+  /** Pagination insuffisante dans les bornes ratifiees. */
+  paginationInsufficient: "NOT_MEASURABLE / BASELINE_CENSORED",
+  /** Une baseline partielle n'est JAMAIS extrapolee, completee, ni lissee. */
+  partialBaselineNeverExtrapolated: true,
+  /** M1 n'est JAMAIS une preuve autonome de coordination. */
+  neverStandaloneProof: true,
+  /**
+   * ██ M1 EST ADDITIONNEL ET CONDITIONNEL ██
+   *
+   * L'absence ou la non-mesurabilite de M1 ne fait JAMAIS chuter un signal
+   * comportemental autrement fort. Le coeur du signal est ailleurs - holdings,
+   * dispersion inter-KOL, timing - et ces dimensions ne dependent d'aucun
+   * temoin.
+   *
+   * ⚠ CETTE CLAUSE EST EN CONFLIT DIRECT AVEC
+   *   `unmeasuredLiftCapsClassification: true`, ratifie le 2026-08-30 par le
+   *   fondateur, qui ramene a `watch` et `low` tout candidat dont le lift n'est
+   *   pas mesure (scoring.ts). Les deux enonces portent sur le MEME evenement
+   *   et disent l'inverse.
+   *
+   *   Le conflit est DECLARE, pas tranche : aucun code n'a ete modifie pour
+   *   l'un ou pour l'autre. Renverser en silence une ratification du fondateur
+   *   par une ratification de l'architecte produirait exactement le genre de
+   *   derive que ces deux listes existent pour empecher.
+   *
+   *   Tant que `conflictResolved` vaut false, le comportement en vigueur reste
+   *   celui du 2026-08-30. Voir le rapport READY_FOR_SHADOW.
+   */
+  m1IsAdditionalConditional: true,
+  conflictsWith: "unmeasuredLiftCapsClassification (RATIFIE 2026-08-30, fondateur)",
+  conflictResolved: false,
+  coreSignalDimensions: ["holdings", "cross_kol_dispersion", "timing"],
+} as const;

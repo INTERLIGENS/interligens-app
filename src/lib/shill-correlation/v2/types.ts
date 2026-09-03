@@ -30,17 +30,35 @@ export type BehaviorType = "pre_tweet" | "near_tweet" | "post_tweet";
  * Etat de collecte de la FENETRE D'OBSERVATION. Corrige le trou T1 de v1 :
  * 88 evenements 'buyers_fetched' dont 77 sans aucune observation.
  */
-export type ObservedState =
-  /** jamais soumise a la collecte d'acheteurs */
-  | "not_fetched"
-  /** collecte faite, ZERO acheteur trouve - distinct d'un non-traite */
-  | "fetched_empty"
-  /** collecte faite, acheteurs trouves */
-  | "fetched_with_buyers"
-  /** features calculees et candidats emis */
-  | "scored"
-  /** collecte tentee, echouee - jamais confondue avec un vide */
-  | "fetch_error";
+/**
+ * ██ LA LISTE EST LA SOURCE, LE TYPE EN DERIVE ██
+ *
+ * `budget_exhausted` a ete ajoute a `BaselineState` le 2026-09-03 et n'est pas
+ * apparu dans la telemetrie : `journal.ts` tenait sa propre liste a la main.
+ * Le compteur incrementait `undefined` - l'etat existait, il etait invisible.
+ * Exactement le trou T1 (fetched_empty confondu avec not_fetched), une couche
+ * plus bas et par un autre chemin.
+ *
+ * Desormais le journal derive ses compteurs de CES tableaux : ajouter un etat
+ * sans le rendre observable n'est plus possible sans le voir.
+ */
+export const ALL_OBSERVED_STATES = [
+  "not_fetched",
+  "fetched_empty",
+  "fetched_with_buyers",
+  "scored",
+  "fetch_error",
+] as const;
+
+export const ALL_BASELINE_STATES = [
+  "not_collected",
+  "collected_empty",
+  "collected_with_buys",
+  "collect_error",
+  "budget_exhausted",
+] as const;
+
+export type ObservedState = (typeof ALL_OBSERVED_STATES)[number];
 
 /**
  * Etat de collecte de la FENETRE TEMOIN. AXE SEPARE de `ObservedState`.
@@ -51,29 +69,7 @@ export type ObservedState =
  * que le meme build pretendait corriger, reintroduit d'un cran plus bas.
  * L'etat du temoin est donc DECLARE, jamais infere.
  */
-export type BaselineState =
-  /** aucune fenetre temoin n'a ete demandee pour cette occasion */
-  | "not_collected"
-  /** temoin collecte, ZERO achat dans la fenetre - c'est une MESURE */
-  | "collected_empty"
-  /** temoin collecte, achats trouves */
-  | "collected_with_buys"
-  /** collecte temoin tentee, echouee - jamais lue comme un vide */
-  | "collect_error"
-  /**
-   * D/M1 - la collecte a ete REFUSEE par le budget d'appels du run, avant
-   * d'avoir vu une seule page. Distinct de `not_collected` (personne n'a
-   * demande) et de `collected_empty` (on a regarde, il n'y avait rien).
-   *
-   * Sans cet etat, un temoin refuse par le budget ressortait
-   * `BASELINE_NOT_COLLECTED` : « on n'a pas demande » a la place de « le budget
-   * a refuse ». Le lift etait bien non mesure, mais pour un motif faux - et un
-   * motif faux envoie corriger au mauvais endroit. C'est une degradation
-   * silencieuse du DIAGNOSTIC, la ou la regle en interdit une de la MESURE.
-   *
-   * N'appartient PAS a BASELINE_MEASURED_STATES : rien n'a ete mesure.
-   */
-  | "budget_exhausted";
+export type BaselineState = (typeof ALL_BASELINE_STATES)[number];
 
 /** Etats sous lesquels la fenetre d'observation compte au denominateur. */
 export const OBSERVED_ANALYZABLE_STATES: readonly ObservedState[] = [

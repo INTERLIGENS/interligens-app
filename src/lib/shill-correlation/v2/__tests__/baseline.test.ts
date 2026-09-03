@@ -19,13 +19,26 @@ import {
   extractBaselineBuys,
   type BaselineTx,
 } from "../baseline";
-import { AWAITING_RATIFICATION, DEFAULT_ENGINE_POLICY, type EnginePolicy } from "../policy";
+import {
+  AWAITING_RATIFICATION,
+  DEFAULT_ENGINE_POLICY,
+  RATIFIED,
+  SHILL_M1_DOCTRINE,
+  type EnginePolicy,
+} from "../policy";
 import { baselineWindow } from "../windows";
 import { incrementalSpanSeconds } from "../cost";
 import { buildBaselineSide, assessBaselineFloor } from "../tally";
 import { computeLift } from "../features";
 import { UNMEASURED, exactMeasurement } from "../../measurement";
-import { ACTIVITY_LIFT_RESERVATIONS, type OccasionRecord } from "../types";
+import {
+  ACTIVITY_LIFT_RESERVATIONS,
+  ALL_BASELINE_STATES,
+  ALL_OBSERVED_STATES,
+  LIFT_UNMEASURABLE_REASONS,
+  type OccasionRecord,
+} from "../types";
+import { runEngine } from "../engine";
 import { buildAggregateInferenceEnvelope } from "../nature";
 import { buildCandidateNatureWrite } from "../persistence";
 
@@ -356,11 +369,28 @@ describe("SHILL-M1 §2 - integralite dans les bornes autorisees", () => {
     expect(r.baselineTruncatedBy).toBe(PAGE_TRUNCATION_REASON);
   });
 
-  it("les deux seuils de M1 sont dans la policy et EN ATTENTE de ratification", () => {
+  it("les deux seuils de M1 sont dans la policy, et RATIFIES", () => {
     expect(P.baselineOffsetSeconds).toBe(86_400);
     expect(P.baselineMaxPagesPerOccasion).toBe(300);
-    expect(AWAITING_RATIFICATION).toContain("baselineOffsetSeconds");
-    expect(AWAITING_RATIFICATION).toContain("baselineMaxPagesPerOccasion");
+
+    // Sortis de l'attente le 2026-09-03, apres la sonde reelle - pas avant.
+    expect(AWAITING_RATIFICATION).not.toContain("baselineOffsetSeconds");
+    expect(AWAITING_RATIFICATION).not.toContain("baselineMaxPagesPerOccasion");
+
+    for (const key of ["baselineOffsetSeconds", "baselineMaxPagesPerOccasion"]) {
+      const r = RATIFIED.find((x) => x.key === key);
+      expect(r, `${key} doit etre dans RATIFIED`).toBeDefined();
+      expect(r!.on).toBe("2026-09-03");
+      expect(r!.by).toBe("architecte");
+    }
+    // La valeur ratifiee est CELLE de la policy : une ratification qui note un
+    // chiffre different de celui qui tourne ne ratifie rien.
+    expect(RATIFIED.find((x) => x.key === "baselineOffsetSeconds")!.value).toBe(
+      P.baselineOffsetSeconds,
+    );
+    expect(RATIFIED.find((x) => x.key === "baselineMaxPagesPerOccasion")!.value).toBe(
+      P.baselineMaxPagesPerOccasion,
+    );
   });
 });
 
@@ -425,5 +455,86 @@ describe("SHILL-M1 - la reserve voyage avec l'inference", () => {
     );
     const w = buildCandidateNatureWrite({ kolHandle: "k", wallet: "w", chain: "solana", _nature: env });
     expect(w.natureBasis.reservations).toEqual(ACTIVITY_LIFT_RESERVATIONS);
+  });
+});
+
+
+describe("SHILL-M1 - la doctrine est lue par un test, pas seulement ecrite", () => {
+  it("les cinq clauses non conflictuelles sont posees", () => {
+    expect(SHILL_M1_DOCTRINE.validPrehistory).toBe("MEASURABLE");
+    expect(SHILL_M1_DOCTRINE.tokenTooYoung).toContain("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+    expect(SHILL_M1_DOCTRINE.paginationInsufficient).toContain("BASELINE_CENSORED");
+    expect(SHILL_M1_DOCTRINE.partialBaselineNeverExtrapolated).toBe(true);
+    expect(SHILL_M1_DOCTRINE.neverStandaloneProof).toBe(true);
+  });
+
+  it("le conflit avec unmeasuredLiftCapsClassification est DECLARE et NON tranche", () => {
+    // Le test verrouille l'etat d'indecision lui-meme. Le jour ou quelqu'un
+    // tranche, ce test tombe - et c'est le but : la resolution doit etre un
+    // acte visible, pas un effet de bord.
+    expect(SHILL_M1_DOCTRINE.m1IsAdditionalConditional).toBe(true);
+    expect(SHILL_M1_DOCTRINE.conflictResolved).toBe(false);
+    expect(SHILL_M1_DOCTRINE.conflictsWith).toContain("unmeasuredLiftCapsClassification");
+  });
+
+  it("tant que le conflit n'est pas tranche, le comportement du 2026-08-30 reste", () => {
+    // Aucune ratification n'a ete renversee en silence.
+    const founder = RATIFIED.find((x) => x.key === "unmeasuredLiftCapsClassification");
+    expect(founder!.value).toBe(true);
+    expect(founder!.by).toBe("fondateur");
+    expect(P.unmeasuredLiftCapsClassification).toBe(true);
+  });
+});
+
+describe("SHILL-M1 - observabilite : aucun etat n'est invisible", () => {
+  it("la telemetrie compte TOUS les etats declares, sans liste tenue a la main", () => {
+    // Le trou reel du 2026-09-03 : `budget_exhausted` a ete ajoute au type et
+    // journal.ts tenait sa propre liste. Le compteur incrementait `undefined`.
+    // L'etat existait et etait invisible - T1 une couche plus bas.
+    const t = runEngine([]).telemetry;
+    for (const s of ALL_BASELINE_STATES) {
+      expect(t.byBaselineState, `etat ${s} absent de la telemetrie`).toHaveProperty(s);
+      expect(Number.isFinite(t.byBaselineState[s])).toBe(true);
+    }
+    for (const s of ALL_OBSERVED_STATES) {
+      expect(t.byObservedState).toHaveProperty(s);
+    }
+  });
+
+  it("fetched_empty et not_fetched restent DEUX compteurs distincts", () => {
+    // Le defaut fondateur de v1 : 77 collectes rendant zero acheteur etaient
+    // indiscernables d'un evenement jamais traite.
+    const t = runEngine([]).telemetry;
+    expect(t.byObservedState).toHaveProperty("fetched_empty");
+    expect(t.byObservedState).toHaveProperty("not_fetched");
+    expect(ALL_OBSERVED_STATES.filter((s) => s === "fetched_empty" || s === "not_fetched")).toHaveLength(2);
+  });
+
+  it("un budget epuise est COMPTE, pas seulement refuse", () => {
+    const recs = [
+      {
+        occasion: { occasionId: "o1", kolHandle: "k", eventIds: ["e1"], tokenMint: "MintAAA", observedAt: OBSERVED_AT },
+        resolved: null,
+        observedState: "fetched_with_buyers",
+        observations: [],
+        observedStateDetail: null,
+        observedTruncatedBy: null,
+        baselineState: "budget_exhausted",
+        baselineBuys: [],
+        baselineStateDetail: null,
+        baselineTruncatedBy: BUDGET_TRUNCATION_REASON,
+      },
+    ] as unknown as OccasionRecord[];
+    const t = runEngine(recs).telemetry;
+    expect(t.byBaselineState.budget_exhausted).toBe(1);
+  });
+
+  it("toute non-mesurabilite du lift porte un motif comptable", () => {
+    const t = runEngine([]).telemetry;
+    for (const reason of LIFT_UNMEASURABLE_REASONS) {
+      expect(t.liftUnmeasurable).toHaveProperty(reason);
+    }
+    // Le motif neuf de SHILL-M1 §3 est compte comme les autres.
+    expect(t.liftUnmeasurable).toHaveProperty("BASELINE_PRECEDES_TOKEN_EXISTENCE");
   });
 });
