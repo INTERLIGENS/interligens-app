@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
-  normalizeHandle,
-  inferChain,
   canonicalizeChain,
-  parseDetectedTokens,
-  promotionMentionToDraft,
-  postCandidateToDrafts,
+  classifyTokenIdentity,
   dedupeDrafts,
+  inferChain,
+  normalizeHandle,
+  parseDetectedTokens,
+  postCandidateToDrafts,
+  promotionMentionToDraft,
 } from "../ingest";
 import type { ShillEventDraft } from "../types";
 
@@ -90,6 +91,8 @@ describe("promotionMentionToDraft", () => {
       tweetId: "tweet-1",
       tweetTimestamp: T0,
       tokenMint: SOL_MINT,
+      rawToken: SOL_MINT,
+      resolutionStatus: "resolved_direct",
       chain: "solana",
       sourcePostCandidateId: null,
       campaignId: null,
@@ -137,6 +140,8 @@ describe("postCandidateToDrafts", () => {
       tweetId: "post-1",
       tweetTimestamp: T0,
       tokenMint: SOL_MINT,
+      rawToken: SOL_MINT,
+      resolutionStatus: "resolved_direct",
       chain: "solana",
       sourcePostCandidateId: "cand-1",
       campaignId: "camp-1",
@@ -183,6 +188,8 @@ describe("dedupeDrafts", () => {
     kolHandle,
     tweetId,
     tokenMint,
+    rawToken: tokenMint,
+    resolutionStatus: "resolved_direct",
     tweetTimestamp: T0,
     chain: "solana",
     sourcePostCandidateId: null,
@@ -206,5 +213,93 @@ describe("dedupeDrafts", () => {
       mk("kolA", "t2", SOL_MINT),
     ]);
     expect(out).toHaveLength(3);
+  });
+});
+
+// ═══ B0 — UN TICKER N'EST JAMAIS UNE IDENTITÉ DE CONTRAT ═══════════════════
+//
+// Le défaut fermé ici, mesuré le 2026-09-03 : `ingestShillEvents` écrivait le
+// contenu de `detectedTokens` dans `tokenMint` et ne posait JAMAIS
+// `resolutionStatus`. Le défaut base `@default("resolved_direct")` s'appliquait
+// donc à des lignes portant un ticker — une affirmation fausse posée par
+// OMISSION, que rien dans le code ne signalait à la relecture.
+//
+// Ces tests passent par le VRAI chemin de création (postCandidateToDrafts, la
+// frontière réelle de `ingestShillEvents`), jamais par un module isolé.
+
+describe("B0 - aucun chemin de création ne fabrique un mint depuis un ticker", () => {
+  const tickerOnly = {
+    id: "cand-ticker",
+    postId: "post-ticker",
+    postedAtUtc: T0,
+    chain: null,
+    campaignId: null,
+    // Le cas réel : 841 entrées sur 841 (30 j) sont de cette forme.
+    detectedTokens: '["CETS", "FLORK"]',
+  };
+
+  it("un candidat ticker-seul ne produit JAMAIS resolved_direct", () => {
+    const drafts = postCandidateToDrafts(tickerOnly, "@herrocrypto");
+    expect(drafts).toHaveLength(2);
+    for (const d of drafts) {
+      expect(d.resolutionStatus).not.toBe("resolved_direct");
+      expect(d.resolutionStatus).toBe("unresolved_ticker");
+    }
+  });
+
+  it("un ticker n'est JAMAIS écrit dans tokenMint", () => {
+    const drafts = postCandidateToDrafts(tickerOnly, "@herrocrypto");
+    for (const d of drafts) {
+      expect(d.tokenMint).toBeNull();
+      expect(d.tokenMint).not.toBe("CETS");
+      expect(d.tokenMint).not.toBe("FLORK");
+    }
+    // Le ticker reste lisible, mais sous un nom qui ne ment pas.
+    expect(drafts.map((d) => d.rawToken)).toEqual(["CETS", "FLORK"]);
+  });
+
+  it("resolutionStatus est TOUJOURS posé - jamais laissé au défaut base", () => {
+    // La garde de fond : le type l'impose, ce test le constate sur les deux
+    // frontières de création réelles.
+    const fromCandidate = postCandidateToDrafts(tickerOnly, "@k");
+    const fromMention = promotionMentionToDraft({
+      kolHandle: "k", sourcePostId: "t", postedAt: T0, tokenMint: "CETS", chain: "solana",
+    });
+    for (const d of [...fromCandidate, fromMention!]) {
+      expect(d.resolutionStatus).toBeDefined();
+      expect(d.resolutionStatus).not.toBe("resolved_direct");
+    }
+  });
+
+  it("une VRAIE adresse reste resolved_direct - la garde ne sur-refuse pas", () => {
+    const withMint = { ...tickerOnly, detectedTokens: `["${SOL_MINT}"]` };
+    const [d] = postCandidateToDrafts(withMint, "@k");
+    expect(d.resolutionStatus).toBe("resolved_direct");
+    expect(d.tokenMint).toBe(SOL_MINT);
+  });
+
+  it("une adresse EVM est une identité, pas un ticker", () => {
+    // `resolveTokenMint` est Solana-only ; jeter un 0x valide serait la faute
+    // symétrique de celle qu'on ferme.
+    const evm = { ...tickerOnly, detectedTokens: `["${EVM_MINT}"]` };
+    const [d] = postCandidateToDrafts(evm, "@k");
+    expect(d.resolutionStatus).toBe("resolved_direct");
+    expect(d.tokenMint).toBe(EVM_MINT);
+  });
+
+  it("classifyTokenIdentity tranche : adresse = identité, symbole = non", () => {
+    expect(classifyTokenIdentity(SOL_MINT).status).toBe("resolved_direct");
+    expect(classifyTokenIdentity(EVM_MINT).status).toBe("resolved_direct");
+    expect(classifyTokenIdentity("CETS").status).toBe("unresolved_ticker");
+    expect(classifyTokenIdentity("CETS").mint).toBeNull();
+    // Ni un 0x trop court ni un symbole long ne passent pour une adresse.
+    expect(classifyTokenIdentity("0xdead").status).toBe("unresolved_ticker");
+  });
+
+  it("deux tickers du même tweet ne fusionnent pas sous une clé « null »", () => {
+    // La clé de dédup portait sur tokenMint ; avec deux mints null, les deux
+    // drafts auraient collapsé en un seul et un ticker aurait disparu.
+    const drafts = postCandidateToDrafts(tickerOnly, "@k");
+    expect(dedupeDrafts(drafts)).toHaveLength(2);
   });
 });
