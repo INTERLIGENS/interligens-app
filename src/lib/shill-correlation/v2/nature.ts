@@ -10,10 +10,11 @@
 // La nature ne remonte jamais l'echelle (I1) : aucun chemin de ce module ne
 // peut produire PRIMARY_OBSERVATION.
 //
-// NOTE - TACHE C, NON LIVREE ICI. La persistance de cette enveloppe sur
-// ShillCorrelationCandidate (colonnes nature / natureBasis / naturePolicyVersion,
-// ecriture via assertNatureWritable) attend le DDL. Ce module produit la
-// valeur ; il ne l'ecrit nulle part.
+// TACHE C, LIVREE. L'enveloppe est persistee sur ShillCorrelationCandidate
+// (colonnes rowNature / natureBasis / naturePolicyVersion) par l'upsert
+// d'aggregate.ts, via buildCandidateNatureWrite -> assertNatureWritable.
+// Ce module produit la valeur ; persistence.ts la valide ; aggregate.ts l'ecrit.
+// Aucun des trois ne peut ecrire une nature sans traverser les deux autres.
 
 import type { DataNature } from "@/lib/data-nature/nature";
 import { BASELINE_MEASURED_STATES, type InferenceEnvelope, type OccasionRecord } from "./types";
@@ -73,6 +74,57 @@ export function buildInferenceEnvelope(
         (s, r) => s + (BASELINE_MEASURED_STATES.includes(r.baselineState) ? r.baselineBuys.length : 0),
         0,
       ),
+    },
+    policyVersion: ENGINE_POLICY_VERSION,
+  };
+}
+
+/**
+ * L'ENVELOPPE DU CHEMIN v1 (`aggregate.ts`).
+ *
+ * v1 n'a pas d'`OccasionRecord` : il agrege des `ShillBuyerObservation` et ne
+ * collecte AUCUNE fenetre temoin - c'est precisement ce que la tache D doit
+ * construire. `buildInferenceEnvelope` lui est donc inapplicable, et lui
+ * fabriquer de faux `OccasionRecord` pour le contourner reviendrait a inventer
+ * les donnees que l'enveloppe est censee decrire.
+ *
+ * Ce constructeur prend donc les MEMES faits, comptes par l'appelant :
+ *
+ *   `baselineBuyCount` vaut 0 sur ce chemin, et ce zero est une MESURE, pas un
+ *   defaut de remplissage : v1 n'a pas de collecteur temoin, donc aucune de ses
+ *   inferences n'a de denominateur. Une enveloppe qui tairait ce zero laisserait
+ *   croire a une inference adossee a un temoin. Le lift de ces candidats est
+ *   NON MESURE, et l'enveloppe doit le dire.
+ *
+ *   `tokenResolutionWasInferred` : la resolution ticker -> mint est un CALCUL
+ *   (resolve.ts) des lors qu'elle a fallu passer par CA_MAP ou par le texte du
+ *   tweet. `resolved_direct` n'est pas une inference - le mint etait deja la.
+ *   Reprendre ce fait ici evite de sur-declarer un basis.
+ *
+ * Meme version de politique, meme garde `outputIsInferenceOnly`, meme nature :
+ * il n'existe pas deux facons de produire une INFERENCE dans ce produit.
+ */
+export function buildAggregateInferenceEnvelope(
+  input: {
+    occasionIds: readonly string[];
+    observationCount: number;
+    baselineBuyCount: number;
+    tokenResolutionWasInferred: boolean;
+  },
+  policy: Pick<EnginePolicy, "outputIsInferenceOnly">,
+): InferenceEnvelope {
+  if (!policy.outputIsInferenceOnly) throw new InferenceOnlyViolation("configuree hors INFERENCE");
+
+  const basis = new Set<DataNature>(["PRIMARY_OBSERVATION"]);
+  if (input.tokenResolutionWasInferred) basis.add("INFERENCE");
+
+  return {
+    nature: "INFERENCE",
+    natureBasis: [...basis].sort(),
+    basisRefs: {
+      occasionIds: [...input.occasionIds],
+      observationCount: input.observationCount,
+      baselineBuyCount: input.baselineBuyCount,
     },
     policyVersion: ENGINE_POLICY_VERSION,
   };
