@@ -79,7 +79,8 @@ export interface BuyerObservationDraft {
 /** Outcome of processing a single ShillEvent's buyer window. */
 export interface BuyerFetchResult {
   shillEventId: string;
-  tokenMint: string;
+  /** `null` quand l'evenement n'a pas d'identite de contrat resolue. */
+  tokenMint: string | null;
   status: ShillEventStatus; // buyers_fetched | errored
   pagesFetched: number;
   windowCovered: boolean; // false => paged budget hit before window start

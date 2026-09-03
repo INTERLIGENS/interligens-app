@@ -269,13 +269,27 @@ export async function ingestShillEvents(
   const deduped = dedupeDrafts(drafts);
   summary.draftsBuilt = deduped.length;
 
-  // ██ B0 - LA FRONTIERE DE PERSISTANCE ██
-  // Seuls les drafts porteurs d'une IDENTITE DE CONTRAT sont ecrits. Un draft
-  // non resolu est COMPTE, pas invente : `tokenMint` etant NOT NULL en base, le
-  // persister imposerait d'y mettre le ticker - exactement le defaut que B0
-  // ferme. Le compteur monte, la table reste honnete.
-  const persistable = deduped.filter((d) => d.tokenMint != null);
-  summary.skippedUnresolved = deduped.length - persistable.length;
+  // ██ BUILD 3-B - LES NON RESOLUS SONT DESORMAIS PERSISTES ██
+  //
+  // B0 les jetait, et il avait raison de le faire : `tokenMint` etait NOT NULL,
+  // donc les ecrire imposait d'y mettre le ticker - le mensonge exact que B0
+  // fermait. Le prix etait lourd : 3 502 drafts sur 3 571 perdus.
+  //
+  // La colonne est nullable depuis le 2026-09-03. Un draft non resolu s'ecrit
+  // donc TEL QU'IL EST : `tokenMint = null`, `resolutionStatus =
+  // unresolved_ticker`. Rien n'est invente, et plus rien n'est perdu.
+  //
+  // CE QUI REND L'OPERATION SURE : l'index unique a ete recree en
+  // NULLS NOT DISTINCT. Sans lui, deux lignes (kol, tweet, NULL) seraient
+  // considerees DISTINCTES par Postgres, et `skipDuplicates` deviendrait un
+  // no-op sur exactement les lignes que ce changement ajoute - chaque relance
+  // de l'ingestion en aurait empile une copie. Voir le test d'idempotence.
+  //
+  // `skippedUnresolved` reste compte : il ne dit plus « jete » mais « ecrit
+  // sans identite de contrat ». Un chiffre qui monte dit que la resolution
+  // (B1) manque, pas que la source est vide.
+  const persistable = deduped;
+  summary.skippedUnresolved = deduped.filter((d) => d.tokenMint == null).length;
 
   if (opts.dryRun || persistable.length === 0) return summary;
 
@@ -289,7 +303,9 @@ export async function ingestShillEvents(
         kolHandle: d.kolHandle,
         tweetId: d.tweetId,
         tweetTimestamp: d.tweetTimestamp,
-        tokenMint: d.tokenMint as string,
+        // `null` quand l'identite n'est pas resolue. Le ticker reste hors de
+        // cette colonne : il vit dans le draft (`rawToken`), pas en base.
+        tokenMint: d.tokenMint,
         chain: d.chain,
         sourcePostCandidateId: d.sourcePostCandidateId,
         campaignId: d.campaignId,
