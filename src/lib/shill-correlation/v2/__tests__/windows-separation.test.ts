@@ -20,9 +20,11 @@ import {
   record,
 } from "../__fixtures__/corpus";
 import { isMeasured } from "../../measurement";
+import { onChainAnchorFromUtc } from "../anchor";
 
 const P = DEFAULT_ENGINE_POLICY;
-const AT = new Date("2026-08-01T12:00:00.000Z");
+// Fixture deja en UTC vrai : marquee, pas convertie.
+const AT = onChainAnchorFromUtc(new Date("2026-08-01T12:00:00.000Z"));
 
 describe("A - fenetres", () => {
   it("les deux fenetres ont la meme largeur et des ancres differentes", () => {

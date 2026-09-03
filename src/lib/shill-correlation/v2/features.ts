@@ -35,6 +35,7 @@ import {
 } from "./tally";
 import { baselineIsDisjoint } from "./windows";
 import {
+  BASELINE_MEASURED_STATES,
   OBSERVED_ANALYZABLE_STATES,
   type CorrelationFeatures,
   type LiftUnmeasurableReason,
@@ -112,6 +113,7 @@ export function computeFeatures(
       observed: ReturnType<typeof assessObservedFloor>;
       baseline: ReturnType<typeof assessBaselineFloor>;
       records: OccasionRecord[];
+      baselinePrecedesTokenExistence: boolean;
     }
   >();
   for (const [kol, list] of byKol) {
@@ -119,6 +121,18 @@ export function computeFeatures(
       observed: assessObservedFloor(buildObservedSide(list), policy),
       baseline: assessBaselineFloor(buildBaselineSide(list), policy),
       records: list,
+      // SHILL-M1 §3 - LE CABLAGE. Le collecteur produisait ce constat et
+      // `computeLift` savait le lire, mais rien ne les reliait : l'invariant
+      // etait dans le code et hors du chemin. Meme classe de defaut que la
+      // tache C, trouvee au dry-run du 2026-09-03.
+      //
+      // REGLE : le motif ne s'applique que si AUCUNE occasion de ce KOL
+      // n'offre de temoin exploitable ET qu'au moins une constate
+      // l'anteriorite. Une seule occasion mesurable suffit a fonder un
+      // denominateur - refuser alors serait jeter une mesure qu'on a.
+      baselinePrecedesTokenExistence:
+        list.some((r) => r.baselinePrecedesTokenExistence === true) &&
+        !list.some((r) => BASELINE_MEASURED_STATES.includes(r.baselineState) && r.baselineBuys.length > 0),
     });
   }
 
@@ -145,6 +159,7 @@ export function computeFeatures(
       baselineOccurrences,
       baselineFloor: ctx.baseline,
       observedFloor: ctx.observed,
+      baselinePrecedesTokenExistence: ctx.baselinePrecedesTokenExistence,
     });
 
     out.push({

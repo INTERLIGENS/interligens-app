@@ -159,7 +159,7 @@ export const DEFAULT_ENGINE_POLICY: EnginePolicy = {
   minOccasionsForRatio: 3,
   minBaselineBuys: 5,
   minObservedBuys: 3,
-  baselineOffsetSeconds: 24 * 3600,
+  baselineOffsetSeconds: 2 * 3600,
   baselineMaxPagesPerOccasion: 300,
   minLift: 2.0,
   liftGatesClassification: true,
@@ -229,8 +229,63 @@ export const RATIFIED = [
   // parce que le probleme mesure n'est PAS le decalage - a 2 h comme a 24 h,
   // un token ne 31 minutes avant le tweet n'a pas de pre-histoire. Reduire le
   // decalage aurait deplace un cout sans reparer un dispositif.
-  { key: "baselineOffsetSeconds", value: 86_400, on: "2026-09-03", by: "architecte" },
+  // ── RÉVOQUÉ, puis re-fixé pour le shadow ────────────────────────────────
+  // 86 400 avait été ratifié sur un fondement empirique CONTAMINÉ par le bug
+  // d'horloge : ancre décalée de 2 h, donc « le témoin précède l'existence du
+  // token » mesuré au mauvais instant. Une ratification fondée sur une mesure
+  // démontrée fausse doit être RÉVOQUÉE explicitement - pas conservée au motif
+  // qu'elle a été prise.
+  {
+    key: "baselineOffsetSeconds",
+    value: 86_400,
+    on: "2026-09-03",
+    by: "architecte",
+    status: "REVOKED",
+    revokedOn: "2026-09-03",
+    revokedWhy:
+      "fondement empirique contamine par le bug d'alignement temporel " +
+      "(ecart constant de 7 200 s, variance nulle sur 896 signatures). " +
+      "Ancre corrigee : 24 h rend le temoin VIDE sur 3/3 tokens epuises, " +
+      "2 h le rend mesurable sur 2-3/4. Le decalage compte - la mesure qui " +
+      "disait le contraire etait fausse.",
+  },
+  // maxPages CONSERVE : le probleme n'a jamais ete la pagination. 44 pages
+  // suffisaient a epuiser l'historique complet du token de reference.
   { key: "baselineMaxPagesPerOccasion", value: 300, on: "2026-09-03", by: "architecte" },
+] as const;
+
+/**
+ * ── VALEURS RATIFIÉES POUR LE SHADOW SEULEMENT ─────────────────────────────
+ *
+ * Liste DISTINCTE de `RATIFIED` a dessein. Une valeur de shadow n'est pas une
+ * doctrine de production : elle est posee pour que les premieres observations
+ * puissent avoir lieu, et c'est le shadow qui dira si elle tient.
+ *
+ * Les confondre ferait passer un reglage d'experience pour une conclusion.
+ */
+export const SHADOW_RATIFIED = [
+  {
+    key: "baselineOffsetSeconds",
+    value: 7_200,
+    on: "2026-09-03",
+    by: "architecte",
+    supersedes: { value: 86_400, status: "REVOKED" },
+    why:
+      "meilleur compromis OBSERVABLE entre separation et mesurabilite : 24 h " +
+      "rend M1 quasi inutilisable sur ce corpus (0/3), 4 h perd deja beaucoup " +
+      "(1/4), 2 h tient sur 2-3/4.",
+    /**
+     * ⚠ LIMITE A NE JAMAIS TAIRE. Un temoin a -2 h n'est PAS un « bruit de
+     * fond naturel » universel : c'est un CONTROLE PRE-EVENEMENT LOCAL,
+     * susceptible d'etre deja contamine par l'accumulation preparatoire du
+     * shill lui-meme. Un lift calcule sur cette base peut donc SOUS-ESTIMER
+     * l'ecart reel - et cette sous-estimation n'est pas conservatrice au sens
+     * ou on l'entend d'habitude : elle rend le dispositif moins sensible, pas
+     * plus prudent.
+     */
+    limitation: "local pre-event control, may include preparatory accumulation",
+    finalDoctrine: false,
+  },
 ] as const;
 
 /**
@@ -283,4 +338,29 @@ export const SHILL_M1_DOCTRINE = {
   conflictsWith: "unmeasuredLiftCapsClassification (RATIFIE 2026-08-30, fondateur) - REVERSE le 2026-09-03",
   conflictResolved: true,
   coreSignalDimensions: ["holdings", "cross_kol_dispersion", "timing"],
+} as const;
+
+/**
+ * ── PREUVE DE VALIDATION DE L'INSTRUMENT, 2026-09-03 ───────────────────────
+ *
+ * Enregistree POSITIVEMENT, comme un resultat de mesure - pas comme une
+ * promesse. Une reserve levee sans que la mesure qui la leve soit conservee
+ * redevient une reserve a la premiere relecture.
+ *
+ * CE QU'ELLE ETABLIT : une fois l'alignement temporel corrige, v1 et
+ * l'instrument actuel comptent LA MEME CHOSE. Accord parfait.
+ *
+ * CE QU'ELLE N'ETABLIT PAS : que l'un ou l'autre capture EXHAUSTIVEMENT les
+ * acheteurs economiquement pertinents. C'est un accord entre deux lectures,
+ * pas une preuve d'exhaustivite - d'ou la reserve `proxy_minimum` conservee.
+ */
+export const INSTRUMENT_AGREEMENT_EVIDENCE = {
+  agreement: 1.0,
+  pairs: 921,
+  tokens: 4,
+  kols: 3,
+  rule: "toUserAccount du mint, tokenAmount > 0",
+  measuredOn: "2026-09-03",
+  scope: "corpus teste, ancre corrigee - PAS une garantie universelle",
+  establishesExhaustiveness: false,
 } as const;

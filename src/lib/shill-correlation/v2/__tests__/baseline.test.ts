@@ -23,10 +23,12 @@ import {
   AWAITING_RATIFICATION,
   DEFAULT_ENGINE_POLICY,
   RATIFIED,
+  SHADOW_RATIFIED,
   SHILL_M1_DOCTRINE,
   type EnginePolicy,
 } from "../policy";
 import { baselineWindow } from "../windows";
+import { onChainAnchorFromUtc } from "../anchor";
 import { incrementalSpanSeconds } from "../cost";
 import { buildBaselineSide, assessBaselineFloor } from "../tally";
 import { computeLift } from "../features";
@@ -42,7 +44,8 @@ import { runEngine } from "../engine";
 import { buildAggregateInferenceEnvelope } from "../nature";
 import { buildCandidateNatureWrite } from "../persistence";
 
-const OBSERVED_AT = new Date("2026-06-03T18:57:00Z");
+// Fixtures deja en UTC vrai : on MARQUE l'ancre, on ne la convertit pas.
+const OBSERVED_AT = onChainAnchorFromUtc(new Date("2026-06-03T18:57:00Z"));
 const P = DEFAULT_ENGINE_POLICY;
 
 const target = (mint: string | null = "MintAAA") => ({
@@ -369,28 +372,31 @@ describe("SHILL-M1 §2 - integralite dans les bornes autorisees", () => {
     expect(r.baselineTruncatedBy).toBe(PAGE_TRUNCATION_REASON);
   });
 
-  it("les deux seuils de M1 sont dans la policy, et RATIFIES", () => {
-    expect(P.baselineOffsetSeconds).toBe(86_400);
+  it("86 400 est REVOQUE, 7 200 est SHADOW_RATIFIED, et la trace le montre", () => {
+    // Une ratification fondee sur une mesure demontree fausse doit etre
+    // REVOQUEE explicitement. La garder au motif qu'elle a ete prise
+    // reviendrait a traiter la procedure comme une preuve.
+    const revoque = RATIFIED.find(
+      (x) => x.key === "baselineOffsetSeconds" && "status" in x && x.status === "REVOKED",
+    );
+    expect(revoque, "86 400 doit rester visible, marque REVOKED").toBeDefined();
+    expect(revoque!.value).toBe(86_400);
+    expect((revoque as { revokedWhy: string }).revokedWhy).toContain("7 200 s");
+
+    const shadow = SHADOW_RATIFIED.find((x) => x.key === "baselineOffsetSeconds");
+    expect(shadow!.value).toBe(7_200);
+    expect(shadow!.by).toBe("architecte");
+    expect(shadow!.finalDoctrine).toBe(false);
+    expect(shadow!.limitation).toContain("preparatory accumulation");
+
+    // La valeur du shadow est CELLE qui tourne.
+    expect(P.baselineOffsetSeconds).toBe(7_200);
+    // Et elle reste disjointe de la fenetre d'observation (1 500 s).
+    expect(P.baselineOffsetSeconds).toBeGreaterThan(1_500);
+
+    // maxPages conserve : le probleme n'a jamais ete la pagination.
     expect(P.baselineMaxPagesPerOccasion).toBe(300);
-
-    // Sortis de l'attente le 2026-09-03, apres la sonde reelle - pas avant.
-    expect(AWAITING_RATIFICATION).not.toContain("baselineOffsetSeconds");
-    expect(AWAITING_RATIFICATION).not.toContain("baselineMaxPagesPerOccasion");
-
-    for (const key of ["baselineOffsetSeconds", "baselineMaxPagesPerOccasion"]) {
-      const r = RATIFIED.find((x) => x.key === key);
-      expect(r, `${key} doit etre dans RATIFIED`).toBeDefined();
-      expect(r!.on).toBe("2026-09-03");
-      expect(r!.by).toBe("architecte");
-    }
-    // La valeur ratifiee est CELLE de la policy : une ratification qui note un
-    // chiffre different de celui qui tourne ne ratifie rien.
-    expect(RATIFIED.find((x) => x.key === "baselineOffsetSeconds")!.value).toBe(
-      P.baselineOffsetSeconds,
-    );
-    expect(RATIFIED.find((x) => x.key === "baselineMaxPagesPerOccasion")!.value).toBe(
-      P.baselineMaxPagesPerOccasion,
-    );
+    expect(RATIFIED.find((x) => x.key === "baselineMaxPagesPerOccasion")!.value).toBe(300);
   });
 });
 
@@ -538,5 +544,63 @@ describe("SHILL-M1 - observabilite : aucun etat n'est invisible", () => {
     }
     // Le motif neuf de SHILL-M1 §3 est compte comme les autres.
     expect(t.liftUnmeasurable).toHaveProperty("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+  });
+});
+
+describe("SHILL-M1 §3 - le motif est SUR LE CHEMIN, pas seulement dans le code", () => {
+  // Le défaut trouvé au dry-run du 2026-09-03 : le collecteur produisait
+  // `baselinePrecedesTokenExistence`, `computeLift` savait le lire, et RIEN ne
+  // les reliait. `computeFeatures` ne le passait pas. Les tests §3 existants
+  // appelaient `computeLift` DIRECTEMENT - ils ne pouvaient donc pas le voir.
+  // Ceux-ci passent par `runEngine`, le vrai chemin.
+  const rec = (id: string, opts: Partial<OccasionRecord>): OccasionRecord =>
+    ({
+      occasion: { occasionId: id, kolHandle: "kol_a", eventIds: [id], tokenMint: "MintAAA", observedAt: OBSERVED_AT },
+      resolved: null,
+      observedState: "fetched_with_buyers",
+      observations: [
+        { wallet: "W1", chain: "solana", behaviorType: "pre_tweet", deltaSecondsFromTweet: -100,
+          txSignature: `sig-${id}`, exitDeltaSeconds: null },
+      ],
+      observedStateDetail: null,
+      observedTruncatedBy: null,
+      baselineState: "collected_empty",
+      baselineBuys: [],
+      baselineStateDetail: null,
+      baselineTruncatedBy: null,
+      ...opts,
+    }) as unknown as OccasionRecord;
+
+  it("via runEngine : un témoin antérieur au token rend le motif dédié", () => {
+    const recs = [
+      rec("o1", { baselinePrecedesTokenExistence: true }),
+      rec("o2", { baselinePrecedesTokenExistence: true }),
+      rec("o3", { baselinePrecedesTokenExistence: true }),
+    ];
+    const c = runEngine(recs, P).candidates.find((x) => x.wallet === "W1")!;
+    expect(c.features.liftUnmeasurableReason).toBe("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+  });
+
+  it("une seule occasion RÉELLEMENT mesurée suffit à écarter le motif", () => {
+    // Refuser alors qu'on tient un dénominateur reviendrait à jeter une mesure.
+    const recs = [
+      rec("o1", { baselinePrecedesTokenExistence: true }),
+      rec("o2", {
+        baselinePrecedesTokenExistence: false,
+        baselineState: "collected_with_buys",
+        baselineBuys: [
+          { wallet: "W9", chain: "solana", deltaSecondsFromBaselineAnchor: -10,
+            firstBuyTxSignature: "b1", entryAmountUsd: null },
+        ],
+      }),
+    ];
+    const c = runEngine(recs, P).candidates.find((x) => x.wallet === "W1")!;
+    expect(c.features.liftUnmeasurableReason).not.toBe("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+  });
+
+  it("le motif est compté en télémétrie, pas seulement porté par le candidat", () => {
+    const recs = [rec("o1", { baselinePrecedesTokenExistence: true })];
+    const t = runEngine(recs, P).telemetry;
+    expect(t.liftUnmeasurable.BASELINE_PRECEDES_TOKEN_EXISTENCE).toBeGreaterThan(0);
   });
 });

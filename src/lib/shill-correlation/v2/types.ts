@@ -301,10 +301,15 @@ export interface CandidateScores {
  *
  *  1. LE LIFT N'EST PAS UN DECOMPTE EXHAUSTIF D'ACHETEURS. C'est une PROXY, et
  *     un MINIMUM : une adresse avec >= 1 transaction pertinente vue par
- *     l'instrument. MESURE le 2026-09-03, meme token, meme fenetre de 1 500 s,
- *     lue par deux chemins : v1 avait enregistre 452 wallets distincts et 448
- *     signatures ; la sonde en voit 58 et 159. Le rendement de l'instrument
- *     n'est ni 1, ni stable, ni connu.
+ *     l'instrument.
+ *
+ *     CORRECTION DU 2026-09-03 : l'ecart de 13 % rapporte precedemment entre
+ *     v1 et la sonde N'ETAIT PAS un defaut de rendement. C'etait un decalage
+ *     d'horloge de 7 200 s exactement (variance nulle, 896 signatures). Ancre
+ *     corrigee, l'accord est de 1,000 sur 921 paires. La reserve reste
+ *     neanmoins VRAIE, pour une autre raison : un accord entre deux lectures
+ *     n'est pas une preuve d'exhaustivite. Les deux peuvent rater les memes
+ *     acheteurs.
  *
  *  2. NE JAMAIS SUPPOSER biais(observe) ~= biais(temoin). L'idee que les deux
  *     biais s'annulent dans le RATIO est confortable et NON DEMONTREE. Les
@@ -319,9 +324,21 @@ export interface CandidateScores {
  */
 export const ACTIVITY_LIFT_RESERVATIONS = [
   "proxy_minimum_not_exhaustive_buyer_count",
-  "instrument_yield_unknown_and_unstable",
+  // `instrument_yield_unknown_and_unstable` RETIREE le 2026-09-03 : FALSIFIEE
+  // par la mesure. Accord instrument = 1,000 sur 921 paires / 4 tokens / 3 KOL,
+  // ancre corrigee (voir policy.INSTRUMENT_AGREEMENT_EVIDENCE). Elle avait ete
+  // posee sur un ecart de 13 % qui n'etait pas un rendement mais une horloge.
+  // Une reserve fausse coute autant qu'une reserve absente : elle fait douter
+  // au mauvais endroit, et rassure au mauvais endroit par contraste.
   "observed_and_baseline_bias_equality_undemonstrated",
   "correlation_feature_never_standalone_proof_of_coordination",
+  /**
+   * AJOUTEE le 2026-09-03 avec le passage a un temoin de -2 h. Un controle
+   * pre-evenement local n'est pas un bruit de fond naturel : il peut deja
+   * contenir l'accumulation preparatoire du shill. Le lift qui en sort peut
+   * SOUS-ESTIMER l'ecart reel.
+   */
+  "short_baseline_may_contain_preparatory_accumulation",
 ] as const;
 
 export type ActivityLiftReservation = (typeof ACTIVITY_LIFT_RESERVATIONS)[number];
