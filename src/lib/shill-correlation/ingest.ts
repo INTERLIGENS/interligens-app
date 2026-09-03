@@ -158,6 +158,71 @@ export function dedupeDrafts(drafts: ShillEventDraft[]): ShillEventDraft[] {
 }
 
 // -- DB orchestration --------------------------------------------------------
+export interface PersistDraftsResult {
+  draftsBuilt: number;
+  skippedUnresolved: number;
+  created: number;
+  skippedDuplicates: number;
+  errors: string[];
+}
+
+/**
+ * ██ LE CHEMIN D'ECRITURE DES ShillEvent — UN SEUL ██
+ *
+ * Extrait de `ingestShillEvents` pour que le bridge forward (B3) l'appelle au
+ * lieu de le reecrire. Deux chemins d'ecriture divergent toujours : l'un
+ * gagnerait un champ, l'autre non, et la difference se verrait six mois plus
+ * tard dans une ligne mal formee.
+ *
+ * IDEMPOTENT PAR LA BASE, pas par le code. `skipDuplicates` s'appuie sur
+ * UNIQUE (kolHandle, tweetId, tokenMint) NULLS NOT DISTINCT : sans cette
+ * clause, deux lignes (kol, tweet, NULL) seraient DISTINCTES pour Postgres et
+ * chaque relance en empilerait une copie.
+ *
+ * LES NON RESOLUS SONT PERSISTES, `tokenMint = null`. Le ticker n'entre jamais
+ * dans cette colonne (B0) : il vit dans le draft, sous `rawToken`.
+ */
+export async function persistShillEventDrafts(
+  drafts: ShillEventDraft[],
+  opts: { dryRun?: boolean } = {},
+): Promise<PersistDraftsResult> {
+  const deduped = dedupeDrafts(drafts);
+  const out: PersistDraftsResult = {
+    draftsBuilt: deduped.length,
+    skippedUnresolved: deduped.filter((d) => d.tokenMint == null).length,
+    created: 0,
+    skippedDuplicates: 0,
+    errors: [],
+  };
+
+  if (opts.dryRun || deduped.length === 0) return out;
+
+  try {
+    const result = await prisma.shillEvent.createMany({
+      // `resolutionStatus` est passe EXPLICITEMENT : le defaut base
+      // `resolved_direct` ne decide plus a la place de l'auteur. `rawToken`
+      // n'est pas une colonne - il reste cote draft, pour l'audit.
+      data: deduped.map((d) => ({
+        kolHandle: d.kolHandle,
+        tweetId: d.tweetId,
+        tweetTimestamp: d.tweetTimestamp,
+        tokenMint: d.tokenMint,
+        chain: d.chain,
+        sourcePostCandidateId: d.sourcePostCandidateId,
+        campaignId: d.campaignId,
+        resolutionStatus: d.resolutionStatus,
+        processingStatus: "pending",
+      })),
+      skipDuplicates: true,
+    });
+    out.created = result.count;
+    out.skippedDuplicates = deduped.length - result.count;
+  } catch (e) {
+    out.errors.push(`createMany: ${(e as Error).message}`);
+  }
+  return out;
+}
+
 
 const DEFAULT_LIMIT = 5000;
 
@@ -233,59 +298,12 @@ export async function ingestShillEvents(
     summary.errors.push(`postCandidates: ${(e as Error).message}`);
   }
 
-  const deduped = dedupeDrafts(drafts);
-  summary.draftsBuilt = deduped.length;
-
-  // ██ BUILD 3-B - LES NON RESOLUS SONT DESORMAIS PERSISTES ██
-  //
-  // B0 les jetait, et il avait raison de le faire : `tokenMint` etait NOT NULL,
-  // donc les ecrire imposait d'y mettre le ticker - le mensonge exact que B0
-  // fermait. Le prix etait lourd : 3 502 drafts sur 3 571 perdus.
-  //
-  // La colonne est nullable depuis le 2026-09-03. Un draft non resolu s'ecrit
-  // donc TEL QU'IL EST : `tokenMint = null`, `resolutionStatus =
-  // unresolved_ticker`. Rien n'est invente, et plus rien n'est perdu.
-  //
-  // CE QUI REND L'OPERATION SURE : l'index unique a ete recree en
-  // NULLS NOT DISTINCT. Sans lui, deux lignes (kol, tweet, NULL) seraient
-  // considerees DISTINCTES par Postgres, et `skipDuplicates` deviendrait un
-  // no-op sur exactement les lignes que ce changement ajoute - chaque relance
-  // de l'ingestion en aurait empile une copie. Voir le test d'idempotence.
-  //
-  // `skippedUnresolved` reste compte : il ne dit plus « jete » mais « ecrit
-  // sans identite de contrat ». Un chiffre qui monte dit que la resolution
-  // (B1) manque, pas que la source est vide.
-  const persistable = deduped;
-  summary.skippedUnresolved = deduped.filter((d) => d.tokenMint == null).length;
-
-  if (opts.dryRun || persistable.length === 0) return summary;
-
-  // Idempotent insert: skipDuplicates leaves already-ingested events untouched.
-  try {
-    const result = await prisma.shillEvent.createMany({
-      // `resolutionStatus` est passe EXPLICITEMENT : le defaut base
-      // `resolved_direct` ne decide plus a la place de l'auteur. `rawToken`
-      // n'est pas une colonne - il reste cote draft, pour l'audit.
-      data: persistable.map((d) => ({
-        kolHandle: d.kolHandle,
-        tweetId: d.tweetId,
-        tweetTimestamp: d.tweetTimestamp,
-        // `null` quand l'identite n'est pas resolue. Le ticker reste hors de
-        // cette colonne : il vit dans le draft (`rawToken`), pas en base.
-        tokenMint: d.tokenMint,
-        chain: d.chain,
-        sourcePostCandidateId: d.sourcePostCandidateId,
-        campaignId: d.campaignId,
-        resolutionStatus: d.resolutionStatus,
-        processingStatus: "pending",
-      })),
-      skipDuplicates: true,
-    });
-    summary.created = result.count;
-    summary.skippedDuplicates = persistable.length - result.count;
-  } catch (e) {
-    summary.errors.push(`createMany: ${(e as Error).message}`);
-  }
+  const persisted = await persistShillEventDrafts(drafts, { dryRun: opts.dryRun });
+  summary.draftsBuilt = persisted.draftsBuilt;
+  summary.skippedUnresolved = persisted.skippedUnresolved;
+  summary.created = persisted.created;
+  summary.skippedDuplicates = persisted.skippedDuplicates;
+  summary.errors.push(...persisted.errors);
 
   return summary;
 }
