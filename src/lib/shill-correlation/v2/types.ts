@@ -21,6 +21,7 @@
 
 import type { Measurement } from "../measurement";
 import type { DataNature } from "@/lib/data-nature/nature";
+import type { InferenceBasis } from "@/lib/data-nature/inferenceEnvelope";
 
 /** Zone temporelle relative a l'observation. */
 export type BehaviorZone = "zone_a" | "zone_b" | "zone_c";
@@ -345,20 +346,22 @@ export type ActivityLiftReservation = (typeof ACTIVITY_LIFT_RESERVATIONS)[number
 
 export interface InferenceEnvelope {
   nature: Extract<DataNature, "INFERENCE">;
-  /** Natures des ENTREES qui fondent l'inference. */
-  natureBasis: DataNature[];
+  /**
+   * B4.2 — LE BASIS STRUCTURE. Remplace `natureBasis: DataNature[]`, qui
+   * ecrivait ["PRIMARY_OBSERVATION","INFERENCE"] des que le resolveur avait
+   * tranche : l'inference y figurait comme sa propre preuve.
+   *
+   * `basis.inputNatures` ne liste que des natures de SOURCES ; les etapes
+   * derivees sont decrites sous `inputs.resolution` et `inputs.methodology`,
+   * avec leur methodRef et leur verdict.
+   */
+  basis: InferenceBasis;
+  /** Refs de comptage propres au moteur shill, conservees pour l'audit. */
   basisRefs: {
     occasionIds: string[];
     observationCount: number;
     baselineBuyCount: number;
   };
-  /**
-   * SHILL-M1. Les reserves voyagent AVEC l'inference, jusqu'en base
-   * (natureBasis, colonne jsonb). Une reserve laissee en commentaire de code
-   * n'est pas lue par celui qui relit la ligne six mois plus tard - or c'est
-   * exactement a ce moment qu'un lift de 8,3 se lit comme une preuve.
-   */
-  reservations: readonly ActivityLiftReservation[];
   policyVersion: string;
 }
 

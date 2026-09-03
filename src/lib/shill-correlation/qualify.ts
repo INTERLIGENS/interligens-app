@@ -35,15 +35,24 @@
 // l'intuition de celui qui l'écrit.
 
 import { parseDetectedTokens } from "./parsing";
+import { SOCIAL_PROMOTION_QUALIFY_V1 } from "@/lib/methodology/registry";
 
 /**
- * ██ LA VERSION DE RÈGLE ██
+ * ██ LA VERSION DE RÈGLE — UN SEUL IDENTIFIANT ██
  *
- * Change dès qu'un critère change. Le `natureBasis` de B4 la cite : deux
- * qualifications rendues sous deux versions ne sont pas comparables, et sans
- * ce champ rien ne le dirait.
+ * B4.1 : la valeur posée ici était `promotion-qualify@v1`, un slug NU. La
+ * grammaire canonique (`data-nature/methodRef.ts`) exige
+ * `<methodologie>/<composant>@v<N>` et le REFUSAIT — un identifiant qui ne
+ * resout pas ne doit jamais entrer dans un natureBasis.
+ *
+ * La constante pointe desormais le ref canonique, qui resout sur un artefact
+ * GELE (content/methodologies/social-promotion/v1.md). Une seule valeur, donc
+ * aucun risque que la regle citee dans un basis diverge de la regle appliquee.
+ *
+ * Change des qu'un critere change : deux qualifications rendues sous deux
+ * versions ne sont pas comparables, et sans ce champ rien ne le dirait.
  */
-export const PROMOTION_QUALIFY_RULE_VERSION = "promotion-qualify@v1";
+export const PROMOTION_QUALIFY_RULE_VERSION = SOCIAL_PROMOTION_QUALIFY_V1;
 
 /**
  * V1 est conservatrice et sera révisée. Le drapeau existe pour que ce fait

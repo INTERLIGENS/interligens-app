@@ -35,7 +35,7 @@ describe("doctrine", () => {
   it("la nature de sortie est toujours INFERENCE", () => {
     for (const c of runEngine(corpus(), P).candidates) {
       expect(c._nature.nature).toBe("INFERENCE");
-      expect(c._nature.natureBasis).toContain("PRIMARY_OBSERVATION");
+      expect(c._nature.basis.inputNatures).toContain("PRIMARY_OBSERVATION");
       expect(c._nature.policyVersion).toBe(ENGINE_POLICY_VERSION);
     }
   });

@@ -448,10 +448,10 @@ describe("SHILL-M1 - la reserve voyage avec l'inference", () => {
       { occasionIds: ["o1"], observationCount: 5, baselineBuyCount: 0, tokenResolutionWasInferred: false },
       P,
     );
-    expect(env.reservations).toEqual(ACTIVITY_LIFT_RESERVATIONS);
-    expect(env.reservations).toContain("proxy_minimum_not_exhaustive_buyer_count");
-    expect(env.reservations).toContain("observed_and_baseline_bias_equality_undemonstrated");
-    expect(env.reservations).toContain("correlation_feature_never_standalone_proof_of_coordination");
+    expect(env.basis.reservations).toEqual(ACTIVITY_LIFT_RESERVATIONS);
+    expect(env.basis.reservations).toContain("proxy_minimum_not_exhaustive_buyer_count");
+    expect(env.basis.reservations).toContain("observed_and_baseline_bias_equality_undemonstrated");
+    expect(env.basis.reservations).toContain("correlation_feature_never_standalone_proof_of_coordination");
   });
 
   it("le fragment ecrit en base les porte dans natureBasis", () => {

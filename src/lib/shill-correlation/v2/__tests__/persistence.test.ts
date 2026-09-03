@@ -98,7 +98,9 @@ describe("C - le fragment d'écriture", () => {
   it("porte la nature (colonne rowNature), le basis et la version de politique", () => {
     const w = buildCandidateNatureWrite(candidate());
     expect(w.rowNature).toBe("INFERENCE");
-    expect(w.natureBasis.natures).toContain("PRIMARY_OBSERVATION");
+    expect(w.natureBasis.inputNatures).toContain("PRIMARY_OBSERVATION");
+    // B4.2 : l'inference n'est jamais une de ses propres entrees.
+    expect(w.natureBasis.inputNatures).not.toContain("INFERENCE");
     expect(w.natureBasis.occasionIds.length).toBeGreaterThan(0);
     expect(w.natureBasis.observationCount).toBeGreaterThan(0);
     expect(w.naturePolicyVersion).toBe(ENGINE_POLICY_VERSION);

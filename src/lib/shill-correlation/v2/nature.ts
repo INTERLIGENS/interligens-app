@@ -16,7 +16,8 @@
 // Ce module produit la valeur ; persistence.ts la valide ; aggregate.ts l'ecrit.
 // Aucun des trois ne peut ecrire une nature sans traverser les deux autres.
 
-import type { DataNature } from "@/lib/data-nature/nature";
+import { buildInferenceEnvelope as buildCommonEnvelope } from "@/lib/data-nature/inferenceEnvelope";
+import { SOCIAL_PROMOTION_QUALIFY_V1 } from "@/lib/methodology/registry";
 import {
   ACTIVITY_LIFT_RESERVATIONS,
   BASELINE_MEASURED_STATES,
@@ -61,26 +62,61 @@ export class InferenceOnlyViolation extends Error {
 export function buildInferenceEnvelope(
   records: readonly OccasionRecord[],
   policy: EnginePolicy,
-  extraBasis: readonly DataNature[] = [],
 ): InferenceEnvelope {
   if (!policy.outputIsInferenceOnly) throw new InferenceOnlyViolation("configuree hors INFERENCE");
 
-  const basis = new Set<DataNature>(["PRIMARY_OBSERVATION", ...extraBasis]);
-  // Le token a ete identifie par le resolveur canonique : c'est un calcul.
-  if (records.some((r) => r.resolved != null)) basis.add("INFERENCE");
+  const observationCount = records.reduce((s, r) => s + r.observations.length, 0);
+  const baselineBuyCount = records.reduce(
+    (s, r) => s + (BASELINE_MEASURED_STATES.includes(r.baselineState) ? r.baselineBuys.length : 0),
+    0,
+  );
+  const resolvedSome = records.some((r) => r.resolved != null);
+
+  // B4.2 - LA RESOLUTION EST DECRITE, PAS APLATIE EN JETON DE NATURE.
+  // Le code d'avant ajoutait "INFERENCE" au basis des que le resolveur avait
+  // tranche pour un token. C'etait vrai qu'une etape amont etait un calcul, et
+  // faux de l'ecrire ainsi : le basis disait « fondee sur une inference »,
+  // sans dire laquelle.
+  const env = buildCommonEnvelope(
+    {
+      primaryObservations: [
+        {
+          kind: "shill_occasion",
+          refs: { occasionIds: records.map((r) => r.occasion.occasionId) },
+          count: records.length,
+        },
+        {
+          kind: "onchain_buy",
+          refs: { observed: observationCount, baseline: baselineBuyCount },
+          count: observationCount + baselineBuyCount,
+        },
+      ],
+      methodology: {
+        methodRef: SOCIAL_PROMOTION_QUALIFY_V1,
+        outcome: { engine: "shill-v2", occasions: records.length },
+      },
+      ...(resolvedSome
+        ? {
+            resolution: {
+              status: "resolved_by_canonical_resolver",
+              evidence: "au moins une occasion porte un token resolu (resolveur V3)",
+            },
+          }
+        : {}),
+      reservations: ACTIVITY_LIFT_RESERVATIONS,
+      policyVersion: ENGINE_POLICY_VERSION,
+    },
+    "shill-v2/buildInferenceEnvelope",
+  );
 
   return {
     nature: "INFERENCE",
-    natureBasis: [...basis].sort(),
+    basis: env.basis,
     basisRefs: {
       occasionIds: records.map((r) => r.occasion.occasionId),
-      observationCount: records.reduce((s, r) => s + r.observations.length, 0),
-      baselineBuyCount: records.reduce(
-        (s, r) => s + (BASELINE_MEASURED_STATES.includes(r.baselineState) ? r.baselineBuys.length : 0),
-        0,
-      ),
+      observationCount,
+      baselineBuyCount,
     },
-    reservations: ACTIVITY_LIFT_RESERVATIONS,
     policyVersion: ENGINE_POLICY_VERSION,
   };
 }
@@ -121,18 +157,47 @@ export function buildAggregateInferenceEnvelope(
 ): InferenceEnvelope {
   if (!policy.outputIsInferenceOnly) throw new InferenceOnlyViolation("configuree hors INFERENCE");
 
-  const basis = new Set<DataNature>(["PRIMARY_OBSERVATION"]);
-  if (input.tokenResolutionWasInferred) basis.add("INFERENCE");
+  // Meme primitive que le chemin v2 : une seule forme d'enveloppe.
+  const env = buildCommonEnvelope(
+    {
+      primaryObservations: [
+        {
+          kind: "shill_occasion",
+          refs: { occasionIds: [...input.occasionIds] },
+          count: input.occasionIds.length,
+        },
+        {
+          kind: "onchain_buy",
+          refs: { observed: input.observationCount, baseline: input.baselineBuyCount },
+          count: input.observationCount + input.baselineBuyCount,
+        },
+      ],
+      methodology: {
+        methodRef: SOCIAL_PROMOTION_QUALIFY_V1,
+        outcome: { engine: "shill-v1-aggregate" },
+      },
+      ...(input.tokenResolutionWasInferred
+        ? {
+            resolution: {
+              status: "resolved_by_canonical_resolver",
+              evidence: "ticker resolu par CA_MAP ou par le texte du tweet (resolve.ts)",
+            },
+          }
+        : {}),
+      reservations: ACTIVITY_LIFT_RESERVATIONS,
+      policyVersion: ENGINE_POLICY_VERSION,
+    },
+    "shill-v1/buildAggregateInferenceEnvelope",
+  );
 
   return {
     nature: "INFERENCE",
-    natureBasis: [...basis].sort(),
+    basis: env.basis,
     basisRefs: {
       occasionIds: [...input.occasionIds],
       observationCount: input.observationCount,
       baselineBuyCount: input.baselineBuyCount,
     },
-    reservations: ACTIVITY_LIFT_RESERVATIONS,
     policyVersion: ENGINE_POLICY_VERSION,
   };
 }

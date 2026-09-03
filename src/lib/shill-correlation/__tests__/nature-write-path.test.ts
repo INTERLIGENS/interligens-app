@@ -95,9 +95,11 @@ describe("C - l'upsert porte la nature", () => {
     expect(d.rowNature).toBe("INFERENCE");
     expect(d.naturePolicyVersion).toBe(ENGINE_POLICY_VERSION);
     expect(d.natureBasis).toMatchObject({
-      natures: ["PRIMARY_OBSERVATION"],
+      inputNatures: ["PRIMARY_OBSERVATION"],
       observationCount: 3,
     });
+    // B4.2 : l'inference n'est jamais une de ses propres entrees.
+    expect((d.natureBasis as { inputNatures: string[] }).inputNatures).not.toContain("INFERENCE");
   });
 
   it("`create` et `update` portent la meme nature - une reecriture ne la perd pas", async () => {
@@ -240,23 +242,41 @@ describe("C - le basis dit de quoi CETTE ligne est tiree", () => {
     expect(dataOf(0).natureBasis).toMatchObject({ baselineBuyCount: 0 });
   });
 
-  it("une resolution PAR CALCUL ajoute INFERENCE au basis", async () => {
+  it("B4.2 - une resolution PAR CALCUL est DECRITE, pas aplatie en nature", async () => {
+    // Le comportement d'avant : `natures` recevait "INFERENCE" des que le
+    // resolveur avait tranche. C'etait vrai qu'une etape amont etait un calcul,
+    // et faux de l'ecrire ainsi - le basis disait « fondee sur une inference »
+    // sans dire laquelle. La resolution est desormais un CHAMP nomme.
     obsFindMany.mockResolvedValue(observations(2, { resolutionStatus: "resolved_from_tweet" }));
     await aggregateCandidates({ dryRun: false, loadExistingExclusions: noPrior });
 
-    expect((dataOf(0).natureBasis as { natures: string[] }).natures).toEqual([
-      "INFERENCE",
-      "PRIMARY_OBSERVATION",
-    ]);
+    const b = dataOf(0).natureBasis as {
+      inputNatures: string[];
+      inputs: { resolution?: { status: string; evidence: string } };
+    };
+    expect(b.inputNatures).not.toContain("INFERENCE");
+    expect(b.inputs.resolution).toBeDefined();
+    expect(b.inputs.resolution!.status).toBe("resolved_by_canonical_resolver");
   });
 
-  it("resolved_direct n'ajoute RIEN - le mint etait deja la, rien n'a ete infere", async () => {
+  it("resolved_direct : aucune etape de resolution n'est declaree", async () => {
     obsFindMany.mockResolvedValue(observations(2, { resolutionStatus: "resolved_direct" }));
     await aggregateCandidates({ dryRun: false, loadExistingExclusions: noPrior });
 
-    expect((dataOf(0).natureBasis as { natures: string[] }).natures).toEqual([
-      "PRIMARY_OBSERVATION",
-    ]);
+    const b = dataOf(0).natureBasis as {
+      inputNatures: string[];
+      inputs: { resolution?: unknown };
+    };
+    expect(b.inputNatures).toEqual(["PRIMARY_OBSERVATION"]);
+    expect(b.inputs.resolution).toBeUndefined();
+  });
+
+  it("le basis cite un methodRef qui RESOUT", async () => {
+    const { isKnownMethodRef } = await import("@/lib/methodology/registry");
+    obsFindMany.mockResolvedValue(observations(2));
+    await aggregateCandidates({ dryRun: false, loadExistingExclusions: noPrior });
+    const b = dataOf(0).natureBasis as { inputs: { methodology: { methodRef: string } } };
+    expect(isKnownMethodRef(b.inputs.methodology.methodRef)).toBe(true);
   });
 
   it("deux candidats ne partagent pas leur basis - un backfill global l'ecraserait", async () => {
