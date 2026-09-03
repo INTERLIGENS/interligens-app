@@ -12,7 +12,8 @@ import {
   fetchTokenWindowTransactions,
   type WindowFetchOptions,
 } from "./helius";
-import { extractBuyerObservations, looksLikeSolanaMint } from "./buyers";
+import { extractBuyerObservations } from "./buyers";
+import { checkSolanaEngineEligibility, eligibleForSolanaEngine } from "./eligibility";
 import type { BuyerFetchResult, BuyerObservationDraft } from "./types";
 
 /**
@@ -96,27 +97,20 @@ export async function processShillEvent(
     written: false,
   };
 
-  if (event.chain !== "solana") {
-    return { ...base, error: `unsupported chain: ${event.chain}` };
+  // ██ B3 - L'INVARIANT UNIQUE, FAIL-CLOSED ██
+  // Trois `if` successifs tenaient cette frontiere. Ils etaient corrects, mais
+  // leur correction dependait de leur ORDRE - rien ne disait que le test de
+  // chaine devait preceder celui du mint. Un invariant qui n'existe que dans
+  // l'ordre de trois conditions est une coincidence entretenue.
+  //
+  // `checkSolanaEngineEligibility` rend un resultat DISCRIMINE : le `true`
+  // porte le mint narrowe, donc l'appelant ne PEUT pas continuer sans avoir lu
+  // le verdict. Un booleen aurait laisse ecrire `fetch(event.tokenMint!)`.
+  const gate = checkSolanaEngineEligibility(event);
+  if (!gate.eligible) {
+    return { ...base, error: `${gate.diagnostic}: ${gate.reason}` };
   }
-  // Many ShillEvents (from SocialPostCandidate cashtags) carry a ticker symbol
-  // in tokenMint rather than an address — Helius would 400. Short-circuit
-  // before spending a credit; these need upstream symbol->mint resolution.
-  // BUILD 3-B - LA FRONTIERE DU MOTEUR SOLANA, EXPLICITE.
-  // Deux refus distincts, et les confondre serait perdre un diagnostic :
-  //   `null`      -> l'identite n'a JAMAIS ete resolue (unresolved_ticker) ;
-  //   non-base58  -> une valeur est la, mais ce n'est pas une adresse Solana.
-  // Le premier appelle B1 (resolution), le second un correctif de source.
-  const mint = event.tokenMint;
-  if (mint == null) {
-    return { ...base, error: "tokenMint is null (unresolved identity)" };
-  }
-  if (!looksLikeSolanaMint(mint)) {
-    return {
-      ...base,
-      error: `tokenMint is not a base58 address (symbol?): ${mint}`,
-    };
-  }
+  const mint = gate.mint;
 
   const tweetTs = Math.floor(event.tweetTimestamp.getTime() / 1000);
 
@@ -188,7 +182,10 @@ export async function processPendingSample(
   const events = (
     opts.mint
       ? candidates
-      : candidates.filter((e) => e.tokenMint != null && looksLikeSolanaMint(e.tokenMint))
+      // Le MEME invariant que la garde de `processShillEvent`. Un pre-filtre
+      // qui repliquerait la regle a la main en creerait une seconde, et les
+      // deux divergeraient au premier cas limite.
+      : candidates.filter((e) => eligibleForSolanaEngine(e))
   ).slice(0, limit);
 
   const results: BuyerFetchResult[] = [];
