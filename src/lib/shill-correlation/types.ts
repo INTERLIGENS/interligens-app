@@ -3,6 +3,11 @@
 // PHASE 2 — ingestion layer. No public surface, no TigerScore coupling,
 // no PDF/email coupling. Wording invariant: candidates, never "the KOL's wallet".
 
+// La grammaire de resolution vit dans resolve.ts et n'est pas redupliquee ici.
+// Import de TYPE uniquement : efface a la compilation, donc aucun cycle a
+// l'execution malgre resolve.ts -> buyers.ts -> types.ts.
+import type { ResolutionStatus } from "./resolve";
+
 /** Processing lifecycle of a ShillEvent row. */
 export type ShillEventStatus =
   | "pending"
@@ -90,11 +95,44 @@ export interface BuyerFetchResult {
  * the ShillEvent table's business columns; id/createdAt/updatedAt are assigned
  * by the database, and processingStatus defaults to "pending".
  */
+/**
+ * ══ B0 — UN TICKER N'EST JAMAIS UNE IDENTITE DE CONTRAT ══════════════════
+ *
+ * LE DEFAUT FERME ICI, mesure le 2026-09-03 : `ingestShillEvents` ecrivait le
+ * contenu de `detectedTokens` dans `tokenMint` et ne posait JAMAIS
+ * `resolutionStatus`. Le defaut base `@default("resolved_direct")` s'appliquait
+ * donc a des lignes portant un TICKER. Sur 30 jours, 841 entrees de
+ * `detectedTokens` sur 841 sont des tickers - zero adresse. Chaque evenement
+ * cree aurait affirme « mint resolu directement » sur un symbole.
+ *
+ * Une affirmation fausse posee par OMISSION est le pire des deux mondes : rien
+ * dans le code ne la porte, donc rien ne la signale a la relecture.
+ *
+ * DEUX CHANGEMENTS DE TYPE, ET ILS SONT LE CORRECTIF :
+ *
+ *   `tokenMint: string | null` - un draft dont l'identite n'est pas resolue
+ *   porte `null`, PAS le ticker. Le ticker reste dans `rawToken`, ou il est
+ *   lisible sans etre confondu avec une adresse. La colonne `tokenMint` etant
+ *   NOT NULL en base, un draft a `null` n'est tout simplement PAS persiste :
+ *   on n'invente pas l'identite qui manque.
+ *
+ *   `resolutionStatus` OBLIGATOIRE - le type force chaque frontiere de
+ *   creation a trancher. Il n'existe plus de chemin ou l'omission decide a
+ *   la place de l'auteur.
+ *
+ * Aucun etat nouveau : la grammaire est celle de resolve.ts.
+ * B0 est FORWARD-ONLY. Les 221 evenements deja en base ne sont pas touches.
+ */
 export interface ShillEventDraft {
   kolHandle: string;
   tweetId: string;
   tweetTimestamp: Date;
-  tokenMint: string;
+  /** `null` quand l'identite n'est pas resolue. JAMAIS un ticker. */
+  tokenMint: string | null;
+  /** La valeur brute lue en amont - ticker ou adresse. Auditable, jamais ecrite comme mint. */
+  rawToken: string;
+  /** EXPLICITE, toujours. Jamais laisse au defaut base. */
+  resolutionStatus: ResolutionStatus;
   chain: Chain;
   sourcePostCandidateId: string | null;
   campaignId: string | null;
@@ -105,6 +143,12 @@ export interface IngestSummary {
   scannedPromotionMentions: number;
   scannedPostCandidates: number;
   draftsBuilt: number;
+  /**
+   * B0 - drafts CONSTRUITS mais NON persistes faute d'identite de contrat.
+   * Comptes plutot que tus : un chiffre qui monte sans que rien ne soit cree
+   * est le signal que la resolution (B1) manque, pas que la source est vide.
+   */
+  skippedUnresolved: number;
   created: number; // rows actually inserted (new)
   skippedDuplicates: number; // already present on the unique key
   skippedInvalid: number; // source rows that produced no valid draft
