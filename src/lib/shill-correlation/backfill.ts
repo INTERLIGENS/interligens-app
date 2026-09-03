@@ -15,8 +15,6 @@
 
 import { prisma } from "@/lib/prisma";
 import {
-  resolveTokenMint,
-  resolveWithTweetText,
   type ResolutionStatus,
 } from "./resolve";
 import { fetchTweetMeta, isDateOnly, type TimestampSource } from "./enrich";
@@ -25,6 +23,7 @@ import { fetchMintTransactionsInRange } from "./helius";
 import { extractBuyerObservations } from "./buyers";
 import { ANALYSIS_WINDOW } from "./types";
 import type { BuyerFetchResult, BuyerObservationDraft } from "./types";
+import { resolveRawTokenWithText } from "./tokenIdentity";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -127,9 +126,10 @@ export async function runPhase2Followup(
     const tm = meta.get(e.tweetId);
     const fetchedTweet = !!tm;
 
-    const res = fetchedTweet
-      ? resolveWithTweetText(e.tokenMint ?? "", tm.text)
-      : resolveTokenMint(e.tokenMint ?? "");
+    // B1 - LA PRIMITIVE PARTAGEE. `backfill` ne resout plus lui-meme : il
+    // appelle la meme fonction que le bridge forward (B3) appellera. Deux
+    // copies d'une regle de resolution divergent toujours par le cas limite.
+    const res = resolveRawTokenWithText(e.tokenMint, fetchedTweet ? tm.text : null);
 
     let effectiveTimestamp = e.tweetTimestamp;
     let timestampSource: TimestampSource;
