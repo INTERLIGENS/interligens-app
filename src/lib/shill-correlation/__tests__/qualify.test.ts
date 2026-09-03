@@ -40,7 +40,9 @@ describe("B2 - le candidat de référence est qualifié", () => {
     // ne peut pas relire la règle n'est pas auditable.
     const r = qualifyPromotion(qualifie());
     expect(r.ruleVersion).toBe(PROMOTION_QUALIFY_RULE_VERSION);
-    expect(r.ruleVersion).toBe("promotion-qualify@v1");
+    // B4.1 : le ref canonique, qui RESOUT sur un artefact gele. Le slug nu
+    // « promotion-qualify@v1 » etait refuse par la grammaire.
+    expect(r.ruleVersion).toBe("social-promotion/qualify@v1");
     expect(r.conservative).toBe(true);
   });
 

@@ -74,6 +74,27 @@ export const NATURE_REGISTRY: Record<string, TableNatureDecl> = {
     regime: "DECLARED", rows: 73, nature: "PRIMARY_OBSERVATION", stage: "S1",
     why: "Post constaté par le watcher, avec sourceUrl et postedAt.",
   },
+  ShillEvent: {
+    regime: "DECLARED", rows: 221, nature: "INFERENCE",
+    basis: ["PRIMARY_OBSERVATION"], stage: "S6",
+    why:
+      "B4.3 — un ShillEvent AFFIRME « ce post est une promotion exploitable de ce token ». " +
+      "C'est une INFERENCE, et par construction : la ligne resulte d'un predicat de " +
+      "qualification (social-promotion/qualify@v1) applique a un post capture, puis d'une " +
+      "resolution d'identite token. Q3 : la nature est celle de la DERNIERE OPERATION, " +
+      "jamais celle des entrees — le post lui-meme est une PRIMARY_OBSERVATION, la mention " +
+      "qu'on en derive ne l'est pas. " +
+      "SANS CETTE ENTREE, natureForTable('ShillEvent') rendait UNCLASSIFIED et le chokepoint " +
+      "S6 aurait refuse toute ecriture de nature sur la table : la declaration precede " +
+      "l'ecriture, elle ne la suit pas. " +
+      "Mesure du 2026-09-03 : 221 lignes, toutes issues d'un amorcage unique du 2026-06-09. " +
+      "REGIME DECLARED : la table est mono-nature. Un ShillEvent ne peut pas etre autre " +
+      "chose qu'une inference — il n'existe pas de chemin qui en produise une observation " +
+      "directe. Les colonnes de nature n'existent PAS encore sur cette table (aucune " +
+      "colonne jsonb, aucun rowNature) ; leur ajout est une DDL sur chemin gele, traitee " +
+      "en phase 2. La declaration vaut des maintenant pour les 221 lignes, colonne ou pas.",
+  },
+
   ShillCorrelationCandidate: {
     regime: "DECLARED", rows: 1_532, nature: "INFERENCE",
     basis: ["PRIMARY_OBSERVATION"], stage: "S6",

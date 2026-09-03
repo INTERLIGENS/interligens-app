@@ -13,10 +13,17 @@
 // version sans jamais dire de quoi. Elle est hors de cette convention et
 // devra y être mappée ; elle ne bloque pas S5.
 
-import { FINANCIAL_ESTIMATES_V1, type MethodologyArtifact } from "./artifact";
+import {
+  FINANCIAL_ESTIMATES_V1,
+  SOCIAL_PROMOTION_V1,
+  type MethodologyArtifact,
+} from "./artifact";
 import { parseMethodRef } from "@/lib/data-nature/methodRef";
 
-export const METHODOLOGIES: readonly MethodologyArtifact[] = [FINANCIAL_ESTIMATES_V1];
+export const METHODOLOGIES: readonly MethodologyArtifact[] = [
+  FINANCIAL_ESTIMATES_V1,
+  SOCIAL_PROMOTION_V1,
+];
 
 export interface ResolvedMethodRef {
   readonly ref: string;
@@ -63,6 +70,16 @@ export function isKnownMethodRef(ref: string): boolean {
 
 /** La référence citée par les 10 KolCase.paidUsd de S5-B. */
 export const EST_PROCEEDS_V1 = "financial-estimates/est-proceeds@v1";
+
+/**
+ * B4.1 — LE ref canonique du predicat de qualification.
+ *
+ * B2 avait pose `promotion-qualify@v1`, un slug NU : la grammaire canonique
+ * exige `<methodologie>/<composant>@v<N>` et le refusait. Un identifiant qui
+ * ne resout pas ne doit jamais entrer dans un natureBasis.
+ * Un seul identifiant desormais — la constante de B2 pointe ici.
+ */
+export const SOCIAL_PROMOTION_QUALIFY_V1 = "social-promotion/qualify@v1";
 
 // ─── RÈGLE DE MODÈLE — KolTokenInvolvement.retailLossEstimateUsd ───────────
 //

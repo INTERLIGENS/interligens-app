@@ -91,6 +91,57 @@ export const FINANCIAL_ESTIMATES_V1: MethodologyArtifact = {
   ],
 };
 
+/** Empreinte du corps de content/methodologies/social-promotion/v1.md. */
+export const SOCIAL_PROMOTION_V1_SHA256 =
+  "44c8d1ac7ab56bfc48573452de76922db40860a3efc2435974b39c5e96a1202e";
+
+/**
+ * B4.1 — la methodologie que cite le natureBasis d'une promotion qualifiee.
+ *
+ * Un methodRef qui ne resout pas est un mensonge (registry.ts). Poser
+ * `social-promotion/qualify@v1` dans un basis SANS cet artefact aurait ecrit
+ * une reference introuvable — la faute exacte que la grammaire canonique
+ * existe pour empecher.
+ *
+ * Le corps est le texte GELE, miroir de content/methodologies/social-promotion/
+ * v1.md. Le test de gel recalcule l'empreinte du .md et la compare : modifier
+ * l'un sans l'autre casse la suite.
+ */
+export const SOCIAL_PROMOTION_V1: MethodologyArtifact = {
+  id: "social-promotion",
+  version: "v1",
+  title: "How INTERLIGENS Qualifies an Exploitable Social Promotion",
+  intro:
+    "A social post that mentions a token is not, by that fact, a promotion of it. " +
+    "This methodology states the conditions under which INTERLIGENS treats a captured " +
+    "post as an exploitable promotion, and the reservations that travel with that judgement.",
+  effectiveFrom: "2026-09-03",
+  contentSha256: SOCIAL_PROMOTION_V1_SHA256,
+  components: [
+    {
+      id: "qualify",
+      title: "Exploitable Promotion Predicate (V1)",
+      body: `A captured social post is treated as an exploitable promotion only when all five
+of the following hold. The criteria are conjunctive: failing any one is
+sufficient to reject, and the rejection names which one.
+
+1. INGESTION MODE. The post was captured by the live watcher (\`ingestionMode = LIVE\`). Backfilled rows are excluded: they describe how the corpus was assembled, not what the market saw.
+2. CONTRACT DROP SIGNAL. The post carries a \`ca_drop\` signal. A token mentioned without a contract being surfaced is a comment, not a call to buy.
+3. CONTRACT PRESENT. At least one contract address was detected in the post. Without a contract there is nothing to correlate on-chain, so the promotion is not exploitable even if it is real.
+4. SIGNAL SCORE FLOOR. The detector's aggregate signal score is at least 50, inclusive. The floor is a launch setting, not a measurement of promotional intent.
+5. SINGLE TICKER. Exactly one ticker symbol was detected. A post naming several tokens is a comparison, a listing, or a thread — and pairing a contract to one of several tickers without textual proof would be a fabrication.
+
+RESERVATIONS. These qualify every judgement produced under this methodology and are not severable from it.
+
+- MENTION IS NOT PROMOTION. The predicate exists because the two are routinely confused. A post reading "$CETS didn't get the Alpha listing and it went to $FLORK" names two tokens and promotes neither.
+- PRECISION OVER RECALL. V1 is deliberately conservative and will produce false negatives — a genuine promotion whose contract address was not extracted, or which names a second token in passing, is rejected. A narrow clean corpus is preferred to a wide doubtful one at launch.
+- THE SINGLE-TICKER RULE IS A LAUNCH GUARD, NOT A UNIVERSAL TRUTH. Multi-token promotions exist. V1 declines to handle them because it cannot yet distinguish them from comparisons; this is a limitation of the predicate, not a claim about the world.
+- NO INVENTED TICKER-TO-CONTRACT ASSOCIATION. Where a post names a ticker and a contract without demonstrable textual linkage, no association is recorded. Ambiguity is reported as ambiguity.
+- QUALIFICATION IS NOT PROOF OF MANIPULATION. That a post satisfies this predicate establishes that it is a promotion worth measuring. It establishes nothing about coordination, undisclosed compensation, or intent to defraud. Those are separate questions requiring separate evidence.`,
+    },
+  ],
+};
+
 /**
  * Reconstruit, octet pour octet, le corps du .md canonique à partir du miroir.
  * C'est cette chaîne que le test de gel compare au fichier — elle ne sert à

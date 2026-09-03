@@ -13,6 +13,7 @@
 // Read-only on observations/events. Idempotent upsert on the unique key.
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { computeCandidateScores, type CandidateScores } from "./scoring";
 import { isKnownRouter } from "./known-routers";
 import { buildOccasions, observationDedupKey } from "./occasions";
@@ -481,7 +482,12 @@ export async function aggregateCandidates(
       // Fusionne tel quel : les cles sont celles des colonnes, et le test
       // `Object.keys` de persistence.test.ts verrouille ce contrat. Une cle au
       // mauvais nom produirait un `Unknown argument` Prisma au premier run.
-      ...natureWrite,
+      // Le basis est un objet en LECTURE SEULE cote TS (readonly), ce que le
+      // type d'entree jsonb de Prisma n'accepte pas. Le cast ne change aucune
+      // valeur : il retire l'immuabilite, que la base ne connait pas.
+      rowNature: natureWrite.rowNature,
+      natureBasis: natureWrite.natureBasis as unknown as Prisma.InputJsonValue,
+      naturePolicyVersion: natureWrite.naturePolicyVersion,
     };
     await prisma.shillCorrelationCandidate.upsert({
       where: {

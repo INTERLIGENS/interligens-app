@@ -41,6 +41,7 @@ import {
 import { natureForTable } from "@/lib/data-nature/registry";
 import type { DataNature, NatureValue } from "@/lib/data-nature/nature";
 import type { InferenceEnvelope } from "./types";
+import type { InferenceBasis } from "@/lib/data-nature/inferenceEnvelope";
 
 export const CANDIDATE_TABLE = "ShillCorrelationCandidate";
 
@@ -71,13 +72,15 @@ export interface CandidateNatureWrite {
   /** Colonne `rowNature` — convention du produit, 7 tables sur 7. */
   rowNature: DataNature;
   /** jsonb — l'enveloppe, pas seulement le tableau de natures. */
-  natureBasis: {
-    natures: DataNature[];
+  /**
+   * jsonb — l'enveloppe canonique (B4.2) plus les compteurs propres au moteur.
+   * `inputNatures` ne porte QUE des natures de sources : l'inference n'est
+   * jamais une de ses propres entrees.
+   */
+  natureBasis: InferenceBasis & {
     occasionIds: string[];
     observationCount: number;
     baselineBuyCount: number;
-    /** SHILL-M1 - ce que le lift n'est pas. Voyage jusqu'en base. */
-    reservations: readonly string[];
   };
   naturePolicyVersion: string;
 }
@@ -129,14 +132,15 @@ export function buildCandidateNatureWrite(
     currentNature: existing.rowNature ?? null,
   };
 
+  // B4.2 - LE BASIS STRUCTURE. `natureBasis` (la colonne jsonb) porte
+  // desormais l'enveloppe canonique : les entrees y sont DECRITES, et
+  // `inputNatures` ne contient que des natures de SOURCES. L'inference n'y
+  // figure plus comme sa propre preuve.
   const natureBasis: CandidateNatureWrite["natureBasis"] = {
-    natures: env.natureBasis,
+    ...env.basis,
     occasionIds: env.basisRefs.occasionIds,
     observationCount: env.basisRefs.observationCount,
     baselineBuyCount: env.basisRefs.baselineBuyCount,
-    // SHILL-M1 : la reserve est une propriete de l'inference, pas de sa
-    // documentation. Elle est ecrite avec elle.
-    reservations: env.reservations,
   };
 
   const validated = assertNatureWritable(
