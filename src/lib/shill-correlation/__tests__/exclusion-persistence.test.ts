@@ -25,14 +25,14 @@ function observationsFor(wallet: string, kol = "empire_sol1") {
       shillEventId: "e1", wallet, chain: "solana", behaviorType: "pre_tweet",
       exitDeltaSeconds: null, firstSeenAt: new Date("2026-06-03T18:55:00Z"),
       firstBuyTxSignature: "sig1",
-      shillEvent: { id: "e1", kolHandle: kol, tokenMint: "MINT_A", tweetTimestamp: new Date("2026-06-03T18:57:00Z") },
+      shillEvent: { id: "e1", kolHandle: kol, tokenMint: "MINT_A", tweetTimestamp: new Date("2026-06-03T18:57:00Z"), resolutionStatus: "resolved_direct" },
     },
   ];
 }
 
 const existingMap = (wallet: string, reason: string | null, kol = "empire_sol1") =>
   new Map<string, ExistingExclusion>([
-    [`${kol} ${wallet} solana`, { excludedReason: reason, walletTxCount30d: 900, walletTokenAccounts: 12, walletVettedAt: new Date("2026-08-01T00:00:00Z") }],
+    [`${kol} ${wallet} solana`, { excludedReason: reason, walletTxCount30d: 900, walletTokenAccounts: 12, walletVettedAt: new Date("2026-08-01T00:00:00Z"), id: "row-legacy", rowNature: null }],
   ]);
 
 beforeEach(() => vi.clearAllMocks());

@@ -17,6 +17,11 @@ import { computeCandidateScores, type CandidateScores } from "./scoring";
 import { isKnownRouter } from "./known-routers";
 import { buildOccasions, observationDedupKey } from "./occasions";
 import type { VetVerdict } from "./vetting";
+import { buildAggregateInferenceEnvelope } from "./v2/nature";
+import { buildCandidateNatureWrite } from "./v2/persistence";
+import { DEFAULT_ENGINE_POLICY } from "./v2/policy";
+import type { NatureValue } from "@/lib/data-nature/nature";
+import type { InferenceEnvelope } from "./v2/types";
 
 export interface CandidateRow {
   kolHandle: string;
@@ -37,6 +42,15 @@ export interface CandidateRow {
   walletTokenAccounts: number | null;
   walletVettedAt: Date | null;
   vetFlags: string[];
+  /**
+   * TACHE C - l'enveloppe de nature de CE candidat, batie au moment ou il est
+   * produit, pas au moment ou il est ecrit. La difference compte : les faits
+   * qu'elle porte (quelles occasions, combien d'observations) appartiennent au
+   * calcul, et les reconstituer plus tard reviendrait a les deduire.
+   *
+   * Presente meme en `dryRun` : un dry-run doit montrer CE QUI SERAIT ECRIT.
+   */
+  nature: InferenceEnvelope;
 }
 
 export interface AggregateReport {
@@ -62,6 +76,17 @@ export interface AggregateReport {
   };
   walletsVetted: number;
   written?: number;
+  /**
+   * TACHE C - lignes ayant recu une nature dans CE run. Egal a `written` par
+   * construction : le fragment est bati pour chaque candidat, et un refus du
+   * chokepoint interrompt le run au lieu d'ecrire sans nature. Les deux
+   * compteurs sont malgre tout distincts, pour que l'ecart - s'il apparaissait
+   * un jour - soit visible plutot que deduit.
+   *
+   * Ce nombre ne dit RIEN des 1 532 lignes legacy : celles que ce run ne
+   * reproduit pas ne sont pas visitees et restent NULL.
+   */
+  natureWritten?: number;
 }
 
 /**
@@ -75,6 +100,15 @@ export interface ExistingExclusion {
   walletTxCount30d: number | null;
   walletTokenAccounts: number | null;
   walletVettedAt: Date | null;
+  /**
+   * TACHE C. L'identite et la nature DEJA en base, relues avant d'ecrire.
+   * Les passer n'est pas decoratif : c'est ce qui arme I1. Sans `rowNature`,
+   * le chokepoint S6 ne voit aucune transition et ne peut donc en refuser
+   * aucune - le garde serait present dans le code et absent dans les faits.
+   * `null` = ligne legacy, le cas des 1 532 mesurees le 2026-08-30.
+   */
+  id: string | null;
+  rowNature: NatureValue | null;
 }
 
 export interface AggregateOptions {
@@ -99,6 +133,8 @@ async function defaultLoadExistingExclusions(): Promise<Map<string, ExistingExcl
     select: {
       kolHandle: true, wallet: true, chain: true, excludedReason: true,
       walletTxCount30d: true, walletTokenAccounts: true, walletVettedAt: true,
+      // TACHE C - ce que I1 a besoin de connaitre AVANT l'ecriture.
+      id: true, rowNature: true,
     },
   });
   return new Map(
@@ -109,6 +145,8 @@ async function defaultLoadExistingExclusions(): Promise<Map<string, ExistingExcl
         walletTxCount30d: r.walletTxCount30d,
         walletTokenAccounts: r.walletTokenAccounts,
         walletVettedAt: r.walletVettedAt,
+        id: r.id,
+        rowNature: r.rowNature as NatureValue | null,
       } as ExistingExclusion,
     ]),
   );
@@ -121,6 +159,13 @@ interface Agg {
   occasionIds: Set<string>;
   /** Cles d'observation deja comptees, par occasion - evite le double comptage. */
   countedObs: Set<string>;
+  /**
+   * TACHE C. La resolution ticker -> mint a-t-elle demande un CALCUL pour AU
+   * MOINS une des occasions qui fondent ce candidat ? Si oui, le basis de
+   * l'inference porte INFERENCE en plus de PRIMARY_OBSERVATION.
+   * `resolved_direct` ne compte pas : le mint etait deja la, rien n'a ete infere.
+   */
+  tokenResolutionWasInferred: boolean;
   pre: number;
   near: number;
   post: number;
@@ -128,6 +173,19 @@ interface Agg {
   firstSeenAt: Date;
   lastSeenAt: Date;
 }
+
+/**
+ * TACHE C - les statuts de resolution qui sont des CALCULS.
+ *
+ * `resolved_direct` en est absent a dessein : le tokenMint etait deja un base58,
+ * rien n'a ete infere. `unresolved_ticker` / `ambiguous_ticker` en sont absents
+ * aussi - ils ne resolvent RIEN, donc n'ajoutent aucune inference au basis.
+ * Voir resolve.ts pour la grammaire complete.
+ */
+const INFERRED_RESOLUTION_STATUSES = new Set([
+  "resolved_from_ca_map",
+  "resolved_from_tweet",
+]);
 
 const key = (kol: string, wallet: string, chain: string) =>
   `${kol} ${wallet} ${chain}`;
@@ -159,6 +217,8 @@ export async function aggregateCandidates(
           kolHandle: true,
           tokenMint: true,
           tweetTimestamp: true,
+          // TACHE C - la provenance de la resolution decide du natureBasis.
+          resolutionStatus: true,
         },
       },
     },
@@ -192,6 +252,7 @@ export async function aggregateCandidates(
         chain: o.chain,
         occasionIds: new Set(),
         countedObs: new Set(),
+        tokenResolutionWasInferred: false,
         pre: 0,
         near: 0,
         post: 0,
@@ -203,6 +264,13 @@ export async function aggregateCandidates(
     }
     const occ = occasionOf(o.shillEventId);
     a.occasionIds.add(occ);
+    // Il suffit qu'UNE occasion ait demande un calcul pour que l'inference en
+    // soit tiree. Le nier parce que les autres etaient directes sous-declarerait
+    // le basis - et un basis sous-declare se lit comme une inference plus assise
+    // qu'elle ne l'est.
+    if (INFERRED_RESOLUTION_STATUSES.has(o.shillEvent.resolutionStatus)) {
+      a.tokenResolutionWasInferred = true;
+    }
 
     // Le meme achat collecte par deux evenements de la MEME occasion ne compte
     // qu'une fois : c'est une seule transaction on-chain, pas deux achats.
@@ -249,6 +317,19 @@ export async function aggregateCandidates(
       kolHandle: a.kolHandle,
       wallet: a.wallet,
       chain: a.chain,
+      // TACHE C. `baselineBuyCount: 0` est une MESURE, pas un remplissage : v1
+      // ne collecte aucune fenetre temoin (c'est l'objet de la tache D). Une
+      // enveloppe qui tairait ce zero laisserait croire a une inference adossee
+      // a un temoin, alors que le lift de ces candidats n'est pas mesure.
+      nature: buildAggregateInferenceEnvelope(
+        {
+          occasionIds: [...a.occasionIds].sort(),
+          observationCount: a.countedObs.size,
+          baselineBuyCount: 0,
+          tokenResolutionWasInferred: a.tokenResolutionWasInferred,
+        },
+        DEFAULT_ENGINE_POLICY,
+      ),
       observedShillCount: a.occasionIds.size,
       analyzableShillCount,
       preTweetCount: a.pre,
@@ -347,7 +428,32 @@ export async function aggregateCandidates(
   if (dryRun) return report;
 
   let written = 0;
+  let natureWritten = 0;
   for (const c of candidates) {
+    // ══ TACHE C - LE CHOKEPOINT, SUR LE CHEMIN D'ECRITURE ══════════════════
+    //
+    // Le fragment est construit ET VALIDE ici, AVANT le `data` de l'upsert.
+    // L'ordre n'est pas cosmetique : ce qui n'a pas passe le garde ne doit
+    // jamais exister sous une forme ecrivable. `buildCandidateNatureWrite`
+    // appelle `assertNatureWritable` (S6) puis controle la coherence avec le
+    // registre - s'il refuse, il LEVE, et l'upsert n'a pas lieu. Un `catch`
+    // ici transformerait le refus en ecriture silencieuse sans nature : c'est
+    // exactement ce que S6 existe pour empecher, donc il n'y en a pas.
+    //
+    // `prior` est la ligne telle qu'elle est EN BASE avant l'upsert. C'est ce
+    // qui arme I1 : sans elle, on ecrirait sans savoir ce qu'on ecrase.
+    //
+    // ██ AUCUN BACKFILL ██ Cette boucle ne parcourt QUE les candidats que ce
+    // run vient de (re)produire. Une ligne de 2026-06 que le moteur ne
+    // reproduit pas n'est pas visitee, et reste NULL. Il n'existe nulle part
+    // d'UPDATE portant sur l'ensemble de la table.
+    const prior = existing.get(key(c.kolHandle, c.wallet, c.chain));
+    const natureWrite = buildCandidateNatureWrite(
+      { kolHandle: c.kolHandle, wallet: c.wallet, chain: c.chain, _nature: c.nature },
+      { id: prior?.id ?? null, rowNature: prior?.rowNature ?? null },
+      "shill/aggregate.aggregateCandidates",
+    );
+
     const data = {
       kolHandle: c.kolHandle,
       wallet: c.wallet,
@@ -372,6 +478,10 @@ export async function aggregateCandidates(
       walletVettedAt: c.walletVettedAt,
       firstSeenAt: c.firstSeenAt,
       lastSeenAt: c.lastSeenAt,
+      // Fusionne tel quel : les cles sont celles des colonnes, et le test
+      // `Object.keys` de persistence.test.ts verrouille ce contrat. Une cle au
+      // mauvais nom produirait un `Unknown argument` Prisma au premier run.
+      ...natureWrite,
     };
     await prisma.shillCorrelationCandidate.upsert({
       where: {
@@ -385,8 +495,10 @@ export async function aggregateCandidates(
       update: data, // reviewStatus left untouched on re-score
     });
     written++;
+    natureWritten++;
   }
 
   report.written = written;
+  report.natureWritten = natureWritten;
   return report;
 }

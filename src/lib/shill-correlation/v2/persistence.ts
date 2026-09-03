@@ -40,7 +40,7 @@ import {
 } from "@/lib/data-nature/writeGuard";
 import { natureForTable } from "@/lib/data-nature/registry";
 import type { DataNature, NatureValue } from "@/lib/data-nature/nature";
-import type { CandidateInference } from "./types";
+import type { InferenceEnvelope } from "./types";
 
 export const CANDIDATE_TABLE = "ShillCorrelationCandidate";
 
@@ -81,6 +81,22 @@ export interface CandidateNatureWrite {
 }
 
 /**
+ * CE QUE LA FONCTION A BESOIN DE SAVOIR, et rien de plus.
+ *
+ * Volontairement plus étroit que `CandidateInference` — que ce type couvre
+ * structurellement. Le fragment de nature ne dépend ni des features ni des
+ * scores : l'exiger obligerait v1 (`aggregate.ts`, qui n'a ni `CorrelationFeatures`
+ * ni le moteur v2) à fabriquer un faux candidat pour écrire une vraie nature.
+ * L'identité sert au `ref` du message d'erreur, l'enveloppe porte le reste.
+ */
+export interface CandidateNatureSource {
+  kolHandle: string;
+  wallet: string;
+  chain: string;
+  _nature: InferenceEnvelope;
+}
+
+/**
  * L'état de nature d'une ligne DÉJÀ en base, tel qu'on le relit avant d'écrire.
  * `null` = colonne absente ou ligne legacy — le cas normal aujourd'hui.
  */
@@ -97,7 +113,7 @@ export interface ExistingCandidateNature {
  * savoir ce qu'on écrase, et le garde ne peut alors rien tenir.
  */
 export function buildCandidateNatureWrite(
-  candidate: CandidateInference,
+  candidate: CandidateNatureSource,
   existing: ExistingCandidateNature = {},
   where = "shill-v2/persistence.buildCandidateNatureWrite",
 ): CandidateNatureWrite {
