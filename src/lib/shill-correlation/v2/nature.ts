@@ -17,7 +17,12 @@
 // Aucun des trois ne peut ecrire une nature sans traverser les deux autres.
 
 import type { DataNature } from "@/lib/data-nature/nature";
-import { BASELINE_MEASURED_STATES, type InferenceEnvelope, type OccasionRecord } from "./types";
+import {
+  ACTIVITY_LIFT_RESERVATIONS,
+  BASELINE_MEASURED_STATES,
+  type InferenceEnvelope,
+  type OccasionRecord,
+} from "./types";
 import type { EnginePolicy } from "./policy";
 
 /**
@@ -75,6 +80,7 @@ export function buildInferenceEnvelope(
         0,
       ),
     },
+    reservations: ACTIVITY_LIFT_RESERVATIONS,
     policyVersion: ENGINE_POLICY_VERSION,
   };
 }
@@ -126,6 +132,7 @@ export function buildAggregateInferenceEnvelope(
       observationCount: input.observationCount,
       baselineBuyCount: input.baselineBuyCount,
     },
+    reservations: ACTIVITY_LIFT_RESERVATIONS,
     policyVersion: ENGINE_POLICY_VERSION,
   };
 }

@@ -68,6 +68,21 @@ export interface EnginePolicy {
    * marche. Un decalage <= 1500 s rend le lift NON MESURABLE, par refus.
    */
   baselineOffsetSeconds: number;
+  /**
+   * SHILL-M1. Plafond de pages Helius pour la collecte temoin d'UNE occasion.
+   *
+   * DANS LA POLICY, PAS DANS LE CODE. Un 300 enterre dans helius.ts serait un
+   * seuil a effet produit invisible : il decide quelles baselines sont
+   * mesurables, donc quels candidats peuvent depasser `watch`. Le laisser hors
+   * de la policy le rendrait aussi invisible que le plafond de 1 000 signatures
+   * qui a produit les 20 exclusions `high_frequency` de SHILL-C1.
+   *
+   * Mesure du 2026-09-03 (sonde reelle, 1 token, 46 appels) : 44 pages ont
+   * suffi a epuiser l'historique complet d'un token pump.fun shille. 300 laisse
+   * 256 pages de marge sur ce cas. Ce n'est PAS une garantie pour un token a
+   * forte activite continue - la sonde n'en a pas mesure.
+   */
+  baselineMaxPagesPerOccasion: number;
 
   /**
    * A RATIFIER - M2. Lift minimal pour qu'une co-occurrence soit rapportee
@@ -145,6 +160,7 @@ export const DEFAULT_ENGINE_POLICY: EnginePolicy = {
   minBaselineBuys: 5,
   minObservedBuys: 3,
   baselineOffsetSeconds: 24 * 3600,
+  baselineMaxPagesPerOccasion: 300,
   minLift: 2.0,
   liftGatesClassification: true,
   unmeasuredLiftCapsClassification: true,
@@ -181,6 +197,10 @@ export const AWAITING_RATIFICATION = [
   "minBaselineBuys",
   "minObservedBuys",
   "baselineOffsetSeconds",
+  // Cible GPT du 2026-09-03 : 24 h / 300 pages / NOT_MEASURABLE au depassement.
+  // Reste EN ATTENTE : la sonde a livre un resultat qui doit etre tranche avant
+  // de figer (temoin anterieur a l'existence du token sur 78 % du corpus).
+  "baselineMaxPagesPerOccasion",
   "minLift",
   "liftGatesClassification",
 ] as const;

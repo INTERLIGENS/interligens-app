@@ -1,5 +1,32 @@
 // --- D/M1 - LE COLLECTEUR DE LA FENETRE TEMOIN ----------------------------
 //
+// ═══ INVARIANT SHILL-M1 - INTEGRITE DU TEMOIN ═══════════════════════════════
+//
+//   1. SEPARATION TEMPORELLE. Un temoin doit etre temporellement separe de la
+//      fenetre comportementale. Un temoin qui la recouvre se compare a
+//      lui-meme et tend mecaniquement vers 1 : ce n'est pas un lift faible,
+//      c'est un lift qui ne mesure rien.
+//
+//   2. INTEGRALITE DANS LES BORNES AUTORISEES. Un temoin qui ne peut pas etre
+//      mesure INTEGRALEMENT dans les bornes autorisees (budget d'appels,
+//      plafond de pages) rend NOT_MEASURABLE. Jamais extrapole, jamais
+//      complete, jamais presente comme comparable.
+//
+//   3. EXISTENCE DE L'OBJET MESURE. Un temoin anterieur a la premiere
+//      transaction du token ne mesure pas « zero achat » : il mesure le vide.
+//      Il rend NOT_MEASURABLE sous son propre motif.
+//
+// POURQUOI 2 ET 3 NE SE CONFONDENT PAS AVEC UN TEMOIN VIDE : un temoin vide
+// est le denominateur le plus FAVORABLE qui soit. Extrapoler, completer ou
+// simplement laisser passer un vide non constate produit un lift trop grand,
+// donc un candidat sur-classe - et c'est l'instrument qui l'a produit, pas le
+// comportement du wallet. La direction de l'erreur n'est pas neutre : elle
+// flatte le produit. C'est ce qui rend cet invariant non negociable.
+//
+// Tenu par : ce module (etats + troncature), tally.ts (relevement), features.ts
+// (ordre des refus), et __tests__/baseline.test.ts.
+// ════════════════════════════════════════════════════════════════════════════
+//
 // ██  ETAT : CONSTRUIT, NON ARME. AUCUN APPEL HELIUS REEL N'A ETE PASSE.  ██
 //
 // Ce module orchestre la collecte de la fenetre TEMOIN d'une occasion. Il ne
@@ -133,17 +160,33 @@ export interface BaselineCollectionResult {
   pagesDiscarded: number;
   /** La fenetre a-t-elle ete atteinte et depassee ? */
   windowCovered: boolean;
+  /**
+   * SHILL-M1 §3. `true` = l'historique complet du token a ete vu et sa
+   * premiere transaction est POSTERIEURE a la fenetre temoin : le temoin
+   * precede l'existence du token. `null` = indeterminable (historique non
+   * epuise), et alors ce n'est PAS un constat.
+   */
+  baselinePrecedesTokenExistence?: boolean | null;
+}
+
+/** La plus ancienne transaction vue sur l'ensemble du parcours. */
+function inWindowOldest(txs: readonly BaselineTx[]): number | null {
+  let min: number | null = null;
+  for (const t of txs) if (min == null || t.timestamp < min) min = t.timestamp;
+  return min;
 }
 
 export interface CollectBaselineOptions {
   fetchPage: BaselinePageFetcher;
   budget: CallBudget;
-  /** Plafond de pages pour UNE occasion, en plus du budget de run. */
+  /**
+   * Override du plafond par occasion. RESERVE AUX TESTS : en production la
+   * valeur vient de `policy.baselineMaxPagesPerOccasion`, qui est versionnee.
+   */
   maxPagesPerOccasion?: number;
   pageSize?: number;
 }
 
-const DEFAULT_MAX_PAGES_PER_OCCASION = 12;
 const DEFAULT_PAGE_SIZE = 100;
 
 /**
@@ -194,7 +237,10 @@ export async function collectBaselineWindow(
   const win = baselineWindow(target.observedAt, policy);
   const startSec = Math.floor(win.startMs / 1000);
   const endSec = Math.floor(win.endMs / 1000);
-  const maxPages = opts.maxPagesPerOccasion ?? DEFAULT_MAX_PAGES_PER_OCCASION;
+  // SHILL-M1 : le plafond vient de la POLICY, pas d'une constante de module.
+  // L'override d'options n'existe que pour les tests ; en production c'est la
+  // policy qui decide, et elle est versionnee avec le reste.
+  const maxPages = opts.maxPagesPerOccasion ?? policy.baselineMaxPagesPerOccasion;
   const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
 
   // 2. LE BUDGET REFUSE AVANT LA PREMIERE PAGE. Etat distinct, et c'est tout
@@ -210,6 +256,8 @@ export async function collectBaselineWindow(
   }
 
   const inWindow: BaselineTx[] = [];
+  const allSeen: BaselineTx[] = [];
+  let historyExhausted = false;
   let before: string | undefined;
   let pages = 0;
   let calls = 0;
@@ -237,8 +285,10 @@ export async function collectBaselineWindow(
 
     if (page.length === 0) {
       covered = true; // historique epuise : la fenetre est integralement vue
+      historyExhausted = true;
       break;
     }
+    allSeen.push(...page);
 
     let usable = 0;
     for (const tx of page) {
@@ -277,6 +327,13 @@ export async function collectBaselineWindow(
 
   const buys = extractBaselineBuys(inWindow, target.mint, win.anchorMs / 1000, target.chain);
 
+  // SHILL-M1 §3. L'anteriorite n'est un CONSTAT que si l'historique a ete
+  // epuise : c'est le seul cas ou « aucune transaction plus ancienne » signifie
+  // « le token n'existait pas », et non « on a arrete de regarder ».
+  const oldestSeen = inWindowOldest(allSeen);
+  const precedesExistence =
+    historyExhausted && oldestSeen != null && oldestSeen > endSec ? true : historyExhausted ? false : null;
+
   // 3. UN VIDE N'EST UNE MESURE QUE SI LA FENETRE A ETE VUE EN ENTIER.
   //    Zero achat sur une fenetre tronquee n'est pas « zero achat » : c'est
   //    « zero achat DANS CE QU'ON A REGARDE ». La distinction est exactement
@@ -289,6 +346,7 @@ export async function collectBaselineWindow(
     occasionId: target.occasionId,
     baselineState: state,
     baselineBuys: buys,
+    baselinePrecedesTokenExistence: precedesExistence,
     baselineTruncatedBy: truncatedBy,
     baselineStateDetail:
       truncatedBy != null

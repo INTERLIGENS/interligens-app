@@ -154,6 +154,13 @@ export interface OccasionRecord {
   baselineState: BaselineState;
   baselineBuys: BaselineBuy[];
   baselineStateDetail: string | null;
+  /**
+   * SHILL-M1. La fenetre temoin precede-t-elle la premiere transaction connue
+   * du token ? Renseigne UNIQUEMENT quand la collecte a epuise l'historique -
+   * seul cas ou l'absence de transaction anterieure est un CONSTAT et non une
+   * troncature. `null` = non determine.
+   */
+  baselinePrecedesTokenExistence?: boolean | null;
   /** SHILL-C1, cote temoin. Voir `observedTruncatedBy`. */
   baselineTruncatedBy: string | null;
 }
@@ -184,6 +191,24 @@ export const LIFT_UNMEASURABLE_REASONS = [
   "BASELINE_ZERO_OCCURRENCES",
   /** Le taux observe lui-meme n'est pas mesure (aucune occasion analysable). */
   "OBSERVED_RATE_UNMEASURED",
+  /**
+   * SHILL-M1. La fenetre temoin est ANTERIEURE A L'EXISTENCE DU TOKEN.
+   *
+   * MESURE le 2026-09-03, sonde reelle sur 3ghKZfLZ...pump : l'historique
+   * complet du token debute 31 MINUTES avant le tweet. Les fenetres temoin a
+   * -2 h, -4 h et -24 h tombent donc toutes avant la premiere transaction du
+   * token. Elles ne mesurent pas « zero achat » : elles mesurent le VIDE.
+   *
+   * Sans ce motif, le cas ressortait `BASELINE_BELOW_FLOOR` - « pas assez
+   * d'achats temoin » - ce qui est vrai et trompeur : il n'y a pas un temoin
+   * maigre, il n'y a pas de temoin possible. Le premier motif envoie baisser
+   * un plancher ; le second envoie changer de dispositif. Meme classe d'erreur
+   * de diagnostic que BASELINE_NOT_COLLECTED sur un budget epuise.
+   *
+   * Portee : 62 des 71 mints resolus et 149 des 192 evenements sont des tokens
+   * pump.fun (mesure 2026-09-03), lances typiquement juste avant le shill.
+   */
+  "BASELINE_PRECEDES_TOKEN_EXISTENCE",
 ] as const;
 
 export type LiftUnmeasurableReason = (typeof LIFT_UNMEASURABLE_REASONS)[number];
@@ -271,6 +296,40 @@ export interface CandidateScores {
  * La sortie du moteur est toujours une INFERENCE : derivee par calcul
  * d'observations on-chain et d'une chronologie de publication.
  */
+/**
+ * ██ RESERVE SHILL-M1 - CE QUE `activity lift` N'EST PAS ██
+ *
+ * Portee par CHAQUE inference, en base, et pas seulement en commentaire : une
+ * reserve qui ne voyage pas avec la donnee n'est pas lue par celui qui la
+ * relit.
+ *
+ *  1. LE LIFT N'EST PAS UN DECOMPTE EXHAUSTIF D'ACHETEURS. C'est une PROXY, et
+ *     un MINIMUM : une adresse avec >= 1 transaction pertinente vue par
+ *     l'instrument. MESURE le 2026-09-03, meme token, meme fenetre de 1 500 s,
+ *     lue par deux chemins : v1 avait enregistre 452 wallets distincts et 448
+ *     signatures ; la sonde en voit 58 et 159. Le rendement de l'instrument
+ *     n'est ni 1, ni stable, ni connu.
+ *
+ *  2. NE JAMAIS SUPPOSER biais(observe) ~= biais(temoin). L'idee que les deux
+ *     biais s'annulent dans le RATIO est confortable et NON DEMONTREE. Les
+ *     deux fenetres n'ont ni la meme densite, ni les memes routeurs, ni le meme
+ *     regime de liquidite - une fenetre de pic et une fenetre calme ne sont pas
+ *     lues par le meme instrument avec le meme rendement.
+ *
+ *  3. LE RATIO EST UNE FEATURE DE CORRELATION, JAMAIS UNE PREUVE AUTONOME DE
+ *     COORDINATION. Il entre dans un score, aux cotes d'autres dimensions, sous
+ *     un vocabulaire de CANDIDAT. Il n'atteste aucune propriete de wallet,
+ *     aucune entente, aucune intention.
+ */
+export const ACTIVITY_LIFT_RESERVATIONS = [
+  "proxy_minimum_not_exhaustive_buyer_count",
+  "instrument_yield_unknown_and_unstable",
+  "observed_and_baseline_bias_equality_undemonstrated",
+  "correlation_feature_never_standalone_proof_of_coordination",
+] as const;
+
+export type ActivityLiftReservation = (typeof ACTIVITY_LIFT_RESERVATIONS)[number];
+
 export interface InferenceEnvelope {
   nature: Extract<DataNature, "INFERENCE">;
   /** Natures des ENTREES qui fondent l'inference. */
@@ -280,6 +339,13 @@ export interface InferenceEnvelope {
     observationCount: number;
     baselineBuyCount: number;
   };
+  /**
+   * SHILL-M1. Les reserves voyagent AVEC l'inference, jusqu'en base
+   * (natureBasis, colonne jsonb). Une reserve laissee en commentaire de code
+   * n'est pas lue par celui qui relit la ligne six mois plus tard - or c'est
+   * exactement a ce moment qu'un lift de 8,3 se lit comme une preuve.
+   */
+  reservations: readonly ActivityLiftReservation[];
   policyVersion: string;
 }
 
