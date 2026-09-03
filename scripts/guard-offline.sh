@@ -158,6 +158,41 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 3-B : ShillEvent.tokenMint devient NULLABLE.
+#
+# La DDL est DEJA PASSEE dans le Neon SQL Editor (verifiee en lecture seule le
+# 2026-09-03) :
+#   tokenMint  text, is_nullable = YES, aucun default
+#   index unique recree en NULLS NOT DISTINCT
+#   221 lignes, toutes non-null : AUCUNE reecriture
+# Ce chantier ne fait que refleter cette realite dans le schema. AUCUNE
+# migration declenchee - verrou A9, jamais db push.
+#
+# MOTIF PRODUIT : un draft dont l'identite de contrat n'est pas resolue doit
+# pouvoir etre PERSISTE sans qu'on invente un mint. B0 avait ferme le mensonge
+# (plus de ticker ecrit dans tokenMint) au prix de la perte : 3 502 drafts sur
+# 3 571 etaient simplement jetes. Le nullable les rend enregistrables tels
+# qu'ils sont - non resolus, et le disant.
+#
+# NULLS NOT DISTINCT est la piece qui rend l'operation sure : sans elle, deux
+# lignes (kol, tweet, NULL) seraient considerees distinctes et l'idempotence de
+# createMany({skipDuplicates}) deviendrait un no-op sur exactement les lignes
+# que ce chantier ajoute. Voie 1 ratifiee - grain (kolHandle, tweetId,
+# tokenMint), un event non resolu par (kol, tweet).
+#
+# ORDRE RESPECTE : la colonne est nullable en base AVANT que le schema ne le
+# declare. L'inverse aurait fait echouer toute ecriture de NULL.
+#
+# Autorisation humaine explicite (2026-09-03) - voir PR description.
+# Exemption limitee au SEUL fichier nomme ; ne couvre ni prisma/schema.prisma
+# (qui ne contient pas ShillEvent), ni prisma/migrations/, ni le reste de
+# ^prisma/. Elle se referme byte-identique apres merge.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-tokenmint-nullable$ ]]; then
+    EXEMPT_SHILL_TOKENMINT_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+    )
+fi
+
 # Exceptions pour la watchlist expansion (ajout de KOL reviewés au watcher).
 # Autorisation humaine explicite (David, WAVES 1-3 approuvées) — voir PR description.
 # Exemption ciblée UNIQUEMENT sur handles.ts (la source de vérité du watcher) ;
@@ -582,6 +617,20 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche shill-tokenmint-nullable, exempter le seul schema.prod.prisma.
+    # La declaration seule ne sert a RIEN sans cette boucle : le guard ne lit
+    # que les tableaux qu'une boucle consomme. Les deux vont ensemble.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-tokenmint-nullable$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_SHILL_TOKENMINT_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
