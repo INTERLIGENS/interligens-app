@@ -4059,7 +4059,20 @@ model ShillEvent {
   kolHandle             String
   tweetId               String
   tweetTimestamp        DateTime
-  tokenMint             String
+  // BUILD 3-B — NULLABLE. Colonne passée nullable dans le Neon SQL Editor le
+  // 2026-09-03 (verrou A9 : jamais db push, jamais prisma migrate) ; cette
+  // déclaration ne fait que refléter la base.
+  //
+  // `null` = identité de contrat NON RÉSOLUE. Le ticker n'est JAMAIS écrit ici
+  // (B0) : un symbole n'est pas une adresse. `resolutionStatus` porte la vérité
+  // — unresolved_ticker quand ce champ est null.
+  //
+  // L'index unique (kolHandle, tweetId, tokenMint) a été recréé en
+  // NULLS NOT DISTINCT : sans cela deux lignes (kol, tweet, NULL) seraient
+  // distinctes et l'idempotence de createMany({skipDuplicates}) deviendrait un
+  // no-op sur exactement les lignes que ce nullable rend possibles.
+  // Grain ratifié : un événement non résolu par (kol, tweet).
+  tokenMint             String?
   chain                 String
   sourcePostCandidateId String?
   campaignId            String?
