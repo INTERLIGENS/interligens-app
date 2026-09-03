@@ -163,7 +163,7 @@ export const DEFAULT_ENGINE_POLICY: EnginePolicy = {
   baselineMaxPagesPerOccasion: 300,
   minLift: 2.0,
   liftGatesClassification: true,
-  unmeasuredLiftCapsClassification: true,
+  unmeasuredLiftCapsClassification: false,
   shortlist: { minOccasions: 3, minPreTweet: 2, minRatio: 0.25 },
   serious: { minOccasions: 5, minSpecificity: 50 },
   composite: { recurrence: 0.4, timing: 0.3, specificity: 0.15, lift: 0.15 },
@@ -206,7 +206,22 @@ export const AWAITING_RATIFICATION = [
  * trancher : c'est la seule raison d'etre de cette seconde liste.
  */
 export const RATIFIED = [
-  { key: "unmeasuredLiftCapsClassification", value: true, on: "2026-08-30", by: "fondateur" },
+  // ── REVERSE EXPLICITE, 2026-09-03 ──────────────────────────────────────
+  // La decision du 2026-08-30 n'est pas effacee : elle est SUPERSEDEE, datee,
+  // et son motif de reverse est ecrit. Une ratification qui disparait sans
+  // trace laisse croire qu'elle n'a jamais eu lieu.
+  {
+    key: "unmeasuredLiftCapsClassification",
+    value: false,
+    on: "2026-09-03",
+    by: "architecte",
+    note:
+      "reverse sur preuve de la sonde M1 : 78 % du corpus (149/192 evenements, " +
+      "tokens pump.fun nes juste avant le shill) est STRUCTURELLEMENT " +
+      "NOT_MEASURABLE. Plafonner sur cette absence ne mesurait pas une " +
+      "correlation faible : cela penalisait la nature du corpus.",
+    supersedes: { value: true, on: "2026-08-30", by: "fondateur" },
+  },
   // ── M1 fige DANS SON DOMAINE DE VALIDITE, 2026-09-03 ────────────────────
   // Ratifie APRES la sonde reelle (1 token, 46 appels), pas avant : 44 pages
   // ont suffi a epuiser l'historique complet d'un token pump.fun shille, 300
@@ -240,29 +255,32 @@ export const SHILL_M1_DOCTRINE = {
   /** M1 n'est JAMAIS une preuve autonome de coordination. */
   neverStandaloneProof: true,
   /**
-   * ██ M1 EST ADDITIONNEL ET CONDITIONNEL ██
+   * ██ M1 EST ADDITIONNEL ET CONDITIONNEL — TRANCHE LE 2026-09-03 ██
    *
-   * L'absence ou la non-mesurabilite de M1 ne fait JAMAIS chuter un signal
-   * comportemental autrement fort. Le coeur du signal est ailleurs - holdings,
-   * dispersion inter-KOL, timing - et ces dimensions ne dependent d'aucun
-   * temoin.
+   *   M1 MESURE      -> contribue normalement (bonifie ou penalise selon sa
+   *                     valeur : c'est le sens d'une mesure).
+   *   M1 NON MESURE  -> ne contribue PAS. Ne bonifie pas, ne penalise pas.
+   *                     Son poids est redistribue sur les composantes mesurees
+   *                     (scoring.ts, `compositeRenormalized`), et la
+   *                     classification comportementale est CONSERVEE.
    *
-   * ⚠ CETTE CLAUSE EST EN CONFLIT DIRECT AVEC
-   *   `unmeasuredLiftCapsClassification: true`, ratifie le 2026-08-30 par le
-   *   fondateur, qui ramene a `watch` et `low` tout candidat dont le lift n'est
-   *   pas mesure (scoring.ts). Les deux enonces portent sur le MEME evenement
-   *   et disent l'inverse.
+   * AUCUN motif de non-mesurabilite ne devient une penalite comportementale.
+   * Le scoring NE DISTINGUE PAS `BASELINE_PRECEDES_TOKEN_EXISTENCE` de
+   * `BASELINE_CENSORED` : les deux disent « on ne sait pas », et un « on ne
+   * sait pas » n'a pas de degres au moment de noter. Les motifs restent
+   * integralement distincts EN OBSERVABILITE - c'est la qu'ils servent.
    *
-   *   Le conflit est DECLARE, pas tranche : aucun code n'a ete modifie pour
-   *   l'un ou pour l'autre. Renverser en silence une ratification du fondateur
-   *   par une ratification de l'architecte produirait exactement le genre de
-   *   derive que ces deux listes existent pour empecher.
-   *
-   *   Tant que `conflictResolved` vaut false, le comportement en vigueur reste
-   *   celui du 2026-08-30. Voir le rapport READY_FOR_SHADOW.
+   * Le conflit avec la ratification du 2026-08-30 a ete tranche par reverse
+   * explicite, sur preuve : 78 % du corpus est structurellement non mesurable.
+   * Plafonner sur cette absence ne mesurait pas une correlation faible, cela
+   * penalisait la nature du corpus.
    */
   m1IsAdditionalConditional: true,
-  conflictsWith: "unmeasuredLiftCapsClassification (RATIFIE 2026-08-30, fondateur)",
-  conflictResolved: false,
+  measuredM1Contributes: true,
+  unmeasuredM1NeitherRewardsNorPenalizes: true,
+  scoringIgnoresUnmeasurableReason: true,
+  reasonsPreservedInObservability: true,
+  conflictsWith: "unmeasuredLiftCapsClassification (RATIFIE 2026-08-30, fondateur) - REVERSE le 2026-09-03",
+  conflictResolved: true,
   coreSignalDimensions: ["holdings", "cross_kol_dispersion", "timing"],
 } as const;
