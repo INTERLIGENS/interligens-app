@@ -76,6 +76,8 @@ export interface CandidateNatureWrite {
     occasionIds: string[];
     observationCount: number;
     baselineBuyCount: number;
+    /** SHILL-M1 - ce que le lift n'est pas. Voyage jusqu'en base. */
+    reservations: readonly string[];
   };
   naturePolicyVersion: string;
 }
@@ -132,6 +134,9 @@ export function buildCandidateNatureWrite(
     occasionIds: env.basisRefs.occasionIds,
     observationCount: env.basisRefs.observationCount,
     baselineBuyCount: env.basisRefs.baselineBuyCount,
+    // SHILL-M1 : la reserve est une propriete de l'inference, pas de sa
+    // documentation. Elle est ecrite avec elle.
+    reservations: env.reservations,
   };
 
   const validated = assertNatureWritable(

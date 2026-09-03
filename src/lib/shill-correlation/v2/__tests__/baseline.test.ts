@@ -19,13 +19,15 @@ import {
   extractBaselineBuys,
   type BaselineTx,
 } from "../baseline";
-import { DEFAULT_ENGINE_POLICY, type EnginePolicy } from "../policy";
+import { AWAITING_RATIFICATION, DEFAULT_ENGINE_POLICY, type EnginePolicy } from "../policy";
 import { baselineWindow } from "../windows";
 import { incrementalSpanSeconds } from "../cost";
 import { buildBaselineSide, assessBaselineFloor } from "../tally";
 import { computeLift } from "../features";
 import { UNMEASURED, exactMeasurement } from "../../measurement";
-import type { OccasionRecord } from "../types";
+import { ACTIVITY_LIFT_RESERVATIONS, type OccasionRecord } from "../types";
+import { buildAggregateInferenceEnvelope } from "../nature";
+import { buildCandidateNatureWrite } from "../persistence";
 
 const OBSERVED_AT = new Date("2026-06-03T18:57:00Z");
 const P = DEFAULT_ENGINE_POLICY;
@@ -285,5 +287,143 @@ describe("D/M1 - l'algebre du cout", () => {
     // L'erreur naturelle serait de compter la fenetre observee deux fois.
     // Un increment egal a `offset + largeur` la compterait ; il vaut `offset`.
     expect(incrementalSpanSeconds(86400)).toBeLessThan(86400 + 1500);
+  });
+});
+
+// ═══ INVARIANT SHILL-M1 — INTEGRITE DU TEMOIN ══════════════════════════════
+//
+// Les trois clauses, chacune tenue par un test qui echoue si on la retire.
+
+describe("SHILL-M1 §1 - separation temporelle", () => {
+  it("un temoin qui recouvre la fenetre comportementale ne mesure RIEN", () => {
+    const overlapping: EnginePolicy = { ...P, baselineOffsetSeconds: 1200 };
+    const r = computeLift({
+      policy: overlapping,
+      observedRate: exactMeasurement(0.5),
+      baselineRate: exactMeasurement(0.1),
+      baselineOccurrences: 4,
+      baselineFloor: { tally: { occasions: 3, buys: exactMeasurement(9), truncatedBy: [] }, verdict: "above" },
+      observedFloor: { tally: { occasions: 3, buys: exactMeasurement(9), truncatedBy: [] }, verdict: "above" },
+    });
+    expect(r.lift).toBe(UNMEASURED);
+    expect(r.reason).toBe("BASELINE_WINDOW_OVERLAPS_OBSERVED");
+  });
+
+  it("la separation est jugee SUR LA POLICY, pas sur les donnees collectees", () => {
+    // Un temoin riche ne rachete pas un dispositif invalide : le refus tombe
+    // avant tout examen du volume.
+    const overlapping: EnginePolicy = { ...P, baselineOffsetSeconds: 100 };
+    const r = computeLift({
+      policy: overlapping,
+      observedRate: exactMeasurement(0.9),
+      baselineRate: exactMeasurement(0.9),
+      baselineOccurrences: 999,
+      baselineFloor: { tally: { occasions: 99, buys: exactMeasurement(999), truncatedBy: [] }, verdict: "above" },
+      observedFloor: { tally: { occasions: 99, buys: exactMeasurement(999), truncatedBy: [] }, verdict: "above" },
+    });
+    expect(r.reason).toBe("BASELINE_WINDOW_OVERLAPS_OBSERVED");
+  });
+});
+
+describe("SHILL-M1 §2 - integralite dans les bornes autorisees", () => {
+  it("hors des bornes -> NOT_MEASURABLE, JAMAIS extrapole", async () => {
+    const r = await collectBaselineWindow(target(), P, {
+      fetchPage: async () => [txNewer(40_000, "s")],
+      budget: createCallBudget(999),
+      maxPagesPerOccasion: 2,
+    });
+    // Ni complete, ni extrapole : le comptage reste ce qui a ete VU, et il est
+    // marque comme un plancher.
+    expect(r.baselineTruncatedBy).toBe(PAGE_TRUNCATION_REASON);
+    expect(r.baselineBuys).toHaveLength(0);
+    expect(r.windowCovered).toBe(false);
+    expect(r.baselineState).toBe("budget_exhausted");
+  });
+
+  it("le plafond vient de la POLICY, pas d'une constante enterree", async () => {
+    // Un seuil a effet produit invisible est un seuil qu'on ne peut pas
+    // ratifier. Changer la policy DOIT changer le comportement.
+    const serre: EnginePolicy = { ...P, baselineMaxPagesPerOccasion: 1 };
+    let calls = 0;
+    const r = await collectBaselineWindow(target(), serre, {
+      fetchPage: async () => {
+        calls++;
+        return [txNewer(40_000, `s${calls}`)];
+      },
+      budget: createCallBudget(999),
+    });
+    expect(calls).toBe(1);
+    expect(r.baselineTruncatedBy).toBe(PAGE_TRUNCATION_REASON);
+  });
+
+  it("les deux seuils de M1 sont dans la policy et EN ATTENTE de ratification", () => {
+    expect(P.baselineOffsetSeconds).toBe(86_400);
+    expect(P.baselineMaxPagesPerOccasion).toBe(300);
+    expect(AWAITING_RATIFICATION).toContain("baselineOffsetSeconds");
+    expect(AWAITING_RATIFICATION).toContain("baselineMaxPagesPerOccasion");
+  });
+});
+
+describe("SHILL-M1 §3 - existence de l'objet mesure", () => {
+  it("un temoin anterieur a la 1re tx du token est CONSTATE, historique epuise", async () => {
+    // Le cas mesure le 2026-09-03 : token pump.fun cree 31 min avant le tweet.
+    let page = 0;
+    const r = await collectBaselineWindow(target(), P, {
+      fetchPage: async () => {
+        page++;
+        // Une seule tx, POSTERIEURE a la fenetre temoin, puis fin d'historique.
+        return page === 1 ? [txNewer(90_000, "s1")] : [];
+      },
+      budget: createCallBudget(10),
+    });
+    expect(r.windowCovered).toBe(true);
+    expect(r.baselinePrecedesTokenExistence).toBe(true);
+  });
+
+  it("sans historique epuise, l'anteriorite n'est PAS un constat", async () => {
+    const r = await collectBaselineWindow(target(), P, {
+      fetchPage: async () => [txNewer(90_000, "s")],
+      budget: createCallBudget(2),
+    });
+    // On a arrete de regarder : « rien de plus ancien » ne veut rien dire.
+    expect(r.baselinePrecedesTokenExistence).toBeNull();
+  });
+
+  it("le motif prime sur le jugement de VOLUME du temoin", () => {
+    // Sans §3, ce cas ressortait BELOW_FLOOR - « pas assez d'achats temoin » -
+    // ce qui envoie baisser un plancher au lieu de changer de dispositif.
+    const r = computeLift({
+      policy: P,
+      observedRate: exactMeasurement(0.5),
+      baselineRate: UNMEASURED,
+      baselineOccurrences: 0,
+      baselinePrecedesTokenExistence: true,
+      baselineFloor: { tally: { occasions: 1, buys: exactMeasurement(0), truncatedBy: [] }, verdict: "below" },
+      observedFloor: { tally: { occasions: 3, buys: exactMeasurement(9), truncatedBy: [] }, verdict: "above" },
+    });
+    expect(r.lift).toBe(UNMEASURED);
+    expect(r.reason).toBe("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+  });
+});
+
+describe("SHILL-M1 - la reserve voyage avec l'inference", () => {
+  it("l'enveloppe porte les quatre reserves, en base et pas en commentaire", () => {
+    const env = buildAggregateInferenceEnvelope(
+      { occasionIds: ["o1"], observationCount: 5, baselineBuyCount: 0, tokenResolutionWasInferred: false },
+      P,
+    );
+    expect(env.reservations).toEqual(ACTIVITY_LIFT_RESERVATIONS);
+    expect(env.reservations).toContain("proxy_minimum_not_exhaustive_buyer_count");
+    expect(env.reservations).toContain("observed_and_baseline_bias_equality_undemonstrated");
+    expect(env.reservations).toContain("correlation_feature_never_standalone_proof_of_coordination");
+  });
+
+  it("le fragment ecrit en base les porte dans natureBasis", () => {
+    const env = buildAggregateInferenceEnvelope(
+      { occasionIds: ["o1"], observationCount: 5, baselineBuyCount: 0, tokenResolutionWasInferred: false },
+      P,
+    );
+    const w = buildCandidateNatureWrite({ kolHandle: "k", wallet: "w", chain: "solana", _nature: env });
+    expect(w.natureBasis.reservations).toEqual(ACTIVITY_LIFT_RESERVATIONS);
   });
 });

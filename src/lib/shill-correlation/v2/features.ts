@@ -187,6 +187,12 @@ interface LiftInput {
   baselineRate: Measurement;
   baselineOccurrences: number;
   baselineFloor: { tally: SideTally; verdict: "above" | "below" | "indeterminate" };
+  /**
+   * SHILL-M1 §3. `true` seulement quand l'historique du token a ete EPUISE et
+   * que sa premiere transaction est posterieure a la fenetre temoin.
+   * `undefined`/`null`/`false` : pas de constat, la porte reste fermee.
+   */
+  baselinePrecedesTokenExistence?: boolean | null;
   observedFloor: { tally: SideTally; verdict: "above" | "below" | "indeterminate" };
 }
 
@@ -217,25 +223,34 @@ export function computeLift(
   //    refuse AVANT la premiere page et qu'aucune occasion n'est mesuree.
   if (input.baselineFloor.tally.truncatedBy.length > 0) return no("BASELINE_CENSORED");
 
-  // 2. Y a-t-il seulement un temoin ? (denominateur du TAUX temoin)
+  // 2. SHILL-M1 §3 - LE TEMOIN PRECEDE-T-IL L'EXISTENCE DU TOKEN ?
+  //    Avant tout jugement sur le VOLUME du temoin : un temoin anterieur a la
+  //    premiere transaction du token ne mesure pas « peu d'achats », il mesure
+  //    le vide. Le rapporter BELOW_FLOOR enverrait baisser un plancher ; le
+  //    vrai correctif est de changer de dispositif.
+  if (input.baselinePrecedesTokenExistence === true) {
+    return no("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+  }
+
+  // 3. Y a-t-il seulement un temoin ? (denominateur du TAUX temoin)
   if (input.baselineFloor.tally.occasions === 0) return no("BASELINE_NOT_COLLECTED");
 
-  // 3. SHILL-C1 - un temoin borne par un budget est un plancher, pas un total.
+  // 4. SHILL-C1 - un temoin borne par un budget est un plancher, pas un total.
   //    `indeterminate` vient de compareToThreshold : meme grammaire, meme mot.
   if (input.baselineFloor.verdict === "indeterminate") return no("BASELINE_CENSORED");
   if (input.baselineFloor.verdict === "below") return no("BASELINE_BELOW_FLOOR");
 
-  // 4. Plancher de l'OBSERVATION - variable distincte, verdict distinct.
+  // 5. Plancher de l'OBSERVATION - variable distincte, verdict distinct.
   if (input.observedFloor.verdict === "indeterminate") return no("OBSERVED_CENSORED");
   if (input.observedFloor.verdict === "below") return no("OBSERVED_BELOW_FLOOR");
 
-  // 5. ZERO EPSILON. Le temoin est mesure et suffisant, mais ce wallet n'y
+  // 6. ZERO EPSILON. Le temoin est mesure et suffisant, mais ce wallet n'y
   //    apparait pas : le denominateur du RATIO est nul. Une division par zero
   //    ne rend pas « tres grand », elle ne rend rien. Le fait est rapporte
   //    ailleurs (absentFromMeasuredBaseline) sans devenir un nombre.
   if (input.baselineOccurrences === 0) return no("BASELINE_ZERO_OCCURRENCES");
 
-  // 6. Les deux taux doivent exister.
+  // 7. Les deux taux doivent exister.
   if (!isMeasured(input.observedRate)) return no("OBSERVED_RATE_UNMEASURED");
   if (!isMeasured(input.baselineRate) || input.baselineRate.value === 0) {
     // Defense en profondeur : baselineOccurrences > 0 implique un taux > 0.
