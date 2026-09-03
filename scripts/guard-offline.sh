@@ -158,6 +158,32 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
     )
 fi
 
+# Exceptions pour la TÂCHE C du Shill Correlation Engine v2 : nature native de
+# ShillCorrelationCandidate (Data Nature S6). Trois colonnes ADDITIVES,
+# NULLABLES, SANS DEFAULT, aucun backfill — voir
+# docs/prep/MIGRATION_C_SHILL_NATURE_2026-08-30.sql.
+#
+# Le DDL est DÉJÀ EXÉCUTÉ dans Neon (2026-09-03, vérifié en lecture seule :
+# rowNature USER-DEFINED/DataNature, natureBasis jsonb, naturePolicyVersion
+# text, les 2 CHECK shillcorrcand_rownature_*, et 1 532 lignes / 0 écrite).
+# Ce chantier ne fait que refléter cette réalité dans schema.prod.prisma.
+# AUCUNE migration déclenchée ici — verrou A9, jamais db push.
+#
+# ⚠️ ORDRE IMPOSÉ, même leçon qu'en S4 et S5 : Prisma sélectionne tous les
+# champs scalaires d'un modèle. Déclarer une colonne absente de la base casse
+# toute lecture de ShillCorrelationCandidate en production. L'ordre est ici
+# respecté — les colonnes existent d'abord, la déclaration suit.
+#
+# Autorisation humaine explicite (David, 2026-09-03) — voir PR description.
+# Ne couvre PAS l'ensemble de prisma/ : exemption ciblée sur le seul
+# schema.prod.prisma, et sur aucun autre chemin gelé. Elle se referme
+# byte-identique après merge.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-v2-nature$ ]]; then
+    EXEMPT_SHILL_V2_NATURE_PATTERNS=(
+        "^prisma/schema\.prod\.prisma$"
+    )
+fi
+
 # Exceptions pour la watchlist expansion (ajout de KOL reviewés au watcher).
 # Autorisation humaine explicite (David, WAVES 1-3 approuvées) — voir PR description.
 # Exemption ciblée UNIQUEMENT sur handles.ts (la source de vérité du watcher) ;
@@ -582,6 +608,23 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche shill-v2-nature, exempter le seul schema.prod.prisma.
+    # SANS CE BLOC, la déclaration ci-dessus ne sert à RIEN : le guard ne lit
+    # que les tableaux qu'une boucle consomme. Une exemption déclarée mais non
+    # consommée est une exemption qui n'existe pas — et l'erreur se lit comme
+    # un guard « qui refuse malgré l'exemption », donc se corrige au mauvais
+    # endroit. Les deux hunks de ce patch vont ensemble.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-v2-nature$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_SHILL_V2_NATURE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
