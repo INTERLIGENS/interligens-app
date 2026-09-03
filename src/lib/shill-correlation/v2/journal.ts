@@ -14,6 +14,8 @@
 
 import { isMeasured } from "../measurement";
 import {
+  ALL_BASELINE_STATES,
+  ALL_OBSERVED_STATES,
   BASELINE_MEASURED_STATES,
   LIFT_UNMEASURABLE_REASONS,
   OBSERVED_ANALYZABLE_STATES,
@@ -25,12 +27,8 @@ import {
   type OccasionRecord,
 } from "./types";
 
-const ALL_OBSERVED_STATES: ObservedState[] = [
-  "not_fetched", "fetched_empty", "fetched_with_buyers", "scored", "fetch_error",
-];
-const ALL_BASELINE_STATES: BaselineState[] = [
-  "not_collected", "collected_empty", "collected_with_buys", "collect_error",
-];
+// Les deux listes viennent de types.ts : le journal ne tient plus la sienne.
+// Une liste locale avait deja rendu `budget_exhausted` invisible en telemetrie.
 
 export function buildTelemetry(
   records: readonly OccasionRecord[],
