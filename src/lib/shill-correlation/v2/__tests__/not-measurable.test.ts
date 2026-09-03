@@ -245,19 +245,27 @@ describe("B - pas de degradation silencieuse du score", () => {
     expect(liftZero.compositeRenormalized).toBe(false);
   });
 
-  it("un lift non mesure plafonne la classification a 'watch' (defaut conservateur)", () => {
+  // ── SHILL-M2, 2026-09-03 : ce test disait l'inverse jusqu'a cette date ──
+  // Il asserait « un lift non mesure plafonne a watch ». Le reverse de
+  // `unmeasuredLiftCapsClassification` l'a fait ROUGIR, et c'est ainsi qu'un
+  // changement de doctrine doit se manifester : par un test qui tombe, pas par
+  // un comportement qui glisse.
+  it("SHILL-M2 : un lift non mesure ne plafonne PLUS la classification", () => {
     const s = scoreFeatures(base, P);
+    expect(s.classification).not.toBe("watch");
+    // Le motif reste DIT - conserve, jamais transforme en sanction.
+    expect(s.limitations.some((l) => l.includes("lift NON MESURE"))).toBe(true);
+    expect(s.limitations.some((l) => l.includes("SHILL-M2"))).toBe(true);
+  });
+
+  it("le plafond reste une POLITIQUE : le RE-armer se voit", () => {
+    // Le drapeau n'est pas supprime. Une bascule en arriere doit rester
+    // lisible comme une DECISION, pas survenir comme un defaut.
+    const conservateur: EnginePolicy = { ...P, unmeasuredLiftCapsClassification: true };
+    const s = scoreFeatures(base, conservateur);
     expect(s.classification).toBe("watch");
     expect(s.confidence).toBe("low");
     expect(s.limitations.some((l) => l.includes("SHILL-C1"))).toBe(true);
-  });
-
-  it("le plafond est une POLITIQUE, pas un cablage : le desarmer se voit", () => {
-    const permissif: EnginePolicy = { ...P, unmeasuredLiftCapsClassification: false };
-    const s = scoreFeatures(base, permissif);
-    expect(s.classification).not.toBe("watch");
-    // Meme desarme, le motif reste dit.
-    expect(s.limitations.some((l) => l.includes("lift NON MESURE"))).toBe(true);
   });
 
   it("M2 opposable : un lift mesure SOUS le seuil ramene a 'watch'", () => {
@@ -271,5 +279,112 @@ describe("B - pas de degradation silencieuse du score", () => {
     expect(s.classification).not.toBe("watch");
     expect(s.liftCounted).toBe(true);
     expect(s.compositeRenormalized).toBe(false);
+  });
+});
+
+
+// ═══ INVARIANT SHILL-M2 — ABSENCE DE MESURE != PREUVE A CHARGE ═════════════
+
+describe("SHILL-M2 : un signal comportemental fort survit a un M1 non mesure", () => {
+  /** Signal comportemental FORT : 5 occasions, 100 % pre-tweet, un seul KOL. */
+  const fort: CorrelationFeatures = {
+    kolHandle: "k", wallet: "W1", chain: "solana",
+    observedOccasions: 5, analyzableOccasions: 5, ratioObserved: 1,
+    observedRate: { value: 1, censored: false, censoredBy: null },
+    preTweetCount: 5, nearTweetCount: 0, postTweetCount: 0, exitCount: 0, distinctKolCount: 1,
+    baselineOccurrences: 0, baselineMeasuredOccasions: 0, baselineRate: UNMEASURED,
+    observedTally: { occasions: 5, buys: { value: 5, censored: false, censoredBy: null }, truncatedBy: [] },
+    baselineTally: { occasions: 0, buys: { value: 0, censored: false, censoredBy: null }, truncatedBy: [] },
+    lift: UNMEASURED, liftUnmeasurableReason: null,
+    absentFromMeasuredBaseline: false,
+  };
+
+  const avecMotif = (r: CorrelationFeatures["liftUnmeasurableReason"]) =>
+    scoreFeatures({ ...fort, liftUnmeasurableReason: r }, P);
+
+  it("TOKEN TROP JEUNE : la classification comportementale est CONSERVEE", () => {
+    // Le cas structurel : 78 % du corpus. Un token ne juste avant le shill n'a
+    // pas de pre-histoire - ce n'est pas un indice contre le wallet.
+    const s = avecMotif("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+    expect(s.classification).not.toBe("watch");
+    expect(s.confidence).not.toBe("low");
+  });
+
+  it("BASELINE CENSUREE : la classification comportementale est CONSERVEE", () => {
+    // Un budget epuise est une limite de NOTRE instrument. La faire payer au
+    // wallet reviendrait a noter la pauvrete de la collecte.
+    const s = avecMotif("BASELINE_CENSORED");
+    expect(s.classification).not.toBe("watch");
+    expect(s.confidence).not.toBe("low");
+  });
+
+  it("le SCORING ne distingue pas les deux motifs - un « on ne sait pas » n'a pas de degres", () => {
+    const jeune = avecMotif("BASELINE_PRECEDES_TOKEN_EXISTENCE");
+    const censure = avecMotif("BASELINE_CENSORED");
+    expect(jeune.correlationScore).toBe(censure.correlationScore);
+    expect(jeune.classification).toBe(censure.classification);
+    expect(jeune.confidence).toBe(censure.confidence);
+    expect(jeune.liftScore).toBe(censure.liftScore);
+  });
+
+  it("AUCUN motif de non-mesurabilite ne devient une penalite", () => {
+    // Balayage exhaustif : si un motif futur venait a peser, ce test tombe.
+    const scores = LIFT_UNMEASURABLE_REASONS.map((r) => scoreFeatures({ ...fort, liftUnmeasurableReason: r }, P));
+    const refs = new Set(scores.map((s) => s.correlationScore));
+    expect(refs.size).toBe(1);
+    for (const s of scores) expect(s.classification).not.toBe("watch");
+  });
+
+  it("les motifs restent INTEGRALEMENT distincts en observabilite", () => {
+    // M2 neutralise le motif au SCORING, pas au journal : c'est la qu'il sert.
+    for (const r of LIFT_UNMEASURABLE_REASONS) {
+      const s = scoreFeatures({ ...fort, liftUnmeasurableReason: r }, P);
+      expect(s.limitations.some((l) => l.includes(r))).toBe(true);
+    }
+  });
+});
+
+describe("SHILL-M2 : un M1 MESURE contribue toujours normalement", () => {
+  const mesure = (v: number): CorrelationFeatures => ({
+    kolHandle: "k", wallet: "W1", chain: "solana",
+    observedOccasions: 5, analyzableOccasions: 5, ratioObserved: 1,
+    observedRate: { value: 1, censored: false, censoredBy: null },
+    preTweetCount: 5, nearTweetCount: 0, postTweetCount: 0, exitCount: 0, distinctKolCount: 1,
+    baselineOccurrences: 2, baselineMeasuredOccasions: 8,
+    baselineRate: { value: 0.25, censored: false, censoredBy: null },
+    observedTally: { occasions: 5, buys: { value: 5, censored: false, censoredBy: null }, truncatedBy: [] },
+    baselineTally: { occasions: 8, buys: { value: 8, censored: false, censoredBy: null }, truncatedBy: [] },
+    lift: { value: v, censored: false, censoredBy: null } as Measurement,
+    liftUnmeasurableReason: null,
+    absentFromMeasuredBaseline: false,
+  });
+
+  it("un lift mesure ELEVE credite le score et compte", () => {
+    const s = scoreFeatures(mesure(4), P);
+    expect(s.liftCounted).toBe(true);
+    expect(s.liftScore).toBeGreaterThan(0);
+    expect(s.compositeRenormalized).toBe(false);
+  });
+
+  it("un lift mesure SOUS le seuil reste OPPOSABLE - M2 ne protege que l'absence", () => {
+    // La moitie de M2 qui compte : une mesure defavorable garde tout son effet.
+    // Sans ce test, « absence != preuve a charge » glisserait vers « le lift
+    // ne peut jamais rien reprocher ».
+    const s = scoreFeatures(mesure(0.83), P);
+    expect(s.classification).toBe("watch");
+    expect(s.limitations.some((l) => l.includes("0.83"))).toBe(true);
+  });
+
+  it("mesure eleve > non mesure > mesure faible : l'ordre est preserve", () => {
+    const eleve = scoreFeatures(mesure(4), P).correlationScore;
+    const nonMesure = scoreFeatures(
+      { ...mesure(4), lift: UNMEASURED, liftUnmeasurableReason: "BASELINE_CENSORED" }, P,
+    ).correlationScore;
+    const faible = scoreFeatures(mesure(0), P).correlationScore;
+    expect(eleve).toBeGreaterThan(faible);
+    expect(nonMesure).toBeGreaterThan(faible);
+    // Une absence ne paie JAMAIS plus qu'une mesure favorable : c'est le
+    // verrou anti-epsilon de -42, conserve sous M2.
+    expect(nonMesure).toBeLessThanOrEqual(eleve);
   });
 });

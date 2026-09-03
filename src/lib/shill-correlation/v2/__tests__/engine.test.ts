@@ -56,14 +56,20 @@ describe("doctrine", () => {
     expect(AWAITING_RATIFICATION).toContain("minObservedBuys");
   });
 
-  it("unmeasuredLiftCapsClassification est RATIFIE, donc hors liste d'attente", () => {
-    // Ratifie le 2026-08-30. Une liste d'attente qui garde ce qui a ete tranche
-    // ment sur ce qui reste a trancher.
+  it("unmeasuredLiftCapsClassification est REVERSE le 2026-09-03, avec sa trace", () => {
+    // Ratifie `true` le 2026-08-30 (fondateur), reverse a `false` le
+    // 2026-09-03 (architecte) sur preuve de la sonde M1. La decision anterieure
+    // n'est pas effacee : elle est SUPERSEDEE. Une ratification qui disparait
+    // sans trace laisse croire qu'elle n'a jamais eu lieu.
     expect(AWAITING_RATIFICATION).not.toContain("unmeasuredLiftCapsClassification");
     const r = RATIFIED.find((x) => x.key === "unmeasuredLiftCapsClassification");
     expect(r).toBeDefined();
-    expect(r!.value).toBe(true);
-    expect(DEFAULT_ENGINE_POLICY.unmeasuredLiftCapsClassification).toBe(true);
+    expect(r!.value).toBe(false);
+    expect(r!.on).toBe("2026-09-03");
+    expect(r!.by).toBe("architecte");
+    expect(r!.note).toContain("sonde M1");
+    expect(r!.supersedes).toEqual({ value: true, on: "2026-08-30", by: "fondateur" });
+    expect(DEFAULT_ENGINE_POLICY.unmeasuredLiftCapsClassification).toBe(false);
   });
 });
 

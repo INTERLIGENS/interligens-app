@@ -7,6 +7,10 @@
 //   3. le LIFT (M1/M2) entre dans la composition - et son ABSENCE aussi,
 //      explicitement, jamais comme un zero.
 //
+// INVARIANT SHILL-M2 (2026-09-03) : absence de mesure != preuve a charge. Un
+// lift non mesure ne bonifie ni ne penalise ; la classification comportementale
+// est conservee. Un lift MESURE et faible, lui, reste opposable.
+//
 // Le score ne conclut rien. `limitations` porte ce qu'il n'a PAS pu etablir.
 
 import { compareToThreshold, isMeasured } from "../measurement";
@@ -140,10 +144,32 @@ export function scoreFeatures(f: CorrelationFeatures, policy: EnginePolicy): Can
     confidence = "low";
   }
 
+  // ═══ INVARIANT SHILL-M2 — ABSENCE DE MESURE != PREUVE A CHARGE ═══════════
+  //
+  //   Une mesure qu'on n'a PAS PU FAIRE ne dit rien sur ce qu'elle aurait
+  //   montre. La traiter comme defavorable, c'est faire dire quelque chose a
+  //   un silence - et toujours la meme chose.
+  //
+  // CE QUI A RENDU L'INVARIANT NECESSAIRE, mesure le 2026-09-03 : 78 % du
+  // corpus (149/192 evenements) porte des tokens pump.fun nes juste avant le
+  // shill. Leur fenetre temoin precede leur premiere transaction : ils sont
+  // STRUCTURELLEMENT non mesurables. Plafonner sur cette absence ne mesurait
+  // aucune correlation faible - cela penalisait la nature du corpus, et
+  // uniformement.
+  //
+  // CE QUE M2 N'AUTORISE PAS, et c'est la moitie qui compte : un lift MESURE
+  // et faible reste opposable (bloc `liftGatesClassification` ci-dessus).
+  // M2 protege l'ABSENCE de mesure, jamais une mesure defavorable.
+  //
+  // Le poids du lift non mesure est deja retire ET redistribue plus haut
+  // (`compositeRenormalized`) : le score ne le penalise pas non plus. Un
+  // liftScore a 0 laisse dans une moyenne ponderee AURAIT ete une penalite
+  // silencieuse - c'est la meme faute, une couche plus bas.
+  //
+  // Le drapeau reste dans la policy, ratifie a `false` le 2026-09-03 (reverse
+  // date du 2026-08-30). Il n'est pas supprime : une bascule silencieuse en
+  // arriere doit rester lisible comme une DECISION, pas comme un defaut.
   if (policy.unmeasuredLiftCapsClassification && liftVerdict === "indeterminate" && classification !== "watch") {
-    // SHILL-C1 applique au lift : `high_interest` AFFIRME une correlation
-    // superieure au taux de base. L'affirmer sans avoir mesure le taux de base,
-    // c'est franchir un seuil sur une non-mesure.
     limitations.push(
       `classification ramenee a 'watch' : le lift n'est pas mesure ` +
         `(${f.liftUnmeasurableReason ?? "motif absent"}). Une correlation « superieure au ` +
@@ -151,6 +177,17 @@ export function scoreFeatures(f: CorrelationFeatures, policy: EnginePolicy): Can
     );
     classification = "watch";
     confidence = "low";
+  } else if (liftVerdict === "indeterminate") {
+    // SHILL-M2. La limitation est CONSERVEE - le lecteur doit savoir que le
+    // score decrit moins de choses - mais elle ne devient pas une sanction.
+    // Le motif n'est PAS lu ici : au scoring, TOKEN_TOO_YOUNG et
+    // BASELINE_CENSORED disent la meme chose, « on ne sait pas ». Ils restent
+    // distincts en observabilite, ou la distinction sert a agir.
+    limitations.push(
+      `lift NON MESURE (${f.liftUnmeasurableReason ?? "motif absent"}) : la classification ` +
+        "comportementale est CONSERVEE (SHILL-M2 - une mesure absente n'est pas une preuve " +
+        "a charge). Le score repose sur les seules dimensions mesurees.",
+    );
   }
 
   return {

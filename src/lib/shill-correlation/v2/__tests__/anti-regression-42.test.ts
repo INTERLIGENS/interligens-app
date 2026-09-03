@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { isMeasured } from "../../measurement";
 import { computeFeatures } from "../features";
 import { runEngine } from "../engine";
+import { scoreFeatures } from "../scoring";
 import { DEFAULT_ENGINE_POLICY, FORBIDDEN_POLICY_KEYS, type EnginePolicy } from "../policy";
 import {
   baselineCollected,
@@ -109,9 +110,18 @@ describe("anti-regression -42 : la somme inter-cotes ne franchit aucun plancher"
   });
 
   it("le cas le plus depourvu de temoin ne ressort JAMAIS le mieux note", () => {
-    // -42 : temoin nul => lift = liftCapWhenBaselineZero = 10 => liftScore max.
-    // Ici : temoin nul => lift non mesure => aucun credit, et la classification
-    // est plafonnee. Un wallet sans temoin ne peut pas battre un wallet mesure.
+    // -42 : temoin nul => lift = liftCapWhenBaselineZero = 10 => liftScore MAX.
+    // L'absence de temoin PAYAIT, et payait le maximum du bareme.
+    //
+    // ── Recalage du 2026-09-03 (SHILL-M2) ──────────────────────────────────
+    // Ce test assertait aussi `classification === 'watch'`. Ce n'etait PAS la
+    // protection anti--42 : c'etait le plafond `unmeasuredLiftCapsClassification`,
+    // reverse depuis. Confondre les deux aurait fait tomber la vraie garde en
+    // meme temps que le plafond.
+    //
+    // La protection anti--42, elle, est intacte et c'est ce qu'on teste ici :
+    // une absence ne recoit AUCUN credit, et ne paie JAMAIS plus qu'une mesure
+    // favorable. C'est le verrou anti-epsilon, independant de M2.
     const sansTemoin = Array.from({ length: 6 }, (_, i) =>
       record(occasion(`n${i}`, "kol_sans", i * 120), {
         observations: [buy("W1", "pre_tweet", -100, `sig-n-${i}`)],
@@ -121,9 +131,32 @@ describe("anti-regression -42 : la somme inter-cotes ne franchit aucun plancher"
 
     const r = runEngine(sansTemoin, P);
     const c = r.candidates.find((x) => x.wallet === "W1")!;
+
+    // 1. Aucun credit de substitution : le coeur du defaut -42.
     expect(c.scores.liftScore).toBe(0);
     expect(c.scores.liftCounted).toBe(false);
-    expect(c.scores.classification).toBe("watch");
+
+    // 2. L'absence ne paie pas plus que la presence. On compare le MEME wallet,
+    //    memes observations, avec un temoin MESURE et un lift eleve.
+    const memeAvecTemoin = scoreFeatures(
+      {
+        ...c.features,
+        baselineOccurrences: 2,
+        baselineMeasuredOccasions: 6,
+        baselineRate: { value: 0.25, censored: false, censoredBy: null },
+        baselineTally: {
+          occasions: 6,
+          buys: { value: 6, censored: false, censoredBy: null },
+          truncatedBy: [],
+        },
+        lift: { value: 4, censored: false, censoredBy: null },
+        liftUnmeasurableReason: null,
+      },
+      P,
+    );
+    expect(c.scores.correlationScore).toBeLessThanOrEqual(memeAvecTemoin.correlationScore);
+
+    // 3. Et le fait reste VISIBLE : compte par motif, jamais tu.
     expect(r.telemetry.liftUnmeasurable.BASELINE_NOT_COLLECTED).toBeGreaterThan(0);
     expect(r.telemetry.liftMeasured).toBe(0);
   });

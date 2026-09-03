@@ -468,21 +468,23 @@ describe("SHILL-M1 - la doctrine est lue par un test, pas seulement ecrite", () 
     expect(SHILL_M1_DOCTRINE.neverStandaloneProof).toBe(true);
   });
 
-  it("le conflit avec unmeasuredLiftCapsClassification est DECLARE et NON tranche", () => {
-    // Le test verrouille l'etat d'indecision lui-meme. Le jour ou quelqu'un
-    // tranche, ce test tombe - et c'est le but : la resolution doit etre un
-    // acte visible, pas un effet de bord.
+  it("le conflit avec unmeasuredLiftCapsClassification est TRANCHE", () => {
+    // Ce test disait « DECLARE et NON tranche » jusqu'au 2026-09-03. Le
+    // trancher l'a fait rougir - c'est ainsi qu'une doctrine change : par un
+    // test qui tombe, jamais par un comportement qui glisse.
     expect(SHILL_M1_DOCTRINE.m1IsAdditionalConditional).toBe(true);
-    expect(SHILL_M1_DOCTRINE.conflictResolved).toBe(false);
-    expect(SHILL_M1_DOCTRINE.conflictsWith).toContain("unmeasuredLiftCapsClassification");
+    expect(SHILL_M1_DOCTRINE.conflictResolved).toBe(true);
+    expect(SHILL_M1_DOCTRINE.measuredM1Contributes).toBe(true);
+    expect(SHILL_M1_DOCTRINE.unmeasuredM1NeitherRewardsNorPenalizes).toBe(true);
+    expect(SHILL_M1_DOCTRINE.scoringIgnoresUnmeasurableReason).toBe(true);
+    expect(SHILL_M1_DOCTRINE.reasonsPreservedInObservability).toBe(true);
   });
 
-  it("tant que le conflit n'est pas tranche, le comportement du 2026-08-30 reste", () => {
-    // Aucune ratification n'a ete renversee en silence.
-    const founder = RATIFIED.find((x) => x.key === "unmeasuredLiftCapsClassification");
-    expect(founder!.value).toBe(true);
-    expect(founder!.by).toBe("fondateur");
-    expect(P.unmeasuredLiftCapsClassification).toBe(true);
+  it("le reverse est DATE et garde la decision anterieure", () => {
+    const r = RATIFIED.find((x) => x.key === "unmeasuredLiftCapsClassification");
+    expect(r!.value).toBe(false);
+    expect(r!.supersedes).toEqual({ value: true, on: "2026-08-30", by: "fondateur" });
+    expect(P.unmeasuredLiftCapsClassification).toBe(false);
   });
 });
 
