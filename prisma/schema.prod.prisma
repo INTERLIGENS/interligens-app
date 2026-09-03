@@ -4150,6 +4150,31 @@ model ShillCorrelationCandidate {
   exclusionSupersededAt  DateTime?
   exclusionSupersededBy  String?
   exclusionSupersededWhy String?
+  // ── TÂCHE C — Data Nature S6. ADDITIF, NULLABLE, SANS DEFAULT. ────────────
+  // La table est DÉCLARÉE mono-nature INFERENCE au registre
+  // (src/lib/data-nature/registry.ts) : ces colonnes n'apportent PAS la nature,
+  // elles apportent sa PISTE D'AUDIT ligne par ligne.
+  // Type ENUM DataNature (PAS String) — le type des 17 colonnes de nature du
+  // produit. L'enum fait refuser une valeur hors domaine par la BASE (22P02),
+  // là où String l'aurait stockée puis relue comme une nature valide.
+  // Nom : `rowNature`, la convention du produit (7 tables sur 7). Renommé
+  // depuis `nature` le 2026-09-03 — la migration n'ayant pas été exécutée à
+  // ce moment-là, aucune colonne `nature` n'a jamais existé en base.
+  //   natureBasis         jsonb — { natures, occasionIds, observationCount,
+  //                       baselineBuyCount } : de quoi CETTE ligne est tirée,
+  //                       volume témoin compté à part du volume observé.
+  //   naturePolicyVersion — sous quels seuils elle a été produite.
+  // AUCUN BACKFILL : écrites uniquement sur les lignes que le moteur
+  // (re)produit, via assertNatureWritable. Les 1 532 lignes legacy restent
+  // NULL jusqu'à leur propre recalcul. Un DEFAULT écrirait une version de
+  // politique fausse sur des lignes calculées sous d'autres seuils — d'où
+  // l'absence délibérée de @default.
+  // Colonnes posées à la main dans le Neon SQL Editor le 2026-09-03
+  // (docs/prep/MIGRATION_C_SHILL_NATURE_2026-08-30.sql). Cette déclaration ne
+  // fait que refléter la base. AUCUNE migration déclenchée — verrou A9.
+  rowNature            DataNature?
+  natureBasis          Json?
+  naturePolicyVersion  String?
   firstSeenAt          DateTime
   lastSeenAt           DateTime
   notes                String?
