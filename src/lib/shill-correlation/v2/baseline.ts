@@ -76,6 +76,7 @@
 // comportement du wallet, qui l'a produit.
 
 import { baselineIsDisjoint, baselineWindow, zoneForDelta } from "./windows";
+import type { OnChainInstant } from "./anchor";
 import type { EnginePolicy } from "./policy";
 import type { BaselineBuy, BaselineState } from "./types";
 
@@ -86,7 +87,14 @@ export interface BaselineCollectionTarget {
   /** Adresse base58 resolue. Un ticker non resolu ne peut pas etre collecte. */
   mint: string | null;
   chain: string;
-  observedAt: Date;
+  /**
+   * ANCRE ON-CHAIN, pas un timestamp du corpus. `ShillEvent.tweetTimestamp`
+   * stocke une heure murale parisienne dans une colonne UTC (mesure du
+   * 2026-09-03 : ecart constant, variance nulle). Le passer directement
+   * decalait CHAQUE fenetre de 2 h - le type l'interdit desormais.
+   * Voir anchor.ts, `onChainAnchorFromCorpus`.
+   */
+  observedAt: OnChainInstant;
 }
 
 /** Une transaction, reduite a ce que la collecte temoin en lit. */

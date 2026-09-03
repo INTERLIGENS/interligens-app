@@ -15,6 +15,7 @@
 // aucune fonction du moteur n'accepte les deux sans le lire.
 
 import { ANALYSIS_WINDOW } from "../types";
+import type { OnChainInstant } from "./anchor";
 import type { BehaviorType, BehaviorZone } from "./types";
 import type { EnginePolicy } from "./policy";
 
@@ -33,7 +34,13 @@ export interface TimeWindow {
 export const WINDOW_WIDTH_SECONDS =
   ANALYSIS_WINDOW.preSeconds + ANALYSIS_WINDOW.postSeconds; // 1500
 
-export function observedWindow(observedAt: Date): TimeWindow {
+/**
+ * L'ancre est un `OnChainInstant`, pas un `Date`. Un timestamp du corpus ne
+ * satisfait pas ce type : le compilateur refuse de le passer ici. Voir
+ * anchor.ts — le bug du 2026-09-03 n'etait pas une soustraction manquante,
+ * c'etait deux grandeurs incomparables que rien n'empechait de comparer.
+ */
+export function observedWindow(observedAt: OnChainInstant): TimeWindow {
   const anchorMs = observedAt.getTime();
   return {
     anchorMs,
@@ -47,7 +54,7 @@ export function observedWindow(observedAt: Date): TimeWindow {
  * Fenetre temoin : meme largeur, meme token, decalee de
  * `baselineOffsetSeconds` dans le passe.
  */
-export function baselineWindow(observedAt: Date, policy: EnginePolicy): TimeWindow {
+export function baselineWindow(observedAt: OnChainInstant, policy: EnginePolicy): TimeWindow {
   const anchorMs = observedAt.getTime() - policy.baselineOffsetSeconds * 1000;
   return {
     anchorMs,
