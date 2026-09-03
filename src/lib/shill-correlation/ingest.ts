@@ -13,6 +13,11 @@
 import { prisma } from "@/lib/prisma";
 import type { ShillEventDraft, IngestSummary, IngestOptions } from "./types";
 import { classifyTokenIdentity } from "./tokenIdentity";
+import { parseDetectedTokens } from "./parsing";
+
+// Re-export : le parseur vit desormais dans parsing.ts, module PUR. ingest.ts
+// importe prisma ; tout consommateur du parseur l'aurait importe aussi.
+export { parseDetectedTokens };
 
 // Re-export : `classifyTokenIdentity` vit desormais dans tokenIdentity.ts, avec
 // le reste de la resolution. Le re-exporter garde les appelants existants
@@ -56,26 +61,6 @@ export function canonicalizeChain(chain: string | null | undefined): string {
 /** Best-effort chain inference from a token mint/address shape. */
 export function inferChain(mint: string): string {
   return mint.startsWith("0x") ? "ethereum" : "solana";
-}
-
-/**
- * Parse the detectedTokens column. Stored as JSON text but jsonb-coerced to a
- * String by the pooled prod client (see api/cron/watcher-v2/route.ts), so we
- * accept either a JSON string or an already-parsed array, and tolerate either
- * bare-string mints or { mint } / { address } objects.
- */
-export function parseDetectedTokens(raw: unknown): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((t) => (typeof t === "string" ? t : t?.mint ?? t?.address ?? ""))
-      .map((t) => String(t).trim())
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
 }
 
 /** KolPromotionMention row (minimal shape) -> ShillEventDraft, or null if unusable. */
