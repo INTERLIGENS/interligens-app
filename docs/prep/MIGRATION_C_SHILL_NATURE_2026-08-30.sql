@@ -1,5 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- TÂCHE C — nature native de ShillCorrelationCandidate · 2026-08-30
+--          (colonne renommée `nature` → `rowNature` le 2026-09-03)
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- STATUS : NON EXÉCUTÉ. Préparé pour le Neon SQL Editor, projet ep-square-band.
@@ -17,7 +18,7 @@
 --   déclarée telle au registre (src/lib/data-nature/registry.ts, régime
 --   DECLARED), ce qui la couvre DÉJÀ, lignes legacy comprises.
 --
---   Le type de `nature` est l'ENUM "DataNature" déjà en place (vérifié en base
+--   Le type de `rowNature` est l'ENUM "DataNature" déjà en place (vérifié en base
 --   le 2026-08-30), pas TEXT — même type que les 17 colonnes de nature du
 --   produit.
 --
@@ -37,7 +38,7 @@
 --
 --   Contrairement à MIGRATION_PROVENANCE (DEFAULT 'LIVE' sur 7 054 lignes, qui
 --   ÉTAIENT toutes live), aucune valeur ne peut être posée ici sans mentir :
---     • poser nature='INFERENCE' partout serait JUSTE ;
+--     • poser rowNature='INFERENCE' partout serait JUSTE ;
 --     • mais natureBasis et naturePolicyVersion, eux, seraient FAUX — les
 --       1 532 lignes ont été calculées entre le 2026-06-10 et le 2026-08-28
 --       sous des seuils qui ne sont pas ceux d'aujourd'hui, et leur basis
@@ -53,7 +54,7 @@
 
 BEGIN;
 
--- 1. nature — type ENUM "DataNature", NULLABLE, SANS DEFAULT. Écrite ligne par
+-- 1. rowNature — type ENUM "DataNature", NULLABLE, SANS DEFAULT. Écrite ligne par
 --    ligne par l'upsert du moteur, via assertNatureWritable (S6). Voir le
 --    verrou anti-backfill dans src/lib/shill-correlation/v2/persistence.ts.
 --
@@ -67,14 +68,14 @@ BEGIN;
 --    une nature valide. TEXT aurait laissé écrire 'inference', 'INFERENCE ',
 --    ou 'PRIMARY_OBSERVATION' à un script contournant le module TS.
 --
---    ⚠ NOM DE COLONNE : la convention du produit est `rowNature` (7/7 tables).
---    `nature` est un nom NOUVEAU, retenu sur instruction explicite du
---    2026-08-30. Conséquence à connaître, pas un défaut : `natureForRow()`
---    (registry.ts, régime ROW) lit `row.nature` — cette table est en régime
---    DECLARED et ne passe jamais par cette branche, donc le nom n'a ici aucun
---    effet fonctionnel. Il n'en aurait un que si la table changeait de régime.
+--    NOM DE COLONNE : `rowNature`, la convention du produit — 7 tables sur 7 la
+--    portent (EvidenceItem, KolCase, KolTokenInvolvement, KolTokenLink,
+--    KolWallet, TokenPriceTracker, token_casefiles). Cette table devient la 8e.
+--    Décision du 2026-09-03, qui remplace le nom `nature` retenu le 2026-08-30 :
+--    aucune colonne `nature` n'a jamais existé en base, et la migration n'ayant
+--    PAS été exécutée, le renommage ne coûte aucun DDL de rattrapage.
 ALTER TABLE "ShillCorrelationCandidate"
-  ADD COLUMN IF NOT EXISTS "nature" "DataNature";
+  ADD COLUMN IF NOT EXISTS "rowNature" "DataNature";
 
 -- 2. natureBasis — jsonb. L'enveloppe d'inférence de LA ligne :
 --    { natures: string[], occasionIds: string[], observationCount: int,
@@ -105,28 +106,28 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
-    WHERE conname = 'shillcorrcand_nature_declared_chk'
+    WHERE conname = 'shillcorrcand_rownature_declared_chk'
   ) THEN
     ALTER TABLE "ShillCorrelationCandidate"
-      ADD CONSTRAINT "shillcorrcand_nature_declared_chk"
-      CHECK ("nature" IS NULL OR "nature" = 'INFERENCE'::"DataNature");
+      ADD CONSTRAINT "shillcorrcand_rownature_declared_chk"
+      CHECK ("rowNature" IS NULL OR "rowNature" = 'INFERENCE'::"DataNature");
   END IF;
 END $$;
 
 -- C2. Une nature sans sa piste d'audit est exactement ce que ces colonnes
---     existent pour empêcher. Dès que `nature` est renseignée, les deux autres
+--     existent pour empêcher. Dès que `rowNature` est renseignée, les deux autres
 --     le sont aussi — et natureBasis doit être un OBJET non vide, pas `{}`,
 --     pas `null` jsonb, pas un scalaire.
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
-    WHERE conname = 'shillcorrcand_nature_auditable_chk'
+    WHERE conname = 'shillcorrcand_rownature_auditable_chk'
   ) THEN
     ALTER TABLE "ShillCorrelationCandidate"
-      ADD CONSTRAINT "shillcorrcand_nature_auditable_chk"
+      ADD CONSTRAINT "shillcorrcand_rownature_auditable_chk"
       CHECK (
-        "nature" IS NULL
+        "rowNature" IS NULL
         OR (
           "naturePolicyVersion" IS NOT NULL
           AND length("naturePolicyVersion") > 0
@@ -149,34 +150,38 @@ COMMIT;
 -- backfill a eu lieu — c'est le contrôle, pas une formalité.
 --
 --   SELECT count(*)::int AS total,
---          count("nature")::int AS avec_nature,
---          count(*) FILTER (WHERE "nature" IS NULL)::int AS legacy_null,
+--          count("rowNature")::int AS avec_nature,
+--          count(*) FILTER (WHERE "rowNature" IS NULL)::int AS legacy_null,
 --          count(DISTINCT "naturePolicyVersion")::int AS versions
 --   FROM "ShillCorrelationCandidate";
 --
 --   SELECT column_name, data_type, udt_name, is_nullable, column_default
 --   FROM information_schema.columns
 --   WHERE table_name = 'ShillCorrelationCandidate'
---     AND column_name IN ('nature','natureBasis','naturePolicyVersion');
+--     AND column_name IN ('rowNature','natureBasis','naturePolicyVersion');
 --   -- ATTENDU :
---   --   nature              | USER-DEFINED | DataNature | YES | NULL
+--   --   rowNature           | USER-DEFINED | DataNature | YES | NULL
 --   --   natureBasis         | jsonb        | jsonb      | YES | NULL
 --   --   naturePolicyVersion | text         | text       | YES | NULL
 --   -- column_default DOIT être NULL sur les trois. `data_type = 'text'` sur
---   -- `nature` signifierait que le type enum n'a PAS été appliqué.
+--   -- `rowNature` signifierait que le type enum n'a PAS été appliqué.
 --
 --   SELECT conname, pg_get_constraintdef(oid)
 --   FROM pg_constraint
 --   WHERE conrelid = '"ShillCorrelationCandidate"'::regclass
---     AND conname LIKE 'shillcorrcand_nature%';
+--     AND conname LIKE 'shillcorrcand_rownature%';
+--   -- Deux lignes attendues, C1 et C2. Le motif du 2026-08-30 était
+--   -- 'shillcorrcand_nature%' : les deux CHECK ayant suivi la colonne, il ne
+--   -- ramènerait plus rien. Un LIKE qui rend zéro ligne se lit comme « pas de
+--   -- contrainte » — d'où le motif corrigé plutôt que laissé tel quel.
 --
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ROLLBACK (si nécessaire — aucune donnée n'est perdue, rien n'a été écrit)
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 --   ALTER TABLE "ShillCorrelationCandidate"
---     DROP CONSTRAINT IF EXISTS "shillcorrcand_nature_auditable_chk",
---     DROP CONSTRAINT IF EXISTS "shillcorrcand_nature_declared_chk",
+--     DROP CONSTRAINT IF EXISTS "shillcorrcand_rownature_auditable_chk",
+--     DROP CONSTRAINT IF EXISTS "shillcorrcand_rownature_declared_chk",
 --     DROP COLUMN IF EXISTS "naturePolicyVersion",
 --     DROP COLUMN IF EXISTS "natureBasis",
---     DROP COLUMN IF EXISTS "nature";
+--     DROP COLUMN IF EXISTS "rowNature";

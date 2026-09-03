@@ -12,9 +12,9 @@
 +  // Type ENUM DataNature (PAS String) — le type des 17 colonnes de nature du
 +  // produit. L'enum fait refuser une valeur hors domaine par la BASE (22P02),
 +  // là où String l'aurait stockée puis relue comme une nature valide.
-+  // NB nom : la convention est `rowNature` (7/7 tables) ; `nature` est retenu
-+  // sur instruction du 2026-08-30. Sans effet ici — régime DECLARED, la table
-+  // ne passe jamais par la branche ROW de natureForRow().
++  // Nom : `rowNature`, la convention du produit (7 tables sur 7). Renommé
++  // depuis `nature` le 2026-09-03 — la migration n'ayant pas été exécutée,
++  // aucune colonne `nature` n'existe en base et le renommage ne coûte rien.
 +  //   natureBasis         jsonb — { natures, occasionIds, observationCount,
 +  //                       baselineBuyCount } : de quoi CETTE ligne est tirée,
 +  //                       volume témoin compté à part du volume observé.
@@ -24,7 +24,7 @@
 +  // 2026-08-30) restent NULL jusqu'à leur propre recalcul. Un DEFAULT écrirait
 +  // une version de politique fausse sur des lignes calculées sous d'autres
 +  // seuils — d'où l'absence délibérée de @default.
-+  nature               DataNature?
++  rowNature            DataNature?
 +  natureBasis          Json?
 +  naturePolicyVersion  String?
    firstSeenAt          DateTime

@@ -88,7 +88,7 @@ export const NATURE_REGISTRY: Record<string, TableNatureDecl> = {
       "par un humain (ce qui en ferait, ELLE, une EDITORIAL_ASSERTION portée ailleurs). " +
       "POURQUOI DES COLONNES MALGRÉ « DECLARED = aucun DDL » : la nature elle-même n'a pas " +
       "besoin de colonne — le registre la donne, pour les 1 532 lignes legacy comprises. Les " +
-      "trois colonnes additives (nature / natureBasis / naturePolicyVersion) ne sont PAS la " +
+      "trois colonnes additives (rowNature / natureBasis / naturePolicyVersion) ne sont PAS la " +
       "source de vérité de la nature : elles sont la PISTE D'AUDIT de l'écriture. natureBasis " +
       "dit de quelles natures d'entrée CETTE ligne est tirée (le résolveur V3 ajoute une " +
       "INFERENCE quand il a tranché, pas sinon) et naturePolicyVersion dit sous quels seuils " +

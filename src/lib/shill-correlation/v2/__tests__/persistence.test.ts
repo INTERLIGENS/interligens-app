@@ -51,7 +51,7 @@ describe("C - registre", () => {
 
   it("la nature déclarée vaut AUSSI pour les lignes legacy sans colonne", () => {
     // Le point de doctrine : la colonne est la piste d'audit, pas la source.
-    // Une ligne à nature NULL n'est pas UNCLASSIFIED — le registre la couvre.
+    // Une ligne à rowNature NULL n'est pas UNCLASSIFIED — le registre la couvre.
     expect(natureForTable(CANDIDATE_TABLE)).not.toBe("UNCLASSIFIED");
   });
 });
@@ -67,7 +67,7 @@ describe("C - le contrat enum TS ↔ Postgres", () => {
 
   it("INFERENCE, la seule nature que cette table peut porter, est un label valide", () => {
     expect(PG_DATA_NATURE_LABELS).toContain("INFERENCE");
-    expect(buildCandidateNatureWrite(candidate()).nature).toBe("INFERENCE");
+    expect(buildCandidateNatureWrite(candidate()).rowNature).toBe("INFERENCE");
   });
 
   it("une valeur inventée est arrêtée par S0, AVANT même le contrôle enum", () => {
@@ -95,13 +95,26 @@ describe("C - le contrat enum TS ↔ Postgres", () => {
 });
 
 describe("C - le fragment d'écriture", () => {
-  it("porte la nature, le basis et la version de politique", () => {
+  it("porte la nature (colonne rowNature), le basis et la version de politique", () => {
     const w = buildCandidateNatureWrite(candidate());
-    expect(w.nature).toBe("INFERENCE");
+    expect(w.rowNature).toBe("INFERENCE");
     expect(w.natureBasis.natures).toContain("PRIMARY_OBSERVATION");
     expect(w.natureBasis.occasionIds.length).toBeGreaterThan(0);
     expect(w.natureBasis.observationCount).toBeGreaterThan(0);
     expect(w.naturePolicyVersion).toBe(ENGINE_POLICY_VERSION);
+  });
+
+  it("la colonne de nature s'appelle `rowNature` - la convention du produit", () => {
+    // 7 tables sur 7 portent `rowNature` (EvidenceItem, KolCase,
+    // KolTokenInvolvement, KolTokenLink, KolWallet, TokenPriceTracker,
+    // token_casefiles). Aucune ne porte `nature`. Ce test verrouille le nom :
+    // le fragment est fusionné tel quel dans l'upsert, une clé `nature` y
+    // produirait un `Unknown argument` Prisma au premier run réel.
+    const w = buildCandidateNatureWrite(candidate());
+    expect(Object.keys(w).sort()).toEqual(
+      ["natureBasis", "naturePolicyVersion", "rowNature"],
+    );
+    expect(w).not.toHaveProperty("nature");
   });
 
   it("est sérialisable en jsonb sans perte", () => {
@@ -109,8 +122,8 @@ describe("C - le fragment d'écriture", () => {
     expect(JSON.parse(JSON.stringify(w.natureBasis))).toEqual(w.natureBasis);
   });
 
-  it("accepte une ligne legacy (nature NULL) - c'est le cas des 1 532", () => {
-    expect(() => buildCandidateNatureWrite(candidate(), { id: "legacy", nature: null })).not.toThrow();
+  it("accepte une ligne legacy (rowNature NULL) - c'est le cas des 1 532", () => {
+    expect(() => buildCandidateNatureWrite(candidate(), { id: "legacy", rowNature: null })).not.toThrow();
   });
 
   it("I1 - une ligne déjà INFERENCE ne peut pas être promue PRIMARY_OBSERVATION", () => {
@@ -119,7 +132,7 @@ describe("C - le fragment d'écriture", () => {
     // primaire remonte l'échelle d'autorité — I1 le refuse.
     const c = candidate();
     const promu = { ...c, _nature: { ...c._nature, nature: "PRIMARY_OBSERVATION" as never } };
-    expect(() => buildCandidateNatureWrite(promu, { id: "x", nature: "INFERENCE" })).toThrow(
+    expect(() => buildCandidateNatureWrite(promu, { id: "x", rowNature: "INFERENCE" })).toThrow(
       NatureTransitionError,
     );
   });
@@ -129,7 +142,7 @@ describe("C - le fragment d'écriture", () => {
     // C'est alors le contrôle de cohérence avec le registre qui tient la table
     // mono-nature — sans lui, S6 seul laisserait passer.
     expect(() =>
-      buildCandidateNatureWrite(candidate(), { id: "x", nature: "PRIMARY_OBSERVATION" }),
+      buildCandidateNatureWrite(candidate(), { id: "x", rowNature: "PRIMARY_OBSERVATION" }),
     ).not.toThrow();
     const c = candidate();
     const degrade = { ...c, _nature: { ...c._nature, nature: "ESTIMATE" as never } };
@@ -137,7 +150,7 @@ describe("C - le fragment d'écriture", () => {
   });
 
   it("réécrire INFERENCE sur INFERENCE est permis (recalcul idempotent)", () => {
-    expect(() => buildCandidateNatureWrite(candidate(), { id: "x", nature: "INFERENCE" })).not.toThrow();
+    expect(() => buildCandidateNatureWrite(candidate(), { id: "x", rowNature: "INFERENCE" })).not.toThrow();
   });
 
   it("une enveloppe sans nature est refusée par S6, pas corrigée", () => {
