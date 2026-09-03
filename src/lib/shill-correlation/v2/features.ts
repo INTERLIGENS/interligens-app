@@ -208,25 +208,34 @@ export function computeLift(
   //    l'observation se compare a lui-meme.
   if (!baselineIsDisjoint(input.policy)) return no("BASELINE_WINDOW_OVERLAPS_OBSERVED");
 
-  // 1. Y a-t-il seulement un temoin ? (denominateur du TAUX temoin)
+  // 1. UNE COLLECTE REFUSEE N'EST PAS UNE COLLECTE ABSENTE.
+  //    D/M1 : l'ordre compte ici plus qu'ailleurs. Un temoin borne par le
+  //    budget d'appels a ete DEMANDE et REFUSE ; le rapporter
+  //    `BASELINE_NOT_COLLECTED` dirait « personne n'a demande » et enverrait
+  //    chercher un collecteur manquant au lieu d'un budget trop bas.
+  //    La troncature prime donc sur l'absence, y compris quand le budget a
+  //    refuse AVANT la premiere page et qu'aucune occasion n'est mesuree.
+  if (input.baselineFloor.tally.truncatedBy.length > 0) return no("BASELINE_CENSORED");
+
+  // 2. Y a-t-il seulement un temoin ? (denominateur du TAUX temoin)
   if (input.baselineFloor.tally.occasions === 0) return no("BASELINE_NOT_COLLECTED");
 
-  // 2. SHILL-C1 - un temoin borne par un budget est un plancher, pas un total.
+  // 3. SHILL-C1 - un temoin borne par un budget est un plancher, pas un total.
   //    `indeterminate` vient de compareToThreshold : meme grammaire, meme mot.
   if (input.baselineFloor.verdict === "indeterminate") return no("BASELINE_CENSORED");
   if (input.baselineFloor.verdict === "below") return no("BASELINE_BELOW_FLOOR");
 
-  // 3. Plancher de l'OBSERVATION - variable distincte, verdict distinct.
+  // 4. Plancher de l'OBSERVATION - variable distincte, verdict distinct.
   if (input.observedFloor.verdict === "indeterminate") return no("OBSERVED_CENSORED");
   if (input.observedFloor.verdict === "below") return no("OBSERVED_BELOW_FLOOR");
 
-  // 4. ZERO EPSILON. Le temoin est mesure et suffisant, mais ce wallet n'y
+  // 5. ZERO EPSILON. Le temoin est mesure et suffisant, mais ce wallet n'y
   //    apparait pas : le denominateur du RATIO est nul. Une division par zero
   //    ne rend pas « tres grand », elle ne rend rien. Le fait est rapporte
   //    ailleurs (absentFromMeasuredBaseline) sans devenir un nombre.
   if (input.baselineOccurrences === 0) return no("BASELINE_ZERO_OCCURRENCES");
 
-  // 5. Les deux taux doivent exister.
+  // 6. Les deux taux doivent exister.
   if (!isMeasured(input.observedRate)) return no("OBSERVED_RATE_UNMEASURED");
   if (!isMeasured(input.baselineRate) || input.baselineRate.value === 0) {
     // Defense en profondeur : baselineOccurrences > 0 implique un taux > 0.
