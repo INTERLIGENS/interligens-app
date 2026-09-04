@@ -158,44 +158,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
     )
 fi
 
-# Exceptions pour B4 phase 2 : les 3 colonnes Data Nature de ShillEvent.
-#
-# La DDL est DEJA PASSEE dans le Neon SQL Editor (verifiee en lecture seule le
-# 2026-09-04) :
-#   rowNature            USER-DEFINED / "DataNature", nullable, aucun default
-#   natureBasis          jsonb,  nullable
-#   naturePolicyVersion  text,   nullable
-#   shillevent_rownature_declared_chk   NOT VALID
-#   shillevent_rownature_auditable_chk  NOT VALID
-#   221 lignes, 221 rowNature NULL : AUCUNE reecriture
-# Ce chantier ne fait que refleter cette realite dans le schema. AUCUNE
-# migration declenchee - verrou A9, jamais db push.
-#
-# MOTIF : un ShillEvent AFFIRME « ce post est une promotion exploitable de ce
-# token ». C'est une INFERENCE (B4.3, registre Data Nature). Les colonnes
-# portent sa PISTE D'AUDIT : de quoi elle est tiree, sous quelle version de
-# regle. Sans elles, l'affirmation existe sans que rien ne dise ce qui la
-# fonde.
-#
-# LES DEUX CHECK SONT `NOT VALID`, ET C'EST VOULU : ils s'appliquent aux
-# ECRITURES A VENIR sans exiger un scan des 221 lignes existantes. Prisma ne
-# modelise pas les CHECK - ils restent DB-only, c'est normal et non une
-# omission. Le VALIDATE est la phase 4.
-#
-# ORDRE RESPECTE : les colonnes existent en base AVANT que le schema ne les
-# declare. L'inverse aurait fait echouer toute lecture de ShillEvent - Prisma
-# selectionne tous les champs scalaires d'un modele.
-#
-# Autorisation humaine explicite (2026-09-04) - voir PR description.
-# Exemption limitee au SEUL fichier nomme ; ne couvre ni prisma/schema.prisma,
-# ni prisma/migrations/, ni le reste de ^prisma/. Elle se referme
-# byte-identique apres merge.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shillevent-datanature$ ]]; then
-    EXEMPT_SHILLEVENT_DATANATURE_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
 # Exceptions pour la watchlist expansion (ajout de KOL reviewés au watcher).
 # Autorisation humaine explicite (David, WAVES 1-3 approuvées) — voir PR description.
 # Exemption ciblée UNIQUEMENT sur handles.ts (la source de vérité du watcher) ;
@@ -620,20 +582,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche shillevent-datanature, exempter le seul schema.prod.prisma.
-    # La declaration seule ne sert a RIEN sans cette boucle : le guard ne lit
-    # que les tableaux qu'une boucle consomme. Les deux vont ensemble.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shillevent-datanature$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SHILLEVENT_DATANATURE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
