@@ -1,7 +1,7 @@
 {
- "measuredAt": "2026-08-27",
+ "measuredAt": "2026-09-04",
  "source": "ep-square-band, information_schema, lecture seule",
- "count": 178,
+ "count": 180,
  "tables": [
   "AddressLabel",
   "AuditLog",
@@ -32,6 +32,8 @@
   "FounderIntelIngestRun",
   "FounderIntelItem",
   "FounderIntelSource",
+  "FundingEdge",
+  "FundingRelationshipObservation",
   "GraphCase",
   "GraphEdge",
   "GraphNode",
