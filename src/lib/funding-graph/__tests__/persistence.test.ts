@@ -2,6 +2,8 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  EDGE_PROOF_FLOOR_MEANING,
+  buildEdgeProofCoverage,
   FUNDING_EDGE_TABLE,
   FUNDING_RELATIONSHIP_TABLE,
   buildFundingEdgeRow,
@@ -277,5 +279,93 @@ describe("F2.2 - la nature passe par S6, ou elle ne s'écrit pas", () => {
     const dry = await persistFundingGraph(input);
     const real = await persistFundingGraph({ ...input, dryRun: false, store: m.store });
     expect(real.plan).toEqual(dry.plan);
+  });
+});
+
+// --- G2 — LA COUVERTURE DE PREUVE D'ARÊTE ----------------------------------
+
+describe("G2 - edgeProofCoverage est distincte de coverageIsFloor", () => {
+  it("FLOOR signifie persistable < observé, et le DIT dans la ligne", () => {
+    const c = buildEdgeProofCoverage(46, 12);
+    expect(c).toEqual({
+      observedEdgeCount: 46,
+      persistablePrimaryObservationCount: 12,
+      completeness: "FLOOR",
+      reason: "PRIMARY_SIGNATURE_UNAVAILABLE",
+      meaning: EDGE_PROOF_FLOOR_MEANING,
+    });
+    // ██ FLOOR n'affirme RIEN sur la réalité. ██
+    expect(c.meaning).toContain("does NOT assert a lower bound on reality");
+  });
+
+  it("COMPLETE quand tout l'observé est persistable, et pas de motif", () => {
+    const c = buildEdgeProofCoverage(12, 12);
+    expect(c.completeness).toBe("COMPLETE");
+    expect(c.reason).toBeNull();
+  });
+
+  it("persister plus qu'observé est REFUSÉ", () => {
+    expect(() => buildEdgeProofCoverage(12, 46)).toThrow(/plus d'arêtes qu'on n'en a observées/);
+  });
+
+  // ═══ MUTATION — LES DEUX COUVERTURES CONFONDUES ════════════════════════
+  it("MUTATION : l'annotation ne touche PAS coverageIsFloor", () => {
+    const q = qualified(); // coverage.complete=false → coverageIsFloor=true
+    const sansAnnot = buildFundingRelationshipRow(q, CTX);
+    const avecAnnot = buildFundingRelationshipRow(q, CTX, buildEdgeProofCoverage(46, 12));
+    // coverageIsFloor est INCHANGÉ : il parle des SUJETS, pas des arêtes.
+    expect(sansAnnot.coverageIsFloor).toBe(true);
+    expect(avecAnnot.coverageIsFloor).toBe(sansAnnot.coverageIsFloor);
+
+    // Et le contraire : sujets couverts, arêtes incomplètes → deux valeurs
+    // DIFFÉRENTES sur la même ligne. C'est ce qu'un drapeau unique ne pourrait
+    // pas exprimer.
+    const complet = qualifyFundingRelationship({
+      funder: FUNDER, subjectsReached: [S1, S2],
+      edges: [edge(S1, BIG, "sigA"), edge(S2, BIG, "sigB")],
+      coverage: { complete: true },
+    });
+    const row = buildFundingRelationshipRow(complet, CTX, buildEdgeProofCoverage(46, 12));
+    expect(row.coverageIsFloor).toBe(false);
+    const po = row.natureBasis.inputs.primaryObservations.find((p) => p.kind === "funding_edge")!;
+    expect((po.refs as Record<string, unknown>).edgeProofCoverage).toMatchObject({
+      completeness: "FLOOR",
+    });
+  });
+
+  it("l'annotation vit dans le basis, structurée, et n'écrase rien", () => {
+    const q = qualified();
+    const row = buildFundingRelationshipRow(q, CTX, buildEdgeProofCoverage(46, 12));
+    const po = row.natureBasis.inputs.primaryObservations.find((p) => p.kind === "funding_edge")!;
+    const refs = po.refs as Record<string, unknown>;
+    // Ce que la règle avait mis est toujours là.
+    expect(refs.funder).toBe(FUNDER);
+    expect(Array.isArray(refs.txSignatures)).toBe(true);
+    // …et l'annotation s'y ajoute, en objet, pas en chaîne à interpréter.
+    const c = refs.edgeProofCoverage as Record<string, unknown>;
+    expect(typeof c).toBe("object");
+    expect(c.observedEdgeCount).toBe(46);
+    expect(c.persistablePrimaryObservationCount).toBe(12);
+    expect(c.completeness).toBe("FLOOR");
+    expect(c.reason).toBe("PRIMARY_SIGNATURE_UNAVAILABLE");
+    // Le CHECK auditable reste satisfait.
+    expect(satisfiesFundingRelationshipChecks(row)).toEqual({ declared: true, auditable: true });
+  });
+
+  it("sans annotation, le basis reste exactement celui du qualifieur", () => {
+    const q = qualified();
+    expect(buildFundingRelationshipRow(q, CTX).natureBasis).toEqual(q.natureBasis.basis);
+  });
+
+  it("persistFundingGraph propage l'annotation à toutes les qualifications", async () => {
+    const r = await persistFundingGraph({
+      contextRef: CTX, edges: [edge(S1, BIG, "sigA")],
+      qualifications: [qualified()],
+      edgeProofCoverage: buildEdgeProofCoverage(46, 12),
+    });
+    for (const row of r.plan.relationships) {
+      const po = row.natureBasis.inputs.primaryObservations.find((p) => p.kind === "funding_edge")!;
+      expect((po.refs as Record<string, unknown>).edgeProofCoverage).toBeDefined();
+    }
   });
 });

@@ -38,6 +38,11 @@ export {
   type QualifyFundingRelationshipInput,
 } from "./qualify";
 export {
+  EDGE_PROOF_FLOOR_MEANING,
+  buildEdgeProofCoverage,
+  type EdgeProofCompleteness,
+  type EdgeProofCoverage,
+  type EdgeProofIncompletenessReason,
   FUNDING_EDGE_TABLE,
   FUNDING_RELATIONSHIP_TABLE,
   FundingNatureRegistryMismatchError,
