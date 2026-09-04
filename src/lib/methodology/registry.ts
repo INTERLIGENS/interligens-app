@@ -15,6 +15,7 @@
 
 import {
   FINANCIAL_ESTIMATES_V1,
+  FUNDING_RELATIONSHIP_V1,
   SOCIAL_PROMOTION_V1,
   type MethodologyArtifact,
 } from "./artifact";
@@ -23,6 +24,7 @@ import { parseMethodRef } from "@/lib/data-nature/methodRef";
 export const METHODOLOGIES: readonly MethodologyArtifact[] = [
   FINANCIAL_ESTIMATES_V1,
   SOCIAL_PROMOTION_V1,
+  FUNDING_RELATIONSHIP_V1,
 ];
 
 export interface ResolvedMethodRef {
