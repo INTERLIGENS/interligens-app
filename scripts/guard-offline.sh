@@ -158,33 +158,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
     )
 fi
 
-# Exceptions pour B7 : les DEUX routes cron du pipeline SHILL + vercel.json.
-#
-# EXPLOITATION DECOUPLEE, et c'est le point de la separation :
-#   /api/cron/shill-feed    hourly, HELIUS-FREE, ecrit des ShillEvent depuis
-#                           social_post_candidates via le bridge canonique ;
-#   /api/cron/shill-shadow  daily, Helius BORNE, lit ces evenements et ecrit
-#                           dans un sink - jamais dans les tables d'analyse.
-# Les coupler aurait fait dependre l'ingestion sociale d'un budget on-chain :
-# une panne Helius aurait tari le feed, et un feed vide aurait ete lu comme
-# « aucune promotion ». Deux crons, deux cadences, deux modes de panne.
-#
-# `vercel.json` est GELE (^vercel\.json$) et doit etre couvert : c'est la
-# qu'une cadence est declaree. Precedent identique : l'exemption watcher-v2.
-#
-# CE QUE L'EXEMPTION NE COUVRE PAS : aucune autre route de ^src/app/api/,
-# aucun composant, aucun schema. Deux chemins nommes et un fichier nomme.
-#
-# Autorisation humaine explicite (2026-09-04) - voir PR description.
-# Elle se referme byte-identique apres merge.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-cron$ ]]; then
-    EXEMPT_SHILL_CRON_PATTERNS=(
-        "^src/app/api/cron/shill-feed/"
-        "^src/app/api/cron/shill-shadow/"
-        "^vercel\.json$"
-    )
-fi
-
 # Exceptions pour la watchlist expansion (ajout de KOL reviewés au watcher).
 # Autorisation humaine explicite (David, WAVES 1-3 approuvées) — voir PR description.
 # Exemption ciblée UNIQUEMENT sur handles.ts (la source de vérité du watcher) ;
@@ -609,20 +582,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche shill-cron, exempter les 2 routes + vercel.json.
-    # La declaration seule ne sert a RIEN sans cette boucle : le guard ne lit
-    # que les tableaux qu'une boucle consomme. Les deux vont ensemble.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-cron$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SHILL_CRON_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
