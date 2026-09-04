@@ -37,3 +37,21 @@ export {
   type QualifiedFundingRelationship,
   type QualifyFundingRelationshipInput,
 } from "./qualify";
+export {
+  FUNDING_EDGE_TABLE,
+  FUNDING_RELATIONSHIP_TABLE,
+  FundingNatureRegistryMismatchError,
+  buildFundingEdgeRow,
+  buildFundingRelationshipRow,
+  persistFundingGraph,
+  satisfiesFundingEdgeChecks,
+  satisfiesFundingRelationshipChecks,
+  type FundingEdgeRow,
+  type FundingGraphStore,
+  type FundingRelationshipRow,
+  type KeyConflict,
+  type PersistFundingGraphInput,
+  type PersistReport,
+  type StoredEdge,
+  type StoredRelationship,
+} from "./persistence";
