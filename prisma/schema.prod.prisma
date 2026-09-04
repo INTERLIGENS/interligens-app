@@ -4085,6 +4085,34 @@ model ShillEvent {
   // PHASE 2 follow-up (Blocker C): tweetTimestamp provenance.
   // source | x_api | date_only
   timestampSource       String   @default("source")
+  // ── B4 — Data Nature. ADDITIF, NULLABLE, SANS DEFAULT. ───────────────────
+  // Colonnes posées à la main dans le Neon SQL Editor le 2026-09-04 (verrou A9 :
+  // jamais db push, jamais prisma migrate). Cette déclaration ne fait que
+  // refléter la base.
+  //
+  // Un ShillEvent AFFIRME « ce post est une promotion exploitable de ce token ».
+  // C'est une INFERENCE — déclarée au registre (src/lib/data-nature/registry.ts,
+  // régime DECLARED, B4.3). Ces colonnes n'apportent PAS la nature : elles
+  // apportent sa PISTE D'AUDIT, ligne par ligne.
+  //   natureBasis         jsonb — l'enveloppe canonique (inference-envelope@v2) :
+  //                       inputs.primaryObservations / .methodology / .resolution,
+  //                       et inputNatures qui ne contient QUE des natures de
+  //                       SOURCES — l'inférence n'est jamais sa propre preuve.
+  //   naturePolicyVersion — sous quelle version de règle la ligne a été produite.
+  //
+  // Deux CHECK en base, DB-only (Prisma ne les modélise pas — normal, pas une
+  // omission) : shillevent_rownature_declared_chk (mono-nature INFERENCE) et
+  // shillevent_rownature_auditable_chk (pas de nature sans piste d'audit). Ils
+  // sont NOT VALID : ils gardent les écritures à venir sans exiger un scan des
+  // 221 lignes existantes. Le VALIDATE est une étape distincte.
+  //
+  // AUCUN BACKFILL : écrites uniquement sur les lignes que le bridge produit.
+  // Les 221 lignes mesurées le 2026-09-04 restent NULL — NULL veut dire
+  // « produite avant que la nature ne soit tracée », pas « sans nature » : le
+  // registre couvre la table, colonne ou pas.
+  rowNature             DataNature?
+  natureBasis           Json?
+  naturePolicyVersion   String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
