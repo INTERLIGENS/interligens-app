@@ -25,6 +25,7 @@ import {
   RATIFIED,
   SHADOW_RATIFIED,
   SHILL_M1_DOCTRINE,
+  TEMPORARILY_UNVALIDATED,
   type EnginePolicy,
 } from "../policy";
 import { baselineWindow } from "../windows";
@@ -372,29 +373,29 @@ describe("SHILL-M1 §2 - integralite dans les bornes autorisees", () => {
     expect(r.baselineTruncatedBy).toBe(PAGE_TRUNCATION_REASON);
   });
 
-  it("86 400 est REVOQUE, 7 200 est SHADOW_RATIFIED, et la trace le montre", () => {
-    // Une ratification fondee sur une mesure demontree fausse doit etre
-    // REVOQUEE explicitement. La garder au motif qu'elle a ete prise
-    // reviendrait a traiter la procedure comme une preuve.
+  it("86 400 REVOQUE, 7 200 TEMPORAIREMENT NON VALIDE — la trace le montre", () => {
+    // T3, 2026-09-04 : 7 200 etait SHADOW_RATIFIED sur une mesure faite avec
+    // des ancres decalees de 2 h. La valeur ne change pas, son STATUT si.
     const revoque = RATIFIED.find(
       (x) => x.key === "baselineOffsetSeconds" && "status" in x && x.status === "REVOKED",
     );
-    expect(revoque, "86 400 doit rester visible, marque REVOKED").toBeDefined();
     expect(revoque!.value).toBe(86_400);
-    expect((revoque as { revokedWhy: string }).revokedWhy).toContain("7 200 s");
 
-    const shadow = SHADOW_RATIFIED.find((x) => x.key === "baselineOffsetSeconds");
-    expect(shadow!.value).toBe(7_200);
-    expect(shadow!.by).toBe("architecte");
-    expect(shadow!.finalDoctrine).toBe(false);
-    expect(shadow!.limitation).toContain("preparatory accumulation");
+    // Plus aucune valeur de shadow ratifiee : la liste existe et est vide.
+    expect(SHADOW_RATIFIED).toHaveLength(0);
 
-    // La valeur du shadow est CELLE qui tourne.
+    const attente = TEMPORARILY_UNVALIDATED.find((x) => x.key === "baselineOffsetSeconds");
+    expect(attente, "7 200 doit etre trace comme a reconfirmer").toBeDefined();
+    expect(attente!.value).toBe(7_200);
+    expect(attente!.requiresRevalidation).toBe(true);
+    expect(attente!.finalDoctrine).toBe(false);
+    // Ni REVOKED (rien ne dit qu'elle est fausse), ni ratifiee.
+    expect(attente!.why).toContain("ancres decalees");
+    expect(attente!.supersedes.status).toBe("SHADOW_RATIFIED");
+
+    // La valeur qui TOURNE reste celle-la — on ne remet pas 86 400.
     expect(P.baselineOffsetSeconds).toBe(7_200);
-    // Et elle reste disjointe de la fenetre d'observation (1 500 s).
     expect(P.baselineOffsetSeconds).toBeGreaterThan(1_500);
-
-    // maxPages conserve : le probleme n'a jamais ete la pagination.
     expect(P.baselineMaxPagesPerOccasion).toBe(300);
     expect(RATIFIED.find((x) => x.key === "baselineMaxPagesPerOccasion")!.value).toBe(300);
   });

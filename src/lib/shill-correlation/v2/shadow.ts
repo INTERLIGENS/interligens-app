@@ -54,7 +54,8 @@ import {
 } from "./baseline";
 import { buildCandidateNatureWrite } from "./persistence";
 import { runEngine, type EngineResult } from "./engine";
-import { onChainAnchorFromCorpus, type OnChainInstant } from "./anchor";
+import { onChainAnchorFromUtc, type OnChainInstant } from "./anchor";
+import { resolvePostAnchor } from "../timeAnchor";
 import { baselineWindow, observedWindow, zoneForDelta } from "./windows";
 import { DEFAULT_ENGINE_POLICY, type EnginePolicy } from "./policy";
 import type { ObservedState, OccasionRecord } from "./types";
@@ -116,6 +117,8 @@ export type MintWalker = (args: {
 export interface ShadowEventInput {
   id: string;
   kolHandle: string;
+  /** ID du post — porte l'ancre canonique via son snowflake. */
+  tweetId?: string | null;
   /** Adresse base58 résolue, ou null. */
   tokenMint: string | null;
   /** Timestamp du CORPUS — converti en ancre on-chain par le runner. */
@@ -196,7 +199,22 @@ export async function runShadow(
     // L'occasion est ancrée sur son PREMIER tweet (invariant v2).
     group.sort((a, b) => a.tweetTimestamp.getTime() - b.tweetTimestamp.getTime());
     const head = group[0];
-    const anchor: OnChainInstant = onChainAnchorFromCorpus(head.tweetTimestamp);
+    // T3 — L'ANCRE VIENT DU SNOWFLAKE, plus d'une compensation de fuseau.
+    // L'ID du post encode son instant de publication : il ne dépend d'aucun
+    // fuseau, d'aucun driver, d'aucune convention de stockage. Le timestamp
+    // source ne sert que lorsqu'aucun snowflake n'est exploitable.
+    const resolved = resolvePostAnchor({
+      tweetId: head.tweetId,
+      sourceTimestamp: head.tweetTimestamp,
+    });
+    if (!resolved) {
+      sink.write({
+        kind: "occasion", occasionId, kolHandle: head.kolHandle, mint: head.tokenMint,
+        foldedEvents: group.map((g) => g.id), skipped: "aucune ancre temporelle",
+      });
+      continue;
+    }
+    const anchor: OnChainInstant = onChainAnchorFromUtc(resolved.at);
     const ow = observedWindow(anchor);
     const bw = baselineWindow(anchor, policy);
     const downTo = Math.floor(bw.startMs / 1000);
@@ -287,6 +305,8 @@ export async function runShadow(
       foldedEvents: group.map((g) => g.id),
       foldedCount: group.length,
       anchorOnChain: anchor.toISOString(),
+      anchorProvenance: resolved.provenance,
+      anchorDriftSeconds: resolved.driftSeconds,
       pagesWalked: walk.pages.length,
       walkTruncated: walk.truncated,
       historyExhausted: walk.historyExhausted,

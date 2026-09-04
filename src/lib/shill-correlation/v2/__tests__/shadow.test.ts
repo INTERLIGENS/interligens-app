@@ -19,7 +19,7 @@ import {
 import { BUDGET_TRUNCATION_REASON, type BaselineTx } from "../baseline";
 import { DEFAULT_ENGINE_POLICY as P } from "../policy";
 import { OBSERVED_ANALYZABLE_STATES } from "../types";
-import { onChainAnchorFromCorpus } from "../anchor";
+import { onChainAnchorFromUtc } from "../anchor";
 import { baselineWindow, observedWindow } from "../windows";
 
 const MINT = "MintAAA";
@@ -27,11 +27,13 @@ const KOL = "empire_sol1";
 /** Timestamp CORPUS — le runner le convertit lui-même en ancre on-chain. */
 const TWEET = new Date("2026-06-03T18:57:31.000Z");
 
-const anchorSec = () => Math.floor(onChainAnchorFromCorpus(TWEET).getTime() / 1000);
+const anchorSec = () => Math.floor(onChainAnchorFromUtc(TWEET).getTime() / 1000);
 
 const ev = (id: string, offsetSeconds = 0): ShadowEventInput => ({
   id,
   kolHandle: KOL,
+  tweetId: null, // pas de snowflake : l'ancre retombe sur le timestamp source
+
   tokenMint: MINT,
   tweetTimestamp: new Date(TWEET.getTime() + offsetSeconds * 1000),
 });
@@ -157,7 +159,7 @@ describe("(b) doublons repliés par buildOccasions - le chemin canonique", () =>
       aggregate: noAggregate,
     });
     const occ = occasionsOf(sink)[0];
-    expect(occ.anchorOnChain).toBe(onChainAnchorFromCorpus(TWEET).toISOString());
+    expect(occ.anchorOnChain).toBe(onChainAnchorFromUtc(TWEET).toISOString());
   });
 
   it("deux mints DIFFÉRENTS restent deux occasions - le repliement ne sur-replie pas", async () => {
@@ -222,7 +224,7 @@ describe("(c) une fenêtre non atteinte n'est jamais étiquetée vide", () => {
   it("une fenêtre atteinte AVEC acheteurs est `fetched_with_buyers`", async () => {
     const sink = createMemorySink();
     const a = anchorSec();
-    const ow = observedWindow(onChainAnchorFromCorpus(TWEET));
+    const ow = observedWindow(onChainAnchorFromUtc(TWEET));
     const dedans = Math.floor(ow.startMs / 1000) + 60;
     const r = await runShadow([ev("e1")], {
       sink,
@@ -239,7 +241,7 @@ describe("(c) une fenêtre non atteinte n'est jamais étiquetée vide", () => {
 describe("pas de faux M1 : aucun ratio d'événement présenté comme lift", () => {
   it("le sink n'émet AUCUN lift au niveau occasion", async () => {
     const sink = createMemorySink();
-    const bw = baselineWindow(onChainAnchorFromCorpus(TWEET), P);
+    const bw = baselineWindow(onChainAnchorFromUtc(TWEET), P);
     const dansTemoin = Math.floor(bw.startMs / 1000) + 60;
     await runShadow([ev("e1")], {
       sink,
@@ -254,7 +256,7 @@ describe("pas de faux M1 : aucun ratio d'événement présenté comme lift", () 
 
   it("le lift n'existe QUE sur un enregistrement (KOL, wallet)", async () => {
     const sink = createMemorySink();
-    const ow = observedWindow(onChainAnchorFromCorpus(TWEET));
+    const ow = observedWindow(onChainAnchorFromUtc(TWEET));
     const dedans = Math.floor(ow.startMs / 1000) + 60;
     await runShadow([ev("e1")], {
       sink,

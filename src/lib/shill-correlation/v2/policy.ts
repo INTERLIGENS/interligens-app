@@ -263,30 +263,49 @@ export const RATIFIED = [
  *
  * Les confondre ferait passer un reglage d'experience pour une conclusion.
  */
-export const SHADOW_RATIFIED = [
+/**
+ * ── VALEURS EN ATTENTE DE RECONFIRMATION ──────────────────────────────────
+ *
+ * T3, 2026-09-04. `baselineOffsetSeconds = 7 200` avait été SHADOW_RATIFIED le
+ * 2026-09-03 sur une base empirique : « à −24 h le témoin est vide sur 3/3
+ * tokens épuisés, à −2 h il est mesurable sur 2-3/4 ».
+ *
+ * Cette mesure a été faite avec des ANCRES FAUSSES. Les sondes lisaient la base
+ * avec le driver `pg`, qui décale de l'offset local une colonne
+ * `timestamp without time zone` ; les fenêtres étaient donc décalées de 2 h, et
+ * le verdict « vide / mesurable » portait sur les mauvais instants.
+ *
+ * LA VALEUR NE CHANGE PAS — on ne remet pas 86 400, dont le fondement était
+ * contaminé de la même façon. Ce qui change est son STATUT : elle n'est plus
+ * ratifiée, elle est à RECONFIRMER sur ancres snowflake-vraies.
+ *
+ * Ni REVOKED (rien ne dit qu'elle est fausse), ni PROD_RATIFIED (rien ne dit
+ * encore qu'elle est juste). L'état intermédiaire est le seul honnête, et le
+ * nommer évite qu'une valeur non validée se lise comme validée.
+ */
+export const TEMPORARILY_UNVALIDATED = [
   {
     key: "baselineOffsetSeconds",
     value: 7_200,
-    on: "2026-09-03",
+    on: "2026-09-04",
     by: "architecte",
-    supersedes: { value: 86_400, status: "REVOKED" },
+    supersedes: { value: 7_200, status: "SHADOW_RATIFIED", on: "2026-09-03" },
     why:
-      "meilleur compromis OBSERVABLE entre separation et mesurabilite : 24 h " +
-      "rend M1 quasi inutilisable sur ce corpus (0/3), 4 h perd deja beaucoup " +
-      "(1/4), 2 h tient sur 2-3/4.",
-    /**
-     * ⚠ LIMITE A NE JAMAIS TAIRE. Un temoin a -2 h n'est PAS un « bruit de
-     * fond naturel » universel : c'est un CONTROLE PRE-EVENEMENT LOCAL,
-     * susceptible d'etre deja contamine par l'accumulation preparatoire du
-     * shill lui-meme. Un lift calcule sur cette base peut donc SOUS-ESTIMER
-     * l'ecart reel - et cette sous-estimation n'est pas conservatrice au sens
-     * ou on l'entend d'habitude : elle rend le dispositif moins sensible, pas
-     * plus prudent.
-     */
+      "justification empirique invalidee : mesuree sur ancres decalees de 2 h " +
+      "(lecture pg d'une colonne sans fuseau). Valeur inchangee, statut " +
+      "abaisse. A rejouer sur ancres snowflake-vraies.",
     limitation: "local pre-event control, may include preparatory accumulation",
     finalDoctrine: false,
+    requiresRevalidation: true,
   },
 ] as const;
+
+/**
+ * Liste conservee VIDE, et c'est deliberе : elle documente qu'aucune valeur de
+ * shadow n'est actuellement ratifiee. La supprimer ferait croire que la notion
+ * n'existe pas ; la garder vide dit qu'elle existe et n'a pas de contenu.
+ */
+export const SHADOW_RATIFIED = [] as const;
 
 /**
  * ═══ DOCTRINE SHILL-M1 — LE DOMAINE DE VALIDITE DU TEMOIN ═══════════════════
