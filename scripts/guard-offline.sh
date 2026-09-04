@@ -475,19 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour F2.1 — persistance du Funding Graph. Deux modèles ADDITIFS
-# sur le schema prod (FundingEdge, FundingRelationshipObservation), déclarés
-# pour refléter un DDL exécuté À LA MAIN dans le Neon SQL Editor (verrou A9 :
-# jamais db push, jamais prisma migrate). Le schema ne crée rien : il décrit.
-# Autorisation humaine explicite (David, BUILD 5 / F2.1) — voir PR description.
-# Exemption STRICTEMENT limitée à prisma/schema.prod.prisma ; AUCUN wildcard
-# sur prisma/. La logique vit hors chemin gelé (src/lib/funding-graph/).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-funding-persistence$ ]]; then
-    EXEMPT_FUNDING_PERSISTENCE_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -860,22 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-
-
-
-    # Sur la branche F2.1, exempter STRICTEMENT le schema prod (aucun wildcard
-    # sur prisma/ : toute autre migration ou schema reste bloquée).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-funding-persistence$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_FUNDING_PERSISTENCE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
