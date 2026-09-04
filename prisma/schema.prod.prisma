@@ -4313,3 +4313,74 @@ model EvidenceAccessLog {
 
   @@index([evidenceItemId, at])
 }
+
+// ─── F2.1 — FUNDING GRAPH : PERSISTANCE. ADDITIF, aucune table existante touchée.
+//
+// Les deux tables sont créées À LA MAIN dans le Neon SQL Editor (verrou A9 :
+// jamais db push, jamais prisma migrate). Cette déclaration ne fait que
+// REFLÉTER la base — elle ne crée rien.
+//
+// LES DEUX NIVEAUX NE SE MÉLANGENT PAS, et c'est le sens d'avoir deux tables :
+//   FundingEdge                     un transfert CONSTATÉ    PRIMARY_OBSERVATION
+//   FundingRelationshipObservation  une règle APPLIQUÉE      INFERENCE
+// Les fondre aurait rendu une qualification indiscernable de la preuve qui la
+// porte — exactement le mélange que Data Nature existe pour empêcher.
+
+/// Une arête de financement : un transfert SOL constaté, et sa preuve.
+model FundingEdge {
+  id               String     @id @default(cuid())
+  fromWallet       String
+  toWallet         String
+  asset            String     @default("SOL")
+  // BigInt : les lamports dépassent le Number sûr sur les gros transferts, et
+  // un arrondi silencieux sur un montant de preuve serait indéfendable.
+  amountLamports   BigInt
+  // IDEMPOTENCE PAR LA BASE. Une signature = une arête. Rejouer une collecte
+  // ne peut pas dupliquer un fait.
+  txSignature      String     @unique
+  /// Unix secondes, UTC. L'instant absolu, jamais une heure murale.
+  blockTimeSeconds Int
+  // PRIMARY_OBSERVATION, et rien d'autre : le CHECK declared le contraint en
+  // base. Pas de natureBasis ici — une observation n'a pas de piste
+  // d'inférence à produire, elle EST la piste.
+  rowNature        DataNature?
+  /// D'où vient la collecte : `CASE-2025-VINE-001`, un mint, un run.
+  sourceContext    String?
+  createdAt        DateTime   @default(now())
+
+  @@index([fromWallet])
+  @@index([toWallet])
+  @@index([blockTimeSeconds])
+  @@index([sourceContext])
+}
+
+/// La qualification d'un bailleur — funding-relationship/qualify@v1.
+model FundingRelationshipObservation {
+  id                  String     @id @default(cuid())
+  funderWallet        String
+  /// Le contexte qualifié : affaire, mint, run. Sans lui, la ligne ne dit pas de quoi elle parle.
+  contextRef          String
+  subjectsReached     Int
+  /// Taxonomie de l'artefact gelé. `text` et non enum : la taxonomie est
+  /// versionnée par methodRef, et figer un enum en base obligerait une DDL à
+  /// chaque révision de méthodologie.
+  category            String
+  evidence            Json
+  /// Vrai quand la collecte sous-jacente était censurée : le résultat est un
+  /// PLANCHER. Jamais « pas de relation ».
+  coverageIsFloor     Boolean    @default(false)
+  rowNature           DataNature?
+  natureBasis         Json?
+  naturePolicyVersion String?
+  /// `funding-relationship/qualify@v1`. Doit résoudre au registre.
+  methodRef           String
+  createdAt           DateTime   @default(now())
+
+  // IDEMPOTENCE : un bailleur, un contexte, une règle → une ligne. Requalifier
+  // sous la MÊME règle ne crée pas de doublon ; sous une règle différente,
+  // c'est une autre ligne — et c'est voulu, les verdicts de deux versions ne
+  // doivent pas s'écraser.
+  @@unique([funderWallet, contextRef, methodRef])
+  @@index([contextRef, category])
+  @@index([funderWallet])
+}
