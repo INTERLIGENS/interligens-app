@@ -95,6 +95,37 @@ export const NATURE_REGISTRY: Record<string, TableNatureDecl> = {
       "en phase 2. La declaration vaut des maintenant pour les 221 lignes, colonne ou pas.",
   },
 
+  // ── F2.1 — Funding Graph. Deux tables, deux niveaux, jamais fondus. ──────
+  FundingEdge: {
+    regime: "DECLARED", rows: 0, nature: "PRIMARY_OBSERVATION", stage: "S6",
+    why:
+      "Une arête est un transfert CONSTATÉ : source, destination, montant, signature, " +
+      "instant. Mono-nature PAR CONSTRUCTION — il n'existe aucun chemin qui produise " +
+      "une arête autrement qu'en lisant une transaction. Rien n'y est calculé, donc " +
+      "rien n'y est INFERENCE. " +
+      "0 ligne à la déclaration (2026-09-04) : la déclaration PRÉCÈDE l'écriture, elle " +
+      "ne la suit pas. Sans cette entrée, natureForTable rendrait UNCLASSIFIED et le " +
+      "chokepoint S6 refuserait toute écriture de nature — ce qui est le comportement " +
+      "voulu, et la raison d'inscrire la table avant d'avoir un writer.",
+  },
+
+  FundingRelationshipObservation: {
+    regime: "DECLARED", rows: 0, nature: "INFERENCE",
+    basis: ["PRIMARY_OBSERVATION", "THIRD_PARTY_DATA"], stage: "S6",
+    why:
+      "La ligne AFFIRME « ce bailleur relève de telle catégorie ». C'est une règle " +
+      "appliquée — funding-relationship/qualify@v1 — à des arêtes constatées, parfois " +
+      "avec une étiquette d'adresse. Q3 : la nature est celle de la DERNIÈRE OPÉRATION, " +
+      "jamais celle des entrées ; les arêtes sont des PRIMARY_OBSERVATION, la " +
+      "qualification qu'on en dérive ne l'est pas. " +
+      "basis inclut THIRD_PARTY_DATA parce qu'une étiquette d'adresse est l'affirmation " +
+      "d'un tiers : la ranger parmi nos observations lui donnerait une autorité qu'elle " +
+      "n'a pas, et le qualifieur l'écarte quand sa provenance n'est pas auditable. " +
+      "Ce que cette table ne porte PAS : aucun verdict de coordination, d'insider ou de " +
+      "fraude. La qualification trie par valeur probante ; l'interprétation est une " +
+      "opération distincte, non implémentée.",
+  },
+
   ShillCorrelationCandidate: {
     regime: "DECLARED", rows: 1_532, nature: "INFERENCE",
     basis: ["PRIMARY_OBSERVATION"], stage: "S6",
