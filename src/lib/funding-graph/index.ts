@@ -18,3 +18,10 @@ export {
   type SharedFunder,
   type SharedFunderObservation,
 } from "./sharedFunder";
+export {
+  FUNDING_SNAPSHOT_RULE_VERSION,
+  buildFundingSnapshot,
+  type FunderStructure,
+  type FundingSnapshot,
+  type FundingSnapshotInput,
+} from "./snapshot";
