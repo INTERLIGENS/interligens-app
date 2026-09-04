@@ -1,6 +1,14 @@
 {
   "crons": [
     {
+      "path": "/api/cron/shill-feed",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/shill-shadow",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/watcher-v2",
       "schedule": "0 6 * * *"
     },

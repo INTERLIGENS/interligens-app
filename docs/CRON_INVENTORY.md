@@ -22,6 +22,8 @@ inventaire corrige — pas une case à cocher.
 
 | Route | Cadence | Consommateur prouvé |
 |---|---|---|
+| `/api/cron/shill-feed` | 05:00 | `ShillEvent` ← `social_post_candidates` (bridge B3) → consommé par `shill-shadow` |
+| `/api/cron/shill-shadow` | 07:00 | sink shadow SHILL V2 — lecture des `ShillEvent`, aucune écriture d'analyse |
 | `/api/cron/watcher-v2` | 06:00 | `WatcherCampaign`, `social_post_candidates` → watcher-bridge |
 | `/api/cron/watcher-bridge` | 06:30 | `KolTokenLink` draft → file de revue admin |
 | `/api/cron/daily-flow` | 02:00 | `KolProceedsSummary.rolling*` → `/api/kol/[handle]/proceeds` → `RetailCounter` |
@@ -154,3 +156,31 @@ Plan Vercel **Hobby** : aucune cadence infra-quotidienne. Une entrée horaire ou
 sous-horaire fait **échouer le déploiement**. Un test le vérifie
 (`__tests__/api/intelFreshness.test.ts`), pour que la contrainte se voie au
 `pnpm test` plutôt qu'au déploiement.
+
+
+### Pourquoi `shill-feed` et `shill-shadow` sont DEUX crons (2026-09-04)
+
+Ils ont des modes de panne différents, et les coupler ferait dépendre
+l'ingestion sociale d'un budget on-chain.
+
+`shill-feed` est **Helius-free** : il lit `social_post_candidates`, applique le
+prédicat de qualification puis la résolution d'identité, et écrit des
+`ShillEvent`. Il n'a besoin d'aucun budget externe et peut tourner même quand
+Helius est indisponible.
+
+`shill-shadow` **dépense** : il lit les `ShillEvent` snowflake-vérifiés et
+collecte des fenêtres on-chain, sous un budget global de 100 000 crédits par
+passage — global, jamais par événement. Sa sortie va dans un sink ; il n'écrit
+ni `ShillCorrelationCandidate`, ni `ShillBuyerObservation`, ni casefile.
+
+Sous un cron unique, une panne Helius aurait tari le feed — et un feed vide se
+lit comme « aucune promotion », pas comme « la collecte est tombée ». C'est le
+genre de silence qu'on ne remarque pas avant des semaines.
+
+**Consommateur prouvé** : `shill-feed` alimente `shill-shadow`, qui a produit
+961 appels sur 5 sujets réels le 2026-09-04 (1 574 acheteurs observés). La
+chaîne est exercée de bout en bout, pas supposée.
+
+**Cadence du feed** : quotidienne à 05:00, en amont du shadow de 07:00. La
+cible était horaire ; elle est bloquée par la garde de plan Vercel
+(`intelFreshness.test.ts`), non levée faute d'avoir pu vérifier le plan.
