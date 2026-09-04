@@ -42,6 +42,79 @@ import {
   type QualifiedFundingRelationship,
 } from "./qualify";
 
+
+// ═══ COUVERTURE DE PREUVE D'ARÊTE ═════════════════════════════════════════
+//
+// ██ DISTINCTE DE `coverageIsFloor`, ET LES DEUX NE PARLENT PAS DU MÊME OBJET ██
+//
+//   coverageIsFloor      la collecte a-t-elle atteint tous les SUJETS ?
+//   edgeProofCoverage    parmi les arêtes OBSERVÉES, combien sont PERSISTABLES ?
+//
+// Les fondre aurait produit un seul drapeau incapable de dire lequel des deux
+// manques il signale — et un lecteur aurait attribué au mauvais.
+//
+// ─── CE QUE `FLOOR` DIT, ET SURTOUT CE QU'IL NE DIT PAS ──────────────────
+//
+// `FLOOR` signifie EXACTEMENT : persistable < observé. Rien de plus.
+//
+// Il ne dit PAS que la réalité comporte au moins `observedEdgeCount` arêtes.
+// Le compte observé est ce que F3 a vu DANS SON PÉRIMÈTRE — deux pages par
+// sujet, une fenêtre, un budget. Transformer ce compte en plancher du RÉEL
+// par le seul choix du mot « floor » serait une inférence que rien n'appuie.
+// Le basis conserve ce que la collecte sait, jamais une extrapolation.
+//
+// POURQUOI UNE ARÊTE PEUT ÊTRE OBSERVÉE SANS ÊTRE PERSISTABLE : FundingEdge
+// exige une txSignature — c'est ce qui rend l'arête opposable à un tiers sur
+// la chaîne. Un artefact qui n'a conservé qu'un COMPTE ne porte pas de preuve.
+// On ne persiste alors rien : ni reconstruction, ni signature déduite d'un
+// montant ou d'un instant. Une arête sans sa preuve n'est pas une arête
+// dégradée, c'est un fait qu'on ne peut pas produire.
+
+export type EdgeProofCompleteness = "COMPLETE" | "FLOOR";
+
+export type EdgeProofIncompletenessReason =
+  /** Les arêtes manquantes n'ont pas de txSignature dans un artefact conservé. */
+  "PRIMARY_SIGNATURE_UNAVAILABLE";
+
+export interface EdgeProofCoverage {
+  /** Ce que la collecte a compté dans son périmètre. */
+  observedEdgeCount: number;
+  /** Ce qui porte une preuve primaire, donc ce qui est écrit. */
+  persistablePrimaryObservationCount: number;
+  completeness: EdgeProofCompleteness;
+  /** Renseigné si et seulement si `completeness === "FLOOR"`. */
+  reason: EdgeProofIncompletenessReason | null;
+  /** Ce que `FLOOR` signifie, transporté avec le chiffre plutôt que supposé. */
+  meaning: string;
+}
+
+export const EDGE_PROOF_FLOOR_MEANING =
+  "FLOOR means persistable < observed. It does NOT assert a lower bound on reality: " +
+  "observedEdgeCount is what the collection saw within its own bounds.";
+
+export function buildEdgeProofCoverage(
+  observedEdgeCount: number,
+  persistablePrimaryObservationCount: number,
+  reason: EdgeProofIncompletenessReason = "PRIMARY_SIGNATURE_UNAVAILABLE",
+): EdgeProofCoverage {
+  if (persistablePrimaryObservationCount > observedEdgeCount) {
+    throw new Error(
+      `[funding-graph] buildEdgeProofCoverage — persistable (${persistablePrimaryObservationCount}) ` +
+        `> observé (${observedEdgeCount}) : on ne peut pas persister plus d'arêtes qu'on n'en a observées.`,
+    );
+  }
+  const complete = persistablePrimaryObservationCount === observedEdgeCount;
+  return {
+    observedEdgeCount,
+    persistablePrimaryObservationCount,
+    completeness: complete ? "COMPLETE" : "FLOOR",
+    reason: complete ? null : reason,
+    meaning: complete
+      ? "COMPLETE means every observed edge carries its primary proof and is persisted."
+      : EDGE_PROOF_FLOOR_MEANING,
+  };
+}
+
 export const FUNDING_EDGE_TABLE = "FundingEdge";
 export const FUNDING_RELATIONSHIP_TABLE = "FundingRelationshipObservation";
 
@@ -158,6 +231,7 @@ export function buildFundingEdgeRow(
 export function buildFundingRelationshipRow(
   q: QualifiedFundingRelationship,
   contextRef: string,
+  edgeProofCoverage?: EdgeProofCoverage,
   where = "buildFundingRelationshipRow",
 ): FundingRelationshipRow {
   const declared = natureForTable(FUNDING_RELATIONSHIP_TABLE);
@@ -190,6 +264,23 @@ export function buildFundingRelationshipRow(
   if (nature !== "INFERENCE") {
     throw new FundingNatureRegistryMismatchError(FUNDING_RELATIONSHIP_TABLE, "INFERENCE", nature);
   }
+  // L'annotation est portée par le basis, jamais par `coverageIsFloor` : le
+  // writer sait ce qu'il a pu persister, le qualifieur ne le savait pas. Elle
+  // AJOUTE une référence sans rien retirer de ce que la règle a produit.
+  const annotatedBasis: InferenceEnvelopeV2["basis"] = edgeProofCoverage
+    ? {
+        ...basis,
+        inputs: {
+          ...basis.inputs,
+          primaryObservations: basis.inputs.primaryObservations.map((po) =>
+            po.kind === "funding_edge"
+              ? { ...po, refs: { ...po.refs, edgeProofCoverage } }
+              : po,
+          ),
+        },
+      }
+    : basis;
+
   return {
     funderWallet: q.funder,
     contextRef,
@@ -198,7 +289,7 @@ export function buildFundingRelationshipRow(
     evidence: q.evidence,
     coverageIsFloor: q.coverage.resultIsFloor,
     rowNature: "INFERENCE",
-    natureBasis: basis,
+    natureBasis: annotatedBasis,
     naturePolicyVersion: q.natureBasis.policyVersion ?? FUNDING_RELATIONSHIP_POLICY_VERSION,
     methodRef,
   };
@@ -252,6 +343,8 @@ export interface PersistFundingGraphInput {
   dryRun?: boolean;
   /** Requis dès que `dryRun` est faux. */
   store?: FundingGraphStore;
+  /** Portée au basis des qualifications. Distincte de `coverageIsFloor`. */
+  edgeProofCoverage?: EdgeProofCoverage;
 }
 
 export async function persistFundingGraph(
@@ -266,7 +359,8 @@ export async function persistFundingGraph(
   // La construction passe par S6 dans les DEUX modes : un dry-run qui
   // sauterait le chokepoint validerait un plan que le réel refuserait.
   const edgeRows = input.edges.map((e) => buildFundingEdgeRow(e, input.contextRef));
-  const relRows = input.qualifications.map((q) => buildFundingRelationshipRow(q, input.contextRef));
+  const relRows = input.qualifications.map((q) =>
+    buildFundingRelationshipRow(q, input.contextRef, input.edgeProofCoverage));
 
   const conflicts: KeyConflict[] = [];
   const r: PersistReport = {
