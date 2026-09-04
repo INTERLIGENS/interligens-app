@@ -158,27 +158,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
     )
 fi
 
-# Exception pour la cadence horaire du cron shill-feed.
-#
-# Le plan Vercel est confirme PRO : les crons sous-quotidiens y sont autorises.
-# B7 avait livre le feed en quotidien faute d'avoir pu verifier le plan — la
-# garde de suite portait l'hypothese « Hobby, le deploy echouerait », et le
-# risque etait asymetrique (un horaire sur Hobby casse le deploiement entier).
-# Le plan confirme, la cadence prevue peut etre posee.
-#
-# `vercel.json` est GELE (^vercel\.json$) : c'est la, et nulle part ailleurs,
-# qu'une cadence est declaree. UN SEUL fichier dans cette exemption — ni route,
-# ni schema, ni composant. Le test de garde et la config vivent hors gel et
-# n'ont pas besoin d'y figurer.
-#
-# Autorisation humaine explicite (2026-09-04, plan Pro confirme) — voir PR.
-# Elle se referme byte-identique apres merge.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-feed-hourly$ ]]; then
-    EXEMPT_SHILL_FEED_HOURLY_PATTERNS=(
-        "^vercel\.json$"
-    )
-fi
-
 # Exceptions pour la watchlist expansion (ajout de KOL reviewés au watcher).
 # Autorisation humaine explicite (David, WAVES 1-3 approuvées) — voir PR description.
 # Exemption ciblée UNIQUEMENT sur handles.ts (la source de vérité du watcher) ;
@@ -603,20 +582,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche shill-feed-hourly, exempter le seul vercel.json.
-    # La declaration seule ne sert a RIEN sans cette boucle : le guard ne lit
-    # que les tableaux qu'une boucle consomme.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-feed-hourly$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SHILL_FEED_HOURLY_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
