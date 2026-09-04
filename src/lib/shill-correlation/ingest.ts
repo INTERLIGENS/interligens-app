@@ -15,6 +15,7 @@ import type { Prisma } from "@prisma/client";
 import type { ShillEventDraft, IngestSummary, IngestOptions } from "./types";
 import { classifyTokenIdentity } from "./tokenIdentity";
 import { parseDetectedTokens } from "./parsing";
+import { assertSnowflakeConsistency } from "./timeAnchor";
 
 // Re-export : le parseur vit desormais dans parsing.ts, module PUR. ingest.ts
 // importe prisma ; tout consommateur du parseur l'aurait importe aussi.
@@ -188,6 +189,23 @@ export async function persistShillEventDrafts(
   opts: { dryRun?: boolean } = {},
 ): Promise<PersistDraftsResult> {
   const deduped = dedupeDrafts(drafts);
+
+  // ██ T2 — L'INVARIANT SNOWFLAKE, A LA FRONTIERE D'ECRITURE ██
+  //
+  // L'ID du post encode son instant de publication : il ne depend d'aucun
+  // fuseau, d'aucun driver. Une divergence signale un aller-retour de fuseau
+  // a la LECTURE - c'est exactement ce qui a produit les 5 lignes decalees de
+  // B6a, ecrites depuis un harnais qui lisait avec `pg`.
+  //
+  // LEVE, ne corrige pas. Corriger ici masquerait la cause et la laisserait
+  // produire d'autres lignes ailleurs. Cout externe : zero.
+  for (const d of deduped) {
+    assertSnowflakeConsistency(
+      { tweetId: d.tweetId, tweetTimestamp: d.tweetTimestamp },
+      "shill/ingest.persistShillEventDrafts",
+    );
+  }
+
   const out: PersistDraftsResult = {
     draftsBuilt: deduped.length,
     skippedUnresolved: deduped.filter((d) => d.tokenMint == null).length,
