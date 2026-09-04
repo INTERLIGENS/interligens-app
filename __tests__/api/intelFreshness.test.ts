@@ -33,10 +33,56 @@ describe("ingestion réglementaire — planifiée", () => {
     expect(all).toBeUndefined();
   });
 
-  it("aucune cadence infra-quotidienne — le plan Vercel est Hobby, le deploy échouerait", () => {
+  /**
+   * CADENCE INFRA-QUOTIDIENNE — LISTE BLANCHE EXPLICITE.
+   *
+   * Cette garde portait « le plan Vercel est Hobby, le deploy échouerait ».
+   * L'hypothèse est FAUSSE : le plan est Pro, confirmé le 2026-09-04, et les
+   * crons sous-quotidiens y sont autorisés.
+   *
+   * La garde n'est pas levée pour autant, parce qu'elle protégeait deux choses
+   * et que la seconde tient toujours : une cadence infra-quotidienne multiplie
+   * la charge — et, pour une route qui dépense, la facture. Elle doit rester un
+   * choix EXPLICITE, pas une valeur qu'on pose sans y penser.
+   *
+   * Le motif change donc de nature : ce n'est plus « le plan l'interdit » mais
+   * « nommez la route et dites pourquoi ». Ajouter une entrée ici est un acte
+   * de revue ; en oublier une fait échouer la suite.
+   */
+  const SUB_DAILY_ALLOWED: Record<string, string> = {
+    "/api/cron/shill-feed":
+      "Helius-free — coût marginal = une requête base. Suit le watcher au plus " +
+      "près pour que le feed ne prenne pas 24 h de retard sur la capture sociale.",
+  };
+
+  it("une cadence infra-quotidienne est NOMMÉE, jamais implicite", () => {
     for (const c of vercel().crons as Array<{ schedule: string; path: string }>) {
       const [minute, hour] = c.schedule.split(" ");
-      expect(hour, `${c.path} a une cadence horaire`).not.toBe("*");
+      const subDaily = hour === "*" || hour.includes("/") || minute.includes("/");
+      if (!subDaily) continue;
+      expect(
+        SUB_DAILY_ALLOWED[c.path],
+        `${c.path} a une cadence infra-quotidienne sans justification déclarée`,
+      ).toBeDefined();
+    }
+  });
+
+  it("le feed est horaire, le shadow reste quotidien — deux coûts, deux cadences", () => {
+    // Le shadow DÉPENSE : 100 000 crédits Helius par passage. Le passer en
+    // horaire multiplierait la facture par 24 sans qu'aucune ligne ne l'annonce.
+    const crons = vercel().crons as Array<{ schedule: string; path: string }>;
+    const feed = crons.find((c) => c.path === "/api/cron/shill-feed");
+    const shadow = crons.find((c) => c.path === "/api/cron/shill-shadow");
+    expect(feed?.schedule).toBe("0 * * * *");
+    expect(shadow?.schedule).toBe("0 7 * * *");
+    expect(shadow!.schedule.split(" ")[1]).not.toBe("*");
+  });
+
+  it("aucune cadence sous-horaire — même sur la liste blanche", () => {
+    // Le pas de minute reste interdit partout : une route qui tourne toutes
+    // les cinq minutes est un choix d'architecture, pas un réglage de cadence.
+    for (const c of vercel().crons as Array<{ schedule: string; path: string }>) {
+      const minute = c.schedule.split(" ")[0];
       expect(minute.includes("/"), `${c.path} a une cadence sous-horaire`).toBe(false);
     }
   });
