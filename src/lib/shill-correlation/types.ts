@@ -7,6 +7,7 @@
 // Import de TYPE uniquement : efface a la compilation, donc aucun cycle a
 // l'execution malgre resolve.ts -> buyers.ts -> types.ts.
 import type { ResolutionStatus } from "./resolve";
+import type { ShillEventNatureWrite } from "./eventNature";
 
 /** Processing lifecycle of a ShillEvent row. */
 export type ShillEventStatus =
@@ -137,6 +138,15 @@ export interface ShillEventDraft {
   chain: Chain;
   sourcePostCandidateId: string | null;
   campaignId: string | null;
+  /**
+   * B4.5 — la nature de l'evenement DERIVE, quand il en a une.
+   *
+   * `undefined` sur le chemin legacy (`ingestShillEvents`) : ces drafts ne
+   * portent pas d'enveloppe, et la colonne reste NULL. Les CHECK l'autorisent
+   * explicitement par leur branche NULL — c'est l'etat « produite avant que la
+   * nature ne soit tracee », pas « sans nature ».
+   */
+  nature?: ShillEventNatureWrite;
 }
 
 /** Counters returned by an ingestion run (per-source and aggregate). */

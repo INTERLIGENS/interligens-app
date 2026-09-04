@@ -40,6 +40,7 @@ import { resolveTokenIdentity } from "./tokenIdentity";
 import { persistShillEventDrafts, type PersistDraftsResult } from "./ingest";
 import { normalizeHandle } from "./ingest";
 import { eligibleForSolanaEngine } from "./eligibility";
+import { buildShillEventNatureWrite } from "./eventNature";
 import { parseDetectedTokens } from "./parsing";
 import type { ShillEventDraft } from "./types";
 import type { QualifyCriterion } from "./qualify";
@@ -59,6 +60,11 @@ export interface ForwardCandidate {
   detectedAddresses: unknown;
   rawText: string | null;
   handle: string | null;
+  /** URL canonique du post — entre dans le natureBasis quand elle existe. */
+  postUrl?: string | null;
+  /** Empreintes de capture, via `social_posts` — absentes le plus souvent. */
+  screenshotSha256?: string | null;
+  htmlSha256?: string | null;
 }
 
 /**
@@ -202,6 +208,28 @@ export async function runForwardBridge(
     // `chain` vient de la RÉSOLUTION, pas de la colonne source : `chain` est
     // NULL sur 7 603/7 603 lignes de social_post_candidates. La prendre
     // aurait produit une chaîne inventée ou vide.
+    // ── 3bis. LA NATURE (B4.5) ──────────────────────────────────────────
+    // Un ShillEvent derive AFFIRME « ce post est une promotion exploitable de
+    // ce token ». C'est une INFERENCE - Q3, la nature est celle de la derniere
+    // operation. Le fragment passe par le chokepoint S6 : une nature absente,
+    // invalide ou remontant l'echelle (I1) leve ici, pas au premier INSERT.
+    const nature = buildShillEventNatureWrite(
+      {
+        source: {
+          sourcePostCandidateId: c.id,
+          postId: c.postId,
+          postUrl: c.postUrl,
+          postedAtUtc: c.postedAtUtc,
+          screenshotSha256: c.screenshotSha256,
+          htmlSha256: c.htmlSha256,
+        },
+        qualification: q,
+        resolution: r,
+      },
+      {},
+      "shill/forwardBridge.runForwardBridge",
+    );
+
     const draft: ShillEventDraft = {
       kolHandle,
       tweetId,
@@ -212,6 +240,7 @@ export async function runForwardBridge(
       chain: r.chain ?? "",
       sourcePostCandidateId: c.id,
       campaignId: c.campaignId ?? null,
+      nature,
     };
     drafts.push(draft);
 

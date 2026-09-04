@@ -11,6 +11,7 @@
 // Read-only on all source tables. Never `prisma db push`.
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import type { ShillEventDraft, IngestSummary, IngestOptions } from "./types";
 import { classifyTokenIdentity } from "./tokenIdentity";
 import { parseDetectedTokens } from "./parsing";
@@ -212,6 +213,17 @@ export async function persistShillEventDrafts(
         campaignId: d.campaignId,
         resolutionStatus: d.resolutionStatus,
         processingStatus: "pending",
+        // B4.5 - les 3 colonnes Data Nature, ecrites ENSEMBLE ou pas du tout.
+        // Le CHECK auditable refuse une nature sans sa piste d'audit : les
+        // poser separement serait construire une ligne que la base rejette.
+        // Absentes sur le chemin legacy -> colonnes NULL, branche autorisee.
+        ...(d.nature
+          ? {
+              rowNature: d.nature.rowNature,
+              natureBasis: d.nature.natureBasis as unknown as Prisma.InputJsonValue,
+              naturePolicyVersion: d.nature.naturePolicyVersion,
+            }
+          : {}),
       })),
       skipDuplicates: true,
     });
