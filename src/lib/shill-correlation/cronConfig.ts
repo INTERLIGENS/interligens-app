@@ -54,27 +54,16 @@ export const SHADOW_SCHEDULE = {
 } as const;
 
 /**
- * ⚠ CADENCE DU FEED — QUOTIDIENNE, ET CE N'EST PAS LE CHOIX SOUHAITE.
+ * CADENCE DU FEED — HORAIRE, plan Vercel confirmé Pro le 2026-09-04.
  *
- * B7 demandait `hourly`. La suite porte une garde
- * (__tests__/api/intelFreshness.test.ts) qui REFUSE toute cadence
- * infra-quotidienne, au motif que « le plan Vercel est Hobby, le deploy
- * echouerait ». Sur Hobby, un cron sous-quotidien fait echouer le DEPLOIEMENT
- * ENTIER, pas seulement le cron.
+ * B7 avait livré en quotidien faute d'avoir pu vérifier le plan : la garde de
+ * suite portait l'hypothèse « Hobby, le deploy échouerait », et le risque était
+ * asymétrique — un horaire sur Hobby casse le déploiement entier, pas seulement
+ * le cron. Le plan confirmé, la cadence prévue est posée.
  *
- * Je n'ai pas pu verifier le plan : la CLI Vercel attend une authentification
- * interactive. Les indices divergent — `orgId` est un `team_...` (les comptes
- * Hobby n'ont pas d'equipe) et 15 crons sont deja planifies, mais des commits
- * d'avril 2026 portent explicitement « Hobby plan limit ».
- *
- * Le risque est asymetrique : une cadence quotidienne retarde le feed d'au
- * plus 24 h, une cadence horaire sur Hobby casse la production. La cadence
- * horaire est prete ci-dessous — la poser demande de confirmer le plan et de
- * mettre a jour la garde, qui est le seul endroit ou l'hypothese est ecrite.
+ * POURQUOI L'HORAIRE POUR LE FEED ET PAS POUR LE SHADOW : le feed est
+ * Helius-free, son coût marginal est une requête base ; il gagne à suivre le
+ * watcher au plus près. Le shadow DÉPENSE — 100 000 crédits par passage — et
+ * reste quotidien. Deux cadences parce que deux coûts, pas par symétrie.
  */
-export const FEED_SCHEDULE = {
-  current: "daily",
-  cron: "0 5 * * *",
-  /** Cible de B7, en attente de confirmation du plan Vercel. */
-  intended: { label: "hourly", cron: "0 * * * *", blockedBy: "vercel_plan_unverified" },
-} as const;
+export const FEED_SCHEDULE = { current: "hourly", cron: "0 * * * *" } as const;
