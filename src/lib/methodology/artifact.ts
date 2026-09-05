@@ -257,6 +257,115 @@ are not severable from it.
   ],
 };
 
+/** Empreinte du corps de content/methodologies/coordinated-exit/v1.md. */
+export const COORDINATED_EXIT_V1_SHA256 =
+  "ab993adca19a31473143f444358a4cdf69aa7eafea80e55adc2e40eaa92ca06c";
+
+/**
+ * BUILD 6 / PACK B — la methodologie que cite le natureBasis d'une co-sortie
+ * caracterisee.
+ *
+ * Le corps est le texte GELE, miroir de content/methodologies/coordinated-exit/
+ * v1.md. Le test de gel recalcule l'empreinte du .md et la compare : modifier
+ * l'un sans l'autre casse la suite.
+ */
+export const COORDINATED_EXIT_V1: MethodologyArtifact = {
+  id: "coordinated-exit",
+  version: "v1",
+  title: "How INTERLIGENS Characterises a Co-Exit",
+  intro:
+    "Several wallets selling within seconds of one another is a fact; what it means is " +
+    "a separate question. This methodology states the dimensions along which INTERLIGENS " +
+    "describes a co-exit group, and the reservations that travel with that description.",
+  effectiveFrom: "2026-09-05",
+  contentSha256: COORDINATED_EXIT_V1_SHA256,
+  components: [
+    {
+      id: "qualify",
+      title: "Co-Exit Characterisation (V1)",
+      body: `Several wallets selling within seconds of one another is a fact. What that fact
+means is a separate question, and this methodology does not answer it. It
+characterises a co-exit group along fixed dimensions so that a reader can weigh
+it, and it stops there.
+
+The input is a group of ExitEvents, each a PRIMARY_OBSERVATION carrying subject,
+mint, type, amount, block time and transaction signature, together with the
+temporal relations derived from those block times. The output is a
+characterisation. The characterisation is an INFERENCE — a rule applied to
+observations — and it travels with the basis that produced it.
+
+STRUCTURAL PROPERTY, BINDING ON EVERY EVENT ENTERING THIS METHODOLOGY.
+
+    SELL requires demonstrated transactional counterparty provenance.
+    Atomic co-occurrence alone is insufficient.
+    Rent recovery is not sale consideration.
+
+This is not advisory. An event typed SELL whose counterparty provenance is not
+demonstrated is refused entry, and the refusal raises rather than downgrades:
+characterising an undemonstrated sale would place the whole group on evidence
+that does not exist.
+
+DIMENSIONS. Seven, all descriptive, none scored.
+
+1. DISTINCT SUBJECTS. How many different wallets appear in the group. A wallet
+   exiting repeatedly is a behaviour, not a group.
+2. CANONICAL PROXIMITY. The ratified window is 60 seconds. Reported: how many
+   subject pairs fall within it, and the smallest and median gap observed. The
+   window is a parameter of the observation, never tuned to the result.
+3. SPAN. The interval from the earliest to the latest event in the group.
+   Chaining may stretch a group beyond the canonical window while every pair
+   inside it stays within — span and proximity are therefore reported apart.
+4. DEMONSTRATED VENUE AND DESTINATION. Named only where every event in the group
+   names the same one. Where any event does not, the field is null. A venue that
+   is not demonstrated is absent, never inferred from the majority.
+5. COMPOSITION. How many events are SELL and how many are OUTGOING_TRANSFER. The
+   two are not interchangeable: a transfer moves tokens, a sale disposes of them,
+   and a group made of transfers says something different from one made of sales.
+6. COVERAGE. The three coverages travel separately — subjects, transactions,
+   primary evidence. A group observed under censored collection is a floor.
+7. MATERIALITY STATUS. Where the pre-exit balance is not demonstrable, the status
+   is NOT_MEASURABLE and stays so. It is never estimated, never proxied, and no
+   claim of a material exit is made without it.
+
+CATEGORY. V1 defines exactly one: NARROW_WINDOW_CLUSTER — at least two distinct
+subjects exiting the same mint within the canonical proximity window. It is
+structural: it restates what was observed, in one word.
+
+    NARROW_WINDOW_CLUSTER IS NOT COORDINATED_EXIT.
+
+No temporal proximity, however tight, demonstrates intent, coordination, dumping,
+or fault. Wallets cluster because a chart moved, because a post landed, because
+a stop-loss triggered, because one operator holds several keys. These are
+different worlds producing the same seconds. Distinguishing them requires
+evidence this methodology does not consume.
+
+V1 defines a single category deliberately. A second one — "tight" versus "loose",
+"large" versus "small" — would require a threshold that no measurement supports,
+and a threshold chosen to make groups fall on one side is not a finding about the
+world. Where a distinction is wanted, the dimensions are published and the reader
+may draw it, in the open.
+
+RESERVATIONS. These qualify every characterisation produced under this
+methodology and are not severable from it.
+
+- CHARACTERISATION IS NOT INTERPRETATION. This methodology describes a group
+  along fixed dimensions. It produces no score, no ranking, no risk level, and no
+  verdict. Coordination, dumping and intent are separate questions requiring
+  separate evidence and separate judgement.
+- THE WINDOW IS AN OBSERVATION PARAMETER. 60 seconds is ratified, not discovered.
+  Sensitivity across other windows is reported alongside; those windows never
+  silently replace the canonical one according to which result is preferred.
+- observedCounterpartyAmount IS NEVER SUMMED. It records one directly observed
+  counterparty asset attributed to the demonstrated exchange, not the total
+  received. This methodology does not read it, does not aggregate it, and yields
+  no proceeds figure or profit-and-loss.
+- ABSENCE OF A CHARACTERISATION ESTABLISHES NOTHING. Where no group is observed,
+  the collection was bounded — by a window, a page cap, a budget. That is a limit
+  on what was looked at, not a fact about what happened.`,
+    },
+  ],
+};
+
 export function serializeArtifactBody(a: MethodologyArtifact): string {
   return a.components
     .map((c) => `## ${c.id} — ${c.title}\n\n${c.body}`)
