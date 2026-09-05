@@ -85,22 +85,67 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: pnpm audit (moderate+)
-        run: pnpm audit --audit-level=moderate
-
-      # Classement prod / dev / transitif. « 57 high » indistincts ne disent pas
-      # lesquelles atteignent le code livré : mesuré sur ce dépôt, 29 des 57
-      # vivent dans l'outillage. Phase 1 MESURE et ne bloque pas — d'où le
-      # `continue-on-error`. Le durcissement (`--fail-on-prod`) est la phase 3.
-      - name: Dependency audit — classement prod / dev
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        run: pnpm audit:classify
+      # LE VERDICT BLOQUANT DU JOB — une seule étape, et elle bloque.
+      #
+      # Il y avait ici DEUX étapes : `pnpm audit --audit-level=moderate`, qui
+      # portait le verdict, et le classement, en `continue-on-error`. Mesuré :
+      # 112 advisories, dont 25 seulement atteignent le code livré en high+.
+      # Le verdict indistinct était rouge en permanence depuis le 2026-06-26 —
+      # zéro run vert sur 200. Un garde toujours rouge ne signale plus rien : une
+      # advisory NOUVELLE y était indiscernable des 112 du bruit de fond.
+      #
+      # Le verdict passe donc au cliquet — `compare()` de ratchet-check.mjs,
+      # importé tel quel — opposé à `audit-baseline.json`, versionné. La dette
+      # historique acceptée reste acceptée ; toute advisory prod high+ qui n'est
+      # PAS dans la baseline fait échouer le job. Rien n'est masqué : le tableau
+      # complet des 112 (prod/dev/inconnu × critical→info) est imprimé à chaque
+      # run, et `pnpm audit --json` reste la source, lue par le script.
+      #
+      # Ce n'est PAS un assouplissement : avant, 0 advisory nouvelle était
+      # détectable ; maintenant, une seule fait rougir le job. Le durcissement
+      # total (`--fail-on-prod`, zéro advisory prod high+) reste la phase 3.
+      - name: Dependency audit — cliquet sur la dette atteignant le code livré
+        run: pnpm audit:classify --fail-on-new
 
   # ── 4. Quality gates ──────────────────────────────────────────────────────────
   quality:
     name: Quality Gates
     runs-on: ubuntu-latest
+
+    # ┌──────────────────────────────────────────────────────────────────────┐
+    # │ VALEURS FACTICES DE CI — ce bloc n'existe QUE dans ce fichier        │
+    # └──────────────────────────────────────────────────────────────────────┘
+    #
+    # src/lib/config/env.ts exige CINQ variables dès que NODE_ENV=production,
+    # et lève à l'import. Le job n'en fournissait qu'une (DATABASE_URL, sur la
+    # seule étape Build) : `Build` mourait sur `Missing required env var in
+    # prod: ADMIN_TOKEN`, avant même d'atteindre les quatre suivantes.
+    #
+    # `Tests` tombait sur la même cause par un autre chemin : sans DATABASE_URL,
+    # `new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } })`
+    # jette `PrismaClientConstructorValidationError` à l'import du module — 17
+    # fichiers de test non collectés, 5 tests en échec. En local le poste a un
+    # .env.local : la même suite y est verte depuis toujours. C'est exactement
+    # l'écart qui rendait la CI illisible.
+    #
+    # CE QUI N'EST PAS FAIT ICI, ET NE DOIT PAS L'ÊTRE :
+    #   · aucun fallback applicatif — env.ts n'est pas touché, requireInProd()
+    #     lève toujours ; en production réelle le fail-fast est inchangé ;
+    #   · aucune valeur de production — rien ici n'existe dans Vercel ni dans un
+    #     .env ; ces chaînes ne sont des identifiants de RIEN ;
+    #   · aucune connexion possible — `.invalid` est un TLD réservé (RFC 2606),
+    #     il ne résout nulle part et ne peut être enregistré par personne.
+    #
+    # NODE_ENV n'est PAS ici, volontairement : au niveau du job il ferait sauter
+    # les devDependencies de `pnpm install` et changerait le comportement des
+    # tests. Il reste sur la seule étape qui en a besoin, `Build`.
+    env:
+      DATABASE_URL: postgresql://ci:ci@db.invalid:5432/none?sslmode=disable
+      ADMIN_TOKEN: ci-not-a-secret
+      VAULT_AUDIT_SALT: ci-not-a-secret
+      ADMIN_BASIC_USER: ci
+      ADMIN_BASIC_PASS: ci-not-a-secret
+
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
@@ -204,20 +249,15 @@ jobs:
       # son `try/catch` resterait INVISIBLE à ce gate. Il attrape ce qui ne
       # compile pas et ce qui lève ; il n'attrape pas ce qui échoue en silence.
       #
-      # POURQUOI UN HÔTE INEXISTANT ET PAS UNE VRAIE BASE : aucune connexion ne
-      # doit pouvoir s'établir depuis un runner CI. `.invalid` est un TLD réservé
-      # par la RFC 2606 — il ne résout nulle part, ne résoudra jamais, et ne peut
-      # être enregistré par personne. Cette valeur n'existe QUE dans ce fichier :
-      # jamais dans Vercel, jamais dans un `.env`.
+      # Les cinq variables que le fail-fast de env.ts exige sont posées au
+      # niveau du JOB (voir le bloc `env:` en tête, et pourquoi elles y sont
+      # factices). NODE_ENV reste ici : c'est lui qui ARME ce fail-fast, et le
+      # poser plus haut casserait `pnpm install` et fausserait les tests.
       - name: Build
         if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
         run: pnpm build
         env:
           NODE_ENV: production
-          # Hôte inexistant (RFC 2606). Satisfait le garde fail-fast de
-          # src/lib/config/env.ts, qui exige DATABASE_URL quand NODE_ENV=production
-          # — et ne permet aucune connexion.
-          DATABASE_URL: postgresql://ci:ci@db.invalid:5432/none?sslmode=disable
 
       - name: Lint
         if: ${{ !cancelled() && steps.prisma.outcome == 'success' }}
@@ -228,10 +268,20 @@ jobs:
       # l'ordre des fichiers, ni du parallélisme. Phase 1 : `continue-on-error`,
       # le filet se voit sans bloquer personne. Le rendre required est la
       # phase 3, et c'est une décision distincte.
+      #
+      # `github.base_ref` NE PASSE PAS par `${{ }}` dans le `run:`. Une donnée
+      # du contexte `github` interpolée dans un script shell est substituée AVANT
+      # que bash ne voie la ligne : un nom de branche construit pour ça exécute
+      # ce qu'il veut sur le runner, avec les secrets du job. C'est la règle
+      # Semgrep yaml.github-actions.security.run-shell-injection — l'unique
+      # finding SAST de ce dépôt, et elle était dans la CI elle-même.
+      # La valeur transite par `env:` et n'est lue que citée : "$BASE_REF".
       - name: CI Ratchet — la dette de lint ne croît pas
         if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         continue-on-error: true
-        run: pnpm ratchet:check origin/${{ github.base_ref }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: pnpm ratchet:check "origin/$BASE_REF"
 
   # ── 5. Job récapitulatif (branch protection: 1 seul job à surveiller) ────────
   all-gates-passed:
