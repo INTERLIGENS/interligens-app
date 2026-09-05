@@ -4384,3 +4384,99 @@ model FundingRelationshipObservation {
   @@index([contextRef, category])
   @@index([funderWallet])
 }
+
+// ─── BUILD 6 / PACK C — COORDINATED EXIT : PERSISTANCE. ADDITIF. ──────────
+//
+// Créées À LA MAIN dans le Neon SQL Editor (verrou A9). Cette déclaration ne
+// fait que REFLÉTER la base — elle ne crée rien.
+//
+// DEUX NIVEAUX, JAMAIS FONDUS :
+//   ExitEvent           un acte CONSTATÉ        PRIMARY_OBSERVATION
+//   CoExitQualification une règle APPLIQUÉE     INFERENCE
+
+/// Un acte de sortie constaté : le sujet a cédé ou déplacé le token.
+model ExitEvent {
+  id               String     @id @default(cuid())
+  subjectWallet    String
+  mint             String
+  /// `OUTGOING_TRANSFER` | `SELL`. Un transfert n'est pas une vente : un SELL
+  /// exige une provenance de contrepartie démontrée dans la transaction.
+  /// `text` et non enum — le vocabulaire est versionné par la règle
+  /// d'extraction, et figer un enum imposerait une DDL à chaque révision.
+  type             String
+  /// Quantité sortie. BigInt : les unités de token dépassent le Number sûr.
+  amount           BigInt
+  /// Unix secondes, UTC. Le block time tel quel — aucune compensation.
+  blockTimeSeconds Int
+  /// IDEMPOTENCE : une signature = un acte. Rejouer une extraction ne duplique rien.
+  txSignature      String     @unique
+  /// Mint reçu en contrepartie, ou `native`. NULL si aucun échange démontré.
+  observedCounterpartyAsset  String?
+  /// BigInt : même raison que `amount`. NULL si aucun échange démontré.
+  observedCounterpartyAmount BigInt?
+  /// ██ Le sens du champ voyage AVEC lui. ██ Contrepartie observée attribuée à
+  /// l'échange démontré — PAS le produit total, JAMAIS une base de P&L. Le
+  /// stocker sans son sens laisserait la colonne suivante l'additionner.
+  observedCounterpartyMeaning String?
+  /// Nommés seulement si la transaction les démontre. Plusieurs ⇒ NULL.
+  destination      String?
+  venue            String?
+  /// Comment le type a été démontré — la règle, la base, la source.
+  evidenceProvenance Json
+  rowNature        DataNature?
+  /// D'où vient la collecte : `CASE-2025-VINE-001`, un run.
+  sourceContext    String
+  createdAt        DateTime   @default(now())
+
+  @@index([subjectWallet, mint])
+  @@index([mint, blockTimeSeconds])
+  @@index([sourceContext, type])
+}
+
+/// La caractérisation d'un groupe de co-sortie — coordinated-exit/qualify@v1.
+model CoExitQualification {
+  id                  String     @id @default(cuid())
+  /// Le contexte caractérisé : affaire, run. Sans lui la ligne ne dit pas de quoi elle parle.
+  contextRef          String
+  /// Identité du groupe DANS son contexte. Dérivée du mint et de son instant le
+  /// plus ancien : deux caractérisations du même groupe sous la même règle sont
+  /// la même ligne, et une seconde ne peut pas s'y superposer en silence.
+  groupKey            String
+  mint                String
+  /// ██ NARROW_WINDOW_CLUSTER. Ce n'est PAS `COORDINATED_EXIT`. ██ Aucune
+  /// proximité, 0 seconde incluse, n'établit l'intention. Le démenti est porté
+  /// par `natureBasis.reservations`, pas par ce commentaire seul.
+  category            String
+  // ── Les 7 dimensions, en colonnes plutôt qu'en JSON : elles se filtrent,
+  //    se trient et se contestent une par une. Les enfouir dans un blob les
+  //    aurait rendues illisibles à quiconque n'ouvre pas le JSON.
+  distinctSubjects    Int
+  pairsWithinWindow   Int
+  windowSeconds       Int
+  minGapSeconds       Int?
+  medianGapSeconds    Int?
+  spanSeconds         Int
+  /// Nommés seulement si TOUS les événements du groupe nomment le même.
+  demonstratedVenue       String?
+  demonstratedDestination String?
+  sellCount           Int
+  outgoingCount       Int
+  /// `false` dès qu'une des trois couvertures est incomplète — le résultat est un plancher.
+  coverageAnyIncomplete Boolean  @default(false)
+  /// `MEASURED` | `NOT_MEASURABLE`. NOT_MEASURABLE reste NOT_MEASURABLE.
+  materialityStatus   String
+  /// Les pièces : sujets, signatures, écarts. La caractérisation se recontrôle.
+  evidence            Json
+  rowNature           DataNature?
+  natureBasis         Json?
+  naturePolicyVersion String?
+  /// `coordinated-exit/qualify@v1`. Doit résoudre au registre.
+  methodRef           String
+  createdAt           DateTime   @default(now())
+
+  // IDEMPOTENCE : un contexte, un groupe, une règle → une ligne. Une règle
+  // différente produit une AUTRE ligne — deux versions ne s'écrasent pas.
+  @@unique([contextRef, groupKey, methodRef])
+  @@index([contextRef, category])
+  @@index([mint])
+}

@@ -47,3 +47,22 @@ export {
   type MaterialityStatus,
   type QualifyCoExitInput,
 } from "./qualify";
+export {
+  CO_EXIT_QUALIFICATION_TABLE,
+  CoExitNatureRegistryMismatchError,
+  EXIT_EVENT_TABLE,
+  buildCoExitQualificationRow,
+  buildExitEventRow,
+  groupKeyOf,
+  persistCoExit,
+  satisfiesCoExitQualificationChecks,
+  satisfiesExitEventChecks,
+  type CoExitKeyConflict,
+  type CoExitPersistReport,
+  type CoExitQualificationRow,
+  type CoExitStore,
+  type ExitEventRow,
+  type PersistCoExitInput,
+  type StoredCoExitQualification,
+  type StoredExitEvent,
+} from "./persistence";
