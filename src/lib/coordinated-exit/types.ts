@@ -41,35 +41,58 @@ export interface EvidenceProvenance {
   /** La règle qui a tranché, nommée. */
   rule: typeof COORDINATED_EXIT_EXTRACT_VERSION;
   /**
-   * `swap_counter_asset_same_tx` — le sujet a reçu un autre actif dans la même
-   *   transaction : c'est la preuve du SELL.
+   * `swap_counter_asset_same_tx` — le sujet a reçu un autre actif DE LA
+   *   CONTREPARTIE qui a reçu le mint, dans la même transaction. Seule base
+   *   d'un SELL.
    * `token_leaves_wallet_no_counter_asset` — le mint sort, rien ne rentre.
+   * `counterparty_rejected_rent_recovery` — un actif est bien rentré, mais il
+   *   provient d'un COMPTE DE TOKEN qui se ferme : c'est la récupération d'un
+   *   loyer, pas le produit d'un échange. L'événement retombe en transfert.
+   * `counterparty_rejected_provenance_undemonstrated` — un actif est rentré,
+   *   mais d'une source qui n'a PAS reçu le mint du sujet. Le lien d'échange
+   *   n'est pas démontré, donc il n'est pas affirmé. FAIL-CLOSED.
    */
-  basis: "swap_counter_asset_same_tx" | "token_leaves_wallet_no_counter_asset";
+  basis:
+    | "swap_counter_asset_same_tx"
+    | "token_leaves_wallet_no_counter_asset"
+    | "counterparty_rejected_rent_recovery"
+    | "counterparty_rejected_provenance_undemonstrated";
   /** Le programme qui a exécuté, tel que la source le déclare. Jamais deviné. */
   source: string | null;
   /** Le type déclaré par l'indexeur — RAPPORTÉ, jamais utilisé comme preuve. */
   indexerType: string | null;
 }
 
-/** L'actif reçu en contrepartie, quand il y en a un. */
-export interface CounterAsset {
-  /** Mint reçu, ou `native` pour du SOL. */
-  mint: string | "native";
-  amount: number;
-}
+/**
+ * ██ CE QUE `observedCounterparty*` DIT, ET CE QU'IL NE DIT PAS ██
+ *
+ * Le nom `proceeds` a été retiré : il se lisait comme « produit de la vente »,
+ * et invitait à en faire une base de calcul de plus-value. Mesuré le
+ * 2026-09-05 sur le corpus VINE : dans 30 échanges sur 453, le sujet reçoit
+ * l'actif de contrepartie PLUSIEURS fois dans la même transaction. Le champ
+ * n'en porte qu'une occurrence — celle qui démontre l'échange.
+ *
+ * C'est donc une CONTREPARTIE OBSERVÉE, attribuée à l'échange démontré. Ce
+ * n'est pas le total encaissé, et un P&L bâti dessus serait faux.
+ */
+export const OBSERVED_COUNTERPARTY_MEANING =
+  "Directly observed counterparty asset attributed to the demonstrated exchange. " +
+  "NOT a guarantee of total proceeds — a transaction may return the asset several times. " +
+  "NEVER usable alone for P&L.";
 
 /**
  * UN ACTE DE SORTIE CONSTATÉ.
  *
- * `destination`, `venue` et `proceeds` sont NULLABLES par conception. Ils ne
+ * `destination`, `venue` et `observedCounterparty*` sont NULLABLES par
+ * conception. Ils ne
  * sont renseignés que lorsque la transaction les démontre :
  *
  *   destination  un seul destinataire du mint. Plusieurs ⇒ null : dire lequel
  *                serait choisir.
  *   venue        le programme déclaré, quand il est nommé. `UNKNOWN` ⇒ null.
- *   proceeds     l'actif reçu en contrepartie. Absent ⇒ null, jamais 0 —
- *                zéro affirmerait qu'on a mesuré une contrepartie nulle.
+ *   observedCounterparty*  l'actif reçu de la contrepartie de l'échange.
+ *                Absent ⇒ null, jamais 0 — zéro affirmerait qu'on a mesuré
+ *                une contrepartie nulle.
  */
 export interface ExitEvent {
   subjectWallet: string;
@@ -82,7 +105,11 @@ export interface ExitEvent {
   txSignature: string;
   destination: string | null;
   venue: string | null;
-  proceeds: CounterAsset | null;
+  /** Mint reçu, ou `native` pour du SOL. `null` si aucun échange démontré. */
+  observedCounterpartyAsset: string | null;
+  observedCounterpartyAmount: number | null;
+  /** Le sens du champ voyage AVEC lui — voir OBSERVED_COUNTERPARTY_MEANING. */
+  observedCounterpartyMeaning: string | null;
   rowNature: ExitEventNature;
   evidenceProvenance: EvidenceProvenance;
 }
@@ -104,6 +131,16 @@ export interface ExitNativeTransfer {
   /** Lamports. */
   amount: number;
 }
+/**
+ * Le changement de solde d'un compte de token, tel que l'extraction canonique
+ * le rend. Sert au GARDE : il nomme les comptes de TOKEN de la transaction, et
+ * du SOL qui sort d'un compte de token est un loyer récupéré, pas un paiement.
+ */
+export interface ExitTokenBalanceChange {
+  userAccount?: string;
+  tokenAccount?: string;
+  mint?: string;
+}
 export interface ExitCandidateTx {
   signature?: string;
   /** Unix secondes, UTC. */
@@ -112,4 +149,6 @@ export interface ExitCandidateTx {
   source?: string;
   tokenTransfers?: readonly ExitTokenTransfer[];
   nativeTransfers?: readonly ExitNativeTransfer[];
+  /** Optionnel : sans lui, le garde reste FAIL-CLOSED, il ne s'assouplit pas. */
+  tokenBalanceChanges?: readonly ExitTokenBalanceChange[];
 }

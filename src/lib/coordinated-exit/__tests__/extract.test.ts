@@ -28,7 +28,9 @@ describe("G1 - un transfert sortant n'est JAMAIS une vente", () => {
     })]);
     expect(r.events).toHaveLength(1);
     expect(r.events[0].type).toBe("OUTGOING_TRANSFER"); // 🔴 si SELL
-    expect(r.events[0].proceeds).toBeNull();
+    expect(r.events[0].observedCounterpartyAsset).toBeNull();
+    expect(r.events[0].observedCounterpartyAmount).toBeNull();
+    expect(r.events[0].observedCounterpartyMeaning).toBeNull();
     expect(r.events[0].evidenceProvenance.basis).toBe("token_leaves_wallet_no_counter_asset");
   });
 
@@ -50,7 +52,9 @@ describe("G1 - un transfert sortant n'est JAMAIS une vente", () => {
       nativeTransfers: [{ fromUserAccount: POOL, toUserAccount: OTHER, amount: 900_000 }],
     })]);
     expect(r.events[0].type).toBe("OUTGOING_TRANSFER"); // 🔴
-    expect(r.events[0].proceeds).toBeNull();
+    expect(r.events[0].observedCounterpartyAsset).toBeNull();
+    expect(r.events[0].observedCounterpartyAmount).toBeNull();
+    expect(r.events[0].observedCounterpartyMeaning).toBeNull();
   });
 
   it("SELL uniquement sur contrepartie reçue par LE SUJET, même tx", () => {
@@ -60,7 +64,8 @@ describe("G1 - un transfert sortant n'est JAMAIS une vente", () => {
       nativeTransfers: [{ fromUserAccount: POOL, toUserAccount: SUBJ, amount: 116_264_031 }],
     })]);
     expect(r.events[0].type).toBe("SELL");
-    expect(r.events[0].proceeds).toEqual({ mint: "native", amount: 116_264_031 });
+    expect(r.events[0].observedCounterpartyAsset).toBe("native");
+    expect(r.events[0].observedCounterpartyAmount).toBe(116_264_031);
     expect(r.events[0].evidenceProvenance.basis).toBe("swap_counter_asset_same_tx");
     expect(r.events[0].venue).toBe("PUMP_AMM");
   });
@@ -73,7 +78,8 @@ describe("G1 - un transfert sortant n'est JAMAIS une vente", () => {
       ],
     })]);
     expect(r.events[0].type).toBe("SELL");
-    expect(r.events[0].proceeds).toEqual({ mint: WSOL, amount: 12 });
+    expect(r.events[0].observedCounterpartyAsset).toBe(WSOL);
+    expect(r.events[0].observedCounterpartyAmount).toBe(12);
   });
 
   // ═══ MUTATION 2 — LES DEUX TYPES FUSIONNÉS ═════════════════════════════
