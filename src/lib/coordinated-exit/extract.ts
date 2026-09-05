@@ -36,10 +36,40 @@
 import {
   COORDINATED_EXIT_EXTRACT_VERSION,
   EXIT_EVENT_NATURE,
-  type CounterAsset,
+  OBSERVED_COUNTERPARTY_MEANING,
   type ExitCandidateTx,
   type ExitEvent,
 } from "./types";
+
+// ═══ LE GARDE — PAR PROVENANCE, JAMAIS PAR MONTANT ════════════════════════
+//
+// ██ AUCUNE CONSTANTE DE LOYER N'APPARAÎT DANS CE FICHIER. ██
+//
+// Distinguer un remboursement de loyer d'un paiement par son MONTANT aurait
+// été une heuristique : le loyer d'un compte dépend de sa taille, il change
+// avec les paramètres du protocole, et n'importe quel paiement peut tomber sur
+// la même valeur. Un seuil en lamports aurait fabriqué des faux positifs ET
+// des faux négatifs, sans qu'aucun des deux ne se voie.
+//
+// La provenance, elle, se démontre :
+//
+//   1. LE LIEN D'ÉCHANGE. Une contrepartie ne compte que si elle vient d'un
+//      compte QUI A REÇU LE MINT DU SUJET dans la même transaction. C'est ce
+//      qui fait l'échange : ce qui sort revient transformé, du même acteur.
+//      Mesuré le 2026-09-05 sur VINE : 453 échanges sur 453 le vérifient.
+//
+//   2. LE LOYER. Du SOL qui sort d'un COMPTE DE TOKEN est la récupération du
+//      loyer de ce compte au moment où il se ferme. Un compte de token n'est
+//      pas une contrepartie commerciale, c'est un contenant.
+//
+// ██ FAIL-CLOSED. ██ Une contrepartie qui ne satisfait pas 1, ou qui tombe
+// sous 2, n'est pas « probablement une vente » : elle n'est pas démontrée,
+// donc elle n'est pas affirmée. L'événement redevient un OUTGOING_TRANSFER, et
+// le motif du refus est écrit dans sa provenance.
+//
+// Sans `tokenBalanceChanges`, le garde ne s'assouplit pas : il ne peut pas
+// reconnaître les comptes de token, donc il ne peut écarter aucun loyer — mais
+// la règle 1 continue de s'appliquer, et elle est la plus contraignante.
 
 export type ExitExclusionReason =
   | "missing_signature"
@@ -103,24 +133,67 @@ export function extractExitEvents(input: ExtractExitEventsInput): ExtractExitEve
     const amountRaw = out.reduce((s, t) => s + t.tokenAmount, 0);
     if (!(amountRaw > 0)) { excluded.no_outgoing_amount++; continue; }
 
-    // ── LA CONTREPARTIE : un AUTRE actif reçu par le sujet, même tx ────────
-    const counterToken = tts.find(
-      (t) => t.mint !== mint && t.toUserAccount === subject && t.tokenAmount > 0,
-    );
-    const counterNative = nts.find((n) => n.toUserAccount === subject && n.amount > 0);
-    const proceeds: CounterAsset | null = counterToken
-      ? { mint: counterToken.mint, amount: counterToken.tokenAmount }
-      : counterNative
-        ? { mint: "native", amount: counterNative.amount }
-        : null;
-
-    // ██ SELL SEULEMENT SUR CONTREPARTIE DÉMONTRÉE. ██
-    const type = proceeds ? "SELL" : "OUTGOING_TRANSFER";
-
     // La destination : un seul destinataire, ou rien. Plusieurs ⇒ en désigner
     // un serait choisir, pas constater.
     const recipients = [...new Set(out.map((t) => t.toUserAccount).filter(Boolean))] as string[];
     const destination = recipients.length === 1 ? recipients[0] : null;
+
+    // ── LE GARDE ──────────────────────────────────────────────────────────
+    // Les comptes qui ont REÇU le mint du sujet : les seules contreparties
+    // possibles d'un échange démontré.
+    const mintRecipients = new Set(recipients);
+    // Les comptes de TOKEN de la transaction. Du SOL qui en sort est un loyer.
+    const tokenAccounts = new Set(
+      (tx.tokenBalanceChanges ?? [])
+        .map((c) => c.tokenAccount)
+        .filter((a): a is string => !!a),
+    );
+
+    const anyTokenIn = tts.find(
+      (t) => t.mint !== mint && t.toUserAccount === subject && t.tokenAmount > 0,
+    );
+    const anyNativeIn = nts.find((n) => n.toUserAccount === subject && n.amount > 0);
+
+    let asset: string | null = null;
+    let amountIn: number | null = null;
+    let rejected: "rent" | "unlinked" | null = null;
+
+    // Un actif TOKEN venu d'un compte ayant reçu le mint : échange démontré.
+    const linkedToken = tts.find(
+      (t) =>
+        t.mint !== mint &&
+        t.toUserAccount === subject &&
+        t.tokenAmount > 0 &&
+        !!t.fromUserAccount &&
+        mintRecipients.has(t.fromUserAccount),
+    );
+    // Idem pour du SOL — et le compte source ne doit pas être un compte de
+    // token qui se ferme.
+    const linkedNative = nts.find(
+      (n) =>
+        n.toUserAccount === subject &&
+        n.amount > 0 &&
+        !!n.fromUserAccount &&
+        mintRecipients.has(n.fromUserAccount) &&
+        !tokenAccounts.has(n.fromUserAccount),
+    );
+
+    if (linkedToken) {
+      asset = linkedToken.mint;
+      amountIn = linkedToken.tokenAmount;
+    } else if (linkedNative) {
+      asset = "native";
+      amountIn = linkedNative.amount;
+    } else if (anyNativeIn && anyNativeIn.fromUserAccount && tokenAccounts.has(anyNativeIn.fromUserAccount)) {
+      // Un actif est bien rentré, mais d'un compte de token qui se ferme.
+      rejected = "rent";
+    } else if (anyTokenIn || anyNativeIn) {
+      // Un actif est rentré, d'une source qui n'a pas reçu le mint. Non démontré.
+      rejected = "unlinked";
+    }
+
+    // ██ SELL SEULEMENT SUR CONTREPARTIE DÉMONTRÉE PAR SA PROVENANCE. ██
+    const type = asset !== null ? "SELL" : "OUTGOING_TRANSFER";
 
     events.push({
       subjectWallet: subject,
@@ -135,11 +208,20 @@ export function extractExitEvents(input: ExtractExitEventsInput): ExtractExitEve
       txSignature: tx.signature,
       destination,
       venue: usableVenue(tx.source),
-      proceeds,
+      observedCounterpartyAsset: asset,
+      observedCounterpartyAmount: amountIn,
+      observedCounterpartyMeaning: asset !== null ? OBSERVED_COUNTERPARTY_MEANING : null,
       rowNature: EXIT_EVENT_NATURE,
       evidenceProvenance: {
         rule: COORDINATED_EXIT_EXTRACT_VERSION,
-        basis: proceeds ? "swap_counter_asset_same_tx" : "token_leaves_wallet_no_counter_asset",
+        basis:
+          asset !== null
+            ? "swap_counter_asset_same_tx"
+            : rejected === "rent"
+              ? "counterparty_rejected_rent_recovery"
+              : rejected === "unlinked"
+                ? "counterparty_rejected_provenance_undemonstrated"
+                : "token_leaves_wallet_no_counter_asset",
         source: usableVenue(tx.source),
         // Le type de l'indexeur est RAPPORTÉ, jamais utilisé pour trancher.
         indexerType: tx.type ?? null,

@@ -3,13 +3,14 @@
 export {
   COORDINATED_EXIT_EXTRACT_VERSION,
   EXIT_EVENT_NATURE,
-  type CounterAsset,
+  OBSERVED_COUNTERPARTY_MEANING,
   type EvidenceProvenance,
   type ExitCandidateTx,
   type ExitEvent,
   type ExitEventNature,
   type ExitEventType,
   type ExitNativeTransfer,
+  type ExitTokenBalanceChange,
   type ExitTokenTransfer,
 } from "./types";
 export {

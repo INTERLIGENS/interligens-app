@@ -3,6 +3,7 @@
 import { describe, it, expect } from "vitest";
 import {
   MissingCoExitWindowError,
+  OBSERVED_COUNTERPARTY_MEANING,
   observeCoExit,
   summarizeCoverage,
   type ExitCoverage,
@@ -20,7 +21,8 @@ const ev = (
 ): ExitEvent => ({
   subjectWallet: subject, mint: MINT, type: "SELL", amount: 100n,
   blockTimeSeconds: at, txSignature: `sig-${subject.slice(0, 7)}-${at}`,
-  destination: null, venue: null, proceeds: { mint: "native", amount: 1 },
+  destination: null, venue: null, observedCounterpartyAsset: "native", observedCounterpartyAmount: 1,
+  observedCounterpartyMeaning: OBSERVED_COUNTERPARTY_MEANING,
   rowNature: "PRIMARY_OBSERVATION",
   evidenceProvenance: {
     rule: "coordinated-exit/extract@v1", basis: "swap_counter_asset_same_tx",
@@ -233,7 +235,7 @@ describe("G2 - la fenêtre est un paramètre, pas un réglage implicite", () => 
 
   it("OUTGOING_TRANSFER et SELL coexistent sans être confondus dans un groupe", () => {
     const r = observeCoExit({
-      events: [ev(A, T0, { type: "SELL" }), ev(B, T0 + 8, { type: "OUTGOING_TRANSFER", proceeds: null })],
+      events: [ev(A, T0, { type: "SELL" }), ev(B, T0 + 8, { type: "OUTGOING_TRANSFER", observedCounterpartyAsset: null, observedCounterpartyAmount: null, observedCounterpartyMeaning: null })],
       windowSeconds: 60, coverage: COMPLETE,
     });
     if (!r.observed) return expect.unreachable();
