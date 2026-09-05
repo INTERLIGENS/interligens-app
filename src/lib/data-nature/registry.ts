@@ -126,6 +126,36 @@ export const NATURE_REGISTRY: Record<string, TableNatureDecl> = {
       "opération distincte, non implémentée.",
   },
 
+  // ── BUILD 6 / PACK C — Coordinated Exit. Deux niveaux, jamais fondus. ────
+  ExitEvent: {
+    regime: "DECLARED", rows: 0, nature: "PRIMARY_OBSERVATION", stage: "S6",
+    why:
+      "Un ExitEvent est un acte CONSTATÉ : le sujet a cédé ou déplacé le token, avec " +
+      "signature et block time. Mono-nature PAR CONSTRUCTION — rien n'y est calculé, " +
+      "donc rien n'y est INFERENCE. Le type (OUTGOING_TRANSFER | SELL) est DÉMONTRÉ par " +
+      "la provenance de la contrepartie dans la transaction, jamais inféré : un SELL " +
+      "exige que l'actif reçu vienne du compte qui a reçu le mint, et une récupération " +
+      "de loyer n'est pas une contrepartie de vente. " +
+      "0 ligne à la déclaration (2026-09-05) : la déclaration PRÉCÈDE l'écriture, elle " +
+      "ne la suit pas. Sans cette entrée, natureForTable rend UNCLASSIFIED et le writer " +
+      "REFUSE de construire la moindre ligne — comportement voulu, prouvé par test.",
+  },
+
+  CoExitQualification: {
+    regime: "DECLARED", rows: 0, nature: "INFERENCE",
+    basis: ["PRIMARY_OBSERVATION"], stage: "S6",
+    why:
+      "La ligne AFFIRME « ce groupe présente telles dimensions ». C'est une règle " +
+      "appliquée — coordinated-exit/qualify@v1 — à des ExitEvents constatés et à des " +
+      "relations temporelles dérivées DÉTERMINISTEMENT de leurs block times (une " +
+      "soustraction n'est pas une inférence). Q3 : la nature est celle de la DERNIÈRE " +
+      "OPÉRATION ; les événements sont des PRIMARY_OBSERVATION, la caractérisation " +
+      "qu'on en dérive ne l'est pas. " +
+      "Ce que cette table ne porte PAS : aucun verdict de coordination, de dump ou " +
+      "d'intention, aucun score. NARROW_WINDOW_CLUSTER n'est pas COORDINATED_EXIT, et " +
+      "le démenti voyage dans natureBasis.reservations de chaque ligne.",
+  },
+
   ShillCorrelationCandidate: {
     regime: "DECLARED", rows: 1_532, nature: "INFERENCE",
     basis: ["PRIMARY_OBSERVATION"], stage: "S6",
