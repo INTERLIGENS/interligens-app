@@ -1,8 +1,9 @@
 # Restauration du signal CI — CC-OFFLINE-142
 
-**Branche** : `feat/cc-offline-142-ci-signal-restore`
+**Branche** : `feat/cc-offline-142-ci-signal-restore` — **mergée** (`2549fc3`)
 **Date** : 2026-09-05
 **Prédécesseur** : `docs/reports/ci-signal-classification.md` (CC-OFFLINE-141, mergé)
+**État** : ✅ **clos — `main` est vert**
 
 Objectif : rendre le signal CI de `main` interprétable. Chaque garde repasse verte
 **pour la bonne raison** — aucune n'est désarmée, aucun seuil n'est relevé.
@@ -13,12 +14,97 @@ Objectif : rendre le signal CI de `main` interprétable. Chaque garde repasse ve
 
 | Gate | Verdict | État |
 |---|---|---|
-| G1 — Quality Gates | Réparé, vérifié en local à l'identique de la CI | ✅ |
+| G1 — Quality Gates | Réparé, vert en CI | ✅ |
 | G2 — SAST / Semgrep | Finding réellement supprimée (pas de `nosemgrep`) | ✅ |
 | G3 — Dependency Audit | Verdict porté par le cliquet existant + baseline versionnée | ✅ |
 | G4 — All Security Gates Passed | Sémantique inchangée, vert par ses parents | ✅ |
 | G5 — Vercel `interligens-web` | 4 prémisses **confirmées** — geste hors périmètre repo | ⚠️ à faire par David |
-| **Merge** | **BLOQUÉ** — `.github/` est un chemin gelé | ⛔ exemption requise |
+| **Merge** | Dansé, exemption refermée byte-identique | ✅ |
+
+---
+
+## ✅ CLÔTURE — `main` est vert
+
+**Run [33973251708](https://github.com/INTERLIGENS/interligens-app/actions/runs/33973251708)
+sur `main` en `2549fc3`, le 2026-09-05 : `CONCLUSION: success`.**
+
+Premier succès du workflow `Security Gates` sur `main`. Les 200 runs précédents,
+remontant au 2026-06-26, étaient tous en échec ou annulés.
+
+```
+  success   Secret Scanning (Gitleaks)
+  success   SAST (Semgrep)
+  success   Dependency Audit
+  success   Quality Gates
+  success   All Security Gates Passed
+```
+
+Et le détail par étape — chacune a réellement tourné, aucune n'est masquée :
+
+```
+== Quality Gates
+   success   Generate Prisma client
+   success   Type check
+   success   Tests
+   success   Build
+   success   Lint
+   skipped   CI Ratchet          (if: github.event_name == 'pull_request')
+
+== Dependency Audit
+   success   Dependency audit — cliquet sur la dette atteignant le code livré
+     [audit] 105 advisories
+       portée     critical     high moderate      low     info
+       prod              0       25       23        3        0
+       dev               0       32       18        4        0
+     [audit] cliquet : baseline 25 acceptées — mesuré 25
+     [audit] ✅ aucune dette NEUVE atteignant le code livré.
+```
+
+> Le runner Linux compte **105** advisories là où le poste macOS en compte 112 —
+> écart de dépendances optionnelles par plateforme. Le sous-ensemble qui porte le
+> verdict, lui, est **identique : 25 prod high+**. La baseline est donc stable
+> d'une plateforme à l'autre, ce qui était la condition pour qu'elle serve de
+> référence.
+
+### La danse d'exemption, déroulée
+
+`.github/` est un chemin gelé. La fenêtre a été ouverte et refermée par la voie
+de maintenance du guard (`^hotfix/guard-[a-z0-9-]+$`, système de garde **seul**
+dans le diff), sans `--admin` :
+
+| # | Commit | PR | Objet |
+|---|---|---|---|
+| 1 | `798a08e` | [#243](https://github.com/INTERLIGENS/interligens-app/pull/243) | Exemption ciblée — `security.yml`, une branche, un fichier |
+| 2 | `dd8c1c4` | [#244](https://github.com/INTERLIGENS/interligens-app/pull/244) | Refermeture — retour byte-identique |
+| 3 | `1d0e3c4` `5845754` `2549fc3` | [#242](https://github.com/INTERLIGENS/interligens-app/pull/242) | Le chantier CC-OFFLINE-142 |
+
+La refermeture a été mergée **avant** le chantier : l'ordre a été validé
+explicitement, et il tient parce que le check `Paths / branch guard` de la #242
+était déjà passé (il s'évalue sur l'évènement `pull_request`, pas au merge). La
+fenêtre n'est donc restée ouverte que le temps de la #242, et jamais au-delà.
+
+### Vérification de fermeture
+
+```
+$ git show origin/main:scripts/guard-offline.sh | shasum -a 256
+ce13d0c0f987483786c26346c832fb8ff5e082206259bc46c23073f8b9013e50
+
+$ git show origin/main:scripts/guard-offline.sh | grep -c ci-signal-restore
+0
+```
+
+**SHA-256 = `ce13d0c0…3e50`**, identique à celui mesuré avant l'ouverture.
+**Zéro exemption résiduelle.** `^\.github/` regèle en entier.
+
+Branches supprimées : `feat/cc-offline-142-ci-signal-restore`,
+`hotfix/guard-ci-signal-restore`, `hotfix/guard-ci-signal-restore-close` —
+distantes **et** locales.
+
+### Ce qui reste rouge sur `main`, et pourquoi c'est correct
+
+Le seul statut en échec est `Vercel`, celui du projet **`interligens-web`** — le
+parasite diagnostiqué en G5. Il n'appartient à aucun flux de production et n'est
+requis par rien. Son extinction est un réglage de dashboard, décrit plus bas.
 
 ---
 
@@ -332,50 +418,39 @@ demandé. Deux options, par ordre de préférence :
 
 ---
 
-## ⛔ BLOQUÉ AU MERGE — `.github/` est un chemin gelé
+## Ce que le chantier a révélé sans le corriger
 
-`scripts/guard-offline.sh` gèle `"^\.github/"` (`FORBIDDEN_PATTERNS`). Le job
-*Paths / branch guard* exécute la version du guard **d'`origin/main`** : la
-branche ne peut pas s'auto-autoriser. La PR sera donc rouge sur ce job tant
-qu'une exemption n'existe pas **sur main**.
+### Le cliquet de lint ne compare rien en CI, aujourd'hui
 
-Le seul fichier gelé touché est `.github/workflows/security.yml`.
-`scripts/audit-classify.mjs`, `audit-baseline.json` et les deux tests sont hors
-chemin gelé. `package.json` et `vercel.json` n'ont **pas** été touchés.
+L'étape `CI Ratchet` tourne bien sur l'évènement `pull_request`, et la correction
+G2 fonctionne — `BASE_REF: main` est résolu, `"origin/$BASE_REF"` est passé cité.
+Mais le journal de la #242 montre ceci :
 
-**Exemption demandée** — même forme que `ef64ce5` (PACK C), à poser sur `main` par
-la voie de maintenance. Bloc 1, à côté des autres `EXEMPT_*` :
-
-```bash
-# Exception pour CC-OFFLINE-142 — restauration du signal CI. Le workflow des
-# security gates, et lui seul : env factices de CI pour le fail-fast d'env.ts,
-# correctif de la finding shell-injection, et bascule du verdict d'audit sur le
-# cliquet existant. AUCUN wildcard sur .github/ : un seul fichier, sur une
-# branche nommée. Autorisation humaine explicite (David) — voir PR description.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-signal-restore$ ]]; then
-    EXEMPT_CI_SIGNAL_RESTORE_PATTERNS=(
-        "^\\.github/workflows/security\\.yml$"
-    )
-fi
+```
+> node scripts/ratchet-check.mjs origin/main
+fatal: invalid object name 'origin/main'.
+[ratchet] aucune baseline sur origin/main — premier passage, rien à comparer.
 ```
 
-Bloc 2, dans la boucle `while IFS= read -r file`, avant `for pattern in
-"${FORBIDDEN_PATTERNS[@]}"` :
+`actions/checkout` clone par défaut avec `fetch-depth: 1` : la ref `origin/main`
+n'existe pas sur le runner. `ratchet-check.mjs` traite ce cas comme un premier
+passage et rend 0. **Le cliquet de lint est donc un no-op en CI depuis son
+câblage** — il ne l'a jamais été autrement.
 
-```bash
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-signal-restore$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_CI_SIGNAL_RESTORE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-```
+Ce n'est **pas** corrigé ici, délibérément :
 
-Puis refermeture (retour byte-identique) après le merge, comme `83f23f2`.
+- ce n'est pas dans le mandat des cinq gates — G2 ne demandait que la suppression
+  de la finding shell-injection, faite et vérifiée ;
+- l'étape est en `continue-on-error` (phase 1 = mesure), donc le no-op n'a jamais
+  masqué de verdict bloquant ;
+- le réparer (`fetch-depth: 0` sur le checkout du job `quality`) ferait passer le
+  cliquet de « rend toujours 0 » à « compare réellement », ce qui peut le faire
+  échouer pour la première fois. C'est un changement de comportement, pas un
+  correctif d'infrastructure — et le durcissement du cliquet est nommé « phase 3 »
+  dans le dépôt, une décision distincte.
+
+À arbitrer avec la phase 3. Le correctif tient en une ligne, mais il appartient à
+cette décision-là.
 
 ---
 
@@ -389,6 +464,23 @@ Puis refermeture (retour byte-identique) après le merge, comme `83f23f2`.
 | `__tests__/security/audit-classify.test.ts` | non | 8 tests du cliquet d'audit |
 | `src/lib/shill-correlation/__tests__/exclusion-persistence.test.ts` | non | `VetVerdict` complété (régression `e4d66a5`) |
 
+Plus, sur les deux branches de maintenance du guard : `scripts/guard-offline.sh`,
+ouvert puis refermé **byte-identique** (`ce13d0c0…3e50`).
+
 Non touchés, volontairement : `src/lib/config/env.ts`, `scripts/ratchet-check.mjs`,
 `eslint-suppressions.json`, le job `all-gates-passed`, `package.json`,
 `vercel.json`, l'environnement Vercel de production.
+
+---
+
+## Ce qu'il reste à faire, et par qui
+
+1. **David — éteindre le check Vercel parasite.** Dashboard Vercel → projet
+   `interligens-web` → *Settings* → *Git* → **Disconnect**. C'est le dernier
+   statut rouge sur `main`, et le seul geste hors périmètre repo.
+2. **À arbitrer — rendre `All Security Gates Passed` required.** Maintenant que le
+   job est vert, le ruleset `protect-main` peut enfin le déclarer en
+   `required_status_checks` : c'est ce qui transformera un signal lisible en
+   signal qui protège. Aujourd'hui il n'y a aucun check requis (cf. G4).
+3. **À arbitrer avec la phase 3** — `fetch-depth: 0` pour que le cliquet de lint
+   compare réellement, et `--fail-on-prod` pour l'audit.
