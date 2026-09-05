@@ -18,7 +18,7 @@
 // Volumes mesurés sur ep-square-band le 2026-08-27, en lecture seule.
 
 import type { DataNature, NatureValue } from "./nature";
-import { UNCLASSIFIED } from "./nature";
+import { UNCLASSIFIED, isNatureValue } from "./nature";
 
 export type Regime = "DECLARED" | "DECLARED_PREDICATE" | "ROW" | "FIELD";
 
@@ -273,8 +273,26 @@ export function natureForRow(table: string, row: Record<string, unknown>): Natur
     case "DECLARED_PREDICATE": return decl.predicate ? decl.predicate(row) : UNCLASSIFIED;
     case "FIELD": return decl.rowDefault ? decl.rowDefault(row) : UNCLASSIFIED;
     case "ROW": {
-      const v = row.nature;
-      return typeof v === "string" ? (v as NatureValue) : UNCLASSIFIED;
+      // La colonne autoritaire s'appelle `rowNature`, et elle seule.
+      //
+      // Ce lecteur lisait `row.nature`. Mesuré le 2026-09-05 sur ep-square-band :
+      // AUCUNE table de la base ne porte de colonne `nature` nue — 13 modèles
+      // déclarent `rowNature DataNature?`, zéro déclare `nature`. La lecture ne
+      // pouvait donc jamais aboutir : les cinq tables du régime ROW rendaient
+      // UNCLASSIFIED quoi qu'il y ait en base, et decorate() levait sur
+      // assertPublishable. La classification écrite n'était jamais lue.
+      //
+      // PAS DE REPLI SUR `nature`. Un `?? row.nature` transformerait ce
+      // correctif en compatibilité avec une colonne qui n'existe pas, et
+      // masquerait la prochaine faute de nom au lieu de la faire apparaître.
+      //
+      // `isNatureValue` remplace un `as NatureValue` non vérifié : la valeur
+      // était castée sans contrôle, donc n'importe quelle chaîne ressortait
+      // comme une nature et franchissait assertPublishable — qui ne refuse que
+      // le littéral UNCLASSIFIED. Une valeur hors énumération est désormais
+      // rendue UNCLASSIFIED, donc refusée à la publication (fail-closed).
+      const v = row.rowNature;
+      return isNatureValue(v) ? v : UNCLASSIFIED;
     }
   }
 }
