@@ -57,11 +57,14 @@ export const SIMILARITY_RESERVATIONS: readonly string[] = [
   "NO AGGREGATE SCORE — feature results are never reduced to a number, a ranking or a risk level.",
   "ABSENCE OF EVIDENCE IS NEVER A DIFFERENCE — an unobserved, unmeasurable, censored or missing side yields NOT_COMPARABLE.",
   "SHARED IDENTIFIERS ARE CO-OCCURRENCES — the same address or handle appearing in two cases is a fact about the data, not about an actor.",
-  // ██ RÉSERVE À DURÉE DE VIE LIMITÉE — voir SIMILARITY_COMPARE_RULE_VERSION. ██
-  // Un test vérifie que le ref NE résout PAS ; le jour où l'artefact est gelé,
-  // ce test rougit et force le retrait de cette ligne. Une réserve qu'on
-  // oublierait de retirer se transformerait en bruit, et un bruit ne protège rien.
-  "METHODOLOGY ARTIFACT NOT FROZEN — similarity/compare@v1 resolves to no frozen methodology artifact; no output of this comparator may be published or persisted until it does.",
+  // ── La réserve « METHODOLOGY ARTIFACT NOT FROZEN » a été RETIRÉE ici le
+  //    2026-09-05, et son retrait n'est pas un choix : le tripwire de
+  //    __tests__/contract.test.ts affirmait que le ref NE résolvait PAS ; il a
+  //    rougi au gel de content/methodologies/similarity/v1.md, et exige
+  //    désormais l'inverse — que le ref résolve, et que le sha concorde.
+  //    Garder une réserve devenue fausse l'aurait transformée en bruit, et un
+  //    bruit ne protège personne.
+  "METHOD IS FROZEN AND CITABLE — similarity/compare@v1 resolves against a frozen methodology artifact; a result produced under another version does not compare with this one.",
 ];
 
 const EXPERIMENTAL_RESERVATION =

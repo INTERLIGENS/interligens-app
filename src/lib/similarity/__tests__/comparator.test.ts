@@ -305,7 +305,7 @@ describe("compareSubjects", () => {
     );
     for (const r of out.results) {
       expect(r.reservations.some((x) => x.startsWith("SIMILARITY IS NOT A VERDICT"))).toBe(true);
-      expect(r.reservations.some((x) => x.startsWith("METHODOLOGY ARTIFACT NOT FROZEN"))).toBe(
+      expect(r.reservations.some((x) => x.startsWith("METHOD IS FROZEN AND CITABLE"))).toBe(
         true,
       );
       // Le sens gelé — démentis compris — voyage avec le résultat.

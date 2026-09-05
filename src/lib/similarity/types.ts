@@ -51,12 +51,14 @@ import type { DataNature } from "@/lib/data-nature/nature";
  * La version de la règle de comparaison. CITABLE : deux comparaisons rendues
  * sous deux versions ne se comparent pas entre elles.
  *
- * ██ ELLE NE RÉSOUT PAS ENCORE DANS LE REGISTRE DES MÉTHODOLOGIES. ██
- * C'est délibéré et c'est dit : geler un artefact de méthodologie est une
- * décision de doctrine, pas un effet de bord d'un build de code. Tant que
- * l'artefact n'existe pas, AUCUNE sortie de ce comparateur ne peut être
- * publiée ni persistée — la réserve est portée par chaque résultat, et un
- * test la fait tomber le jour où l'artefact est gelé.
+ * ██ GELÉE LE 2026-09-05, AVANT TOUT RÉSULTAT S3. ██
+ * `content/methodologies/similarity/v1.md` fige EXACTEMENT le contrat et la
+ * sémantique livrés en S2 ; `resolveMethodRef("similarity/compare@v1")` résout,
+ * et un test compare le miroir au .md byte pour byte dans les deux sens.
+ *
+ * L'ORDRE COMPTE PLUS QUE LE GEL LUI-MÊME : la méthode a été arrêtée AVANT
+ * d'observer la moindre comparaison. Une méthode ajustée après coup ne
+ * mesurerait plus que son ajustement.
  */
 export const SIMILARITY_COMPARE_RULE_VERSION = "similarity/compare@v1";
 

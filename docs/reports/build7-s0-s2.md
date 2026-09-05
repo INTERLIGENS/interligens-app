@@ -82,7 +82,13 @@ réécriture, zéro chemin gelé touché.**
 | **Coverage / censoring** | *attribut* (INV-4) | deux collectes également censurées ne se ressemblent pas, elles sont également aveugles |
 | **Les seuils** | **jamais** un paramètre du comparateur | un seuil n'a le droit d'exister que **gelé en amont**, et il entre alors sous forme d'issue catégorielle déjà calculée |
 
-### Les 16 features déclarées
+### Les 17 features déclarées
+
+> **ERRATUM 2026-09-05 (S3-G2).** Ce rapport annonçait « 16 features ». Le
+> registre en déclare **17** — la famille `COORDINATED_EXIT` en porte six, pas
+> cinq. L'erreur était dans le comptage du rapport, jamais dans le code : le
+> tableau ci-dessous a toujours listé les 17. Corrigé avant le gel de
+> `similarity/compare@v1`, et fixé par un test (`toHaveLength(17)`).
 
 `SIMILARITY_FEATURE_REGISTRY` est **fermé** : une clé absente lève
 (`UnknownFeatureError`). Chaque entrée pointe sur un **symbole exporté existant**.
@@ -313,7 +319,7 @@ exportée : il peut exercer `identity.*`, `shill.promotion_qualification` et
 
 ### La comparaison VINE ↔ BOTIFY, honnêtement
 
-Sur les **16 features**, la plupart des couples tomberont en `NOT_COMPARABLE` —
+Sur les **17 features**, la plupart des couples tomberont en `NOT_COMPARABLE` —
 et **c'est le résultat correct**, pas un échec du moteur :
 
 - les features `exit.*` n'existeront que du côté VINE → `MISSING` côté BOTIFY ;

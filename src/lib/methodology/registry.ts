@@ -17,6 +17,7 @@ import {
   COORDINATED_EXIT_V1,
   FINANCIAL_ESTIMATES_V1,
   FUNDING_RELATIONSHIP_V1,
+  SIMILARITY_V1,
   SOCIAL_PROMOTION_V1,
   type MethodologyArtifact,
 } from "./artifact";
@@ -27,6 +28,7 @@ export const METHODOLOGIES: readonly MethodologyArtifact[] = [
   SOCIAL_PROMOTION_V1,
   FUNDING_RELATIONSHIP_V1,
   COORDINATED_EXIT_V1,
+  SIMILARITY_V1,
 ];
 
 export interface ResolvedMethodRef {
