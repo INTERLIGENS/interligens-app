@@ -18,6 +18,7 @@ import {
   FINANCIAL_ESTIMATES_V1,
   FUNDING_RELATIONSHIP_V1,
   SIMILARITY_V1,
+  SIMILARITY_V2,
   SOCIAL_PROMOTION_V1,
   type MethodologyArtifact,
 } from "./artifact";
@@ -29,6 +30,10 @@ export const METHODOLOGIES: readonly MethodologyArtifact[] = [
   FUNDING_RELATIONSHIP_V1,
   COORDINATED_EXIT_V1,
   SIMILARITY_V1,
+  // ██ @v1 ET @v2 COEXISTENT. ██ `resolveMethodRef` sélectionne sur (id,
+  // version) : les deux résolvent, et un résultat cite la sienne. Retirer @v1
+  // rendrait le delta @v1→@v2 invérifiable.
+  SIMILARITY_V2,
 ];
 
 export interface ResolvedMethodRef {
