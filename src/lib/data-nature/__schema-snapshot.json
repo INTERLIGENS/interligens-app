@@ -1,7 +1,7 @@
 {
- "measuredAt": "2026-09-04",
+ "measuredAt": "2026-09-05",
  "source": "ep-square-band, information_schema, lecture seule",
- "count": 180,
+ "count": 182,
  "tables": [
   "AddressLabel",
   "AuditLog",
@@ -10,6 +10,7 @@
   "BillingEvent",
   "CandidateStatusLog",
   "CaseExport",
+  "CoExitQualification",
   "CommunitySubmission",
   "ContradictionAlert",
   "Conversation",
@@ -26,6 +27,7 @@
   "EvidenceLink",
   "EvidenceNegative",
   "EvidenceSnapshot",
+  "ExitEvent",
   "ExternalLookupCache",
   "FeedbackEntry",
   "FeedbackReport",

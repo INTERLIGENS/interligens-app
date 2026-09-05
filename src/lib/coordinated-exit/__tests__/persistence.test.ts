@@ -73,19 +73,49 @@ function groupOf(events: ExitEvent[]): CoExitGroup {
 // ═══ LE REFUS, SANS SIMULATION ════════════════════════════════════════════
 
 describe("PACK C — le writer refuse une table non déclarée", () => {
+  // Le test RETIRE l'entrée plutôt que de supposer son absence. Avant la
+  // migration le registre ne nommait pas ces tables et l'assertion tenait par
+  // accident ; elle serait devenue fausse le jour de la déclaration. Ce qu'on
+  // veut prouver est le MÉCANISME — sans déclaration, rien ne s'écrit — pas
+  // l'état du dépôt à un instant donné.
   it("FAIL-CLOSED : sans entrée au registre, aucune ligne n'est construite", () => {
-    // Aucune injection ici : c'est l'état RÉEL du dépôt.
-    expect(NATURE_REGISTRY[EXIT_EVENT_TABLE]).toBeUndefined();
-    expect(NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE]).toBeUndefined();
-    expect(() => buildExitEventRow(ev(A, T0), CTX)).toThrow(CoExitNatureRegistryMismatchError);
-    expect(() => buildExitEventRow(ev(A, T0), CTX)).toThrow(/UNCLASSIFIED/);
+    const saved = NATURE_REGISTRY[EXIT_EVENT_TABLE];
+    delete NATURE_REGISTRY[EXIT_EVENT_TABLE];
+    try {
+      expect(() => buildExitEventRow(ev(A, T0), CTX)).toThrow(CoExitNatureRegistryMismatchError);
+      expect(() => buildExitEventRow(ev(A, T0), CTX)).toThrow(/UNCLASSIFIED/);
+    } finally {
+      if (saved) NATURE_REGISTRY[EXIT_EVENT_TABLE] = saved;
+      else delete NATURE_REGISTRY[EXIT_EVENT_TABLE];
+    }
+  });
+
+  it("FAIL-CLOSED : idem pour la qualification", () => {
+    const saved = NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE];
+    delete NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE];
+    try {
+      const g = groupOf([ev(A, T0), ev(B, T0 + 12)]);
+      const c = qualifyCoExit({ group: g, coverage: COVERAGE });
+      expect(() => buildCoExitQualificationRow(c, g, CTX))
+        .toThrow(CoExitNatureRegistryMismatchError);
+    } finally {
+      if (saved) NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE] = saved;
+      else delete NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE];
+    }
   });
 });
 
 // ═══ LE CHEMIN D'ÉCRITURE, REGISTRE SIMULÉ ════════════════════════════════
 
 describe("PACK C — le writer, une fois les tables déclarées", () => {
+  // Les entrées existent désormais réellement (migration du 2026-09-05). On les
+  // sauvegarde et on les restaure : écraser sans restaurer laisserait le
+  // registre modifié pour les fichiers suivants.
+  let savedEvent: (typeof NATURE_REGISTRY)[string] | undefined;
+  let savedQual: (typeof NATURE_REGISTRY)[string] | undefined;
   beforeAll(() => {
+    savedEvent = NATURE_REGISTRY[EXIT_EVENT_TABLE];
+    savedQual = NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE];
     NATURE_REGISTRY[EXIT_EVENT_TABLE] = {
       regime: "DECLARED", rows: 0, nature: "PRIMARY_OBSERVATION", stage: "S6",
       why: "simulation de test — l'entrée réelle est appliquée après la migration",
@@ -97,8 +127,10 @@ describe("PACK C — le writer, une fois les tables déclarées", () => {
     };
   });
   afterAll(() => {
-    delete NATURE_REGISTRY[EXIT_EVENT_TABLE];
-    delete NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE];
+    if (savedEvent) NATURE_REGISTRY[EXIT_EVENT_TABLE] = savedEvent;
+    else delete NATURE_REGISTRY[EXIT_EVENT_TABLE];
+    if (savedQual) NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE] = savedQual;
+    else delete NATURE_REGISTRY[CO_EXIT_QUALIFICATION_TABLE];
   });
 
   const qual = () => {
