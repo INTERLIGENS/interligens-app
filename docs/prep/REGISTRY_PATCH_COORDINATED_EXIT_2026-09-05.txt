@@ -1,0 +1,34 @@
+PATCH REGISTRE — BUILD 6 / PACK C. PRÉPARÉ, NON APPLIQUÉ.
+
+À insérer dans src/lib/data-nature/registry.ts (NATURE_REGISTRY) APRÈS la
+migration Neon ET le rafraîchissement de __schema-snapshot.json (180 → 182).
+
+L'invariant I5 exige que le registre ne nomme que des tables présentes au
+snapshot, et le snapshot est une MESURE de ep-square-band. L'appliquer avant la
+migration falsifierait une mesure pour faire passer un test.
+
+────────────────────────────────────────────────────────────────────────────
+  // ── BUILD 6 / PACK C — Coordinated Exit. Deux niveaux, jamais fondus. ────
+  ExitEvent: {
+    regime: "DECLARED", rows: 0, nature: "PRIMARY_OBSERVATION", stage: "S6",
+    why:
+      "Un ExitEvent est un acte CONSTATÉ : le sujet a cédé ou déplacé le token, avec " +
+      "signature et block time. Mono-nature PAR CONSTRUCTION — rien n'y est calculé, " +
+      "donc rien n'y est INFERENCE. Le type (OUTGOING_TRANSFER | SELL) est démontré par " +
+      "la provenance de la contrepartie dans la transaction, pas inféré. " +
+      "0 ligne à la déclaration (2026-09-05) : la déclaration PRÉCÈDE l'écriture.",
+  },
+
+  CoExitQualification: {
+    regime: "DECLARED", rows: 0, nature: "INFERENCE",
+    basis: ["PRIMARY_OBSERVATION"], stage: "S6",
+    why:
+      "La ligne AFFIRME « ce groupe présente telles dimensions ». C'est une règle " +
+      "appliquée — coordinated-exit/qualify@v1 — à des ExitEvents constatés et à des " +
+      "relations temporelles dérivées déterministement de leurs block times. Q3 : la " +
+      "nature est celle de la DERNIÈRE OPÉRATION ; les événements sont des " +
+      "PRIMARY_OBSERVATION, la caractérisation qu'on en dérive ne l'est pas. " +
+      "Ce que cette table ne porte PAS : aucun verdict de coordination, de dump ou " +
+      "d'intention. NARROW_WINDOW_CLUSTER n'est pas COORDINATED_EXIT.",
+  },
+────────────────────────────────────────────────────────────────────────────
