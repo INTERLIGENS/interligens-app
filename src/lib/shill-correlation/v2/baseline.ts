@@ -88,11 +88,23 @@ export interface BaselineCollectionTarget {
   mint: string | null;
   chain: string;
   /**
-   * ANCRE ON-CHAIN, pas un timestamp du corpus. `ShillEvent.tweetTimestamp`
-   * stocke une heure murale parisienne dans une colonne UTC (mesure du
-   * 2026-09-03 : ecart constant, variance nulle). Le passer directement
-   * decalait CHAQUE fenetre de 2 h - le type l'interdit desormais.
-   * Voir anchor.ts, `onChainAnchorFromCorpus`.
+   * ANCRE ON-CHAIN, pas un timestamp du corpus. Le type l'impose : un `Date`
+   * quelconque ne peut pas etre passe ici.
+   *
+   * Le decalage de 2 h qu'on croyait lire dans `ShillEvent.tweetTimestamp` -
+   * « heure murale parisienne dans une colonne UTC », mesure du 2026-09-03,
+   * ecart constant et variance nulle - N'EXISTE PAS. La constance etait
+   * reelle, la conclusion etait fausse. Remesure le 2026-09-04 : l'ecart
+   * venait du LECTEUR. Le driver `pg` interprete une colonne `timestamp
+   * without time zone` dans le fuseau LOCAL du process ; Prisma la lit en
+   * UTC. Relu via Prisma, le corpus est a ZERO d'ecart sur 148 des 169 lignes
+   * a tweetId exploitable - il n'y avait rien a compenser, et la compensation
+   * decalait de 2 h des instants justes.
+   *
+   * L'ancre vient donc de `timeAnchor.ts`, derivee du snowflake du post, que
+   * ni fuseau ni driver ne peuvent decaler. Aucune constante de correction ne
+   * subsiste : voir anchor.ts pour la mesure complete et le retrait de la
+   * compensation.
    */
   observedAt: OnChainInstant;
 }
