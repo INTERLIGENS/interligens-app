@@ -1,6 +1,14 @@
 // BUILD 7 / S1 — LE CONTRAT : ce que le registre et le constructeur REFUSENT.
 import { describe, expect, it } from "vitest";
-import { isKnownMethodRef } from "@/lib/methodology/registry";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { isKnownMethodRef, resolveMethodRef } from "@/lib/methodology/registry";
+import {
+  SIMILARITY_V1,
+  SIMILARITY_V1_SHA256,
+  serializeArtifactBody,
+} from "@/lib/methodology/artifact";
 import { DATA_NATURES } from "@/lib/data-nature/nature";
 import {
   MalformedObservationError,
@@ -8,6 +16,8 @@ import {
   SIMILARITY_COMPARE_RULE_VERSION,
   SIMILARITY_FEATURE_KEYS,
   SIMILARITY_FEATURE_REGISTRY,
+  ALLOWED_VERDICT_REASONS,
+  SIMILARITY_RESERVATIONS,
   UnknownFeatureError,
   buildFeatureObservation,
   completeCoverage,
@@ -51,13 +61,62 @@ describe("le registre", () => {
   });
 });
 
-describe("TRIPWIRE — la méthodologie de similarité n'est PAS gelée", () => {
-  // ██ CE TEST DOIT ROUGIR LE JOUR OÙ L'ARTEFACT EST GELÉ. ██ C'est son rôle :
-  // il force alors le retrait de la réserve « METHODOLOGY ARTIFACT NOT FROZEN »
-  // portée par chaque résultat. Une réserve qu'on oublie de retirer devient du
-  // bruit, et un bruit ne protège personne.
-  it("similarity/compare@v1 ne résout sur aucun artefact gelé", () => {
-    expect(isKnownMethodRef(SIMILARITY_COMPARE_RULE_VERSION)).toBe(false);
+describe("GEL — la méthodologie de similarité EST gelée (bascule du tripwire)", () => {
+  // ██ CE BLOC AFFIRMAIT L'INVERSE JUSQU'AU 2026-09-05. ██ Le tripwire disait
+  // « le ref NE résout PAS » et portait sa propre condition de retrait : il a
+  // rougi au gel de content/methodologies/similarity/v1.md, ce qui a forcé, en
+  // un seul geste, le retrait de la réserve « METHODOLOGY ARTIFACT NOT FROZEN »
+  // et la réécriture de ce test. Une réserve devenue fausse serait du bruit.
+  const MD = join(process.cwd(), "content/methodologies/similarity/v1.md");
+  const HEADER = `## ${SIMILARITY_V1.components[0].id} — ${SIMILARITY_V1.components[0].title}`;
+  const frozenBody = (md: string) => md.slice(md.indexOf(HEADER)).replace(/\n+$/, "");
+  const sha = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
+
+  it("similarity/compare@v1 résout sur un artefact gelé", () => {
+    expect(isKnownMethodRef(SIMILARITY_COMPARE_RULE_VERSION)).toBe(true);
+    const r = resolveMethodRef(SIMILARITY_COMPARE_RULE_VERSION);
+    expect(r).not.toBeNull();
+    expect(r!.componentId).toBe("compare");
+    expect(r!.artifact.version).toBe("v1");
+    expect(r!.artifact.id).toBe("similarity");
+  });
+
+  it("le .md est déclaré FROZEN et son sha déclaré est celui de son corps", () => {
+    const md = readFileSync(MD, "utf8");
+    expect(md).toContain("status: FROZEN");
+    const declared = /contentSha256: ([0-9a-f]{64})/.exec(md)?.[1];
+    expect(declared).toBeDefined();
+    expect(sha(frozenBody(md))).toBe(declared);
+    expect(SIMILARITY_V1_SHA256).toBe(declared);
+  });
+
+  it("le miroir TypeScript reproduit le .md OCTET POUR OCTET", () => {
+    // Sans ce test, le miroir et l'artefact dériveraient en silence, et le
+    // methodRef citerait un texte que personne ne pourrait relire.
+    expect(serializeArtifactBody(SIMILARITY_V1)).toBe(frozenBody(readFileSync(MD, "utf8")));
+  });
+
+  it("le gel fige EXACTEMENT le contrat S2 — les 16 clés y sont nommées", () => {
+    // Le corps gelé n'est pas un résumé : chaque feature déclarée doit y être
+    // citée, faute de quoi @v1 documenterait un contrat qu'il ne contient pas.
+    const body = SIMILARITY_V1.components[0].body;
+    for (const key of SIMILARITY_FEATURE_KEYS) expect(body).toContain(key);
+    expect(SIMILARITY_FEATURE_KEYS).toHaveLength(17);
+  });
+
+  it("le gel fige EXACTEMENT la sémantique S2 — verdicts et motifs", () => {
+    const body = SIMILARITY_V1.components[0].body;
+    for (const [verdict, reasons] of Object.entries(ALLOWED_VERDICT_REASONS)) {
+      expect(body).toContain(verdict);
+      for (const r of reasons) expect(body).toContain(r);
+    }
+  });
+
+  it("chaque comparaison cite désormais la méthode gelée", () => {
+    expect(
+      SIMILARITY_RESERVATIONS.some((r) => r.startsWith("METHOD IS FROZEN AND CITABLE")),
+    ).toBe(true);
+    expect(SIMILARITY_RESERVATIONS.some((r) => r.includes("NOT FROZEN"))).toBe(false);
   });
 });
 

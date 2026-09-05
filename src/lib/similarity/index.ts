@@ -84,3 +84,16 @@ export {
   observationsFromPromotionQualification,
   observationsFromTokenIdentity,
 } from "./adapters";
+
+export {
+  NON_CANONICAL_KEYS,
+  SUBJECT_IDENTITIES,
+  SyntheticMintError,
+  UnknownSubjectError,
+  assertCanonicalMint,
+  subjectIdentity,
+  type MintAuthority,
+  type NonCanonicalKey,
+  type NonCanonicalKeyKind,
+  type SubjectIdentity,
+} from "./subject";
