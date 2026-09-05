@@ -475,6 +475,20 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exception pour CC-OFFLINE-142 — restauration du signal CI. `main` n'a jamais
+# été vert : 0 succès sur 200 runs depuis le 2026-06-26. Le workflow des security
+# gates, et LUI SEUL, porte les trois correctifs : env factices de CI pour le
+# fail-fast d'env.ts (aucun fallback applicatif, aucune valeur de prod), sortie de
+# github.base_ref hors du `run:` (finding Semgrep shell-injection), et bascule du
+# verdict d'audit sur le cliquet existant. AUCUN wildcard sur .github/ : un seul
+# fichier, sur une branche nommée. Autorisation humaine explicite (David,
+# CC-OFFLINE-142) — voir docs/reports/ci-signal-restore.md et la PR.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-signal-restore$ ]]; then
+    EXEMPT_CI_SIGNAL_RESTORE_PATTERNS=(
+        "^\.github/workflows/security\.yml$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +692,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche ci-signal-restore, exempter STRICTEMENT le workflow des
+    # security gates (aucun wildcard sur .github/ : tout le reste reste bloqué).
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ci-signal-restore$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_CI_SIGNAL_RESTORE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
