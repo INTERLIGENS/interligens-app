@@ -34,3 +34,16 @@ export {
   type SubjectCoverage,
   type TransactionCoverage,
 } from "./coExit";
+export {
+  CATEGORY_MEANING,
+  COORDINATED_EXIT_METHOD_REF,
+  COORDINATED_EXIT_POLICY_VERSION,
+  SELL_PROVENANCE_INVARIANT,
+  SellProvenanceInvariantError,
+  assertSellProvenanceInvariant,
+  qualifyCoExit,
+  type CoExitCategory,
+  type CoExitCharacterisation,
+  type MaterialityStatus,
+  type QualifyCoExitInput,
+} from "./qualify";

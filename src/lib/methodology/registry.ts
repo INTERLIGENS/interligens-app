@@ -14,6 +14,7 @@
 // devra y être mappée ; elle ne bloque pas S5.
 
 import {
+  COORDINATED_EXIT_V1,
   FINANCIAL_ESTIMATES_V1,
   FUNDING_RELATIONSHIP_V1,
   SOCIAL_PROMOTION_V1,
@@ -25,6 +26,7 @@ export const METHODOLOGIES: readonly MethodologyArtifact[] = [
   FINANCIAL_ESTIMATES_V1,
   SOCIAL_PROMOTION_V1,
   FUNDING_RELATIONSHIP_V1,
+  COORDINATED_EXIT_V1,
 ];
 
 export interface ResolvedMethodRef {
