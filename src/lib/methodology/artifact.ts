@@ -579,6 +579,332 @@ on a traceable basis, and never automatically.`,
   ],
 };
 
+// ─── BUILD 7 / compare@v2 — la version CORRECTIVE ──────────────────────────
+//
+// SOURCE : content/methodologies/similarity/v2.md. Miroir typé, byte pour byte.
+//
+// ██ @v1 N'EST PAS RETIRÉ. ██ `supersedes: v1` dit la filiation, pas la mise au
+// rebut : @v1 reste GELÉ et RÉSOLVABLE, parce que c'est la seule façon de
+// mesurer un delta @v1→@v2 sur un corpus identique. Un correctif qui effacerait
+// la version corrigée rendrait sa propre correction invérifiable.
+//
+// Ce que @v2 ferme, ce sont TROIS contradictions QUE LE RUN S3 A MESURÉES —
+// pas trois défauts imaginés : une provenance d'ancre que le vocabulaire fermé
+// refusait alors que le corpus la porte, l'absence d'état pour une donnée qui
+// existe sans pouvoir soutenir une feature, et l'absence de toute règle
+// d'agrégation groupe→sujet. Plus la sémantique de destination.
+
+/** Empreinte du corps de content/methodologies/similarity/v2.md. */
+export const SIMILARITY_V2_SHA256 =
+  "5a1affa89dab3ca058034041f9731a901c4a144dcd49ee512f2d7864ce81ef51";
+
+export const SIMILARITY_V2: MethodologyArtifact = {
+  id: "similarity",
+  version: "v2",
+  title: "How INTERLIGENS Compares a Subject to a Prior Case",
+  intro:
+    "Asking whether a token looks like a scam demands a score and a threshold, and returns " +
+    "a verdict the data does not support. This methodology answers a different question, and " +
+    "only that one: which demonstrated characteristics of this subject have already been " +
+    "observed in prior cases, and on what evidence does each similarity or difference rest.",
+  effectiveFrom: "2026-09-05",
+  contentSha256: SIMILARITY_V2_SHA256,
+  components: [
+    {
+      id: "compare",
+      title: "Case Similarity Comparison (V2)",
+      body: `### 0. What v2 changes, and what it refuses to change
+
+v2 is a CORRECTIVE version. It declares the same seventeen features as v1, the
+same four verdicts, the same prohibition on scores, thresholds, weights and
+percentages, and the same nine invariants. It adds four things, each closing a
+defect that a real run measured rather than a defect someone imagined:
+
+1. A GROUP-TO-SUBJECT AGGREGATION rule, declared per feature. v1 said nothing,
+   so a run had to invent one, and the conservative choice it made destroyed
+   facts that three groups out of six had demonstrated.
+2. A sixth observability state, INADMISSIBLE, for data that EXISTS and cannot
+   support the feature. v1 had only four kinds of absence, and a run had to file
+   inadmissible rows under "we looked and found nothing", which was false.
+3. An explicit TEMPORAL RESOLUTION, so that a source dated to the day is carried
+   as a day and never as an instant.
+4. An ATTRIBUTION on every feature that names an address or an entity, so that a
+   raw identifier match is never read as an entity match.
+
+v2 loosens nothing. Every refusal v1 made, v2 still makes.
+
+### 1. What this comparison is, and what it is not
+
+The unit of comparison is a FEATURE: one demonstrated characteristic of one
+subject, produced by an engine that already exists, carrying its own evidence,
+its own data nature, its own method and its own coverage.
+
+The output is one verdict per feature, drawn from a closed vocabulary of four
+values, each accompanied by the basis that produced it: what was compared, the
+values on both sides, the evidence pointers, the natures, the coverage, the
+aggregation scope, the attribution, and why that state and no other.
+
+There is NO similarity score. There is no ranking, no risk level, no percentage
+and no weight. Reducing heterogeneous features to a single number would require
+weights, and weights are a verdict in disguise. Nothing in this methodology
+produces a finding of guilt, scam, coordination, common operator or fault.
+
+### 2. The six observability states
+
+A feature on a given subject is in exactly one of six states. They answer six
+different questions and they never merge:
+
+OBSERVED         the characteristic was established, with its evidence.
+NOT_OBSERVED     the engine looked at the sample and found nothing in it.
+NOT_MEASURABLE   the quantity cannot be measured from what exists.
+CENSORED         collection was cut before the question could be answered.
+INADMISSIBLE     the data exists and cannot support this feature.
+MISSING          the characteristic was never extracted for this subject.
+
+INADMISSIBLE is the state v1 lacked, and its absence was not cosmetic. Under
+NOT_OBSERVED a reader concludes that collection should be widened; under
+INADMISSIBLE the reader knows it is the QUALIFICATION of the data that blocks,
+and that collecting more of the same would change nothing. An inadmissible
+feature must name its cause, drawn from a closed list: DATA_NATURE_MISSING (the
+source row carries no nature at all), DATA_NATURE_MISMATCH (it carries a nature,
+and not the one the feature requires), PROVENANCE_UNSATISFIED (a method,
+provenance or proof the contract requires is not met). It must also state what
+was found and what was required: a refusal must remain contestable.
+
+An inadmissible side is NEVER downgraded to an absence, and an absent side is
+never dressed as a refusal. The comparator gives inadmissibility its own reason
+code, evaluated BEFORE observability, so that a rejection cannot disappear under
+the generic one.
+
+MISSING remains non-constructible: an observation cannot carry it; the
+comparator observes it when no observation exists.
+
+CENSORED the state and censored coverage remain two different facts, and they
+coexist. CENSORED means nothing could be established at all. An OBSERVED feature
+whose coverage is incomplete has a value, but that value is a FLOOR.
+
+### 3. Group-to-subject aggregation
+
+Several features are defined PER GROUP: the contract says "within the group",
+"from the first to the last act of the group". A subject may hold several
+groups. v2 declares, for each feature, how the group level reaches the subject
+level, and it never decides case by case.
+
+ALL_OR_NOTHING       a subject-level value exists only if EVERY group
+                     demonstrates it. Used where the feature describes a
+                     property of the whole rather than of a fragment.
+DEMONSTRATED_BY_ANY  a fact demonstrated by at least one group IS demonstrated.
+                     Used where unanimity is ALREADY required inside the group,
+                     so that requiring it a second time between groups would add
+                     a rule nothing supports.
+PER_GROUP_MAGNITUDE  a magnitude defined per group. Where the subject holds
+                     SEVERAL groups there is no subject-level value: the
+                     per-group facts are preserved intact, and summarising them
+                     into a sum, an average or a maximum would fabricate a
+                     quantity nothing measured. Where the subject IS a single
+                     group, the magnitude is exactly the one the contract
+                     defines, and it is observed and carried. That distinction
+                     is not a threshold: it separates the unit of definition
+                     from an aggregate that is not one. In both cases the
+                     magnitude is CARRIED and never judged.
+SUBJECT_LEVEL        the feature is computed directly on the subject; there is
+                     nothing to aggregate.
+
+Every aggregation carries a SCOPE, and the scope travels with the value all the
+way into the comparison result: ALL_GROUPS, SOME_GROUPS, CONFLICTING_GROUPS,
+NO_GROUP, PER_GROUP_ONLY, NOT_AGGREGATED.
+
+THERE IS NO MAJORITY VOTE, anywhere. "Five groups out of six say X, therefore
+the subject is X" is a threshold in disguise — why five out of six and not four?
+— and it silences the group that says otherwise. When groups demonstrate two
+different values the scope says CONFLICTING_GROUPS and NO subject value is
+produced. This is enforced in code: an observation whose aggregation records
+more than one distinct demonstrated value cannot be OBSERVED.
+
+SOME_GROUPS IS NOT A WHOLE-SUBJECT TRUTH. A value demonstrated by three groups
+out of six is demonstrated, and it is demonstrated BY THREE GROUPS OUT OF SIX.
+A result resting on such a side is flagged as scope-restricted and carries a
+reservation saying so.
+
+### 4. Temporal resolution
+
+A source that dates a fact to the DAY is carried as a day, and a source that
+dates it to the INSTANT is carried as an instant. The resolution is explicit,
+and so is its provenance.
+
+NO HOUR IS EVER FABRICATED. Midnight is not an observation: it is the default
+value of a column type. Carrying that instant would assert a minute nobody
+measured, on a product whose engines measure gaps of seconds. A day-resolution
+value must therefore be a bare date; a value that claims day resolution while
+carrying a time component is refused in code.
+
+A feature may declare that it requires INSTANT resolution. When it does and
+either side is only dated to the day, the comparison is NOT_COMPARABLE with the
+reason TEMPORAL_RESOLUTION_INSUFFICIENT. The gap is never closed by inventing a
+time.
+
+date_only is an admissible anchor provenance in v2, alongside snowflake and
+source_timestamp. v1 refused it, and the refusal was wrong: the corpus carries
+it, and a real value the contract cannot say is a defect of the contract.
+Admitting the provenance authorises no hour whatsoever.
+
+### 5. Attribution of addresses and entities
+
+Several features name an address or an entity. Each such feature carries an
+ATTRIBUTION, and its default is ignorance:
+
+UNATTRIBUTED       no auditable label. The value is an identifier, and nothing
+                   more.
+DECLARED_BY_SOURCE a name REPORTED by the source, typically a program named by
+                   an indexer. Reported, never verified, and it carries no
+                   provenance precisely because that is what distinguishes it
+                   from an attribution.
+ATTRIBUTED         an auditable label WITH its provenance. The only opposable
+                   identity. A label without provenance is treated as absent,
+                   exactly as the funding-relationship methodology already
+                   requires.
+
+An identical address compares as an identical IDENTIFIER, and that comparison is
+kept: suppressing it would impoverish the result. What is forbidden is reading
+anything else into it. When either compared side is UNATTRIBUTED the result is
+flagged and carries a reservation stating that no entity, no venue, no exchange,
+no cashout and no coordination may be read into the match, and that it carries
+no probative weight.
+
+This matters concretely. A destination address unanimously demonstrated by
+several groups may be shared market infrastructure; if it is, the co-occurrence
+is worth nothing. v2 does not decide which it is — deciding would require a
+label the product does not hold, and inventing one is precisely the fault this
+methodology exists to prevent. v2 states the ignorance instead.
+
+### 6. The feature contract
+
+The registry is CLOSED and holds exactly the seventeen features of v1. Each now
+also declares its aggregation rule, whether it requires an attribution, the
+temporal resolution it requires, and the data nature its source rows must carry.
+
+IDENTITY
+  identity.token_resolution_status   CATEGORICAL   INFERENCE            SUBJECT_LEVEL
+  identity.chain_demonstrated        CATEGORICAL   INFERENCE            SUBJECT_LEVEL
+TEMPORAL
+  temporal.anchor_provenance         CATEGORICAL   INFERENCE            SUBJECT_LEVEL
+  temporal.exit_cluster_span_seconds ORDINAL       INFERENCE            PER_GROUP_MAGNITUDE
+  temporal.exit_cluster_min_gap_seconds ORDINAL    INFERENCE            PER_GROUP_MAGNITUDE
+FUNDING_GRAPH
+  funding.shared_funder_addresses    SET           PRIMARY_OBSERVATION  SUBJECT_LEVEL, attribution
+  funding.relationship_categories    SET           INFERENCE            SUBJECT_LEVEL
+  funding.external_funder_count      ORDINAL       PRIMARY_OBSERVATION  SUBJECT_LEVEL
+SHILL_CORRELATION
+  shill.promotion_qualification      CATEGORICAL   INFERENCE            SUBJECT_LEVEL
+  shill.kol_handles                  SET           PRIMARY_OBSERVATION  SUBJECT_LEVEL, NOMINATIVE
+COORDINATED_EXIT
+  exit.cluster_category              CATEGORICAL   INFERENCE            ALL_OR_NOTHING
+  exit.demonstrated_venue            CATEGORICAL   PRIMARY_OBSERVATION  DEMONSTRATED_BY_ANY, attribution
+  exit.demonstrated_destination      CATEGORICAL   PRIMARY_OBSERVATION  DEMONSTRATED_BY_ANY, attribution
+  exit.distinct_subjects             ORDINAL       PRIMARY_OBSERVATION  PER_GROUP_MAGNITUDE
+  exit.composition_profile           CATEGORICAL   PRIMARY_OBSERVATION  ALL_OR_NOTHING
+  exit.materiality                   ORDINAL       INFERENCE            PER_GROUP_MAGNITUDE
+PRE_SHILL
+  preshill.front_run_wallets         SET           INFERENCE            SUBJECT_LEVEL, EXPERIMENTAL, attribution
+
+Three things remain deliberately NOT features. DATA NATURE is an attribute and
+an input to the comparator. COVERAGE is an attribute. THRESHOLDS never enter
+this comparator as a parameter: a threshold may exist only frozen upstream in a
+ratified rule, and it then enters as a categorical outcome already computed.
+
+Nature, experimental status, nominative status, aggregation rule and attribution
+requirement are owned by the REGISTRY and are never supplied by the caller.
+
+Value kinds are unchanged. CATEGORICAL compares by equality. SET compares by
+overlap, published as three lists and never as a ratio. ORDINAL is NEVER
+COMPARED: saying that one magnitude is close to another would require a cut that
+no ratified rule provides. An observation must have POSITIVE CONTENT; an empty
+set, a false boolean or an empty string is an absence disguised as a value.
+
+### 7. Comparator semantics
+
+Evaluation order is a rule, not a detail. At each branch the WEAKEST reading
+wins.
+
+1. ADMISSIBILITY. If either side is INADMISSIBLE, the result is NOT_COMPARABLE
+   with reason SIDE_INADMISSIBLE, carrying the cause, what was found and what
+   was required. This runs FIRST, so a rejection never disappears under the
+   generic absence.
+2. OBSERVABILITY. If either side is not OBSERVED, the result is NOT_COMPARABLE
+   with reason SIDE_NOT_OBSERVABLE, and the reason names BOTH states verbatim.
+3. METHOD. Different method references, rule versions or method parameters give
+   NOT_COMPARABLE with reason METHOD_MISMATCH. Nothing in the VALUES would have
+   signalled it.
+4. TEMPORAL RESOLUTION. A feature requiring INSTANT resolution against a side
+   dated only to the day gives NOT_COMPARABLE with reason
+   TEMPORAL_RESOLUTION_INSUFFICIENT.
+5. ORDINAL. Two observed magnitudes give NOT_COMPARABLE with reason
+   ORDINAL_REQUIRES_UNDECLARED_THRESHOLD. Accidental equality is a coincidence.
+6. VALUES. CATEGORICAL: equal gives MATCH with EQUAL_VALUE, otherwise a
+   candidate DIFFERENT with VALUE_DIFFERS. SET: identical gives MATCH with
+   IDENTICAL_SET; a non-empty intersection with a non-empty difference gives
+   PARTIAL_MATCH with SET_OVERLAP_PARTIAL; disjoint sets give a candidate
+   DIFFERENT with SET_DISJOINT.
+7. CENSORSHIP. A candidate DIFFERENT on a side whose coverage is incomplete
+   becomes NOT_COMPARABLE with COVERAGE_CENSORED_NEGATIVE_WITHHELD.
+
+Censorship remains ASYMMETRIC: it withdraws negatives and never positives.
+
+The verdict vocabulary is closed to MATCH, PARTIAL_MATCH, DIFFERENT and
+NOT_COMPARABLE. The reason vocabulary is closed to EQUAL_VALUE, IDENTICAL_SET,
+SET_OVERLAP_PARTIAL, VALUE_DIFFERS, SET_DISJOINT, SIDE_NOT_OBSERVABLE,
+SIDE_INADMISSIBLE, TEMPORAL_RESOLUTION_INSUFFICIENT,
+COVERAGE_CENSORED_NEGATIVE_WITHHELD, METHOD_MISMATCH and
+ORDINAL_REQUIRES_UNDECLARED_THRESHOLD. No other pairing exists.
+
+A subject-level comparison returns one entry for EVERY declared feature,
+including those absent on both sides.
+
+NOT_COMPARABLE is a valid and expected result. A methodology that avoided it
+would be manufacturing findings out of absences.
+
+A result produced under v1 does not compare with a result produced under v2.
+Both versions stay frozen and both stay resolvable; the version is part of the
+result, exactly as a window or a threshold would be.
+
+### 8. The thirteen invariants
+
+Each is enforced by executable code that raises, and each is demonstrated by a
+dedicated mutant that must turn red when its guard is removed.
+
+INV-1  The observability states never merge, and each side state is transcribed
+       faithfully from its observation.
+INV-2  Absence of evidence never becomes MATCH, PARTIAL_MATCH or DIFFERENT.
+INV-3  An observation must have positive content.
+INV-4  Censorship may only weaken a negative, never produce one.
+INV-5  An experimental engine output does not become a canonical fact by being
+       compared.
+INV-6  Nature never climbs the authority scale.
+INV-7  Every comparison is attributable, and so is every refusal.
+INV-8  The verdict and reason vocabularies are closed; no aggregate key may
+       appear anywhere in the output; an ordinal magnitude is never judged; the
+       reason text may not contain conclusion language.
+INV-9  Two measurements produced under different methods do not compare.
+INV-10 An INADMISSIBLE side is never downgraded to an absence, never carries its
+       cause under another state, and always yields its own reason code.
+INV-11 No aggregation by majority vote; a scope is never laundered into a
+       whole-subject truth.
+INV-12 No hour is fabricated where the source gives none.
+INV-13 No semantic identity is attached to an unlabelled address, and a label
+       without auditable provenance is treated as absent.
+
+### 9. What never comes out of this comparison
+
+No score, no ranking, no percentage, no risk level. No claim of coordination,
+common operator, sybil behaviour, manipulation or fault. No statement about a
+person: a shared handle or a shared address is a CO-OCCURRENCE in the data, and
+an exchange hot wallet reaches thousands of unrelated people. Reading intent
+from any output of this methodology is an INTERPRETATION, produced elsewhere, on
+a traceable basis, and never automatically.`,
+    },
+  ],
+};
+
 export function serializeArtifactBody(a: MethodologyArtifact): string {
   return a.components
     .map((c) => `## ${c.id} — ${c.title}\n\n${c.body}`)
