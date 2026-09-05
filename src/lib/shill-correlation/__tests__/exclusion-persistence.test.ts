@@ -100,7 +100,21 @@ describe("Persistance des exclusions", () => {
         exitDeltaSeconds: null, firstSeenAt: new Date("2026-06-05T10:00:00Z"), firstBuyTxSignature: "sig3",
         shillEvent: { id: "e3", kolHandle: "empire_sol1", tokenMint: "MINT_C", tweetTimestamp: new Date("2026-06-05T10:02:00Z") } },
     ]);
-    const clean: VetVerdict = { excludedReason: null, flags: [], txCount30d: 10, distinctTokenAccounts: 2, infraHits: [] };
+    // Verdict complet : les quatre champs de preuve ajoutés par SHILL-C1/C2
+    // (dimensionsMet, evidence, collectionSaturated, ruleName) font partie du
+    // contrat. Un verdict partiel ne compile plus — c'est voulu : une levée
+    // d'exclusion doit dire QUELLE règle l'a prononcée et sur quelle preuve.
+    const clean: VetVerdict = {
+      excludedReason: null,
+      flags: [],
+      dimensionsMet: [],
+      evidence: [],
+      txCount30d: 10,
+      distinctTokenAccounts: 2,
+      infraHits: [],
+      collectionSaturated: false,
+      ruleName: "two-of-three-conservative",
+    };
     const r = await aggregateCandidates({
       dryRun: true,
       loadExistingExclusions: async () => existingMap("W4", "high_frequency"),
