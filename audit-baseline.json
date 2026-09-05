@@ -1,0 +1,97 @@
+{
+  "fast-xml-parser": {
+    "GHSA-8gc5-j5rx-235r": {
+      "count": 1
+    }
+  },
+  "lodash": {
+    "GHSA-r5fr-rjxr-66jc": {
+      "count": 1
+    }
+  },
+  "next": {
+    "GHSA-q4gf-8mx6-v5v3": {
+      "count": 1
+    },
+    "GHSA-8h8q-6873-q5fj": {
+      "count": 1
+    },
+    "GHSA-26hh-7cqf-hhc6": {
+      "count": 1
+    },
+    "GHSA-mg66-mrh9-m8jx": {
+      "count": 1
+    },
+    "GHSA-c4j6-fc7j-m34r": {
+      "count": 1
+    },
+    "GHSA-492v-c6pp-mqqv": {
+      "count": 1
+    },
+    "GHSA-267c-6grr-h53f": {
+      "count": 1
+    },
+    "GHSA-36qx-fr4f-26g5": {
+      "count": 1
+    },
+    "GHSA-6gpp-xcg3-4w24": {
+      "count": 1
+    },
+    "GHSA-m99w-x7hq-7vfj": {
+      "count": 1
+    },
+    "GHSA-89xv-2m56-2m9x": {
+      "count": 1
+    },
+    "GHSA-p9j2-gv94-2wf4": {
+      "count": 1
+    }
+  },
+  "basic-ftp": {
+    "GHSA-6v7q-wjvx-w8wg": {
+      "count": 1
+    },
+    "GHSA-chqc-8p9q-pq6q": {
+      "count": 1
+    },
+    "GHSA-rp42-5vxx-qpwr": {
+      "count": 1
+    },
+    "GHSA-rpmf-866q-6p89": {
+      "count": 1
+    }
+  },
+  "fast-xml-builder": {
+    "GHSA-5wm8-gmm8-39j9": {
+      "count": 1
+    }
+  },
+  "ws": {
+    "GHSA-96hv-2xvq-fx4p": {
+      "count": 1
+    }
+  },
+  "postcss": {
+    "GHSA-6g55-p6wh-862q": {
+      "count": 1
+    },
+    "GHSA-r28c-9q8g-f849": {
+      "count": 1
+    }
+  },
+  "ip-address": {
+    "GHSA-mwp4-54f8-5fhr": {
+      "count": 1
+    }
+  },
+  "extract-zip": {
+    "GHSA-jmr9-qjv8-65gv": {
+      "count": 1
+    }
+  },
+  "deepmerge-ts": {
+    "GHSA-ggr8-5vv4-36mx": {
+      "count": 1
+    }
+  }
+}
