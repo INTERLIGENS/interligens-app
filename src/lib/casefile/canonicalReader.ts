@@ -73,6 +73,19 @@ export interface PublicClaim {
   readonly provenance: ClaimProvenance | null;
 }
 
+/**
+ * Un wallet clé du dossier, tel que `token_casefiles."keyWallets"` le porte.
+ *
+ * BUILD 9 / ÉTAPE 7 — lu pour que la surface admin cesse de rendre des
+ * adresses codées en dur. Un tableau VIDE est une réponse : BOTIFY ne porte
+ * aucun bloc de wallets on-chain, et en fabriquer un pour remplir la forme
+ * serait exactement ce que l'étape 7 supprime.
+ */
+export interface CanonicalKeyWallet {
+  readonly role: string;
+  readonly address: string;
+}
+
 export interface CanonicalCaseFile {
   readonly ref: string;
   readonly codename: string;
@@ -83,6 +96,7 @@ export interface CanonicalCaseFile {
   readonly verdict: string;
   readonly claims: readonly PublicClaim[];
   readonly sources: readonly PublicSource[];
+  readonly keyWallets: readonly CanonicalKeyWallet[];
 }
 
 const iso = (d: Date | null | undefined): string | null =>
@@ -135,6 +149,19 @@ export function resolveProvenance(
   return { threadUrl, sources, unresolvedRefs };
 }
 
+/** `keyWallets` est du jsonb : on ne garde que les entrées bien formées. */
+const asKeyWallets = (v: unknown): CanonicalKeyWallet[] => {
+  if (!Array.isArray(v)) return [];
+  const out: CanonicalKeyWallet[] = [];
+  for (const w of v) {
+    const r = (w ?? {}) as Record<string, unknown>;
+    if (typeof r.address === "string" && r.address.length > 0) {
+      out.push({ role: typeof r.role === "string" ? r.role : "", address: r.address });
+    }
+  }
+  return out;
+};
+
 const asRefs = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
@@ -153,7 +180,7 @@ export async function loadCanonicalCaseFile(
     where: { ref },
     select: {
       ref: true, codename: true, ticker: true, title: true,
-      tigerScore: true, verdict: true,
+      tigerScore: true, verdict: true, keyWallets: true,
     },
   });
   if (!dossier) return null;
@@ -217,6 +244,7 @@ export async function loadCanonicalCaseFile(
     verdict: dossier.verdict,
     claims,
     sources,
+    keyWallets: asKeyWallets(dossier.keyWallets),
   };
 }
 

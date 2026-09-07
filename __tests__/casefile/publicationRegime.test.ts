@@ -71,6 +71,7 @@ const dossier = (o: Partial<CanonicalCaseFile> = {}): CanonicalCaseFile => ({
   verdict: "AVOID",
   claims: [],
   sources: [],
+  keyWallets: [],
   ...o,
 });
 

@@ -162,6 +162,7 @@ describe("ÉTAPE 7 — la surface admin voit le dossier entier, états compris",
       }),
     ],
     sources: [],
+    keyWallets: [],
   };
 
   const vue = toInternalCaseView(dossier);
