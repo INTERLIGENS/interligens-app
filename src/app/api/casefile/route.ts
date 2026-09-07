@@ -239,11 +239,21 @@ export async function GET(req: NextRequest) {
     claims: offChain.claims.length,
   });
 
-  // On-chain (parallel, graceful)
+  // ── POINT 5 — l'enrichissement on-chain interroge l'IDENTITÉ, pas l'entrée ─
+  //
+  // Ces trois appels recevaient `sanitizeMint` brut. Quand l'entrée était la
+  // clé de route synthétique — une chaîne qui n'existe dans AUCUNE ligne et sur
+  // aucune chaîne — ils interrogeaient donc un actif inexistant et rendaient
+  // `null` partout, pendant que le dossier, lui, était bien trouvé via
+  // `lookupKey`. D'où deux vérités concurrentes pour un même sujet : même
+  // dossier, données on-chain différentes, score différent (RED/75 vs RED/70).
+  //
+  // Le contrat d'alias était correct ; il n'était appliqué qu'à un seul des
+  // deux consommateurs.
   const [metadata, markets, holders] = await Promise.all([
-    fetchMetadata(sanitizeMint),
-    fetchMarkets(sanitizeMint),
-    fetchHolders(sanitizeMint),
+    fetchMetadata(lookupKey),
+    fetchMarkets(lookupKey),
+    fetchHolders(lookupKey),
   ]);
 
   const top10 = parseFloat(holders?.top10_pct ?? "0");
@@ -253,7 +263,9 @@ export async function GET(req: NextRequest) {
 
   const onChain = {
     asset: {
-      mint: sanitizeMint,
+      // POINT 5 — l'actif est désigné par son identité canonique. Rendre ici la
+      // chaîne de 43 caractères revenait à AFFIRMER qu'elle est un mint.
+      mint: lookupKey,
       name: caseEntry?.name ?? null,
       symbol: caseEntry?.symbol ?? null,
       decimals: metadata?.decimals ?? null,
@@ -294,13 +306,31 @@ export async function GET(req: NextRequest) {
 
   const caseId = crypto.randomBytes(4).toString("hex").toUpperCase();
 
+  // ── POINT 5 — la résolution est DÉCLARÉE, pas silencieuse ────────────────
+  //
+  // `input` annonçait `{type:"mint", value:<43 caractères>}` : la réponse
+  // affirmait qu'une clé de route est un mint. Elle porte désormais ce qui a
+  // été REÇU et ce vers quoi cela a RÉSOLU, séparément.
+  //
+  // Une résolution silencieuse reste non auditable : un lecteur qui reçoit le
+  // dossier canonique pour une entrée alias doit pouvoir voir POURQUOI.
+  const isAlias = lookupKey !== sanitizeMint;
+  const input = {
+    // `type` ne ment plus : une clé de route n'est pas annoncée comme un mint.
+    type: isAlias ? "route_alias" : "mint",
+    value: sanitizeMint,
+    resolved_to: lookupKey,
+    alias_of: isAlias ? lookupKey : null,
+    resolution: isAlias ? "botify_synthetic_route_key" : "identity",
+  };
+
   const caseFile: any = {
     case: {
       case_id: caseId,
       chain: "solana",
-      input: {type:"mint", value:sanitizeMint},
+      input,
       scan_timestamp: new Date().toISOString(),
-      engine_version: "CaseFile-v1.1",
+      engine_version: "CaseFile-v1.2",
       offchain_source: offchainSource,
     },
     verdict: {tier, score, retail_summary: retailSummary},
@@ -308,6 +338,28 @@ export async function GET(req: NextRequest) {
     off_chain: offChain,
     evidence_linking: linking,
   };
+
+  // ── POINT 5 — deux hachages, parce qu'ils répondent à deux questions ─────
+  //
+  // `report_hash` porte `case_id` (aléatoire) et `scan_timestamp` (l'horloge).
+  // Il ne peut donc PAS être identique entre deux appels, même à entrée
+  // identique — il identifie une ÉMISSION, pas un dossier. Le forcer à
+  // l'égalité supposerait de retirer l'aléa et l'horodatage, c'est-à-dire de
+  // changer ce qu'il désigne : hors périmètre du point 5.
+  //
+  // `canonical_hash` répond à la question posée : deux entrées qui désignent le
+  // même sujet rendent-elles le même dossier ? Il couvre l'identité résolue, le
+  // verdict, l'on-chain et l'off-chain — et RIEN de ce qui varie par émission.
+  caseFile.case.canonical_hash = crypto.createHash("sha256")
+    .update(JSON.stringify({
+      subject: lookupKey,
+      chain: "solana",
+      verdict: caseFile.verdict,
+      on_chain: onChain,
+      off_chain: offChain,
+      evidence_linking: linking,
+    }))
+    .digest("hex").slice(0, 16);
 
   caseFile.report_hash = crypto.createHash("sha256")
     .update(JSON.stringify(caseFile)).digest("hex").slice(0,16);
