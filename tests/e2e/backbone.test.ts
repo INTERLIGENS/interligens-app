@@ -109,12 +109,25 @@ describe("E2E backbone — 10 frozen cases", () => {
   });
 
   // CASE 1 ───────────────────────────────────────────────────────────────────
+  // BUILD 8 / P0 — la FIXTURE a changé, pas l'intention du cas.
+  //
+  // Elle portait `attributionSource: "manual"`, une valeur qui n'existe dans
+  // AUCUNE ligne de production (0 sur 482, mesuré le 2026-09-07). Ce cas gelé
+  // gelait donc une fiction : il validait le rang maximal via un vocabulaire
+  // que la base ne connaît pas, et il serait resté vert même si la dérivation
+  // s'était mise à mentir sur des données réelles.
+  //
+  // La fixture reproduit maintenant la combinaison qui atteint réellement
+  // `exact` en production — `attributionStatus: 'confirmed'` +
+  // `claimType: 'verified_onchain'`, soit 15 lignes. L'assertion, elle, est
+  // inchangée : un wallet pleinement confirmé résout au rang maximal.
   it("1. Known wallet → resolveWalletToKol returns confidence=exact", async () => {
     mockPrisma.kolWallet.findFirst.mockResolvedValue({
       kolHandle: "GordonGekko",
       confidence: "high",
-      attributionSource: "manual",
+      attributionSource: "botify_investigation",
       attributionStatus: "confirmed",
+      claimType: "verified_onchain",
       label: "primary",
       sourceUrl: null,
     });

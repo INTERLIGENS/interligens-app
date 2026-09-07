@@ -13,6 +13,14 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { redactProceeds } from "@/lib/kol/proceedsGate";
 import { redactMonetary, MONETARY_PUBLICATION_SELECT } from "@/lib/publication/monetaryGate";
+import {
+  deriveAttributionConfidence,
+  deriveAttributionSource,
+} from "@/lib/kol-memory/attribution";
+import {
+  buildProceedsProvenance,
+  type ProceedsProvenance,
+} from "@/lib/kol-memory/proceedsProvenance";
 
 export type KolSnapshotFreshness = "fresh" | "stale" | "unknown";
 
@@ -44,6 +52,22 @@ export type KolCanonicalSnapshot = {
   evidenceCount: number;
   lastScannedAt: Date | null;
   proceedsSource: "KolProceedsEvent";
+  /**
+   * BUILD 8 / P2 — la provenance du chiffre, DÉRIVÉE.
+   *
+   * `proceedsSource` ci-dessus est un littéral posé d'avance : le snapshot
+   * déclarait sa source sans jamais la consulter. Il est conservé pour ses
+   * consommateurs, mais il n'est plus la seule chose que le payload dise.
+   *
+   * Ce bloc rend l'affirmation FALSIFIABLE : il dit si le chiffre servi se
+   * retrouve dans la source qu'on lui attribue, avec quelle règle, et ce que
+   * `KolProceedsSummary` savait déjà — 28/28 `coverageStatus='partial'`,
+   * 24/28 `pricingQuality='fallback'`, jamais remontés jusqu'ici.
+   *
+   * `NOT_VERIFIED` tant que la source n'a pas été lue : c'est un état, pas un
+   * échec, et surtout pas un succès implicite.
+   */
+  proceedsProvenance: ProceedsProvenance;
   freshness: KolSnapshotFreshness;
   identityConfidence: WalletIdentityConfidence;
   walletAttributionMode: WalletAttributionMode;
@@ -83,18 +107,57 @@ export type KolProfileRow = KolCanonicalSnapshot & {
 
 const FRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
-type WalletRow = { confidence: string; attributionSource: string | null; attributionStatus: string; discoveredAt: Date | null };
+type WalletRow = {
+  confidence: string;
+  attributionSource: string | null;
+  attributionStatus: string;
+  claimType: string | null;
+  discoveredAt: Date | null;
+};
 
+/**
+ * ─── BUILD 8 / P0 — la condition qui ne pouvait jamais être vraie ──────────
+ *
+ * Ce calcul exigeait `attributionSource === "manual"` pour rendre `exact`.
+ * Mesuré sur ep-square-band le 2026-09-07 :
+ *
+ *     SELECT count(*) FROM "KolWallet"
+ *      WHERE "attributionSource" IN ('manual','on_chain_footprint',
+ *                                    'airdrop','promotion_tx','inferred');
+ *     → 0        (sur 482)
+ *
+ * Aucune ligne ne porte ce vocabulaire — la colonne contient 18 étiquettes de
+ * PROVENANCE (`botify_leaked_doc`, `sns`, `arkham_intel`…), c'est-à-dire d'où
+ * vient la preuve, pas comment l'attribution a été faite. Le niveau `exact`
+ * était donc INATTEIGNABLE pour les 412 profils, silencieusement.
+ *
+ * La dérivation est désormais celle de kol-memory/attribution, qui lit
+ * `claimType` — le vocabulaire Publishing Standard v1, lui réellement peuplé.
+ * `exact` exige `confirmed` ET `verified_onchain` : 15 lignes sur 482, un
+ * palier réel.
+ */
 function computeIdentityConfidence(wallets: WalletRow[]): WalletIdentityConfidence {
   if (!wallets.length) return "candidate";
-  if (wallets.some(w => w.attributionStatus === "confirmed" && w.attributionSource === "manual")) return "exact";
-  if (wallets.some(w => w.confidence === "high" || w.attributionStatus === "confirmed")) return "strong";
-  if (wallets.some(w => w.confidence === "medium")) return "probable";
+  const rangs = wallets.map(deriveAttributionConfidence);
+  if (rangs.includes("exact")) return "exact";
+  if (rangs.includes("strong")) return "strong";
+  if (rangs.includes("probable")) return "probable";
   return "candidate";
 }
 
+/**
+ * Même correction : `attributionSource === "manual"` ne pouvait jamais être
+ * vrai, donc ce mode rendait `inferred` pour TOUS les profils — la bonne
+ * réponse, mais pour la mauvaise raison, et sans qu'on puisse le savoir.
+ *
+ * Il se lit maintenant sur la catégorie dérivée de `claimType` : un wallet
+ * dont le produit déclare l'avoir constaté on-chain est attribué autrement
+ * qu'un wallet dont un tiers l'affirme.
+ */
 function computeAttributionMode(wallets: WalletRow[]): WalletAttributionMode {
-  return wallets.some(w => w.attributionSource === "manual") ? "manual" : "inferred";
+  return wallets.some(w => deriveAttributionSource(w) === "on_chain_footprint")
+    ? "manual"
+    : "inferred";
 }
 
 function computeWalletDataFreshAt(wallets: WalletRow[]): Date | null {
@@ -159,6 +222,10 @@ const KOL_SELECT = {
       confidence: true,
       attributionSource: true,
       attributionStatus: true,
+      // BUILD 8 / P0 — sans cette colonne, la dérivation retombe en
+      // `candidate` pour tout le monde (fail-closed). Elle est le vocabulaire
+      // réellement peuplé ; `attributionSource` ne l'est pas.
+      claimType: true,
       discoveredAt: true,
     },
   },
@@ -187,6 +254,15 @@ function toSnapshot(row: RawRow): KolProfileRow {
     evidenceCount: row._count.evidences,
     lastScannedAt: row.lastHeliusScan,
     proceedsSource: "KolProceedsEvent",
+    // BUILD 8 / P2 — `sourceUsd` n'est volontairement PAS fourni ici :
+    // `toSnapshot` est une projection pure, elle n'interroge pas la base. La
+    // provenance ressort donc en `NOT_VERIFIED` — l'état exact de ce qui s'est
+    // passé, et non un `REPRODUCIBLE` que rien n'aurait vérifié. Un appelant
+    // qui veut la vérification lit KolProceedsEvent et appelle
+    // `buildProceedsProvenance` lui-même.
+    proceedsProvenance: buildProceedsProvenance({
+      servedUsd: redactProceeds(row, row.totalDocumented) ?? undefined,
+    }),
     freshness: computeFreshness(row.lastHeliusScan),
     identityConfidence: computeIdentityConfidence(row.kolWallets),
     walletAttributionMode: computeAttributionMode(row.kolWallets),
