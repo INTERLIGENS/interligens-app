@@ -475,6 +475,31 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 8 / POINT 5 — validation T1, 8 points sur 9.
+#
+# `casefileLookupKey` n'était appliqué qu'à la lecture de CASE_DB. Les trois
+# appels on-chain, la déclaration d'actif et la déclaration d'entrée recevaient
+# la valeur brute. Mesuré par T1, stable sur 3 passes : case.input.value = la
+# clé de route verbatim, on_chain.asset.mint = la même annoncée comme un mint,
+# enrichissement on-chain null, et deux vérités concurrentes RED/75 vs RED/70.
+#
+# Le contrat d'alias est correct ; il n'était appliqué qu'à UN des deux
+# consommateurs. Un seul fichier le porte, et il le déclare en ligne :
+#   src/app/api/casefile/route.ts
+#
+# public/route.ts et pdf/route.ts sont propres — vérifié : leur seul usage de
+# `mint` passe déjà par casefileLookupKey, et ni l'un ni l'autre ne fait
+# d'appel on-chain. Ils ne sont PAS dans cette exemption.
+#
+# Périmètre déjà arbitré une fois : ce fichier figurait dans l'exemption E2.
+# Autorisation humaine explicite (David, arbitrage point 5). Aucun wildcard.
+# Refermée byte-identical immédiatement après le merge.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-point5$ ]]; then
+    EXEMPT_CASEFILE_POINT5_PATTERNS=(
+        "^src/app/api/casefile/route\\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -857,6 +882,18 @@ while IFS= read -r file; do
 
 
 
+
+    # Sur la branche POINT 5, exempter STRICTEMENT src/app/api/casefile/route.ts.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-point5$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_CASEFILE_POINT5_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
