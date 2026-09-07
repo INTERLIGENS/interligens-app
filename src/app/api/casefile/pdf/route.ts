@@ -40,9 +40,14 @@ type Template = "public" | "internal";
 // (scan page, share links, OG previews) can bypass the KOL handle lookup
 // entirely. Keep narrow; every entry ships in step with a casefile
 // published under the matching preset.
+// BUILD 8 / E2 — clé sur le mint CANONIQUE, comme /api/casefile/public.
+// Les deux cartes restent en lockstep, et l'alias résout via
+// `casefileLookupKey` au lieu d'être lui-même la clé.
 const MINT_TO_PRESET: Record<string, "botify" | "vine"> = {
-  BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb: "botify",
+  [BOTIFY_MINT]: "botify",
 };
+
+import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
 
 function parseTemplate(raw: string | null): Template {
   if (raw === "internal") return "internal";
@@ -80,7 +85,7 @@ export async function GET(req: NextRequest) {
   if (presetOverride === "vine" || presetOverride === "botify") {
     preset = presetOverride;
   } else if (mint) {
-    preset = MINT_TO_PRESET[mint] ?? null;
+    preset = MINT_TO_PRESET[casefileLookupKey(mint)] ?? null;
     if (!preset) {
       return NextResponse.json(
         { error: "mint has no linked case file" },

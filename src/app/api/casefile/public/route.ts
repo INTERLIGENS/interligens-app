@@ -31,6 +31,7 @@ import {
   type PublicReportLang,
 } from "@/lib/casefile/pdfGeneratorPublic";
 import { kolHandleToCasefilePreset } from "@/lib/casefile/presets";
+import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -39,8 +40,11 @@ export const dynamic = "force-dynamic";
 // Mint → preset map. Keep in lockstep with MINT_TO_PRESET in
 // /api/casefile/pdf; only presets with an approved public template
 // belong here (BOTIFY is the only one in v1).
+// BUILD 8 / E2 — clé sur le mint CANONIQUE. Elle l'était sur la clé de route
+// synthétique, qui n'existe dans aucune ligne : ?mint=<canonique> rendait 404
+// sur la surface RETAIL. L'alias y résout via `casefileLookupKey`.
 const MINT_TO_PRESET: Record<string, "botify"> = {
-  BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb: "botify",
+  [BOTIFY_MINT]: "botify",
 };
 
 function parseLang(raw: string | null): PublicReportLang {
@@ -65,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   let preset: "botify" | null = null;
   if (mint) {
-    preset = MINT_TO_PRESET[mint] ?? null;
+    preset = MINT_TO_PRESET[casefileLookupKey(mint)] ?? null;
   } else {
     preset = kolHandleToCasefilePreset(handle) === "botify" ? "botify" : null;
   }

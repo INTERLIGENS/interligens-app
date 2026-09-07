@@ -21,6 +21,7 @@ import {
   buildProceedsProvenance,
   type ProceedsProvenance,
 } from "@/lib/kol-memory/proceedsProvenance";
+import { resolveCanonicalHandle } from "@/lib/kol-memory/handleResolution";
 
 export type KolSnapshotFreshness = "fresh" | "stale" | "unknown";
 
@@ -291,11 +292,34 @@ function toSnapshot(row: RawRow): KolProfileRow {
   };
 }
 
+/**
+ * ─── BUILD 8 / E1 — 21 des 32 profils publiés étaient injoignables ─────────
+ *
+ * Ce lookup était un `findUnique({ handle })`, égalité STRICTE, alors que
+ * `/api/kol/[handle]` abaisse la casse de ce qu'il reçoit. Tout profil dont le
+ * handle porte une majuscule était donc structurellement introuvable :
+ * la route cherchait `gordongekko`, la base porte `GordonGekko`.
+ *
+ * Mesuré sur ep-square-band le 2026-09-07 : 32 profils publiés, 21 avec
+ * majuscule → injoignables, et 126 des 164 wallets publiables jamais servis.
+ *
+ * La résolution vit dans kol-memory/handleResolution : égalité exacte d'abord,
+ * puis insensible à la casse SEULEMENT si elle désigne une seule ligne, et
+ * REFUS si plusieurs. Ce n'est pas de la prudence rhétorique — `0xsweep` et
+ * `0xSweep` sont deux lignes distinctes en base, et servir l'une pour l'autre
+ * attribuerait à une personne le dossier d'une autre.
+ */
 export async function buildKolCanonicalSnapshot(
   handle: string
 ): Promise<KolProfileRow | null> {
+  const resolved = await resolveCanonicalHandle(handle);
+  // `null` couvre les trois refus : introuvable, entrée vide, et ambigu. Aucun
+  // n'est rattrapé par un repli — un handle qu'on ne sait pas identifier ne
+  // rend pas un profil approchant.
+  if (!resolved.handle) return null;
+
   const row = await prisma.kolProfile.findUnique({
-    where: { handle },
+    where: { handle: resolved.handle },
     select: KOL_SELECT,
   });
   if (!row) return null;
