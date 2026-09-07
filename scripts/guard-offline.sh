@@ -475,6 +475,28 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 9 / ÉTAPE 5 — régime de publication UNIQUE.
+# Les trois surfaces d'un dossier (API retail, PDF, fiche UI) cessent de lire
+# une autorité concurrente (CASE_DB, preset TypeScript, JSON legacy) et
+# consomment le CaseFile canonique, avec la provenance qui survit au rendu :
+# un claim PUBLIC sans fondement résolu n'est pas rendu, un retrait est signalé
+# en NOMMANT LE CHAMP et jamais sa valeur, `tigerScore` NULL ne devient jamais 0.
+# Aucune DDL, aucune collecte, aucune écriture — les trois fichiers sont des
+# points d'appel : ils DÉCLARENT leur générateur et leur type, et aucun fichier
+# libre ne peut les atteindre. La logique vit hors gel (src/lib/casefile/).
+# Autorisation humaine explicite (David, GO exemption sur inventaire rendu —
+# docs/reports/build9-etape5-inventaire.md) — voir PR description.
+# Exemption STRICTEMENT limitée aux 3 fichiers inventoriés ; AUCUN wildcard sur
+# src/app/api/ ni src/components/. `src/app/api/casefile/route.ts` relève de
+# l'étape 7 et reste bloqué — il n'est pas dans cette liste.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-vine-wallets$ ]]; then
+    EXEMPT_BUILD9_PUBLICATION_PATTERNS=(
+        "^src/app/api/casefile/public/route\.ts$"
+        "^src/app/api/casefile/pdf/route\.ts$"
+        "^src/components/cases/TokenCasefileView\.tsx$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -834,6 +856,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche vine-wallets (BUILD 9 / étape 5), exempter STRICTEMENT les
+    # 3 surfaces inventoriées. Aucun wildcard : casefile/route.ts reste bloqué.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-vine-wallets$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_BUILD9_PUBLICATION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
