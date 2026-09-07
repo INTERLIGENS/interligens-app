@@ -54,13 +54,40 @@ const SCHEMAS = [
 const lire = (f: string) => fs.readFileSync(path.join(process.cwd(), f), "utf8");
 
 /** Lance une commande et rend `{ code, sortie }` sans jamais lever. */
+// ─── Budget d'exécution — la cause du flake, et pourquoi il est là ────────
+//
+// Ces trois tests lancent un VRAI sous-processus `npx prisma …`. Le helper lui
+// accorde 120 s (`timeout` ci-dessous), mais vitest, lui, coupe le TEST à sa
+// valeur par défaut — 5 000 ms — car `vitest.config.ts` ne fixe aucun
+// `testTimeout`. Les deux budgets se contredisaient : l'enfant avait deux
+// minutes, le test en avait cinq secondes.
+//
+// Mesuré le 2026-09-07 sur `prisma/schema.prod.prisma` (164 modèles,
+// 4 482 lignes), machine de développement CHAUDE :
+//
+//     cache moteur purgé   2,81 s   (dont 0,53 s de génération réelle)
+//     passes suivantes     1,32 s · 1,47 s
+//
+// L'essentiel du temps n'est PAS la génération : c'est la résolution `npx` et
+// le démarrage de Node. Sur un runner CI froid — pas de cache npx, pas de
+// moteur Prisma en cache, CPU partagé, et 11 workers vitest en parallèle — ce
+// coût fixe dépasse régulièrement les 5 s. D'où un rouge intermittent qui n'a
+// jamais rien à voir avec le diff jugé.
+//
+// `TIMEOUT_SOUS_PROCESSUS` aligne le budget du test sur celui déjà accordé à
+// l'enfant. Ce n'est PAS un relâchement du contrôle : aucune assertion ne
+// change, et un verrou cassé continue de faire rougir le test — c'est ce que
+// vérifient les cas « la sonde échoue sur une cible incohérente ». Un budget
+// n'est pas une garantie ; l'allonger ne retire rien à ce qui est vérifié.
+const TIMEOUT_SOUS_PROCESSUS = 120_000;
+
 function lancer(args: string[]): { code: number; sortie: string } {
   try {
     const sortie = execFileSync("npx", args, {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 120_000,
+      timeout: TIMEOUT_SOUS_PROCESSUS,
     });
     return { code: 0, sortie };
   } catch (err) {
@@ -111,7 +138,7 @@ describe("A9 — une tentative de migration échoue BRUYAMMENT, et avant tout r�
     expect(code, "prisma validate a réussi — le verrou ne tient pas").not.toBe(0);
     expect(sortie).toContain("P1012");
     expect(sortie).toContain(`Environment variable not found: ${VARIABLE_INTERDITE}`);
-  });
+  }, TIMEOUT_SOUS_PROCESSUS);
 
   it("`prisma migrate status` — la VRAIE commande de migration — s'arrête à getConfig", () => {
     // Sonde JETABLE dans le répertoire temporaire du système : elle reproduit
@@ -160,7 +187,7 @@ describe("A9 — une tentative de migration échoue BRUYAMMENT, et avant tout r�
     expect(sortie).toContain("Validation Error Count: 1");
 
     fs.rmSync(path.dirname(sonde), { recursive: true, force: true });
-  });
+  }, TIMEOUT_SOUS_PROCESSUS);
 
   it("le verrou ne casse PAS la génération du client — ni le build", () => {
     // Le contrôle qui manquerait le plus s'il n'était pas là. `vercel-build`
@@ -199,7 +226,7 @@ describe("A9 — une tentative de migration échoue BRUYAMMENT, et avant tout r�
     expect(fs.existsSync(sortieClient), "aucun client généré").toBe(true);
 
     fs.rmSync(dossier, { recursive: true, force: true });
-  });
+  }, TIMEOUT_SOUS_PROCESSUS);
 });
 
 describe("A9 — les scripts du dépôt passent bien par les schemas verrouillés", () => {
