@@ -151,6 +151,64 @@ export function resolveToCanonicalMint(value: unknown, where: string): TokenMint
   return assertTokenMint(value, where);
 }
 
+// ─── BUILD 8 / E2 — LE CONTRAT D'ALIAS DES CARTES DE DOSSIER ───────────────
+//
+// ██  Ce que la validation T1 a trouvé, et qui est la faute inverse de D3.  ██
+//
+//     /api/casefile?mint=<44 canonique>  → CASE_DB miss → 0 claim → GREEN / 0
+//     /api/casefile?mint=<43 synthétique> → 8 claims → garde-fou → RED / 70
+//
+// La clé qui n'existe dans AUCUNE ligne de la base portait le verdict public,
+// et l'identité réelle n'ouvrait aucun dossier. Les cartes étaient clé sur
+// l'alias ; D3 a corrigé les producteurs de mint sans recléer les cartes qui
+// les consomment.
+//
+// ─── La règle, et ses deux moitiés ─────────────────────────────────────────
+//
+// 1. Les cartes sont clé sur le MINT CANONIQUE. C'est l'identité, c'est ce que
+//    la base porte (262 / 5 / 3 lignes), c'est ce qui fait autorité.
+// 2. Une URL portant l'alias historique continue de RÉSOUDRE — mais elle
+//    résout VERS le canonique, et n'est jamais elle-même la clé. C'est le
+//    « contrat d'alias » : l'ancienne adresse mène au dossier, elle ne le
+//    définit pas.
+//
+// Le résultat est qu'il ne peut plus exister deux vérités concurrentes : les
+// deux entrées convergent vers UNE seule ligne de carte.
+//
+// ─── Ce que cette fonction n'est PAS ───────────────────────────────────────
+//
+// Elle ne dit rien de la validité d'un mint Solana en général, et surtout pas
+// que « 44 caractères = valide ». Elle ne connaît que DEUX chaînes nommées —
+// l'identité BOTIFY canonique et sa clé synthétique — et laisse passer tout le
+// reste inchangé, pour que la carte décide elle-même si elle le connaît.
+
+/**
+ * Clé de lecture d'une carte indexée par mint.
+ *
+ * Rend le mint canonique quand l'entrée est l'alias BOTIFY connu ; rend
+ * l'entrée nettoyée dans tous les autres cas. Ne lève jamais : une carte doit
+ * pouvoir répondre « je ne connais pas » sans qu'on lui coupe la parole.
+ */
+export function casefileLookupKey(raw: string | null | undefined): string {
+  const value = (raw ?? "").trim();
+  return isSyntheticRouteKey(value) ? BOTIFY_MINT : value;
+}
+
+/**
+ * Réindexe une carte mint → X sur le mint canonique.
+ *
+ * Les cartes déclarent leurs entrées avec `BOTIFY_MINT` ; cette fonction est le
+ * garde qui empêche qu'une future entrée soit posée sur l'alias sans qu'on s'en
+ * aperçoive — elle lève. Une carte qui accepterait l'alias comme clé
+ * réintroduirait exactement le défaut qu'on ferme.
+ */
+export function assertCanonicalKeys<T>(map: Record<string, T>, where: string): Record<string, T> {
+  for (const key of Object.keys(map)) {
+    if (isSyntheticRouteKey(key)) throw new SyntheticKeyAsMintError(where);
+  }
+  return map;
+}
+
 // ─── Handle → mint ─────────────────────────────────────────────────────────
 //
 // Reprise à l'identique de `src/lib/kol/handleToMint.ts`, à une chose près :

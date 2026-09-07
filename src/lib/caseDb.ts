@@ -1,8 +1,18 @@
 import path from "path";
 import fs from "fs";
 
+// ── BUILD 8 / E2 — la carte est clé sur le MINT CANONIQUE ──────────────────
+//
+// Elle l'était sur la clé de route synthétique (43 car.), qui n'existe dans
+// AUCUNE ligne de la base. `loadCaseByMint` rendait donc le dossier BOTIFY
+// pour une identité fictive, et `null` pour l'identité réelle — sur 8 routes.
+//
+// `casefileLookupKey` fait converger les deux entrées vers cette unique clé :
+// l'URL historique continue de mener au dossier, elle ne le définit plus.
+import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
+
 const MINT_TO_CASE: Record<string, string> = {
-  BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb: "botify.json",
+  [BOTIFY_MINT]: "botify.json",
 };
 
 export type CaseClaim = {
@@ -55,7 +65,7 @@ export type CaseFile = {
 };
 
 export function loadCaseByMint(mint: string): CaseFile | null {
-  const filename = MINT_TO_CASE[mint];
+  const filename = MINT_TO_CASE[casefileLookupKey(mint)];
   if (!filename) return null;
 
   const filePath = path.join(process.cwd(), "data", "cases", filename);
