@@ -54,18 +54,30 @@ describe("BUILD 8 / E2 — /api/casefile : le KO signalé par T1", () => {
 });
 
 describe("BUILD 8 / E2 — les deux routes de dossier publiées", () => {
-  it("public et pdf sont clé sur le canonique, plus sur l'alias", () => {
+  // ── BUILD 9 / ÉTAPE 5 — le lockstep n'a plus à être surveillé ────────────
+  //
+  // E2 exigeait que les DEUX routes portent la même carte mint → preset, clé
+  // sur le mint canonique et jamais sur l'alias synthétique. Deux cartes à
+  // tenir d'accord, et un test pour vérifier qu'elles le restaient.
+  //
+  // Il n'y en a plus qu'UNE, partagée : `CANONICAL_REF_BY_MINT`. Le lockstep
+  // n'est plus une propriété à surveiller, c'est une propriété qu'on ne peut
+  // plus casser — la meilleure fin possible pour ce test.
+  //
+  // Ce qui reste vérifié, parce que ça reste cassable : aucune des deux routes
+  // ne réintroduit l'alias en dur, et les deux résolvent le même sujet.
+  it("aucune des deux routes ne porte l'alias synthétique en dur", () => {
     for (const [nom, src] of Object.entries({ PUBLIC, PDF })) {
       expect(codeSeul(src), nom).not.toContain(BOTIFY_SYNTHETIC_ROUTE_KEY);
-      expect(src, nom).toContain("[BOTIFY_MINT]: \"botify\"");
-      expect(src, nom).toContain("casefileLookupKey(mint)");
+      expect(src, nom).toContain("canonicalRefForMint");
     }
   });
 
-  it("les deux cartes restent en lockstep — même clé, même préset", () => {
-    const cle = (s: string) => /\[BOTIFY_MINT\]: "botify"/.test(s);
-    expect(cle(PUBLIC)).toBe(true);
-    expect(cle(PDF)).toBe(true);
+  it("une seule carte — l'alias et le canonique ouvrent le même dossier", async () => {
+    const { canonicalRefForMint } = await import("@/lib/casefile/publicProjection");
+    const parCanonique = canonicalRefForMint(BOTIFY_MINT);
+    expect(parCanonique).toBeTruthy();
+    expect(canonicalRefForMint(BOTIFY_SYNTHETIC_ROUTE_KEY)).toBe(parCanonique);
   });
 });
 

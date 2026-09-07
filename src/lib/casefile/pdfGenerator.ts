@@ -9,6 +9,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
 import { assertNoContainedClaim, isAddressWithheld } from "./containment";
+import type { PublicClaim } from "./canonicalReader";
 
 const CHROMIUM_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v143.0.4/chromium-v143.0.4-pack.x64.tar";
@@ -87,12 +88,30 @@ export type CaseFileRequisition = {
   justification?: string;
 };
 
+/**
+ * BUILD 9 / ÉTAPE 5 — le bloc canonique du rapport interne.
+ *
+ * Quand il est présent, les claims viennent de l'AUTORITÉ et de nulle part
+ * ailleurs : `new_claims` du preset n'est pas lu. Quand il est absent, les
+ * claims du preset sont rendus sous un intitulé qui le DIT.
+ *
+ * Il n'y a donc pas de repli silencieux — il y a deux rendus, et chacun
+ * annonce d'où il tient ce qu'il montre. Un rapport forensique qui ne dit pas
+ * quelle autorité il cite ne vaut pas mieux qu'une note.
+ */
+export type CaseFileCanonicalBlock = {
+  ref: string;
+  /** TOUS les états. La surface interne voit le dossier, pas sa projection. */
+  claims: readonly PublicClaim[];
+};
+
 export type CaseFileInput = {
   case_meta: CaseFileMeta;
   timeline?: CaseFileTimelineEvent[];
   shillers?: CaseFileShiller[];
   wallets_onchain?: CaseFileWallet[];
   new_claims?: CaseFileClaim[];
+  canonical?: CaseFileCanonicalBlock;
   smoking_guns?: {
     tier_1?: CaseFileSmokingGun[];
     tier_2?: CaseFileSmokingGun[];
@@ -215,9 +234,87 @@ tr:nth-child(even) td{background:#0a0a0a}
     html += `</div>`;
   }
 
-  // CLAIMS
-  if (input.new_claims?.length) {
-    html += `<div class="section"><div class="section-title">Claims (${input.new_claims.length})</div><table><tr><th>ID</th><th>Sev.</th><th>Title</th><th>Date</th><th>Category</th></tr>`;
+  // ── CLAIMS — AUTORITÉ CANONIQUE (BUILD 9 / étape 5) ────────────────────
+  //
+  // Le type `CaseFileClaim` du preset ne porte ni `evidence_refs` ni
+  // `thread_url` : le rapport rendait ID, sévérité, titre, date, catégorie —
+  // et laissait tomber exactement ce qui démontre le claim. Une assertion
+  // démontrable publiée sans son fondement est plus fragile qu'une assertion
+  // prudente : elle a l'air soutenue.
+  //
+  // Ici, chaque claim porte son ÉTAT et sa provenance. Les références non
+  // résolues sont rendues COMME NON RÉSOLUES, jamais comme un fondement.
+  if (input.canonical) {
+    const cl = input.canonical.claims;
+    html += `<div class="section"><div class="section-title">Claims — autorité canonique · ${esc(input.canonical.ref)} (${cl.length})</div>`;
+    html += `<table><tr><th>ID</th><th>État</th><th>Sev.</th><th>Title</th><th>Date</th><th>Fondement</th></tr>`;
+    for (const c of cl) {
+      const p = c.provenance;
+      const nbSources = p?.sources.length ?? 0;
+      const nbNonResolues = p?.unresolvedRefs.length ?? 0;
+      // « — » quand il n'y a rien. Pas « 0 source », qui se lirait comme une
+      // mesure alors que c'est une absence.
+      const fondement = !p
+        ? "—"
+        : [
+            nbSources > 0 ? `${nbSources} source${nbSources > 1 ? "s" : ""}` : null,
+            p.threadUrl ? "thread" : null,
+            nbNonResolues > 0 ? `${nbNonResolues} non résolue${nbNonResolues > 1 ? "s" : ""}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || "—";
+      html += `<tr>
+        <td style="font-weight:700;color:${ACCENT}">${esc(c.claimId)}</td>
+        <td><span class="badge" style="background:#333">${esc(c.state)}</span></td>
+        <td><span class="badge" style="background:${severityColor(c.severity ?? undefined)}">${esc(c.severity || "—")}</span></td>
+        <td>${esc(c.title)}</td>
+        <td>${esc(c.claimDate || "—")}</td>
+        <td style="font-size:9px;color:#aaa">${esc(fondement)}</td>
+      </tr>`;
+    }
+    html += `</table>`;
+
+    for (const c of cl) {
+      const p = c.provenance;
+      if (!p) continue;
+      html += `<div class="card"><div class="card-title"><span style="color:${ACCENT}">${esc(c.claimId)}</span> — provenance</div>`;
+      if (p.threadUrl) {
+        html += `<div style="font-size:9px;color:#aaa">thread : <span class="mono">${esc(p.threadUrl)}</span></div>`;
+      }
+      for (const s of p.sources) {
+        // L'horodatage rendu est celui de la CAPTURE. Jamais celui du rendu.
+        html += `<div style="font-size:9px;color:#aaa;margin-top:3px">
+          <span class="mono" style="color:${ACCENT}">${esc(s.sourceId)}</span>
+          · ${esc(s.sourceType)}
+          · capturé ${esc(s.capturedAt ?? "—")}
+          · origine ${esc(s.sourceUrl ?? "—")}
+          · sha256 ${esc(s.sha256 ? s.sha256.slice(0, 16) + "…" : "—")}
+        </div>`;
+      }
+      for (const r of p.unresolvedRefs) {
+        html += `<div style="font-size:9px;color:#FFB800;margin-top:3px">référence NON RÉSOLUE : ${esc(r)}</div>`;
+      }
+      html += `</div>`;
+    }
+    // Ce que ce rapport ne tient PAS de l'autorité, et il faut le dire ici :
+    // une fois les claims devenus canoniques, tout le document prend l'air
+    // canonique. La chronologie et les réquisitions n'ont aucune table — la
+    // DDL du bloc 3 a refusé de les créer, aucun fait n'étant démontré.
+    html += `<div class="card" style="border-left:3px solid #FFB800">
+      <div style="font-size:9px;color:#FFB800;line-height:1.55">
+        Hors autorité canonique dans ce document : chronologie, réquisitions,
+        wallets on-chain, shillers et smoking guns proviennent du preset.
+        Aucune structure canonique ne porte la chronologie ni les réquisitions.
+      </div>
+    </div>`;
+    html += `</div>`;
+  }
+
+  // CLAIMS — preset (rendu UNIQUEMENT à défaut de bloc canonique, et annoncé
+  // comme tel : le lecteur doit pouvoir dire de quelle autorité vient ce
+  // qu'il lit sans ouvrir le code).
+  if (!input.canonical && input.new_claims?.length) {
+    html += `<div class="section"><div class="section-title">Claims — HORS autorité canonique (${input.new_claims.length})</div><table><tr><th>ID</th><th>Sev.</th><th>Title</th><th>Date</th><th>Category</th></tr>`;
     for (const c of input.new_claims) {
       html += `<tr>
         <td style="font-weight:700;color:${ACCENT}">${esc(c.claim_id)}</td>

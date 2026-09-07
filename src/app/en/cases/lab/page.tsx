@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { loadPublicProjection } from "@/lib/casefile/publicProjection";
 import TokenCasefileView, {
   type TokenCasefileData,
   type TokenCasefileFounder,
@@ -140,5 +141,10 @@ async function getLab(): Promise<TokenCasefileData | null> {
 export default async function LabCasePageEN() {
   const data = await getLab();
   if (!data) notFound();
-  return <TokenCasefileView data={data} locale="en" />;
+  // BUILD 9 / ÉTAPE 5 — la projection est chargée HORS du try de `getLab` :
+  // une provenance qui ne survit pas doit faire échouer la page, pas la
+  // transformer en 404. Un dossier introuvable et un dossier dont un claim
+  // publié a perdu son fondement ne sont pas la même panne.
+  const projection = await loadPublicProjection(REF, "cases/lab");
+  return <TokenCasefileView data={data} locale="en" projection={projection} />;
 }

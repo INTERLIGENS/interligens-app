@@ -29,6 +29,7 @@ import {
   BOTIFY_SYNTHETIC_ROUTE_KEY,
   casefileLookupKey,
 } from "@/lib/kol-memory/tokenIdentity";
+import { canonicalRefForMint } from "@/lib/casefile/publicProjection";
 
 const ROUTE = readFileSync("src/app/api/casefile/route.ts", "utf8");
 const PUBLIC = readFileSync("src/app/api/casefile/public/route.ts", "utf8");
@@ -174,10 +175,30 @@ describe("POINT 5 — déterminisme : ce qui peut l'être, et ce qui ne peut pas
   });
 });
 
-describe("POINT 5 — les deux routes voisines restent hors périmètre", () => {
-  it("public/route.ts et pdf/route.ts résolvaient DÉJÀ, et ne sont pas touchés", () => {
+describe("POINT 5 — les deux routes voisines résolvent le même sujet", () => {
+  // ── BUILD 9 / ÉTAPE 5 — la propriété survit, sa preuve change de place ───
+  //
+  // Ce test épinglait l'EXPRESSION `MINT_TO_PRESET[casefileLookupKey(mint)]`.
+  // Les deux routes ont été recâblées sur l'autorité canonique et cette carte
+  // n'existe plus : elle désignait un preset, c'est-à-dire une seconde
+  // autorité de contenu.
+  //
+  // Ce qu'elle GARANTISSAIT — alias et canonique désignent le même sujet — est
+  // inchangé et vérifié ici sur le comportement, plus sur la forme du code.
+  // Un test qui rougit parce que l'implémentation a bougé alors que la
+  // propriété tient n'est pas un garde-fou, c'est un frein.
+  it("alias et mint canonique désignent LE MÊME dossier", () => {
+    expect(canonicalRefForMint(BOTIFY_SYNTHETIC_ROUTE_KEY)).toBe(
+      canonicalRefForMint(BOTIFY_MINT),
+    );
+    expect(canonicalRefForMint(BOTIFY_MINT)).toBeTruthy();
+  });
+
+  it("les deux routes passent par le résolveur partagé, pas par une carte locale", () => {
     for (const [nom, src] of Object.entries({ PUBLIC, PDF })) {
-      expect(src, nom).toContain("MINT_TO_PRESET[casefileLookupKey(mint)]");
+      expect(src, nom).toContain("canonicalRefForMint");
+      // Une carte locale par route, c'était deux vérités à tenir d'accord.
+      expect(src, nom).not.toContain("MINT_TO_PRESET");
     }
   });
 
