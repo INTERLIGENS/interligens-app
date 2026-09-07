@@ -12,7 +12,7 @@ import RetailCounter from '@/components/kol/RetailCounter'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { kolHandleToMint } from "@/lib/kol/handleToMint";
+import { kolHandleToCanonicalMint } from "@/lib/kol-memory/tokenIdentity";
 
 interface KolWallet {
   id: string; address: string; chain: string; label?: string; status: string
@@ -244,9 +244,9 @@ export default function KOLPage() {
               {/*      resolves to something meaningful.                         */}
               {/*   2. "CaseFile" → /api/casefile?handle=… (narrative + claims). */}
               {/*      Endpoint accepts ?handle as of this commit; resolution    */}
-              {/*      lives in @/lib/kol/handleToMint.                          */}
+              {/*      lives in @/lib/kol-memory/tokenIdentity (canonical 44-char mint).                          */}
               {(() => {
-                const mint = kolHandleToMint(kol.handle);
+                const mint = kolHandleToCanonicalMint(kol.handle);
                 const reportHref = mint
                   ? `/api/report/v2?mint=${encodeURIComponent(mint)}&lang=en`
                   : `/api/pdf/kol?handle=${encodeURIComponent(kol.handle)}&mode=retail`;

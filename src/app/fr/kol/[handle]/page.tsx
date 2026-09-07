@@ -10,7 +10,7 @@ import type { NarrativeResult } from '@/lib/narrative/generator'
 import LaundryTrailCard from '@/components/LaundryTrailCard'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { kolHandleToMint } from "@/lib/kol/handleToMint";
+import { kolHandleToCanonicalMint } from "@/lib/kol-memory/tokenIdentity";
 
 interface KolPortefeuille {
   id: string; address: string; chain: string; label?: string; status: string
@@ -252,7 +252,7 @@ export default function KOLPageFR() {
                       /api/report/v2 si le KOL a un mint lié (riche, contextuel).
                    2. « CaseFile » → /api/casefile?handle=… (narratif + claims). */}
               {(() => {
-                const mint = kolHandleToMint(kol.handle);
+                const mint = kolHandleToCanonicalMint(kol.handle);
                 const reportHref = mint
                   ? `/api/report/v2?mint=${encodeURIComponent(mint)}&lang=fr`
                   : `/api/pdf/kol?handle=${encodeURIComponent(kol.handle)}&mode=retail&lang=fr`;
