@@ -475,34 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour BUILD 8 / KOL MEMORY V2 — câblage des contrats déjà livrés et
-# prouvés hors chemins gelés (src/lib/kol-memory/, 12/12 mutants tués,
-# delta-run en lecture seule sur ep-square-band).
-#
-# Les quatre fichiers sont le RÉSIDU GELÉ du chantier : toute la logique vit
-# déjà hors gel, et ces quatre-là ne font que la brancher.
-#   src/app/api/kol/[handle]/route.ts  applique PUBLISHABLE_WALLET_FILTER
-#                                      (retire 65 wallets isPubliclyUsable=false)
-#   src/lib/kol/identity.ts            délègue à kol-memory/attribution (I1)
-#   src/lib/kol/handleToMint.ts        délègue à kol-memory/tokenIdentity (mint 44)
-#   src/lib/kol/canonical.ts           branche la provenance des proceeds
-#
-# Autorisation humaine explicite (David, arbitrage final BUILD 8, permutation
-# 4/5 ratifiée) — voir PR description. Exemption STRICTEMENT limitée à ces
-# QUATRE fichiers nommés un par un ; AUCUN wildcard sur src/app/api/ ni sur
-# src/lib/kol/ — toute autre route et tout autre module KOL restent bloqués.
-#
-# Fenêtre volontairement courte : elle est refermée byte-identical
-# IMMÉDIATEMENT après le merge du code, avant toute migration prod.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-kol-memory-v2$ ]]; then
-    EXEMPT_KOL_MEMORY_V2_PATTERNS=(
-        "^src/app/api/kol/\[handle\]/route\.ts$"
-        "^src/lib/kol/identity\.ts$"
-        "^src/lib/kol/handleToMint\.ts$"
-        "^src/lib/kol/canonical\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -885,20 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Sur la branche BUILD 8 / kol-memory-v2, exempter STRICTEMENT les 4 fichiers
-    # de câblage (aucun wildcard : toute autre route et tout autre module KOL
-    # reste bloqué).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-kol-memory-v2$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_KOL_MEMORY_V2_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
