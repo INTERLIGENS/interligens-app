@@ -30,6 +30,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { ArtifactState } from "./publicationState";
+import { latestVersions } from "./versioning";
 
 /** Une source du registre, telle qu'elle peut être rendue publiquement. */
 export interface PublicSource {
@@ -97,7 +98,7 @@ interface ClaimRow {
   description: string | null; descriptionFr: string | null;
   category: string | null; severity: string | null; status: string | null;
   claimDate: Date | null; threadUrl: string | null;
-  evidenceRefs: unknown; state: string;
+  evidenceRefs: unknown; state: string; version: number;
 }
 
 function toPublicSource(r: SourceRow): PublicSource {
@@ -172,14 +173,26 @@ export async function loadCanonicalCaseFile(
         FROM "CaseFileSource" WHERE "casefileRef" = ${ref} ORDER BY "sourceId" ASC`,
     prisma.$queryRaw<ClaimRow[]>`
       SELECT "claimId", title, "titleFr", description, "descriptionFr", category,
-             severity, status, "claimDate", "threadUrl", "evidenceRefs", state
+             severity, status, "claimDate", "threadUrl", "evidenceRefs", state,
+             version
         FROM "CaseFileClaim" WHERE "casefileRef" = ${ref} ORDER BY "claimId" ASC`,
   ]);
 
   const sources = sourceRows.map(toPublicSource);
   const registre = new Map(sources.map((s) => [s.sourceId, s]));
 
-  const claims: PublicClaim[] = claimRows
+  // ── BUILD 9 / ÉTAPE 6 — une seule version par claim ────────────────────
+  //
+  // La table est unique sur `(casefileRef, claimId, version)` : plusieurs
+  // versions du MÊME claim y coexistent par construction, et c'est le but —
+  // une assertion ne se corrige pas, elle est supplantée.
+  //
+  // Sans ce filtre, un dossier portant C1 v1 et C1 v2 rendait DEUX claims C1
+  // sur la même page, dont un périmé. Latent aujourd'hui (les 16 claims
+  // migrés sont tous en v1), et c'est la raison de le fermer maintenant : un
+  // défaut latent ne se voit pas, celui-ci se serait manifesté le jour de la
+  // première correction d'assertion — c'est-à-dire au pire moment.
+  const claims: PublicClaim[] = latestVersions(claimRows)
     .filter((c) => !opts.onlyPublishable || c.state === "PUBLIC")
     .map((c) => ({
       claimId: c.claimId,
