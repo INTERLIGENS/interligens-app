@@ -4,7 +4,7 @@
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { resolveWalletToKol } from "@/lib/kol/identity";
+import { resolveWalletAttribution } from "@/lib/kol-memory/attribution";
 import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import {
   emitWalletLinked,
@@ -16,7 +16,7 @@ import type {
   IngestionJob,
   NormalizedEntity,
 } from "./types";
-import type { WalletMatchResult } from "@/lib/kol/identity";
+import type { WalletMatchResult } from "@/lib/kol-memory/attribution";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ function normalize(input: string, source: IngestionSource): NormalizedEntity {
 
 async function resolve(entity: NormalizedEntity): Promise<WalletMatchResult | null> {
   if (entity.type === "wallet" && entity.address && entity.chain) {
-    return resolveWalletToKol(entity.address, entity.chain);
+    return resolveWalletAttribution(entity.address, entity.chain);
   }
 
   if (entity.type === "handle" && entity.handle) {
@@ -101,7 +101,7 @@ async function resolve(entity: NormalizedEntity): Promise<WalletMatchResult | nu
   }
 
   if (entity.type === "proceeds_event" && entity.address && entity.chain) {
-    return resolveWalletToKol(entity.address, entity.chain);
+    return resolveWalletAttribution(entity.address, entity.chain);
   }
 
   if (entity.type === "casefile" && entity.handle) {

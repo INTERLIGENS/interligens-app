@@ -23,7 +23,13 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/kol/proceeds", () => ({ computeProceedsForHandle: vi.fn(async () => ({})) }));
 vi.mock("@/lib/kol/canonical", () => ({ buildKolCanonicalSnapshot: vi.fn(async () => ({})) }));
-vi.mock("@/lib/kol/identity", () => ({ resolveWalletToKol: vi.fn(async () => ({ confidence: "none" })) }));
+// BUILD 8 / P0 — `processEvent` résout désormais l'attribution via
+// `@/lib/kol-memory/attribution`, qui DÉRIVE la confiance au lieu de la poser.
+// Le simulacre suit la cible réelle : simuler l'ancien module laisserait le
+// vrai s'exécuter et ce test passerait pour la mauvaise raison.
+vi.mock("@/lib/kol-memory/attribution", () => ({
+  resolveWalletAttribution: vi.fn(async () => ({ confidence: "none" })),
+}));
 vi.mock("@/lib/ops/alerting", () => ({
   alertDeadLetter: vi.fn(), alertEventBacklog: vi.fn(), alertIdentityBacklog: vi.fn(),
 }));

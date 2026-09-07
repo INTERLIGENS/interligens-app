@@ -1,7 +1,7 @@
 // src/lib/ingestion/types.ts
 // Universal ingestion pipeline — single entry point for all data sources.
 
-import type { WalletMatchResult } from "@/lib/kol/identity";
+import type { WalletMatchResult } from "@/lib/kol-memory/attribution";
 
 export type IngestionSource =
   | "wallet_address"

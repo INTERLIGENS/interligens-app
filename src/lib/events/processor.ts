@@ -5,7 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeProceedsForHandle } from "@/lib/kol/proceeds";
 import { buildKolCanonicalSnapshot } from "@/lib/kol/canonical";
-import { resolveWalletToKol } from "@/lib/kol/identity";
+import { resolveWalletAttribution } from "@/lib/kol-memory/attribution";
 import { alertDeadLetter } from "@/lib/ops/alerting";
 import { findCrossLinks, persistCrossLinks, type CrossLink } from "@/lib/intelligence/crossCaseLinker";
 import { detectAndPersistContradictions } from "@/lib/intelligence/contradictionDetector";
@@ -72,7 +72,7 @@ export async function processEvent(event: DomainEventRow): Promise<void> {
         const chain = String(payload.chain ?? "");
         if (!address) break;
 
-        const match = await resolveWalletToKol(address, chain);
+        const match = await resolveWalletAttribution(address, chain);
 
         if (match.confidence === "exact" && match.handle) {
           await computeProceedsForHandle(match.handle);
