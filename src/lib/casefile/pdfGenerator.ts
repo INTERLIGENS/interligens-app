@@ -8,6 +8,7 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
+import { assertNoContainedClaim, isAddressWithheld } from "./containment";
 
 const CHROMIUM_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v143.0.4/chromium-v143.0.4-pack.x64.tar";
@@ -303,6 +304,28 @@ export async function generateCaseFilePdf(
 ): Promise<CaseFilePdfResult> {
   try {
     const html = buildHtml(input);
+
+    // ── CONTAINMENT P0 — le garde de sortie, sur le RENDU ──────────────────
+    //
+    // Le retrait est déjà fait à la source (presets.ts), mais un garde qui ne
+    // vit que dans la source ne couvre pas un appelant qui construit son
+    // `CaseFileInput` autrement — et `/api/casefile/generate` accepte
+    // précisément un `data` arbitraire dans son corps de requête.
+    //
+    // Ce garde lit le HTML FINAL : c'est le dernier point où l'on peut encore
+    // refuser. Il LÈVE plutôt que de nettoyer — nettoyer en silence laisserait
+    // croire que la sortie est saine alors qu'une source amont continue de
+    // produire le chiffre.
+    assertNoContainedClaim(html, "generateCaseFilePdf");
+    for (const w of input.wallets_onchain ?? []) {
+      if (isAddressWithheld(w.address)) {
+        throw new Error(
+          `[containment] sortie refusée : l'adresse ${w.address} est ` +
+            "`isPubliclyUsable = false`. Une adresse que le régime de publication " +
+            "refuse ailleurs ne peut pas sortir nominativement d'un CaseFile.",
+        );
+      }
+    }
     const executablePath = await chromium.executablePath(CHROMIUM_URL);
     const browser = await puppeteer.launch({
       args: chromium.args,
