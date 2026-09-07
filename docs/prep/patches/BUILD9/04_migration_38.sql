@@ -274,7 +274,13 @@ ON CONFLICT ("casefileRef", handle, version) DO NOTHING;
 -- `solscan_url` est conservé comme provenance de chaque adresse.
 UPDATE token_casefiles
    SET "keyWallets" = '[{"label":"Deployer — Rus Yusupov","address":"4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4","note":"Token deployer (pump.fun). Vine co-founder.","chain":"solana","source_url":"https://solscan.io/account/4LeQ2gYL7rv4GBhAJu2kwetbQjbZ3cHPsEwJYwE3CGE4"},{"label":"Dev wallet — 49.7M VINE","address":"ESvvMoeA9ns4qReroyRQJ9jeMaudk3Kkyi16B8GMN2jQ","note":"Dev-linked wallet holding 49.7M VINE. Suspicious TX pattern observed Feb 2026.","chain":"solana","source_url":"https://solscan.io/account/ESvvMoeA9ns4qReroyRQJ9jeMaudk3Kkyi16B8GMN2jQ"},{"label":"Top holder #1 — 126M VINE","address":"C68a6RCGLiPskbPYtAcsCjhG8tfTWYcoB4JjCrXFdqyo","note":"Largest non-burn holder. 12.6% of supply.","chain":"solana","source_url":"https://solscan.io/account/C68a6RCGLiPskbPYtAcsCjhG8tfTWYcoB4JjCrXFdqyo"},{"label":"Genesis sniper — 2742 SOL","address":"94qWNrtmfn42h3ZjUZwWvK1MEo9uVmmrBPd2hpNjYDjb","note":"Sniped the launch for 2742 SOL (~$550k at the time). Bot-like buying pattern within seconds of pool creation.","chain":"solana","source_url":"https://solscan.io/account/94qWNrtmfn42h3ZjUZwWvK1MEo9uVmmrBPd2hpNjYDjb"}]'::jsonb
- WHERE ref = 'IL-SHILL-VINE-001' AND "keyWallets" IS NULL;
+ WHERE ref = 'IL-SHILL-VINE-001'
+   -- Sentinelle : sur une colonne NOT NULL avec DEFAULT '[]', « pas encore
+   -- rempli » s'écrit ainsi et NON avec IS NULL. L'INSERT du 4.a ne liste pas
+   -- la colonne, elle prend son défaut, et un garde IS NULL ne matche jamais.
+   -- C'est ce qui a fait échouer le post-check 4.5 : l'UPDATE portait le bon
+   -- contenu et zéro ligne cible. Voir le bloc 5.
+   AND jsonb_array_length("keyWallets") = 0;
 
 -- ── 4.g · VINE — smoking guns (1/13) ──────────────────────────────
 -- Un seul élément porte une signature de transaction. Les six qui NOMMENT

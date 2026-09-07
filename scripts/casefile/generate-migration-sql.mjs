@@ -155,7 +155,13 @@ p(`UPDATE token_casefiles
        source_url: w.solscan_url,
      })),
    )}
- WHERE ref = ${q(VINE_REF)} AND "keyWallets" IS NULL;`);
+ WHERE ref = ${q(VINE_REF)}
+   -- Sentinelle : sur une colonne NOT NULL avec DEFAULT '[]', « pas encore
+   -- rempli » s'écrit ainsi et NON avec IS NULL. L'INSERT du 4.a ne liste pas
+   -- la colonne, elle prend son défaut, et un garde IS NULL ne matche jamais.
+   -- C'est ce qui a fait échouer le post-check 4.5 : l'UPDATE portait le bon
+   -- contenu et zéro ligne cible. Voir le bloc 5.
+   AND jsonb_array_length("keyWallets") = 0;`);
 p();
 
 const tiers = [
