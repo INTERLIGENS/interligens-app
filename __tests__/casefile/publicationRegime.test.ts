@@ -19,11 +19,7 @@ import {
   VINE_MINT,
   type PublicProjection,
 } from "@/lib/casefile/publicProjection";
-import {
-  buildPublicReportHtml,
-  StaticSectionsMismatchError,
-  STATIC_SECTIONS_DOCUMENT_REF,
-} from "@/lib/casefile/pdfGeneratorPublic";
+import { buildPublicReportHtml } from "@/lib/casefile/pdfGeneratorPublic";
 import { ProvenanceLostError } from "@/lib/casefile/canonicalReader";
 import type {
   CanonicalCaseFile,
@@ -407,13 +403,28 @@ describe("GATE 8 — les deux dossiers, un seul chemin", () => {
     }
   });
 
-  it("VINE est refusé sur le GABARIT, pas par une liste de presets", () => {
-    // Les pages 3 à 7 documentent BOTIFY. Les rendre sous l'en-tête VINE
-    // attribuerait à VINE la chronologie et les métriques de BOTIFY.
-    expect(STATIC_SECTIONS_DOCUMENT_REF).toBe(BOTIFY_CASEFILE_REF);
-    expect(() =>
-      buildPublicReportHtml("fr", projectForPublication(dossier({ ref: VINE_CASEFILE_REF }), "test")),
-    ).toThrow(StaticSectionsMismatchError);
+  // ── ARBITRAGE — VINE ne doit plus être refusé ───────────────────────────
+  //
+  // Ce test exigeait que le gabarit REFUSE VINE, parce que ses sections
+  // statiques décrivaient BOTIFY en dur. Le réflexe était juste, la mécanique
+  // ne l'était pas : elle rendait le renderer inutilisable pour l'une des deux
+  // fixtures obligatoires du gate BUILD 9.
+  //
+  // Décision rendue : le renderer devient dossier-agnostique, les faits sont
+  // indexés par dossier, et un dossier sans entrée RETIRE ses sections au lieu
+  // d'hériter de celles d'un autre.
+  //
+  // La propriété protégée — aucun matériel ne migre d'un dossier à l'autre —
+  // est désormais vérifiée sur le rendu réel, et plus largement, dans
+  // __tests__/casefile/dossier-agnostic-renderer.test.ts.
+  it("VINE rend, et n'hérite d'AUCUN fait de BOTIFY", () => {
+    const html = buildPublicReportHtml(
+      "fr",
+      projectForPublication(dossier({ ref: VINE_CASEFILE_REF, codename: "VINE", ticker: "$VINE" }), "test"),
+    );
+    expect(html).toContain(VINE_CASEFILE_REF);
+    expect(html).not.toContain("BOTIFY");
+    expect(html).not.toContain("rugcheck.xyz");
   });
 });
 
@@ -475,5 +486,69 @@ describe("DOCTRINE — un retrait nomme le champ, jamais sa valeur", () => {
       "test",
     );
     expect(p.sources.map((s) => s.sourceId)).toEqual(["SRC-001"]);
+  });
+});
+
+// ═══ « X / 100 » est réservé aux métriques GOUVERNÉES ════════════════════
+
+describe("RÈGLE DURABLE — aucun score éditorial ne ressemble à un score système", () => {
+  const claimAvecScore = (champ: "title" | "description", texte: string): PublicClaim =>
+    claim({
+      state: "PUBLIC",
+      [champ]: texte,
+      provenance: { threadUrl: "https://x.com/e/1", sources: [source()], unresolvedRefs: [] },
+    } as Partial<PublicClaim>);
+
+  it("MUTANT — un claim portant « 100/100 » n'est PAS publié", () => {
+    // Le cas réel : VINE C11 porte « The full INTERLIGENS coordination score
+    // is 100/100 » alors que VINE a tigerScore = NULL. Deux notations /100 sur
+    // la même surface, dont une gouvernée et une éditoriale : le lecteur ne
+    // les distingue pas, et ne retient que le chiffre.
+    const p = projectForPublication(
+      dossier({ claims: [claimAvecScore("description", "The full INTERLIGENS coordination score is 100/100 based on: (a)…")] }),
+      "test",
+    );
+    expect(p.claims).toHaveLength(0);
+    expect(p.withheld).toEqual([
+      { excluded: true, reason: "EXCLUDED_FROM_PUBLICATION", field: "description", count: 1 },
+    ]);
+  });
+
+  it("la variante française est prise, et la notation « sur 100 » aussi", () => {
+    for (const t of [
+      "Le score de coordination INTERLIGENS est de 100/100, fondé sur : (a)…",
+      "Un score de 72 sur 100 a été retenu.",
+      "score 8 / 100",
+    ]) {
+      const p = projectForPublication(dossier({ claims: [claimAvecScore("description", t)] }), "test");
+      expect(p.claims, t).toHaveLength(0);
+    }
+  });
+
+  it("le retrait nomme le CHAMP, jamais le chiffre", () => {
+    const p = projectForPublication(
+      dossier({ claims: [claimAvecScore("title", "Coordination 100/100")] }),
+      "test",
+    );
+    expect(p.withheld[0].field).toBe("title");
+    expect(JSON.stringify(p.withheld)).not.toContain("100/100");
+  });
+
+  it("le TigerScore, lui, reste rendu — c'est une métrique GOUVERNÉE", () => {
+    // La règle porte sur les textes de claim, pas sur le champ gouverné que le
+    // renderer rend depuis l'autorité. Sans quoi elle interdirait le score.
+    const couverture = buildPublicReportHtml(
+      "en",
+      projectForPublication(dossier({ tigerScore: 91 }), "test"),
+    ).split('<section class="page">')[1];
+    expect(couverture).toContain("91 / 100");
+  });
+
+  it("un claim sans notation passe normalement", () => {
+    const p = projectForPublication(
+      dossier({ claims: [claimAvecScore("description", "Coordination démontrée par un financeur commun.")] }),
+      "test",
+    );
+    expect(p.claims).toHaveLength(1);
   });
 });

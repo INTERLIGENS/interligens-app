@@ -56,6 +56,7 @@ import {
   assertExclusionNoticeSafe,
 } from "./publicationState";
 import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
+import { ungovernedScoreField } from "./governedMetrics";
 
 // ─── Identité : quel dossier canonique, pour quelle entrée ────────────────
 //
@@ -222,6 +223,21 @@ export function projectForPublication(
       // Rattaché ou admissible, mais pas publié. Le champ qui le dit est
       // `state` — pas une insuffisance de preuve, et surtout pas un jugement.
       ajouter(avis, "EXCLUDED_FROM_PUBLICATION", "state");
+      continue;
+    }
+
+    // ── « X / 100 » est réservé aux métriques GOUVERNÉES ─────────────────
+    //
+    // Un score éditorial dans un texte de claim porte la même notation que le
+    // TigerScore. Un lecteur ne les distingue pas — et sur un dossier dont le
+    // TigerScore est NULL, il ne retiendrait que le chiffre éditorial.
+    //
+    // On ne corrige pas le texte, on ne retire pas le chiffre, on ne
+    // réinterprète rien : on refuse la publication, et on le DIT. La voie de
+    // retour est la reformulation, qui crée une nouvelle version du claim.
+    const champScore = ungovernedScoreField(c as unknown as Record<string, unknown>);
+    if (champScore) {
+      ajouter(avis, "EXCLUDED_FROM_PUBLICATION", champScore);
       continue;
     }
 
