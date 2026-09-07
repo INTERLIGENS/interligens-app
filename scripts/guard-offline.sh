@@ -475,40 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour BUILD 9 — token_casefiles.tigerScore devient NULLABLE.
-#
-# La colonne était INTEGER NOT NULL sans DEFAULT. La migration des dossiers
-# BOTIFY et VINE échouait donc en 23502 : ils n'ont aucun score démontré, et
-# en fabriquer un serait une décision de scoring.
-#
-# Constat qui a requalifié la question : AUCUN INSERT/UPDATE sur
-# token_casefiles.tigerScore n'existe dans le dépôt. Le moteur TigerScore est
-# câblé sur /api/scan/* et /api/v1/score, jamais sur un casefile. Les deux
-# valeurs présentes viennent de seeds. Ce n'est pas une garantie qu'on
-# assouplit, c'est une colonne que le moteur n'a jamais alimentée.
-#
-# Doctrine ratifiée : NULL = score non établi · 0 = score calculé à zéro et
-# démontrable · JAMAIS de conversion implicite NULL → 0.
-#
-# DEUX fichiers, et la chaîne de dépendance les rend indivisibles :
-#   prisma/schema.prod.prisma                   Int → Int?  ; sans lui Prisma
-#                                               type le champ `number` et refuse
-#                                               l'option `nulls` du tri
-#   src/components/cases/TokenCasefileView.tsx  la fiche publique rendait
-#                                               « /100 » sur un score absent
-#
-# Les quatre fichiers src/app/*/cases/ sont HORS gel et suivent dans la même PR.
-# prisma/seed-lab.ts n'est PAS exempté : LAB reste à 91, aucune modification.
-#
-# Autorisation humaine explicite (David, arbitrage tigerScore nullable).
-# Aucun wildcard. Refermée byte-identical immédiatement après le merge.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build9-casefile$ ]]; then
-    EXEMPT_TIGERSCORE_NULLABLE_PATTERNS=(
-        "^prisma/schema\\.prod\\.prisma$"
-        "^src/components/cases/TokenCasefileView\\.tsx$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -891,19 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Sur la branche BUILD 9, exempter STRICTEMENT les 2 fichiers de la bascule
-    # tigerScore nullable. Aucun wildcard sur prisma/ ni sur src/components/.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build9-casefile$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_TIGERSCORE_NULLABLE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
