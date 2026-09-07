@@ -8,8 +8,10 @@
 // Wording contract — enforced by the template:
 //   FORBIDDEN:  "rug-pull", "confirmed", "laundered", "scammer",
 //               "on-chain confirms" without a tx hash.
-//   OBLIGATORY: "high-risk indicators", "referenced claims",
-//               "Observed on-chain event [tx]".
+//   OBLIGATORY: "high-risk indicators", "referenced claims".
+//   RETIRÉ:     « Observed on-chain event [tx] » — cette convention exigeait
+//               une signature résolvable ; les sept qui la soutenaient étaient
+//               fabriquées. Voir le bloc CONTAINMENT plus bas.
 //
 // Exclusions (by design):
 //   - No KOL names anywhere in the rendered PDF.
@@ -26,12 +28,15 @@
 // tant que le générateur allait chercher son propre JSON, la route pouvait
 // bien parler d'autorité canonique, le PDF servait autre chose.
 //
-// Restent des constantes de mise en page et des sections FACTUELLES STATIQUES
-// (contrôle du token, métriques, cluster, chronologie, projets liés) qui ne
-// proviennent d'aucune autorité canonique — aucune table n'a été ratifiée pour
-// la chronologie ni les réquisitions (voir 03_ddl_three_structures.sql). Elles
+// Restent deux sections FACTUELLES STATIQUES — contrôle du token et métriques
+// de lancement — qui ne proviennent d'aucune autorité canonique mais citent
+// une source nommée (rugcheck.xyz, requêtes holders Solscan). Elles
 // documentent BOTIFY et RIEN D'AUTRE : le gabarit refuse de se rendre sous
 // l'en-tête d'un autre dossier plutôt que de lui attribuer ce matériel.
+//
+// Trois autres — chronologie, cluster, projets liés — sont RETIRÉES de la
+// publication : elles reposaient sur des signatures fabriquées. Voir le bloc
+// CONTAINMENT.
 
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
@@ -89,8 +94,8 @@ type Copy = {
   withheldCol: { reason: string; field: string; count: string };
   withheldReason: Record<ExclusionReason, string>;
   timelineTitle: string;
-  timelineIntro: string;
-  timelineCol: { date: string; event: string; tx: string };
+  /** Rendu à la place d'une section dont les pièces ont été retirées. */
+  sectionWithheldIntro: string;
   tokenCtrlTitle: string;
   tokenCtrlIntro: string;
   tokenCtrlRows: { mint: string; freeze: string; update: string };
@@ -99,13 +104,7 @@ type Copy = {
   metricsIntro: string;
   metricsRows: { top3: string; top10: string; conc: string };
   clusterTitle: string;
-  clusterIntro: string;
-  clusterEdgeLabel: string;
-  clusterFunder: string;
-  clusterNote: string;
   relatedTitle: string;
-  relatedIntro: string;
-  relatedCol: { project: string; chain: string; link: string; proof: string };
   osintTitle: string;
   osintIntro: string;
   osintCol: {
@@ -119,7 +118,6 @@ type Copy = {
   reportFooter: string;
   footerConfidential: string;
   notRealLine: string;
-  observedPrefix: string;
 };
 
 const TODAY_ISO = new Date().toISOString().slice(0, 10);
@@ -142,8 +140,8 @@ const COPY: Record<PublicReportLang, Copy> = {
     execBullets: [
       "BOTIFY exhibits multiple high-risk indicators consistent with structural-risk patterns INTERLIGENS tracks across Solana launches.",
       "Mint and freeze authority remain active, allowing the deployer to alter supply or block holders at will (source: rugcheck.xyz).",
-      "Top-3 holder concentration reached 62% at peak, with 78% top-10. Liquidity was withdrawn within 30 minutes of the price peak.",
-      "The report aggregates referenced claims and observable on-chain events. It is informational; it is not a legal determination.",
+      "Top-3 holder concentration reached 62% at peak, with 78% top-10 (source: Solscan holder queries).",
+      "The report aggregates referenced claims. It is informational; it is not a legal determination.",
     ],
     disclaimer:
       "Informational purposes only. Not legal advice. Referenced claims only. DYOR.",
@@ -164,9 +162,8 @@ const COPY: Record<PublicReportLang, Copy> = {
       INSUFFICIENT_PROVENANCE: "Insufficient provenance",
     },
     timelineTitle: "On-chain Timeline",
-    timelineIntro:
-      'Chronological sequence of observable on-chain events. Each row uses the convention "Observed on-chain event [tx]" with a resolvable transaction link.',
-    timelineCol: { date: "Date", event: "Event", tx: "Transaction" },
+    sectionWithheldIntro:
+      "This section is withheld from publication. The material it relied on does not meet the provenance requirements, and no substitute has been introduced. Absence of provenance is not a finding of falsity.",
     tokenCtrlTitle: "Token Control",
     // BUILD 9 / ÉTAPE 5 — la date de GÉNÉRATION ne datait pas cette
     // observation, elle la maquillait. Rien n'a été constaté le jour de
@@ -189,16 +186,7 @@ const COPY: Record<PublicReportLang, Copy> = {
       conc: "Concentration score — HIGH (threshold for high-risk indicator: top-3 ≥ 40 %).",
     },
     clusterTitle: "Wallet Cluster Summary",
-    clusterIntro:
-      "Seven wallets received identical SOL amounts from a single source wallet 2 hours before launch. No KOL or natural-person identity is asserted here — only wallet addresses and shared-funder relationships.",
-    clusterEdgeLabel: "Shared funder — identical funding signature",
-    clusterFunder: "Source wallet",
-    clusterNote:
-      "Only three representative edges shown. A shared funder across multiple recipients is a documented high-risk indicator; it is not, by itself, proof of coordination.",
     relatedTitle: "Related Projects (elevated risk)",
-    relatedIntro:
-      "Wallet-overlap signals link BOTIFY to the following elevated-risk projects. Each row names the proof type; no attribution beyond the overlap is asserted.",
-    relatedCol: { project: "Project", chain: "Chain", link: "Link type", proof: "Proof type" },
     osintTitle: "OSINT Catalog",
     osintIntro:
       "Open-source intelligence artefacts referenced in this file. Each entry is catalogued as source material; that is not a statement that its contents are independently confirmed.",
@@ -221,7 +209,6 @@ const COPY: Record<PublicReportLang, Copy> = {
     footerConfidential: "INTERLIGENS · Public Intelligence Report",
     notRealLine:
       "Referenced claims only — not a judicial determination.",
-    observedPrefix: "Observed on-chain event",
   },
   fr: {
     docTitle: "RAPPORT D'INTELLIGENCE",
@@ -240,8 +227,8 @@ const COPY: Record<PublicReportLang, Copy> = {
     execBullets: [
       "BOTIFY présente plusieurs indicateurs de risque élevé cohérents avec les profils structurels que INTERLIGENS observe sur les lancements Solana.",
       "Les autorités de mint et de freeze sont toujours actives, permettant au déployeur de modifier l'offre ou de bloquer les détenteurs à volonté (source : rugcheck.xyz).",
-      "La concentration top-3 a atteint 62 % au pic, 78 % en top-10. La liquidité a été retirée dans les 30 minutes suivant le pic de prix.",
-      "Ce document regroupe des allégations référencées et des événements on-chain observables. Il est informatif et ne constitue pas une qualification juridique.",
+      "La concentration top-3 a atteint 62 % au pic, 78 % en top-10 (source : requêtes holders Solscan).",
+      "Ce document regroupe des allégations référencées. Il est informatif et ne constitue pas une qualification juridique.",
     ],
     disclaimer:
       "À titre informatif uniquement. Ne constitue pas un conseil juridique. Allégations référencées uniquement. DYOR.",
@@ -262,9 +249,8 @@ const COPY: Record<PublicReportLang, Copy> = {
       INSUFFICIENT_PROVENANCE: "Provenance insuffisante",
     },
     timelineTitle: "Chronologie on-chain",
-    timelineIntro:
-      'Séquence chronologique d\'événements on-chain observables. Chaque ligne suit la convention « Événement on-chain observé [tx] » avec un lien de transaction résolvable.',
-    timelineCol: { date: "Date", event: "Événement", tx: "Transaction" },
+    sectionWithheldIntro:
+      "Cette section est retirée de la publication. Le matériel sur lequel elle reposait ne satisfait pas les exigences de provenance, et aucune pièce de substitution n'a été introduite. Une provenance absente n'est pas une preuve de fausseté.",
     tokenCtrlTitle: "Contrôle du token",
     // Voir la note côté `en` : la date de génération ne datait pas cette
     // observation, elle la maquillait.
@@ -286,16 +272,7 @@ const COPY: Record<PublicReportLang, Copy> = {
       conc: "Score de concentration — ÉLEVÉ (seuil indicateur de risque élevé : top-3 ≥ 40 %).",
     },
     clusterTitle: "Synthèse cluster de wallets",
-    clusterIntro:
-      "Sept wallets ont reçu des montants SOL identiques depuis un wallet source unique, 2 heures avant le lancement. Aucune identité KOL ou personne physique n'est affirmée ici — uniquement des adresses de wallets et des relations de financement partagé.",
-    clusterEdgeLabel: "Financeur partagé — signature de financement identique",
-    clusterFunder: "Wallet source",
-    clusterNote:
-      "Trois arêtes représentatives seulement. Un financeur partagé entre plusieurs destinataires est un indicateur de risque élevé documenté ; ce n'est pas, à soi seul, une preuve de coordination.",
     relatedTitle: "Projets liés (risque élevé)",
-    relatedIntro:
-      "Des signaux de chevauchement de wallets relient BOTIFY aux projets à risque élevé suivants. Chaque ligne nomme le type de preuve ; aucune attribution au-delà du chevauchement n'est affirmée.",
-    relatedCol: { project: "Projet", chain: "Chaîne", link: "Type de lien", proof: "Type de preuve" },
     osintTitle: "Catalogue OSINT",
     osintIntro:
       "Artefacts d'intelligence sources ouvertes référencés dans ce dossier. Chaque entrée est cataloguée comme matériel source ; ce n'est pas une affirmation que son contenu est indépendamment confirmé.",
@@ -318,111 +295,33 @@ const COPY: Record<PublicReportLang, Copy> = {
     footerConfidential: "INTERLIGENS · Rapport public d'intelligence",
     notRealLine:
       "Allégations référencées — ne constitue pas une décision judiciaire.",
-    observedPrefix: "Événement on-chain observé",
   },
 };
 
 // ── Static structural data (non-KOL, non-proceeds) ──────────────────────────
 
-const ON_CHAIN_TIMELINE: Array<{
-  date: string;
-  eventEn: string;
-  eventFr: string;
-  tx: string;
-}> = [
-  {
-    date: "2024-11-04 08:42 UTC",
-    eventEn: "Token contract deployed on Solana mainnet",
-    eventFr: "Contrat du token déployé sur Solana mainnet",
-    tx: "3BotifyDeployTxA7xkMN2uDsKcQMM9UnZacja4vWcns9Th69xbDEPLOY",
-  },
-  {
-    date: "2024-11-04 10:11 UTC",
-    eventEn: "Seven wallets pre-funded from single source wallet (identical SOL amount)",
-    eventFr: "Sept wallets pré-financés depuis un wallet source unique (montant SOL identique)",
-    tx: "5ClusterFundTx9bxpNKdavkdDVjQ5GwwBDck7wMf9ZTTotp8JJFUND",
-  },
-  {
-    date: "2024-11-04 12:00 UTC",
-    eventEn: "Public listing begins — first Raydium pool opened",
-    eventFr: "Début de cotation publique — premier pool Raydium ouvert",
-    tx: "2RaydiumOpenTxcfcxBRdoNYrL6MQSuTFW5QtuqdLa2Ln4xOPEN",
-  },
-  {
-    date: "2024-11-04 12:04 UTC",
-    eventEn: "First insider sell — within 4 minutes of listing",
-    eventFr: "Première vente insider — dans les 4 minutes suivant la cotation",
-    tx: "7InsiderSellTxMUoP79hKx3Y47ihd5c8K2mduYL1SOLD01",
-  },
-  {
-    date: "2024-11-04 12:22 UTC",
-    eventEn: "Peak market cap reached — $15.1M",
-    eventFr: "Pic de capitalisation atteint — 15,1 M$",
-    tx: "9PeakSnapshotTxuv6wkrhV46fbELzh7cuGNdi8zByM2yPEAK",
-  },
-  {
-    date: "2024-11-04 12:44 UTC",
-    eventEn: "Liquidity withdrawn from primary Raydium pool (< 30 min post-peak)",
-    eventFr: "Liquidité retirée du pool Raydium principal (< 30 min après le pic)",
-    tx: "6LiquidityPullTxJsnEWp4S3f6mvQ1je3pgtZsNrRSvhfPULL",
-  },
-  {
-    date: "2024-11-04 12:46 UTC",
-    eventEn: "Price collapse to -97% within two blocks",
-    eventFr: "Effondrement du prix à -97% en deux blocs",
-    tx: "8CollapseTxKrtsCGvEWBk3yRXnCqM91HMsLgBn7B2RhwCRASH",
-  },
-];
-
-const WALLET_CLUSTER: {
-  funderSuffix: string;
-  edges: Array<{ from: string; to: string; txSuffix: string }>;
-} = {
-  funderSuffix: "cluster-source-wallet-xxx…DEM0",
-  edges: [
-    {
-      from: "cluster-source-wallet-xxx…DEM0",
-      to: "recipient-wallet-01-xxx…aabb",
-      txSuffix: "FundTxAA01",
-    },
-    {
-      from: "cluster-source-wallet-xxx…DEM0",
-      to: "recipient-wallet-02-xxx…ccdd",
-      txSuffix: "FundTxAA02",
-    },
-    {
-      from: "cluster-source-wallet-xxx…DEM0",
-      to: "recipient-wallet-03-xxx…eeff",
-      txSuffix: "FundTxAA03",
-    },
-  ],
-};
-
-const RELATED_PROJECTS: Array<{
-  project: string;
-  chain: string;
-  linkEn: string;
-  linkFr: string;
-  proofEn: string;
-  proofFr: string;
-}> = [
-  {
-    project: "GHOST",
-    chain: "SOL",
-    linkEn: "Wallet overlap — three pre-launch recipients match",
-    linkFr: "Chevauchement wallets — trois destinataires pré-lancement identiques",
-    proofEn: "Solana address match",
-    proofFr: "Adresse Solana identique",
-  },
-  {
-    project: "SERIAL-12RUGS",
-    chain: "SOL",
-    linkEn: "Funder overlap — same source wallet seeded both launches",
-    linkFr: "Chevauchement financeur — même wallet source pour les deux lancements",
-    proofEn: "Shared funding tx signature",
-    proofFr: "Signature de financement partagée",
-  },
-];
+// ── BUILD 9 · CONTAINMENT — LES PIECES FABRIQUEES SONT PARTIES ──────────
+//
+// Trois constantes vivaient ici : ON_CHAIN_TIMELINE (7 signatures de
+// transaction), WALLET_CLUSTER (1 financeur + 3 aretes + 3 destinataires) et
+// RELATED_PROJECTS (dont la colonne « preuve » citait ces memes signatures).
+//
+// Elles n'etaient pas « non verifiees » : elles etaient IMPOSSIBLES. Mesure
+// du 2026-09-07 — 47 a 57 caracteres la ou une signature Solana en fait 87 a
+// 88, et six des sept portaient des caracteres HORS alphabet base58 (0, I,
+// O, l). Aucune chaine de ce genre ne peut designer une transaction.
+//
+// Elles etaient rendues sur /api/casefile/public — surface retail, sans
+// authentification — sous un en-tete promettant « un lien de transaction
+// resolvable ».
+//
+// Elles ne sont pas remplacees. Aucune signature n'a ete cherchee, aucune
+// n'a ete fabriquee, aucun RPC n'a ete appele. Les sections rendent
+// desormais un RETRAIT STRUCTURE : une piece inventee ne se rachete pas
+// avec un avertissement « non verifie ». Elle disparait comme piece
+// probatoire, et son retrait se signale.
+//
+// L'historique git conserve les valeurs pour l'audit interne.
 
 // ── HTML helpers ────────────────────────────────────────────────────────────
 
@@ -507,6 +406,31 @@ function buildCoverInner(copy: Copy, dossier: PublicProjection): string {
 
     <div class="cover-disclaimer">${esc(copy.disclaimer)}</div>
     <div class="cover-notreal">${esc(copy.notRealLine)}</div>
+  `;
+}
+
+/**
+ * Une section entière retirée de la publication.
+ *
+ * Elle garde sa PLACE et son titre — un lecteur qui connaissait le document
+ * doit voir qu'il manque quelque chose, et pourquoi. Ce qu'elle ne garde pas,
+ * c'est son contenu : le retrait nomme le CHAMP qui commande la décision, et
+ * jamais la valeur retirée.
+ *
+ * C'est la différence avec un avertissement. « Signature non vérifiée » aurait
+ * laissé la pièce sous les yeux du lecteur en lui demandant de s'en méfier —
+ * or une pièce inventée ne se rachète pas par une mise en garde, elle cesse
+ * d'être une pièce.
+ */
+function withheldSection(copy: Copy, titre: string, champ: string): string {
+  return `
+    <div class="h1">${esc(titre)}</div>
+    <div class="callout muted">
+      <div class="strong">${esc(copy.withheldTitle)}</div>
+      <div>${esc(copy.sectionWithheldIntro)}</div>
+      <div class="mono">${esc(copy.withheldCol.reason)} : ${esc(copy.withheldReason.INSUFFICIENT_PROVENANCE)}
+        · ${esc(copy.withheldCol.field)} : ${esc(champ)}</div>
+    </div>
   `;
 }
 
@@ -633,28 +557,12 @@ function buildEvidenceIndexInner(
   `;
 }
 
-function buildTimelineInner(copy: Copy, lang: PublicReportLang): string {
-  const rows = ON_CHAIN_TIMELINE.map((e) => {
-    const label = lang === "fr" ? e.eventFr : e.eventEn;
-    const tx = truncateTx(e.tx);
-    return `<tr>
-      <td class="mono nowrap">${esc(e.date)}</td>
-      <td>${esc(copy.observedPrefix)} · ${esc(label)}</td>
-      <td class="mono url-cell">${esc(tx)}</td>
-    </tr>`;
-  });
-  return `
-    <div class="h1">${esc(copy.timelineTitle)}</div>
-    <p class="body">${esc(copy.timelineIntro)}</p>
-    <table class="data">
-      <thead><tr>
-        <th>${esc(copy.timelineCol.date)}</th>
-        <th>${esc(copy.timelineCol.event)}</th>
-        <th>${esc(copy.timelineCol.tx)}</th>
-      </tr></thead>
-      <tbody>${rows.join("")}</tbody>
-    </table>
-  `;
+function buildTimelineInner(copy: Copy): string {
+  // La convention de la section etait « evenement on-chain observe [tx] ».
+  // Sans signature demontree, chaque ligne serait une affirmation sur des
+  // evenements on-chain sans rien pour la soutenir : la valeur probante de
+  // cette page DEPENDAIT de la signature. Elle est donc retiree entiere.
+  return withheldSection(copy, copy.timelineTitle, "txSignature");
 }
 
 function buildTokenControlInner(copy: Copy): string {
@@ -695,53 +603,20 @@ function buildMetricsInner(copy: Copy): string {
 }
 
 function buildClusterInner(copy: Copy): string {
-  const edges = WALLET_CLUSTER.edges
-    .map((e) => {
-      return `<div class="edge-row">
-        <div class="edge-node">${esc(e.from)}</div>
-        <div class="edge-arrow">→ ${esc(truncateTx(e.txSuffix))}</div>
-        <div class="edge-node">${esc(e.to)}</div>
-      </div>`;
-    })
-    .join("");
-  return `
-    <div class="h1">${esc(copy.clusterTitle)}</div>
-    <p class="body">${esc(copy.clusterIntro)}</p>
-    <div class="cluster-box">
-      <div class="cluster-header">
-        <div class="cluster-funder-label">${esc(copy.clusterFunder)} · ${esc(WALLET_CLUSTER.funderSuffix)}</div>
-        <div class="cluster-edge-label">${esc(copy.clusterEdgeLabel)}</div>
-      </div>
-      ${edges}
-    </div>
-    <div class="callout">${esc(copy.clusterNote)}</div>
-  `;
+  // Meme dependance : le cluster ne demontrait rien sans ses adresses et ses
+  // signatures de financement, et les deux etaient des marqueurs de
+  // demonstration — non reproduits ici. Citer une piece retiree pour
+  // expliquer son retrait la remet dans le source, et c'est exactement ce
+  // que le test de non-reintroduction refuse.
+  return withheldSection(copy, copy.clusterTitle, "txSignature");
 }
 
-function buildRelatedInner(copy: Copy, lang: PublicReportLang): string {
-  const rows = RELATED_PROJECTS.map((r) => {
-    const linkText = lang === "fr" ? r.linkFr : r.linkEn;
-    const proofText = lang === "fr" ? r.proofFr : r.proofEn;
-    return `<tr>
-      <td class="strong">${esc(r.project)}</td>
-      <td class="mono">${esc(r.chain)}</td>
-      <td>${esc(linkText)}</td>
-      <td class="mono">${esc(proofText)}</td>
-    </tr>`;
-  }).join("");
-  return `
-    <div class="h1">${esc(copy.relatedTitle)}</div>
-    <p class="body">${esc(copy.relatedIntro)}</p>
-    <table class="data">
-      <thead><tr>
-        <th>${esc(copy.relatedCol.project)}</th>
-        <th>${esc(copy.relatedCol.chain)}</th>
-        <th>${esc(copy.relatedCol.link)}</th>
-        <th>${esc(copy.relatedCol.proof)}</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
+function buildRelatedInner(copy: Copy): string {
+  // Retire par DEPENDANCE, pas par elargissement : sa colonne « type de
+  // preuve » citait la signature de financement partagee et le chevauchement
+  // des trois destinataires pre-lancement — c'est-a-dire exactement les
+  // pieces retirees juste au-dessus.
+  return withheldSection(copy, copy.relatedTitle, "txSignature");
 }
 
 function buildOsintInner(copy: Copy, dossier: PublicProjection): string {
@@ -889,11 +764,6 @@ function renderCss(): string {
   `;
 }
 
-function truncateTx(tx: string): string {
-  if (tx.length <= 20) return tx;
-  return tx.slice(0, 10) + "…" + tx.slice(-6);
-}
-
 function truncateUrl(u: string): string {
   if (u.length <= 48) return u;
   return u.slice(0, 40) + "…";
@@ -944,11 +814,11 @@ export function buildPublicReportHtml(
   const pages = [
     buildCoverInner(copy, dossier),
     buildEvidenceIndexInner(copy, lang, dossier),
-    buildTimelineInner(copy, lang),
+    buildTimelineInner(copy),
     buildTokenControlInner(copy),
     buildMetricsInner(copy),
     buildClusterInner(copy),
-    buildRelatedInner(copy, lang),
+    buildRelatedInner(copy),
     buildOsintInner(copy, dossier),
     buildHowToReportInner(copy),
   ]
