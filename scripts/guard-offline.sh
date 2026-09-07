@@ -475,32 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour BUILD 9 / ÉTAPE 7 — OPTION A, « le dossier seul ».
-# Les deux surfaces CaseFile qui servaient encore une autorité concurrente
-# passent au canonique : /api/casefile lisait sa propre CASE_DB en ligne,
-# /api/casefile/generate construisait depuis presets.ts.
-#
-# Périmètre STRICTEMENT limité à ces deux routes. L'option B (renommage sur 12
-# fichiers) est NO-GO, l'option C (bascule des six entrées de computeTigerScore)
-# est en HOLD : aucune de ces routes n'est ici, et `loadCaseByMint` survit
-# inchangé sur ses chemins de scoring, documenté LEGACY_SCORING_INPUT dans
-# src/lib/caseDb.ts.
-#
-# Neutralité de score DÉMONTRÉE avant ouverture : le scoreur local a été sorti
-# de la route verbatim (src/lib/casefile/legacyCaseScore.ts) et les deux jeux
-# d'identifiants — CASE_DB et canonique — rendent le même score, parce qu'il
-# est indexé sur les identifiants et non sur le contenu.
-#
-# Autorisation humaine explicite (David, ARBITRAGE — OPTION A, GO) sur
-# inventaire rendu : docs/reports/build9-etape7-inventaire.md.
-# Aucune DDL, aucune collecte, aucune écriture prod. AUCUN wildcard.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-authority$ ]]; then
-    EXEMPT_BUILD9_ETAPE7_PATTERNS=(
-        "^src/app/api/casefile/route\.ts$"
-        "^src/app/api/casefile/generate/route\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -860,19 +834,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche casefile-authority (BUILD 9 / étape 7, option A),
-    # exempter STRICTEMENT les 2 routes CaseFile. Aucun wildcard.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-authority$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_BUILD9_ETAPE7_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
