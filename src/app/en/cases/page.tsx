@@ -67,7 +67,10 @@ async function getCasefiles(): Promise<CasefileCard[]> {
   try {
     const rows = await prisma.tokenCaseFile.findMany({
       where: { publishStatus: "published" },
-      orderBy: { tigerScore: "desc" },
+      // BUILD 9 — NULLS LAST explicite. Postgres place les NULL en PREMIER en
+      // DESC : un dossier non scoré aurait ouvert la liste comme s'il était le
+      // plus sévère. Un score absent ne se classe pas, il se range après.
+      orderBy: { tigerScore: { sort: "desc", nulls: "last" } },
     });
     token = rows.map((r) => ({
       codename: r.codename,

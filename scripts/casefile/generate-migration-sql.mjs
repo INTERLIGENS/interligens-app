@@ -223,6 +223,18 @@ p(`SELECT count(*) AS preuves_resolues
     ON e."canonicalMint" IN (SELECT value FROM jsonb_each_text(t."contractAddresses"))
  WHERE t.ref = ${q(VINE_REF)};`);
 p();
+p("-- 4.7 · tigerScore : les deux entrants sont NULL, les historiques INCHANGES.");
+p("--       ATTENDU : BOTIFY NULL · VINE NULL · BLACKBULL 0 · LAB 91");
+p("--       La colonne n'est PAS dans la liste d'insertion : l'omission donne NULL.");
+p("--       Aucun score n'est fabrique, et aucun NULL n'est converti en 0.");
+p(`SELECT ref, "tigerScore",
+       CASE WHEN "tigerScore" IS NULL THEN 'score non etabli'
+            ELSE 'score present' END AS lecture
+  FROM token_casefiles
+ WHERE ref IN (${q(BOTIFY_REF)}, ${q(VINE_REF)},
+               'IL-CONC-BLACKBULL-001', 'IL-PND-LAB-001')
+ ORDER BY ref;`);
+p();
 p("-- ─── ROLLBACK ─────────────────────────────────────────────────────────────");
 p(`--   DELETE FROM "CaseFileSmokingGun" WHERE "casefileRef" IN (${q(BOTIFY_REF)}, ${q(VINE_REF)});
 --   DELETE FROM "CaseFileShiller"    WHERE "casefileRef" IN (${q(BOTIFY_REF)}, ${q(VINE_REF)});

@@ -29,7 +29,8 @@ export interface TokenCasefileData {
   title: string;
   family: string;
   subtype: string;
-  tigerScore: number;
+  /** BUILD 9 — `null` = score non établi. Jamais rendu comme 0 ni comme « /100 ». */
+  tigerScore: number | null;
   verdict: string;
   status: string;
   statusNote: string | null;
@@ -222,7 +223,15 @@ export default function TokenCasefileView({ data, locale }: { data: TokenCasefil
           <div style={{ background: "#0f0f0f", border: `1px solid ${verdictColor}55`, borderRadius: 10, padding: "16px 22px", minWidth: 200 }}>
             <div style={{ fontSize: 9, fontWeight: 900, color: "#6b7280", letterSpacing: "0.15em", marginBottom: 6 }}>{t.tigerScore.toUpperCase()}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-              <div style={{ fontSize: 30, fontWeight: 900, color: verdictColor, fontFamily: "monospace" }}>{data.tigerScore}<span style={{ fontSize: 14, color: "#4b5563" }}>/100</span></div>
+              {/* BUILD 9 — un score absent n'a PAS l'apparence d'un score. Rendre
+                  `{data.tigerScore}/100` avec null affichait « /100 » dans un
+                  encadré coloré par le verdict : pas un plantage, mais pire. Le
+                  contrat de la fiche dit « — », comme pour tgeDate et decimals. */}
+              {data.tigerScore != null ? (
+                <div style={{ fontSize: 30, fontWeight: 900, color: verdictColor, fontFamily: "monospace" }}>{data.tigerScore}<span style={{ fontSize: 14, color: "#4b5563" }}>/100</span></div>
+              ) : (
+                <div style={{ fontSize: 30, fontWeight: 900, color: "#4b5563", fontFamily: "monospace" }}>—</div>
+              )}
               <span style={{ background: verdictColor + "18", border: `1px solid ${verdictColor}`, color: verdictColor, fontSize: 10, fontWeight: 900, padding: "3px 10px", borderRadius: 4, letterSpacing: "0.12em" }}>
                 {data.verdict}
               </span>
