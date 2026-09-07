@@ -16,13 +16,32 @@
 //   - No proceeds figures, no CEX-specific requisitions.
 //   - No unverified victim testimony.
 //
-// Data source: data/cases/botify.json (claims C1..C8 + SRC-001..SRC-008).
-// Anything not in that file is either static wording (how-to-report) or
-// documented factual constants (concentration %, related projects).
+// ── BUILD 9 / ÉTAPE 5 — l'autorité de ce rendu ──────────────────────────────
+//
+// Data source (AVANT) : data/cases/botify.json — un JSON legacy, lu ici même.
+// Data source (MAINTENANT) : la `PublicProjection`, passée par l'appelant.
+//
+// Ce fichier ne lit plus AUCUNE autorité de dossier. Il reçoit ce qui est
+// publiable, déjà projeté, et il le rend. La différence n'est pas cosmétique :
+// tant que le générateur allait chercher son propre JSON, la route pouvait
+// bien parler d'autorité canonique, le PDF servait autre chose.
+//
+// Restent des constantes de mise en page et des sections FACTUELLES STATIQUES
+// (contrôle du token, métriques, cluster, chronologie, projets liés) qui ne
+// proviennent d'aucune autorité canonique — aucune table n'a été ratifiée pour
+// la chronologie ni les réquisitions (voir 03_ddl_three_structures.sql). Elles
+// documentent BOTIFY et RIEN D'AUTRE : le gabarit refuse de se rendre sous
+// l'en-tête d'un autre dossier plutôt que de lui attribuer ce matériel.
 
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
-import botifyCase from "../../../data/cases/botify.json";
+import {
+  BOTIFY_CASEFILE_REF,
+  type PublicProjection,
+  type RenderedClaim,
+  type WithheldNotice,
+} from "./publicProjection";
+import type { ExclusionReason } from "./publicationState";
 
 const CHROMIUM_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v143.0.4/chromium-v143.0.4-pack.x64.tar";
@@ -51,14 +70,24 @@ type Copy = {
   page: (n: number, total: number) => string;
   risk: string;
   score: string;
-  riskScoreOutOf100: string;
+  /** Ce qu'on écrit quand le score n'est PAS établi. Jamais « 0 », jamais « /100 ». */
+  scoreUnset: string;
   tigerScoreLabel: string;
   execTitle: string;
   execBullets: string[];
+  /** Le décompte des claims publiés vient de la projection, jamais d'une constante. */
+  execClaimsBullet: (n: number) => string;
   disclaimer: string;
   evIdxTitle: string;
   evIdxIntro: string;
+  evIdxEmpty: string;
   evCol: { id: string; type: string; source: string; ts: string; url: string; claim: string };
+  unresolvedLabel: string;
+  withheldLabel: string;
+  withheldTitle: string;
+  withheldIntro: string;
+  withheldCol: { reason: string; field: string; count: string };
+  withheldReason: Record<ExclusionReason, string>;
   timelineTitle: string;
   timelineIntro: string;
   timelineCol: { date: string; event: string; tx: string };
@@ -79,7 +108,11 @@ type Copy = {
   relatedCol: { project: string; chain: string; link: string; proof: string };
   osintTitle: string;
   osintIntro: string;
-  osintCol: { id: string; file: string; caption: string; source: string; status: string };
+  osintCol: {
+    id: string; type: string; caption: string;
+    source: string; captured: string; integrity: string;
+  };
+  osintEmpty: string;
   reportTitle: string;
   reportIntro: string;
   reportAgencies: { name: string; url: string }[];
@@ -99,12 +132,15 @@ const COPY: Record<PublicReportLang, Copy> = {
     page: (n, total) => `Page ${n} / ${total}`,
     risk: "HIGH RISK",
     score: "TigerScore",
-    riskScoreOutOf100: "100 / 100",
+    scoreUnset: "Not established",
     tigerScoreLabel: "Structural-risk composite score",
     execTitle: "Executive Summary",
+    execClaimsBullet: (n) =>
+      n === 0
+        ? "No referenced claim in this file currently meets the publication requirements. The material remains attached to the file; nothing here is asserted to be false."
+        : `${n} referenced claim${n > 1 ? "s are" : " is"} catalogued with its source of record. None require trust in a single witness.`,
     execBullets: [
       "BOTIFY exhibits multiple high-risk indicators consistent with structural-risk patterns INTERLIGENS tracks across Solana launches.",
-      "Eight referenced claims are catalogued with on-chain or editorial sources. None require trust in a single witness.",
       "Mint and freeze authority remain active, allowing the deployer to alter supply or block holders at will (source: rugcheck.xyz).",
       "Top-3 holder concentration reached 62% at peak, with 78% top-10. Liquidity was withdrawn within 30 minutes of the price peak.",
       "The report aggregates referenced claims and observable on-chain events. It is informational; it is not a legal determination.",
@@ -114,14 +150,29 @@ const COPY: Record<PublicReportLang, Copy> = {
     evIdxTitle: "Evidence Index",
     evIdxIntro:
       "Each entry below is a referenced claim with its source of record. Claims are not assertions of guilt; they are the material INTERLIGENS has observed and catalogued.",
+    evIdxEmpty:
+      "No claim in this file currently meets the publication requirements. The material remains attached to the file. Absence of provenance is not a finding of falsity, and no further conclusion is drawn from it.",
     evCol: { id: "ID", type: "Type", source: "Source", ts: "Timestamp", url: "URL", claim: "Claim ref" },
+    unresolvedLabel: "Unresolved reference",
+    withheldLabel: "Withheld piece",
+    withheldTitle: "Withheld from publication",
+    withheldIntro:
+      "Material attached to this file that is not published. Each line names the field that governs the decision — never its content. Absence of provenance is not a finding of falsity.",
+    withheldCol: { reason: "Reason", field: "Field", count: "Items" },
+    withheldReason: {
+      EXCLUDED_FROM_PUBLICATION: "Excluded from publication",
+      INSUFFICIENT_PROVENANCE: "Insufficient provenance",
+    },
     timelineTitle: "On-chain Timeline",
     timelineIntro:
       'Chronological sequence of observable on-chain events. Each row uses the convention "Observed on-chain event [tx]" with a resolvable transaction link.',
     timelineCol: { date: "Date", event: "Event", tx: "Transaction" },
     tokenCtrlTitle: "Token Control",
+    // BUILD 9 / ÉTAPE 5 — la date de GÉNÉRATION ne datait pas cette
+    // observation, elle la maquillait. Rien n'a été constaté le jour de
+    // l'export ; la phrase le dit désormais sans horodatage inventé.
     tokenCtrlIntro:
-      "As of " + TODAY_ISO + ", the following authorities remain active on the BOTIFY token contract. Source: rugcheck.xyz.",
+      "The following authorities are reported active on the BOTIFY token contract. Source: rugcheck.xyz.",
     tokenCtrlRows: {
       mint: "Mint authority — Active. Capability under SPL rules: mint additional supply without holder consent.",
       freeze: "Freeze authority — Active. Capability under SPL rules: freeze any holder wallet.",
@@ -150,8 +201,13 @@ const COPY: Record<PublicReportLang, Copy> = {
     relatedCol: { project: "Project", chain: "Chain", link: "Link type", proof: "Proof type" },
     osintTitle: "OSINT Catalog",
     osintIntro:
-      "Open-source intelligence artefacts referenced in this file. Each entry is marked Referenced — meaning INTERLIGENS has catalogued it as source material, not that its contents are independently confirmed.",
-    osintCol: { id: "Ref", file: "File", caption: "Caption", source: "Source", status: "Status" },
+      "Open-source intelligence artefacts referenced in this file. Each entry is catalogued as source material; that is not a statement that its contents are independently confirmed.",
+    osintCol: {
+      id: "Ref", type: "Type", caption: "Caption",
+      source: "Origin", captured: "Captured", integrity: "Integrity",
+    },
+    osintEmpty:
+      "No catalogued artefact currently carries the integrity, origin and capture timestamp required for publication. The artefacts remain attached to the file.",
     reportTitle: "How to Report",
     reportIntro:
       "If you believe you have been affected by activity described here, you may contact the following reporting channels. INTERLIGENS is not a law-enforcement agency and does not forward reports on your behalf.",
@@ -174,12 +230,15 @@ const COPY: Record<PublicReportLang, Copy> = {
     page: (n, total) => `Page ${n} / ${total}`,
     risk: "RISQUE ÉLEVÉ",
     score: "TigerScore",
-    riskScoreOutOf100: "100 / 100",
+    scoreUnset: "Non établi",
     tigerScoreLabel: "Score composite de risque structurel",
     execTitle: "Résumé exécutif",
+    execClaimsBullet: (n) =>
+      n === 0
+        ? "Aucune allégation référencée de ce dossier ne satisfait à ce jour les conditions de publication. Le matériel reste rattaché au dossier ; rien ici n'est affirmé faux."
+        : `${n} allégation${n > 1 ? "s" : ""} référencée${n > 1 ? "s sont cataloguées" : " est cataloguée"} avec sa source d'enregistrement. Aucune ne repose sur un témoin unique.`,
     execBullets: [
       "BOTIFY présente plusieurs indicateurs de risque élevé cohérents avec les profils structurels que INTERLIGENS observe sur les lancements Solana.",
-      "Huit allégations référencées sont cataloguées avec leur source d'enregistrement. Aucune ne repose sur un témoin unique.",
       "Les autorités de mint et de freeze sont toujours actives, permettant au déployeur de modifier l'offre ou de bloquer les détenteurs à volonté (source : rugcheck.xyz).",
       "La concentration top-3 a atteint 62 % au pic, 78 % en top-10. La liquidité a été retirée dans les 30 minutes suivant le pic de prix.",
       "Ce document regroupe des allégations référencées et des événements on-chain observables. Il est informatif et ne constitue pas une qualification juridique.",
@@ -189,14 +248,28 @@ const COPY: Record<PublicReportLang, Copy> = {
     evIdxTitle: "Index des preuves",
     evIdxIntro:
       "Chaque entrée ci-dessous est une allégation référencée avec sa source d'enregistrement. Les allégations ne sont pas des affirmations de culpabilité ; c'est le matériel que INTERLIGENS a observé et catalogué.",
+    evIdxEmpty:
+      "Aucune allégation de ce dossier ne satisfait à ce jour les conditions de publication. Le matériel reste rattaché au dossier. Une provenance absente n'est pas une preuve de fausseté, et aucune conclusion supplémentaire n'en est tirée.",
     evCol: { id: "ID", type: "Type", source: "Source", ts: "Horodatage", url: "URL", claim: "Réf. allégation" },
+    unresolvedLabel: "Référence non résolue",
+    withheldLabel: "Pièce retenue",
+    withheldTitle: "Retenu hors publication",
+    withheldIntro:
+      "Matériel rattaché à ce dossier et non publié. Chaque ligne nomme le CHAMP qui commande la décision — jamais son contenu. Une provenance absente n'est pas une preuve de fausseté.",
+    withheldCol: { reason: "Motif", field: "Champ", count: "Éléments" },
+    withheldReason: {
+      EXCLUDED_FROM_PUBLICATION: "Exclu de la publication",
+      INSUFFICIENT_PROVENANCE: "Provenance insuffisante",
+    },
     timelineTitle: "Chronologie on-chain",
     timelineIntro:
       'Séquence chronologique d\'événements on-chain observables. Chaque ligne suit la convention « Événement on-chain observé [tx] » avec un lien de transaction résolvable.',
     timelineCol: { date: "Date", event: "Événement", tx: "Transaction" },
     tokenCtrlTitle: "Contrôle du token",
+    // Voir la note côté `en` : la date de génération ne datait pas cette
+    // observation, elle la maquillait.
     tokenCtrlIntro:
-      "Au " + TODAY_ISO + ", les autorités suivantes sont toujours actives sur le contrat BOTIFY. Source : rugcheck.xyz.",
+      "Les autorités suivantes sont rapportées actives sur le contrat BOTIFY. Source : rugcheck.xyz.",
     tokenCtrlRows: {
       mint: "Autorité de mint — Active. Capacité au sens des règles SPL : émettre de l'offre supplémentaire sans consentement des détenteurs.",
       freeze: "Autorité de freeze — Active. Capacité au sens des règles SPL : bloquer tout wallet détenteur.",
@@ -225,8 +298,13 @@ const COPY: Record<PublicReportLang, Copy> = {
     relatedCol: { project: "Projet", chain: "Chaîne", link: "Type de lien", proof: "Type de preuve" },
     osintTitle: "Catalogue OSINT",
     osintIntro:
-      "Artefacts d'intelligence sources ouvertes référencés dans ce dossier. Chaque entrée est marquée Référencée — signifiant que INTERLIGENS l'a catalogué comme matériel source, et non que son contenu est indépendamment confirmé.",
-    osintCol: { id: "Réf", file: "Fichier", caption: "Légende", source: "Source", status: "Statut" },
+      "Artefacts d'intelligence sources ouvertes référencés dans ce dossier. Chaque entrée est cataloguée comme matériel source ; ce n'est pas une affirmation que son contenu est indépendamment confirmé.",
+    osintCol: {
+      id: "Réf", type: "Type", caption: "Légende",
+      source: "Origine", captured: "Capture", integrity: "Intégrité",
+    },
+    osintEmpty:
+      "Aucun artefact catalogué ne porte à ce jour l'empreinte, l'origine et l'horodatage de capture exigés pour une publication. Les artefacts restent rattachés au dossier.",
     reportTitle: "Comment signaler",
     reportIntro:
       "Si vous pensez avoir été affecté par l'activité décrite ici, vous pouvez contacter les canaux de signalement suivants. INTERLIGENS n'est pas une agence de police et ne transmet pas de signalements en votre nom.",
@@ -346,80 +424,6 @@ const RELATED_PROJECTS: Array<{
   },
 ];
 
-const OSINT_ENTRIES: Array<{
-  id: string;
-  file: string;
-  captionEn: string;
-  captionFr: string;
-  source: string;
-  claimRef: string;
-}> = [
-  {
-    id: "E-001",
-    file: "IMG_2239.jpg",
-    captionEn: "Coordinated shill posts — matching template across bot accounts",
-    captionFr: "Posts coordonnés — modèle identique à travers des comptes bots",
-    source: "Twitter/X archive",
-    claimRef: "C1",
-  },
-  {
-    id: "E-002",
-    file: "IMG_2240.jpg",
-    captionEn: "Telegram pre-launch buy signal — 45 minutes before public listing",
-    captionFr: "Signal d'achat Telegram pré-lancement — 45 minutes avant cotation publique",
-    source: "Telegram group capture",
-    claimRef: "C2",
-  },
-  {
-    id: "E-003",
-    file: "IMG_2241.jpg",
-    captionEn: "Dexscreener chart — liquidity removed within 28 minutes of peak",
-    captionFr: "Graphique Dexscreener — liquidité retirée dans les 28 minutes suivant le pic",
-    source: "dexscreener.com",
-    claimRef: "C3",
-  },
-  {
-    id: "E-004",
-    file: "IMG_2242.jpg",
-    captionEn: "Solscan cluster view — seven recipients of identical source funding",
-    captionFr: "Vue cluster Solscan — sept destinataires de financement source identique",
-    source: "solscan.io",
-    claimRef: "C4",
-  },
-  {
-    id: "E-005",
-    file: "IMG_2243.jpg",
-    captionEn: "rugcheck.xyz report — mint and freeze authority both Active",
-    captionFr: "Rapport rugcheck.xyz — autorités de mint et de freeze toutes deux Actives",
-    source: "rugcheck.xyz",
-    claimRef: "C5",
-  },
-  {
-    id: "E-006",
-    file: "IMG_2244.jpg",
-    captionEn: "WHOIS record — project domain registered the day of launch",
-    captionFr: "Enregistrement WHOIS — domaine du projet enregistré le jour du lancement",
-    source: "whois.domaintools.com",
-    claimRef: "C6",
-  },
-  {
-    id: "E-007",
-    file: "IMG_2245.jpg",
-    captionEn: "Holder distribution — top-3 wallets hold 62% of supply at peak",
-    captionFr: "Distribution des détenteurs — top-3 wallets détiennent 62 % de l'offre au pic",
-    source: "solscan.io holder view",
-    claimRef: "C7",
-  },
-  {
-    id: "E-008",
-    file: "IMG_2246.jpg",
-    captionEn: "Social channel timeline — last post day 5, silence thereafter",
-    captionFr: "Chronologie canal social — dernier post jour 5, silence par la suite",
-    source: "Archive web captures",
-    claimRef: "C8",
-  },
-];
-
 // ── HTML helpers ────────────────────────────────────────────────────────────
 
 function esc(s: string | undefined | null): string {
@@ -449,25 +453,44 @@ function pageShell(
     <span>${esc(copy.footerConfidential)}</span>
     <span>${esc(caseId)}</span>
     <span>${esc(copy.page(pageNum, totalPages))}</span>
-    <span>${esc(TODAY_ISO)}</span>
+    <!-- La date porte son libellé. Une date NUE dans le pied d'un document
+         forensique se lit comme une date de constatation — c'est exactement
+         l'ambiguïté qui avait produit l'horodatage inventé de l'index. -->
+    <span>${esc(copy.generatedOn)} ${esc(TODAY_ISO)}</span>
   </footer>
 </section>`;
 }
 
 // ── Page builders ───────────────────────────────────────────────────────────
 
-function buildCoverInner(copy: Copy, caseId: string): string {
+function buildCoverInner(copy: Copy, dossier: PublicProjection): string {
+  // ── BUILD 9 / ÉTAPE 5 — le score de couverture n'est plus une constante ──
+  //
+  // L'anneau affichait « 100 / 100 » codé en dur, sous le libellé TigerScore,
+  // pour un dossier dont l'autorité porte `tigerScore = NULL`. Ce n'était pas
+  // un score arrondi : c'était un score qu'aucune autorité ne produit.
+  //
+  // NULL rend « non établi ». Jamais 0, jamais de dénominateur : « — / 100 »
+  // laisserait encore croire qu'un score a été calculé et qu'il est bas.
+  const scoreCell =
+    dossier.tigerScore == null
+      ? `<div class="score-ring-value score-unset">—</div>
+         <div class="score-ring-band">${esc(copy.scoreUnset)}</div>`
+      : `<div class="score-ring-value">${esc(String(dossier.tigerScore))} / 100</div>
+         <div class="score-ring-band">${esc(copy.risk)}</div>`;
+
+  const bullets = [copy.execClaimsBullet(dossier.claims.length), ...copy.execBullets];
+
   return `
     <div class="cover-title-block">
       <div class="cover-kicker">${esc(copy.docTitle)}</div>
-      <div class="cover-case">${esc(caseId)}</div>
+      <div class="cover-case">${esc(dossier.ref)}</div>
       <div class="cover-meta">${esc(copy.generatedOn)} · ${esc(TODAY_ISO)}</div>
     </div>
 
     <div class="cover-score-block">
       <div class="score-ring" aria-hidden="true">
-        <div class="score-ring-value">${esc(copy.riskScoreOutOf100)}</div>
-        <div class="score-ring-band">${esc(copy.risk)}</div>
+        ${scoreCell}
       </div>
       <div class="score-meta">
         <div class="score-meta-label">${esc(copy.score)}</div>
@@ -478,7 +501,7 @@ function buildCoverInner(copy: Copy, caseId: string): string {
     <div class="cover-exec">
       <div class="h2">${esc(copy.execTitle)}</div>
       <ul class="exec-list">
-        ${copy.execBullets.map((b) => `<li>${esc(b)}</li>`).join("")}
+        ${bullets.map((b) => `<li>${esc(b)}</li>`).join("")}
       </ul>
     </div>
 
@@ -487,64 +510,110 @@ function buildCoverInner(copy: Copy, caseId: string): string {
   `;
 }
 
-type RawClaim = {
-  claim_id: string;
-  title: string;
-  title_fr?: string;
-  severity?: string;
-  status?: string;
-  thread_url?: string | null;
-  category?: string;
-  evidence_refs?: string[];
-};
+/**
+ * Les avis de retrait. Ils vivent SUR la page d'index, pas ailleurs :
+ * un retrait qu'il faut aller chercher trois pages plus loin est un retrait
+ * silencieux avec des étapes en plus.
+ */
+function buildWithheldBlock(copy: Copy, withheld: readonly WithheldNotice[]): string {
+  if (withheld.length === 0) return "";
+  const rows = withheld
+    .map(
+      (n) => `<tr>
+      <td>${esc(copy.withheldReason[n.reason])}</td>
+      <td class="mono">${esc(n.field)}</td>
+      <td class="mono">${esc(String(n.count))}</td>
+    </tr>`,
+    )
+    .join("");
+  return `
+    <div class="h2 withheld-title">${esc(copy.withheldTitle)}</div>
+    <p class="body">${esc(copy.withheldIntro)}</p>
+    <table class="data">
+      <thead><tr>
+        <th>${esc(copy.withheldCol.reason)}</th>
+        <th>${esc(copy.withheldCol.field)}</th>
+        <th>${esc(copy.withheldCol.count)}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
 
-type RawSource = {
-  source_id: string;
-  type: string;
-  filename: string | null;
-  caption: string | null;
-  captured_at: string | null;
-};
-
-function buildEvidenceIndexInner(copy: Copy, lang: PublicReportLang): string {
+function buildEvidenceIndexInner(
+  copy: Copy,
+  lang: PublicReportLang,
+  dossier: PublicProjection,
+): string {
   // ── BUILD 9 / ÉTAPE 5 — l'index ne FABRIQUE plus sa provenance ──────────
   //
   // Trois des six colonnes ne rendaient pas ce que leur en-tête annonçait :
   //
   //   « Type »       recevait le TITRE du claim
   //   « Source »     recevait sa CATÉGORIE
-  //   « Horodatage » recevait TODAY_ISO — la date de génération du PDF
+  //   « Horodatage » recevait la date de GÉNÉRATION du PDF
   //
   // La dernière est la plus grave : chaque pièce paraissait captée le jour de
-  // l'export, alors que le registre porte de vrais `captured_at`. Un index de
-  // preuves qui invente ses horodatages ne documente rien, il rassure.
+  // l'export. Un index de preuves qui invente ses horodatages ne documente
+  // rien, il rassure.
   //
-  // Chaque colonne rend désormais son champ, et « — » quand il manque. Le
-  // renderer ne fabrique ni n'interprète : il rend, ou il dit qu'il n'a pas.
-  const claims = (botifyCase.claims ?? []) as RawClaim[];
-  const sources = (botifyCase.sources ?? []) as RawSource[];
-  const registre = new Map(sources.map((s) => [s.source_id, s]));
-  const rows = claims.map((c, i) => {
-    const ref = `E-${String(i + 1).padStart(3, "0")}`;
-    const title = lang === "fr" && c.title_fr ? c.title_fr : c.title;
-    const threadLabel = c.thread_url ? truncateUrl(c.thread_url) : "—";
-    // La première source RÉSOLUE du claim porte son type et son horodatage.
-    const src = (c.evidence_refs ?? [])
-      .map((r: string) => registre.get(r))
-      .find((x: RawSource | undefined): x is RawSource => x != null);
+  // Et la source n'est plus le JSON legacy : elle est la projection publique.
+  // Une pièce ne paraît ici que si elle porte empreinte, origine ET capture.
+  //
+  // Les trois absences restent DISTINCTES, chacune sur sa ligne : une pièce
+  // publiable, une référence que le registre ne connaît pas, une pièce connue
+  // mais non publiable. Les confondre reviendrait à en faire disparaître deux.
+  let n = 0;
+  const ligne = (
+    type: string,
+    source: string,
+    ts: string,
+    url: string,
+    claimId: string,
+  ): string => {
+    n += 1;
     return `<tr>
-      <td class="mono">${esc(ref)}</td>
-      <td>${esc(src?.type ?? "—")}</td>
-      <td>${esc(src?.filename ?? title)}</td>
-      <td class="mono">${esc(src?.captured_at?.slice(0, 10) ?? "—")}</td>
-      <td class="mono url-cell">${esc(threadLabel)}</td>
-      <td class="mono">${esc(c.claim_id)}</td>
+      <td class="mono">${esc(`E-${String(n).padStart(3, "0")}`)}</td>
+      <td>${esc(type)}</td>
+      <td>${esc(source)}</td>
+      <td class="mono">${esc(ts)}</td>
+      <td class="mono url-cell">${esc(url)}</td>
+      <td class="mono">${esc(claimId)}</td>
     </tr>`;
-  });
-  return `
-    <div class="h1">${esc(copy.evIdxTitle)}</div>
-    <p class="body">${esc(copy.evIdxIntro)}</p>
-    <table class="data">
+  };
+
+  const rows: string[] = [];
+  for (const c of dossier.claims as readonly RenderedClaim[]) {
+    const p = c.provenance;
+    const threadLabel = p.threadUrl ? truncateUrl(p.threadUrl) : "—";
+    for (const s of p.sources) {
+      rows.push(
+        ligne(
+          s.sourceType,
+          s.caption ?? "—",
+          s.capturedAt ?? "—",
+          s.sourceUrl ? truncateUrl(s.sourceUrl) : threadLabel,
+          c.claimId,
+        ),
+      );
+    }
+    for (const r of p.unresolvedRefs) {
+      rows.push(ligne(copy.unresolvedLabel, r, "—", "—", c.claimId));
+    }
+    for (const r of p.withheldRefs) {
+      rows.push(ligne(copy.withheldLabel, r, "—", "—", c.claimId));
+    }
+    if (p.sources.length === 0 && p.unresolvedRefs.length === 0 && p.withheldRefs.length === 0) {
+      // Un claim publié sur son seul `thread_url` : le fil EST le fondement.
+      const titre = lang === "fr" && c.titleFr ? c.titleFr : c.title;
+      rows.push(ligne("thread", titre, c.claimDate ?? "—", threadLabel, c.claimId));
+    }
+  }
+
+  const table =
+    rows.length === 0
+      ? `<p class="body callout muted">${esc(copy.evIdxEmpty)}</p>`
+      : `<table class="data">
       <thead><tr>
         <th>${esc(copy.evCol.id)}</th>
         <th>${esc(copy.evCol.type)}</th>
@@ -554,7 +623,13 @@ function buildEvidenceIndexInner(copy: Copy, lang: PublicReportLang): string {
         <th>${esc(copy.evCol.claim)}</th>
       </tr></thead>
       <tbody>${rows.join("")}</tbody>
-    </table>
+    </table>`;
+
+  return `
+    <div class="h1">${esc(copy.evIdxTitle)}</div>
+    <p class="body">${esc(copy.evIdxIntro)}</p>
+    ${table}
+    ${buildWithheldBlock(copy, dossier.withheld)}
   `;
 }
 
@@ -669,30 +744,49 @@ function buildRelatedInner(copy: Copy, lang: PublicReportLang): string {
   `;
 }
 
-function buildOsintInner(copy: Copy, lang: PublicReportLang): string {
-  const rows = OSINT_ENTRIES.map((e) => {
-    const caption = lang === "fr" ? e.captionFr : e.captionEn;
-    return `<tr>
-      <td class="mono">${esc(e.id)}</td>
-      <td class="mono">${esc(e.file)}</td>
-      <td>${esc(caption)}</td>
-      <td class="mono">${esc(e.source)}</td>
-      <td><span class="pill">Referenced · ${esc(e.claimRef)}</span></td>
-    </tr>`;
-  }).join("");
+function buildOsintInner(copy: Copy, dossier: PublicProjection): string {
+  // ── BUILD 9 / ÉTAPE 5 — le catalogue était la SECONDE autorité du PDF ────
+  //
+  // Il vivait dans une constante `OSINT_ENTRIES` : huit entrées codées en
+  // dur, calquées une à une sur SRC-001…SRC-008 du JSON legacy. Deux listes
+  // de preuves dans un même document, sans rien pour les tenir d'accord.
+  //
+  // La colonne « Fichier » rendait `IMG_2239.jpg` — le nom d'un fichier sur
+  // une machine. Ça ne prouve rien et ça décrit une arborescence interne.
+  // Elle cède la place à ce qui rend une pièce auditable : son ORIGINE et son
+  // EMPREINTE. L'empreinte est tronquée pour la mise en page, jamais inventée.
+  const rows = dossier.sources
+    .map(
+      (s) => `<tr>
+      <td class="mono">${esc(s.sourceId)}</td>
+      <td>${esc(s.sourceType)}</td>
+      <td>${esc(s.caption ?? "—")}</td>
+      <td class="mono url-cell">${esc(s.sourceUrl ? truncateUrl(s.sourceUrl) : "—")}</td>
+      <td class="mono">${esc(s.capturedAt ?? "—")}</td>
+      <td class="mono">${esc(s.sha256 ? s.sha256.slice(0, 16) + "…" : "—")}</td>
+    </tr>`,
+    )
+    .join("");
+
+  const table =
+    dossier.sources.length === 0
+      ? `<p class="body callout muted">${esc(copy.osintEmpty)}</p>`
+      : `<table class="data">
+      <thead><tr>
+        <th>${esc(copy.osintCol.id)}</th>
+        <th>${esc(copy.osintCol.type)}</th>
+        <th>${esc(copy.osintCol.caption)}</th>
+        <th>${esc(copy.osintCol.source)}</th>
+        <th>${esc(copy.osintCol.captured)}</th>
+        <th>${esc(copy.osintCol.integrity)}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
   return `
     <div class="h1">${esc(copy.osintTitle)}</div>
     <p class="body">${esc(copy.osintIntro)}</p>
-    <table class="data">
-      <thead><tr>
-        <th>${esc(copy.osintCol.id)}</th>
-        <th>${esc(copy.osintCol.file)}</th>
-        <th>${esc(copy.osintCol.caption)}</th>
-        <th>${esc(copy.osintCol.source)}</th>
-        <th>${esc(copy.osintCol.status)}</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+    ${table}
   `;
 }
 
@@ -746,6 +840,12 @@ function renderCss(): string {
     .score-ring { width: 110px; height: 110px; border-radius: 50%; border: 4px solid ${ACCENT}; display: flex; align-items: center; justify-content: center; flex-direction: column; background: ${PAPER}; flex-shrink: 0; }
     .score-ring-value { font-size: 22px; font-weight: 900; color: ${INK}; letter-spacing: -0.03em; }
     .score-ring-band { color: ${RISK_RED}; font-size: 9px; font-weight: 900; letter-spacing: 1.2px; margin-top: 2px; }
+    /* Un score non établi n'emprunte NI la couleur NI la graisse d'un score.
+       Le rendre en rouge sang avec un « — » ferait lire « très mauvais »
+       là où la seule information est « pas calculé ». */
+    .score-ring-value.score-unset { color: ${MUTED}; font-weight: 400; }
+    .score-ring-value.score-unset + .score-ring-band { color: ${MUTED}; }
+    .withheld-title { margin-top: 18px; }
     .score-meta-label { color: ${MUTED}; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
     .score-meta-desc { font-size: 13px; color: ${INK}; font-weight: 600; }
 
@@ -801,38 +901,82 @@ function truncateUrl(u: string): string {
 
 // ── HTML builder ────────────────────────────────────────────────────────────
 
-export function buildPublicReportHtml(lang: PublicReportLang, caseId: string): string {
+/**
+ * Le dossier que les sections STATIQUES de ce gabarit documentent.
+ *
+ * Les pages 3 à 7 — chronologie, contrôle du token, métriques, cluster,
+ * projets liés — sont du contenu codé en dur qui décrit BOTIFY. Aucune table
+ * canonique ne les porte : la DDL du bloc 3 a explicitement refusé de créer
+ * `CaseFileTimeline` et `CaseFileRequisition`, faute de faits démontrés.
+ *
+ * Rendre ce gabarit sous l'en-tête d'un autre dossier attribuerait à celui-ci
+ * la chronologie, les métriques et le cluster de BOTIFY. Ce serait la
+ * fabrication la plus coûteuse du lot, et la plus difficile à repérer : le
+ * document aurait l'air complet.
+ *
+ * Le gabarit refuse donc. Ce n'est pas une liste d'autorisation par preset —
+ * c'est le gabarit qui déclare de quel dossier il parle.
+ */
+export const STATIC_SECTIONS_DOCUMENT_REF = BOTIFY_CASEFILE_REF;
+
+export class StaticSectionsMismatchError extends Error {
+  constructor(ref: string) {
+    super(
+      `[casefile] gabarit public refusé pour ${ref} : ses sections statiques ` +
+        `(chronologie, contrôle du token, métriques, cluster, projets liés) ` +
+        `documentent ${STATIC_SECTIONS_DOCUMENT_REF} et lui seul. Les rendre ` +
+        "sous un autre en-tête attribuerait ce matériel à un dossier qui ne le " +
+        "porte pas.",
+    );
+    this.name = "StaticSectionsMismatchError";
+  }
+}
+
+export function buildPublicReportHtml(
+  lang: PublicReportLang,
+  dossier: PublicProjection,
+): string {
+  if (dossier.ref !== STATIC_SECTIONS_DOCUMENT_REF) {
+    throw new StaticSectionsMismatchError(dossier.ref);
+  }
   const copy = COPY[lang];
   const total = 9;
   const pages = [
-    buildCoverInner(copy, caseId),
-    buildEvidenceIndexInner(copy, lang),
+    buildCoverInner(copy, dossier),
+    buildEvidenceIndexInner(copy, lang, dossier),
     buildTimelineInner(copy, lang),
     buildTokenControlInner(copy),
     buildMetricsInner(copy),
     buildClusterInner(copy),
     buildRelatedInner(copy, lang),
-    buildOsintInner(copy, lang),
+    buildOsintInner(copy, dossier),
     buildHowToReportInner(copy),
   ]
-    .map((inner, i) => pageShell(inner, i + 1, total, caseId, copy))
+    .map((inner, i) => pageShell(inner, i + 1, total, dossier.ref, copy))
     .join("");
 
   return `<!DOCTYPE html><html lang="${esc(lang)}"><head>
 <meta charset="UTF-8" />
-<title>${esc(copy.docTitle)} · ${esc(caseId)}</title>
+<title>${esc(copy.docTitle)} · ${esc(dossier.ref)}</title>
 <style>${renderCss()}</style>
 </head><body>${pages}</body></html>`;
 }
 
 // ── PDF renderer ────────────────────────────────────────────────────────────
 
+/**
+ * `dossier` est REQUIS et n'a pas de valeur par défaut.
+ *
+ * C'est délibéré : un paramètre optionnel aurait laissé les deux routes
+ * appeler le générateur exactement comme avant, et le repli vers le JSON
+ * serait resté à une ligne de distance.
+ */
 export async function generateCaseFilePdfPublic(
   lang: PublicReportLang,
-  caseId: string,
+  dossier: PublicProjection,
 ): Promise<PublicReportResult> {
   try {
-    const html = buildPublicReportHtml(lang, caseId);
+    const html = buildPublicReportHtml(lang, dossier);
     const executablePath = await chromium.executablePath(CHROMIUM_URL);
     const browser = await puppeteer.launch({
       args: chromium.args,

@@ -2,8 +2,22 @@
 // Server-renderable (no hooks). Shared by /en/cases/<slug> and /fr/cases/<slug>.
 // Token-flavored counterpart to PlatformCasefileView: same shell, TigerScore
 // instead of PlatformRisk, ticker / asset-overview / founders / sources blocks.
+//
+// ── BUILD 9 / ÉTAPE 5 — la fiche rend la provenance, elle ne la fabrique pas ─
+//
+// C'est la seule surface UI d'un dossier token. Le gate porte sur « API, UI et
+// PDF » : sans ce bloc, l'UI restait la surface où un claim démontré perdait
+// son fondement — non par erreur de rendu, mais parce que le TYPE de la fiche
+// ne portait aucun claim. Ce qui n'est pas dans le contrat ne peut pas être
+// oublié à l'affichage : il n'a jamais existé.
+//
+// `projection` est OPTIONNELLE et ne remplace rien : les blocs existants
+// (aperçu d'actif, fondateurs, sources d'investigation) continuent de venir de
+// la ligne `token_casefiles`. Elle AJOUTE ce que le registre canonique porte,
+// avec ses trois absences distinctes — non résolue, retenue, non publiée.
 import BetaNav from "@/components/beta/BetaNav";
 import renderMarkdown from "@/components/cases/renderMarkdown";
+import type { PublicProjection } from "@/lib/casefile/publicProjection";
 
 export interface TokenCasefileSource {
   investigator: string;
@@ -95,6 +109,19 @@ const T: Record<Locale, Record<string, string>> = {
     handle: "Handle", location: "Location", priorProject: "Prior project",
     role: "Role", address: "Address",
     open: "open",
+    claims: "Referenced claims",
+    claimsIntro: "Claims published from the canonical case file, each with the evidence that supports it. Nothing here is rendered without its foundation.",
+    provenance: "Provenance",
+    captured: "captured",
+    origin: "origin",
+    integrity: "integrity",
+    unresolvedRef: "Unresolved reference",
+    withheldPiece: "Withheld piece",
+    withheldTitle: "Withheld from publication",
+    withheldIntro: "Material attached to this case file that is not published. Each line names the field that governs the decision — never its content. Absence of provenance is not a finding of falsity.",
+    withheldReasonCol: "Reason", withheldFieldCol: "Field", withheldCountCol: "Items",
+    reasonExcluded: "Excluded from publication",
+    reasonProvenance: "Insufficient provenance",
   },
   fr: {
     kicker: "DOSSIER FRAUDE TOKEN",
@@ -123,6 +150,19 @@ const T: Record<Locale, Record<string, string>> = {
     handle: "Compte", location: "Localisation", priorProject: "Projet précédent",
     role: "Rôle", address: "Adresse",
     open: "ouvrir",
+    claims: "Allégations référencées",
+    claimsIntro: "Allégations publiées depuis le dossier canonique, chacune avec la pièce qui la soutient. Rien n'est rendu ici sans son fondement.",
+    provenance: "Provenance",
+    captured: "capturé",
+    origin: "origine",
+    integrity: "intégrité",
+    unresolvedRef: "Référence non résolue",
+    withheldPiece: "Pièce retenue",
+    withheldTitle: "Retenu hors publication",
+    withheldIntro: "Matériel rattaché à ce dossier et non publié. Chaque ligne nomme le CHAMP qui commande la décision — jamais son contenu. Une provenance absente n'est pas une preuve de fausseté.",
+    withheldReasonCol: "Motif", withheldFieldCol: "Champ", withheldCountCol: "Éléments",
+    reasonExcluded: "Exclu de la publication",
+    reasonProvenance: "Provenance insuffisante",
   },
 };
 
@@ -196,7 +236,153 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default function TokenCasefileView({ data, locale }: { data: TokenCasefileData; locale: Locale }) {
+const SEVERITY_COLOR: Record<string, string> = {
+  CRITICAL: "#FF3B5C",
+  HIGH: "#FF6B00",
+  MEDIUM: "#FFB800",
+  LOW: "#6b7280",
+};
+
+/**
+ * Le bloc canonique. Il ne rend RIEN quand il n'y a ni claim publié ni retrait
+ * à signaler — un dossier sans matériel canonique ne doit pas afficher une
+ * section vide qui donnerait à croire qu'on a cherché et rien trouvé.
+ */
+function CanonicalClaims({
+  projection,
+  t,
+  locale,
+}: {
+  projection: PublicProjection;
+  t: Record<string, string>;
+  locale: Locale;
+}) {
+  if (projection.claims.length === 0 && projection.withheld.length === 0) return null;
+
+  const reasonLabel = (r: string): string =>
+    r === "INSUFFICIENT_PROVENANCE" ? t.reasonProvenance : t.reasonExcluded;
+
+  return (
+    <div style={{ borderTop: "1px solid #1a1a1a", marginTop: 24, paddingTop: 24 }}>
+      <div style={{ fontSize: 9, fontWeight: 900, color: "#FF6B00", letterSpacing: "0.2em", marginBottom: 8 }}>
+        {t.claims.toUpperCase()}
+      </div>
+
+      {projection.claims.length > 0 && (
+        <>
+          <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.7, margin: "0 0 16px", maxWidth: 760 }}>
+            {t.claimsIntro}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {projection.claims.map((c) => {
+              const sev = c.severity ? (SEVERITY_COLOR[c.severity] ?? "#6b7280") : "#6b7280";
+              const titre = locale === "fr" ? (c.titleFr ?? c.title) : c.title;
+              const desc = locale === "fr" ? (c.descriptionFr ?? c.description) : c.description;
+              return (
+                <div key={c.claimId} style={{ borderTop: "1px solid #161616", paddingTop: 12 }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+                    <span style={{ fontSize: 12, color: "#FF6B00", fontFamily: "monospace", fontWeight: 700 }}>{c.claimId}</span>
+                    {c.severity && <Pill color={sev}>{c.severity}</Pill>}
+                    <span style={{ fontSize: 13, color: "#f9fafb", fontWeight: 700 }}>{titre}</span>
+                    <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace" }}>{c.claimDate ?? "—"}</span>
+                  </div>
+                  {desc && (
+                    <p style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.7, margin: "6px 0 0", maxWidth: 760 }}>{desc}</p>
+                  )}
+
+                  <div style={{ fontSize: 9, fontWeight: 900, color: "#4b5563", letterSpacing: "0.15em", margin: "10px 0 4px" }}>
+                    {t.provenance.toUpperCase()}
+                  </div>
+
+                  {c.provenance.threadUrl && (
+                    <div style={{ fontSize: 11, marginTop: 2 }}>
+                      <a href={c.provenance.threadUrl} target="_blank" rel="noopener noreferrer"
+                         style={{ color: "#FF6B00", fontFamily: "monospace", textDecoration: "none" }}>
+                        {t.open} ↗
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Les pièces PUBLIABLES : empreinte, origine et capture. */}
+                  {c.provenance.sources.map((s) => (
+                    <div key={s.sourceId} style={{ fontSize: 11, color: "#9ca3af", fontFamily: "monospace", marginTop: 3, lineHeight: 1.7 }}>
+                      <span style={{ color: "#FF6B00" }}>{s.sourceId}</span>
+                      {" · "}{s.sourceType}
+                      {" · "}{t.captured} {s.capturedAt ?? "—"}
+                      {" · "}
+                      {s.sourceUrl ? (
+                        <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "none" }}>
+                          {t.origin} ↗
+                        </a>
+                      ) : (
+                        <span>{t.origin} —</span>
+                      )}
+                      {" · "}{t.integrity} {s.sha256 ? s.sha256.slice(0, 16) + "…" : "—"}
+                    </div>
+                  ))}
+
+                  {/* Les deux absences. Elles ne se confondent NI entre elles,
+                      NI avec un fondement : une référence que le registre ne
+                      connaît pas et une pièce connue mais non publiable sont
+                      deux manques différents, et aucun des deux ne prouve. */}
+                  {c.provenance.unresolvedRefs.map((r) => (
+                    <div key={"u-" + r} style={{ fontSize: 11, color: "#FFB800", fontFamily: "monospace", marginTop: 3 }}>
+                      {t.unresolvedRef} : {r}
+                    </div>
+                  ))}
+                  {c.provenance.withheldRefs.map((r) => (
+                    <div key={"w-" + r} style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace", marginTop: 3 }}>
+                      {t.withheldPiece} : {r}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Le retrait est SIGNALÉ. Il nomme le champ, jamais sa valeur — et il ne
+          republie rien de ce qu'il retient pour se justifier. */}
+      {projection.withheld.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: "#6b7280", letterSpacing: "0.2em", marginBottom: 6 }}>
+            {t.withheldTitle.toUpperCase()}
+          </div>
+          <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.7, margin: "0 0 10px", maxWidth: 760 }}>
+            {t.withheldIntro}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", gap: 16, fontSize: 9, fontWeight: 900, color: "#4b5563", letterSpacing: "0.12em" }}>
+              <span style={{ flex: "1 1 220px" }}>{t.withheldReasonCol.toUpperCase()}</span>
+              <span style={{ flex: "0 0 140px" }}>{t.withheldFieldCol.toUpperCase()}</span>
+              <span style={{ flex: "0 0 70px" }}>{t.withheldCountCol.toUpperCase()}</span>
+            </div>
+            {projection.withheld.map((n) => (
+              <div key={n.reason + ":" + n.field}
+                   style={{ display: "flex", gap: 16, fontSize: 12, color: "#9ca3af", borderTop: "1px solid #161616", paddingTop: 5 }}>
+                <span style={{ flex: "1 1 220px" }}>{reasonLabel(n.reason)}</span>
+                <span style={{ flex: "0 0 140px", fontFamily: "monospace", color: "#d1d5db" }}>{n.field}</span>
+                <span style={{ flex: "0 0 70px", fontFamily: "monospace" }}>{n.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function TokenCasefileView({
+  data,
+  locale,
+  projection,
+}: {
+  data: TokenCasefileData;
+  locale: Locale;
+  /** Le dossier canonique projeté. Absent = la fiche rend ses blocs legacy seuls. */
+  projection?: PublicProjection;
+}) {
   const t = T[locale];
   const family = FAMILY_LABEL[data.family]?.[locale] ?? data.family;
   const subtype = SUBTYPE_LABEL[data.subtype]?.[locale] ?? data.subtype;
@@ -412,6 +598,8 @@ export default function TokenCasefileView({ data, locale }: { data: TokenCasefil
               <span style={{ fontSize: 13, color: "#d1d5db" }}>{data.publishedDate ?? "—"}</span>
             </Field>
           </div>
+
+          {projection && <CanonicalClaims projection={projection} t={t} locale={locale} />}
         </div>
 
         {/* BODY — capped at a comfortable reading width */}

@@ -11,11 +11,21 @@
 // and stays behind checkAuth.
 //
 // Response: application/pdf, Cache-Control: public, max-age=3600.
-// Only BOTIFY-linked handles/mints resolve; everything else is 404.
 //
-// Why separate from /api/casefile/pdf: retail callers must not rely on
-// a mock=1 bypass against the admin route (closed P0). This endpoint is
-// the dedicated retail surface.
+// ── BUILD 9 / ÉTAPE 5 — ce que cette route sert, et d'où ────────────────────
+//
+// AVANT : elle résolvait un preset (`kolHandleToCasefilePreset`), passait un
+// `caseId` littéral au générateur, et le générateur allait lire
+// `data/cases/botify.json`. La route parlait de dossier ; le PDF servait un
+// JSON de fichier. Deux autorités, dont une invisible depuis ici.
+//
+// MAINTENANT : elle résout une IDENTITÉ (mint canonique → ref de dossier),
+// charge la projection publique depuis l'autorité, et la passe au générateur.
+// Le générateur ne lit plus rien.
+//
+// Et surtout : AUCUN REPLI. Si l'autorité ne connaît pas le dossier que la
+// carte d'identité désigne, la route échoue en le disant. Se rabattre sur le
+// preset rendrait un PDF — c'est bien le problème : il aurait l'air normal.
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -28,24 +38,19 @@ import {
 } from "@/lib/security/rateLimit";
 import {
   generateCaseFilePdfPublic,
+  StaticSectionsMismatchError,
   type PublicReportLang,
 } from "@/lib/casefile/pdfGeneratorPublic";
-import { kolHandleToCasefilePreset } from "@/lib/casefile/presets";
-import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
+import {
+  canonicalRefForMint,
+  loadPublicProjection,
+  CanonicalCaseFileMissingError,
+} from "@/lib/casefile/publicProjection";
+import { kolHandleToCanonicalMint } from "@/lib/kol-memory/tokenIdentity";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
-
-// Mint → preset map. Keep in lockstep with MINT_TO_PRESET in
-// /api/casefile/pdf; only presets with an approved public template
-// belong here (BOTIFY is the only one in v1).
-// BUILD 8 / E2 — clé sur le mint CANONIQUE. Elle l'était sur la clé de route
-// synthétique, qui n'existe dans aucune ligne : ?mint=<canonique> rendait 404
-// sur la surface RETAIL. L'alias y résout via `casefileLookupKey`.
-const MINT_TO_PRESET: Record<string, "botify"> = {
-  [BOTIFY_MINT]: "botify",
-};
 
 function parseLang(raw: string | null): PublicReportLang {
   return raw === "fr" ? "fr" : "en";
@@ -67,35 +72,56 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  let preset: "botify" | null = null;
-  if (mint) {
-    preset = MINT_TO_PRESET[casefileLookupKey(mint)] ?? null;
-  } else {
-    preset = kolHandleToCasefilePreset(handle) === "botify" ? "botify" : null;
-  }
+  // ── Identité, et rien d'autre ──────────────────────────────────────────
+  // Le handle passe par le mint CANONIQUE, pas par un preset : le preset est
+  // une autorité de contenu, et on ne veut plus en dépendre, même pour du
+  // routage. `canonicalRefForMint` résout l'alias BOTIFY synthétique.
+  const ref = mint
+    ? canonicalRefForMint(mint)
+    : canonicalRefForMint(kolHandleToCanonicalMint(handle));
 
-  if (!preset) {
+  if (!ref) {
     return NextResponse.json(
       { error: "no linked public case file" },
       { status: 404 },
     );
   }
 
-  const caseId = "CASE-2024-BOTIFY-001";
-  const result = await generateCaseFilePdfPublic(lang, caseId);
-  if (!result.success || !result.pdfBytes) {
-    return NextResponse.json(
-      { error: result.error ?? "pdf_render_failed" },
-      { status: 500 },
-    );
+  try {
+    const dossier = await loadPublicProjection(ref, "api/casefile/public");
+    const result = await generateCaseFilePdfPublic(lang, dossier);
+    if (!result.success || !result.pdfBytes) {
+      return NextResponse.json(
+        { error: result.error ?? "pdf_render_failed" },
+        { status: 500 },
+      );
+    }
+    return new NextResponse(Buffer.from(result.pdfBytes), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${ref}-public-${lang}.pdf"`,
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  } catch (err) {
+    // Le gabarit public ne documente qu'un dossier : ses sections statiques
+    // (chronologie, métriques, cluster) décrivent BOTIFY. Le refus est une
+    // propriété du GABARIT, pas une liste d'autorisation par preset.
+    if (err instanceof StaticSectionsMismatchError) {
+      return NextResponse.json(
+        { error: "public template not available for this case file" },
+        { status: 404 },
+      );
+    }
+    // L'identité désigne un dossier que l'autorité ne porte pas. On le dit —
+    // on ne sert pas un preset à la place.
+    if (err instanceof CanonicalCaseFileMissingError) {
+      return NextResponse.json(
+        { error: "canonical_casefile_missing" },
+        { status: 500 },
+      );
+    }
+    throw err;
   }
-
-  return new NextResponse(Buffer.from(result.pdfBytes), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${caseId}-public-${lang}.pdf"`,
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
 }

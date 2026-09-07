@@ -141,12 +141,28 @@ describe("ÉTAPE 5 — l'index de preuves ne fabrique plus son horodatage", () =
     expect(index).not.toContain("TODAY_ISO");
   });
 
-  it("la colonne rend le `captured_at` de la source résolue", () => {
-    expect(index).toContain("src?.captured_at");
+  // ── BUILD 9 / ÉTAPE 5 — l'index a changé d'AUTORITÉ, pas de contrat ──────
+  //
+  // Ces deux tests épinglaient les expressions `src?.captured_at` et
+  // `src?.type ?? "—"` : la forme snake_case du JSON legacy, que l'index lisait
+  // lui-même. Il reçoit désormais une `PublicProjection` et ne lit plus aucun
+  // fichier. Les champs ont changé de casse parce qu'ils ont changé de source.
+  //
+  // Le contrat, lui, tient : chaque colonne rend SON champ, et « — » quand il
+  // manque. Il est vérifié sur le HTML réellement produit dans
+  // __tests__/casefile/publicationRegime.test.ts (GATE 5) — c'est-à-dire là où
+  // le défaut vivait, plutôt que sur la tournure du code qui le produit.
+  it("l'index rend l'horodatage de CAPTURE de la pièce", () => {
+    expect(index).toContain("s.capturedAt");
   });
 
   it("chaque colonne rend son champ, et « — » quand il manque", () => {
-    expect(index).toContain('src?.type ?? "—"');
-    expect(index).toContain("registre.get");
+    expect(index).toContain('s.capturedAt ?? "—"');
+    expect(index).toContain("s.sourceType");
+  });
+
+  it("MUTANT — l'index ne lit plus aucune autorité, il reçoit la projection", () => {
+    expect(index).not.toContain("registre.get");
+    expect(codeSeul("src/lib/casefile/pdfGeneratorPublic.ts")).not.toContain("botifyCase");
   });
 });

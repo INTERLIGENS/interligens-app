@@ -29,7 +29,7 @@
 // pas fuir par un `...spread` distrait.
 
 import { prisma } from "@/lib/prisma";
-import { artifactState, type ArtifactState } from "./publicationState";
+import type { ArtifactState } from "./publicationState";
 
 /** Une source du registre, telle qu'elle peut être rendue publiquement. */
 export interface PublicSource {
