@@ -475,46 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour BUILD 8 / E2 + E1 — correctifs de la validation T1.
-#
-# E2 — IDENTITÉ CANONIQUE BOTIFY. /api/casefile accepte le mint synthétique
-# (43 car., ZÉRO ligne en base) et N'ACCEPTE QUE LUI : le canonique rend
-# GREEN/0, l'alias rend RED/70 avec le récit retail. La clé qui n'existe nulle
-# part porte le verdict public. Les trois routes DÉCLARENT leur carte en ligne,
-# elles ne l'importent pas — d'où l'exemption.
-#   src/app/api/casefile/route.ts         constante propre + CASE_DB en ligne
-#   src/app/api/casefile/public/route.ts  MINT_TO_PRESET — surface retail
-#   src/app/api/casefile/pdf/route.ts     MINT_TO_PRESET — PDF admin
-#
-# E1 — 21 DES 32 PROFILS PUBLIÉS INJOIGNABLES. La route abaisse la casse,
-# buildKolCanonicalSnapshot fait un findUnique strict : tout handle à majuscule
-# est structurellement introuvable, et 126 des 164 wallets publiables ne sont
-# jamais servis.
-#   src/lib/kol/canonical.ts              le lookup, point d'étranglement de
-#                                         toutes les surfaces de snapshot
-#
-# La logique vit HORS gel (src/lib/kol-memory/tokenIdentity.ts et
-# handleResolution.ts, src/lib/caseDb.ts, lib/caseDb.ts) ; ces quatre fichiers
-# ne font que la brancher.
-#
-# EXCLU DÉLIBÉRÉMENT après mesure : src/lib/casefile/presets.ts alimente
-# token-resolution v3, dont la doctrine ratifiée lit la table « telle quelle,
-# sans normaliser » — le recléer faisait rougir 5 cas de ratified-doctrine.
-# Et src/app/api/osint/signals/route.ts, qui n'est l'autorité d'aucun verdict.
-#
-# Autorisation humaine explicite (David, arbitrage E2/E1) — voir PR description
-# et docs/reports/build8-e1-e2-inventaire.md. Exemption STRICTEMENT limitée à
-# ces QUATRE fichiers nommés un par un ; AUCUN wildcard sur src/app/api/ ni sur
-# src/lib/kol/. Refermée byte-identical immédiatement après le merge.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-botify-identity-handle-case$ ]]; then
-    EXEMPT_BOTIFY_HANDLE_CASE_PATTERNS=(
-        "^src/app/api/casefile/route\.ts$"
-        "^src/app/api/casefile/public/route\.ts$"
-        "^src/app/api/casefile/pdf/route\.ts$"
-        "^src/lib/kol/canonical\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -897,20 +857,6 @@ while IFS= read -r file; do
 
 
 
-
-    # Sur la branche BUILD 8 / E2+E1, exempter STRICTEMENT les 4 fichiers de
-    # câblage (aucun wildcard : toute autre route et tout autre module KOL
-    # reste bloqué).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-botify-identity-handle-case$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_BOTIFY_HANDLE_CASE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
