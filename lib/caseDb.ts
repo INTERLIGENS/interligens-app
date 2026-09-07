@@ -1,8 +1,14 @@
 import path from "path";
 import fs from "fs";
 
+// ── BUILD 8 / E2 — même correctif que src/lib/caseDb.ts ────────────────────
+// Ce duplicat est vivant : src/app/api/scan/timeline/[address]/route.ts
+// l'importe par chemin relatif. Le laisser clé sur l'alias aurait maintenu le
+// défaut sur cette route pendant qu'il était fermé partout ailleurs.
+import { BOTIFY_MINT, casefileLookupKey } from "../src/lib/kol-memory/tokenIdentity";
+
 const MINT_TO_CASE: Record<string, string> = {
-  BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb: "botify.json",
+  [BOTIFY_MINT]: "botify.json",
 };
 
 export type CaseClaim = {
@@ -45,7 +51,7 @@ export type CaseFile = {
 };
 
 export function loadCaseByMint(mint: string): CaseFile | null {
-  const filename = MINT_TO_CASE[mint];
+  const filename = MINT_TO_CASE[casefileLookupKey(mint)];
   if (!filename) return null;
 
   const filePath = path.join(process.cwd(), "data", "cases", filename);
