@@ -2,8 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { checkAuth } from "@/lib/security/auth";
 import { kolHandleToMint } from "@/lib/kol/handleToMint";
+import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
 
-const BOTIFY_MINT = "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb";
+// ── BUILD 8 / E2 — la CASE_DB est clé sur le MINT CANONIQUE ────────────────
+//
+// Elle déclarait ici sa propre constante, la clé de route synthétique
+// (43 car.), qui n'existe dans AUCUNE ligne de la base. Résultat mesuré par la
+// validation T1 :
+//
+//     ?mint=<44 canonique>   → CASE_DB miss → 0 claim → score 0  → GREEN
+//     ?mint=<43 synthétique> → 8 claims → garde-fou ≥6 → 70      → RED
+//
+// L'identité réelle n'ouvrait aucun dossier, et l'alias portait le verdict
+// public. `casefileLookupKey` fait converger les deux entrées vers l'unique
+// clé canonique : l'URL historique continue de mener au dossier, elle ne le
+// définit plus. Il ne peut plus exister deux vérités concurrentes.
 
 // ── CaseDB hardcoded (V0 — no fs dependency) ──────────────────────────────────
 const CASE_DB: Record<string, any> = {
@@ -155,7 +168,7 @@ function linkEvidence(claims: any[], onChain: any) {
 
 // ── Scoring ───────────────────────────────────────────────────────────────────
 function computeScore(claims: any[], linking: any[], onChain: any, mint: string) {
-  if (claims.length === 0 && mint === BOTIFY_MINT) {
+  if (claims.length === 0 && casefileLookupKey(mint) === BOTIFY_MINT) {
     console.error("[SCORING] ERROR: BOTIFY claims=0 — offchain ingest failed");
   }
 
@@ -205,8 +218,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Offchain ingest
-  const caseEntry = CASE_DB[sanitizeMint] ?? null;
+  // Offchain ingest — la lecture passe par le contrat d'alias (E2).
+  const lookupKey = casefileLookupKey(sanitizeMint);
+  const caseEntry = CASE_DB[lookupKey] ?? null;
   const offchainSource = caseEntry ? "case_db" : "none";
 
   const offChain = caseEntry ? {
@@ -219,7 +233,8 @@ export async function GET(req: NextRequest) {
 
   console.log("[OFFCHAIN]", {
     mint: sanitizeMint,
-    match: sanitizeMint === BOTIFY_MINT,
+    lookupKey,
+    match: lookupKey === BOTIFY_MINT,
     source: offchainSource,
     claims: offChain.claims.length,
   });
