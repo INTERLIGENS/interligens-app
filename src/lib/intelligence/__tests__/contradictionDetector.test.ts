@@ -5,9 +5,37 @@ const HANDLE = "testkol";
 const MINT = "So11111111111111111111111111111111111111112";
 const MINT2 = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
+// ─── UNE SEULE SOURCE DE TEMPS, ET ELLE EST FIGÉE ──────────────────────────
+//
+// Les deux fabriques appelaient `Date.now()` CHACUNE, à chaque invocation. Deux
+// fixtures construites « au même instant » tombaient donc sur deux
+// millisecondes différentes dès que la machine était chargée.
+//
+// Le cas « same tweet+sell pair » en mourait : il construit deux tweets censés
+// être IDENTIQUES, mais leurs `postedAtUtc` différaient d'une milliseconde. Or
+// la clé de dédup du détecteur est exacte à la milliseconde —
+// `tokenMint:tweetAt.toISOString():sellAt.toISOString()` — et elle reproduit
+// littéralement la contrainte unique de la base
+// (`ON CONFLICT ("kolHandle", "tokenMint", "tweetAt", "sellAt")`).
+//
+// Le détecteur avait donc raison : deux tweets à une milliseconde d'écart SONT
+// deux lignes distinctes. C'est la fixture qui n'exprimait pas son intention.
+// Vert en isolation, rouge sous charge — il a fait rougir une CI de BUILD 8
+// sans aucun rapport avec les changements de cette PR-là.
+//
+// `computeContradictions` est PUR : il ne lit jamais l'horloge, il ne fait que
+// comparer entre elles les dates qu'on lui donne. Figer la base suffit donc —
+// pas besoin de faux timers, qui n'auraient rien à intercepter.
+const BASE_MS = Date.UTC(2026, 0, 15, 12, 0, 0, 0);
+
+/** Un instant déterministe, à `minsAgo` minutes avant la base figée. */
+function at(minsAgo: number): Date {
+  return new Date(BASE_MS - minsAgo * 60_000);
+}
+
 function mkTweet(minsAgo: number, address = MINT, symbol = "SCAM") {
   return {
-    postedAtUtc: new Date(Date.now() - minsAgo * 60_000),
+    postedAtUtc: at(minsAgo),
     postUrl: "https://x.com/testkol/status/1",
     detectedTokens: JSON.stringify([{ address, symbol }]),
   };
@@ -15,12 +43,27 @@ function mkTweet(minsAgo: number, address = MINT, symbol = "SCAM") {
 
 function mkSell(minsAgo: number, tokenAddress = MINT, amountUsd = 50_000, symbol = "SCAM") {
   return {
-    eventDate: new Date(Date.now() - minsAgo * 60_000),
+    eventDate: at(minsAgo),
     amountUsd,
     tokenAddress,
     tokenSymbol: symbol,
   };
 }
+
+describe("les fixtures sont déterministes", () => {
+  it("deux appels au même décalage rendent le MÊME instant, à la milliseconde", () => {
+    // C'est la propriété dont dépendait le cas de dédup, et qui n'était pas
+    // tenue. Si quelqu'un réintroduit une lecture d'horloge dans `at`, c'est
+    // CE test qui rougit — nommément — au lieu d'un `toHaveLength` énigmatique.
+    expect(at(600).toISOString()).toBe(at(600).toISOString());
+    expect(mkTweet(600).postedAtUtc.getTime()).toBe(mkTweet(600).postedAtUtc.getTime());
+    expect(mkSell(300).eventDate.getTime()).toBe(mkSell(300).eventDate.getTime());
+  });
+
+  it("aucune fixture ne dépend de l'heure d'exécution", () => {
+    expect(at(0).toISOString()).toBe("2026-01-15T12:00:00.000Z");
+  });
+});
 
 describe("computeContradictions — severity mapping", () => {
   it("tweet before sell < 30min → CRITICAL", () => {
@@ -116,9 +159,31 @@ describe("computeContradictions — idempotence & dedup", () => {
   it("same tweet+sell pair produces exactly one alert (dedup)", () => {
     const tweets = [mkTweet(600), mkTweet(600)]; // duplicate tweet
     const sells = [mkSell(300)];
+
+    // La prémisse du cas, vérifiée avant de conclure : les deux tweets doivent
+    // être VRAIMENT identiques. C'est précisément ce qui n'était pas vrai — et
+    // le test échouait alors sur la dédup, en accusant le détecteur d'un
+    // défaut que la fixture avait introduit.
+    expect(tweets[0].postedAtUtc.toISOString()).toBe(tweets[1].postedAtUtc.toISOString());
+
     const alerts = computeContradictions(HANDLE, tweets, sells, null);
     // Should deduplicate on (tokenMint, tweetAt, sellAt)
     expect(alerts).toHaveLength(1);
+  });
+
+  it("deux tweets à une milliseconde d'écart ne sont PAS dédupliqués", () => {
+    // Le pendant du cas précédent, et la raison pour laquelle le détecteur
+    // n'est pas en cause. Sa clé de dédup est exacte à la milliseconde parce
+    // que la contrainte unique de la base l'est aussi : deux instants
+    // différents sont deux lignes différentes, et les dédupliquer ici
+    // masquerait une ligne que la base accepterait.
+    const t0 = mkTweet(600);
+    const t1 = {
+      ...mkTweet(600),
+      postedAtUtc: new Date(mkTweet(600).postedAtUtc.getTime() + 1),
+    };
+    const alerts = computeContradictions(HANDLE, [t0, t1], [mkSell(300)], null);
+    expect(alerts).toHaveLength(2);
   });
 
   it("different tokens produce separate alerts", () => {
