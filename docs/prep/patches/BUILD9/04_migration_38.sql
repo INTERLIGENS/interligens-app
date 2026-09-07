@@ -328,6 +328,18 @@ SELECT count(*) AS preuves_resolues
     ON e."canonicalMint" IN (SELECT value FROM jsonb_each_text(t."contractAddresses"))
  WHERE t.ref = 'IL-SHILL-VINE-001';
 
+-- 4.7 · tigerScore : les deux entrants sont NULL, les historiques INCHANGES.
+--       ATTENDU : BOTIFY NULL · VINE NULL · BLACKBULL 0 · LAB 91
+--       La colonne n'est PAS dans la liste d'insertion : l'omission donne NULL.
+--       Aucun score n'est fabrique, et aucun NULL n'est converti en 0.
+SELECT ref, "tigerScore",
+       CASE WHEN "tigerScore" IS NULL THEN 'score non etabli'
+            ELSE 'score present' END AS lecture
+  FROM token_casefiles
+ WHERE ref IN ('IL-SHILL-BOTIFY-001', 'IL-SHILL-VINE-001',
+               'IL-CONC-BLACKBULL-001', 'IL-PND-LAB-001')
+ ORDER BY ref;
+
 -- ─── ROLLBACK ─────────────────────────────────────────────────────────────
 --   DELETE FROM "CaseFileSmokingGun" WHERE "casefileRef" IN ('IL-SHILL-BOTIFY-001', 'IL-SHILL-VINE-001');
 --   DELETE FROM "CaseFileShiller"    WHERE "casefileRef" IN ('IL-SHILL-BOTIFY-001', 'IL-SHILL-VINE-001');

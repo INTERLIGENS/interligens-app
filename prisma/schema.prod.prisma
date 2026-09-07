@@ -712,7 +712,14 @@ model TokenCaseFile {
   title                  String
   family                 String
   subtype                String
-  tigerScore             Int
+  // BUILD 9 — NULLABLE. NULL = score non établi ou non disponible dans ce
+  // CaseFile ; 0 = score effectivement calculé à zéro, et seulement si cela
+  // peut être démontré. Ne JAMAIS convertir NULL en 0.
+  //
+  // La colonne n'a jamais été alimentée par le moteur : aucun INSERT/UPDATE sur
+  // token_casefiles.tigerScore n'existe dans le dépôt. Les deux valeurs
+  // présentes viennent de seeds (prisma/seed-lab.ts:378 pose 91).
+  tigerScore             Int?
   verdict                String
   status                 String
   statusNote             String?
