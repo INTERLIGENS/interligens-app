@@ -58,6 +58,88 @@ const RULE = "#E5E5E5";
 const MUTED = "#666666";
 const RISK_RED = "#C81E1E";
 
+// ─── BUILD 9 — LES FAITS STATIQUES SONT DES DONNÉES, PAS DU RENDERER ───────
+//
+// ██  Le renderer ne connaît AUCUN dossier. Il rend celui qu'on lui donne.  ██
+//
+// Ces sections — contrôle du token, métriques de lancement — ne proviennent
+// d'aucune structure canonique : aucune table n'a été ratifiée pour elles.
+// Elles reposent sur une SOURCE NOMMÉE (rugcheck.xyz, requêtes holders
+// Solscan), et c'est ce qui les rend publiables.
+//
+// Elles étaient écrites en dur dans la copy, avec « BOTIFY » dans la phrase.
+// Le gabarit refusait donc de se rendre pour tout autre dossier — c'était le
+// bon réflexe, et la mauvaise mécanique : il rendait le renderer inutilisable
+// pour VINE, qui est l'une des deux fixtures obligatoires du gate BUILD 9.
+//
+// Elles sont désormais INDEXÉES PAR DOSSIER. Un dossier sans entrée n'est pas
+// refusé : ses sections rendent un retrait structuré. C'est la différence
+// entre « je ne sais pas rendre ce dossier » et « ce dossier ne porte pas ces
+// faits » — et seule la seconde est vraie.
+//
+// AJOUTER UNE ENTRÉE ICI EST UNE DÉCISION DE PUBLICATION. Elle exige des faits
+// démontrés et une source nommée. Ne jamais recopier l'entrée d'un dossier
+// vers un autre : ce serait lui attribuer un matériel qu'il ne porte pas.
+
+interface FactSection {
+  /** La source nommée. Sans elle, la section n'est pas publiable. */
+  readonly source: string;
+  readonly rowsEn: readonly string[];
+  readonly rowsFr: readonly string[];
+}
+
+interface DossierFacts {
+  readonly tokenControl?: FactSection;
+  readonly launchMetrics?: FactSection;
+  /** Points de résumé adossés à ces faits. Jamais transposables. */
+  readonly execEn?: readonly string[];
+  readonly execFr?: readonly string[];
+}
+
+const FACTS_BY_REF: Record<string, DossierFacts> = {
+  [BOTIFY_CASEFILE_REF]: {
+    tokenControl: {
+      source: "rugcheck.xyz",
+      rowsEn: [
+        "Mint authority — Active. Capability under SPL rules: mint additional supply without holder consent.",
+        "Freeze authority — Active. Capability under SPL rules: freeze any holder wallet.",
+        "Update authority — Active. Capability under SPL rules: modify metadata attributes after launch.",
+      ],
+      rowsFr: [
+        "Autorité de mint — Active. Capacité au sens des règles SPL : émettre de l'offre supplémentaire sans consentement des détenteurs.",
+        "Autorité de freeze — Active. Capacité au sens des règles SPL : bloquer tout wallet détenteur.",
+        "Autorité d'update — Active. Capacité au sens des règles SPL : modifier les attributs de métadonnées après le lancement.",
+      ],
+    },
+    launchMetrics: {
+      source: "Solscan holder queries",
+      rowsEn: [
+        "Top-3 wallet concentration — 62 % of circulating supply",
+        "Top-10 wallet concentration — 78 % of circulating supply",
+        "Concentration score — HIGH (threshold for high-risk indicator: top-3 >= 40 %).",
+      ],
+      rowsFr: [
+        "Concentration top-3 wallets — 62 % de l'offre en circulation",
+        "Concentration top-10 wallets — 78 % de l'offre en circulation",
+        "Score de concentration — ÉLEVÉ (seuil indicateur de risque élevé : top-3 >= 40 %).",
+      ],
+    },
+    execEn: [
+      "BOTIFY exhibits multiple high-risk indicators consistent with structural-risk patterns INTERLIGENS tracks across Solana launches.",
+      "Mint and freeze authority remain active, allowing the deployer to alter supply or block holders at will (source: rugcheck.xyz).",
+      "Top-3 holder concentration reached 62% at peak, with 78% top-10 (source: Solscan holder queries).",
+    ],
+    execFr: [
+      "BOTIFY présente plusieurs indicateurs de risque élevé cohérents avec les profils structurels que INTERLIGENS observe sur les lancements Solana.",
+      "Les autorités de mint et de freeze sont toujours actives, permettant au déployeur de modifier l'offre ou de bloquer les détenteurs à volonté (source : rugcheck.xyz).",
+      "La concentration top-3 a atteint 62 % au pic, 78 % en top-10 (source : requêtes holders Solscan).",
+    ],
+  },
+};
+
+const factsFor = (ref: string): DossierFacts => FACTS_BY_REF[ref] ?? {};
+
+
 export type PublicReportLang = "en" | "fr";
 
 export interface PublicReportResult {
@@ -79,7 +161,7 @@ type Copy = {
   scoreUnset: string;
   tigerScoreLabel: string;
   execTitle: string;
-  execBullets: string[];
+  execTail: string;
   /** Le décompte des claims publiés vient de la projection, jamais d'une constante. */
   execClaimsBullet: (n: number) => string;
   disclaimer: string;
@@ -97,12 +179,10 @@ type Copy = {
   /** Rendu à la place d'une section dont les pièces ont été retirées. */
   sectionWithheldIntro: string;
   tokenCtrlTitle: string;
-  tokenCtrlIntro: string;
-  tokenCtrlRows: { mint: string; freeze: string; update: string };
+  tokenCtrlIntro: (source: string) => string;
   tokenCtrlFooter: string;
   metricsTitle: string;
-  metricsIntro: string;
-  metricsRows: { top3: string; top10: string; conc: string };
+  metricsIntro: (source: string) => string;
   clusterTitle: string;
   relatedTitle: string;
   osintTitle: string;
@@ -137,12 +217,7 @@ const COPY: Record<PublicReportLang, Copy> = {
       n === 0
         ? "No referenced claim in this file currently meets the publication requirements. The material remains attached to the file; nothing here is asserted to be false."
         : `${n} referenced claim${n > 1 ? "s are" : " is"} catalogued with its source of record. None require trust in a single witness.`,
-    execBullets: [
-      "BOTIFY exhibits multiple high-risk indicators consistent with structural-risk patterns INTERLIGENS tracks across Solana launches.",
-      "Mint and freeze authority remain active, allowing the deployer to alter supply or block holders at will (source: rugcheck.xyz).",
-      "Top-3 holder concentration reached 62% at peak, with 78% top-10 (source: Solscan holder queries).",
-      "The report aggregates referenced claims. It is informational; it is not a legal determination.",
-    ],
+    execTail: "The report aggregates referenced claims. It is informational; it is not a legal determination.",
     disclaimer:
       "Informational purposes only. Not legal advice. Referenced claims only. DYOR.",
     evIdxTitle: "Evidence Index",
@@ -168,23 +243,13 @@ const COPY: Record<PublicReportLang, Copy> = {
     // BUILD 9 / ÉTAPE 5 — la date de GÉNÉRATION ne datait pas cette
     // observation, elle la maquillait. Rien n'a été constaté le jour de
     // l'export ; la phrase le dit désormais sans horodatage inventé.
-    tokenCtrlIntro:
-      "The following authorities are reported active on the BOTIFY token contract. Source: rugcheck.xyz.",
-    tokenCtrlRows: {
-      mint: "Mint authority — Active. Capability under SPL rules: mint additional supply without holder consent.",
-      freeze: "Freeze authority — Active. Capability under SPL rules: freeze any holder wallet.",
-      update: "Update authority — Active. Capability under SPL rules: modify metadata attributes after launch.",
-    },
+    tokenCtrlIntro: (source) =>
+      `The following authorities are reported active on this token contract. Source: ${source}.`,
     tokenCtrlFooter:
       "Active authority implies capability under SPL rules — it does not, by itself, prove wrongful use. The capability alone is a documented high-risk indicator.",
     metricsTitle: "Launch Metrics",
-    metricsIntro:
-      "Snapshot of on-chain distribution at peak. Source: Solscan holder queries, cross-checked with rugcheck.xyz.",
-    metricsRows: {
-      top3: "Top-3 wallet concentration — 62 % of circulating supply",
-      top10: "Top-10 wallet concentration — 78 % of circulating supply",
-      conc: "Concentration score — HIGH (threshold for high-risk indicator: top-3 ≥ 40 %).",
-    },
+    metricsIntro: (source) =>
+      `Snapshot of on-chain distribution at peak. Source: ${source}.`,
     clusterTitle: "Wallet Cluster Summary",
     relatedTitle: "Related Projects (elevated risk)",
     osintTitle: "OSINT Catalog",
@@ -224,12 +289,7 @@ const COPY: Record<PublicReportLang, Copy> = {
       n === 0
         ? "Aucune allégation référencée de ce dossier ne satisfait à ce jour les conditions de publication. Le matériel reste rattaché au dossier ; rien ici n'est affirmé faux."
         : `${n} allégation${n > 1 ? "s" : ""} référencée${n > 1 ? "s sont cataloguées" : " est cataloguée"} avec sa source d'enregistrement. Aucune ne repose sur un témoin unique.`,
-    execBullets: [
-      "BOTIFY présente plusieurs indicateurs de risque élevé cohérents avec les profils structurels que INTERLIGENS observe sur les lancements Solana.",
-      "Les autorités de mint et de freeze sont toujours actives, permettant au déployeur de modifier l'offre ou de bloquer les détenteurs à volonté (source : rugcheck.xyz).",
-      "La concentration top-3 a atteint 62 % au pic, 78 % en top-10 (source : requêtes holders Solscan).",
-      "Ce document regroupe des allégations référencées. Il est informatif et ne constitue pas une qualification juridique.",
-    ],
+    execTail: "Ce document regroupe des allégations référencées. Il est informatif et ne constitue pas une qualification juridique.",
     disclaimer:
       "À titre informatif uniquement. Ne constitue pas un conseil juridique. Allégations référencées uniquement. DYOR.",
     evIdxTitle: "Index des preuves",
@@ -254,23 +314,13 @@ const COPY: Record<PublicReportLang, Copy> = {
     tokenCtrlTitle: "Contrôle du token",
     // Voir la note côté `en` : la date de génération ne datait pas cette
     // observation, elle la maquillait.
-    tokenCtrlIntro:
-      "Les autorités suivantes sont rapportées actives sur le contrat BOTIFY. Source : rugcheck.xyz.",
-    tokenCtrlRows: {
-      mint: "Autorité de mint — Active. Capacité au sens des règles SPL : émettre de l'offre supplémentaire sans consentement des détenteurs.",
-      freeze: "Autorité de freeze — Active. Capacité au sens des règles SPL : bloquer tout wallet détenteur.",
-      update: "Autorité d'update — Active. Capacité au sens des règles SPL : modifier les attributs de métadonnées après le lancement.",
-    },
+    tokenCtrlIntro: (source) =>
+      `Les autorités suivantes sont rapportées actives sur ce contrat de token. Source : ${source}.`,
     tokenCtrlFooter:
       "Une autorité active implique une capacité au sens des règles SPL — cela ne prouve pas, à soi seul, un usage abusif. La capacité seule est un indicateur de risque élevé documenté.",
     metricsTitle: "Métriques de lancement",
-    metricsIntro:
-      "Instantané de la distribution on-chain au pic. Source : requêtes holders Solscan, recoupées avec rugcheck.xyz.",
-    metricsRows: {
-      top3: "Concentration top-3 wallets — 62 % de l'offre en circulation",
-      top10: "Concentration top-10 wallets — 78 % de l'offre en circulation",
-      conc: "Score de concentration — ÉLEVÉ (seuil indicateur de risque élevé : top-3 ≥ 40 %).",
-    },
+    metricsIntro: (source) =>
+      `Instantané de la distribution on-chain au pic. Source : ${source}.`,
     clusterTitle: "Synthèse cluster de wallets",
     relatedTitle: "Projets liés (risque élevé)",
     osintTitle: "Catalogue OSINT",
@@ -378,12 +428,22 @@ function buildCoverInner(copy: Copy, dossier: PublicProjection): string {
       : `<div class="score-ring-value">${esc(String(dossier.tigerScore))} / 100</div>
          <div class="score-ring-band">${esc(copy.risk)}</div>`;
 
-  const bullets = [copy.execClaimsBullet(dossier.claims.length), ...copy.execBullets];
+  // Les points du résumé viennent du DOSSIER, pas d'une constante. Un dossier
+  // sans faits statiques n'hérite d'aucune affirmation — il rend le décompte
+  // de ses claims publiés et la réserve générale, et rien de plus.
+  const f = factsFor(dossier.ref);
+  const bullets = [
+    copy.execClaimsBullet(dossier.claims.length),
+    ...((copy === COPY.fr ? f.execFr : f.execEn) ?? []),
+    copy.execTail,
+  ];
 
   return `
     <div class="cover-title-block">
       <div class="cover-kicker">${esc(copy.docTitle)}</div>
       <div class="cover-case">${esc(dossier.ref)}</div>
+      <div class="cover-subject">${esc(dossier.codename)} · ${esc(dossier.ticker)}</div>
+      <div class="cover-subject-title">${esc(dossier.title)}</div>
       <div class="cover-meta">${esc(copy.generatedOn)} · ${esc(TODAY_ISO)}</div>
     </div>
 
@@ -565,40 +625,38 @@ function buildTimelineInner(copy: Copy): string {
   return withheldSection(copy, copy.timelineTitle, "txSignature");
 }
 
-function buildTokenControlInner(copy: Copy): string {
-  const r = copy.tokenCtrlRows;
+/**
+ * Une section de faits statiques, ou son retrait.
+ *
+ * UN SEUL chemin de rendu pour les deux sections : elles présentent la même
+ * chose — des lignes adossées à une source nommée. Deux mises en page
+ * différentes pour la même nature de contenu, c'était deux endroits où
+ * oublier le retrait.
+ *
+ * La grille de grands chiffres a disparu avec les valeurs codées en dur
+ * qu'elle affichait (« 62 % », « 78 % », « HIGH ») : elles vivent désormais
+ * dans les lignes, indexées par dossier. Une mise en page qui exige des
+ * constantes dans le renderer n'est pas dossier-agnostique.
+ */
+function buildFactsInner(
+  copy: Copy,
+  titre: string,
+  intro: (source: string) => string,
+  section: FactSection | undefined,
+  pied?: string,
+): string {
+  if (!section) return withheldSection(copy, titre, "source");
+  const lignes = (copy === COPY.fr ? section.rowsFr : section.rowsEn)
+    .map(
+      (l) =>
+        `<div class="auth-row"><span class="auth-dot"></span><div class="auth-text">${esc(l)}</div></div>`,
+    )
+    .join("");
   return `
-    <div class="h1">${esc(copy.tokenCtrlTitle)}</div>
-    <p class="body">${esc(copy.tokenCtrlIntro)}</p>
-    <div class="auth-block">
-      <div class="auth-row"><span class="auth-dot"></span><div class="auth-text">${esc(r.mint)}</div></div>
-      <div class="auth-row"><span class="auth-dot"></span><div class="auth-text">${esc(r.freeze)}</div></div>
-      <div class="auth-row"><span class="auth-dot"></span><div class="auth-text">${esc(r.update)}</div></div>
-    </div>
-    <div class="callout">${esc(copy.tokenCtrlFooter)}</div>
-  `;
-}
-
-function buildMetricsInner(copy: Copy): string {
-  const r = copy.metricsRows;
-  return `
-    <div class="h1">${esc(copy.metricsTitle)}</div>
-    <p class="body">${esc(copy.metricsIntro)}</p>
-    <div class="metrics-grid">
-      <div class="metric-cell">
-        <div class="metric-value">62 %</div>
-        <div class="metric-label">${esc(r.top3.split("—")[0].trim())}</div>
-      </div>
-      <div class="metric-cell">
-        <div class="metric-value">78 %</div>
-        <div class="metric-label">${esc(r.top10.split("—")[0].trim())}</div>
-      </div>
-      <div class="metric-cell">
-        <div class="metric-value metric-value-risk">HIGH</div>
-        <div class="metric-label">${esc(r.conc.split("—")[0].trim())}</div>
-      </div>
-    </div>
-    <div class="callout">${esc(r.conc)}</div>
+    <div class="h1">${esc(titre)}</div>
+    <p class="body">${esc(intro(section.source))}</p>
+    <div class="auth-block">${lignes}</div>
+    ${pied ? `<div class="callout">${esc(pied)}</div>` : ""}
   `;
 }
 
@@ -708,6 +766,8 @@ function renderCss(): string {
 
     .cover-title-block { margin-bottom: 22px; }
     .cover-kicker { color: ${ACCENT}; font-size: 11px; letter-spacing: 3px; font-weight: 700; text-transform: uppercase; }
+    .cover-subject { font-size: 15px; font-weight: 800; letter-spacing: 1px; margin-top: 4px; }
+    .cover-subject-title { font-size: 11px; color: ${MUTED}; margin-top: 2px; }
     .cover-case { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; margin-top: 6px; color: ${INK}; }
     .cover-meta { color: ${MUTED}; font-size: 11px; margin-top: 6px; }
 
@@ -772,31 +832,33 @@ function truncateUrl(u: string): string {
 // ── HTML builder ────────────────────────────────────────────────────────────
 
 /**
- * Le dossier que les sections STATIQUES de ce gabarit documentent.
+ * ─── BUILD 9 — LE GABARIT N'APPARTIENT PLUS À UN DOSSIER ──────────────────
  *
- * Les pages 3 à 7 — chronologie, contrôle du token, métriques, cluster,
- * projets liés — sont du contenu codé en dur qui décrit BOTIFY. Aucune table
- * canonique ne les porte : la DDL du bloc 3 a explicitement refusé de créer
- * `CaseFileTimeline` et `CaseFileRequisition`, faute de faits démontrés.
+ * Il refusait de se rendre pour tout `ref` autre que BOTIFY, parce que ses
+ * sections statiques décrivaient BOTIFY en dur. Le réflexe était juste — les
+ * rendre sous un autre en-tête aurait attribué ce matériel à un dossier qui
+ * ne le porte pas — mais la mécanique rendait le renderer inutilisable pour
+ * VINE, l'une des deux fixtures obligatoires du gate BUILD 9.
  *
- * Rendre ce gabarit sous l'en-tête d'un autre dossier attribuerait à celui-ci
- * la chronologie, les métriques et le cluster de BOTIFY. Ce serait la
- * fabrication la plus coûteuse du lot, et la plus difficile à repérer : le
- * document aurait l'air complet.
+ * Les faits sont désormais indexés par dossier. Un dossier sans entrée ne se
+ * voit plus refuser : ses sections rendent un retrait structuré. La protection
+ * est la même — aucun matériel ne migre d'un dossier à l'autre — et elle ne
+ * bloque plus le rendu.
  *
- * Le gabarit refuse donc. Ce n'est pas une liste d'autorisation par preset —
- * c'est le gabarit qui déclare de quel dossier il parle.
+ * `STATIC_SECTIONS_DOCUMENT_REF` et `StaticSectionsMismatchError` restent
+ * EXPORTÉS : deux routes gelées les importent, et ouvrir une fenêtre
+ * d'exemption pour un nettoyage cosmétique serait un mauvais échange. L'erreur
+ * n'est plus levée — dette signalée, à refermer à la prochaine fenêtre
+ * légitime sur ces routes.
  */
 export const STATIC_SECTIONS_DOCUMENT_REF = BOTIFY_CASEFILE_REF;
 
 export class StaticSectionsMismatchError extends Error {
   constructor(ref: string) {
     super(
-      `[casefile] gabarit public refusé pour ${ref} : ses sections statiques ` +
-        `(chronologie, contrôle du token, métriques, cluster, projets liés) ` +
-        `documentent ${STATIC_SECTIONS_DOCUMENT_REF} et lui seul. Les rendre ` +
-        "sous un autre en-tête attribuerait ce matériel à un dossier qui ne le " +
-        "porte pas.",
+      `[casefile] gabarit public refusé pour ${ref}. Conservée pour les deux ` +
+        "routes gelées qui l'importent ; la condition ne se produit plus depuis " +
+        "que les faits statiques sont indexés par dossier.",
     );
     this.name = "StaticSectionsMismatchError";
   }
@@ -806,17 +868,15 @@ export function buildPublicReportHtml(
   lang: PublicReportLang,
   dossier: PublicProjection,
 ): string {
-  if (dossier.ref !== STATIC_SECTIONS_DOCUMENT_REF) {
-    throw new StaticSectionsMismatchError(dossier.ref);
-  }
   const copy = COPY[lang];
+  const faits = factsFor(dossier.ref);
   const total = 9;
   const pages = [
     buildCoverInner(copy, dossier),
     buildEvidenceIndexInner(copy, lang, dossier),
     buildTimelineInner(copy),
-    buildTokenControlInner(copy),
-    buildMetricsInner(copy),
+    buildFactsInner(copy, copy.tokenCtrlTitle, copy.tokenCtrlIntro, faits.tokenControl, copy.tokenCtrlFooter),
+    buildFactsInner(copy, copy.metricsTitle, copy.metricsIntro, faits.launchMetrics),
     buildClusterInner(copy),
     buildRelatedInner(copy),
     buildOsintInner(copy, dossier),
