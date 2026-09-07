@@ -89,6 +89,48 @@ const MUTANTS = [
     from: '  if (BOTIFY_KOLS.has(handle)) return BOTIFY_MINT as TokenMint;',
     to: '  if (BOTIFY_KOLS.has(handle)) return BOTIFY_SYNTHETIC_ROUTE_KEY as unknown as TokenMint;',
   },
+  {
+    id: "INV-8",
+    invariant: "un montant valorisé par un prix tiers est INFERENCE, pas THIRD_PARTY_DATA",
+    defaut: "M4 — étiqueter du nom d'un fournisseur un chiffre qu'il n'a jamais publié",
+    file: `${SRC}/proceedsNature.ts`,
+    from: '        nature: "INFERENCE",\n        basis: {\n          formula: "amountUsd = quantité constatée on-chain × clôture quotidienne Binance",',
+    to: '        nature: "THIRD_PARTY_DATA",\n        basis: {\n          formula: "amountUsd = quantité constatée on-chain × clôture quotidienne Binance",',
+  },
+  {
+    id: "INV-9",
+    invariant: "un prix remplacé par une constante est une ESTIMATE",
+    defaut: "188 lignes valorisées à une constante, additionnées comme des prix observés",
+    file: `${SRC}/proceedsNature.ts`,
+    from: "    case PRICING_SOURCES.YEARLY_FALLBACK:\n      return {\n        nature: \"ESTIMATE\",",
+    to: "    case PRICING_SOURCES.YEARLY_FALLBACK:\n      return {\n        nature: \"INFERENCE\",",
+  },
+  {
+    id: "INV-10",
+    invariant: "une pricingSource inconnue n'obtient PAS de nature par défaut",
+    defaut: "le défaut implicite — mécanisme des sept sites de mélange",
+    file: `${SRC}/proceedsNature.ts`,
+    from:
+      "    default:\n      return UNCLASSIFIED_RESULT(\n        src.length > 0",
+    to:
+      "    default:\n      return { nature: \"THIRD_PARTY_DATA\", basis: null, why: \"défaut implicite\" };\n      // eslint-disable-next-line no-unreachable\n      return UNCLASSIFIED_RESULT(\n        src.length > 0",
+  },
+  {
+    id: "INV-11",
+    invariant: "la provenance du chiffre n'est déclarée que si la source a été LUE",
+    defaut: "canonical.ts posait proceedsSource: 'KolProceedsEvent' en littéral",
+    file: `${SRC}/proceedsProvenance.ts`,
+    from: '    source: verifie ? "KolProceedsEvent" : null,',
+    to: '    source: "KolProceedsEvent",',
+  },
+  {
+    id: "INV-12",
+    invariant: "une source non consultée rend NOT_VERIFIED, jamais un succès",
+    defaut: "confondre « pas vérifié » et « pas de chiffre » affirme une absence non constatée",
+    file: `${SRC}/proceedsProvenance.ts`,
+    from: '  if (input.sourceUsd === undefined || source === null) return "NOT_VERIFIED";',
+    to: '  if (input.sourceUsd === undefined || source === null) return "NO_FIGURE";',
+  },
 ];
 
 function sha(path) {

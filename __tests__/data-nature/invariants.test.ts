@@ -181,7 +181,16 @@ describe("I5 — toute table est classée, ou elle ne publie rien", () => {
   it("le décompte du plan est recalculé, jamais recopié", () => {
     const s = registryStats();
     expect(s.rowsNoWrite).toBeGreaterThan(1_500_000);
-    expect(s.rowsToWrite).toBeLessThan(3_000);
+    // Plafond relevé de 3 000 à 10 000 par BUILD 8 : l'entrée de
+    // `KolProceedsEvent` (5 602 lignes, régime CHAMP) au registre fait passer
+    // le volume à écrire de 2 256 à 7 858. Ce n'est pas un relâchement — c'est
+    // la table monétaire qui entre dans le plan, sur arbitrage explicite.
+    //
+    // Le plafond garde son rôle : il reste très en dessous du volume total
+    // (1 565 087) et attraperait toujours une reclassification de masse, qui
+    // ferait basculer une des grosses tables DECLARED_PREDICATE dans un régime
+    // à écriture.
+    expect(s.rowsToWrite).toBeLessThan(10_000);
     expect(s.rowsNoWrite + s.rowsToWrite).toBe(s.rowsTotal);
   });
 });
