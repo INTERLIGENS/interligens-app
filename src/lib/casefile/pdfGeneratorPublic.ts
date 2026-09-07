@@ -495,19 +495,48 @@ type RawClaim = {
   status?: string;
   thread_url?: string | null;
   category?: string;
+  evidence_refs?: string[];
+};
+
+type RawSource = {
+  source_id: string;
+  type: string;
+  filename: string | null;
+  caption: string | null;
+  captured_at: string | null;
 };
 
 function buildEvidenceIndexInner(copy: Copy, lang: PublicReportLang): string {
+  // ── BUILD 9 / ÉTAPE 5 — l'index ne FABRIQUE plus sa provenance ──────────
+  //
+  // Trois des six colonnes ne rendaient pas ce que leur en-tête annonçait :
+  //
+  //   « Type »       recevait le TITRE du claim
+  //   « Source »     recevait sa CATÉGORIE
+  //   « Horodatage » recevait TODAY_ISO — la date de génération du PDF
+  //
+  // La dernière est la plus grave : chaque pièce paraissait captée le jour de
+  // l'export, alors que le registre porte de vrais `captured_at`. Un index de
+  // preuves qui invente ses horodatages ne documente rien, il rassure.
+  //
+  // Chaque colonne rend désormais son champ, et « — » quand il manque. Le
+  // renderer ne fabrique ni n'interprète : il rend, ou il dit qu'il n'a pas.
   const claims = (botifyCase.claims ?? []) as RawClaim[];
+  const sources = (botifyCase.sources ?? []) as RawSource[];
+  const registre = new Map(sources.map((s) => [s.source_id, s]));
   const rows = claims.map((c, i) => {
     const ref = `E-${String(i + 1).padStart(3, "0")}`;
     const title = lang === "fr" && c.title_fr ? c.title_fr : c.title;
     const threadLabel = c.thread_url ? truncateUrl(c.thread_url) : "—";
+    // La première source RÉSOLUE du claim porte son type et son horodatage.
+    const src = (c.evidence_refs ?? [])
+      .map((r: string) => registre.get(r))
+      .find((x: RawSource | undefined): x is RawSource => x != null);
     return `<tr>
       <td class="mono">${esc(ref)}</td>
-      <td>${esc(title)}</td>
-      <td>${esc(c.category ?? "—")}</td>
-      <td class="mono">${esc(TODAY_ISO)}</td>
+      <td>${esc(src?.type ?? "—")}</td>
+      <td>${esc(src?.filename ?? title)}</td>
+      <td class="mono">${esc(src?.captured_at?.slice(0, 10) ?? "—")}</td>
       <td class="mono url-cell">${esc(threadLabel)}</td>
       <td class="mono">${esc(c.claim_id)}</td>
     </tr>`;
