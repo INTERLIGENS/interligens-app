@@ -19,6 +19,10 @@
 
 import type { DataNature, NatureValue } from "./nature";
 import { UNCLASSIFIED, isNatureValue } from "./nature";
+// BUILD 8 / P3 — la règle de classement de `amountUsd` vit avec la table
+// qu'elle décrit, pas dans le registre : c'est elle qui sert AUSSI de
+// spécification au backfill SQL, et un test compare les deux.
+import { amountUsdNature, proceedsRowNature } from "@/lib/kol-memory/proceedsNature";
 
 export type Regime = "DECLARED" | "DECLARED_PREDICATE" | "ROW" | "FIELD";
 
@@ -34,8 +38,26 @@ export interface TableNatureDecl {
   predicate?: (row: Record<string, unknown>) => DataNature;
   /** DECLARED_PREDICATE : les colonnes que le prédicat lit. Documentaire et testable. */
   predicateReads?: string[];
-  /** FIELD : nature par champ gouverné. */
+  /** FIELD : nature par champ gouverné, quand elle est la MÊME sur toute la table. */
   fields?: Record<string, DataNature>;
+  /**
+   * FIELD : nature d'un champ gouverné qui VARIE d'une ligne à l'autre, lue sur
+   * une colonne déjà présente.
+   *
+   * ── Pourquoi cette extension existe ──────────────────────────────────────
+   * `fields` suppose qu'un champ porte UNE nature sur toute la table. Cette
+   * hypothèse tient pour les tables de S3 ; elle casse sur `KolProceedsEvent`,
+   * où `amountUsd` est tantôt une INFERENCE (prix Binance), tantôt une ESTIMATE
+   * (constante annuelle), tantôt un relais THIRD_PARTY_DATA (import Arkham) —
+   * et où la colonne `pricingSource` dit déjà laquelle, ligne par ligne.
+   *
+   * C'est exactement le raisonnement de DECLARED_PREDICATE, appliqué au champ :
+   * quand la donnée porte DÉJÀ de quoi séparer les natures, on la lit au lieu
+   * d'en écrire une nouvelle. Aucun régime n'est ajouté, aucune table existante
+   * ne change de comportement : `fieldPredicates` est consulté AVANT `fields`,
+   * et une table qui n'en déclare pas se comporte à l'identique.
+   */
+  fieldPredicates?: Record<string, (row: Record<string, unknown>) => NatureValue>;
   /** FIELD : nature de la ligne quand aucun champ gouverné n'est visé. */
   rowDefault?: (row: Record<string, unknown>) => DataNature;
   /** Étape du plan où cette table est traitée. */
@@ -239,6 +261,39 @@ export const NATURE_REGISTRY: Record<string, TableNatureDecl> = {
     regime: "ROW", rows: 15, stage: "S3",
     why: "retailLossEstimateUsd est une ESTIMATE ; 15 lignes, aucune n'est renseignée à ce jour.",
   },
+  // ── BUILD 8 / P3 — la table monétaire entre dans le registre ────────────
+  KolProceedsEvent: {
+    regime: "FIELD", rows: 5_602, stage: "S3",
+    fieldPredicates: {
+      amountUsd: amountUsdNature,
+      // Le prix suit la nature du montant qu'il sert à produire : il vient de
+      // la même décision de valorisation, il ne peut pas en avoir une autre.
+      priceUsdAtTime: amountUsdNature,
+    },
+    rowDefault: (r) => {
+      const n = proceedsRowNature(r);
+      // `rowDefault` doit rendre une DataNature. Une ligne non classable est
+      // rendue au moins autoritaire plutôt qu'à un défaut flatteur ; le champ,
+      // lui, ressortira UNCLASSIFIED par son prédicat et ne sera pas publié.
+      return n === UNCLASSIFIED ? "EDITORIAL_ASSERTION" : n;
+    },
+    why:
+      "LA table monétaire : 5 602 lignes, 17,5 M$. `amountUsd` n'est jamais relevé, il est " +
+      "CALCULÉ (amountUsd = quantité × prix, proceeds.ts:90 et :187) — sa nature se lit donc " +
+      "dans le PRIX injecté, que `pricingSource` nomme déjà ligne par ligne. Mesuré le " +
+      "2026-09-07 : binance_historical 5 407 (INFERENCE — produit d'une quantité constatée " +
+      "et d'une clôture quotidienne tierce, Q3), helius_sol_estimate_200usd 133 et " +
+      "yearly_fallback 53 (ESTIMATE — le prix n'a pas été observé, il a été remplacé par une " +
+      "constante), ARKHAM_CSV 6 + arkham_aggregate 1 (THIRD_PARTY_DATA — montant importé tel " +
+      "quel, ni prix ni quantité en base), CEX_DETECTED 2 (UNCLASSIFIED — ambiguous=true, on " +
+      "ne tranche pas à la place du produit). " +
+      "RÉGIME CHAMP et non LIGNE : la transaction EST constatée on-chain — signature, date, " +
+      "portefeuille — seul le montant en dollars est dérivé. Déclarer la ligne INFERENCE " +
+      "effacerait le fait que la transaction a bien eu lieu. " +
+      "Les colonnes de nature n'existent PAS encore sur cette table ; la DDL ciblée est " +
+      "rédigée dans docs/prep/patches/BUILD8/ et n'est pas exécutée. La déclaration vaut dès " +
+      "maintenant pour les 5 602 lignes, colonne ou pas — elle PRÉCÈDE l'écriture.",
+  },
   KolWallet: {
     regime: "ROW", rows: 482, stage: "S4",
     why:
@@ -302,6 +357,11 @@ export function natureForField(
 ): NatureValue {
   const decl = NATURE_REGISTRY[table];
   if (!decl) return UNCLASSIFIED;
+  // Un prédicat de champ l'emporte sur une nature fixe : il est plus précis,
+  // et une table qui en déclare un l'a fait parce que la nature VARIE.
+  if (decl.regime === "FIELD" && decl.fieldPredicates?.[field]) {
+    return decl.fieldPredicates[field](row);
+  }
   if (decl.regime === "FIELD" && decl.fields?.[field]) {
     // Un champ gouverné vide ne porte aucune affirmation.
     const value = row[field];

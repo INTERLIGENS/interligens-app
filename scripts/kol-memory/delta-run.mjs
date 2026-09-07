@@ -25,6 +25,7 @@ import {
   requiresHumanReview,
 } from "../../src/lib/kol-memory/attribution";
 import { isWalletPublishable, walletNature } from "../../src/lib/kol-memory/walletPublication";
+import { amountUsdNature } from "../../src/lib/kol-memory/proceedsNature";
 import { BOTIFY_MINT, BOTIFY_SYNTHETIC_ROUTE_KEY } from "../../src/lib/kol-memory/tokenIdentity";
 
 const EXPECTED_HOST_PREFIX = "ep-square-band";
@@ -120,6 +121,64 @@ async function main() {
             "  recâblés visent désormais l'identité que la base porte réellement."
         : `→ ATTENTION : ${totalSynth} lignes portent la clé synthétique. À arbitrer.`,
     );
+
+    // ── 4. Nature des montants de proceeds — P3 ────────────────────────────
+    //
+    // Le classement est appliqué aux 5 602 lignes RÉELLES par la fonction qui
+    // sert aussi de spécification au backfill SQL. Ce que ce bloc montre :
+    // avant, une seule somme indistincte ; après, des sommes séparées par ce
+    // qu'elles affirment.
+    const events = await c.query(
+      `SELECT "pricingSource", "amountUsd", ambiguous FROM "KolProceedsEvent"`,
+    );
+
+    console.log("\n## 4. NATURE DES MONTANTS DE PROCEEDS — P3");
+    console.log(`lignes : ${events.rows.length}`);
+
+    const avantTotal = events.rows.reduce((s, r) => s + (Number(r.amountUsd) || 0), 0);
+    console.log(
+      `\navant : UNE somme, sans distinction de méthode — ` +
+        `${avantTotal.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} $ sur ` +
+        `${events.rows.length} lignes, dans la même colonne.`,
+    );
+
+    const parNature = new Map();
+    for (const r of events.rows) {
+      const n = amountUsdNature(r);
+      const acc = parNature.get(n) ?? { lignes: 0, usd: 0 };
+      acc.lignes += 1;
+      acc.usd += Number(r.amountUsd) || 0;
+      parNature.set(n, acc);
+    }
+    console.log("\naprès (classifyAmountUsd, appliqué ligne par ligne) :");
+    console.table(
+      Object.fromEntries(
+        [...parNature.entries()]
+          .sort((a, b) => b[1].usd - a[1].usd)
+          .map(([n, v]) => [
+            n,
+            { lignes: v.lignes, usd: Math.round(v.usd).toLocaleString("fr-FR") },
+          ]),
+      ),
+    );
+
+    const est = parNature.get("ESTIMATE");
+    const inf = parNature.get("INFERENCE");
+    if (est && inf) {
+      console.log(
+        `→ ${est.lignes} lignes valorisées par une constante posée par le produit\n` +
+          `  (${Math.round(est.usd).toLocaleString("fr-FR")} $) cessent d'être additionnées sans mention\n` +
+          `  aux ${inf.lignes} lignes valorisées par un prix tiers ` +
+          `(${Math.round(inf.usd).toLocaleString("fr-FR")} $).`,
+      );
+    }
+    const nonClasse = parNature.get("UNCLASSIFIED");
+    if (nonClasse) {
+      console.log(
+        `→ ${nonClasse.lignes} lignes restent NON CLASSÉES et le disent : montant absent,\n` +
+          "  ligne ambiguë, ou pricingSource hors vocabulaire. Elles ne se publient pas.",
+      );
+    }
   } finally {
     await c.query("ROLLBACK");
     await c.end();
