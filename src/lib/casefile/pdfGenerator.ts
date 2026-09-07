@@ -244,6 +244,23 @@ tr:nth-child(even) td{background:#0a0a0a}
   //
   // Ici, chaque claim porte son ÉTAT et sa provenance. Les références non
   // résolues sont rendues COMME NON RÉSOLUES, jamais comme un fondement.
+  // ── BUILD 9 — LE DOCUMENT DÉCLARE SON AUTORITÉ, TOUJOURS ───────────────
+  //
+  // L'étiquette « HORS autorité canonique » ne s'affichait qu'avec des claims
+  // de preset. Une génération à la demande sans claim du tout produisait donc
+  // un rapport qui ne disait RIEN de sa provenance — et qui, mis côte à côte
+  // avec un rapport canonique, en avait exactement l'apparence.
+  //
+  // Un lecteur doit pouvoir dire d'où vient ce qu'il lit sans ouvrir le code,
+  // y compris quand la réponse est « de nulle part de gouverné ».
+  if (!input.canonical) {
+    html += `<div class="callout" style="border-left-color:#FFB800;color:#FFB800">
+      Ce document n'est adossé à AUCUN dossier canonique. Ses sections
+      proviennent d'un preset ou de données fournies à la génération. Il ne
+      constitue pas une projection de l'autorité CaseFile.
+    </div>`;
+  }
+
   if (input.canonical) {
     const cl = input.canonical.claims;
     html += `<div class="section"><div class="section-title">Claims — autorité canonique · ${esc(input.canonical.ref)} (${cl.length})</div>`;
