@@ -199,3 +199,25 @@ describe("ÉTAPE 7 — la surface admin voit le dossier entier, états compris",
     }
   });
 });
+
+// ═══ GATE FINAL — le document déclare toujours son autorité ══════════════
+
+describe("GATE FINAL — /api/casefile/generate : classement et étiquetage", () => {
+  it("un rapport SANS bloc canonique porte une bannière, même sans claim", () => {
+    // Le trou trouvé en classant la route : l'étiquette « HORS autorité
+    // canonique » ne s'affichait qu'avec des claims de preset. Une génération
+    // à la demande sans claim produisait un rapport muet sur sa provenance —
+    // et, posé à côté d'un rapport canonique, il en avait l'apparence.
+    const code = readFileSync("src/lib/casefile/pdfGenerator.ts", "utf8");
+    expect(code).toContain("if (!input.canonical) {");
+    expect(code).toContain("AUCUN dossier canonique");
+  });
+
+  it("la route lit l'autorité pour source=botify|vine, et ne se replie pas", () => {
+    const route = readFileSync("src/app/api/casefile/generate/route.ts", "utf8");
+    expect(route).toContain("loadCanonicalCaseFile");
+    expect(route).toContain("canonical_casefile_missing");
+    // `body.data` reste accepté : c'est un utilitaire de rendu, pas un dossier.
+    expect(route).toContain("body.data");
+  });
+});
