@@ -119,7 +119,13 @@ describe("POINT 5 — la résolution est VISIBLE dans la réponse", () => {
   });
 
   it("la version du moteur est incrémentée — le contrat de réponse a changé", () => {
-    expect(codeSeul).toContain('engine_version: "CaseFile-v1.2"');
+    // v1.2 déclarait le contrat du POINT 5 (résolution visible dans `input`).
+    // v2.0 déclare celui de l'ÉTAPE 7 : le dossier ne vient plus d'une CASE_DB
+    // locale mais de l'autorité canonique, et `offchain_source` le dit. La
+    // propriété testée n'a jamais été « la version vaut 1.2 » — c'est « la
+    // version est incrémentée quand le contrat change ».
+    expect(codeSeul).toContain('engine_version: "CaseFile-v2.0"');
+    expect(codeSeul).toContain('offchainSource = vue ? "canonical" : "none"');
   });
 });
 

@@ -36,20 +36,34 @@ describe("BUILD 8 / E2 — /api/casefile : le KO signalé par T1", () => {
     expect(CASEFILE).not.toMatch(/^const BOTIFY_MINT = "/m);
   });
 
-  it("le mint canonique vient du module d'autorité", () => {
+  // ── BUILD 9 / ÉTAPE 7 — les propriétés survivent, la CASE_DB non ────────
+  //
+  // Ces trois tests épinglaient la carte `CASE_DB` déclarée dans la route :
+  // sa clef (`[BOTIFY_MINT]: {`), sa lecture (`CASE_DB[lookupKey]`) et le
+  // garde-fou de score qui la comparait. Elle n'existe plus — la route lit
+  // l'autorité canonique.
+  //
+  // Ce qu'ils GARANTISSAIENT tient toujours, et c'est ce qui est vérifié ici :
+  // la route ne porte aucune carte locale de dossiers, et tout ce qui décide
+  // se fait sur l'identité RÉSOLUE, jamais sur l'entrée brute.
+
+  it("la route ne porte plus aucune carte locale de dossiers", () => {
+    expect(codeSeul(CASEFILE)).not.toContain("CASE_DB");
     expect(CASEFILE).toContain("@/lib/kol-memory/tokenIdentity");
-    expect(CASEFILE).toContain("[BOTIFY_MINT]: {");
+    expect(CASEFILE).toContain("loadCanonicalCaseFile");
   });
 
-  it("MUTANT — la lecture directe `CASE_DB[sanitizeMint]` a disparu", () => {
+  it("MUTANT — la résolution du dossier part de la clé RÉSOLUE", () => {
     // Sans le contrat d'alias, ?mint=<canonique> ratait la carte → GREEN/0.
-    expect(codeSeul(CASEFILE)).not.toContain("CASE_DB[sanitizeMint]");
+    // La cible a changé de nature ; la règle, non.
+    expect(codeSeul(CASEFILE)).not.toContain("canonicalRefForMint(sanitizeMint)");
     expect(CASEFILE).toContain("casefileLookupKey(sanitizeMint)");
-    expect(CASEFILE).toContain("CASE_DB[lookupKey]");
+    expect(CASEFILE).toContain("canonicalRefForMint(lookupKey)");
   });
 
   it("le garde-fou de scoring compare sur la clé résolue, pas sur l'entrée brute", () => {
-    expect(CASEFILE).toContain("casefileLookupKey(mint) === BOTIFY_MINT");
+    expect(CASEFILE).toContain("lookupKey === BOTIFY_MINT");
+    expect(codeSeul(CASEFILE)).not.toContain("sanitizeMint === BOTIFY_MINT");
   });
 });
 

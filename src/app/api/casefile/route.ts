@@ -3,94 +3,46 @@ import crypto from "crypto";
 import { checkAuth } from "@/lib/security/auth";
 import { kolHandleToMint } from "@/lib/kol/handleToMint";
 import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
+import { loadCanonicalCaseFile } from "@/lib/casefile/canonicalReader";
+import { canonicalRefForMint } from "@/lib/casefile/publicProjection";
+import { toInternalCaseView } from "@/lib/casefile/internalView";
+import {
+  linkEvidence,
+  computeLegacyCaseScore,
+} from "@/lib/casefile/legacyCaseScore";
 
-// ── BUILD 8 / E2 — la CASE_DB est clé sur le MINT CANONIQUE ────────────────
+// ─── BUILD 9 / ÉTAPE 7 — OPTION A : L'AUTORITÉ, ET UNE SEULE ───────────────
 //
-// Elle déclarait ici sa propre constante, la clé de route synthétique
-// (43 car.), qui n'existe dans AUCUNE ligne de la base. Résultat mesuré par la
-// validation T1 :
+// ██  La CASE_DB en ligne est partie. Ce dossier vient de l'autorité.      ██
 //
-//     ?mint=<44 canonique>   → CASE_DB miss → 0 claim → score 0  → GREEN
-//     ?mint=<43 synthétique> → 8 claims → garde-fou ≥6 → 70      → RED
+// Cette route portait sa PROPRE base de dossiers, en dur dans le fichier :
+// huit claims C1…C8, leurs sources, et un bloc de wallets. En face,
+// `token_casefiles` + `CaseFileClaim` portaient huit autres claims — sous les
+// MÊMES identifiants C1…C8, avec des contenus entièrement différents :
 //
-// L'identité réelle n'ouvrait aucun dossier, et l'alias portait le verdict
-// public. `casefileLookupKey` fait converger les deux entrées vers l'unique
-// clé canonique : l'URL historique continue de mener au dossier, elle ne le
-// définit plus. Il ne peut plus exister deux vérités concurrentes.
-
-// ── CaseDB hardcoded (V0 — no fs dependency) ──────────────────────────────────
-const CASE_DB: Record<string, any> = {
-  [BOTIFY_MINT]: {
-    symbol: "BOTIFY", name: "Botify",
-    sources: {
-      dethective_threads: [
-        "https://x.com/dethective/status/1997766979898450185",
-        "https://x.com/dethective/status/2000321916608147714",
-      ],
-      screenshots: ["IMG_2239.jpg","IMG_2240.jpg","IMG_2241.jpg","IMG_2242.jpg",
-                    "IMG_2243.jpg","IMG_2244.jpg","IMG_2245.jpg","IMG_2246.jpg"],
-      attachments: ["BOTIFY_SCAM.zip","Dossier_BOTIFY_INTERLIGENS.pdf"],
-    },
-    claims: [
-      { id:"C1", topic:"Budget marketing",
-        claim:"Budget quasi-entier depense en marketing/listings: Gate $190k, MEXC $90k, TikTok/IG $233k+. Produit inactif selon thread.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2239.jpg",caption:"Thread 1/8 - The Budget"},
-          {type:"thread",ref:"https://x.com/dethective/status/1997766979898450185",caption:"@dethective 07/12/2025"},
-        ]},
-      { id:"C2", topic:"KOL Twitter shilling",
-        claim:"KOLs payes stablecoins + % supply vesting. Gordon: 10k stables + 0.665% supply. Shilling non declare jusqu'a unlock.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2240.jpg",caption:"Thread 2/8 - Twitter Marketing"},
-          {type:"thread",ref:"https://x.com/dethective/status/1997766979898450185",caption:"@dethective 07/12/2025"},
-        ]},
-      { id:"C3", topic:"Telegram callers payes",
-        claim:"Callers Telegram payes 5 chiffres: WulfCrypto $21k, SolanaRockets $26k, CryptoZin $10k pour vendre au retail.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2241.jpg",caption:"Thread 3/8 - Telegram Callers"},
-          {type:"thread",ref:"https://x.com/dethective/status/1997766979898450185",caption:"@dethective 07/12/2025"},
-        ]},
-      { id:"C4", topic:"TikTok marketing",
-        claim:"Push TikTok: $25k pour une video, $27.25k pour 7 semaines. Onboarding retail via FOMO mainstream.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2242.jpg",caption:"Thread 4/8 - TikTok Marketing"},
-          {type:"thread",ref:"https://x.com/dethective/status/1997766979898450185",caption:"@dethective 07/12/2025"},
-        ]},
-      { id:"C5", topic:"Fake metrics / bots",
-        claim:"90% du narratif non organique. Paiements volume bots + faux holders. Trump Whale: $20k pour narratif.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2243.jpg",caption:"Thread 5/8 - Fake Metrics"},
-          {type:"thread",ref:"https://x.com/dethective/status/2000321916608147714",caption:"@dethective 07/12/2025"},
-        ]},
-      { id:"C6", topic:"On-chain: Gordon daily releases",
-        claim:"Deal Gordon: 10k fixe + 1% supply sur 14 jours (0.053%/jour). Daily releases observables on-chain.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2244.jpg",caption:"Thread 6/8 - On-Chain Case Gordon"},
-          {type:"thread",ref:"https://x.com/dethective/status/2000321916608147714",caption:"@dethective 07/12/2025"},
-        ]},
-      { id:"C7", topic:"Friends & Family insiders",
-        claim:"Documents internes: Mom 0.055%, Dad 0.055%, Illya 0.05% + SAM insiders 0.25%. Risque dump a l'unlock.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2245.jpg",caption:"Thread 7/8 - Friends & Family"},
-          {type:"thread",ref:"https://x.com/dethective/status/2000321916608147714",caption:"@dethective 07/12/2025"},
-        ]},
-      { id:"C8", topic:"Retail = exit liquidity",
-        claim:"Retail finance la chaine: listings->MM->influenceurs->plateformes->bots. EV negatif structurel.",
-        status:"Referenced",
-        evidence:[
-          {type:"screenshot",ref:"IMG_2246.jpg",caption:"Thread 8/8 - Conclusion"},
-          {type:"thread",ref:"https://x.com/dethective/status/2000321916608147714",caption:"@dethective 07/12/2025"},
-        ]},
-    ],
-  },
-};
+//   CASE_DB      C1 Budget marketing · C3 Telegram callers · C5 Fake metrics
+//   canonique    C1 Coordinated Shill · C3 Liquidity Withdrawal · C5 Mint&Freeze
+//
+// Deux corpus disjoints publiés sous les mêmes clefs. C'est la définition
+// même des « deux autorités concurrentes » que BUILD 9 supprime, et c'était
+// invisible parce que les identifiants concordaient.
+//
+// ─── Pourquoi le score ne bouge pas ───────────────────────────────────────
+//
+// Le scoreur local est indexé sur les IDENTIFIANTS, jamais sur le contenu — et
+// les deux jeux sont identiques. Il a été sorti d'ici verbatim, sans qu'une
+// règle ni un seuil change, pour que cette phrase soit un TEST et non une
+// promesse : voir src/lib/casefile/legacyCaseScore.ts.
+//
+// Ce n'est pas `computeTigerScore`. Les six entrées de celui-ci restent en
+// HOLD, intouchées — leur bascule est une décision de scoring séparée.
+//
+// ─── Surface ADMIN : elle voit tout, et elle le DIT ───────────────────────
+//
+// `checkAuth` est toujours exigé (SEC P0). Appliquer ici le filtre PUBLIC
+// rendrait zéro claim à un opérateur dont le travail est précisément de voir
+// ce qui n'est pas publié. La route reçoit donc le dossier ENTIER — et chaque
+// claim porte son `state`.
 
 // ── On-chain collectors ───────────────────────────────────────────────────────
 async function fetchMetadata(mint: string) {
@@ -146,56 +98,6 @@ async function fetchHolders(mint: string) {
   } catch { return null; }
 }
 
-// ── Evidence linker ───────────────────────────────────────────────────────────
-function linkEvidence(claims: any[], onChain: any) {
-  return claims.map((c:any) => {
-    const checks: any[] = [];
-    let status = c.status ?? "Referenced";
-    const top10 = parseFloat(onChain?.distribution?.top10_pct ?? "0");
-    const liq = Number(onChain?.markets?.liquidity_usd ?? 0);
-
-    if ((c.id==="C5"||c.id==="C7") && top10 > 40) {
-      checks.push({check:"top10_concentration", result:`Top-10: ${top10}%`});
-      status = "Corroborated";
-    }
-    if (c.id==="C1" && liq > 0 && liq < 100000) {
-      checks.push({check:"low_liquidity", result:`Liquidity: $${liq.toLocaleString()}`});
-      status = "Corroborated";
-    }
-    return {claim_id:c.id, on_chain_checks:checks, final_status:status};
-  });
-}
-
-// ── Scoring ───────────────────────────────────────────────────────────────────
-function computeScore(claims: any[], linking: any[], onChain: any, mint: string) {
-  if (claims.length === 0 && casefileLookupKey(mint) === BOTIFY_MINT) {
-    console.error("[SCORING] ERROR: BOTIFY claims=0 — offchain ingest failed");
-  }
-
-  let score = 0;
-  const ids = new Set(claims.map((c:any)=>c.id));
-
-  if (["C2","C3","C4"].some(id=>ids.has(id))) score += 25;
-  if (ids.has("C5")) score += 20;
-  if (ids.has("C7")) score += 15;
-  if (ids.has("C1")) score += 5;
-  if (ids.has("C8")) score += 5;
-
-  const corroborated = linking.filter((l:any)=>l.final_status==="Corroborated").length;
-  score += Math.min(corroborated * 5, 15);
-  const top10 = parseFloat(onChain?.distribution?.top10_pct ?? "0");
-  if (top10 > 40) score += 10;
-
-  // Guardrail: >= 6 claims => RED
-  if (claims.length >= 6 && score < 70) score = 70;
-
-  score = Math.min(100, Math.max(0, score));
-  const tier = score >= 70 ? "RED" : score >= 35 ? "ORANGE" : "GREEN";
-
-  console.log(`[SCORING] score=${score} tier=${tier} claims=${claims.length} corroborated=${corroborated}`);
-  return {score, tier};
-}
-
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   // SEC P0 — auth is ALWAYS required. The previous ?mock=1 retail
@@ -220,14 +122,23 @@ export async function GET(req: NextRequest) {
 
   // Offchain ingest — la lecture passe par le contrat d'alias (E2).
   const lookupKey = casefileLookupKey(sanitizeMint);
-  const caseEntry = CASE_DB[lookupKey] ?? null;
-  const offchainSource = caseEntry ? "case_db" : "none";
+  // ── L'autorité canonique, et AUCUN repli ───────────────────────────────
+  //
+  // Si l'identité ne désigne aucun dossier, ou si l'autorité ne le porte pas,
+  // la réponse le DIT. Elle ne se rabat sur aucune base locale : c'est
+  // précisément la seconde autorité qu'on vient de supprimer.
+  const ref = canonicalRefForMint(lookupKey);
+  const dossier = ref ? await loadCanonicalCaseFile(ref) : null;
+  const vue = dossier ? toInternalCaseView(dossier) : null;
+  const offchainSource = vue ? "canonical" : "none";
 
-  const offChain = caseEntry ? {
-    sources: caseEntry.sources,
-    claims: caseEntry.claims,
-  } : {
-    sources: {dethective_threads:[], screenshots:[], attachments:[]},
+  const offChain = vue ?? {
+    ref: null,
+    symbol: null,
+    name: null,
+    tiger_score: null,
+    verdict: null,
+    sources: [],
     claims: [],
   };
 
@@ -266,8 +177,8 @@ export async function GET(req: NextRequest) {
       // POINT 5 — l'actif est désigné par son identité canonique. Rendre ici la
       // chaîne de 43 caractères revenait à AFFIRMER qu'elle est un mint.
       mint: lookupKey,
-      name: caseEntry?.name ?? null,
-      symbol: caseEntry?.symbol ?? null,
+      name: vue?.name ?? null,
+      symbol: vue?.symbol ?? null,
       decimals: metadata?.decimals ?? null,
       supply: metadata?.supply ?? null,
       mintAuthority: metadata?.mintAuthority ?? null,
@@ -281,20 +192,34 @@ export async function GET(req: NextRequest) {
       top10_pct: holders?.top10_pct ?? null,
       concentration_flags: concentrationFlags,
     },
+    // ── BUILD 9 / ÉTAPE 7 — les flux viennent du dossier, ou sont vides ───
+    //
+    // `notable_wallets` portait deux adresses TRONQUÉES codées en dur, sous
+    // des rôles nommés. Elles viennent désormais de `token_casefiles."keyWallets"`.
+    // Un tableau vide sur BOTIFY est ATTENDU : le dossier ne porte aucun bloc
+    // de wallets on-chain, et en fabriquer un pour remplir la forme serait
+    // exactement ce que cette étape supprime.
+    //
+    // `wash_trading_signals` est RETIRÉ : ses deux entrées étaient annotées
+    // « [Referenced - C5] », or le C5 canonique dit autre chose que le C5 de
+    // la CASE_DB. Les reconduire aurait rattaché un signal à une assertion qui
+    // ne le porte pas — une provenance fabriquée par simple homonymie d'ID.
     flows: {
-      notable_wallets: caseEntry ? [
-        {wallet:"3X9RErem7...KxqcnaqA6", role:"Gordon_KOL_daily_releases", status:"Referenced"},
-        {wallet:"FXBXg6sqVN...3m7xE", role:"Trump_Whale_wallet", status:"Referenced"},
-      ] : [],
-      wash_trading_signals: caseEntry ? [
-        "volume_bot_activity [Referenced - C5]",
-        "fake_holders_detected [Referenced - C5]",
-      ] : [],
+      notable_wallets: (dossier?.keyWallets ?? []).map((w) => ({
+        wallet: w.address,
+        role: w.role,
+        status: "Referenced",
+      })),
     },
   };
 
   const linking = linkEvidence(offChain.claims, onChain);
-  const {score, tier} = computeScore(offChain.claims, linking, onChain, sanitizeMint);
+  const {score, tier} = computeLegacyCaseScore(offChain.claims, linking, onChain);
+
+  if (offChain.claims.length === 0 && lookupKey === BOTIFY_MINT) {
+    console.error("[SCORING] ERROR: BOTIFY claims=0 — autorité canonique vide");
+  }
+  console.log(`[SCORING] score=${score} tier=${tier} claims=${offChain.claims.length}`);
 
   const retailSummary = tier==="RED" ? [
     "Token structure pour exit liquidity retail.",
@@ -330,7 +255,7 @@ export async function GET(req: NextRequest) {
       chain: "solana",
       input,
       scan_timestamp: new Date().toISOString(),
-      engine_version: "CaseFile-v1.2",
+      engine_version: "CaseFile-v2.0",
       offchain_source: offchainSource,
     },
     verdict: {tier, score, retail_summary: retailSummary},

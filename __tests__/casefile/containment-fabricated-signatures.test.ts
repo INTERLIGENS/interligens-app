@@ -75,6 +75,7 @@ const dossier: CanonicalCaseFile = {
   verdict: "AVOID",
   claims: [],
   sources: [],
+  keyWallets: [],
 };
 
 const rendu = (lang: PublicReportLang): string =>
