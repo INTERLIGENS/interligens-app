@@ -1,0 +1,54 @@
+diff --git a/src/lib/i18n/en.ts b/src/lib/i18n/en.ts
+index 680d7c9..0dc2568 100644
+--- a/src/lib/i18n/en.ts
++++ b/src/lib/i18n/en.ts
+@@ -7,8 +7,11 @@ export const en = {
+   status: "STATUS",
+   claims: "CLAIMS",
+   claimsStatus: "Claims Status",
+-  claimsSubtitle: (penalty: number, mult: number, score: number, count: number) =>
+-    `${count} referenced claims — score: penalty=${penalty} × ${mult} = ${score}`,
++  // BUILD 10 · P3 — la phrase affirmait « score : pénalité × multiplicateur
++  // = score » à côté du nombre de claims. Les claims sont désormais
++  // canoniques, le score reste legacy : cette dérivation serait fausse.
++  claimsSubtitle: (count: number) =>
++    `${count} referenced claims — rendered from the canonical case file authority.`,
+   flags: "Flags",
+   offchainEvidence: "Off-chain Evidence",
+   detectivePack: "Detective Evidence Pack",
+@@ -45,6 +48,8 @@ export const en = {
+   engine: "Engine",
+   offchainSource: "Offchain Source",
+   tier: "Tier",
++  withheldLabel: "Withheld",
++  withheldScore: "Score withheld — this document does not publish the corpus it was computed from. Field: off_chain.source",
+   score: "Score",
+   claimsCount: "Claims count",
+   footer: (year: number) =>
+diff --git a/src/lib/i18n/fr.ts b/src/lib/i18n/fr.ts
+index 4e240e3..99fc485 100644
+--- a/src/lib/i18n/fr.ts
++++ b/src/lib/i18n/fr.ts
+@@ -8,8 +8,11 @@ export const fr: I18n = {
+   status: "STATUT",
+   claims: "SIGNAUX",
+   claimsStatus: "Statut des signaux",
+-  claimsSubtitle: (penalty: number, mult: number, score: number, count: number) =>
+-    `${count} signaux référencés — score : pénalité=${penalty} × ${mult} = ${score}`,
++  // BUILD 10 · P3 — la phrase affirmait « score : pénalité × multiplicateur
++  // = score » à côté du nombre de claims. Les claims sont désormais
++  // canoniques, le score reste legacy : cette dérivation serait fausse.
++  claimsSubtitle: (count: number) =>
++    `${count} allégations référencées — rendues depuis l'autorité canonique du dossier.`,
+   flags: "Indicateurs",
+   offchainEvidence: "Preuves hors-chaîne",
+   detectivePack: "Pack preuves détective",
+@@ -46,6 +49,8 @@ export const fr: I18n = {
+   engine: "Moteur",
+   offchainSource: "Source hors-chaîne",
+   tier: "Niveau",
++  withheldLabel: "Retiré",
++  withheldScore: "Score retiré — ce document ne publie pas le corpus sur lequel il a été calculé. Champ : off_chain.source",
+   score: "Score",
+   claimsCount: "Nombre de signaux",
+   footer: (year: number) =>
