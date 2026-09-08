@@ -1,5 +1,6 @@
 "use client";
-import { getTier, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
+import { getTier, getTierOrUnknown, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
+import type { TierOrUnknown } from "@/lib/risk/tier";
 import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import { getActionCopy } from "@/lib/copy/actions";
 
@@ -59,7 +60,12 @@ interface TopProof {
 
 interface NormalizedScan {
   score: number;
-  tier: Tier;
+  // BUILD 10 · P0 — « UNKNOWN » quand aucun score n'a été mesuré.
+  // Le type le PORTE : sans ça, l'absence retomberait en GREEN au premier
+  // rendu qui suppose un palier, et le défaut se rejouerait ailleurs.
+  tier: TierOrUnknown;
+  /** `null` = aucun score mesuré. Jamais 0 par défaut. */
+  scoreMeasured: number | null;
   confidence: "Low" | "Medium" | "High";
   verdict: string;
   recommendations: string[];
@@ -116,10 +122,25 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
 // ─── NORMALIZER ───────────────────────────────────────────────────────────────
 
 function normalizeScanData(data: any, chain: Chain): NormalizedScan {
-  const baseScore = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
-  const tigerScore = Number(data?.tiger_score ?? 0) || 0;
-  const score = Math.max(baseScore, tigerScore);
-  const tier = getTier(score);
+  // ── BUILD 10 · P0 — un score absent n'est plus coercé en 0 ──────────────
+  //
+  // `Number(data?.tiger_score ?? 0) || 0` rendait 0 pour une donnée ABSENTE,
+  // et getTier(0) rend GREEN. Une réponse sans score produisait donc le
+  // verdict le plus rassurant du produit, en vert.
+  //
+  // `null` traverse désormais jusqu'au palier, qui rend UNKNOWN. Un zéro
+  // MESURÉ reste un zéro et reste GREEN — c'est la distinction rétablie.
+  const readScore = (v: unknown): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const baseScore = readScore(data?.score) ?? readScore(data?.risk?.score);
+  const tigerScore = readScore(data?.tiger_score);
+  const mesures = [baseScore, tigerScore].filter((n): n is number => n !== null);
+  const scoreOrNull = mesures.length > 0 ? Math.max(...mesures) : null;
+  const score = scoreOrNull ?? 0;
+  const tier = getTierOrUnknown(scoreOrNull);
 
   const proofs: TopProof[] = [];
 
@@ -212,7 +233,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   const recommendations = _acFr.fr;
 
   return {
-    score, tier,
+    score, tier, scoreMeasured: scoreOrNull,
     confidence: (chain === "ETH" || chain === "BSC" || chain === "BASE" || chain === "ARBITRUM") ? (data?.deep ? "High" : "Medium") : "Medium",
     verdict, recommendations,
     proofs: proofs.slice(0, 3),
@@ -817,7 +838,26 @@ export default function TigerScanPageFR() {
               const _graphRv = (graphData?.clusters || graphData?.overall_status) ? detectRecidivism(graphData) : null;
               const _recDetected = result.recidivismDetected || (_graphRv?.detected ?? false);
               const _recConf = result.recidivismDetected ? result.recidivismConfidence : (_graphRv?.confidence ?? "LOW");
-              const _fv = computeFinalVerdict(result.score, result.tier, _recDetected, _recConf);
+              // BUILD 10 · P0 — un palier INCONNU n'entre pas dans le calcul du verdict
+              // final : l'escalade de récidive suppose un palier mesuré. Sans
+              // score, on ne rend pas un verdict, on dit qu'il n'y en a pas.
+              const _scoreInconnu = result.tier === "UNKNOWN";
+              if (_scoreInconnu) {
+                // BUILD 10 · P0 — l'absence se DIT. Ni vert, ni rouge.
+                return (
+                  <div style={{ border: "1px solid #6b728055", background: "#0A0A0A", borderRadius: 12, padding: 20 }}>
+                    <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", color: "#6b7280", marginBottom: 8 }}>
+                      NON ÉVALUÉ
+                    </div>
+                    <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7 }}>
+                      Aucun score de risque n&apos;a pu être mesuré pour cette adresse. Ce n&apos;est pas un résultat propre : cela signifie que les données nécessaires au verdict n&apos;étaient pas disponibles. L&apos;absence de score n&apos;est pas l&apos;absence de risque.
+                    </div>
+                  </div>
+                );
+              }
+              const _fv = _scoreInconnu
+                ? { tier: "GREEN" as const, score: 0, label: { en: "", fr: "" }, sub: { en: "", fr: "" } }
+                : computeFinalVerdict(result.score, result.tier as Exclude<TierOrUnknown, "UNKNOWN">, _recDetected, _recConf);
               const finalTier = _fv.tier;
               const finalScore = _fv.score;
               const _vc = getVerdictCopy(_fv.tier, "fr");
