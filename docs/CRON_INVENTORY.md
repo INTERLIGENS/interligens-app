@@ -37,6 +37,7 @@ inventaire corrige — pas une case à cocher.
 | `/api/cron/retail-process-queue` | 05:00 | `OsintSubmission` → cerveau A (ajouté 2026-08-14) |
 | `/api/intelligence/ingest/ofac` | 01:00 | `intel_source_observations` → floor OFAC TigerScore |
 | `/api/intelligence/ingest/scamsniffer` | 01:30 | idem |
+| `/api/intelligence/ingest/amf` | lun 08:00 | BUILD 10 / P1 — liste noire AMF, API publique sans clef. **Couverture réglementaire, PAS un signal de score** : `amf` n'émet que `DOMAIN` et `PROJECT`, et `matcher.ts` n'essaie jamais ces types sur une adresse — contribution TigerScore mesurée **nulle**. Hebdomadaire : cadence déclarée au registre (`registry.ts`), sous le seuil de fraîcheur de 14 j. |
 | `/api/cron/reaper` | 02:30 | `intel_ingestion_batches` zombies → statut terminal + `intel_audit_log` (ajouté 2026-08-21) |
 | `/api/cron/mm-batch-scan` | 09:00 | `MmScore` → badge public + mobile (ajouté 2026-08-14) |
 

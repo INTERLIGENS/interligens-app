@@ -61,6 +61,10 @@
       "schedule": "30 1 * * *"
     },
     {
+      "path": "/api/intelligence/ingest/amf",
+      "schedule": "0 8 * * 1"
+    },
+    {
       "path": "/api/cron/reaper",
       "schedule": "30 2 * * *"
     },
