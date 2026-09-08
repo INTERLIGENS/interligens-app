@@ -395,7 +395,7 @@ export function renderKolPdfLegal(kol: any): string {
       <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--ink);margin-bottom:10px">E — IMMEDIATE PROCEDURAL ASKS</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:8.5px">
         <div><strong style="display:block;margin-bottom:4px;color:var(--accent)">Preservation</strong>Exchange freeze on 4 target wallets (see §08). EVM wallet observation.</div>
-        <div><strong style="display:block;margin-bottom:4px;color:var(--accent)">Subpoena targets</strong>CEX platforms receiving D5Yq + ET3F deposits. KYC/IP/logs.</div>
+        <div><strong style="display:block;margin-bottom:4px;color:var(--accent)">Subpoena targets</strong>CEX platforms receiving deposits from the wallets listed in this report. KYC/IP/logs.</div>
         <div><strong style="display:block;margin-bottom:4px;color:var(--accent)">MLAT / referral</strong>US DOJ / FBI IC3 if US victims. RCMP if Canada-based complaint. AMF if EU victims.</div>
       </div>
     </div>
@@ -462,7 +462,7 @@ export function renderKolPdfLegal(kol: any): string {
         <div class="tl-time">${fmtDateShort(exitEv.dateFirst)}<br/><strong style="color:var(--red)">EXIT EVENT</strong></div>
         <div class="tl-content red">
           <div class="tl-label">Coordinated exit — ${fmtUsd(exitEv.amountUsd)} USDC moved in 3h</div>
-          <div class="tl-detail">Post X published 19/03/2026 23:25 UTC · Hub activated ${exitEv.deltaMinutes ? Math.floor(exitEv.deltaMinutes/60) + "h " + (exitEv.deltaMinutes%60) + "m" : ""} later · Vanity wallet 1234Co consolidates $256,969 USDC · D5Yq = TITAN EXCHANGE (CEX deposit — Solscan label confirmed) confirmed (50 unique senders)</div>
+          <div class="tl-detail">${exitEv.deltaMinutes ? "Hub activated " + Math.floor(exitEv.deltaMinutes/60) + "h " + (exitEv.deltaMinutes%60) + "m later" : ""}</div>
           ${exitEv.sampleTx ? `<div class="tl-tx">Hub TX: ${exitEv.sampleTx}</div>` : ""}
         </div>
       </div>` : ""}
@@ -528,51 +528,26 @@ export function renderKolPdfLegal(kol: any): string {
     </table>
   </div>
 
-  <!-- ── 8. INTENT INDICATORS ── -->
-  <div class="section">
-    <div class="section-header">
-      <span class="section-num">08</span>
-      <span class="section-title">Intent &amp; Coordination Indicators</span>
-    </div>
-    <table class="w-table">
-      <thead><tr><th>Indicator</th><th>Observation</th><th>Classification</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><strong>Post-to-cashout correlation</strong></td>
-          <td>Public exit statement published 19/03/2026 23:25 UTC. Hub wallet activated 08:05 UTC on 20/03/2026. Delta: 520 minutes.</td>
-          <td><span class="badge badge-confirmed">On-Chain Verified</span></td>
-        </tr>
-        <tr>
-          <td><strong>Automated disposal pattern</strong></td>
-          <td>Associated Wallet E (SAM cluster) wallet executed swaps at exact 4-hour intervals 30 Jan–5 Feb 2026. Consistent with scripted/bot-operated cashout.</td>
-          <td><span class="badge badge-confirmed">On-Chain Verified</span></td>
-        </tr>
-        <tr>
-          <td><strong>Vanity wallet pre-generation</strong></td>
-          <td>Wallet 1234Co (consolidated $256,969 USDC) requires intentional computational generation. Indicates advance planning.</td>
-          <td><span class="badge badge-confirmed">On-Chain Verified</span></td>
-        </tr>
-        <tr>
-          <td><strong>Associated-wallet pre-launch allocation pattern</strong></td>
-          <td>Insider supply distributed to 7 public-source-linked associated wallets (BK cluster: 4, SAM cluster: 3) prior to public launch. Consistent with concealed insider allocation.</td>
-          <td><span class="badge badge-source">Public-Source-Linked</span></td>
-        </tr>
-        <tr>
-          <td><strong>Mixer / relay cycling</strong></td>
-          <td>50+ relay wallets identified with in=out USDC flows same-day. Consistent with deliberate obfuscation to prevent tracing.</td>
-          <td><span class="badge badge-confirmed">On-Chain Verified</span></td>
-        </tr>
-        <tr>
-          <td><strong>Recurrence pattern</strong></td>
-          <td>${kol.rugCount}+ confirmed rug events across distinct projects. Launch-to-cashout sequence reproduced consistently.</td>
-          <td><span class="badge badge-source">Public-Source-Linked</span></td>
-        </tr>
-      </tbody>
-    </table>
-    <div style="margin-top:12px;padding:10px 14px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted);line-height:1.7;font-style:italic">
-      Note: The above indicators are consistent with coordinated disposal behavior and concealment. They are presented as analytical observations, not judicial findings. Terms such as "consistent with" and "indicators of" reflect analytical classification, not legal conclusions.
-    </div>
-  </div>
+  <!-- ── BUILD 10 / P0 CROSS-CASE — CE QUI A ÉTÉ RETIRÉ, ET POURQUOI ──
+       Quatre sections ont été supprimées de ce gabarit : « Intent &
+       Coordination Indicators », « Exchange Freeze Annex », « Sample Victim
+       Loss Pathways » et « Network Analysis — Connected Actors » et sa suite.
+
+       Elles ne portaient AUCUNE interpolation utile : leur contenu était écrit
+       en dur — noms, adresses, dates et montants du dossier BOTIFY — et se
+       rendait à l'identique dans le document de N'IMPORTE QUEL profil.
+
+       Mesuré le 2026-09-08 : le PDF lawyer de « ravedao » nommait trois
+       personnes sans rapport avec lui, et portait un montant d'encaissement
+       dont la publication avait été RETIRÉE le 16 août.
+
+       Ce commentaire ne cite AUCUN des chiffres retirés, et c'est délibéré :
+       expliquer un retrait en montrant ce qu'on retire annule le retrait.
+
+       Aucune gate de publication ne pouvait les atteindre : elles ne venaient
+       d'aucun champ. NO DATA => NO STORY. Rien n'est substitué à leur place :
+       une section sans donnée gouvernée n'est pas rendue.
+       ── -->
 
   <!-- ── 9. EXCHANGE FREEZE PACKAGE ── -->
   <div class="section">
@@ -645,7 +620,7 @@ export function renderKolPdfLegal(kol: any): string {
         <tr>
           <td><span class="badge badge-provisional">ANALYTICAL INFERENCE</span></td>
           <td style="font-size:8.5px;color:var(--ink-muted)">Derived from pattern analysis. Not independently confirmed. Presented as indicator, not fact.</td>
-          <td style="font-size:8.5px">CEX deposit identification · Mixer pattern · Total loss estimate ($4.5M)</td>
+          <td style="font-size:8.5px">CEX deposit identification · Mixer pattern</td>
         </tr>
       </tbody>
     </table>
@@ -660,7 +635,6 @@ export function renderKolPdfLegal(kol: any): string {
     <table class="w-table">
       <thead><tr><th>Exhibit ID</th><th>Type</th><th>Description</th><th>Source</th><th>Classification</th><th>Confidence</th><th>Page</th></tr></thead>
       <tbody>
-        <tr><td class="mono">EX-01</td><td>Social Post</td><td>X post @kokoski — exit statement 19/03/2026 23:25 UTC</td><td>X/Twitter public</td><td>Source-attributed</td><td><span class="badge badge-source">Confirmed</span></td><td style="font-size:8px">p.2</td></tr>
         ${cashouts.map((e: any, i: number) => `
         <tr>
           <td class="mono">EX-0${i+2}</td>
@@ -671,162 +645,8 @@ export function renderKolPdfLegal(kol: any): string {
           <td><span class="badge badge-confirmed">Confirmed</span></td>
           <td style="font-size:8px">p.4–5</td>
         </tr>`).join("")}
-        <tr><td class="mono">EX-${cashouts.length + 2}</td><td>Exit Event</td><td>HeaiDUtMQ hub — $210K USDC coordinated cashout 20/03/2026</td><td>Helius API · Solscan</td><td>On-chain verified</td><td><span class="badge badge-confirmed">Confirmed</span></td><td style="font-size:8px">p.4-5</td></tr>
-        ${evmEv ? `<tr><td class="mono">EX-${cashouts.length + 3}</td><td>EVM Portfolio</td><td>EVM wallet $401K — Arkham Intelligence entity confirmed</td><td>Arkham Intelligence</td><td>Platform-confirmed</td><td><span class="badge badge-source">Strong linkage</span></td><td style="font-size:8px">p.3,6</td></tr>` : ""}
       </tbody>
     </table>
-  </div>
-
-  <!-- ── EXCHANGE FREEZE ANNEX ── -->
-  <div class="section">
-    <div class="section-header">
-      <span class="section-num">13</span>
-      <span class="section-title">Exchange Freeze Annex — Machine-Readable</span>
-    </div>
-    <table class="w-table">
-      <thead><tr><th>Wallet</th><th>Chain</th><th>Asset</th><th>Key TX Hash</th><th>UTC</th><th>Amount</th><th>Urgency</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><span class="mono">HeaiDUtMQ...hqS4R</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">Hub wallet</span></td>
-          <td>SOL</td><td>USDC</td>
-          <td><span class="mono">5wctB93Y...MNs</span></td>
-          <td style="font-size:8px">2026-03-20 08:05 UTC</td>
-          <td class="amount-cell">$210K</td>
-          <td><span class="badge badge-red">CRITICAL</span></td>
-        </tr>
-        <tr>
-          <td><span class="mono">1234CoNG...RsHa</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">Vanity consolidation</span></td>
-          <td>SOL</td><td>USDC</td>
-          <td><span class="mono">Multiple</span></td>
-          <td style="font-size:8px">2026-03-20 08:05–11:32 UTC</td>
-          <td class="amount-cell">$257K</td>
-          <td><span class="badge badge-red">CRITICAL</span></td>
-        </tr>
-        <tr>
-          <td><span class="mono">D5YqVMo...9cM</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">TITAN EXCHANGE (CEX deposit — Solscan label confirmed) — 50 senders</span></td>
-          <td>SOL</td><td>USDC</td>
-          <td><span class="mono">Multiple</span></td>
-          <td style="font-size:8px">2026-03-20</td>
-          <td class="amount-cell">$64K</td>
-          <td><span class="badge badge-red">HIGH</span></td>
-        </tr>
-        <tr>
-          <td><span class="mono">ET3F3q4...xSn</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">CEX deposit — 72 senders, 1 dest</span></td>
-          <td>SOL</td><td>USDC</td>
-          <td><span class="mono">Multiple</span></td>
-          <td style="font-size:8px">2026-03-07 to 2026-03-20</td>
-          <td class="amount-cell">$97K</td>
-          <td><span class="badge badge-red">HIGH</span></td>
-        </tr>
-        ${evmEv ? `<tr>
-          <td><span class="mono">0x32B6...ecF</span><br/><span style="font-size:7.5px;color:var(--ink-ghost)">EVM personal wallet</span></td>
-          <td>ETH/EVM</td><td>MULTI</td>
-          <td><span class="mono">Arkham confirmed</span></td>
-          <td style="font-size:8px">Active since Jan 2023</td>
-          <td class="amount-cell">$401K</td>
-          <td><span class="badge badge-source">HIGH</span></td>
-        </tr>` : ""}
-      
-            <tr class="row-high">
-              <td>3xcErQV4...EJxf<br/><small>BINANCE deposit</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>Multiple</td>
-              <td>2025-01-13 to 2025-01-20</td>
-              <td>$36,750</td>
-              <td>HIGH</td>
-            </tr>
-            <tr class="row-high">
-              <td>3g1hYfna...5xQx<br/><small>KuCoin 2 relay</small></td>
-              <td>SOL</td>
-              <td>SOL</td>
-              <td>1</td>
-              <td>2025-01-20</td>
-              <td>$63,000</td>
-              <td>HIGH</td>
-            </tr>
-            </tbody>
-    </table>
-    <div style="margin-top:10px;padding:8px 12px;background:var(--bg-warm);font-size:8.5px;color:var(--ink-muted)">
-      Contact for legal process: admin@interligens.com
-Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQV4) · KUCOIN 2 (3g1hYfna) · INTERLIGENS Inc., Delaware C-Corp · All preservation requests should reference Report ID: ${rid}
-    </div>
-  </div>
-
-
-  <!-- ── VICTIM LOSS PATHWAYS ── -->
-  <div class="section">
-    <div class="section-header">
-      <span class="section-num">14</span>
-      <span class="section-title">Sample Victim Loss Pathways</span>
-    </div>
-    <p style="font-size:9px;color:var(--ink-muted);margin-bottom:14px;font-style:italic">
-      The following wallet pathways are illustrative samples of retail purchaser activity documented on-chain during the active promotion period. 
-      They connect purchase transactions to the token's known insider-supply structure. Loss estimates are based on SOL paid vs. current token value ($0.00 post-collapse). 
-      These are presented as observed blockchain facts, not verified victim identities.
-    </p>
-    <table class="w-table">
-      <thead>
-        <tr>
-          <th>Victim Wallet</th>
-          <th>Token</th>
-          <th>Purchase Date</th>
-          <th>SOL Paid</th>
-          <th>Tokens Received</th>
-          <th>Loss Basis</th>
-          <th>Destination Cluster</th>
-          <th>Evidence</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="mono">ARu4n5...ZAravu7C</span></td>
-          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
-          <td style="font-size:8px">2026-03-20</td>
-          <td class="amount-cell">10.37 SOL<br/><span style="font-size:8px;color:var(--ink-ghost">~$1,900</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">10,071,460 BOTIFY</td>
-          <td><span class="badge badge-red">TOTAL LOSS</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
-          <td><span class="mono" style="font-size:7px">xJD2qAbP...Y</span></td>
-        </tr>
-        <tr>
-          <td><span class="mono">FE52Qw...HfouGEE6</span></td>
-          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
-          <td style="font-size:8px">2026-03-19</td>
-          <td class="amount-cell">0.36 SOL<br/><span style="font-size:8px;color:var(--ink-ghost)">~$66</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">323,203 BOTIFY</td>
-          <td><span class="badge badge-red">TOTAL LOSS</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
-          <td><span class="mono" style="font-size:7px">3VVRAig...G</span></td>
-        </tr>
-        <tr>
-          <td><span class="mono">8K1wts...RjL7uRwj</span></td>
-          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
-          <td style="font-size:8px">2026-03-18</td>
-          <td class="amount-cell">4.00 SOL<br/><span style="font-size:8px;color:var(--ink-ghost)">~$730</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">3,619,315 BOTIFY</td>
-          <td><span class="badge badge-red">TOTAL LOSS</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
-          <td><span class="mono" style="font-size:7px">2UjLjq2...1</span></td>
-        </tr>
-        <tr>
-          <td><span class="mono">C1g9H6...1vuFcbtJ</span></td>
-          <td style="color:var(--accent);font-weight:500">BOTIFY</td>
-          <td style="font-size:8px">2026-03-18</td>
-          <td class="amount-cell">0.65 SOL<br/><span style="font-size:8px;color:var(--ink-ghost)">~$119</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">595,476 BOTIFY</td>
-          <td><span class="badge badge-red">TOTAL LOSS</span></td>
-          <td style="font-size:8px;color:var(--ink-muted)">Insider supply cluster</td>
-          <td><span class="mono" style="font-size:7px">5k3og76...b</span></td>
-        </tr>
-      </tbody>
-    </table>
-    <div style="margin-top:12px;padding:10px 14px;background:var(--bg-warm);font-size:8px;color:var(--ink-muted);line-height:1.7">
-      <strong style="color:var(--ink)">Loss methodology:</strong> SOL paid × SOL/USD price at transaction time. 
-      Token current value assessed at $0.00 post-collapse. Loss = 100% of purchase value. 
-      Sample represents 4 of an estimated ${kol.rugCount ?? 12}+ affected launches. 
-      Full victim intake available via INTERLIGENS victim reporting system.
-    </div>
   </div>
 
   <!-- ── LEGAL NOTICE ── -->
@@ -852,242 +672,6 @@ Exchange targets: TITAN EXCHANGE (D5Yq) · UNKNOWN CEX (ET3F) · BINANCE (3xcErQ
 </div>
 
 
-      <!-- ══════════════════════════════════════════════════════
-           §15 — Network Analysis — Connected Actors
-           ══════════════════════════════════════════════════════ -->
-      <div class="page-break"></div>
-      <section class="section">
-        <h2 class="section-title">15 Network Analysis — Connected Actors</h2>
-
-        <p class="section-intro">
-          The following individuals have been identified as part of a documented network
-          of coordinated KOL activity overlapping with the BK (Brandon Kokoski) investigation.
-          Connections are established via public source attribution, on-chain correlation,
-          and confirmed meeting records.
-        </p>
-
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Handle</th>
-              <th>Real Identity</th>
-              <th>Role / Link</th>
-              <th>Confidence</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="row-critical">
-              <td>@GordonGekko</td>
-              <td>Unknown — under investigation</td>
-              <td>Co-KOL. Meeting confirmed with BK + @planted — 30/04/2025. Coordinated shill activity documented across BOTIFY / GHOST promotion period.</td>
-              <td>PUBLIC-SOURCE-LINKED</td>
-              <td>ACTIVE — WATCHLIST</td>
-            </tr>
-            <tr class="row-critical">
-              <td>@planted</td>
-              <td>Djordje Stupar</td>
-              <td>Identity confirmed via public source. Meeting confirmed: BK + @GordonGekko — 30/04/2025. Coordinated promotion pattern matches BK/SAM exit timeline.</td>
-              <td>CONFIRMED</td>
-              <td>ACTIVE — WATCHLIST</td>
-            </tr>
-            <tr class="row-high">
-              <td>@DonWedge</td>
-              <td>Unknown — under investigation</td>
-              <td>Co-promotion activity documented. Network overlap with BK cluster. Cashout pattern under review.</td>
-              <td>PUBLIC-SOURCE-LINKED</td>
-              <td>ACTIVE — WATCHLIST</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3 class="subsection-title">Meeting Record — 30/04/2025</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">CONFIRMED MEETING</div>
-          <div class="indicator-content">
-            <strong>Participants:</strong> @bkokoski (Brandon Kokoski) · @GordonGekko · @planted (Djordje Stupar)<br/>
-            <strong>Date:</strong> 30 April 2025<br/>
-            <strong>Source:</strong> Public source — confirmed via cross-referenced social media records<br/>
-            <strong>Significance:</strong> Establishes in-person coordination between three actors across whose
-            accounts coordinated promotion of BOTIFY and GHOST was documented. Meeting occurred
-            within the active promotion and cashout period (Nov 2025 – Mar 2026).
-          </div>
-        </div>
-
-        <h3 class="subsection-title">TITAN EXCHANGE — CEX Role in Network</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">CEX IDENTIFIED</div>
-          <div class="indicator-content">
-            <strong>Exchange:</strong> TITAN EXCHANGE<br/>
-            <strong>Deposit wallet:</strong> D5YqVMoSxnqeZAKAUUE1Dm3bmjtdxQ5DCF356ozqN9cM<br/>
-            <strong>Identification:</strong> Solscan entity label — confirmed<br/>
-            <strong>Senders:</strong> 50 unique wallets · <strong>Amount received:</strong> $64K USDC<br/>
-            <strong>Role in cashout:</strong> Terminal off-ramp for BK cluster proceeds routed through
-            HeaiDUtMQ hub → 1234Co vanity wallet → D5Yq (TITAN EXCHANGE) deposit.<br/>
-            <strong>Recommended action:</strong> Preservation request to TITAN EXCHANGE compliance team.
-            Reference Report ID <code>INTL-MN0LVDFO-KOL</code>.
-          </div>
-        </div>
-
-        <p class="legal-note">
-          Network connections above are analytical observations derived from public sources and
-          on-chain data. They do not constitute accusations of criminal conduct. All subjects
-          are presumed innocent. This section is intended to support investigative triage only.
-        </p>
-      
-        <h3 class="subsection-title">GordonGekko — Wallets SOL Confirmés</h3>
-        <table class="data-table">
-          <thead>
-            <tr><th>Label</th><th>Adresse SOL</th><th>Source</th><th>Confiance</th></tr>
-          </thead>
-          <tbody>
-            <tr class="row-high">
-              <td>Gordon 1</td>
-              <td><code>Eu8i6rpMPXyg5NaEY23qEbFeMhrs953FdqxYxweXm24J</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-            <tr class="row-high">
-              <td>Gordon 2</td>
-              <td><code>4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-            <tr class="row-high">
-              <td>Gordon 3</td>
-              <td><code>3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3 class="subsection-title">Wallet Partagé — @lynk0x / @regrets10x</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">SHARED WALLET — COORDINATION INDICATOR</div>
-          <div class="indicator-content">
-            <strong>Wallet BSC :</strong> <code>0x4950afc2a8e5834a1858a94f98b68cd00f96fe12</code><br/>
-            <strong>Attribué à :</strong> @lynk0x ET @regrets10x (TIER 1 KOL)<br/>
-            <strong>Source :</strong> @dethective Telegram — The Wallet Cave — 22/03/2026<br/>
-            <strong>Significance :</strong> Un wallet unique contrôlant deux identités KOL distinctes constitue
-            un indicateur fort de coordination ou de persona multiple. Cross-référence gmgn.ai confirmée.
-            Les deux comptes ont promu des tokens communs avec timing coordonné.<br/>
-            <strong>Classification :</strong> SOURCE-ATTRIBUTED — coordination analytique inférée
-          </div>
-        </div>
-
-        <h3 class="subsection-title">Figures Publiques — Adresses EVM (Contexte)</h3>
-        <table class="data-table">
-          <thead>
-            <tr><th>Nom</th><th>Adresse EVM</th><th>Source</th><th>Pertinence</th></tr>
-          </thead>
-          <tbody>
-            <tr class="row-medium">
-              <td>James Wynn</td>
-              <td><code>0x5078c2fbea2b2ad61bc840bc023e35fce56bedb6</code></td>
-              <td>@dethective — cross-ref referral links</td>
-              <td>Overlap promotion BOTIFY / US memecoin ecosystem</td>
-            </tr>
-            <tr class="row-medium">
-              <td>Andrew Tate</td>
-              <td><code>0xb78d97390a96a17fd2b58fedbeb3dd876c8f660a</code></td>
-              <td>@dethective — cross-ref referral links</td>
-              <td>Contexte — réseau KOL à haute visibilité</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="legal-note">
-          Les adresses EVM des figures publiques sont présentées comme contexte analytique uniquement.
-          Elles ne constituent pas une accusation de participation à l'activité sous enquête.
-        </p>
-
-        <h3 class="subsection-title">GordonGekko — Wallets SOL Confirmés</h3>
-        <table class="data-table">
-          <thead>
-            <tr><th>Label</th><th>Adresse SOL</th><th>Source</th><th>Confiance</th></tr>
-          </thead>
-          <tbody>
-            <tr class="row-high">
-              <td>Gordon 1</td>
-              <td><code>Eu8i6rpMPXyg5NaEY23qEbFeMhrs953FdqxYxweXm24J</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-            <tr class="row-high">
-              <td>Gordon 2</td>
-              <td><code>4yscBpfbcB1wmviW4854CYqVz1KgjKoKRpg4uf5XSLe3</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-            <tr class="row-high">
-              <td>Gordon 3</td>
-              <td><code>3X9RErem7uNhqdYbJrM5bTvtcsqbbZB15tkXxqcnaqA6</code></td>
-              <td>@dethective — The Wallet Cave</td>
-              <td>SOURCE-ATTRIBUTED</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3 class="subsection-title">Wallet Partagé — @lynk0x / @regrets10x</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">SHARED WALLET — COORDINATION INDICATOR</div>
-          <div class="indicator-content">
-            <strong>Wallet BSC :</strong> <code>0x4950afc2a8e5834a1858a94f98b68cd00f96fe12</code><br/>
-            <strong>Attribué à :</strong> @lynk0x ET @regrets10x (TIER 1 KOL)<br/>
-            <strong>Source :</strong> @dethective Telegram — The Wallet Cave — 22/03/2026<br/>
-            <strong>Significance :</strong> Un wallet unique contrôlant deux identités KOL distinctes constitue
-            un indicateur fort de coordination ou de persona multiple. Cross-référence gmgn.ai confirmée.
-            Les deux comptes ont promu des tokens communs avec timing coordonné.<br/>
-            <strong>Classification :</strong> SOURCE-ATTRIBUTED — coordination analytique inférée
-          </div>
-        </div>
-
-        <h3 class="subsection-title">Figures Publiques — Adresses EVM (Contexte)</h3>
-        <table class="data-table">
-          <thead>
-            <tr><th>Nom</th><th>Adresse EVM</th><th>Source</th><th>Pertinence</th></tr>
-          </thead>
-          <tbody>
-            <tr class="row-medium">
-              <td>James Wynn</td>
-              <td><code>0x5078c2fbea2b2ad61bc840bc023e35fce56bedb6</code></td>
-              <td>@dethective — cross-ref referral links</td>
-              <td>Overlap promotion BOTIFY / US memecoin ecosystem</td>
-            </tr>
-            <tr class="row-medium">
-              <td>Andrew Tate</td>
-              <td><code>0xb78d97390a96a17fd2b58fedbeb3dd876c8f660a</code></td>
-              <td>@dethective — cross-ref referral links</td>
-              <td>Contexte — réseau KOL à haute visibilité</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="legal-note">
-          Les adresses EVM des figures publiques sont présentées comme contexte analytique uniquement.
-          Elles ne constituent pas une accusation de participation à l'activité sous enquête.
-        </p>
-
-        <h3 class="subsection-title">GordonGekko — CEX Cashout Confirmé</h3>
-        <div class="indicator-block">
-          <div class="indicator-label">CEX DEPOSITS CONFIRMED — PRESERVATION REQUIRED</div>
-          <div class="indicator-content">
-            <strong>Chaîne de cashout documentée (Jan 2025) :</strong><br/><br/>
-            <strong>① BINANCE — 245 SOL (≈$36,750)</strong><br/>
-            Wallet dépôt: <code>3xcErQV4y3dEbSZbmyv3gHSFz7JCHufo9weuw71fEJxf</code><br/>
-            Tags Solscan: <em>#Binance Exchange #Deposit Address</em> — confirmé<br/>
-            Source: Gordon_1 (Eu8i6rp...) en 5 transactions — Jan 2025<br/>
-            Action: Subpoena / MLAT — KYC identification du titulaire<br/><br/>
-            <strong>② KUCOIN 2 — 420 SOL (≈$63,000)</strong><br/>
-            Wallet relay: <code>3g1hYfna2A1nj7WZctKeYYb5eNEQHobvFbwhRrnh5xQx</code><br/>
-            Funded by: Gordon_1 confirmé Solscan — TX sortante vers KuCoin 2 documentée<br/>
-            Wallet actuellement vide (SOL balance: 0) — fonds dissipés<br/>
-            Action: Preservation request KuCoin compliance<br/><br/>
-            <strong>③ Gordon_1 → Gordon_2 — 55 SOL direct</strong><br/>
-            TX: <code>3sK4ziqxiyvnf7JLKR54...</code> — 13/01/2025<br/>
-            Établit contrôle centralisé des wallets Gordon 1 et 2 par le même acteur.<br/>
-          </div>
-        </div>
-</section>
 
       </body>
 </html>`
