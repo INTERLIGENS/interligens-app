@@ -1327,3 +1327,126 @@ restent gelées.
 **Ce constat est un blanc silencieux au sens strict** : un verdict peut intégrer
 une source vieille de cinq mois sans que rien, nulle part, ne le dise. Il rejoint
 `on_chain.distribution` (S5) dans la liste — **elle passe donc de 1 à 2**.
+
+## 9.4 — Veille LLM : le drainage progresse **exactement** d'un lot par jour, et 86 items sont hors file
+
+Table : `FounderIntelItem`. Paramètres du cron `intel-summarize` (07:30
+quotidien) : **`BATCH = 10`**, **`MAX_ATTEMPTS = 5`**.
+
+### Comparaison 2026-09-07 → 2026-09-08 07:13 UTC
+
+| mesure | watchdog 07/09 | ma mesure 08/09 | delta |
+|---|---|---|---|
+| en attente | 6 641 | **6 600** | **−41** |
+| résumés | 690 | **700** | **+10** |
+| en erreur | 161 | **161** | **0** |
+| abandonnés | 86 | **86** | **0** |
+| total | — | 7 461 | — |
+
+**Le drainage progresse — de exactement 10 items, soit un `BATCH` complet.** Un
+run a eu lieu, il a réussi ses dix résumés. Le modèle répond, comme annoncé.
+
+Mais **les 161 erreurs et les 86 abandonnés n'ont pas bougé d'une unité.**
+
+### Pourquoi le résidu ne se draine pas comme annoncé
+
+Le résidu était estimé à *« ~16 runs de cron »*, soit 160 items ÷ 10 par run.
+Cette estimation suppose que les 160 sont éligibles. **Ils ne le sont pas.**
+
+Les 161 items en erreur se répartissent en **deux populations distinctes** :
+
+| tentatives | items | dont `MODEL_NOT_FOUND` | éligibles au prochain run ? |
+|---|---|---|---|
+| **1** | **75** | 74 | **oui** — `1 < 5` |
+| **5** | **86** | **86** | **NON** — `5 < 5` est faux |
+
+La requête de sélection du cron :
+
+```ts
+where: { summaryDone: false, summaryAttempts: { lt: MAX_ATTEMPTS } }   // lt: 5
+```
+
+**Les 86 items à 5 tentatives sont hors de la file.** Ils ne seront jamais
+resélectionnés par le cron, quelle que soit la santé du modèle. Le résidu réel
+est de **75 items**, pas 160 — et les 86 autres ne sont pas un résidu, ce sont
+des sorties de file.
+
+C'est aussi la définition exacte des « 86 abandonnés » : **abandonné = plafond de
+tentatives atteint**. Les deux chiffres du watchdog — 86 abandonnés et 160
+`MODEL_NOT_FOUND` — se recouvrent : **les 86 abandonnés sont tous des
+`MODEL_NOT_FOUND`**, capturés entre le 2026-06-16 et le 2026-08-23.
+
+### Que deviennent les 86 : récupérables, mais rien ne les récupère
+
+**Ils ne sont pas définitivement perdus.** Une route de reprise existe :
+
+```ts
+// src/app/api/admin/intel/retry-failed/route.ts
+updateMany({
+  where: { summaryDone: false, summaryAttempts: { gte: 3 } },
+  data:  { summaryAttempts: 0, lastSummaryError: null },
+})
+```
+
+Le filtre `gte: 3` **couvre bien les 86** (à 5 tentatives). Un appel remettrait
+leur compteur à zéro et les rendrait éligibles.
+
+Trois réserves, toutes mesurées :
+
+1. **Rien ne déclenche cette route.** Elle n'apparaît dans aucun des 17 crons de
+   `vercel.json`. Elle exige une action administrative explicite.
+2. **Rien ne signale leur état.** Il n'existe **aucune colonne de statut** disant
+   « abandonné » : la population ne s'obtient qu'en calculant
+   `summaryDone = false AND summaryAttempts >= MAX_ATTEMPTS`. Le watchdog fait ce
+   calcul ; le produit ne l'expose pas.
+3. **Le compteur ne distingue pas les causes.** Un item sorti de file pour cause
+   de modèle mort et un item sorti pour un contenu réellement intraitable portent
+   le même `summaryAttempts = 5`.
+
+**Réponse à la question posée** : ni « repris un jour » ni « définitivement
+perdus ». Ils sont **récupérables par une action que personne n'a planifiée, et
+invisibles tant que personne ne les calcule.**
+
+### Le rythme réel de drainage
+
+| mesure | valeur |
+|---|---|
+| éligibles au prochain run | **6 675** (dont 75 en erreur) |
+| débit | **10 items / jour** (`BATCH = 10`, cron quotidien) |
+| durée pour vider la file éligible | **~667 jours** |
+
+Le résidu de 75 items en erreur se draine, lui, en **8 runs** — à condition que
+le modèle réponde, ce qu'il fait. Mais il se draine **en concurrence** avec les
+6 600 items jamais tentés, dans le même lot de 10, trié par
+`starRating desc, publishedAt desc`. Rien ne priorise les items en erreur.
+
+### Aucune surface publique ne consomme cette veille
+
+Consommateurs de `FounderIntelItem` :
+
+| route | gardes d'authentification |
+|---|---|
+| `api/admin/intel/route.ts` | **2** |
+| `api/admin/intel/[id]/route.ts` | **2** |
+| `api/admin/intel/retry-failed/route.ts` | **2** |
+| `api/admin/intel/open/[id]/route.ts` | **2** |
+| `api/cron/intel-summarize/route.ts` | 0 (cron, `CRON_SECRET`) |
+
+**Toutes sont sous `/api/admin/` et gardées.** La question « que montre une
+surface publique pour un item en erreur » n'a donc pas d'objet : **aucune surface
+publique ne le montre**, parce qu'aucune ne lit cette table.
+
+### Classement
+
+| objet | catégorie | justification |
+|---|---|---|
+| le drainage lui-même | **aucune** — il fonctionne | +10/jour, exactement un `BATCH` |
+| les 86 hors file | **`PIPE_NOT_CONNECTED`** | la voie de reprise existe et les couvre ; **aucun cron ne l'emprunte** |
+| l'absence de statut « abandonné » | **`DATA_ABSENT`** | l'état n'est pas stocké, seulement calculable |
+| la non-priorisation des items en erreur | **`INTENTIONALLY_NOT_SHOWN`** | le tri est `starRating`/`publishedAt`, choix explicite du code |
+| exposition publique | **aucune** | table strictement admin |
+
+**Ce n'est pas un blanc silencieux au sens produit** — rien de faux n'est servi à
+un lecteur, puisque rien n'est servi du tout. C'est un **angle mort
+opérationnel** : 86 items sont sortis de la file, une voie de retour existe, et
+rien ne relie les deux.
