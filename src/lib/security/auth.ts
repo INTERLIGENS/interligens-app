@@ -32,10 +32,29 @@ export function extractBearerToken(req: Request): string | null {
   const xToken = req.headers.get("x-admin-token")?.trim();
   if (xToken && xToken.length > 0) return xToken;
 
-  // 3. Query param ?token= (fallback)
-  const url = new URL(req.url);
-  const queryToken = url.searchParams.get("token")?.trim();
-  if (queryToken && queryToken.length > 0) return queryToken;
+  // ─── LA VOIE `?token=` A ÉTÉ RETIRÉE ───────────────────────────────────
+  //
+  // ██  Un secret ne voyage pas dans une URL.                            ██
+  //
+  // Elle existait comme « fallback ». Mesuré en production le 2026-09-08 :
+  // NEUF routes authentifiaient réellement par elle — pdf/kol, pdf/casefile,
+  // casefile, casefile/pdf, report/casefile, report/v2, osint/insights,
+  // osint/signals, osint/watchlist. Une seule URL rendait un dossier légal
+  // complet, pour n'importe quel handle.
+  //
+  // Une URL n'est pas un canal privé : elle est écrite dans l'historique du
+  // navigateur, envoyée en en-tête `Referer` à chaque ressource tierce,
+  // journalisée par le serveur et par le CDN, et elle se colle dans un message
+  // sans que personne ne voie qu'elle porte un secret. Un en-tête ne fait
+  // aucune de ces choses, et cette différence ne dépend pas de la prudence de
+  // l'appelant.
+  //
+  // Les deux voies conservées ne changent pas : `Authorization: Bearer` et
+  // `x-admin-token`. Aucun mécanisme n'est ajouté, aucun contrat réécrit.
+  //
+  // Un appelant qui utilisait la query reçoit désormais 401 : l'échec est franc
+  // et se corrige en déplaçant le jeton dans un en-tête. Le silence aurait été
+  // pire — un 200 sur un secret exposé.
 
   return null;
 }
