@@ -181,21 +181,10 @@ describe("le PDF servi ne republie plus le montant par la phrase", () => {
     expect(await servir("lawyer")).not.toContain("987,654");
   });
 
-  it("CONSTAT ÉPINGLÉ — le gabarit légal porte des montants CODÉS EN DUR", async () => {
-    // Ce ne sont PAS des données : `templateKolLegal.ts` contient 14 valeurs
-    // monétaires littérales, dont $210K — le totalDocumented retiré de
-    // bkokoski — et nomme « 1234Co » dans sa prose. Elles s'affichent quel que
-    // soit le profil demandé, et aucune gate ne peut les atteindre : elles ne
-    // viennent d'aucun champ.
-    //
-    // Hors périmètre de ce correctif (fichier gelé, non exempté). Ce test
-    // n'autorise rien : il empêche que le constat se perde.
+  it("le gabarit légal ne porte PLUS aucun littéral monétaire — voir la suite dédiée", async () => {
     const fs = await import("node:fs");
     const src = fs.readFileSync("src/lib/pdf/kol/templateKolLegal.ts", "utf8");
-    const litteraux = [...new Set((src.match(/\$[0-9][0-9,.]*[KMB]?/g) ?? []).filter((v) => !v.includes("${")))];
-    expect(litteraux.length).toBeGreaterThan(0);
-    expect(src).toContain("$210K");
-    expect(src).toContain("1234Co");
+    expect(src.match(/\$[0-9][0-9,.]*[KMB]?/g)?.filter((v) => !v.includes("${")) ?? []).toEqual([]);
   });
 
   it("MUTANT DE SUR-CORRECTION · profil PUBLIÉ → les descriptions restent", async () => {
