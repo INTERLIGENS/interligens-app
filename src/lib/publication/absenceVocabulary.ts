@@ -121,6 +121,14 @@ export const MEASUREMENT_STATES = [
   "FAILURE",
   /** Mesuré, mais hors politique de fraîcheur. À n'affirmer QUE si démontrable. */
   "STALE",
+  /**
+   * Le contrat de la requête ne DEMANDE pas cette mesure.
+   *
+   * Distinct de NOT_APPLICABLE : la propriété pourrait exister, mais ce
+   * chemin-là ne la sollicite pas. L'écraser en UNKNOWN ferait passer une
+   * limite de contrat, parfaitement connue, pour une ignorance.
+   */
+  "NOT_REQUESTED_BY_CONTRACT",
   /** Ne peut pas être classé plus précisément. Le dernier recours, pas le premier. */
   "UNKNOWN",
   /** La propriété ne s'applique pas à ce sujet. Rien ne manque. */

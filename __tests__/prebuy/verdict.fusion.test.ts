@@ -60,7 +60,7 @@ function reflexResult(over: {
     confidence: over.confidence ?? "MEDIUM",
     confidenceScore: over.confidenceScore ?? 0.5,
     confidenceState: "MEASURED" as const,
-    coverage: { total: 0, measured: 0, missing: [] },
+    coverage: { total: 0, measured: 0, expected: 0, expectedMeasured: 0, missing: [], notExpected: [] },
     degraded: false,
     conflicts: [],
   };

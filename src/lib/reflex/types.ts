@@ -113,6 +113,14 @@ export interface ReflexEngineOutput<T = unknown> {
   signals: ReflexSignal[];
   raw?: T;
   error?: string;
+  /**
+   * Pourquoi ce moteur ne s'est pas prononcé, quand la cause est CONNUE.
+   *
+   * Absent = cause inconnue. Présent = le contrat d'entrée l'explique, et
+   * l'absence n'est alors pas un manque. Voir `engineContract.ts`, qui en est
+   * l'autorité unique.
+   */
+  reason?: MeasurementState;
 }
 
 /**
@@ -136,13 +144,31 @@ export interface ReflexEngineCoverage {
  * Une couverture partielle ne change pas le verdict — le ruling est explicite :
  * 4/8 n'a pas à conclure autrement que 8/8, il doit EXPOSER autre chose.
  */
+/**
+ * TROIS NOTIONS, et elles étaient confondues en une.
+ *
+ * `total` seul faisait passer « quatre moteurs ne s'appliquent pas ici » pour
+ * « quatre moteurs manquent ». La différence n'est pas cosmétique : c'est elle
+ * qui décide si `degraded` veut encore dire quelque chose.
+ */
 export interface ReflexCoverage {
-  /** Moteurs sollicités. */
+  /** 1. L'INVENTAIRE GLOBAL — combien de moteurs existent dans le produit. */
   total: number;
-  /** Moteurs ayant réellement tourné. */
+  /** Moteurs ayant réellement tourné, sur l'inventaire global. */
   measured: number;
-  /** Ceux qui n'ont pas tourné, chacun avec son état et sa cause. */
+  /** 2. LES ATTENDUS — ce que le contrat demande POUR CETTE requête. */
+  expected: number;
+  /** 3. LES ATTENDUS EFFECTIVEMENT MESURÉS. */
+  expectedMeasured: number;
+  /** Les attendus qui MANQUENT. Eux seuls dégradent. */
   missing: ReflexEngineCoverage[];
+  /**
+   * Ceux que le contrat ne demandait pas, avec leur cause exacte.
+   *
+   * Ils ne sont ni cachés ni comptés comme des manques : un lecteur doit
+   * pouvoir voir qu'ils n'ont pas répondu ET pourquoi c'est normal.
+   */
+  notExpected: ReflexEngineCoverage[];
 }
 
 export interface ReflexVerdictResult {
@@ -162,7 +188,13 @@ export interface ReflexVerdictResult {
   confidenceState: MeasurementState;
   /** Ce qui a été mesuré, et ce qui ne l'a pas été. */
   coverage: ReflexCoverage;
-  /** `true` dès qu'au moins un moteur n'a pas pu se prononcer. */
+  /**
+   * `true` UNIQUEMENT quand une capacité ATTENDUE échoue ou est indisponible.
+   *
+   * Avant, il valait `true` dès qu'un moteur ne répondait pas — donc sur
+   * TOUTE entrée nue, en permanence. Un signal d'alerte qui est allumé en
+   * régime normal n'alerte plus : il devient le fond.
+   */
   degraded: boolean;
   /**
    * Ce qui a été observé et n'apparaît pas dans l'explication du verdict.

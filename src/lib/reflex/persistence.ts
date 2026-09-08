@@ -16,6 +16,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decide } from "./verdict";
 import { computeGlobalConfidence } from "./confidence";
+import { contractAbsenceReason } from "./engineContract";
 import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
 import type {
   ReflexAnalysisResult,
@@ -94,16 +95,42 @@ function rowToResult(row: {
   // UNKNOWN et non FAILURE/NOT_MEASURED. C'est exact — après coup, on ne PEUT
   // plus distinguer les deux — et UNKNOWN est précisément le mot pour ça.
   const enginesCoverage = enginesArr as Array<{ engine?: string; ran?: boolean }>;
-  const missing = enginesCoverage
+
+  // ─── BUILD 11.1 — LA CAUSE EST RECALCULÉE, PAS DEVINÉE ────────────────
+  //
+  // `reason` n'est pas persisté : le manifeste est HACHÉ, et y ajouter un
+  // champ déplacerait `signalsHash`, donc la déduplication et le contrat de
+  // calibration. Rendre `UNKNOWN` pour tout le monde était donc commode — et
+  // c'était réeffondrer l'axe de mesure sur le chemin de relecture, exactement
+  // ce que la production m'a montré une fois déjà sur `confidenceState`.
+  //
+  // La règle étant PURE et fonction de `(moteur, type d'entrée)`, elle se
+  // rejoue exactement : `inputType` est persisté sur la ligne. Même fonction
+  // que l'orchestrateur, même résultat.
+  //
+  // Ce qui reste réellement perdu est nommé : `error` n'étant pas persisté,
+  // une panne et un « jamais sollicité sans cause » se confondent en UNKNOWN.
+  const typeEntree = row.inputType as ReflexResolvedInput["type"];
+  const decrits = enginesCoverage
     .filter((e) => e.ran !== true)
-    .map((e) => ({
-      engine: (e.engine ?? "unknown") as ReflexSignalSource,
-      reason: "UNKNOWN" as MeasurementState,
-    }));
+    .map((e) => {
+      const engine = (e.engine ?? "unknown") as ReflexSignalSource;
+      return {
+        engine,
+        reason: (contractAbsenceReason(engine, typeEntree) ?? "UNKNOWN") as MeasurementState,
+      };
+    });
+  const horsContrat = new Set<MeasurementState>(["NOT_APPLICABLE", "NOT_REQUESTED_BY_CONTRACT"]);
+  const notExpected = decrits.filter((d) => horsContrat.has(d.reason));
+  const missing = decrits.filter((d) => !horsContrat.has(d.reason));
+  const measured = enginesCoverage.filter((e) => e.ran === true).length;
   const coverage = {
     total: enginesCoverage.length,
-    measured: enginesCoverage.filter((e) => e.ran === true).length,
+    measured,
+    expected: enginesCoverage.length - notExpected.length,
+    expectedMeasured: measured,
     missing,
+    notExpected,
   };
 
   // Les colonnes `confidence` / `confidenceScore` ne sont pas nullables et le

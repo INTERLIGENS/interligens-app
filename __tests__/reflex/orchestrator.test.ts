@@ -346,3 +346,67 @@ describe("runReflex — verdict produced from adapter signals", () => {
     expect(r.verdict).toBe("STOP");
   });
 });
+
+// ─── BUILD 11.1 — LA CAUSE EST ATTACHÉE SUR LE CHEMIN RÉEL ────────────────
+//
+// Règle ratifiée n°3 : preuve COMPORTEMENTALE sur tout chemin de
+// reconstruction. Les tests de `decide()` construisent leurs moteurs à la
+// main : ils ne prouvent pas que l'orchestrateur pose la cause. Un mutant
+// retirant `.map(attacherCause)` les passait tous.
+
+describe("BUILD 11.1 — l'orchestrateur attache la cause du contrat", () => {
+  it("MUTANT — sur une entrée nue, les 4 hors-contrat portent leur cause exacte", async () => {
+    // Les deux adaptateurs à garde de type rendent `ran:false` SANS cause :
+    // c'est l'orchestrateur qui doit la poser, depuis l'autorité unique.
+    mockRecidivism.mockResolvedValue({ engine: "recidivism", ran: false, ms: 0, signals: [] });
+    mockCoordination.mockResolvedValue({ engine: "coordination", ran: false, ms: 0, signals: [] });
+
+    const r = await runReflex("So11111111111111111111111111111111111111112", "SHADOW", {
+      // La route construit `tigerInput` pour un mint : c'est le régime réel.
+      enrichment: { tigerInput: {} as never },
+    });
+
+    const causes = Object.fromEntries(r.coverage.notExpected.map((m) => [m.engine, m.reason]));
+    expect(causes.recidivism).toBe("NOT_APPLICABLE");
+    expect(causes.coordination).toBe("NOT_REQUESTED_BY_CONTRACT");
+    expect(causes.narrative).toBe("NOT_REQUESTED_BY_CONTRACT");
+    expect(causes.offchain).toBe("NOT_APPLICABLE");
+  });
+
+  it("MUTANT — l'entrée nue n'est plus dégradée, et la couverture attendue est pleine", async () => {
+    mockRecidivism.mockResolvedValue({ engine: "recidivism", ran: false, ms: 0, signals: [] });
+    mockCoordination.mockResolvedValue({ engine: "coordination", ran: false, ms: 0, signals: [] });
+
+    const r = await runReflex("So11111111111111111111111111111111111111112", "SHADOW", {
+      enrichment: { tigerInput: {} as never },
+    });
+
+    expect(r.coverage.total).toBe(8);
+    expect(r.coverage.expected).toBe(4);
+    expect(r.coverage.expectedMeasured).toBe(4);
+    expect(r.degraded).toBe(false);
+    expect(r.coverage.missing).toEqual([]);
+  });
+
+  it("MUTANT DE SUR-CORRECTION — un ATTENDU en panne dégrade toujours, via l'orchestrateur", async () => {
+    mockRecidivism.mockResolvedValue({ engine: "recidivism", ran: false, ms: 0, signals: [] });
+    mockCoordination.mockResolvedValue({ engine: "coordination", ran: false, ms: 0, signals: [] });
+    mockKnownBad.mockReturnValue({
+      engine: "knownBad", ran: false, ms: 10, signals: [], error: "provider down",
+    });
+
+    const r = await runReflex("So11111111111111111111111111111111111111112", "SHADOW", {
+      enrichment: { tigerInput: {} as never },
+    });
+
+    expect(r.degraded).toBe(true);
+    expect(r.coverage.missing.map((m) => m.engine)).toEqual(["knownBad"]);
+    expect(r.coverage.expectedMeasured).toBe(3);
+    // `runReflex` rend l'objet RECONSTRUIT depuis la ligne persistée, et
+    // `error` n'y est pas — le manifeste est haché, y toucher déplacerait la
+    // déduplication. La cause exacte se perd donc en UNKNOWN, ce qui est la
+    // dette déjà nommée. Ce qui compte ici : la DÉGRADATION, elle, survit —
+    // un attendu manquant reste un attendu manquant.
+    expect(r.coverage.missing[0].reason).toBe("UNKNOWN");
+  });
+});
