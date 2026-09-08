@@ -82,7 +82,7 @@ describe("verdictDistribution", () => {
   it("returns base zeros when DB empty", async () => {
     mockGroupBy.mockResolvedValue([]);
     const r = await verdictDistribution(new Date(0));
-    expect(r).toEqual({ STOP: 0, WAIT: 0, VERIFY: 0, NO_CRITICAL_SIGNAL: 0 });
+    expect(r).toEqual({ STOP: 0, WAIT: 0, VERIFY: 0, NO_CRITICAL_SIGNAL: 0, INSUFFICIENT_COVERAGE: 0 });
   });
 
   it("aggregates groupBy rows correctly", async () => {
@@ -92,7 +92,7 @@ describe("verdictDistribution", () => {
       { verdict: "NO_CRITICAL_SIGNAL", _count: { _all: 60 } },
     ]);
     const r = await verdictDistribution(new Date(0));
-    expect(r).toEqual({ STOP: 10, WAIT: 25, VERIFY: 0, NO_CRITICAL_SIGNAL: 60 });
+    expect(r).toEqual({ STOP: 10, WAIT: 25, VERIFY: 0, NO_CRITICAL_SIGNAL: 60, INSUFFICIENT_COVERAGE: 0 });
   });
 });
 
@@ -282,10 +282,10 @@ describe("countAnalyses", () => {
 
 describe("computeStopRate", () => {
   it("zero when no analyses", () => {
-    expect(computeStopRate({ STOP: 0, WAIT: 0, VERIFY: 0, NO_CRITICAL_SIGNAL: 0 })).toBe(0);
+    expect(computeStopRate({ STOP: 0, WAIT: 0, VERIFY: 0, NO_CRITICAL_SIGNAL: 0, INSUFFICIENT_COVERAGE: 0 })).toBe(0);
   });
   it("STOP / total", () => {
-    expect(computeStopRate({ STOP: 25, WAIT: 25, VERIFY: 25, NO_CRITICAL_SIGNAL: 25 })).toBe(0.25);
+    expect(computeStopRate({ STOP: 25, WAIT: 25, VERIFY: 25, NO_CRITICAL_SIGNAL: 25, INSUFFICIENT_COVERAGE: 0 })).toBe(0.25);
   });
 });
 

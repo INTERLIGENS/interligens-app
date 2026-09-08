@@ -148,7 +148,8 @@ function VerdictDistributionBlock({
   const colorMap: Record<ReflexVerdict, string> = {
     STOP: COLOR.danger, WAIT: COLOR.warning,
     VERIFY: COLOR.accent, NO_CRITICAL_SIGNAL: COLOR.muted,
-  };
+  INSUFFICIENT_COVERAGE: "INSUFFICIENT COVERAGE",
+};
   return (
     <div>
       {entries.map(([key, label]) => {

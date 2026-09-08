@@ -14,8 +14,11 @@
  */
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { decide } from "./verdict";
+import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
 import type {
   ReflexAnalysisResult,
+  ReflexSignalSource,
   ReflexEngineOutput,
   ReflexMode,
   ReflexResolvedInput,
@@ -79,6 +82,35 @@ function rowToResult(row: {
     Array.isArray(e.signals) ? (e.signals as ReflexSignal[]) : [],
   );
 
+  // ─── BUILD 11 — LA COUVERTURE EST RECONSTRUITE, PAS RÉINVENTÉE ────────
+  //
+  // Le manifeste persiste `engine` + `ran` par moteur : la couverture s'en
+  // déduit exactement. Il ne persiste PAS `error` — et on ne l'y ajoute pas,
+  // parce que le manifeste est HACHÉ : y toucher déplacerait `signalsHash`,
+  // donc la déduplication et le contrat de calibration.
+  //
+  // Conséquence assumée : sur une relecture, un moteur manquant sort en
+  // UNKNOWN et non FAILURE/NOT_MEASURED. C'est exact — après coup, on ne PEUT
+  // plus distinguer les deux — et UNKNOWN est précisément le mot pour ça.
+  const enginesCoverage = enginesArr as Array<{ engine?: string; ran?: boolean }>;
+  const missing = enginesCoverage
+    .filter((e) => e.ran !== true)
+    .map((e) => ({
+      engine: (e.engine ?? "unknown") as ReflexSignalSource,
+      reason: "UNKNOWN" as MeasurementState,
+    }));
+  const coverage = {
+    total: enginesCoverage.length,
+    measured: enginesCoverage.filter((e) => e.ran === true).length,
+    missing,
+  };
+
+  // Les colonnes `confidence` / `confidenceScore` ne sont pas nullables et le
+  // DDL est hors périmètre. Sur INSUFFICIENT_COVERAGE, la valeur stockée n'est
+  // qu'un remplissage de colonne : elle n'est JAMAIS servie. Le verdict fait
+  // autorité, et la lecture rend `null` — le zéro ne sort pas d'ici.
+  const rienMesure = row.verdict === "INSUFFICIENT_COVERAGE";
+
   return {
     id: row.id,
     createdAt: row.createdAt,
@@ -91,6 +123,21 @@ function rowToResult(row: {
     },
     signals,
     signalsManifest: manifest,
+    coverage,
+    // `conflicts` n'est pas persisté. Rendre `[]` affirmerait « aucune
+    // contradiction », ce qui peut être faux — exactement la coercition qu'on
+    // ferme ailleurs. Il est donc RECALCULÉ : `decide` est pure et les signaux
+    // sont dans le manifeste, donc le résultat est le même qu'à l'origine.
+    // Le verdict servi reste celui de la LIGNE, pas du recalcul.
+    conflicts: decide(
+      enginesCoverage.map((e, i) => ({
+        engine: (e.engine ?? "unknown") as ReflexSignalSource,
+        ran: e.ran === true,
+        ms: 0,
+        signals: (enginesArr[i]?.signals ?? []) as ReflexSignal[],
+      })),
+    ).conflicts,
+    degraded: missing.length > 0,
     signalsHash: row.signalsHash,
     enginesVersion: row.enginesVersion,
     mode: row.mode as ReflexMode,
@@ -104,8 +151,9 @@ function rowToResult(row: {
       : [],
     actionEn: row.actionEn,
     actionFr: row.actionFr,
-    confidence: row.confidence as ReflexVerdictResult["confidence"],
-    confidenceScore: row.confidenceScore,
+    confidence: rienMesure ? null : (row.confidence as ReflexVerdictResult["confidence"]),
+    confidenceScore: rienMesure ? null : row.confidenceScore,
+    confidenceState: rienMesure ? "UNKNOWN" : "MEASURED",
   };
 }
 
@@ -168,8 +216,12 @@ export async function persistAnalysis(
       verdictReasonFr: input.verdictResult.verdictReasonFr,
       actionEn: input.verdictResult.actionEn,
       actionFr: input.verdictResult.actionFr,
-      confidence: input.verdictResult.confidence,
-      confidenceScore: input.verdictResult.confidenceScore,
+      // Colonnes non nullables, DDL hors périmètre : sur une absence totale de
+      // mesure, ces deux valeurs ne sont qu'un remplissage. Elles ne sont
+      // jamais relues — `rowToResult` rend `null` dès que le verdict dit
+      // INSUFFICIENT_COVERAGE, et c'est le verdict qui fait autorité.
+      confidence: input.verdictResult.confidence ?? "LOW",
+      confidenceScore: input.verdictResult.confidenceScore ?? 0,
       // Cast at the Prisma boundary: PersistInput keeps the broader
       // Record<string, unknown> shape (orchestrator-friendly) but Prisma's
       // generated InputJsonValue rejects `unknown` leaves. The manifest

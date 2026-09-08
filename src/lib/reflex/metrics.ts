@@ -37,6 +37,7 @@ export async function verdictDistribution(
   });
   const base: Record<ReflexVerdict, number> = {
     STOP: 0, WAIT: 0, VERIFY: 0, NO_CRITICAL_SIGNAL: 0,
+    INSUFFICIENT_COVERAGE: 0,
   };
   for (const r of rows) {
     const v = r.verdict as ReflexVerdict;

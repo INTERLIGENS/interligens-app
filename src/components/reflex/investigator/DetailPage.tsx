@@ -117,7 +117,7 @@ export async function InvestigatorDetailPage({ locale, id }: DetailPageProps) {
           fontSize: 13, color: COLOR.muted, marginTop: 8,
           display: "flex", gap: 24,
         }}>
-          <span>{copy.detail.confidence}: <span style={{ color: COLOR.fg }}>{analysis.confidence}</span> ({analysis.confidenceScore.toFixed(3)})</span>
+          <span>{copy.detail.confidence}: <span style={{ color: COLOR.fg }}>{analysis.confidence ?? analysis.confidenceState}</span> ({analysis.confidenceScore === null ? analysis.confidenceState : analysis.confidenceScore.toFixed(3)})</span>
           <span>{copy.detail.mode}: <span style={{ color: analysis.mode === "PUBLIC" ? COLOR.accent : COLOR.fg }}>{analysis.mode}</span></span>
           <span>{copy.detail.latencyMs}: <span style={{ color: COLOR.fg }}>{analysis.latencyMs} ms</span></span>
         </div>

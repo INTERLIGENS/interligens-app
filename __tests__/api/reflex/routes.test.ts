@@ -108,6 +108,10 @@ function makeAnalysis(over: Partial<ReflexAnalysisResult> = {}): ReflexAnalysisR
     actionFr: "",
     confidence: "MEDIUM",
     confidenceScore: 0.5,
+    confidenceState: "MEASURED" as const,
+    coverage: { total: 0, measured: 0, missing: [] },
+    degraded: false,
+    conflicts: [],
     ...over,
   };
 }

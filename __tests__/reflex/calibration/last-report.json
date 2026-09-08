@@ -8,7 +8,8 @@
     "STOP": 46,
     "WAIT": 54,
     "VERIFY": 50,
-    "NO_CRITICAL_SIGNAL": 50
+    "NO_CRITICAL_SIGNAL": 50,
+    "INSUFFICIENT_COVERAGE": 0
   },
   "byBucket": {
     "stop": {
@@ -41,5 +42,5 @@
     }
   },
   "mismatches": [],
-  "generatedAt": "2026-05-13T19:02:03.167Z"
+  "generatedAt": "2026-09-08T17:36:48.358Z"
 }
