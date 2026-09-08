@@ -6,6 +6,7 @@ const VALID_TOKEN = "test-secret-token-abc123";
 // Helper : construit une Request avec les headers voulus
 function makeReq(opts: {
   authHeader?: string;
+  xAdminToken?: string;
   queryToken?: string;
   acceptLanguage?: string;
 } = {}): Request {
@@ -14,6 +15,7 @@ function makeReq(opts: {
 
   const headers: Record<string, string> = {};
   if (opts.authHeader)      headers["authorization"]    = opts.authHeader;
+  if (opts.xAdminToken)     headers["x-admin-token"]    = opts.xAdminToken;
   if (opts.acceptLanguage)  headers["accept-language"]  = opts.acceptLanguage;
 
   return new Request(url.toString(), { headers });
@@ -42,14 +44,50 @@ describe("extractBearerToken", () => {
     expect(extractBearerToken(req)).toBe(VALID_TOKEN);
   });
 
-  it("extrait depuis query ?token=", () => {
+  // ─── LA VOIE `?token=` N'EXISTE PLUS ────────────────────────────────────
+  //
+  // Ces tests affirmaient le contraire. Ils ne sont pas supprimés : ils sont
+  // RETOURNÉS, parce que le contrat qu'ils gardaient a changé et que la preuve
+  // doit garder le nouveau. Un secret ne voyage pas dans une URL.
+
+  it("MUTANT · un secret VALIDE en query n'est plus extrait", () => {
     const req = makeReq({ queryToken: VALID_TOKEN });
-    expect(extractBearerToken(req)).toBe(VALID_TOKEN);
+    expect(extractBearerToken(req)).toBeNull();
   });
 
-  it("préfère Authorization header sur query param", () => {
+  it("la query ne peut pas non plus SUPPLANTER un en-tête", () => {
     const req = makeReq({ authHeader: `Bearer header-token`, queryToken: "query-token" });
     expect(extractBearerToken(req)).toBe("header-token");
+  });
+
+  it("MUTANT DE SUR-CORRECTION · les deux voies légitimes sont intactes", () => {
+    expect(extractBearerToken(makeReq({ authHeader: `Bearer ${VALID_TOKEN}` }))).toBe(VALID_TOKEN);
+    expect(extractBearerToken(makeReq({ xAdminToken: VALID_TOKEN }))).toBe(VALID_TOKEN);
+  });
+
+  it("aucun code ne FABRIQUE d'URL portant le secret admin", async () => {
+    // Fermer la lecture ne suffit pas si un appelant continue de composer le
+    // lien. On cherche la construction, pas seulement la consommation.
+    const { execSync } = await import("node:child_process");
+    const sortie = execSync(
+      "grep -rn 'token=' src --include='*.ts' --include='*.tsx' || true",
+      { encoding: "utf8" },
+    );
+    const suspectes = sortie
+      .split("\n")
+      .filter((l) => /token=\$\{?\s*(ADMIN_TOKEN|adminToken|process\.env\.ADMIN_TOKEN)/.test(l));
+    expect(suspectes).toEqual([]);
+  });
+
+  it("le helper ne lit plus AUCUN paramètre d'URL", async () => {
+    const fs = await import("node:fs");
+    const code = fs
+      .readFileSync("src/lib/security/auth.ts", "utf8")
+      .split("\n")
+      .filter((l) => !l.trimStart().startsWith("//"))
+      .join("\n");
+    expect(code).not.toContain("searchParams");
+    expect(code).not.toContain('get("token")');
   });
 
   it("retourne null si aucun token", () => {
@@ -91,7 +129,7 @@ describe("checkAuth — mauvais token", () => {
     expect(result.response?.status).toBe(401);
   });
 
-  it("retourne 401 avec un token invalide (query)", async () => {
+  it("retourne 401 avec un token invalide en query", async () => {
     const result = await checkAuth(makeReq({ queryToken: "bad-token" }));
     expect(result.authorized).toBe(false);
     expect(result.response?.status).toBe(401);
@@ -119,9 +157,18 @@ describe("checkAuth — bon token", () => {
     expect(result.response).toBeUndefined();
   });
 
-  it("autorise avec le bon token en query", async () => {
+  it("MUTANT · le BON token en query donne 401, comme un mauvais", async () => {
+    // C'est le point : la voie est fermée, pas le secret invalidé. Un porteur
+    // légitime qui passe par l'URL échoue franchement et déplace son jeton.
     const result = await checkAuth(makeReq({ queryToken: VALID_TOKEN }));
+    expect(result.authorized).toBe(false);
+    expect(result.response?.status).toBe(401);
+  });
+
+  it("MUTANT DE SUR-CORRECTION · x-admin-token autorise toujours", async () => {
+    const result = await checkAuth(makeReq({ xAdminToken: VALID_TOKEN }));
     expect(result.authorized).toBe(true);
+    expect(result.response).toBeUndefined();
   });
 });
 

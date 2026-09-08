@@ -438,7 +438,25 @@ export function renderKolPdfLegal(kol: any): string {
         <tr><td><strong>Verification Status</strong></td><td>${kol.verified ? '<span class="badge badge-confirmed">VERIFIED</span>' : '<span class="badge badge-provisional">UNVERIFIED</span>'}</td><td>—</td></tr>
       </tbody>
     </table>
-    ${kol.notes ? `<div style="margin-top:12px;padding:12px 16px;background:var(--bg-warm);font-size:9px;color:var(--ink-light);line-height:1.7;border-left:2px solid var(--accent)">${kol.notes}</div>` : ""}
+    <!-- ── GOVERNED != PUBLISHABLE NOMINATIVE ASSERTION ──────────────────
+         kol.notes était rendu ici. Le champ nomme des TIERS et leur attribue
+         des faits — mesuré le 2026-09-08 sur 6 profils, dont un citant deux
+         personnes réelles par leur nom complet et leurs affiliations.
+
+         Doctrine ratifiée : dans un artefact Investigator/Counsel, une mention
+         nominative d'un tiers doit être explicitement FONDÉE et ADMISSIBLE à
+         cette publication. Qu'un texte soit gouverné ne suffit pas.
+
+         Or KolProfile ne porte AUCUNE colonne de fondation ni
+         d'admissibilité — ni source, ni type de revendication, ni niveau de
+         confiance, ni référence de méthode, ni date de revue. Le champ ne peut
+         donc structurellement pas satisfaire la doctrine, quel que soit son
+         contenu : ce n'est pas une question de rédaction, c'est une question
+         de modèle.
+
+         Sans fondation : OMISSION. Rien n'est substitué, rien n'est reformulé
+         en accusation, et la donnée reste intacte en base pour l'enquête.
+         ── -->
   </div>
 
   <!-- ── 5. TIMELINE OF FACTS ── -->

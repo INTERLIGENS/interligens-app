@@ -227,3 +227,70 @@ describe("le document d'un profil A ne parle plus d'un profil B", () => {
     expect(html).not.toMatch(/>\s*\$0\s*</);
   });
 });
+
+// ─────────────────── GOVERNED ≠ PUBLISHABLE NOMINATIVE ASSERTION ──────────
+//
+// Doctrine ratifiée : dans un artefact Investigator/Counsel, une mention
+// nominative d'un TIERS doit être explicitement fondée ET admissible à cette
+// publication. Qu'un texte soit gouverné ne suffit pas. Sans fondation :
+// omission, jamais transformation en accusation.
+//
+// Mesuré le 2026-09-08 : `KolProfile.notes` était rendu dans le PDF légal et
+// nommait des tiers sur 6 profils — dont un citant deux personnes réelles par
+// leur nom complet et leurs affiliations. Et `KolProfile` ne porte AUCUNE
+// colonne de fondation ni d'admissibilité : le champ ne peut structurellement
+// pas satisfaire la doctrine.
+
+describe("les notes de profil ne sortent plus dans l'artefact Counsel", () => {
+  const NOTES = "Meeting confirmed: @bkokoski + @planted — 30/04/2025. Felix Xu, Yemu Xu.";
+
+  it("MUTANT · rendu des notes réintroduit → les tiers ressortiraient", () => {
+    const html = renderKolPdfLegal({ ...PROFIL_A, notes: NOTES });
+    expect(html).not.toContain("Meeting confirmed");
+    expect(html).not.toContain("Felix Xu");
+    expect(html).not.toContain(NOTES);
+  });
+
+  it("le gabarit n'interpole plus ce champ du tout", () => {
+    expect(codeSeul).not.toContain("${kol.notes}");
+    expect(codeSeul).not.toContain("kol.notes ?");
+  });
+
+  it("MUTANT DE SUR-CORRECTION · la place laissée par les notes est VIDE", () => {
+    // Comparer « avec notes » et « sans notes » ne suffit pas : une
+    // substitution CONSTANTE est identique dans les deux, et passe. C'est
+    // exactement ce qui a laissé un mutant en vie au premier passage.
+    //
+    // On regarde donc la place elle-même : entre la fin de la table
+    // d'identification du sujet et la section suivante, il ne doit rien rester.
+    const debut = codeSeul.indexOf("Subject Identification");
+    expect(debut).toBeGreaterThan(0);
+    const suivante = codeSeul.indexOf('<div class="section">', debut + 1);
+    const zone = codeSeul.slice(debut, suivante);
+    const apresTable = zone.slice(zone.lastIndexOf("</table>"));
+    expect(apresTable.replace(/<\/table>|\s|<\/div>/g, "")).toBe("");
+  });
+
+  it("MUTANT DE SUR-CORRECTION · rien n'est substitué à la place", () => {
+    const avec = renderKolPdfLegal({ ...PROFIL_A, notes: NOTES });
+    const sans = renderKolPdfLegal({ ...PROFIL_A, notes: null });
+    // Le document est le MÊME : le champ n'est pas rendu, ni remplacé par un
+    // motif, un vide typé ou une reformulation.
+    expect(avec).toBe(sans);
+  });
+
+  it("MUTANT DE SUR-CORRECTION · le reste de l'identification du sujet demeure", () => {
+    const html = renderKolPdfLegal({ ...PROFIL_A, notes: NOTES });
+    expect(html).toContain("Subject Identification");
+    expect(html).toContain("ravedao");
+  });
+
+  it("la donnée n'est pas touchée — l'omission est au RENDU", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(GABARIT, "utf8");
+    // Aucune écriture, aucune purge : le gabarit ne fait que ne pas rendre.
+    // (`createHash().update()` est un hachage, pas une écriture — on vise la base.)
+    expect(src).not.toContain("prisma");
+    expect(src).not.toMatch(/\.delete\(|deleteMany|updateMany/);
+  });
+});
