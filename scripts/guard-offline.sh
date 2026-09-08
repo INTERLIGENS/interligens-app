@@ -475,40 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour le P0 « free-text monetary publication ».
-#
-# UN SEUL CHEMIN. La gate elle-même s'écrit dans src/lib/publication/, qui n'est
-# pas gelé ; seul le point d'assemblage l'est.
-#
-# Le défaut, mesuré le 2026-09-08 : BUILD 10 a retiré les montants des CHAMPS
-# STRUCTURÉS d'un profil WITHDRAWN, et le TEXTE LIBRE les republie.
-#
-#   16  descriptions de KolEvidence portant un montant sur un profil WITHDRAWN
-#   11  d'entre elles de famille « proceeds », 5 de type non classé
-#    1  LaundryTrail dont la publication est OUVERTE alors que le profil est
-#       WITHDRAWN — GordonGekko : `redactLaundryTrail` ne consulte que l'état
-#       du trail, jamais celui du profil
-#
-# Sur bkokoski, les nombres du texte sont les MÊMES que les `amountUsd` que la
-# gate vient d'annuler : $150,500 · $190,600 · $73,045 · $90,000 · $80,000 ·
-# $20,000. Le montant est retiré du champ, et republié dans la phrase.
-#
-# AUCUNE MÉTHODE DE DÉTECTION N'EST INVENTÉE. La décision porte sur le PORTEUR —
-# la famille de la preuve et l'état du profil — jamais sur le contenu du texte.
-# `evidenceFamily`, `isMonetaryClaimPublished` et
-# `isCompositeMonetaryClaimPublished` existent déjà et NOMMENT ces porteurs dans
-# l'en-tête de `monetaryGate.ts`. La gate est composée, pas réécrite.
-#
-# Rien n'est purgé, aucune Evidence supprimée, aucune donnée réécrite. Ni le
-# scoring ni la méthodologie ne sont touchés.
-#
-# Autorisation humaine explicite (David, qualification GPT du 2026-09-08).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-freetext-gate$ ]]; then
-    EXEMPT_FREETEXT_MONETARY_PATTERNS=(
-        "^src/app/api/pdf/kol/route\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -712,20 +678,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche freetext-gate, exempter STRICTEMENT la route du PDF KOL.
-    # Aucun wildcard : les gabarits src/lib/pdf/ restent gelés, le correctif
-    # n'a pas besoin d'eux.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-freetext-gate$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_FREETEXT_MONETARY_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
