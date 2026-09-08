@@ -193,11 +193,49 @@ et a dû être actualisé : son intention est conservée et **cinq assertions on
 ajoutées**, dont une qui interdit explicitement la réintroduction d\'un
 horodatage d\'observation comme sonde.
 
-> **Défaut préexistant signalé, non corrigé** : `npx tsc --noEmit` échoue sur
+> ~~**Défaut préexistant signalé, non corrigé** : `npx tsc --noEmit` échoue sur
 > `src/app/fr/cases/page.tsx:73` — le `orderBy: { tigerScore: { sort, nulls } }`
-> relevé en S7 n\'est pas typé par le client Prisma généré. **Vérifié présent sur
-> `main` avec mes modifications remisées.** Hors périmètre de ce correctif, et
-> hors de ce que je dois toucher.
+> relevé en S7 n'est pas typé par le client Prisma généré. Vérifié présent sur
+> `main` avec mes modifications remisées. Hors périmètre de ce correctif.~~
+>
+> ## ⚠ ERRATUM — 2026-09-08
+>
+> **Ce qui était affirmé ci-dessus est FAUX.** Le texte est barré et non
+> supprimé : un retrait silencieux serait la faute que ce rapport ferme.
+>
+> **Affirmé** : `tsc` échoue sur `main`, sur `src/app/fr/cases/page.tsx:73`.
+>
+> **Mesuré** : `pnpm typecheck` rend **exit 0** sur `main` (`ba47972`) **et** sur
+> cette branche (`177ba4b`). `git diff main..HEAD` sur les fichiers concernés est
+> vide. **Il n'y a aucun défaut de typecheck sur `main`.**
+>
+> Deux erreurs de fait dans la mention initiale :
+> 1. l'échec portait sur **DEUX** fichiers — `src/app/en/cases/page.tsx:73` **et**
+>    `src/app/fr/cases/page.tsx:73`. Mon `tail -3` avait coupé le premier ;
+> 2. il ne venait pas de `main`.
+>
+> **Cause** : le client Prisma de mon `node_modules` était **périmé**. Généré
+> pendant la validation d'étape 9 de BUILD 8, `main` à `b4642fc`, il embarquait
+> `tigerScore Int` (non-nullable). La colonne est devenue nullable **après**, par
+> `859a453 fix(casefile): tigerScore nullable` en BUILD 9. Prisma n'émet
+> `SortOrderInput` — le type qui porte `nulls` — que pour les colonnes nullables :
+> d'où `nulls: "last"` non typé. Après `pnpm prisma:generate`, `exit 0`.
+>
+> La CI ne pouvait pas le voir : `security.yml` lance `pnpm prisma:generate`
+> (étape `id: prisma`) **avant** `pnpm typecheck`, et gate le typecheck sur
+> `steps.prisma.outcome == 'success'`.
+>
+> **Ce que la manipulation prouvait réellement** : rien sur `main`. `git stash` ne
+> remise **ni `node_modules`, ni un client généré, ni un cache** — le client
+> périmé a survécu au stash. J'ai mesuré mon poste et attribué le défaut à `main`.
+>
+> C'est la règle d'instrumentation de ce rapport, appliquée contre son auteur :
+> **le compteur était exact, le champ mesuré n'était pas celui que j'annonçais.**
+>
+> **Protocole mis à jour** : `pnpm prisma:generate` rejoint les contrôles avant
+> vol. Un client périmé produit des faux positifs locaux **et** peut masquer une
+> vraie erreur. Et, plus généralement : avant d'attribuer un défaut à `main`,
+> vérifier que ce qu'on mesure vient bien de `main`.
 
 ---
 
