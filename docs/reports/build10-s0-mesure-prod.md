@@ -485,3 +485,136 @@ exact et vieux.
 mesurable depuis la base — seulement sa **production**. Deux crons sur dix-sept
 journalisent. C'est le premier trou à combler si l'on veut pouvoir répondre
 « pourquoi » plutôt que « il n'y a rien ».
+
+---
+
+# S4 · Les PDF publics — ce qu'un lecteur Investor/Counsel reçoit vraiment
+
+Trois documents mesurés sur leur **texte extrait** par `pdftotext`, jamais sur le
+flux : BOTIFY (EN et FR) et VINE (EN). Neuf pages chacun.
+
+| document | PDF | texte extrait | sections retirées |
+|---|---|---|---|
+| BOTIFY EN | 112 338 o | 5 694 o | **3** |
+| BOTIFY FR | 114 841 o | 6 418 o | **3** |
+| VINE EN | 104 414 o | 5 044 o | **5** |
+
+## Section par section
+
+| section | BOTIFY | VINE |
+|---|---|---|
+| **TigerScore** | « — · Not established » | « — · Not established » |
+| **Executive Summary** | **peuplée** — contenu substantiel | **avertissement seul** |
+| **Evidence Index** | présente, **8 items retirés** | présente, **8 items retirés** |
+| **On-chain Timeline** | **retirée** | **retirée** |
+| **Token Control** | **peuplée** | **retirée** |
+| **Launch Metrics** | **peuplée** | **retirée** |
+| **Wallet Cluster Summary** | **retirée** | **retirée** |
+| **Related Projects** | **retirée** | **retirée** |
+| **OSINT Catalog** | présente, **vide** | présente, **vide** |
+
+## Le renderer agnostique se comporte correctement
+
+C'est le point à porter au crédit du dispositif : **VINE ne reçoit pas les
+données de BOTIFY**. Là où VINE n'a rien, la section est **retirée** — pas
+remplie avec le contenu du dossier voisin, pas laissée blanche non plus. `Token
+Control` et `Launch Metrics` sont peuplées chez BOTIFY et retirées chez VINE,
+exactement comme la base le commande.
+
+**Aucun contenu fabriqué pour combler un vide.**
+
+## Le TigerScore — absent et déclaré comme tel
+
+Les deux documents rendent :
+
+```
+—
+Not established
+TIGERSCORE
+Structural-risk composite score
+```
+
+Un score absent est rendu **« Not established »**, jamais `0`, jamais `X/100`.
+C'est le comportement attendu de BUILD 9, mesuré ici sur la surface finale.
+
+**Catégorie : `DATA_ABSENT`, signalé.** Pas un blanc silencieux.
+
+## Le catalogue OSINT est vide, et la base explique pourquoi
+
+Les deux documents portent, à l'identique :
+
+> *No catalogued artefact currently carries the integrity, origin and capture
+> timestamp required for publication. The artefacts remain attached to the file.*
+
+**C'est la conséquence directe et mesurée de S2.** BOTIFY porte 8 lignes dans
+`CaseFileSource`, mais avec `sourceUrl` **0/8**, `sha256` **0/8**, `snapshotId`
+**0/8**. Aucune ne satisfait l'exigence d'intégrité et d'origine — donc aucune ne
+se publie. VINE, lui, n'a **aucune** ligne source du tout.
+
+La chaîne est complète et vérifiée de bout en bout :
+
+```
+sha256 / sourceUrl absents en base   →   aucun artefact publiable   →   catalogue OSINT vide au PDF
+```
+
+**Catégorie : `DATA_ABSENT`** (les trois champs), avec un effet de surface
+**signalé**.
+
+## La tension à consigner — sans la trancher
+
+Le PDF BOTIFY affirme, dans son résumé exécutif :
+
+> *No referenced claim in this file currently meets the publication
+> requirements.*
+
+et, **quatre lignes plus bas** :
+
+> *Mint and freeze authority remain active, allowing the deployer to alter supply
+> or block holders at will (source: rugcheck.xyz).*
+> *Top-3 holder concentration reached 62% at peak, with 78% top-10 (source:
+> Solscan holder queries).*
+
+Ces deux affirmations sont **sourcées inline** et ne proviennent pas du corpus de
+claims — elles viennent du contenu statique du gabarit. Le document dit donc
+simultanément « aucun claim référencé n'est publiable » et énonce des constats
+chiffrés attribués à des sources nommées.
+
+Ce n'est **pas** une contradiction formelle : les claims du corpus et le texte du
+gabarit sont deux choses différentes, et le document ne prétend pas que les
+seconds sont des claims. Mais **un lecteur Counsel ne fait pas cette
+distinction** : il lit un rapport qui se déclare sans preuve publiable et qui
+avance des chiffres.
+
+Même observation pour `Token Control`, peuplée depuis `rugcheck.xyz` sans passer
+par le registre de sources.
+
+**Je ne classe pas** : c'est une question de doctrine éditoriale, pas un défaut
+de donnée. Je la consigne parce qu'elle est visible sur la surface la plus
+exposée du produit.
+
+## Ce que reçoit concrètement un lecteur
+
+**BOTIFY** : un score non établi, un résumé avec deux constats sourcés hors
+corpus, les autorités du token, des métriques de lancement, **8 claims retirés**,
+un catalogue OSINT vide, et 3 sections retirées.
+
+**VINE** : un score non établi, un résumé réduit à son avertissement, **8 claims
+retirés**, un catalogue OSINT vide, et **5 sections retirées sur 7**. Le document
+fait 9 pages et n'affirme presque rien.
+
+**Aucun des deux n'affirme quoi que ce soit de faux.** C'est un rapport de
+complétude, pas d'exactitude — et sur ce plan, les deux documents sont honnêtes :
+chaque vide est nommé.
+
+## Bilan S4
+
+| catégorie | objets |
+|---|---|
+| `DATA_ABSENT` **signalé** | TigerScore (2 dossiers) · catalogue OSINT (2) · 3 sections BOTIFY · 5 sections VINE |
+| `BUG` | **0** |
+| blancs silencieux | **0** — chaque section vide porte son motif |
+| non classé | la tension « aucun claim publiable » vs constats sourcés du gabarit |
+
+**Aucune fuite croisée, aucun contenu fabriqué, aucun blanc muet.** Le défaut
+n'est pas dans le rendu : il est en amont, dans un corpus dont la preuve n'a ni
+empreinte ni origine.
