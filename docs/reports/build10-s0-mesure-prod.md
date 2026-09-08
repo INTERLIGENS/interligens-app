@@ -329,3 +329,159 @@ donnée.
 | `COLLECTOR_MISSING` | écrivain de claims · écrivain de sources |
 | `BUG` | **0** |
 | sans catégorie | `C13` — n'a jamais existé |
+
+---
+
+# S3 · Les collecteurs — 17 crons déclarés, 2 traçables
+
+Mesure faite à **2026-09-08 06:43 UTC**. Les fraîcheurs sont calculées par
+Postgres (`now() - max(...)`), pas par mon horloge.
+
+## Ce qui est déclaré
+
+`vercel.json` déclare **17 crons**. Le plan Vercel est Pro (40 autorisés), donc
+aucun n'est bloqué par le quota.
+
+## Ce qui est traçable
+
+`JobRunLog` — 296 lignes, du 2026-06-29 au 2026-09-08 — ne porte que **2 noms de
+job** :
+
+| `jobName` | runs | dernier | `success` | autre statut |
+|---|---|---|---|---|
+| `watcher_bridge_promote` | 281 | **il y a 0 h** | **11** | **270 × `disabled`** |
+| `watcher_v2_scan` | 15 | **il y a 1 h** | **15** | 0 |
+
+**Les 15 autres crons n'écrivent aucune trace d'exécution.** Leur passage n'est
+donc **pas mesurable depuis la base** : je ne peux pas distinguer « a tourné et
+n'a rien trouvé » de « n'a pas tourné ». C'est en soi un constat.
+
+> `watcher_bridge_promote` tourne, répond, et rend **`disabled` 270 fois sur
+> 281**. Le cron est armé et le travail ne se fait pas. Ce n'est pas une panne
+> silencieuse — le statut le dit — mais un lecteur qui compterait les
+> exécutions le croirait actif.
+
+## Fraîcheur réelle des pipelines
+
+Relevé sur les **145 tables** portant un `createdAt` :
+
+| état | tables |
+|---|---|
+| **vivantes** (< 3 j) | **15** |
+| **dormantes** (≥ 3 j) | **75** |
+| **vides** (0 ligne) | **55** |
+
+### Pipelines vivants — le cron produit
+
+| table | lignes | dernier écrit | cron déclaré | verdict |
+|---|---|---|---|---|
+| `WatcherCampaign` | 3 790 | **1 h** | `watcher-v2` 06:00 | **actif** |
+| `WatcherDigest` | 20 | **1 h** | `weekly-digest` lun 08:00 | **actif** |
+| `social_post_candidates` | 7 797 | **1 h** | `daily-flow` 02:00 | **actif** |
+| `KolProceedsEvent` | 5 602 | **3 h** | `helius-scan` 04:00 | **actif** |
+| `DomainEvent` | 3 981 | **3 h** | `process-events` 03:00 | **actif** |
+| `intel_ingestion_batches` | 59 | **5 h** | `ofac` 01:00 + `scamsniffer` 01:30 | **actif** |
+| `intel_canonical_entities` | **341 931** | **5 h** | idem | **actif** |
+
+### Pipelines en attente de leur créneau — normal
+
+| table | dernier écrit | cron | lecture |
+|---|---|---|---|
+| `MmScanRun` | 22 h | `mm-batch-scan` 09:00 | créneau non encore atteint (il est 06:43) |
+| `FounderIntelIngestRun` | 24 h | `intel-rss` 07:00 | créneau dans ~17 min |
+
+Ces deux-là ne sont **pas** en défaut : leur cadence quotidienne explique l'écart.
+
+### Pipelines morts — cron déclaré, production arrêtée
+
+| table | lignes | dernier écrit | cron déclaré | catégorie |
+|---|---|---|---|---|
+| **`ShillCorrelationCandidate`** | 1 532 | **2 158 h ≈ 90 j** | `shill-shadow` 07:00, **quotidien** | **`PIPE_NOT_CONNECTED`** |
+| **`ShillBuyerObservation`** | 2 169 | **2 159 h ≈ 90 j** | `shill-shadow` 07:00, **quotidien** | **`PIPE_NOT_CONNECTED`** |
+
+Un cron quotidien dont la table cible n'a pas bougé depuis 90 jours n'est pas un
+`DATA_ABSENT` : la donnée a existé, la production s'est arrêtée.
+
+### Le cas à ne pas trancher trop vite
+
+| table | lignes | dernier écrit | cron | catégorie |
+|---|---|---|---|---|
+| `ShillEvent` | 235 | **21 h** | `shill-feed`, **horaire** | **`NOT_MEASURABLE`** |
+
+Le cron est **horaire** et la table n'a rien reçu depuis 21 heures — soit 21
+passages sans écriture. Mais `shill-feed` ne journalise pas dans `JobRunLog`, et
+un collecteur qui ne trouve rien n'écrit rien légitimement.
+
+**Je ne peux pas distinguer « 21 passages à vide » de « 21 passages qui n'ont pas
+eu lieu ».** C'est `NOT_MEASURABLE` en l'état, et ça le restera tant que ce cron
+n'écrira pas de trace d'exécution. Ce qui est mesurable et que je consigne : **21
+heures sans production sur une cadence horaire.**
+
+### Trois crons dont la table cible est VIDE
+
+| cron | écrit vers | lignes | catégorie |
+|---|---|---|---|
+| `watch-rescan` 08:00 | `WatchAlert` · `WatchedAddress` | **0** · 1 (il y a 11 j) | **`PIPE_NOT_CONNECTED`** |
+| `watch-alerts` 08:00 | — (délègue, pas d'écriture Prisma directe) | `WatchAlert` = **0** | **`PIPE_NOT_CONNECTED`** |
+| `process-events` 03:00 | — (délègue) | `onchain_events` = **0** | voir ci-dessous |
+
+`watch-rescan` écrit explicitement `watchAlert` (vérifié dans la route) et la
+table n'a **jamais reçu une ligne**. `WatchedAddress` en porte **une seule**,
+écrite il y a 11 jours. Le cron est déclaré depuis longtemps ; sa sortie est nulle.
+
+> **Nuance sur `process-events`** : `onchain_events` est vide, mais `DomainEvent`
+> a été écrit **il y a 3 heures**. Le cron produit donc quelque part — la table
+> `onchain_events` est probablement un vestige, pas sa cible. **Je ne le classe
+> pas** faute d'avoir tracé l'écriture jusqu'à sa destination : c'est du ressort
+> de la moitié CODE de la carte.
+
+## Les 55 tables vides
+
+Parmi elles, plusieurs portent des noms de fonctionnalités annoncées :
+`WatchScan`, `WatchAlert`, `onchain_events`, `signals`, `alert_deliveries`,
+`alert_subscriptions`, `IngestionBatch`, `IngestionJob`, `RawDocument`,
+`ContradictionAlert`, `Retraction`, `ScoreSnapshot`, `TransparencySubmission`,
+`CommunitySubmission`, `WaitlistEntry`, `casefiles`, `VaultCaseFile`…
+
+**Je ne les classe pas une par une** : une table vide peut être un collecteur
+manquant, une fonctionnalité jamais lancée, ou un vestige de schéma. Distinguer
+les trois demande de savoir si un écrivain existe dans le code — c'est la moitié
+que T2 instruit. Je livre la liste et la volumétrie ; la catégorisation
+définitive appartient à la convergence.
+
+## Les tables dormantes qui portent des données servies
+
+Point important pour un lecteur Investor/Counsel : **plusieurs tables qui
+alimentent les surfaces publiques n'ont plus été écrites depuis des mois.**
+
+| table | lignes | dernier écrit | ce qu'elle alimente |
+|---|---|---|---|
+| `KolProfile` | 412 | **11 j** | les 32 profils publiés |
+| `KolWallet` | 482 | **82 j** | les 164 wallets servis |
+| `KolEvidence` | 80 | **115 j** | `evidences` / `evidenceCount` |
+| `KolCase` | 11 | **136 j** | `caseLinks` |
+| `KolTokenLink` | 292 | **23 j** | liens KOL ↔ token |
+| `TokenPriceTracker` | 340 | **115 j** | suivi de prix |
+| `KolProceedsSummary` | 28 | **135 j** | agrégats de proceeds |
+
+**`KolWallet` n'a pas reçu d'écriture depuis 82 jours** alors que c'est la table
+dont dépendent les 164 adresses servies et tout le calcul d'attribution.
+**`KolEvidence` : 115 jours.** Les surfaces servent donc un corpus figé.
+
+Ce n'est pas un défaut de lecture — S1 a montré que la sortie correspond
+exactement à la base. C'est un **constat de fraîcheur** : ce qui est servi est
+exact et vieux.
+
+## Bilan S3
+
+| catégorie | objets |
+|---|---|
+| `PIPE_NOT_CONNECTED` | `shill-shadow` (2 tables, 90 j) · `watch-rescan` / `watch-alerts` (`WatchAlert` à 0) |
+| `NOT_MEASURABLE` | l'exécution de **15 crons sur 17** · `shill-feed` (21 h sur cadence horaire) |
+| actifs vérifiés | 7 pipelines écrivant dans les 5 dernières heures |
+| non classé, renvoyé à la convergence | 55 tables vides · `process-events` |
+
+**Constat de méthode** : sans trace d'exécution, l'état d'un collecteur n'est pas
+mesurable depuis la base — seulement sa **production**. Deux crons sur dix-sept
+journalisent. C'est le premier trou à combler si l'on veut pouvoir répondre
+« pourquoi » plutôt que « il n'y a rien ».
