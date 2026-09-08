@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rpcCall } from "@/lib/rpc";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { loadCaseByMint } from "@/lib/caseDb";
+import { safeEvidenceUrl } from "@/lib/kol-memory/publicIdentityProjection";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
 import { emitScanCompleted } from "@/lib/events/producer";
@@ -191,7 +192,8 @@ export async function GET(request: NextRequest) {
       evidence_files: caseFile.sources
         .filter((s) => c.evidence_refs.includes(s.source_id))
         .map((s) => s.filename ?? ""),
-      thread_url: c.thread_url,
+      // BUILD 10 / P0 — mêmes 4 URL que scan/timeline, même origine.
+      thread_url: safeEvidenceUrl(c.thread_url) || null,
       category: c.category,
     }));
     off_chain.sources = caseFile.sources.map((s) => ({

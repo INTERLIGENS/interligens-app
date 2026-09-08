@@ -25,7 +25,8 @@ import {
   WALLET_PUBLICATION_SELECT,
   isWalletPublishable,
 } from "@/lib/kol-memory/walletPublication";
-import { BOTIFY_MINT, resolveToCanonicalMint, isSyntheticRouteKey } from "@/lib/kol-memory/tokenIdentity";
+import { BOTIFY_MINT } from "@/lib/kol-memory/tokenIdentity";
+import { safeEvidenceUrl } from "@/lib/kol-memory/publicIdentityProjection";
 import { redactProceeds } from "@/lib/kol/proceedsGate";
 import { WITHDRAWN_NOTICE } from "@/lib/casefile/containment";
 import { prisma } from "../../lib/prisma";
@@ -126,28 +127,10 @@ export const AMOUNT_ABSENCE_MARKERS = [
   AMOUNT_WITHHELD,
 ] as const;
 
-/**
- * Une URL de preuve ne peut pas pointer une identité que le produit a fermée.
- *
- * `data/cases/botify.json` STOCKE quatre `thread_url` construites sur la clé
- * synthétique de 43 caractères — mesuré le 2026-09-08 : 4 URL stockées, 0 URL
- * construite par ce builder sur le mint. La clé n'existe dans AUCUNE ligne de
- * la base ; ces liens mènent donc à un jeton qui n'est pas le sujet du dossier.
- *
- * `resolveToCanonicalMint` est la gate canonique : elle rend le mint 44 pour la
- * clé synthétique et laisse tout le reste inchangé. Aucune URL n'est inventée —
- * l'identité est corrigée dans celle qui existe déjà.
- */
-export function safeEvidenceUrl(url: string | null | undefined): string {
-  if (!url) return "";
-  let out = url;
-  for (const token of url.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/g) ?? []) {
-    if (isSyntheticRouteKey(token)) {
-      out = out.split(token).join(resolveToCanonicalMint(token, "botifySpreadsheet.safeEvidenceUrl"));
-    }
-  }
-  return out;
-}
+// `safeEvidenceUrl` vit désormais dans src/lib/kol-memory/publicIdentityProjection.ts :
+// les routes publiques en ont besoin, et la logique de résolution ne doit être
+// écrite qu'une fois. Réexporté ici pour les appelants existants.
+export { safeEvidenceUrl };
 
 export function buildBotifyEvidenceRows(
   caseData: BotifyCase,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { lookupAddresses } from '@/lib/labels/lookup'
 import { loadCaseByMint } from '../../../../../../lib/caseDb'
+import { projectPublicMint, safeEvidenceUrl } from '@/lib/kol-memory/publicIdentityProjection'
 
 const SEVERITY_TO_RISK: Record<string, 'low' | 'medium' | 'high' | 'critical'> = {
   LOW: 'low',
@@ -26,7 +27,8 @@ function buildTimelineFromCasefile(address: string) {
     descEn: c.description,
     descFr: (c as any).description_fr || c.description,
     actors: [] as { label: string; type: string; flagged: boolean; wallet: string }[],
-    evidence: c.thread_url || (c.evidence_refs?.[0] ?? null),
+    // BUILD 10 / P0 — un lien externe ne pointe jamais l'identité fermée.
+    evidence: safeEvidenceUrl(c.thread_url) || (c.evidence_refs?.[0] ?? null),
     flagCount: c.status === 'CONFIRMED' ? 1 : 0,
     redFlag: c.severity === 'CRITICAL',
   }))
@@ -41,7 +43,10 @@ function buildTimelineFromCasefile(address: string) {
     found: true,
     caseId: cf.case_meta.case_id,
     title: `${cf.case_meta.token_name} — ${cf.case_meta.severity}`,
-    pivotAddress: cf.case_meta.mint,
+    // BUILD 10 / P0 — l'identité publiée est la CANONIQUE, ou rien.
+    // `loadCaseByMint` résout l'alias à l'entrée ; la projection le refait ici,
+    // là où la valeur part vers un consommateur non authentifié.
+    pivotAddress: projectPublicMint(cf.case_meta.mint, 'scan/timeline.pivotAddress'),
     chain: cf.case_meta.chain,
     chapters,
     stats: {
