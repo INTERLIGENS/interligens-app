@@ -277,3 +277,117 @@ dossier non publié n'apparaît pas — comportement correct, pas un blanc.
 
 *Non mesuré :* combien de lignes portent `publishStatus = "published"` en base.
 Je n'ai pas de connexion ; le chiffre ne peut pas être avancé ici.
+
+---
+
+# SURFACE 2 · LE PDF — `/api/casefile/public` et `/api/casefile/pdf`
+
+## 2.1 · La chaîne, mesurée
+
+```
+route → canonicalRefForMint(mint|handle) → loadPublicProjection(ref)
+      → generateCaseFilePdfPublic(lang, dossier)
+        ├─ claims PUBLIC uniquement       ← CaseFileClaim
+        ├─ sources citées et publiables   ← CaseFileSource
+        └─ faits statiques par dossier    ← constante FACTS_BY_REF
+```
+
+Depuis BUILD 9, le générateur ne lit aucune autorité : il reçoit la projection.
+Le fail-closed est en place, l'absence de dossier lève. **Rien à redire sur la
+chaîne elle-même.** Ce qui suit porte sur ce que la chaîne TRANSPORTE.
+
+## 2.2 · Le `tigerScore` d'un dossier n'est pas produit par le moteur
+
+C'est le constat le plus lourd de cette surface.
+
+| ref | valeur | ce qui la pose |
+|---|---|---|
+| `IL-PND-LAB-001` | `91` | **littéral en dur**, `prisma/seed-lab.ts:378` |
+| `IL-SHILL-BOTIFY-001` | `NULL` | rien |
+| `IL-SHILL-VINE-001` | `NULL` | rien |
+
+`computeTigerScore` existe, il tourne sur les surfaces de scan
+(`buildTigerInput/solana.ts`, `evm.ts`, `/api/scan/evm`) — et **il n'écrit
+jamais dans `token_casefiles`**. Aucun `update` de cette colonne dans le dépôt.
+
+Le « 91 » affiché sous le libellé **TigerScore**, à côté d'un lien vers
+`/methodology/tigerscore`, n'est donc pas une sortie du moteur documenté par
+cette page. C'est un nombre écrit à la main dans un seed.
+
+**Catégorie : `COLLECTOR_MISSING`.** Le moteur existe, la colonne existe,
+aucune chaîne ne va de l'un à l'autre.
+
+*Ce n'est pas un blanc silencieux* — le nombre est bien affiché. C'est le cas
+inverse, plus difficile : une valeur présente dont la PROVENANCE est autre que
+celle que la surface laisse entendre.
+
+## 2.3 · Les faits statiques n'ont aucune date d'observation
+
+`FACTS_BY_REF` porte pour BOTIFY : autorités mint/freeze/update actives
+(source `rugcheck.xyz`), concentration top-3 62 % / top-10 78 % (source
+`Solscan holder queries`).
+
+Ces faits portent leur **source nommée** — c'est ce qui les rend publiables —
+mais **aucune date**. BUILD 9 a retiré `TODAY_ISO` de la phrase parce qu'il
+maquillait la date de génération en date d'observation. Le résultat correct est
+qu'il n'y a plus de date du tout, parce qu'aucune n'a jamais été stockée.
+
+**Catégorie : `DATA_ABSENT`.** L'horodatage d'observation n'existe dans aucune
+structure. Et **blanc silencieux** : le lecteur ne voit pas de champ « date »
+vide, il ne voit pas de champ du tout. Rien ne lui dit que ces faits peuvent
+dater de n'importe quand.
+
+**Catégorie associée : `COLLECTOR_MISSING`** — aucun collecteur ne rafraîchit
+ces faits. Ils sont figés dans une constante du code.
+
+## 2.4 · Ce que le PDF publie aujourd'hui, mesuré
+
+Aucun claim n'est `PUBLIC` en base. Le PDF rend donc, pour BOTIFY :
+
+- index des preuves → **vide, avec sa raison** (`evIdxEmpty` + avis nommant le champ)
+- catalogue OSINT → **vide, avec sa raison**
+- chronologie, cluster, projets liés → **retirés**, `txSignature` nommé
+- contrôle du token, métriques → les faits statiques ci-dessus
+- couverture → score « non établi », décompte de claims = 0
+
+**Aucun blanc silencieux.** Chaque absence porte sa raison. C'est le résultat
+de BUILD 9, et il tient.
+
+---
+
+# TRANSVERSAL · LA VALEUR PAR DÉFAUT QUI SE FAIT PASSER POUR UNE DONNÉE
+
+Ce n'est pas une surface, c'est une **classe**, et elle traverse le produit.
+
+**97 occurrences** de `?? 0` sur des champs de score, montant, compte ou
+pourcentage, hors tests, dans `src/app` et `src/lib`.
+
+Le cas le plus net, sur une surface publique — les trois pages `/demo` :
+
+```ts
+const tigerScore = Number(data?.tiger_score ?? 0) || 0;
+const score = Math.max(baseScore, tigerScore);
+const tier = getTier(score);        // src/lib/risk/tier.ts
+```
+
+et le barème :
+
+```ts
+if (score >= 70) return "RED";
+if (score >= 35) return "ORANGE";
+return "GREEN";                     // couleur #22c55e
+```
+
+**Un score absent devient 0, et 0 rend GREEN.** Une donnée qui manque produit
+le verdict le plus rassurant que le produit sache écrire — en vert.
+
+C'est l'exacte inversion de la doctrine posée en BUILD 9 sur `tigerScore` :
+*« NULL = score non établi. 0 = calculé à zéro et démontrable. Ne JAMAIS
+convertir NULL en 0. »* La doctrine tient dans la couche CaseFile ; elle n'a
+jamais été appliquée à la couche scan.
+
+| | |
+|---|---|
+| catégorie | `BUG` — le comportement contredit une doctrine ratifiée du produit |
+| blanc silencieux | **oui, et de la pire espèce** : pas un vide, une affirmation fausse |
+| portée non mesurée | je n'ai pas classé les 97 une par une. Le chiffre est un **comptage**, pas un audit : certaines occurrences sont légitimes (un compteur qui démarre à zéro EST zéro). Les quatre pages `/demo` sont vérifiées ligne à ligne. |
