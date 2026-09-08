@@ -282,10 +282,15 @@ describe("les notes de profil ne sortent plus dans l'artefact Counsel", () => {
     //
     // Les champs volatils sont neutralisés ; la comparaison porte sur ce que
     // le test prétend vérifier, et sur rien d'autre.
+    // Trois champs dérivent de l'instant de rendu : le Report ID, l'horodatage
+    // UTC, et le SHA-256 d'intégrité — qui est calculé SUR les deux premiers,
+    // donc bouge avec eux. Neutraliser les deux premiers ne suffisait pas :
+    // c'est le hash qui a fait rougir la 8e exécution.
     const stable = (h: string) =>
       h
         .replace(/INTL-[A-Z0-9]+-KOL/g, "INTL-<id>-KOL")
-        .replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, "<utc>");
+        .replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, "<utc>")
+        .replace(/\b[0-9A-F]{64}\b/gi, "<sha256>");
     const avec = stable(renderKolPdfLegal({ ...PROFIL_A, notes: NOTES }));
     const sans = stable(renderKolPdfLegal({ ...PROFIL_A, notes: null }));
     expect(avec).toBe(sans);
