@@ -29,6 +29,7 @@ import { BOTIFY_MINT } from "@/lib/kol-memory/tokenIdentity";
 import { safeEvidenceUrl } from "@/lib/kol-memory/publicIdentityProjection";
 import { redactProceeds, PROCEEDS_PUBLICATION_SELECT } from "@/lib/kol/proceedsGate";
 import { WITHDRAWN_NOTICE } from "@/lib/casefile/containment";
+import { MONETARY_ABSENCE } from "@/lib/publication/absenceVocabulary";
 import type { ArtifactState } from "@/lib/casefile/publicationState";
 import { loadCanonicalCaseFile } from "@/lib/casefile/canonicalReader";
 import { BOTIFY_CASEFILE_REF } from "@/lib/casefile/publicProjection";
@@ -140,9 +141,12 @@ export const CSV_HEADERS = [
 //
 // `WITHHELD` reprend le vocabulaire déjà ratifié (WITHDRAWN_NOTICE) : le motif
 // est écrit, jamais le montant.
-export const AMOUNT_NOT_APPLICABLE = "NOT_APPLICABLE — cette ligne ne porte pas de montant";
-export const AMOUNT_NOT_MEASURED = "NOT_MEASURED — aucun montant dans l'autorité produit";
-export const AMOUNT_WITHHELD = `WITHHELD — ${WITHDRAWN_NOTICE}`;
+// Les JETONS viennent de `absenceVocabulary.ts` : une deuxième surface (le
+// graphe admin) les rend désormais elle aussi, et un vocabulaire recopié cesse
+// d'être un vocabulaire. Seuls les libellés longs sont composés ici.
+export const AMOUNT_NOT_APPLICABLE = `${MONETARY_ABSENCE.NOT_APPLICABLE} — cette ligne ne porte pas de montant`;
+export const AMOUNT_NOT_MEASURED = `${MONETARY_ABSENCE.NOT_MEASURED} — aucun montant dans l'autorité produit`;
+export const AMOUNT_WITHHELD = `${MONETARY_ABSENCE.WITHHELD} — ${WITHDRAWN_NOTICE}`;
 
 /** Les trois marqueurs, pour les tests et les consommateurs. */
 export const AMOUNT_ABSENCE_MARKERS = [

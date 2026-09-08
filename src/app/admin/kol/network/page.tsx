@@ -56,6 +56,18 @@ export default function KolNetworkPage() {
 
   const fmtUsd = (n: number) => n >= 1000000 ? '$' + (n/1000000).toFixed(1) + 'M' : n >= 1000 ? '$' + (n/1000).toFixed(0) + 'K' : '$' + n
 
+  // ─── BUILD 10 / FENÊTRE 2 — L'ABSENCE NE SE RECOERCE PAS À L'AFFICHAGE ───
+  //
+  // La route a cessé de rendre `totalScammed ?? 0`. Si la page recoerce, la
+  // correction ne sert à rien : le « zéro victime » revient par le rendu, un
+  // cran plus loin.
+  //
+  // L'état accompagne la valeur — la route sert `{ totalScammed, ...State }` —
+  // et c'est lui qui décide de ce qui s'affiche. Un chiffre publié s'affiche ;
+  // une absence porte son nom, jamais « $0 ».
+  const fmtMontant = (n: number | null | undefined, etat?: string) =>
+    etat && etat !== 'PUBLISHED' ? etat : n == null ? 'NOT_MEASURED' : fmtUsd(n)
+
   if (!authed && !loading) return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
       <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 p-6 w-80 space-y-4">
@@ -130,7 +142,7 @@ export default function KolNetworkPage() {
                     {investigateResults[kol.handle] ? ' ✓' : ''}
                   </button>
 
-                  <span className="text-[10px] text-orange-400">{fmtUsd(kol.totalScammed)}</span>
+                  <span className="text-[10px] text-orange-400">{fmtMontant(kol.totalScammed, kol.totalScammedState)}</span>
                   <span className="text-[10px] text-gray-500">{kol.walletCount}w · {kol.caseCount}c</span>
                   {connections.length > 0 && <span className="text-[10px] text-orange-300">{connections.length} links</span>}
                 </div>
@@ -166,7 +178,7 @@ export default function KolNetworkPage() {
                                 <span className="inline-block px-2 py-0.5 rounded text-[9px] bg-[#1a1a1a] text-gray-300 font-bold">
                                   {c.role.toUpperCase().replace('_', ' ')}
                                 </span>
-                                {c.paidUsd && <span className="text-[10px] text-red-400 ml-1">{fmtUsd(c.paidUsd)}</span>}
+                                <span className="text-[10px] text-red-400 ml-1">{fmtMontant(c.paidUsd, c.paidUsdState)}</span>
                               </div>
                             ))}
                           </div>
@@ -186,7 +198,7 @@ export default function KolNetworkPage() {
                 </div>
                 <div>
                   <div className="text-xl font-bold">{selectedKol?.displayName}</div>
-                  <div className="text-xs text-gray-500 font-mono">@{selected} · {selectedKol?.rugCount} rugs · {fmtUsd(selectedKol?.totalScammed ?? 0)}</div>
+                  <div className="text-xs text-gray-500 font-mono">@{selected} · {selectedKol?.rugCount} rugs · {fmtMontant(selectedKol?.totalScammed, selectedKol?.totalScammedState)}</div>
                 </div>
                 <a href={'/en/kol/' + selected} target="_blank" className="ml-auto text-xs font-semibold text-orange-400 hover:text-orange-300 transition border border-gray-800 px-3 py-1.5 rounded-lg">
                   PUBLIC PAGE →
@@ -222,7 +234,7 @@ export default function KolNetworkPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="inline-block px-2 py-0.5 rounded text-[10px] bg-[#1a1a1a] text-gray-300 font-bold">{c.role.toUpperCase().replace('_', ' ')}</span>
                         <span className="font-mono text-sm font-semibold">{c.caseId}</span>
-                        {c.paidUsd && <span className="ml-auto text-sm text-red-400 font-bold">{fmtUsd(c.paidUsd)}</span>}
+                        <span className="ml-auto text-sm text-red-400 font-bold">{fmtMontant(c.paidUsd, c.paidUsdState)}</span>
                       </div>
                       {c.evidence && <div className="text-xs text-gray-500 font-mono leading-relaxed">{c.evidence}</div>}
                     </div>
