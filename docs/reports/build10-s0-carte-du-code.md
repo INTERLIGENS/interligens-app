@@ -391,3 +391,107 @@ jamais été appliquée à la couche scan.
 | catégorie | `BUG` — le comportement contredit une doctrine ratifiée du produit |
 | blanc silencieux | **oui, et de la pire espèce** : pas un vide, une affirmation fausse |
 | portée non mesurée | je n'ai pas classé les 97 une par une. Le chiffre est un **comptage**, pas un audit : certaines occurrences sont légitimes (un compteur qui démarre à zéro EST zéro). Les quatre pages `/demo` sont vérifiées ligne à ligne. |
+
+---
+
+# SURFACE 3 · `/shared/case/[token]` — LE LIEN QU'ON TRANSMET
+
+## 3.1 · La chaîne
+
+```
+/shared/case/<token> → prisma.vaultCaseShare.findUnique({ token })
+                     → expiresAt vérifié ligne 111, expiration RENDUE
+créé par : POST /api/investigators/cases/[caseId]/share (rate-limité 20/h)
+```
+
+L'expiration est explicite, affichée deux fois sur la page. **Bon
+comportement** : un lien périmé le dit.
+
+## 3.2 · Le lien de partage est derrière le gate beta
+
+Mesuré dans `src/proxy.ts`, en recompilant le matcher :
+
+| chemin | capté par le matcher | exempté du gate |
+|---|---|---|
+| `/shared/case/<token>` | **oui** | **non** |
+| `/legal/terms` | non | — |
+| `/access` | non | — |
+| `/api/casefile/public` | non (autre entrée) | — |
+
+`isBetaExempt("/shared/case/…")` rend `false`, et le catch-all du matcher
+capte le chemin. Un destinataire **sans cookie `investigator_session` valide
+est donc redirigé vers `/access`.**
+
+C'est la surface conçue pour être transmise à un tiers — counsel, régulateur,
+confrère — et c'est celle qu'un tiers ne peut pas ouvrir.
+
+| | |
+|---|---|
+| catégorie | `BUG` — la surface contredit sa raison d'être |
+| blanc silencieux | non : le tiers voit une page d'accès, pas un blanc |
+| **non vérifié** | **mesuré dans le CODE uniquement.** Je n'ai pas exercé le comportement en production, et je n'ai pas de session pour le faire. Un déploiement peut porter une exemption d'infrastructure (règle Cloudflare, rewrite) que le dépôt ne montre pas. |
+
+---
+
+# SURFACE 4 · `/<loc>/kol/[handle]` — LA SURFACE NOMINATIVE
+
+C'est la surface au risque juridique le plus direct : elle nomme des personnes.
+
+## 4.1 · La chaîne — six appels, un seul avec chemin d'échec
+
+```
+/api/kol/<handle>                    → setNotFound(true) si absent   ✔ explicite
+/api/laundry/<handle>                → .catch(() => {})              ✘ muet
+/api/cluster/<handle>                → .catch(() => {})              ✘ muet
+/api/coordination/<handle>           → .catch(() => {})              ✘ muet
+/api/transparency/wallets?handle=…   → .catch(() => {})              ✘ muet
+/api/v1/shill-to-exit?handle=…       → .catch(() => {})              ✘ muet
+   └─ POST /api/v1/narrative         → .catch(() => {})              ✘ muet
+```
+
+Et le rendu n'est posé que si la charge est **non vide** :
+
+```ts
+.then(d => { if (d && d.relatedActors?.length > 0) setCluster(d) })
+.then(d => { if (d && d.signals?.length > 0) setCoordination(d) })
+.then(d => { if (d?.wallets?.length > 0) setTransparency(d.wallets) })
+.then(d => { if (d?.detected) setShillResult(d) })
+```
+
+**Trois états produisent le même écran :**
+
+1. la donnée n'existe pas pour ce compte,
+2. l'API a répondu vide,
+3. l'API a échoué — réseau, 500, rate-limit, gate nominatif.
+
+Dans les trois cas, **la section n'apparaît pas et rien ne le dit**.
+
+| | |
+|---|---|
+| catégorie | `BUG` — l'échec est indistinguable de l'absence |
+| blanc silencieux | **oui, cinq fois, sur la surface nominative** |
+
+C'est le cœur de BUILD 10. Sur une fiche qui **nomme une personne**, une
+section absente se lit « rien à signaler sur elle ». Le produit ne peut pas
+tenir cette lecture : il ne sait pas la distinguer de « le collecteur n'a
+jamais tourné ».
+
+*Rappel de la carte des collecteurs (§3.b) :* `api/cron/corroboration`,
+`api/cron/social/capture` et `api/cron/social/discover` sont des handlers
+**orphelins**. Si l'une de ces sections en dépend, l'écran vide est permanent
+et muet. Le lien exact entre chaque section et son collecteur reste à établir —
+je le note, je ne le suppose pas.
+
+## 4.2 · Ce que la page promet et que l'API peut refuser
+
+La page construit trois liens de sortie :
+
+- `/api/report/v2?mint=…` (si `mint` connu) sinon `/api/pdf/kol?handle=…`
+- `/api/casefile/public?handle=…`
+
+`/api/casefile/public` rend **404** pour tout handle qui ne résout pas vers un
+dossier canonique — soit tous les handles hors des 10 de `BOTIFY_KOLS`. Le
+bouton est-il conditionné à cette résolution ? **À vérifier** : si le lien est
+rendu inconditionnellement, un lecteur clique et reçoit un 404 brut.
+
+*Non vérifié à ce stade* — je le note et je poursuis.
