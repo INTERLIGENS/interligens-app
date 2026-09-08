@@ -20,7 +20,14 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { Prisma } from "@prisma/client";
+import {
+  PUBLISHABLE_WALLET_FILTER,
+  WALLET_PUBLICATION_SELECT,
+  isWalletPublishable,
+} from "@/lib/kol-memory/walletPublication";
+import { BOTIFY_MINT, resolveToCanonicalMint, isSyntheticRouteKey } from "@/lib/kol-memory/tokenIdentity";
+import { redactProceeds } from "@/lib/kol/proceedsGate";
+import { WITHDRAWN_NOTICE } from "@/lib/casefile/containment";
 import { prisma } from "../../lib/prisma";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -91,6 +98,57 @@ export const CSV_HEADERS = [
  * on-chain detail lives on its own clearly-labelled rows (detective trade,
  * DB-attributed wallets, proceeds events).
  */
+// ─── BUILD 10 — L'ABSENCE EST LISIBLE, ET DISTINCTE DE ZÉRO ───────────────
+//
+// Une cellule VIDE sous l'en-tête « Amount USD » est indistinguable de zéro
+// dans un tableur : Excel n'affiche rien pour l'une comme pour l'autre, et un
+// SUM() les traite pareil. Sur un champ monétaire, l'absence ne peut pas se
+// présenter comme une valeur favorable.
+//
+// Deux absences distinctes, deux marqueurs distincts — jamais `0`, jamais `null`,
+// jamais la chaîne vide :
+//
+//   NOT_APPLICABLE   la ligne ne porte pas de montant par nature (un claim
+//                    documentaire, un wallet attribué) — rien n'a été retiré
+//   NOT_MEASURED     un montant était attendu et n'existe pas dans l'autorité
+//   WITHHELD         un montant existe mais sa publication est retirée
+//
+// `WITHHELD` reprend le vocabulaire déjà ratifié (WITHDRAWN_NOTICE) : le motif
+// est écrit, jamais le montant.
+export const AMOUNT_NOT_APPLICABLE = "NOT_APPLICABLE — cette ligne ne porte pas de montant";
+export const AMOUNT_NOT_MEASURED = "NOT_MEASURED — aucun montant dans l'autorité produit";
+export const AMOUNT_WITHHELD = `WITHHELD — ${WITHDRAWN_NOTICE}`;
+
+/** Les trois marqueurs, pour les tests et les consommateurs. */
+export const AMOUNT_ABSENCE_MARKERS = [
+  AMOUNT_NOT_APPLICABLE,
+  AMOUNT_NOT_MEASURED,
+  AMOUNT_WITHHELD,
+] as const;
+
+/**
+ * Une URL de preuve ne peut pas pointer une identité que le produit a fermée.
+ *
+ * `data/cases/botify.json` STOCKE quatre `thread_url` construites sur la clé
+ * synthétique de 43 caractères — mesuré le 2026-09-08 : 4 URL stockées, 0 URL
+ * construite par ce builder sur le mint. La clé n'existe dans AUCUNE ligne de
+ * la base ; ces liens mènent donc à un jeton qui n'est pas le sujet du dossier.
+ *
+ * `resolveToCanonicalMint` est la gate canonique : elle rend le mint 44 pour la
+ * clé synthétique et laisse tout le reste inchangé. Aucune URL n'est inventée —
+ * l'identité est corrigée dans celle qui existe déjà.
+ */
+export function safeEvidenceUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  let out = url;
+  for (const token of url.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/g) ?? []) {
+    if (isSyntheticRouteKey(token)) {
+      out = out.split(token).join(resolveToCanonicalMint(token, "botifySpreadsheet.safeEvidenceUrl"));
+    }
+  }
+  return out;
+}
+
 export function buildBotifyEvidenceRows(
   caseData: BotifyCase,
   db: DbEnrichment,
@@ -104,9 +162,9 @@ export function buildBotifyEvidenceRows(
       title: c.title,
       severity: c.severity,
       status: c.status,
-      evidenceUrl: c.thread_url || (c.evidence_refs ?? []).join("; "),
+      evidenceUrl: safeEvidenceUrl(c.thread_url) || (c.evidence_refs ?? []).join("; "),
       wallets: "",
-      amountUsd: "",
+      amountUsd: AMOUNT_NOT_APPLICABLE,
       txHashes: "",
     });
   }
@@ -121,7 +179,7 @@ export function buildBotifyEvidenceRows(
       status: "DOCUMENTED",
       evidenceUrl: `https://solscan.io/account/${dt.wallet ?? ""}`,
       wallets: dt.wallet ?? "",
-      amountUsd: dt.pnl_usd != null ? String(dt.pnl_usd) : "",
+      amountUsd: dt.pnl_usd != null ? String(dt.pnl_usd) : AMOUNT_NOT_MEASURED,
       txHashes: [dt.buy_tx, dt.sell_tx].filter(Boolean).join("; "),
     });
   }
@@ -135,7 +193,7 @@ export function buildBotifyEvidenceRows(
       status: "ATTRIBUTED",
       evidenceUrl: `https://solscan.io/account/${w.address}`,
       wallets: w.address,
-      amountUsd: "",
+      amountUsd: AMOUNT_NOT_APPLICABLE,
       txHashes: "",
     });
   });
@@ -188,8 +246,17 @@ export function rowsToCsv(rows: EvidenceRow[]): string {
 export async function loadBotifyDbEnrichment(caseId: string): Promise<DbEnrichment> {
   const out: DbEnrichment = { wallets: [], proceeds: [] };
 
-  // KOL handles linked to the case (via KolCase) + any profile carrying a
-  // botifyDeal payload.
+  // ── AXE 1 — LE RATTACHEMENT AU DOSSIER, FAIL CLOSED ────────────────────
+  //
+  // Avant : les handles venaient de `KolCase(caseId)` UNION
+  // `KolProfile WHERE botifyDeal IS NOT NULL`. Le second rendait 68 handles —
+  // mesuré le 2026-09-08 — et `botifyDeal IS NOT NULL` ne démontre AUCUN
+  // rattachement au dossier : c'est un champ de profil, pas un lien de dossier.
+  //
+  // Le proxy est retiré. Seul `KolCase` fait autorité sur le rattachement, et
+  // c'est sa raison d'être. Aucune compensation : si le dossier ne porte aucun
+  // handle, l'enrichissement nominatif est OMIS ENTIÈREMENT.
+  // « 0 donnée vaut mieux qu'une association nominative non démontrée. »
   const handles = new Set<string>();
   try {
     const cases = await prisma.kolCase.findMany({
@@ -200,55 +267,92 @@ export async function loadBotifyDbEnrichment(caseId: string): Promise<DbEnrichme
   } catch (e: any) {
     console.warn(`[botify-export] KolCase query failed: ${e?.message ?? e}`);
   }
+
+  // Fail closed : pas de rattachement démontré -> pas d'enrichissement du tout.
+  if (handles.size === 0) {
+    console.warn(
+      `[botify-export] aucun handle rattaché au dossier ${caseId} par KolCase — ` +
+        `enrichissement nominatif OMIS (fail closed).`,
+    );
+    return out;
+  }
+  const handleList = [...handles];
+
+  // ── AXE 2 — LES WALLETS PASSENT PAR LA GATE DE PUBLIABILITÉ ────────────
+  //
+  // Avant : `findMany({ where: { kolHandle: { in } } })` — sans filtre, et sans
+  // même SÉLECTIONNER `isPubliclyUsable`. Mesuré : 75 adresses non publiables
+  // sortaient nominativement, dont les trois contenues en BUILD 8.
+  //
+  // `PUBLISHABLE_WALLET_FILTER` est appliqué TEL QUEL, et `isWalletPublishable`
+  // refiltre en mémoire : le WHERE et le prédicat disent la même chose, et le
+  // second attrape le cas où une requête future oublierait le premier.
   try {
-    const profs = await prisma.kolProfile.findMany({
-      where: { botifyDeal: { not: Prisma.DbNull } },
-      select: { handle: true },
+    const wallets = await prisma.kolWallet.findMany({
+      where: { kolHandle: { in: handleList }, ...PUBLISHABLE_WALLET_FILTER },
+      select: { kolHandle: true, address: true, label: true, ...WALLET_PUBLICATION_SELECT },
     });
-    profs.forEach((p) => handles.add(p.handle));
+    out.wallets = wallets
+      .filter(isWalletPublishable)
+      .map((w) => ({ handle: w.kolHandle, address: w.address, label: w.label ?? "" }));
   } catch (e: any) {
-    console.warn(`[botify-export] KolProfile(botifyDeal) query failed: ${e?.message ?? e}`);
+    console.warn(`[botify-export] KolWallet query failed: ${e?.message ?? e}`);
   }
 
-  if (handles.size > 0) {
-    try {
-      const wallets = await prisma.kolWallet.findMany({
-        where: { kolHandle: { in: [...handles] } },
-        select: { kolHandle: true, address: true, label: true },
-      });
-      out.wallets = wallets.map((w) => ({
-        handle: w.kolHandle,
-        address: w.address,
-        label: w.label ?? "",
-      }));
-    } catch (e: any) {
-      console.warn(`[botify-export] KolWallet query failed: ${e?.message ?? e}`);
-    }
-  }
-
-  // KolProceedsEvent — not present in schema.prod.prisma (known schema drift).
-  // Query defensively with raw SQL; skip silently if the table is absent.
+  // ── AXE 3 — UNE VRAIE JOINTURE, PUIS LA GATE MONÉTAIRE ─────────────────
+  //
+  // Avant : `SELECT * FROM "KolProceedsEvent" LIMIT 500` puis
+  // `JSON.stringify(r).toLowerCase().includes("botify")`. Trois défauts :
+  //
+  //   · le LIMIT 500 sur 5 602 lignes rendait le résultat NON DÉTERMINISTE —
+  //     deux montants retirés ont fuité, quatre autres non, par ordre de lecture ;
+  //   · le filtre par sous-chaîne sur la ligne SÉRIALISÉE captait n'importe quel
+  //     champ, `attributionNote` compris ;
+  //   · aucune gate de publication : `OrbitApe` 817 000 $ et `James` 380 000 $
+  //     sortaient alors que leur profil porte `proceedsPublication='withdrawn'`.
+  //
+  // Maintenant : jointure sur `KolProfile` par `kolHandle`, restreinte aux
+  // handles rattachés ET au mint CANONIQUE, sans LIMIT, ordonnée — donc
+  // déterministe. Puis `redactProceeds`, la gate canonique, au point de
+  // consommation. Elle n'est pas recopiée, elle est appelée.
   try {
-    const raw: any[] = await prisma.$queryRawUnsafe(
-      'SELECT * FROM "KolProceedsEvent" LIMIT 500',
-    );
-    const matches = raw.filter((r) =>
-      JSON.stringify(r).toLowerCase().includes("botify"),
-    );
-    out.proceeds = matches.map((r, i) => {
-      const amount =
-        r.amountUsd ?? r.amount_usd ?? r.proceedsUsd ?? r.amount ?? "";
-      const tx = r.txHash ?? r.tx_hash ?? r.signature ?? "";
+    const rows = await prisma.$queryRaw<
+      {
+        id: string;
+        kolHandle: string;
+        amountUsd: number | null;
+        txHash: string | null;
+        proceedsPublication: string | null;
+      }[]
+    >`
+      SELECT e."id", e."kolHandle", e."amountUsd", e."txHash",
+             p."proceedsPublication"
+        FROM "KolProceedsEvent" e
+        JOIN "KolProfile" p ON p."handle" = e."kolHandle"
+       WHERE e."kolHandle" = ANY(${handleList}::text[])
+         AND e."tokenAddress" = ${BOTIFY_MINT}
+       ORDER BY e."id" ASC
+    `;
+
+    out.proceeds = rows.map((r) => {
+      // La gate rend `null` quand la publication est retirée. On NE publie PAS
+      // le montant, et on NE lui substitue AUCUNE autre valeur : la cellule
+      // porte le motif, jamais un chiffre.
+      const published = redactProceeds({ proceedsPublication: r.proceedsPublication }, r.amountUsd);
+      const amountUsd =
+        published != null
+          ? String(published)
+          : r.amountUsd != null
+            ? AMOUNT_WITHHELD
+            : AMOUNT_NOT_MEASURED;
       return {
-        ref: String(r.id ?? r.kolHandle ?? `event-${i + 1}`),
-        amountUsd: amount != null ? String(amount) : "",
-        txHashes: tx ? String(tx) : "",
+        ref: r.id,
+        amountUsd,
+        txHashes: r.txHash ? String(r.txHash) : "",
       };
     });
-  } catch {
-    console.warn(
-      "[botify-export] KolProceedsEvent unavailable (schema drift) — proceeds rows skipped",
-    );
+  } catch (e: any) {
+    console.warn(`[botify-export] KolProceedsEvent join failed: ${e?.message ?? e}`);
   }
 
   return out;
