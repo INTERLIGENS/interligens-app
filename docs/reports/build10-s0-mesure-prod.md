@@ -940,3 +940,167 @@ Le problème est ailleurs, et il est double :
 
 **Aucun de ces deux problèmes ne se voit depuis une surface publique.** C'est
 pour cela qu'il fallait mesurer la base.
+
+---
+
+# S9 · Les quatre constats du watchdog du 2026-09-07, instruits
+
+Mesures faites le **2026-09-08 entre 07:00 et 07:15 UTC**. Aucun cron relancé,
+aucun drainage, TSA non activée.
+
+## 9.1 — Source réglementaire « périmée » : **le chiffre est exact, sa lecture est fausse**
+
+Le watchdog rapporte *« OFAC à 13 jours pour un seuil de 7 »* et en conclut que
+*« les verdicts "pas de sanction" ne sont plus fiables »*. **Les 13 jours sont
+confirmés. La conclusion ne l'est pas.**
+
+### Le collecteur tourne, et il tourne bien
+
+`intel_ingestion_batches`, slug `ofac` — les 12 derniers runs :
+
+| début | statut | `recordsFetched` | `recordsNew` | `recordsUpdated` | déclencheur |
+|---|---|---|---|---|---|
+| 2026-09-08 01:00:40 | **`success`** | **874** | `null` | `null` | `admin:cron` |
+| 2026-09-07 01:00:09 | `success` | 874 | `null` | `null` | `admin:cron` |
+| … 10 runs identiques, du 2026-08-28 au 2026-09-06 … | | | | | |
+
+**28 runs au total, 26 en `success`.** Le cron de 01:00 a tourné **ce matin**, il
+y a moins de 7 heures, et a récupéré **874 enregistrements**. Le collecteur n'est
+ni arrêté, ni ralenti.
+
+### D'où viennent alors les 13 jours
+
+De `intel_canonical_entities.lastSeenAt` :
+
+| `strongestSource` | entités | actives | `max(lastSeenAt)` | âge |
+|---|---|---|---|---|
+| `scamsniffer` | 341 060 | 341 060 | 2026-09-08 01:30 | **0,2 j** |
+| **`ofac`** | **869** | **869** | **2026-08-26 01:01** | **13,3 j** |
+| `forta` | 1 | 1 | 2026-04-08 18:58 | **152,5 j** |
+| `admin-manual` | 1 | 0 | 2026-08-26 04:50 | 13,1 j |
+
+Les 13,3 jours du watchdog sont **exacts**. Mais ce champ ne mesure pas ce que le
+watchdog lui fait dire — et **le code le déclare explicitement**.
+
+### Le code avait déjà nommé ce piège
+
+`src/lib/intelligence/ingest.ts`, lignes 20-38, en tête de fichier :
+
+> *« `intel_canonical_entities.lastSeenAt`, `.updatedAt` et
+> `intel_source_observations.lastVerifiedAt` sont désormais des champs LEGACY au
+> sens suivant : ils ne prouvent PAS qu'une entité a été revue lors du dernier
+> cycle. Depuis la garde `IS DISTINCT FROM` posée sur les deux
+> `ON CONFLICT DO UPDATE` de `bulkUpsert`, une ligne dont rien n'a changé n'est
+> plus réécrite — donc ces trois horodatages ne bougent plus. **Ils datent le
+> dernier CHANGEMENT, pas la dernière observation.** »*
+
+et la doctrine actée, deux lignes plus bas :
+
+> *« dernière confirmation PAR ENTITÉ → **NON GARANTIE aujourd'hui**. Dit
+> explicitement pour qu'**aucune sonde ne s'y adosse et ne produise un faux
+> positif** — cf. `reaper.ts:70`, qui avait déjà REJETÉ ces trois champs comme
+> sondes. »*
+
+**Le watchdog est exactement la sonde que ce commentaire anticipait.** La garde
+`IS DISTINCT FROM` a été posée pour supprimer ~340 000 `UPDATE` inutiles par
+cycle ScamSniffer ; son effet de bord est que `lastSeenAt` gèle sur une liste
+stable — et une liste de sanctions **est** stable.
+
+C'est pourquoi ScamSniffer paraît frais (341 060 lignes, du contenu qui bouge
+tous les jours) et OFAC paraît périmé (869 lignes qui ne changent pas).
+
+### Ce qui reste vrai, et qui est le vrai risque
+
+`IS DISTINCT FROM` ne garde que l'`UPDATE`, **pas l'`INSERT`** : une **nouvelle**
+adresse sanctionnée serait donc insérée normalement. La liste servie n'est pas
+périmée en contenu.
+
+Mais deux choses restent mesurées et non résolues :
+
+1. **`recordsNew` et `recordsUpdated` valent `null` sur tous les runs récents.**
+   Le code l'assume (`« NULL = inconnu sur le chemin bulk »`), mais la
+   conséquence est qu'**aucun run ne peut prouver qu'il a écrit quelque chose**.
+   Le `success` du batch atteste la récupération des 874 enregistrements, pas
+   leur intégration.
+2. **La dernière confirmation par entité n'est pas garantie**, le code le dit.
+   On ne peut donc pas répondre à « cette adresse était-elle encore sur la liste
+   ce matin ? ».
+
+### Où le floor est appliqué, et l'absence de contrôle de date — confirmée
+
+`src/lib/tigerscore/engine.ts` :
+
+```
+:187   evm_known_bad — CRITICAL floor: wins over any other signal
+:528   const intel = computeFromSignal(signal, base.score)
+:545   "Address matched in regulatory sanctions list — floor 15 applied"
+```
+
+Recherche de `lastSeenAt|freshness|staleness|maxAge|ageDays|isStale` dans tout
+`engine.ts` : **aucune occurrence**. **Il n'existe aucun contrôle de fraîcheur
+sur ce chemin.**
+
+Le moteur distingue en revanche **deux** états, et il le fait bien :
+
+| situation | comportement mesuré |
+|---|---|
+| consultation **échoue** (exception) | recalcul avec `intelligence_lookup_failed`, confiance abaissée à « Low », source manquante nommée dans `dataQuality`, `unevaluatedSignals` reçoit `sanctions_floor`. Le score **n'est pas gonflé** |
+| consultation **réussit sur une liste ancienne** | **indistinguable** d'une consultation sur une liste fraîche |
+
+Le premier cas est traité avec soin — le commentaire `:566` explique que, avant,
+une panne de la base de sanctions était servie comme une adresse propre. Le
+second cas **n'existe pas dans le modèle du moteur**.
+
+### Combien de verdicts publiés en dépendent
+
+| surface | dépendance |
+|---|---|
+| `token_casefiles` avec `tigerScore` non nul | **2** — LAB (91, `published`) et BLACKBULL (0, `draft`) |
+| `ScoreSnapshot` (verdicts historisés) | **0 ligne** |
+| BOTIFY · VINE | `tigerScore` **`null`** |
+
+**Aucun verdict persisté ne dépend aujourd'hui d'un match de sanction.** Le seul
+score publié — LAB, 91 — est une valeur stockée sur un dossier BNB Chain, pas le
+produit d'une consultation OFAC au moment de la lecture.
+
+En revanche, **tout scan en direct** (`/api/scan/solana`, `/api/scan/evm`,
+`/api/v1/score`) passe par le chemin du floor, sur **868 entités `SANCTION`**
+actives. Ces réponses ne sont pas des verdicts publiés : elles sont produites à
+la demande, une par requête, et non historisées (`ScoreSnapshot` est vide).
+
+### Ce que le produit affiche quand la liste est ancienne
+
+**Rien.** Aucune surface n'expose la fraîcheur d'une source de renseignement :
+aucune route de `src/app/` ne nomme `intel_canonical_entities` (établi en S8).
+Un lecteur reçoit un verdict sans date de liste, sans compteur d'entités, sans
+mention de cycle.
+
+Il ne reçoit pas non plus un « pas de sanction » explicite : l'absence de match
+se traduit par l'**absence du driver** `intelligence_overlay`, donc par un score
+qui ne mentionne simplement pas les sanctions. **L'absence est muette, pas
+affirmative** — ce qui est moins grave qu'un « pas de sanction » affirmé, mais
+tout aussi peu datable.
+
+### Classement
+
+| objet | catégorie | justification |
+|---|---|---|
+| collecteur OFAC | **aucune** — il fonctionne | 26 runs `success` sur 28, dernier il y a 7 h, 874 enregistrements |
+| `lastSeenAt` comme sonde de fraîcheur | **`NOT_MEASURABLE`** | le champ date le dernier changement, pas la dernière observation ; le code le déclare LEGACY |
+| `recordsNew` / `recordsUpdated` à `null` | **`NOT_MEASURABLE`** | aucun run ne peut prouver qu'il a écrit |
+| confirmation par entité | **`DATA_ABSENT`** | « NON GARANTIE aujourd'hui », acté dans le code |
+| **absence de contrôle de fraîcheur dans `computeTigerScore`** | **`BUG`** | le moteur traite l'échec de consultation et ignore l'ancienneté ; une liste vieille et une liste fraîche produisent la même sortie, sans que rien ne le dise |
+| fraîcheur des sources en surface | **`PIPE_NOT_CONNECTED`** | mesurée en base, exposée nulle part |
+
+### Ce que je remonte à l'architecte
+
+Le constat du watchdog est **à requalifier, pas à écarter**. Il désigne un vrai
+trou — *« le moteur ne sait pas dater sa liste »* — mais par un chiffre qui ne
+le prouve pas. Les 13 jours ne disent pas que la liste est vieille ; ils disent
+que **personne ne sait quand elle a été confirmée**, ce qui est un constat plus
+inquiétant et plus difficile à corriger.
+
+Et le second effet mérite d'être nommé : **un correctif de performance a
+désarmé une sonde de fraîcheur**, sans que la sonde en soit informée. Le
+commentaire de `ingest.ts` avait prévu le faux positif ; le watchdog l'a produit
+onze jours plus tard.
