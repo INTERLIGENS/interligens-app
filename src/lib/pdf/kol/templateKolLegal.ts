@@ -8,6 +8,22 @@ function fmtUsd(n?: number | null): string {
   return "$" + n.toFixed(0)
 }
 
+// ─── BUILD 10 / FENÊTRE 1 — DIRE L'ABSENCE, PAS LA SUGGÉRER ───────────────
+//
+// `fmtUsd` rend « — » pour `null` ET pour `0` : dans une case intitulée
+// « Documented on-chain proceeds », un tiret se lit « rien encaissé ». C'est
+// exactement la coercition absence -> réassurance que ce chantier ferme
+// ailleurs, et elle reviendrait ici par le formatage.
+//
+// Un montant non publié le DIT. Le gabarit ne peut pas distinguer « retiré de
+// la publication » de « jamais mesuré » — cette information n'est pas dans ce
+// qu'il reçoit — donc il n'affirme ni l'un ni l'autre : il énonce le seul fait
+// dont il dispose, qu'aucun chiffre n'est publié.
+function fmtUsdOrWithheld(n?: number | null): string {
+  if (n == null) return "NOT PUBLISHED"
+  return fmtUsd(n)
+}
+
 function fmtDate(d?: Date | string | null): string {
   if (!d) return "—"
   return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
@@ -27,11 +43,59 @@ function reportId(): string {
   return "INTL-" + Date.now().toString(36).toUpperCase() + "-KOL"
 }
 
+// ─── BUILD 10 / FENÊTRE 1 — LA PHRASE DE REPLI NE MAQUILLE PAS L'ABSENCE ──
+//
+// Elle interpolait deux montants en aveugle. Une fois la gate posée, elle
+// rendait « cashout events totaling — in documented proceeds » : bancal, et lu
+// par un conseil comme « rien encaissé ».
+//
+// Un montant non publié sort de la phrase, et son absence est ÉNONCÉE dans une
+// proposition séparée. Rien n'est substitué, rien n'est recalculé, et aucune
+// CAUSE n'est affirmée : le gabarit ne sait pas distinguer un montant retiré de
+// la publication d'un montant jamais mesuré, donc il n'affirme ni l'un ni
+// l'autre. Il dit le seul fait dont il dispose.
+//
+// Le décompte d'événements, lui, reste : c'est un fait de dénombrement, pas une
+// affirmation monétaire, et le taire appauvrirait le document sans rien protéger.
+function defaultExitNarrative(
+  kol: any,
+  cashoutCount: number,
+  totalDocumented: number | null,
+  evmAmount: number | null,
+): string {
+  const chiffres = [
+    totalDocumented != null ? `${fmtUsdOrWithheld(totalDocumented)} in documented proceeds` : null,
+    evmAmount != null ? `${fmtUsd(evmAmount)} in unrealized EVM holdings` : null,
+  ].filter(Boolean) as string[]
+
+  const tus = [
+    totalDocumented == null ? "documented proceeds" : null,
+    evmAmount == null ? "unrealized EVM holdings" : null,
+  ].filter(Boolean) as string[]
+
+  const base =
+    `@${kol.handle} is a high-risk actor with ${kol.rugCount} suspected exit-liquidity ` +
+    `risk events documented across multiple projects. On-chain investigation has ` +
+    `identified ${cashoutCount} associated wallet (public-source-linked) cashout events` +
+    (chiffres.length ? ` totaling ${chiffres.join(", plus ")}` : "") +
+    "."
+
+  return tus.length ? `${base} No figure is published for ${tus.join(" or ")}.` : base
+}
+
 export function renderKolPdfLegal(kol: any): string {
   const evidences = kol.evidences ?? []
   const wallets = kol.kolWallets ?? []
   const cases = kol.kolCases ?? []
-  const totalDocumented = kol.totalDocumented ?? evidences.reduce((s: number, e: any) => s + (e.amountUsd ?? 0), 0)
+  // ─── BUILD 10 / FENÊTRE 1 — AUCUN TOTAL RECALCULÉ ────────────────────────
+  //
+  // Copie exacte du repli de `templateKol.ts`, et retirée pour la même raison :
+  // il fabriquait un montant que personne n'avait décidé de publier, et il se
+  // déclenchait au moment même où la gate venait de retirer le total.
+  //
+  // Ce document-ci sort vers un conseil. Un chiffre recalculé y aurait le même
+  // poids qu'un chiffre établi, sans qu'aucune décision ne l'adosse.
+  const totalDocumented = kol.totalDocumented ?? null
   const exitEv = evidences.find((e: any) => e.type === "coordinated_exit")
   const evmEv = evidences.find((e: any) => e.type === "evm_wallet")
   const cashouts = evidences.filter((e: any) => e.type === "onchain_cashout")
@@ -234,11 +298,11 @@ export function renderKolPdfLegal(kol: any): string {
       </div>
       <div class="stat-cell">
         <label>Est. Investor Losses</label>
-        <div class="val val-red">${fmtUsd(kol.totalScammed)}</div>
+        <div class="val val-red">${fmtUsdOrWithheld(kol.totalScammed)}</div>
       </div>
       <div class="stat-cell">
         <label>Documented On-Chain Proceeds</label>
-        <div class="val val-orange">${fmtUsd(totalDocumented)}</div>
+        <div class="val val-orange">${fmtUsdOrWithheld(totalDocumented)}</div>
       </div>
       <div class="stat-cell">
         <label>Evidence Items</label>
@@ -246,7 +310,7 @@ export function renderKolPdfLegal(kol: any): string {
       </div>
     </div>
     <p style="font-size:9.5px;color:var(--ink-light);line-height:1.75">
-      ${kol.exitNarrative ?? `@${kol.handle} is a high-risk actor with ${kol.rugCount} suspected exit-liquidity risk events documented across multiple projects. On-chain investigation has identified ${cashouts.length} associated wallet (public-source-linked) cashout events totaling ${fmtUsd(totalDocumented)} in documented proceeds, plus ${fmtUsd(evmEv?.amountUsd)} in unrealized EVM holdings.`}
+      ${kol.exitNarrative ?? defaultExitNarrative(kol, cashouts.length, totalDocumented, evmEv?.amountUsd ?? null)}
     </p>
     ${exitEv ? `
     <div class="exit-box" style="margin-top:16px">
@@ -288,8 +352,8 @@ export function renderKolPdfLegal(kol: any): string {
       <div style="background:#fff;border:1px solid var(--rule);padding:16px">
         <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--accent);margin-bottom:10px">B — VICTIM HARM SNAPSHOT</div>
         <table style="width:100%;font-size:8.5px;border-collapse:collapse">
-          <tr><td style="color:var(--ink-ghost);padding:3px 0;width:150px">Est. investor losses</td><td style="font-family:'EB Garamond',serif;font-size:16px;color:var(--red);font-weight:500">${fmtUsd(kol.totalScammed)}</td></tr>
-          <tr><td style="color:var(--ink-ghost);padding:3px 0">Documented on-chain proceeds</td><td style="font-family:'EB Garamond',serif;font-size:16px;color:var(--accent);font-weight:500">${fmtUsd(totalDocumented)}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0;width:150px">Est. investor losses</td><td style="font-family:'EB Garamond',serif;font-size:16px;color:var(--red);font-weight:500">${fmtUsdOrWithheld(kol.totalScammed)}</td></tr>
+          <tr><td style="color:var(--ink-ghost);padding:3px 0">Documented on-chain proceeds</td><td style="font-family:'EB Garamond',serif;font-size:16px;color:var(--accent);font-weight:500">${fmtUsdOrWithheld(totalDocumented)}</td></tr>
           <tr><td style="color:var(--ink-ghost);padding:3px 0">Rug-linked cases</td><td style="font-weight:600">${kol.rugCount}</td></tr>
           <tr><td style="color:var(--ink-ghost);padding:3px 0">Evidence items</td><td style="font-weight:600">${evidences.length}</td></tr>
           <tr><td style="color:var(--ink-ghost);padding:3px 0">Exit event detected</td><td><span style="background:var(--red-bg);color:var(--red);font-size:7px;padding:2px 6px;font-weight:600">${exitEv ? "YES — " + fmtDateShort(exitEv.dateFirst) : "NO"}</span></td></tr>

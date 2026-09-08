@@ -6,6 +6,22 @@ function fmtUsd(n?: number | null): string {
   return "$" + n.toFixed(0)
 }
 
+// ─── BUILD 10 / FENÊTRE 1 — DIRE L'ABSENCE, PAS LA SUGGÉRER ───────────────
+//
+// `fmtUsd` rend « — » pour `null` ET pour `0` : dans une case intitulée
+// « Documented on-chain proceeds », un tiret se lit « rien encaissé ». C'est
+// exactement la coercition absence -> réassurance que ce chantier ferme
+// ailleurs, et elle reviendrait ici par le formatage.
+//
+// Un montant non publié le DIT. Le gabarit ne peut pas distinguer « retiré de
+// la publication » de « jamais mesuré » — cette information n'est pas dans ce
+// qu'il reçoit — donc il n'affirme ni l'un ni l'autre : il énonce le seul fait
+// dont il dispose, qu'aucun chiffre n'est publié.
+function fmtUsdOrWithheld(n?: number | null): string {
+  if (n == null) return "NOT PUBLISHED"
+  return fmtUsd(n)
+}
+
 function fmtDate(d?: Date | string | null): string {
   if (!d) return "—"
   return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
@@ -26,7 +42,19 @@ export function renderKolPdf(kol: any, mode: string, laundryTrail?: any, lang: s
   const wallets = kol.kolWallets ?? []
   const cases = kol.kolCases ?? []
 
-  const totalDocumented = kol.totalDocumented ?? evidences.reduce((s: number, e: any) => s + (e.amountUsd ?? 0), 0)
+  // ─── BUILD 10 / FENÊTRE 1 — AUCUN TOTAL RECALCULÉ ────────────────────────
+  //
+  // Ce repli disait : « si le profil ne porte pas de total, additionne les
+  // montants de preuve ». Il fabriquait donc un montant que personne n'avait
+  // décidé de publier — et il se déclenchait précisément quand la gate venait
+  // de retirer le total, transformant un retrait en recalcul.
+  //
+  // Le `?? 0` interne aggravait la chose : une preuve sans montant comptait
+  // pour zéro dans une somme présentée comme « documented proceeds ».
+  //
+  // Le total du profil, ou rien. `null` traverse jusqu'à `fmtUsdOrWithheld`,
+  // qui DIT l'absence au lieu de la suggérer.
+  const totalDocumented = kol.totalDocumented ?? null
   const exitEv = evidences.find((e: any) => e.type === "coordinated_exit")
   const evmEv = evidences.find((e: any) => e.type === "evm_wallet")
   const cashouts = evidences.filter((e: any) => e.type === "onchain_cashout")
@@ -142,11 +170,11 @@ export function renderKolPdf(kol: any, mode: string, laundryTrail?: any, lang: s
     </div>
     <div class="stat-box">
       <div class="stat-label">TOTAL SCAMMED</div>
-      <div class="stat-value red">${fmtUsd(kol.totalScammed)}</div>
+      <div class="stat-value red">${fmtUsdOrWithheld(kol.totalScammed)}</div>
     </div>
     <div class="stat-box">
       <div class="stat-label">DOCUMENTED ON-CHAIN</div>
-      <div class="stat-value orange">${fmtUsd(totalDocumented)}</div>
+      <div class="stat-value orange">${fmtUsdOrWithheld(totalDocumented)}</div>
     </div>
     <div class="stat-box">
       <div class="stat-label">EVIDENCE ITEMS</div>

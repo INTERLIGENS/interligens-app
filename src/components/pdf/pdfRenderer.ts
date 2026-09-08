@@ -46,8 +46,9 @@ export function renderCaseFilePDF(scan: ScanResult, lang?: string, graphReport?:
   const year = new Date(scanned_at).getFullYear();
 
   const claimsRows = off_chain.claims.map((c) => {
-    const rawClaim = (scan as any)._raw_claims?.find((r: any) => r.claim_id === c.id);
-    const title = lang === "fr" ? (rawClaim?.title_fr ?? c.title) : c.title;
+    // BUILD 10 · P3 — `_raw_claims` n'est plus injecté : la route pose déjà
+    // le titre dans la locale demandée, depuis l'autorité canonique.
+    const title = c.title;
     return `
     <tr>
       <td style="font-weight:700;padding:8px 12px;">${c.id}</td>
@@ -59,9 +60,8 @@ export function renderCaseFilePDF(scan: ScanResult, lang?: string, graphReport?:
   `;}).join("");
 
   const evidenceList = off_chain.claims.map((c) => {
-    const rawClaim = (scan as any)._raw_claims?.find((r: any) => r.claim_id === c.id);
-    const title = lang === "fr" ? (rawClaim?.title_fr ?? c.title) : c.title;
-    const description = lang === "fr" ? (rawClaim?.description_fr ?? c.description) : c.description;
+    const title = c.title;
+    const description = c.description;
     return `
     <div style="margin-bottom:20px;padding:16px;background:#f9fafb;border-radius:8px;border-left:4px solid ${severityColor(c.severity)};">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
@@ -134,11 +134,16 @@ td { border-bottom:1px solid #e5e7eb; font-size:13px; color:#1f2937; vertical-al
     <code style="font-size:11px;color:#7dd3fc;display:block;margin-bottom:20px;">${mint}</code>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;">
       <div>
+        <!-- BUILD 10 · P3 — LE SCORE EST RETIRÉ DE CE DOCUMENT.
+             Il est calculé depuis rawClaims (loadCaseByMint / case_db), le
+             corpus legacy que ce PDF ne publie plus. L'afficher à côté des
+             claims CANONIQUES créerait une relation fausse : le lecteur
+             attribuerait le score au corpus qu'il a sous les yeux.
+             Rien n'est recalculé, rien n'est remplacé par 0 ni par null. Une
+             pièce qu'on ne peut pas présenter honnêtement ne se présente pas. -->
         <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${t.riskScore}</div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:80px;height:80px;border-radius:50%;background:#dc2626;line-height:80px;text-align:center;font-size:28px;font-weight:900;color:#fff;">${risk.score}</div>
-          ${tierBadge(risk.tier, t)}
-        </div>
+        <div style="font-size:20px;font-weight:700;color:#94a3b8;">${t.withheldLabel}</div>
+        <div style="font-size:10px;color:#64748b;line-height:1.5;margin-top:6px;max-width:220px;">${t.withheldScore}</div>
       </div>
       <div>
         <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${t.status}</div>
@@ -146,7 +151,7 @@ td { border-bottom:1px solid #e5e7eb; font-size:13px; color:#1f2937; vertical-al
       </div>
       <div>
         <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${t.claims}</div>
-        <div style="font-size:20px;font-weight:700;">${off_chain.claims.length} / 8</div>
+        <div style="font-size:20px;font-weight:700;">${off_chain.claims.length}</div>
       </div>
     </div>
   </div>
@@ -163,7 +168,7 @@ td { border-bottom:1px solid #e5e7eb; font-size:13px; color:#1f2937; vertical-al
 <div class="page">
   ${footer}
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span style="font-size:22px;">📋</span><h2 style="margin:0;">${t.claimsStatus}</h2></div>
-  <p style="color:#6b7280;font-size:13px;margin-bottom:24px;">${t.claimsSubtitle(risk.breakdown.claim_penalty, risk.breakdown.severity_multiplier, risk.score, off_chain.claims.length)}</p>
+  <p style="color:#6b7280;font-size:13px;margin-bottom:24px;">${t.claimsSubtitle(off_chain.claims.length)}</p>
   <table>
     <thead><tr><th style="width:55px;">ID</th><th>${t.titleCol}</th><th style="width:110px;">Severity</th><th style="width:130px;">${t.status}</th><th style="width:160px;">Category</th></tr></thead>
     <tbody>${claimsRows}</tbody>
@@ -219,8 +224,7 @@ td { border-bottom:1px solid #e5e7eb; font-size:13px; color:#1f2937; vertical-al
       <tr><td style="padding:8px 14px;font-weight:600;color:#6b7280;">${t.timestamp}</td><td style="padding:8px 14px;">${new Date(scanned_at).toUTCString()}</td></tr>
       <tr><td style="padding:8px 14px;font-weight:600;color:#6b7280;">${t.engine}</td><td style="padding:8px 14px;">TigerScore Engine v2 — CaseDB v1</td></tr>
       <tr><td style="padding:8px 14px;font-weight:600;color:#6b7280;">${t.offchainSource}</td><td style="padding:8px 14px;">${off_chain.source}</td></tr>
-      <tr><td style="padding:8px 14px;font-weight:600;color:#6b7280;">${t.tier}</td><td style="padding:8px 14px;">${risk.tier}</td></tr>
-      <tr><td style="padding:8px 14px;font-weight:600;color:#6b7280;">${t.score}</td><td style="padding:8px 14px;">${risk.score}</td></tr>
+      <tr><td style="padding:8px 14px;font-weight:600;color:#6b7280;">${t.score}</td><td style="padding:8px 14px;color:#6b7280;">${t.withheldLabel} — ${t.withheldScore}</td></tr>
       <tr><td style="padding:8px 14px;font-weight:600;color:#6b7280;">${t.claimsCount}</td><td style="padding:8px 14px;">${off_chain.claims.length}</td></tr>
     </tbody>
   </table>

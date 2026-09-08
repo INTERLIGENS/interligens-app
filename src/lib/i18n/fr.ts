@@ -8,8 +8,11 @@ export const fr: I18n = {
   status: "STATUT",
   claims: "SIGNAUX",
   claimsStatus: "Statut des signaux",
-  claimsSubtitle: (penalty: number, mult: number, score: number, count: number) =>
-    `${count} signaux référencés — score : pénalité=${penalty} × ${mult} = ${score}`,
+  // BUILD 10 · P3 — la phrase affirmait « score : pénalité × multiplicateur
+  // = score » à côté du nombre de claims. Les claims sont désormais
+  // canoniques, le score reste legacy : cette dérivation serait fausse.
+  claimsSubtitle: (count: number) =>
+    `${count} allégations référencées — rendues depuis l'autorité canonique du dossier.`,
   flags: "Indicateurs",
   offchainEvidence: "Preuves hors-chaîne",
   detectivePack: "Pack preuves détective",
@@ -46,6 +49,8 @@ export const fr: I18n = {
   engine: "Moteur",
   offchainSource: "Source hors-chaîne",
   tier: "Niveau",
+  withheldLabel: "Retiré",
+  withheldScore: "Score retiré — ce document ne publie pas le corpus sur lequel il a été calculé. Champ : off_chain.source",
   score: "Score",
   claimsCount: "Nombre de signaux",
   footer: (year: number) =>
