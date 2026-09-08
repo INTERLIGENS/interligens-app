@@ -41,7 +41,36 @@ export type PublicScoreResponse = {
   communityScans?: number | null;
 };
 
-export function derivePhantomWarning(verdict: PublicVerdict): {
+/**
+ * Couverture des mesures ATTENDUES derrière un verdict, au sens BUILD 11.1 :
+ * `expected` est le dénominateur contractuel, `expectedMeasured` le nombre de
+ * ces mesures qui ont réellement abouti. Les capacités hors contrat ne sont
+ * comptées ni au numérateur ni au dénominateur.
+ */
+export type PhantomMeasurementSupport = {
+  expected: number;
+  expectedMeasured: number;
+};
+
+/**
+ * BUILD 12 · P0 — « No major risk signals detected. » n'est plus émise en
+ * fonction du seul verdict.
+ *
+ * GREEN ne dit pas « rien trouvé », il dit « rien AU-DESSUS DU SEUIL parmi ce
+ * qui a pu être regardé ». Tant que le point de consommation ne sait pas ce qui
+ * a été regardé, il ne peut pas soutenir la phrase rassurante : le défaut est
+ * l'absence de la mesure au point de consommation, pas sa présence supposée.
+ *
+ * `support` est OPTIONNEL et les appelants actuels ne le fournissent pas —
+ * ils tombent donc dans le cas non soutenu, qui est le cas conservateur.
+ * Le niveau reste `ALLOW` sans information de mesure : c'est de la
+ * COMPATIBILITÉ, le contrat v1 ne sait pas exprimer « je n'ai pas conclu ».
+ * La gouvernance du niveau lui-même appartient à la projection REFLEX (S2→S5).
+ */
+export function derivePhantomWarning(
+  verdict: PublicVerdict,
+  support?: PhantomMeasurementSupport
+): {
   level: PhantomWarningLevel;
   disclaimer: string;
 } {
@@ -56,11 +85,40 @@ export function derivePhantomWarning(verdict: PublicVerdict): {
         level: "WARN",
         disclaimer: "This token shows elevated risk. Proceed with caution.",
       };
-    case "GREEN":
+    case "GREEN": {
+      // Suffisante = toutes les mesures attendues ont abouti, et il y en avait.
+      // `expected === 0` n'est pas une couverture parfaite : c'est l'absence de
+      // contrat, donc rien à quoi adosser la phrase.
+      const suffisante =
+        support !== undefined &&
+        support.expected > 0 &&
+        support.expectedMeasured >= support.expected;
+
+      if (suffisante) {
+        return {
+          level: "ALLOW",
+          disclaimer: "No major risk signals detected.",
+        };
+      }
+
+      if (support !== undefined) {
+        // L'appelant SAIT que sa couverture est incomplète et le dit.
+        return {
+          level: "WARN",
+          disclaimer:
+            "No critical signal was returned, but part of the expected checks did not complete. " +
+            "Treat this as unverified, not as safe.",
+        };
+      }
+
+      // Aucune information de mesure : on n'affirme rien sur la couverture.
       return {
         level: "ALLOW",
-        disclaimer: "No major risk signals detected.",
+        disclaimer:
+          "No critical signal was returned. The completeness of the checks behind this result " +
+          "is not established — this is not a confirmation that the token is safe.",
       };
+    }
   }
 }
 

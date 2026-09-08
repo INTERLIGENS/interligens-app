@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SwapToken } from "../types";
 
 vi.mock("../preSwapScan", () => ({
-  preSwapScan: vi.fn(async () => ({ fromVerdict: "GREEN", toVerdict: "GREEN", blocked: false })),
+  preSwapScan: vi.fn(async () => ({ fromVerdict: "GREEN", toVerdict: "GREEN", blocked: false,
+      coverage: { expected: 2, expectedMeasured: 2, sides: [] },
+      degraded: false,
+    })),
 }));
 vi.mock("../oneInchProvider", () => {
   function OneInchProvider(this: { getQuote: ReturnType<typeof vi.fn> }) {
@@ -74,6 +77,8 @@ describe("routeSwap", () => {
       toVerdict: "GREEN",
       blocked: true,
       blockReason: "source token is flagged RED — swap blocked",
+      coverage: { expected: 2, expectedMeasured: 2, sides: [] },
+      degraded: false,
     });
     const { routeSwap } = await import("../router");
     const route = await routeSwap("ETH", USDC_ETH, WETH, "1000000");
