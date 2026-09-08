@@ -475,6 +475,40 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 10 / FENÊTRE 2 — la surface admin du graphe KOL.
+#
+# UN SEUL CHEMIN. Le correctif s'écrit à la route ; la page qui la consomme
+# (src/app/admin/kol/network/page.tsx) n'est pas gelée et n'a pas besoin d'être
+# exemptée.
+#
+# Mesuré le 2026-09-08 sur ep-square-band :
+#
+#   · KolWallet : 482 lignes servies BRUTES par `SELECT *`, dont 303 NON
+#     publiables (isPubliclyUsable <> true ou status <> 'active')
+#   · 2 labels tombent sous PROHIBITED_PUBLIC_STRINGS — « Mom wallet — … » et
+#     « Dad wallet — … ». Les DEUX portent isPubliclyUsable=true et
+#     status='active' : le filtre de publiabilité ne les arrête pas. Les deux
+#     gates sont indépendantes, et il faut les deux.
+#   · `totalScammed: k.totalScammed ?? 0` sur 3 profils confirmed_scammer,
+#     dont 1 à NULL et 0 réellement à zéro. La coercition transforme donc
+#     exactement un préjudice NON MESURÉ en « zéro victime ».
+#
+# La donnée n'est PAS touchée : rien n'est purgé, rien n'est réécrit en base.
+# INTERNE / FORENSIC peut porter une donnée non publiable ; la gate s'applique
+# au POINT DE CONSOMMATION. Et un export déclenchable depuis une session admin
+# navigateur reste une frontière de publication — admin n'exempte pas des gates.
+#
+# Les gates existantes sont RÉUTILISÉES, jamais recopiées :
+# PUBLISHABLE_WALLET_FILTER, isWalletPublishable, checkPublishability (qui
+# porte PROHIBITED_PUBLIC_STRINGS), redactMonetary.
+#
+# Autorisation humaine explicite (David, mandat BUILD 10 phase 2).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-f2-network-gates$ ]]; then
+    EXEMPT_BUILD10_F2_PATTERNS=(
+        "^src/app/api/admin/kol/network/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +712,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche f2-network-gates, exempter STRICTEMENT la route du graphe
+    # admin. Aucun wildcard : toute autre route src/app/api/ reste bloquée.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-f2-network-gates$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_BUILD10_F2_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
