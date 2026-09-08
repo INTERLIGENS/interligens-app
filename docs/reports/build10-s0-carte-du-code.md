@@ -692,3 +692,105 @@ Les surfaces traitées sont celles du haut de la file Investor/Counsel.
   exercé en production ;
 - aucun comptage de lignes en base : pas de connexion, et je n'en ai pas
   cherché.
+
+---
+
+# SURFACE 9 · `/legal/*` — LA SEULE ATTEIGNABLE SANS SESSION
+
+Cinq pages, `disclaimer`, `kol-data-doctrine`, `mentions-legales`, `privacy`,
+`terms`. **Zéro appel de donnée** : prose statique. C'est correct pour du
+juridique.
+
+## 9.1 · La date de mise à jour est une constante manuelle
+
+Chaque page porte `const updated = "April 2026"` (ou `"May 2026"`), écrit en
+dur, et l'affiche comme *« Last updated »*.
+
+Comparaison avec la date de modification **réelle** du fichier (git) :
+
+| page | affiché | git |
+|---|---|---|
+| `disclaimer` | April 2026 | 2026-04-09 |
+| `kol-data-doctrine` | May 2026 | 2026-05-11 |
+| `mentions-legales` | April 2026 | 2026-04-09 |
+| `privacy` | April 2026 | 2026-04-09 |
+| `terms` | April 2026 | 2026-04-09 |
+
+**Les cinq concordent aujourd'hui.** Le constat n'est donc pas « la date est
+fausse » — elle est juste. Il est que **rien ne la maintient juste** : le jour
+où le texte change sans qu'on touche la constante, la page affirmera une date
+de révision périmée sur un document juridique, et rien ne le signalera.
+
+| | |
+|---|---|
+| catégorie | `PIPE_NOT_CONNECTED` — la vraie date existe (git), rien ne l'y relie |
+| blanc silencieux | **non, pas aujourd'hui.** Latent : il le deviendra à la première divergence |
+
+## 9.2 · Une exemption de gate qui ne protège aucune page
+
+`src/proxy.ts:65` exempte `pathname.startsWith("/legal/")`. Or
+`src/app/legal/` **n'existe pas** : les pages vivent toutes sous
+`/<loc>/legal/`, couvert par la ligne 69.
+
+La ligne 65 ne dessert donc aucune page. Elle reste utile pour d'éventuels
+fichiers statiques sous `/legal/`. Signalé pour exactitude de la carte, sans
+conséquence de donnée.
+
+---
+
+# SURFACE 10 · LES DEUX EXTENSIONS
+
+| | `interligens-guard/` | `packages/chrome-guard/` |
+|---|---|---|
+| version | **1.0.0** | **0.1.0** |
+| base API | `https://app.interligens.com/api/v1` | `https://interligens.com` |
+| appel | `/score?mint=…` → `/api/v1/score` **existe** | `/api/v1/score-lite?address=…` |
+| host_permissions | 6 hôtes DEX + `app.interligens.com` | `interligens.com` seul |
+
+## 10.1 · `chrome-guard` appelle une route qui n'existe pas à ce chemin
+
+`GET /api/v1/score-lite` : **aucun `route.ts` à ce chemin.** La route existe,
+mais à `/api/partner/v1/score-lite`.
+
+## 10.2 · `chrome-guard` vise le mauvais hôte
+
+`API_BASE = "https://interligens.com"`. L'hôte de production est
+`app.interligens.com` (celui qu'utilise `interligens-guard`).
+
+**Deux défauts cumulés : mauvais hôte ET mauvais chemin.** L'extension ne peut
+pas obtenir de score.
+
+| | |
+|---|---|
+| catégorie | `PIPE_NOT_CONNECTED` |
+| blanc silencieux | **à vérifier** — que rend `content.ts` quand le fetch échoue ? Non mesuré. |
+
+Lecture la plus probable, **non vérifiée** : `packages/chrome-guard` en 0.1.0
+est un prototype supplanté par `interligens-guard` en 1.0.0. Deux extensions
+portent le même nom affiché, « INTERLIGENS Guard ». Laquelle est distribuée
+n'est pas déterminable depuis le dépôt.
+
+---
+
+# SURFACE 11 · LA CHAÎNE E-MAIL
+
+`src/lib/security/email/digest.ts` · `sendDigest()` via Resend.
+
+```ts
+const apiKey = process.env.RESEND_API_KEY;
+if (!apiKey) {
+  console.warn(`[security-digest] RESEND_API_KEY missing — skipped (...)`);
+```
+
+**Envoi ignoré en silence quand la clef manque** — un `console.warn`, puis
+retour normal. L'appelant ne peut pas distinguer « envoyé » de « sauté ».
+
+Et le handler `api/cron/security-weekly-digest` est **orphelin** (§3.b) :
+aucun cron ne le déclenche. Le cron `/api/cron/weekly-digest` qui est armé est
+un **autre** handler.
+
+| | |
+|---|---|
+| catégorie | `PIPE_NOT_CONNECTED` (handler non armé) + `BUG` (échec silencieux) |
+| blanc silencieux | **oui** — un digest non envoyé ne se voit nulle part |
+| non vérifié | la présence de `RESEND_API_KEY` en production. Je n'ai pas accès aux variables d'environnement, et je n'en ai pas cherché. |
