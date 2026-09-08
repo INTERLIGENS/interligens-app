@@ -262,3 +262,60 @@ describe("findById", () => {
     expect(await findById("missing")).toBeNull();
   });
 });
+
+// ─── BUILD 11 — L'ÉTAT DE MESURE SURVIT À LA RELECTURE ────────────────────
+//
+// Mesuré en production le 2026-09-08 : une réponse dédupliquée sortait
+// `confidenceState: MEASURED` avec `confidenceScore: 0`, alors que quatre
+// moteurs avaient tourné SANS signal — l'état exact est NOT_APPLICABLE.
+// L'axe de mesure était réeffondré sur le chemin de relecture, par le même
+// raccourci que BUILD 11 ferme ailleurs.
+
+describe("BUILD 11 — la relecture ne réeffondre pas l'axe de mesure", () => {
+  const avecMoteurs = (
+    verdict: string,
+    engines: Array<{ engine: string; ran: boolean; signals?: unknown[] }>,
+  ) =>
+    fakeRow({
+      verdict,
+      signalsManifest: {
+        engines: engines.map((e) => ({ ...e, signals: e.signals ?? [] })),
+      },
+    });
+
+  it("MUTANT — des moteurs propres sans signal rendent NOT_APPLICABLE, pas MEASURED", async () => {
+    mockFindUnique.mockResolvedValue(
+      avecMoteurs("NO_CRITICAL_SIGNAL", [
+        { engine: "knownBad", ran: true },
+        { engine: "tigerscore", ran: true },
+        { engine: "offchain", ran: false },
+      ]),
+    );
+    const r = await findById("x");
+    expect(r?.confidenceState).toBe("NOT_APPLICABLE");
+    expect(r?.coverage.measured).toBe(2);
+    expect(r?.degraded).toBe(true);
+  });
+
+  it("aucune mesure du tout → ni score, ni label", async () => {
+    mockFindUnique.mockResolvedValue(
+      avecMoteurs("INSUFFICIENT_COVERAGE", [
+        { engine: "knownBad", ran: false },
+        { engine: "tigerscore", ran: false },
+      ]),
+    );
+    const r = await findById("x");
+    expect(r?.confidenceScore).toBeNull();
+    expect(r?.confidence).toBeNull();
+    expect(r?.coverage.measured).toBe(0);
+  });
+
+  it("`error` n'étant pas persisté, la cause est UNKNOWN — et le dit", async () => {
+    mockFindUnique.mockResolvedValue(
+      avecMoteurs("NO_CRITICAL_SIGNAL", [{ engine: "offchain", ran: false }]),
+    );
+    const r = await findById("x");
+    expect(r?.coverage.missing.map((m) => m.reason)).toEqual(["UNKNOWN"]);
+    expect(r?.coverage.missing.map((m) => m.reason)).not.toContain("STALE");
+  });
+});

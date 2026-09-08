@@ -15,6 +15,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decide } from "./verdict";
+import { computeGlobalConfidence } from "./confidence";
 import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
 import type {
   ReflexAnalysisResult,
@@ -111,6 +112,30 @@ function rowToResult(row: {
   // autorité, et la lecture rend `null` — le zéro ne sort pas d'ici.
   const rienMesure = row.verdict === "INSUFFICIENT_COVERAGE";
 
+  // ─── L'ÉTAT DE CONFIANCE EST RECALCULÉ, PAS APLATI ─────────────────────
+  //
+  // La première version rendait `MEASURED` dès que le verdict n'était pas
+  // INSUFFICIENT_COVERAGE. Mesuré en production le 2026-09-08 : une réponse
+  // dédupliquée sortait `confidenceState: MEASURED` avec `score: 0` alors que
+  // quatre moteurs avaient tourné SANS signal — l'état exact est
+  // NOT_APPLICABLE, « il n'y a pas de signal dont on puisse être confiant ».
+  //
+  // C'est l'axe de mesure réeffondré sur le chemin de relecture, par le même
+  // raccourci que BUILD 11 ferme ailleurs. Il est donc RECALCULÉ :
+  // `computeGlobalConfidence` ne dépend que de `ran` et `signals`, tous deux
+  // persistés, donc la distinction MEASURED / NOT_APPLICABLE est exacte.
+  //
+  // Ce qui reste inexact après coup est nommé : `error` n'étant pas persisté,
+  // FAILURE et NOT_MEASURED se confondent en UNKNOWN. C'est une perte réelle,
+  // et UNKNOWN est le mot pour la dire.
+  const enginesRejoues = enginesCoverage.map((e, i) => ({
+    engine: (e.engine ?? "unknown") as ReflexSignalSource,
+    ran: e.ran === true,
+    ms: 0,
+    signals: (enginesArr[i]?.signals ?? []) as ReflexSignal[],
+  }));
+  const confianceRejouee = computeGlobalConfidence(enginesRejoues);
+
   return {
     id: row.id,
     createdAt: row.createdAt,
@@ -129,14 +154,7 @@ function rowToResult(row: {
     // ferme ailleurs. Il est donc RECALCULÉ : `decide` est pure et les signaux
     // sont dans le manifeste, donc le résultat est le même qu'à l'origine.
     // Le verdict servi reste celui de la LIGNE, pas du recalcul.
-    conflicts: decide(
-      enginesCoverage.map((e, i) => ({
-        engine: (e.engine ?? "unknown") as ReflexSignalSource,
-        ran: e.ran === true,
-        ms: 0,
-        signals: (enginesArr[i]?.signals ?? []) as ReflexSignal[],
-      })),
-    ).conflicts,
+    conflicts: decide(enginesRejoues).conflicts,
     degraded: missing.length > 0,
     signalsHash: row.signalsHash,
     enginesVersion: row.enginesVersion,
@@ -153,7 +171,7 @@ function rowToResult(row: {
     actionFr: row.actionFr,
     confidence: rienMesure ? null : (row.confidence as ReflexVerdictResult["confidence"]),
     confidenceScore: rienMesure ? null : row.confidenceScore,
-    confidenceState: rienMesure ? "UNKNOWN" : "MEASURED",
+    confidenceState: confianceRejouee.state,
   };
 }
 
