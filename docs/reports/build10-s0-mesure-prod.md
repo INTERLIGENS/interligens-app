@@ -1104,3 +1104,107 @@ Et le second effet mérite d'être nommé : **un correctif de performance a
 désarmé une sonde de fraîcheur**, sans que la sonde en soit informée. Le
 commentaire de `ingest.ts` avait prévu le faux positif ; le watchdog l'a produit
 onze jours plus tard.
+
+## 9.2 — Evidence orpheline : **la pièce est identifiée, et sa cause a déjà été déclarée non établie**
+
+Requête du watchdog reproduite à l'identique — chiffres confirmés :
+
+| mesure | watchdog | ma mesure |
+|---|---|---|
+| `EvidenceItem` sans `r2Key` | 1 | **1** |
+| dont `[R2:UNAVAILABLE]` | 0 | **0** |
+| dont `HASH-ONLY` | 0 | **0** |
+| **orphelins sans marqueur** | **1** | **1** |
+| TSA pending | 34 | **34** |
+
+Sur **1 104 pièces** au total, 1 103 portent un `r2Key`.
+
+### La pièce
+
+| champ | valeur |
+|---|---|
+| `id` | **`cmssyx6se0001k3041bp17v0f`** |
+| **`casefileId`** | **`null`** — rattachée à **aucun dossier** |
+| `r2Key` · `filePath` · `mimeType` | **`null`** tous les trois |
+| `byteSize` | **118** |
+| `sha256` | `930aee8d1c3c4ba24eacbaf51747afb09d56ecc3b6ce8c9b071f520223561a8b` |
+| `capturedAt` | **2026-08-14 13:13:41 UTC** |
+| `ingestedAt` | 2026-08-14 13:13:43 UTC (**+2,2 s**) |
+| `capturedBy` | **`operator:probe-postdeploy`** |
+| `captureTool` | `osint-vision-commit` v1 |
+| `sourceType` · `sourceUrl` | `OTHER` · `null` |
+| `provenanceType` | `FIRST_PARTY_CAPTURE` |
+| `timestampMode` | `at-ingestion` |
+| `rowNature` | `PRIMARY_OBSERVATION` |
+| **`evidentiaryStatus`** | **`EXCLUDED`** |
+| `tsaToken` | `null` |
+| `immutableStored` | `false` |
+
+### La cause a déjà été instruite — et laissée ouverte volontairement
+
+La colonne `exclusionReason` porte, écrite le **2026-09-03** :
+
+> *« EXCLUDED — artefact de test post-déploiement, hors périmètre documentaire.
+> Sonde `probe-postdeploy`, session `probe-930aee8d`, 118 octets, outil
+> `osint-vision-commit`. Fichier source `/probe/evidence-chain-probe-930aee8d.png`
+> **introuvable sur disque** au 2026-09-03. Ni `r2Key` ni marqueur de notes : **la
+> cause du défaut de stockage (échec accidentel vs hash-only délibéré) n'est PAS
+> établie**, aucun marqueur n'est donc posé — écrire une fausse cause dans une
+> chaîne de conservation serait pire que laisser le compteur à 1. »*
+
+**La question posée — écart d'ingestion, objet perdu, ou écriture partielle — a
+déjà reçu sa réponse : elle n'est pas tranchable.** Et le choix de ne pas poser
+de marqueur est délibéré et motivé.
+
+Ce que je peux ajouter comme éléments propres :
+
+- **`byteSize` = 118 et `sha256` présent** : la pièce a donc été **lue** au moment
+  du commit — on ne calcule pas une empreinte sur des octets qu'on n'a pas eus.
+  Ce n'est donc pas une écriture vide *ab initio*.
+- **`ingestedAt` − `capturedAt` = 2,2 secondes** : le commit a abouti côté
+  métadonnées, immédiatement. La rupture est entre le calcul de l'empreinte et la
+  persistance de l'objet.
+- **`filePath` et `mimeType` sont `null` eux aussi**, alors que `notes` nomme le
+  fichier `/probe/evidence-chain-probe-930aee8d.png`. Le chemin existe dans une
+  note libre et pas dans la colonne prévue pour lui.
+
+Ces trois faits **restreignent** l'hypothèse — les octets ont existé, le commit a
+abouti, seul le stockage n'a pas suivi — sans permettre de trancher entre un
+échec R2 et un mode hash-only non marqué. **Je ne tranche pas davantage que
+l'instruction du 2026-09-03.**
+
+### Cette pièce est-elle publique ? Non, deux fois
+
+1. **`casefileId` est `null`** : elle n'est rattachée à aucun dossier. Or les
+   surfaces CaseFile **ne lisent pas `EvidenceItem`** — vérifié, aucune
+   occurrence dans `src/app/api/casefile/` ni dans `src/lib/casefile/`.
+2. **`evidentiaryStatus = EXCLUDED`** : `eligibleForEvidenceChain`
+   (`src/lib/evidence-chain/eligibility.ts`) est une **liste blanche
+   fail-closed** — seul `null` est éligible. `EXCLUDED` en est écarté, et tout
+   statut inconnu aussi.
+
+La pièce ne participe donc **ni à une surface publique, ni à la chaîne probatoire
+active**.
+
+### La consigne TSA est respectée
+
+**Je n'ai pas activé la TSA.** `TSA_PRIMARY_URL` / `TSA_URL_FALLBACK` n'ont pas
+été touchées, aucun horodatage n'a été demandé. Les **34 pièces en attente**
+mesurées le confirment : le compteur est identique à celui du watchdog.
+
+Le raisonnement du watchdog est exact et je le reprends tel quel : un jeton TSA
+posé sur cette pièce la rendrait **indiscernable d'une pièce complète** — elle
+porterait un horodatage valide sur un contenu absent.
+
+### Classement
+
+| objet | catégorie | justification |
+|---|---|---|
+| la cause du défaut de stockage | **`NOT_MEASURABLE`** | établi et documenté le 2026-09-03 ; les métadonnées ne permettent pas de distinguer échec R2 et hash-only |
+| l'absence de marqueur | **`INTENTIONALLY_NOT_SHOWN`** | décision motivée — ne pas écrire une cause fausse dans une chaîne de conservation |
+| le blocage de la TSA sur 34 pièces | **`INTENTIONALLY_NOT_SHOWN`** | garde délibérée, tenue |
+| `filePath` `null` alors que `notes` porte le chemin | **`BUG` mineur** | la donnée existe, dans le mauvais champ |
+
+**Ce n'est pas un blanc silencieux** : le compteur est à 1, la pièce est nommée,
+son statut est `EXCLUDED`, et sa raison est écrite en toutes lettres. C'est un
+**inconnu déclaré**, ce qui est le comportement recherché.
