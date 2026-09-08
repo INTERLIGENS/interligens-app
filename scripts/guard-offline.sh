@@ -475,6 +475,53 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour le P0 « Agave tx v1 » — une signature connue ne devient pas
+# une transaction absente.
+#
+# QUATRE CHEMINS GELÉS. Le cinquième site, src/lib/freshness/engine.ts, est
+# libre et n'a pas besoin d'exemption.
+#
+# ─── La cause, et elle est chez nous ──────────────────────────────────────
+#
+# Le RPC n'est PAS silencieux : il refuse explicitement.
+#
+#   getTransaction sans version suffisante
+#     -> { "error": { "code": -32015, "message": "Transaction version (N) is
+#          not supported by the requesting client" } }
+#
+# Nos cinq helpers font tous `return j.result ?? null` et ne lisent JAMAIS
+# `j.error`. C'est NOUS qui transformons un refus explicite en absence — puis
+# un `if (!tx) continue` fait disparaître la transaction du décompte.
+#
+# La signature vient de `getSignaturesForAddress`, INSENSIBLE à la version :
+# on SAIT que la transaction existe. Il n'y a donc aucun état de mesure à
+# inventer, seulement un état à cesser de détruire.
+#
+# ─── Ce qui est implémenté ────────────────────────────────────────────────
+#
+#   · maxSupportedTransactionVersion porté à la v1, depuis une constante unique
+#   · `j.error` INSPECTÉ et PRÉSERVÉ, jamais aplati en null
+#   · un refus devient un état de lecture EXPLICITE, avec son code et sa cause
+#   · un vrai `result: null` reste DISTINCT d'un refus
+#
+# Le vocabulaire est celui déjà posé dans absenceVocabulary.ts — FAILURE,
+# NOT_MEASURED, NOT_MEASURABLE, UNKNOWN, NOT_APPLICABLE — et l'axe MESURE n'est
+# pas mélangé avec l'axe PUBLICATION.
+#
+# Aucune généralisation à l'ingestion, aucun scoring touché, aucune donnée de
+# transaction inventée. `funding-graph/qualify.ts` et
+# `signature-intent/analyzer.ts` ne sont PAS dans ce périmètre.
+#
+# Autorisation humaine explicite (David, P0 GO sur mesure T2).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-agave-txv1$ ]]; then
+    EXEMPT_AGAVE_TXV1_PATTERNS=(
+        "^src/lib/kol/proceeds\.ts$"
+        "^src/lib/kol/cexTracker\.ts$"
+        "^src/app/api/kol/\[handle\]/wallet-history/route\.ts$"
+        "^src/app/api/kol/\[handle\]/cashout/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +725,20 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche agave-txv1, exempter STRICTEMENT les 4 chemins gelés du
+    # P0. Aucun wildcard : funding-graph/qualify.ts et
+    # signature-intent/analyzer.ts restent gelés, hors périmètre.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-agave-txv1$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_AGAVE_TXV1_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
