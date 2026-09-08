@@ -150,3 +150,130 @@ un registre en avance sur le produit — pas un trou.
 ---
 
 *Document écrit au fil de l'eau. Les surfaces suivent, une section par surface.*
+
+---
+
+# SURFACE 1 · LES PAGES DE DOSSIER
+
+`/<loc>/cases`, `/<loc>/cases/lab`, `/<loc>/cases/cbex`, `/en/cases/botify/evidence`
+
+## 1.1 · La chaîne, mesurée
+
+```
+UI  TokenCasefileView  ──→  page.tsx (lab | cbex)
+                            ├─ prisma.tokenCaseFile.findUnique(ref)   ← bloc legacy
+                            └─ loadPublicProjection(ref)              ← bloc canonique
+                                 └─ CaseFileClaim + CaseFileSource
+```
+
+### Le writer de l'autorité canonique
+
+**Il n'existe aucun writer applicatif de `token_casefiles`.**
+
+| ref | ce qui l'écrit |
+|---|---|
+| `IL-PND-LAB-001` | `prisma/seed-lab.ts` — un **seed**, 38 champs, `upsert` |
+| `IL-PON-CBEX-001` | `prisma/seed-cbex.ts` — un **seed** |
+| `IL-SHILL-BOTIFY-001` | aucun seed ; SQL rendu à la main (`docs/prep/patches/BUILD9/`) |
+| `IL-SHILL-VINE-001` | idem |
+
+Un seul `tokenCaseFile.upsert` dans tout `src/` + `prisma/` : celui de
+`seed-lab.ts`. Les pages, l'API, le lecteur canonique et l'audit **lisent**.
+
+**Catégorie : `COLLECTOR_MISSING`** — au niveau de la table entière. Aucun
+pipeline ne crée ni ne rafraîchit un dossier. Ce n'est pas un défaut de
+qualité des données : c'est l'absence de chaîne d'alimentation. Tout dossier
+futur naîtra d'un seed écrit à la main ou d'un SQL exécuté en console.
+
+*Conséquence directe :* les colonnes de marché (`ath`, `atl`, `fdvPeakUsd`,
+`marketCapMinUsd/MaxUsd`, `circulatingSupply`) sont figées à la valeur du seed.
+Rien ne les rafraîchit. Une page de dossier affiche donc un instantané dont
+**la date n'est pas rendue**.
+
+### Huit colonnes qu'aucun writer applicatif ne pose
+
+`insiderExitNotionalValueUsd` · `insiderExitNotionalValueUsdNature` ·
+`insiderExitNotionalBasis` · `claimedRaiseUsdNature` ·
+`estimatedRetailHarmUsdNature` · `rowNature` · `createdAt` · `updatedAt`
+
+`createdAt`/`updatedAt` ont un défaut base — hors sujet. Les six autres sont
+posées par des **packs SQL exécutés à la main** (S3, S5, S6, W2). Un dossier
+créé demain par un seed les aurait à `NULL`.
+
+**Catégorie : `PIPE_NOT_CONNECTED`.** La colonne existe, la surface la rend
+(`insiderExitNotionalValueUsd` est affiché par la fiche), aucun code ne la
+remplit.
+
+## 1.2 · Comportement quand un champ est absent — la mesure
+
+Croisement de la nullabilité du schéma avec les gardes réelles du rendu.
+
+**Aucun champ scalaire non gardé n'est nullable.** Les 9 champs sans garde
+(`ref`, `codename`, `ticker`, `title`, `family`, `subtype`, `primaryChain`,
+`status`, `verdict`) sont tous `NOT NULL`. Les nullables ont tous un repli
+explicite. **Zéro blanc silencieux sur les scalaires.**
+
+En revanche, sur les **listes**, le même composant se comporte de deux façons :
+
+| champ liste | comportement quand vide |
+|---|---|
+| `secondaryChains`, `backers`, `exchanges`, `exitExchanges`, `linkedTokens` | rend **« — »** — explicite |
+| `founders` | **la section disparaît** |
+| `keyWallets` | **la section disparaît** |
+| `sources` (sources de l'investigation) | **la section disparaît** |
+| bloc canonique (claims + retraits) | **le bloc disparaît** |
+
+**Quatre blancs silencieux**, dans un composant qui sait pourtant écrire « — »
+cinq lignes plus haut. Le plus lourd est `sources` : un dossier sans sources
+d'investigation listées ne se distingue pas d'un dossier dont la section
+n'existe pas. Pour `keyWallets`, BOTIFY porte `[]` de façon **ratifiée** — la
+section s'évanouirait sans dire pourquoi.
+
+Le bloc canonique est **mon propre choix de conception** (BUILD 9) : « ne pas
+afficher une section vide qui donnerait à croire qu'on a cherché et rien
+trouvé ». Sous la lentille de BUILD 10, l'intention n'est pas visible du
+lecteur — je le classe comme les autres.
+
+## 1.3 · `/en/cases/botify/evidence` — une TROISIÈME autorité CaseFile
+
+`/en/cases/botify` **redirige** vers `/en/cases/botify/evidence`. Cette page ne
+lit ni `token_casefiles`, ni le lecteur canonique, ni même le JSON : elle porte
+**ses propres constantes**, `CASE`, `CLAIMS`, `WALLETS`, `EDGES`, avec le
+commentaire « Static data from data/cases/botify.json ».
+
+BUILD 9 a supprimé deux autorités concurrentes. Celle-ci n'a jamais été
+inventoriée, parce qu'elle n'était pas dans la carte des surfaces CaseFile.
+
+| constat | mesure | catégorie |
+|---|---|---|
+| 8 claims dupliqués en dur | copies des titres canoniques, sans lien | `PIPE_NOT_CONNECTED` |
+| tous rendus `CONFIRMED` (× 9) | l'autorité canonique les porte en `ATTACHED`, aucun n'est `PUBLIC` | `BUG` — contredit la doctrine des trois états sur une surface publique |
+| `mint` publié = **clé synthétique 43 car.** | canonique = 44 car. (`…UnZac**i**ja4…`) ; la page publie `…UnZacja4…` | `BUG` |
+| « rug-pull » × 1, `rug_pull` × 1 | mot **interdit** par le contrat de wording du PDF, rendu ici | `BUG` |
+| 7 adresses tronquées de démonstration | `7xKQ…mN2u`, `4xZ9…kQMM`, `9Th6…BYZ9`, `DezX…PB26`, `RAY…mmLP`, `5KJe…xFG2` — dont deux sont des fragments du **mint**, pas des wallets | `DATA_ABSENT` maquillé en donnée |
+| 8 arêtes de graphe à montants non quantifiés | `"— SOL"`, `"Equal"`, `"~90s window"` présentés dans une colonne « amount » | `DATA_ABSENT` maquillé en donnée |
+
+> **Le containment de BUILD 9 ne couvrait pas cette page.** Il scannait `src/`
+> pour les **valeurs exactes** retirées du PDF. Ces marqueurs-ci sont d'autres
+> chaînes, sur une autre surface. Le test de non-réintroduction est donc vrai
+> et insuffisant : il protège des valeurs, pas d'une classe.
+
+## 1.4 · Asymétrie de locale
+
+`botify` n'existe que sous `en/`. Il n'y a pas de `src/app/fr/cases/botify/`.
+Un lecteur francophone qui suit un lien `/fr/cases/botify` obtient un 404.
+
+`lab`, `cbex` et l'index existent dans les deux locales.
+
+**Catégorie : `DATA_ABSENT`** (la page fr n'a pas été écrite), et **blanc
+silencieux** au sens du produit : rien n'indique au lecteur fr que le dossier
+existe en anglais.
+
+## 1.5 · L'index `/cases`
+
+Liste `platformCaseFile` et `tokenCaseFile` filtrés sur
+`publishStatus: "published"`. Le filtre est explicite et fail-closed : un
+dossier non publié n'apparaît pas — comportement correct, pas un blanc.
+
+*Non mesuré :* combien de lignes portent `publishStatus = "published"` en base.
+Je n'ai pas de connexion ; le chiffre ne peut pas être avancé ici.
