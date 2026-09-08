@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { checkAuth } from "@/lib/security/auth";
 import { kolHandleToMint } from "@/lib/kol/handleToMint";
 import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
+import { degraded, type DegradedInput } from "@/lib/risk/degradation";
 import { loadCanonicalCaseFile } from "@/lib/casefile/canonicalReader";
 import { canonicalRefForMint } from "@/lib/casefile/publicProjection";
 import { toInternalCaseView } from "@/lib/casefile/internalView";
@@ -45,6 +46,19 @@ import {
 // claim porte son `state`.
 
 // ── On-chain collectors ───────────────────────────────────────────────────────
+//
+// BUILD 10 · P0 chemin B — les TROIS collecteurs de ce fichier rendaient
+// `null` aussi bien sur une panne que sur une absence réelle. Le plus grave
+// n'était pas celui des holders :
+//
+//   `mintAuthority: null` signifie, sur Solana, « autorité RÉVOQUÉE » —
+//   c'est-à-dire l'état SÛR. Une panne du RPC rendait donc exactement la
+//   valeur qu'un jeton assaini produit.
+//
+// Les trois portent désormais leur état de mesure à côté de leur valeur. La
+// valeur, elle, ne bouge pas.
+type Measurement = "MEASURED" | "MEASURED_EMPTY" | "NOT_MEASURABLE" | "PROVIDER_FAILURE";
+
 async function fetchMetadata(mint: string) {
   try {
     const r = await fetch("https://api.mainnet-beta.solana.com", {
@@ -53,49 +67,100 @@ async function fetchMetadata(mint: string) {
         params:[mint,{encoding:"jsonParsed"}]}),
       signal: AbortSignal.timeout(6000),
     });
+    if (!r.ok) return { data: null, state: "PROVIDER_FAILURE" as Measurement };
     const d = await r.json();
     const info = d?.result?.value?.data?.parsed?.info;
-    return info ? {decimals:info.decimals??null,supply:info.supply??null,mintAuthority:info.mintAuthority??null} : null;
-  } catch { return null; }
+    // Compte inexistant : le RPC a répondu. C'est un constat, pas une panne.
+    if (!info) return { data: null, state: "MEASURED_EMPTY" as Measurement };
+    return {
+      data: {decimals:info.decimals??null,supply:info.supply??null,mintAuthority:info.mintAuthority??null},
+      state: "MEASURED" as Measurement,
+    };
+  } catch { return { data: null, state: "PROVIDER_FAILURE" as Measurement }; }
 }
 
 async function fetchMarkets(mint: string) {
   try {
     const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`,
       {signal:AbortSignal.timeout(6000)});
+    if (!r.ok) return { data: null, state: "PROVIDER_FAILURE" as Measurement };
     const d = await r.json();
     const pairs = (d?.pairs??[]).sort((a:any,b:any)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0));
-    if (!pairs.length) return null;
+    // Aucune paire cotée : DexScreener a répondu. Constat, pas panne.
+    if (!pairs.length) return { data: null, state: "MEASURED_EMPTY" as Measurement };
     const p = pairs[0];
     return {
-      primary_pool:p.pairAddress??null, dex:p.dexId??null,
-      price_usd:p.priceUsd??null, liquidity_usd:p.liquidity?.usd??null,
-      volume_24h_usd:p.volume?.h24??null, fdv_usd:p.fdv??null,
+      data: {
+        primary_pool:p.pairAddress??null, dex:p.dexId??null,
+        price_usd:p.priceUsd??null, liquidity_usd:p.liquidity?.usd??null,
+        volume_24h_usd:p.volume?.h24??null, fdv_usd:p.fdv??null,
+      },
+      state: "MEASURED" as Measurement,
     };
-  } catch { return null; }
+  } catch { return { data: null, state: "PROVIDER_FAILURE" as Measurement }; }
 }
 
-async function fetchHolders(mint: string) {
+// ─── BUILD 10 · P0 CHEMIN B — `null` disait QUATRE choses différentes ──────
+//
+// ██  La dégradation voyage À CÔTÉ de la valeur, jamais dedans.            ██
+//
+// `fetchHolders` rendait `null` dans quatre situations que rien ne
+// distinguait, et l'appelant les coerçait toutes en `top10 = 0`, donc en
+// `concentration_flags: []` — c'est-à-dire en « aucune concentration
+// détectée », l'affirmation la plus favorable que cette route sache écrire.
+//
+//   catch                   le provider a échoué          PROVIDER_FAILURE
+//   !holders.length         le RPC a répondu, liste vide  MEASURED_EMPTY
+//   !total                  somme nulle : le ratio        NOT_MEASURABLE
+//                           top10/total n'existe pas
+//   succès                                                MEASURED
+//
+// Les trois premiers rendaient `null`. Le troisième mérite d'être distingué
+// des deux autres : une division impossible n'est ni une panne, ni un constat
+// d'absence — c'est une grandeur qui n'est pas définie sur cette donnée.
+//
+// LA VALEUR NE CHANGE PAS. `top10` reste `parseFloat(... ?? "0")`, les
+// `concentration_flags` gardent leurs seuils, le scoreur reçoit exactement les
+// mêmes nombres qu'avant. Seul `state` est ajouté, à côté.
+type HoldersData = {
+  top_holders: Array<{ rank: number; address: string; amount: number; pct: string }>;
+  top10_pct: string;
+};
+type HoldersMeasurement =
+  | "MEASURED"
+  | "MEASURED_EMPTY"
+  | "NOT_MEASURABLE"
+  | "PROVIDER_FAILURE";
+
+async function fetchHolders(
+  mint: string,
+): Promise<{ data: HoldersData | null; state: HoldersMeasurement }> {
   try {
     const r = await fetch("https://api.mainnet-beta.solana.com", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({jsonrpc:"2.0",id:1,method:"getTokenLargestAccounts",params:[mint]}),
       signal: AbortSignal.timeout(6000),
     });
+    if (!r.ok) return { data: null, state: "PROVIDER_FAILURE" };
     const d = await r.json();
     const holders = d?.result?.value??[];
-    if (!holders.length) return null;
+    // Le RPC a répondu et il n'y a pas de détenteur : c'est un CONSTAT.
+    if (!holders.length) return { data: null, state: "MEASURED_EMPTY" };
     const total = holders.reduce((s:number,h:any)=>s+Number(h.uiAmount||0),0);
-    if (!total) return null;
+    // Somme nulle : `top10/total` n'est pas défini. Ni panne, ni absence.
+    if (!total) return { data: null, state: "NOT_MEASURABLE" };
     const top10 = holders.slice(0,10).reduce((s:number,h:any)=>s+Number(h.uiAmount||0),0);
     return {
-      top_holders: holders.slice(0,20).map((h:any,i:number)=>({
-        rank:i+1, address:h.address, amount:h.uiAmount??0,
-        pct:((Number(h.uiAmount||0)/total)*100).toFixed(2),
-      })),
-      top10_pct: ((top10/total)*100).toFixed(1),
+      data: {
+        top_holders: holders.slice(0,20).map((h:any,i:number)=>({
+          rank:i+1, address:h.address, amount:h.uiAmount??0,
+          pct:((Number(h.uiAmount||0)/total)*100).toFixed(2),
+        })),
+        top10_pct: ((top10/total)*100).toFixed(1),
+      },
+      state: "MEASURED",
     };
-  } catch { return null; }
+  } catch { return { data: null, state: "PROVIDER_FAILURE" }; }
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -167,7 +232,12 @@ export async function GET(req: NextRequest) {
     fetchHolders(lookupKey),
   ]);
 
-  const top10 = parseFloat(holders?.top10_pct ?? "0");
+  // BUILD 10 · P0 chemin B — la VALEUR est inchangée, au caractère près :
+  // `parseFloat(... ?? "0")` sur la même donnée. Ce qui est ajouté vit à côté.
+  const holdersData = holders.data;
+  const metadataData = metadata.data;
+  const marketsData = markets.data;
+  const top10 = parseFloat(holdersData?.top10_pct ?? "0");
   const concentrationFlags: string[] = [];
   if (top10 > 50) concentrationFlags.push("high_top10_concentration");
   if (top10 > 70) concentrationFlags.push("extreme_concentration");
@@ -179,18 +249,33 @@ export async function GET(req: NextRequest) {
       mint: lookupKey,
       name: vue?.name ?? null,
       symbol: vue?.symbol ?? null,
-      decimals: metadata?.decimals ?? null,
-      supply: metadata?.supply ?? null,
-      mintAuthority: metadata?.mintAuthority ?? null,
+      decimals: metadataData?.decimals ?? null,
+      supply: metadataData?.supply ?? null,
+      mintAuthority: metadataData?.mintAuthority ?? null,
+      // `null` sur Solana veut dire « autorité RÉVOQUÉE », c'est-à-dire l'état
+      // SÛR. Sans cet état, une panne du RPC rendait exactement ce qu'un jeton
+      // assaini produit. La valeur ne change pas — l'état la qualifie.
+      metadata_measurement: metadata.state,
     },
-    markets: markets ?? {
+    markets: marketsData ? { ...marketsData, markets_measurement: markets.state } : {
       primary_pool:null, dex:null, price_usd:null,
       liquidity_usd:null, volume_24h_usd:null, fdv_usd:null,
+      markets_measurement: markets.state,
     },
     distribution: {
-      top_holders: holders?.top_holders ?? [],
-      top10_pct: holders?.top10_pct ?? null,
+      top_holders: holdersData?.top_holders ?? [],
+      top10_pct: holdersData?.top10_pct ?? null,
       concentration_flags: concentrationFlags,
+      // ── L'état de MESURE, à côté de la valeur — jamais dedans ──────────
+      //
+      // Sans lui, `top10_pct: null` + `concentration_flags: []` se lisait
+      // « aucune concentration détectée ». Le lecteur ne pouvait pas savoir
+      // si le RPC avait répondu.
+      //
+      // MEASURED_EMPTY est un CONSTAT : le RPC a répondu, il n'y a pas de
+      // détenteur. Il ne doit pas être signalé comme une dégradation, sinon
+      // toute absence réelle crierait à la panne.
+      measurement: holders.state,
     },
     // ── BUILD 9 / ÉTAPE 7 — les flux viennent du dossier, ou sont vides ───
     //
@@ -249,13 +334,30 @@ export async function GET(req: NextRequest) {
     resolution: isAlias ? "botify_synthetic_route_key" : "identity",
   };
 
+  // ── BUILD 10 · P0 chemin B — la dégradation, NOMMÉE ────────────────────
+  //
+  // Un CHAMP et une raison, jamais une valeur. `MEASURED_EMPTY` n'y figure
+  // pas : une absence mesurée est un résultat, pas une dégradation. La
+  // confondre rendrait le signal inaudible — tout serait toujours dégradé.
+  const degradations: DegradedInput[] = [
+    ...(holders.state === "PROVIDER_FAILURE"
+      ? [degraded("holders", "PROVIDER_UNAVAILABLE")] : []),
+    ...(holders.state === "NOT_MEASURABLE"
+      ? [degraded("top10_pct", "NOT_EVALUATED")] : []),
+    ...(metadata.state === "PROVIDER_FAILURE"
+      ? [degraded("mintAuthority", "PROVIDER_UNAVAILABLE")] : []),
+    ...(markets.state === "PROVIDER_FAILURE"
+      ? [degraded("markets", "PROVIDER_UNAVAILABLE")] : []),
+  ];
+
   const caseFile: any = {
+    degraded: degradations,
     case: {
       case_id: caseId,
       chain: "solana",
       input,
       scan_timestamp: new Date().toISOString(),
-      engine_version: "CaseFile-v2.0",
+      engine_version: "CaseFile-v2.1",
       offchain_source: offchainSource,
     },
     verdict: {tier, score, retail_summary: retailSummary},

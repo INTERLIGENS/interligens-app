@@ -124,8 +124,16 @@ describe("POINT 5 — la résolution est VISIBLE dans la réponse", () => {
     // locale mais de l'autorité canonique, et `offchain_source` le dit. La
     // propriété testée n'a jamais été « la version vaut 1.2 » — c'est « la
     // version est incrémentée quand le contrat change ».
-    expect(codeSeul).toContain('engine_version: "CaseFile-v2.0"');
+    // v1.2 déclarait le contrat du POINT 5 (résolution visible dans `input`).
+    // v2.0 celui de l'ÉTAPE 7 (autorité canonique).
+    // v2.1 celui de BUILD 10 / P0 chemin B : la réponse porte désormais l'état
+    // de MESURE de ses trois collecteurs on-chain, et un bloc `degraded`.
+    //
+    // La propriété testée n'a jamais été « la version vaut X » — c'est « elle
+    // est incrémentée quand le contrat change ». Elle l'a été trois fois.
+    expect(codeSeul).toContain('engine_version: "CaseFile-v2.1"');
     expect(codeSeul).toContain('offchainSource = vue ? "canonical" : "none"');
+    expect(codeSeul).toContain("degraded: degradations");
   });
 });
 
