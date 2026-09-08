@@ -572,3 +572,123 @@ C'est le cas d'école du build : **une décision juste, tracée dans le script q
 l'applique, et invisible partout où le résultat est lu.** Le SQL de migration
 est un artefact d'exécution ; le dossier, lui, ne porte aucune trace du
 neuvième claim.
+
+---
+
+# SURFACES 5 À 8 · MÉTHODOLOGIE, TRANSPARENCE, EXPLORER, WATCHLIST
+
+## 5 · `/methodology/tigerscore` — 194 lignes, **0 appel de donnée**
+
+Page entièrement statique. Elle décrit le moteur de score.
+
+Le trou n'est pas dans la page : il est dans l'**écart** avec la surface 2. La
+page explique comment un TigerScore est calculé ; le dossier voisin affiche un
+`91` qui vient d'un littéral de seed, et deux dossiers affichent « non établi »
+parce qu'aucune chaîne ne relie le moteur à la table.
+
+**Catégorie : `PIPE_NOT_CONNECTED`** — entre la méthodologie publiée et les
+valeurs publiées. Ce n'est pas un blanc silencieux ; c'est une promesse dont
+l'exécution n'est pas branchée.
+
+## 6 · `/dataroom/score` — une redirection vers un HTML statique
+
+14 lignes. `window.location.href = "/dataroom-score-architecture.html"`.
+
+Le fichier existe : `public/dataroom-score-architecture.html`, **647 Ko**.
+C'est un artefact **statique**, hors du pipeline applicatif : tout chiffre
+qu'il contient est figé à sa date d'écriture, et rien ne le rafraîchit.
+
+**Catégorie : `COLLECTOR_MISSING`** pour tout chiffre qu'il porterait.
+*Non mesuré :* je n'ai pas inventorié son contenu — 647 Ko de HTML, et le
+lire n'apporterait rien tant que la question « quel chiffre est vivant » a la
+même réponse pour tous : aucun.
+
+## 7 · `/transparency` — ce n'est pas un rapport, c'est un formulaire
+
+`POST /api/transparency/submit`. La page est un **dépôt volontaire d'adresses
+de wallet** par un tiers, pas une publication de l'entreprise sur elle-même.
+
+Un lecteur Investor/Counsel qui ouvre « Transparency » attend le second.
+**Catégorie : `INTENTIONALLY_NOT_SHOWN`** — la page fait ce qu'elle annonce
+en sous-titre (« Voluntary Disclosure »), il n'y a pas de trou de donnée.
+Signalé pour l'écart de lecture, pas comme défaut.
+
+## 8 · `/explorer` et `/watchlist` — le même motif que la fiche nominative
+
+```ts
+// explorer
+.then(d => { setItems(d.items ?? []); setStats(d.stats ?? null) })
+.catch(() => {})
+
+// watchlist
+.then(d => setEntries(d.entries ?? []))
+.catch(() => {})
+```
+
+Échec réseau, 500, gate nominatif : la liste reste vide, et l'écran est
+**identique** à « aucun résultat ». Deux blancs silencieux de plus, sur les
+deux surfaces de navigation du corpus.
+
+---
+
+# SYNTHÈSE S0
+
+## Comptage par catégorie
+
+Ne sont comptés que les constats **mesurés** dans ce document. Ce n'est pas un
+inventaire exhaustif du dépôt : c'est ce qui a été remonté sur les surfaces
+traitées, dans l'ordre Investor/Counsel.
+
+| catégorie | constats | lesquels |
+|---|---|---|
+| `COLLECTOR_MISSING` | **5** | aucun writer de `token_casefiles` · `tigerScore` jamais écrit par le moteur · faits statiques du PDF jamais rafraîchis · VINE sans registre `sources` · `/dataroom/score` figé |
+| `PIPE_NOT_CONNECTED` | **6** | 11 handlers cron orphelins · 6 colonnes posées par SQL manuel · claims dupliqués en dur sur `/cases/botify/evidence` · 39 `evidence_refs` VINE non transférées · C13 écarté au transfert · méthodologie publiée ↔ score publié |
+| `BUG` | **5** | claims `CONFIRMED` alors qu'`ATTACHED` · mint synthétique publié · « rug-pull » interdit et rendu · lien de partage derrière le gate · `?? 0` → GREEN |
+| `DATA_ABSENT` | **4** | date d'observation des faits statiques · adresses de démonstration · montants non quantifiés · page `fr/cases/botify` inexistante |
+| `INTENTIONALLY_NOT_SHOWN` | **2** | filtre `publishStatus` de l'index · `/transparency` est un formulaire |
+| `NOT_MEASURABLE` | **0** | aucun constat de cette nature à ce stade |
+| **sources non armées** | **4** | `amf`, `fca`, `forta`, `goplus` — à classer quand une surface les citera |
+
+## Les BLANCS SILENCIEUX — la liste
+
+Un champ vide qui ne dit pas qu'il est vide. **16 recensés.**
+
+| # | où | ce qu'un lecteur ne peut pas distinguer |
+|---|---|---|
+| 1 | fiche dossier · `founders` vide | pas de fondateurs / section inexistante |
+| 2 | fiche dossier · `keyWallets` vide | pas de wallets / personne n'a cherché |
+| 3 | fiche dossier · `sources` vide | pas de sources d'investigation / section inexistante |
+| 4 | fiche dossier · bloc canonique vide | pas de claims / chaîne débranchée |
+| 5 | PDF · faits statiques | aucun champ de date n'est rendu — rien ne dit qu'ils peuvent dater de n'importe quand |
+| 6 | KOL · `/api/laundry` | absence / API en échec |
+| 7 | KOL · `/api/cluster` | absence / API en échec |
+| 8 | KOL · `/api/coordination` | absence / API en échec |
+| 9 | KOL · `/api/transparency/wallets` | absence / API en échec |
+| 10 | KOL · `/api/v1/shill-to-exit` + narrative | absence / API en échec |
+| 11 | `/explorer` | aucun résultat / échec |
+| 12 | `/watchlist` | aucun résultat / échec |
+| 13 | `/demo` × 4 | **pire espèce** — score absent rendu `0`, donc **GREEN** |
+| 14 | dossier VINE | 8 claims affichés, rien ne dit qu'il y en avait 9 |
+| 15 | audit d'intégrité | `0 sur 0` indistinguable de `0 sur 39` — le blanc est dans l'**instrument** |
+| 16 | `/fr/cases/botify` | 404 sans indication que le dossier existe en `en` |
+
+**Six d'entre eux (6 à 10, 13) sont sur des surfaces nominatives ou de
+verdict** — c'est-à-dire là où une absence muette se lit comme un constat
+favorable sur une personne ou un actif.
+
+## Ce que je n'ai pas traité
+
+Par épuisement de la file, pas par choix : 62 pages admin, ~90 pages publiques
+hors des 8 traitées, 157 routes API admin, les 2 extensions, la chaîne e-mail.
+Les surfaces traitées sont celles du haut de la file Investor/Counsel.
+
+## Chiffres explicitement NON vérifiés
+
+- le comptage `?? 0` (97) est un **comptage**, pas un audit ligne à ligne ;
+  seules les 4 pages `/demo` sont vérifiées ;
+- les 11 handlers cron orphelins le sont **au regard du dépôt** — un
+  déclencheur externe n'est pas exclu ;
+- le gate sur `/shared/case/<token>` est mesuré **dans le code**, jamais
+  exercé en production ;
+- aucun comptage de lignes en base : pas de connexion, et je n'en ai pas
+  cherché.
