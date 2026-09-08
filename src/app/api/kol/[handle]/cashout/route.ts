@@ -1,3 +1,4 @@
+import { TX_READ_CONFIG, classifyRpcRead, unreadable, type ParsedTx, type UnreadableTx } from "@/lib/solana/txRead";
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getPriceAtDate } from "@/lib/kol/pricing";
@@ -14,38 +15,46 @@ async function helius(method: string, params: any[]) {
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
   const j = await res.json();
-  return j.result ?? null;
+  // P0 AGAVE TX V1 — réponse brute rendue, classement chez l'appelant.
+  return j;
 }
 
 async function getTokenTransfers(walletAddress: string, tokenCA: string) {
+  /** Signatures connues dont le corps n'a pas pu être lu. */
+  const illisibles: UnreadableTx[] = [];
   const receives: any[] = [];
   const sells: any[] = [];
 
   // 1. Trouver le token account du wallet pour ce CA
-  const tokenAccounts = await helius("getTokenAccountsByOwner", [
+  const tokenAccounts = (await helius("getTokenAccountsByOwner", [
     walletAddress,
     { mint: tokenCA },
     { encoding: "jsonParsed" },
-  ]);
+  ]))?.result ?? null;
 
   if (!tokenAccounts?.value?.length) return { receives, sells };
 
   const tokenAccount = tokenAccounts.value[0].pubkey;
 
   // 2. Récupérer les signatures sur ce token account
-  const sigs = await helius("getSignaturesForAddress", [
+  const sigs = (await helius("getSignaturesForAddress", [
     tokenAccount,
     { limit: 40 },
-  ]);
+  ]))?.result ?? null;
   if (!sigs?.length) return { receives, sells };
 
   // 3. Parser chaque transaction
   for (const sigInfo of sigs.slice(0, 30)) {
     try {
-      const tx = await helius("getTransaction", [
-        sigInfo.signature,
-        { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
-      ]);
+      const lu = classifyRpcRead<ParsedTx>(
+        await helius("getTransaction", [sigInfo.signature, TX_READ_CONFIG]),
+      );
+      const refus = unreadable(sigInfo.signature, lu);
+      if (refus) {
+        illisibles.push(refus);
+        continue;
+      }
+      const tx = lu.kind === "value" ? lu.value : null;
       if (!tx || tx.meta?.err) continue;
 
       const blockTime = tx.blockTime;
@@ -105,6 +114,14 @@ async function getTokenTransfers(walletAddress: string, tokenCA: string) {
     }
   }
 
+  // Un refus de lecture est CONSIGNÉ, jamais absorbé : un scan qui n'a lu
+  // qu'une partie des transactions ne doit pas se présenter comme complet.
+  if (illisibles.length > 0) {
+    console.warn(
+      `[cashout] ${walletAddress} : ${illisibles.length} signature(s) connue(s) illisible(s)`,
+      illisibles.map((u) => `${u.signature.slice(0, 12)}… ${u.state}/${u.code}`),
+    );
+  }
   return { receives, sells };
 }
 

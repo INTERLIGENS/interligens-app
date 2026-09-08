@@ -1,3 +1,4 @@
+import { TX_READ_CONFIG, classifyRpcRead, unreadable, type ParsedTx, type UnreadableTx } from "@/lib/solana/txRead";
 // src/lib/kol/cexTracker.ts
 // CEX deposit detector — supplements proceeds.ts with a broader address list
 // and ETH chain support via Etherscan.
@@ -101,16 +102,28 @@ async function fetchSolTransactions(address: string): Promise<{ txHash: string; 
     const { result: sigs } = await res.json();
     if (!sigs?.length) return [];
 
+    /** Signatures connues dont le corps n'a pas pu être lu. */
+    const illisibles: UnreadableTx[] = [];
     const results: { txHash: string; toAddress: string; amountSol: number; timestamp: number }[] = [];
     for (const sig of sigs.slice(0, 15)) {
       try {
         const txRes = await fetch(HELIUS_RPC, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTransaction", params: [sig.signature, { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }] }),
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTransaction", params: [sig.signature, TX_READ_CONFIG] }),
           signal: AbortSignal.timeout(10000),
         });
-        const { result: tx } = await txRes.json();
+        // ─── P0 AGAVE TX V1 ────────────────────────────────────────────
+        // `const { result: tx }` jetait `error` : un refus de version devenait
+        // une transaction absente, et le dépôt CEX correspondant disparaissait
+        // du décompte sans laisser de trace.
+        const lu = classifyRpcRead<ParsedTx>(await txRes.json());
+        const refus = unreadable(sig.signature, lu);
+        if (refus) {
+          illisibles.push(refus);
+          continue;
+        }
+        const tx = lu.kind === "value" ? lu.value : null;
         if (!tx?.meta || tx.meta.err) continue;
 
         const accountKeys: string[] = tx.transaction?.message?.accountKeys?.map((k: { pubkey?: string; accountKey?: string }) => k.pubkey ?? k.accountKey ?? "") ?? [];
@@ -129,6 +142,15 @@ async function fetchSolTransactions(address: string): Promise<{ txHash: string; 
           }
         }
       } catch { /* skip individual TX errors */ }
+    }
+    // Un refus de lecture est CONSIGNÉ, pas absorbé. Sans cette trace, un
+    // scan qui n'a lu que la moitié des transactions serait indistinguable
+    // d'un scan complet n'ayant rien trouvé.
+    if (illisibles.length > 0) {
+      console.warn(
+        `[cexTracker] ${address} : ${illisibles.length} signature(s) connue(s) illisible(s)`,
+        illisibles.map((u) => `${u.signature.slice(0, 12)}… ${u.state}/${u.code}`),
+      );
     }
     return results;
   } catch {
