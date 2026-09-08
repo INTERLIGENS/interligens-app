@@ -27,8 +27,11 @@ import {
 } from "@/lib/kol-memory/walletPublication";
 import { BOTIFY_MINT } from "@/lib/kol-memory/tokenIdentity";
 import { safeEvidenceUrl } from "@/lib/kol-memory/publicIdentityProjection";
-import { redactProceeds } from "@/lib/kol/proceedsGate";
+import { redactProceeds, PROCEEDS_PUBLICATION_SELECT } from "@/lib/kol/proceedsGate";
 import { WITHDRAWN_NOTICE } from "@/lib/casefile/containment";
+import type { ArtifactState } from "@/lib/casefile/publicationState";
+import { loadCanonicalCaseFile } from "@/lib/casefile/canonicalReader";
+import { BOTIFY_CASEFILE_REF } from "@/lib/casefile/publicProjection";
 import { prisma } from "../../lib/prisma";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -65,8 +68,29 @@ export interface BotifyCase {
 }
 
 export interface DbEnrichment {
-  wallets: { handle: string; address: string; label: string }[];
+  /**
+   * Les SEULES adresses publiables du dossier, déjà passées par
+   * `PUBLISHABLE_WALLET_FILTER` et `isWalletPublishable`. Cette liste est
+   * l'autorité de publiabilité pour tout le builder — y compris pour la ligne
+   * DT-1, dont l'adresse vient du JSON et n'était gatée par rien.
+   *
+   * `proceedsPublication` accompagne l'adresse pour que la gate monétaire
+   * canonique puisse décider sur la même ligne. Absent = non publié
+   * (fail-closed, voir `proceedsGate.ts`).
+   */
+  wallets: {
+    handle: string;
+    address: string;
+    label: string;
+    proceedsPublication?: string | null;
+  }[];
   proceeds: { ref: string; amountUsd: string; txHashes: string }[];
+  /**
+   * L'état canonique de chaque claim, indexé par `claimId`. Un claim absent de
+   * cette table n'a PAS d'état démontré — il ne reçoit ni état inféré, ni le
+   * `status` legacy du JSON.
+   */
+  claimStates?: Record<string, ArtifactState>;
 }
 
 export interface EvidenceRow {
@@ -127,6 +151,49 @@ export const AMOUNT_ABSENCE_MARKERS = [
   AMOUNT_WITHHELD,
 ] as const;
 
+// ─── BUILD 10 / ADDENDUM B — LA COLONNE STATUS DIT L'ÉTAT, ELLE NE LE RELÈVE PAS ─
+//
+// Les 8 claims de `data/cases/botify.json` portent tous `status: "CONFIRMED"`,
+// et le builder recopiait ce littéral dans la colonne Status. Mesuré le
+// 2026-09-08 sur `CaseFileClaim` (ref IL-SHILL-BOTIFY-001) : les 8 mêmes claims,
+// C1 à C8, sont TOUS à l'état canonique `ATTACHED`.
+//
+// ATTACHED veut dire « cet artefact appartient au corpus de ce dossier ». Il ne
+// dit rien de ce que l'artefact prouve — c'est écrit noir sur blanc dans
+// `publicationState.ts` : « Rattacher n'est pas publier. Publier n'est pas
+// prouver. » CONFIRMED, dans une colonne d'export forensic, se lit exactement à
+// l'inverse : une assertion établie.
+//
+// L'export peut EXPOSER l'état ; il ne peut pas le RELEVER. La colonne porte
+// donc l'état canonique tel quel — jamais promu, jamais traduit.
+//
+// ─── Et quand la correspondance n'est pas démontrée ────────────────────────
+//
+// Un claim du JSON dont aucun claim canonique ne porte le `claimId` n'a pas
+// d'état. Les deux issues faciles sont interdites, et pour la même raison :
+//
+//   · inférer un état      inventerait une qualification que personne n'a prise
+//   · garder le CONFIRMED  republierait précisément le littéral qu'on retire
+//
+// Reste la seule réponse vraie : dire que l'état n'est pas établi. La ligne
+// n'est PAS supprimée — `onlyPublishable` n'est pas appliqué, un export
+// forensic admin doit montrer ce qui existe, y compris ce qui n'est pas qualifié.
+export const STATUS_NOT_ESTABLISHED =
+  "NOT_ESTABLISHED — aucun état canonique démontré pour ce claim";
+
+/**
+ * L'état canonique d'un claim, ou l'aveu qu'il n'y en a pas.
+ *
+ * Ne prend AUCUN argument de repli : il n'existe pas de valeur par défaut
+ * acceptable ici, et en accepter une rouvrirait la porte au `status` legacy.
+ */
+export function canonicalClaimStatus(
+  claimId: string,
+  states: Record<string, ArtifactState> | undefined,
+): string {
+  return states?.[claimId] ?? STATUS_NOT_ESTABLISHED;
+}
+
 // `safeEvidenceUrl` vit désormais dans src/lib/kol-memory/publicIdentityProjection.ts :
 // les routes publiques en ont besoin, et la logique de résolution ne doit être
 // écrite qu'une fois. Réexporté ici pour les appelants existants.
@@ -144,7 +211,8 @@ export function buildBotifyEvidenceRows(
       claimNo: c.claim_id,
       title: c.title,
       severity: c.severity,
-      status: c.status,
+      // JAMAIS `c.status` : le littéral CONFIRMED du JSON relève l'état.
+      status: canonicalClaimStatus(c.claim_id, db.claimStates),
       evidenceUrl: safeEvidenceUrl(c.thread_url) || (c.evidence_refs ?? []).join("; "),
       wallets: "",
       amountUsd: AMOUNT_NOT_APPLICABLE,
@@ -153,16 +221,51 @@ export function buildBotifyEvidenceRows(
   }
 
   // 2. Detective trade — case-level on-chain evidence
+  //
+  // ─── BUILD 10 / ADDENDUM A — DT-1 PASSAIT À CÔTÉ DES DEUX GATES ─────────
+  //
+  // Cette ligne publie une ADRESSE (`dt.wallet`, deux fois : en colonne et dans
+  // l'URL de preuve) et un MONTANT (`dt.pnl_usd`), tous deux lus directement
+  // dans le JSON. Ni `PUBLISHABLE_WALLET_FILTER`, ni `redactProceeds` :
+  // le chemin JSON contournait les deux gates posées sur le chemin BASE.
+  //
+  // La mesure de sortie disait 0 adresse non publiable, et c'était vrai. Mais
+  // c'était vrai PAR CHANCE — aucune règle ne l'imposait, et la prochaine
+  // valeur écrite dans le JSON n'aurait rencontré aucun obstacle. Une donnée
+  // qui passe par chance n'est pas une donnée gouvernée.
+  //
+  // La gate n'est pas recopiée : `db.wallets` EST déjà sa sortie — les seules
+  // adresses que `PUBLISHABLE_WALLET_FILTER` et `isWalletPublishable` ont
+  // laissé passer. Une adresse qui n'y figure pas n'a pas de publiabilité
+  // démontrée, et l'absence de démonstration ne publie pas.
   const dt = caseData.detective_trade;
   if (dt && (dt.wallet || dt.buy_tx || dt.sell_tx)) {
+    const gouverne = dt.wallet
+      ? db.wallets.find((w) => w.address === dt.wallet)
+      : undefined;
+    const adresse = gouverne ? gouverne.address : "";
+
+    // La gate monétaire canonique, appelée et non recopiée. Sans porteur
+    // démontré, elle rend `null` — et `null` n'est pas `0` : la cellule porte
+    // le motif du retrait, jamais un chiffre, jamais une valeur favorable.
+    const publie = redactProceeds(
+      gouverne ? { proceedsPublication: gouverne.proceedsPublication } : null,
+      dt.pnl_usd ?? null,
+    );
+
     rows.push({
       claimNo: "DT-1",
       title: "Insider front-run trade (detective-documented)",
       severity: "HIGH",
       status: "DOCUMENTED",
-      evidenceUrl: `https://solscan.io/account/${dt.wallet ?? ""}`,
-      wallets: dt.wallet ?? "",
-      amountUsd: dt.pnl_usd != null ? String(dt.pnl_usd) : AMOUNT_NOT_MEASURED,
+      evidenceUrl: adresse ? `https://solscan.io/account/${adresse}` : "",
+      wallets: adresse,
+      amountUsd:
+        publie != null
+          ? String(publie)
+          : dt.pnl_usd != null
+            ? AMOUNT_WITHHELD
+            : AMOUNT_NOT_MEASURED,
       txHashes: [dt.buy_tx, dt.sell_tx].filter(Boolean).join("; "),
     });
   }
@@ -226,8 +329,39 @@ export function rowsToCsv(rows: EvidenceRow[]): string {
 
 // ── DB enrichment (defensive — degrades to empty on any failure) ─────────────
 
+/** Le message d'une exception, sans `any` et sans perdre l'information. */
+const raison = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
 export async function loadBotifyDbEnrichment(caseId: string): Promise<DbEnrichment> {
   const out: DbEnrichment = { wallets: [], proceeds: [] };
+
+  // ── ADDENDUM B — L'ÉTAT CANONIQUE DES CLAIMS ───────────────────────────
+  //
+  // `loadCanonicalCaseFile` est appelé SANS `onlyPublishable` : un export
+  // forensic admin montre ce qui existe, il ne filtre pas les lignes non
+  // qualifiées — il dit qu'elles ne le sont pas.
+  //
+  // Ce n'est PAS la bascule d'autorité, qui reste en HOLD : le corps du dossier
+  // continue de venir du JSON, la clé de rattachement `caseId` n'est pas
+  // touchée, et rien ici ne dépend du ruling de clé. Seul l'ÉTAT est lu à la
+  // source qui fait autorité sur l'état.
+  //
+  // Un échec de lecture laisse la table vide, donc tous les claims en
+  // « état non établi ». C'est la bonne dégradation : on perd la précision,
+  // jamais dans le sens qui affirme davantage.
+  try {
+    const canonique = await loadCanonicalCaseFile(BOTIFY_CASEFILE_REF);
+    if (canonique) {
+      out.claimStates = Object.fromEntries(canonique.claims.map((c) => [c.claimId, c.state]));
+    } else {
+      console.warn(
+        `[botify-export] aucun dossier canonique ${BOTIFY_CASEFILE_REF} — ` +
+          `les claims sortiront en état NON ÉTABLI.`,
+      );
+    }
+  } catch (e) {
+    console.warn(`[botify-export] lecture de l'état canonique échouée: ${raison(e)}`);
+  }
 
   // ── AXE 1 — LE RATTACHEMENT AU DOSSIER, FAIL CLOSED ────────────────────
   //
@@ -270,14 +404,38 @@ export async function loadBotifyDbEnrichment(caseId: string): Promise<DbEnrichme
   // `PUBLISHABLE_WALLET_FILTER` est appliqué TEL QUEL, et `isWalletPublishable`
   // refiltre en mémoire : le WHERE et le prédicat disent la même chose, et le
   // second attrape le cas où une requête future oublierait le premier.
+  //
+  // ADDENDUM A — `proceedsPublication` est lu ICI, en même temps que l'adresse,
+  // parce que la ligne DT-1 a besoin des DEUX verdicts sur la MÊME adresse. Un
+  // handle dont l'état de publication n'a pas pu être lu reste `undefined`, ce
+  // que `redactProceeds` traite comme retiré — fail-closed, par construction.
+  // Les deux lectures sont gardées SÉPARÉMENT, et l'ordre des gardes porte une
+  // décision : un échec sur l'état de publication ne doit pas emporter les
+  // adresses avec lui. Il laisse la carte vide, donc chaque montant en retrait —
+  // on dégrade vers le silence monétaire, jamais vers la disparition d'une
+  // adresse dont la publiabilité, elle, a bien été démontrée.
+  const publication = new Map<string, string | null>();
+  try {
+    const profils = await prisma.kolProfile.findMany({
+      where: { handle: { in: handleList } },
+      select: { handle: true, ...PROCEEDS_PUBLICATION_SELECT },
+    });
+    profils.forEach((p) => publication.set(p.handle, p.proceedsPublication));
+  } catch (e) {
+    console.warn(`[botify-export] KolProfile publication query failed: ${raison(e)}`);
+  }
+
   try {
     const wallets = await prisma.kolWallet.findMany({
       where: { kolHandle: { in: handleList }, ...PUBLISHABLE_WALLET_FILTER },
       select: { kolHandle: true, address: true, label: true, ...WALLET_PUBLICATION_SELECT },
     });
-    out.wallets = wallets
-      .filter(isWalletPublishable)
-      .map((w) => ({ handle: w.kolHandle, address: w.address, label: w.label ?? "" }));
+    out.wallets = wallets.filter(isWalletPublishable).map((w) => ({
+      handle: w.kolHandle,
+      address: w.address,
+      label: w.label ?? "",
+      proceedsPublication: publication.get(w.kolHandle) ?? null,
+    }));
   } catch (e: any) {
     console.warn(`[botify-export] KolWallet query failed: ${e?.message ?? e}`);
   }
