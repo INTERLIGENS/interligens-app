@@ -475,6 +475,49 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 11 · REFLEX V2 — S2/S3, le contrat de mesure.
+#
+# DEUX CHEMINS. Tout le cœur — src/lib/reflex/ et absenceVocabulary.ts — est
+# libre et a été écrit sans fenêtre. Ne restent que deux consommateurs gelés
+# que le nouveau contrat traverse.
+#
+# ─── Ce que BUILD 11 ferme ────────────────────────────────────────────────
+#
+# Huit providers tombés produisaient NO_CRITICAL_SIGNAL — « aucun signal
+# critique détecté » — alors que rien n'avait été cherché avec succès. Et
+# `computeGlobalConfidence` rendait { score: 0 } aussi bien sur huit pannes
+# que sur huit constats propres : deux situations opposées, une seule sortie.
+#
+# Le 5e verdict INSUFFICIENT_COVERAGE est créé par ruling, avec un SEUL
+# déclencheur gouverné : measuredEngines === 0. Aucun seuil n'est introduit
+# entre 1/8 et 7/8 — une couverture partielle garde son verdict et EXPOSE sa
+# couverture, qui voyage à côté. La constante morte à 0.5 n'est pas activée.
+#
+# ─── Les deux chemins, et pourquoi ils sont indispensables ────────────────
+#
+#   api/reflex/route.ts       la projection de réponse y était écrite EN DUR,
+#                             en fonction locale. Elle est extraite dans
+#                             src/lib/reflex/apiProjection.ts, qui est LIBRE :
+#                             la route ne fait plus que l'importer et
+#                             l'appeler, et les prochains changements de
+#                             contrat n'auront plus besoin de fenêtre.
+#
+#   components/reflex/        `confidenceScore` peut désormais valoir null —
+#     investigator/           jamais 0 — quand rien n'a été mesuré. Le
+#     DetailPage.tsx          composant appelait `.toFixed(3)` dessus.
+#
+# PAS DE DDL. Aucun instant d'observation n'existe dans la verticale — mesuré
+# sur les 7 adaptateurs, recidivism, casefileMatch et l'orchestrateur — donc
+# la fraîcheur vaut NOT_MEASURABLE et STALE n'est jamais affirmé.
+#
+# Autorisation humaine explicite (David, arbitrage GPT V/W/X).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build11-reflex-s2$ ]]; then
+    EXEMPT_BUILD11_REFLEX_PATTERNS=(
+        "^src/app/api/reflex/route\.ts$"
+        "^src/components/reflex/investigator/DetailPage\.tsx$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +721,20 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche build11-reflex-s2, exempter STRICTEMENT les 2 chemins.
+    # Aucun wildcard : les 4 autres routes api/reflex* et le second composant
+    # investigator restent gelés — le contrat ne les traverse pas.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build11-reflex-s2$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_BUILD11_REFLEX_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
