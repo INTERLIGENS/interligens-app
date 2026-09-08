@@ -26,6 +26,14 @@ import { MAX_INPUT_LENGTH } from "@/lib/reflex/constants";
 import { ForbiddenWordError } from "@/lib/reflex/forbidden-words";
 import { classify } from "@/lib/reflex/inputRouter";
 import { runReflex } from "@/lib/reflex/orchestrator";
+// ─── BUILD 11 · S3 — LE CONTRAT DE RÉPONSE VIT DANS UN FICHIER LIBRE ─────
+//
+// `localizedResponse` était une fonction locale de cette route, qui est gelée.
+// C'est le contrat public de REFLEX : le modifier exigeait donc une fenêtre
+// d'exemption à chaque fois. Il est extrait dans `apiProjection.ts`, libre.
+// La route ne fait plus que l'appeler, et les prochaines évolutions du contrat
+// n'auront plus besoin d'ouvrir quoi que ce soit ici.
+import { localizedResponse } from "@/lib/reflex/apiProjection";
 import { buildTigerInputForReflex } from "@/lib/scan/buildTigerInput";
 import type { OffChainInput } from "@/lib/off-chain-credibility/engine";
 import type {
@@ -54,32 +62,6 @@ function parseMode(s: string | undefined): ReflexMode {
   return s === "PUBLIC" ? "PUBLIC" : "SHADOW";
 }
 
-function localizedResponse(
-  result: ReflexAnalysisResult,
-  locale: ReflexLocale,
-) {
-  return {
-    id: result.id,
-    createdAt: result.createdAt.toISOString(),
-    verdict: result.verdict,
-    verdictReason:
-      locale === "fr" ? result.verdictReasonFr : result.verdictReasonEn,
-    action: locale === "fr" ? result.actionFr : result.actionEn,
-    confidence: result.confidence,
-    confidenceScore: result.confidenceScore,
-    input: {
-      type: result.input.type,
-      chain: result.input.chain ?? null,
-      address: result.input.address ?? null,
-      handle: result.input.handle ?? null,
-      url: result.input.url ?? null,
-    },
-    signalsHashShort: result.signalsHash.slice(0, 8),
-    mode: result.mode,
-    enginesVersion: result.enginesVersion,
-    latencyMs: result.latencyMs,
-  };
-}
 
 export async function POST(req: NextRequest) {
   const rl = await checkRateLimit(getClientIp(req), RATE_LIMIT_PRESETS.scan);

@@ -44,8 +44,9 @@ export interface PreBuyEvidenceLink {
 export interface PreBuyLayers {
   reflex: {
     verdict: ReflexVerdict;
-    confidence: ReflexConfidence;
-    confidenceScore: number;
+    /** `null` quand REFLEX n'a rien mesuré — l'état voyage jusqu'ici. */
+    confidence: ReflexConfidence | null;
+    confidenceScore: number | null;
     reasonsEn: string[];
     analysisId: string;
   };
@@ -137,10 +138,24 @@ export function fusePreBuyVerdict(input: FusionInput): PreBuyVerdict {
   // ── Confidence ──────────────────────────────────────────────────────────
   const signalConfidence: ReflexConfidence =
     newSignalCount >= 2 ? "HIGH" : newSignalCount === 1 ? "MEDIUM" : "LOW";
-  const confidence = maxConf(reflex.confidence, signalConfidence);
+  // ─── BUILD 11 — UNE CONFIANCE ABSENTE N'EN EST PAS UNE BASSE ──────────
+  //
+  // `reflex.confidence` vaut `null` quand REFLEX n'a RIEN pu mesurer. La
+  // fondre dans `maxConf` la traiterait comme une valeur, et le maximum
+  // remonterait la confiance de la fusion sur la foi de rien.
+  //
+  // Sans mesure REFLEX, seule la confiance issue des AUTRES couches subsiste.
+  const confidence = reflex.confidence
+    ? maxConf(reflex.confidence, signalConfidence)
+    : signalConfidence;
 
   // ── Risk score (0–100), then aligned to the verdict band ────────────────
-  let score = Math.round(clamp(reflex.confidenceScore, 0, 1) * 60);
+  // Pas de mesure REFLEX ⇒ REFLEX n'apporte AUCUN point. `?? 0` serait ici
+  // la coercition qu'on ferme partout ailleurs : on ne remplace pas une
+  // absence par une valeur, on n'ajoute simplement rien.
+  let score = reflex.confidenceScore === null
+    ? 0
+    : Math.round(clamp(reflex.confidenceScore, 0, 1) * 60);
   if (casefilePresent) score += 15;
   if (survivingShill) score += highInterestShill ? 30 : 15;
   if (kolFlagged) score += 20;

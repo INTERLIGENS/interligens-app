@@ -38,36 +38,95 @@ import {
   GLOBAL_CONFIDENCE_HIGH_THRESHOLD,
   GLOBAL_CONFIDENCE_MEDIUM_THRESHOLD,
 } from "./constants";
+import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
 import type {
   ReflexConfidence,
   ReflexEngineOutput,
 } from "./types";
 
 export interface GlobalConfidence {
-  score: number;
-  label: ReflexConfidence;
+  /** `null` quand rien n'a été mesuré. Jamais `0` dans ce cas. */
+  score: number | null;
+  label: ReflexConfidence | null;
+  /** Pourquoi le score vaut ce qu'il vaut. Toujours présent. */
+  state: MeasurementState;
 }
 
-function engineContribution(e: ReflexEngineOutput): number | null {
-  if (!e.ran) return null;
-  // Clean engines (ran with no signals) contribute nothing — see file
-  // header for the rationale. Pre-8a this returned 0.5, which made
-  // STOP-convergence unreachable.
-  if (e.signals.length === 0) return null;
-  return Math.max(...e.signals.map((s) => s.confidence));
+// ─── BUILD 11 — DEUX `return null` QUI DISAIENT DEUX CHOSES OPPOSÉES ─────
+//
+// L'ancienne fonction rendait `null` dans deux cas contraires :
+//
+//     if (!e.ran) return null;                 // le provider est tombé
+//     if (e.signals.length === 0) return null; // le moteur a tourné, rien trouvé
+//
+// Le premier est une ABSENCE DE MESURE, le second un CONSTAT. Fondus dans la
+// même sortie, ils produisaient la même confiance — et huit pannes rendaient
+// exactement ce que rendaient huit constats propres.
+//
+// La contribution au SCORE reste la même dans les deux cas, et c'est correct :
+// un moteur qui n'a rien trouvé n'a rien dont on puisse être « confiant ».
+// Ce qui change, c'est qu'on cesse de perdre POURQUOI il ne contribue pas.
+type Contribution =
+  | { kind: "value"; value: number }
+  /** Le moteur n'a pas tourné. `state` dit s'il est tombé ou n'a pas été sollicité. */
+  | { kind: "unmeasured"; state: MeasurementState }
+  /** Le moteur a tourné et n'a rien trouvé. Il n'y a rien à noter, et c'est un fait. */
+  | { kind: "clean" };
+
+function engineContribution(e: ReflexEngineOutput): Contribution {
+  if (!e.ran) {
+    // `error` posé par l'adaptateur = tentative échouée. Absent = jamais
+    // sollicité, faute d'entrée. Deux situations, deux états.
+    return { kind: "unmeasured", state: e.error ? "FAILURE" : "NOT_MEASURED" };
+  }
+  if (e.signals.length === 0) return { kind: "clean" };
+  return { kind: "value", value: Math.max(...e.signals.map((s) => s.confidence)) };
+}
+
+/**
+ * L'état de mesure d'un ensemble de moteurs non mesurés.
+ *
+ * Tous tombés → FAILURE. Tous non sollicités → NOT_MEASURED. Un mélange ne se
+ * résume à aucun des deux : UNKNOWN, et c'est le dernier recours, pas le
+ * premier — on ne l'emploie que faute de pouvoir dire mieux.
+ */
+function stateOf(states: readonly MeasurementState[]): MeasurementState {
+  if (states.length === 0) return "NOT_MEASURED";
+  const uniques = new Set(states);
+  return uniques.size === 1 ? [...uniques][0] : "UNKNOWN";
 }
 
 export function computeGlobalConfidence(
   engines: readonly ReflexEngineOutput[],
 ): GlobalConfidence {
-  const contributions = engines
-    .map(engineContribution)
-    .filter((x): x is number => x !== null);
+  const parts = engines.map(engineContribution);
+  const valeurs = parts.filter((p): p is { kind: "value"; value: number } => p.kind === "value");
+  const propres = parts.filter((p) => p.kind === "clean").length;
+  const nonMesures = parts.filter(
+    (p): p is { kind: "unmeasured"; state: MeasurementState } => p.kind === "unmeasured",
+  );
 
-  if (contributions.length === 0) return { score: 0, label: "LOW" };
+  // ── RIEN N'A ÉTÉ MESURÉ ────────────────────────────────────────────────
+  //
+  // `score: 0` disait ici « confiance nulle », ce qui est une MESURE. Or il
+  // n'y en a pas eu. Le nombre devient `null` et l'état dit pourquoi : la
+  // dégradation voyage à côté de la valeur, jamais dedans.
+  if (valeurs.length === 0 && propres === 0) {
+    return { score: null, label: null, state: stateOf(nonMesures.map((p) => p.state)) };
+  }
+
+  // ── MESURÉ, MAIS AUCUN SIGNAL À NOTER ──────────────────────────────────
+  //
+  // Des moteurs ont tourné et n'ont rien trouvé. La question « à quel point
+  // sommes-nous sûrs des signaux trouvés » ne S'APPLIQUE PAS — il n'y en a
+  // pas. Ce n'est ni une lacune ni un échec : c'est hors sujet, et le score
+  // 0/LOW est conservé tel quel pour ne pas déplacer une sortie déjà servie.
+  if (valeurs.length === 0) {
+    return { score: 0, label: "LOW", state: "NOT_APPLICABLE" };
+  }
 
   const raw =
-    contributions.reduce((a, b) => a + b, 0) / contributions.length;
+    valeurs.reduce((a, b) => a + b.value, 0) / valeurs.length;
   const score = Math.round(raw * 1000) / 1000;
 
   const label: ReflexConfidence =
@@ -77,5 +136,5 @@ export function computeGlobalConfidence(
         ? "MEDIUM"
         : "LOW";
 
-  return { score, label };
+  return { score, label, state: "MEASURED" };
 }

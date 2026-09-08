@@ -27,7 +27,28 @@ export type ReflexChain =
   | "hyper"
   | "unknown";
 
-export type ReflexVerdict = "STOP" | "WAIT" | "VERIFY" | "NO_CRITICAL_SIGNAL";
+import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
+
+export type ReflexVerdict =
+  | "STOP"
+  | "WAIT"
+  | "VERIFY"
+  | "NO_CRITICAL_SIGNAL"
+  /**
+   * REFLEX n'a AUCUNE mesure réussie à partir de laquelle conclure sur les
+   * signaux critiques. Ce n'est pas un jugement sur l'actif : c'est un constat
+   * sur nous.
+   *
+   * Les quatre autres verdicts sont des assertions sur ce qui a été TROUVÉ.
+   * Aucun ne pouvait dire « nous n'avons pas pu mesurer » sans être faux —
+   * `NO_CRITICAL_SIGNAL` promettait une absence de signal jamais cherchée, et
+   * `VERIFY` aurait affirmé des claims que personne n'avait vus.
+   *
+   * SEUL DÉCLENCHEUR GOUVERNÉ : `coverage.measured === 0`. Aucun seuil n'existe
+   * entre 1/8 et 7/8, et aucun n'est inventé ici : une couverture partielle
+   * garde son verdict et EXPOSE sa couverture.
+   */
+  | "INSUFFICIENT_COVERAGE";
 
 export type ReflexConfidence = "HIGH" | "MEDIUM" | "LOW";
 
@@ -94,14 +115,60 @@ export interface ReflexEngineOutput<T = unknown> {
   error?: string;
 }
 
+/**
+ * L'état d'UN moteur, tel qu'un consommateur doit pouvoir le lire.
+ *
+ * `ran` et `error` existaient déjà sur `ReflexEngineOutput` : les adaptateurs
+ * les posaient honnêtement, et ils étaient jetés au point de consommation.
+ * Ceci les fait survivre — c'est une réparation, pas une invention.
+ */
+export interface ReflexEngineCoverage {
+  engine: ReflexSignalSource;
+  /** L'état de mesure — axe MESURE, jamais un état de publication. */
+  reason: MeasurementState;
+  /** La cause de l'échec, quand il y en a une. Jamais fabriquée. */
+  detail?: string;
+}
+
+/**
+ * La couverture de mesure. Elle VOYAGE À CÔTÉ du verdict, jamais dedans.
+ *
+ * Une couverture partielle ne change pas le verdict — le ruling est explicite :
+ * 4/8 n'a pas à conclure autrement que 8/8, il doit EXPOSER autre chose.
+ */
+export interface ReflexCoverage {
+  /** Moteurs sollicités. */
+  total: number;
+  /** Moteurs ayant réellement tourné. */
+  measured: number;
+  /** Ceux qui n'ont pas tourné, chacun avec son état et sa cause. */
+  missing: ReflexEngineCoverage[];
+}
+
 export interface ReflexVerdictResult {
   verdict: ReflexVerdict;
   verdictReasonEn: string[];
   verdictReasonFr: string[];
   actionEn: string;
   actionFr: string;
-  confidence: ReflexConfidence;
-  confidenceScore: number;
+  /** `null` quand rien n'a été mesuré — voir `confidenceScore`. */
+  confidence: ReflexConfidence | null;
+  /**
+   * `null` quand RIEN n'a été mesuré. Jamais `0` : zéro est une confiance
+   * mesurée à zéro, l'absence de mesure n'en est pas une.
+   */
+  confidenceScore: number | null;
+  /** L'état de la mesure de confiance, à côté du nombre. */
+  confidenceState: MeasurementState;
+  /** Ce qui a été mesuré, et ce qui ne l'a pas été. */
+  coverage: ReflexCoverage;
+  /** `true` dès qu'au moins un moteur n'a pas pu se prononcer. */
+  degraded: boolean;
+  /**
+   * Ce qui a été observé et n'apparaît pas dans l'explication du verdict.
+   * Résoudre prudemment ne dispense pas de DIRE que deux moteurs divergent.
+   */
+  conflicts: { engine: ReflexSignalSource; code: string; severity: ReflexSignalSeverity }[];
 }
 
 export interface ReflexAnalysisResult extends ReflexVerdictResult {

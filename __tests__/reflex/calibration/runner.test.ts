@@ -43,8 +43,8 @@ interface Mismatch {
   category: string;
   expected: ReflexVerdict;
   actual: ReflexVerdict;
-  confidence: string;
-  confidenceScore: number;
+  confidence: string | null;
+  confidenceScore: number | null;
   notes: string;
 }
 
@@ -85,9 +85,7 @@ function loadFixtures(): Fixture[] {
 function runCalibration(): CalibrationReport {
   const fixtures = loadFixtures();
 
-  const byVerdict: Record<ReflexVerdict, number> = {
-    STOP: 0, WAIT: 0, VERIFY: 0, NO_CRITICAL_SIGNAL: 0,
-  };
+  const byVerdict: Record<ReflexVerdict, number> = { STOP: 0, WAIT: 0, VERIFY: 0, NO_CRITICAL_SIGNAL: 0, INSUFFICIENT_COVERAGE: 0 };
   const byBucket: Record<string, BucketReport> = {
     stop: { total: 0, passed: 0, failed: 0, falsePositiveStop: 0, falseNegativeNoSignal: 0 },
     wait: { total: 0, passed: 0, failed: 0, falsePositiveStop: 0, falseNegativeNoSignal: 0 },
@@ -196,7 +194,7 @@ function printReport(r: CalibrationReport): void {
     for (const m of r.mismatches) {
       console.log(
         `    [${m.bucket.padEnd(12)}] ${m.id}  ${m.expected} → ${m.actual}  ` +
-        `conf=${m.confidence}/${m.confidenceScore.toFixed(3)}  (${m.category})`
+        `conf=${m.confidence}/${(m.confidenceScore?.toFixed(3) ?? "—")}  (${m.category})`
       );
       console.log(`      ${m.notes}`);
     }

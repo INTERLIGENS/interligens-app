@@ -58,6 +58,10 @@ const SAMPLE_VERDICT: ReflexVerdictResult = {
   actionFr: "",
   confidence: "MEDIUM",
   confidenceScore: 0.5,
+  confidenceState: "MEASURED" as const,
+  coverage: { total: 0, measured: 0, missing: [] },
+  degraded: false,
+  conflicts: [],
 };
 
 function persistPayload(over: Partial<PersistInput> = {}): PersistInput {
@@ -92,6 +96,10 @@ function fakeRow(over: Record<string, unknown> = {}) {
     actionFr: "",
     confidence: "MEDIUM",
     confidenceScore: 0.5,
+    confidenceState: "MEASURED" as const,
+    coverage: { total: 0, measured: 0, missing: [] },
+    degraded: false,
+    conflicts: [],
     signalsManifest: { engines: [] },
     signalsHash: "a".repeat(64),
     tigerScoreSnapshot: null,

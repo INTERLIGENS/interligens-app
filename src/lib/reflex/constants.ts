@@ -19,7 +19,20 @@ export const STOP_CONVERGENCE_CONFIDENCE_THRESHOLD = 0.7;
 /** Narrative script match: minimum confidence to trigger WAIT on its own. */
 export const NARRATIVE_MATCH_WAIT_THRESHOLD = 0.6;
 
-/** NO_CRITICAL_SIGNAL: minimum global confidence required to emit. */
+/**
+ * NO_CRITICAL_SIGNAL: minimum global confidence required to emit.
+ *
+ * ⚠️ CONSTANTE NON APPLIQUÉE, ET DÉLIBÉRÉMENT LAISSÉE TELLE.
+ *
+ * Elle est importée par `verdict.ts` et n'y a JAMAIS été lue : une garantie
+ * déclarée sans implémentation. BUILD 11 ne l'active PAS — sa seule existence
+ * n'est pas une base démontrée, et l'activer choisirait un seuil que personne
+ * n'a ratifié.
+ *
+ * Ce qui EST gouverné : `coverage.measured === 0` ne peut pas produire
+ * NO_CRITICAL_SIGNAL. Ce point est traité par la COUVERTURE, pas par un seuil
+ * de confiance.
+ */
 export const GLOBAL_CONFIDENCE_NO_SIGNAL_THRESHOLD = 0.5;
 
 /** Discretization bands for the user-facing confidence label. */
@@ -103,6 +116,12 @@ export const VERDICT_WORDING = {
     en: "No critical risk signals detected with current sources.",
     fr: "Aucun signal de risque critique détecté avec les sources actuelles.",
   },
+  // Un constat sur NOUS, pas sur l'actif. Il n'affirme rien de ce qui n'a pas
+  // été observé, et surtout il ne rassure pas.
+  INSUFFICIENT_COVERAGE: {
+    en: "REFLEX could not complete any measurement on this input.",
+    fr: "REFLEX n'a pu mener aucune mesure à bien sur cette entrée.",
+  },
 } as const;
 
 export const ACTION_WORDING = {
@@ -121,6 +140,12 @@ export const ACTION_WORDING = {
   NO_CRITICAL_SIGNAL: {
     en: "",
     fr: "",
+  },
+  // Le mot d'absence est écrit en toutes lettres : le lecteur doit pouvoir
+  // distinguer « rien trouvé » de « rien cherché ».
+  INSUFFICIENT_COVERAGE: {
+    en: "Absence of measurement is not absence of risk. Treat this as NOT_MEASURED.",
+    fr: "Une absence de mesure n'est pas une absence de risque. À considérer comme NOT_MEASURED.",
   },
 } as const;
 

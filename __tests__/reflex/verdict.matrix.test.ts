@@ -372,11 +372,19 @@ describe("verdict.matrix — NO_CRITICAL_SIGNAL", () => {
     expect(r.verdictReasonFr).toEqual([DISCLAIMER_NO_SIGNAL.fr]);
   });
 
-  it("no engines ran → NO_CRITICAL_SIGNAL with LOW confidence", () => {
+  // ─── RETOURNÉ EN BUILD 11 ───────────────────────────────────────────────
+  // Ce test bénissait le défaut : aucun moteur n'ayant tourné, le produit
+  // répondait « aucun signal critique détecté » — une absence de mesure servie
+  // comme un constat. Il n'est pas supprimé, il est retourné : la preuve doit
+  // garder le nouveau contrat.
+  it("MUTANT — aucun moteur mesuré ne peut pas produire un verdict rassurant", () => {
     const r = decide([]);
-    expect(r.verdict).toBe("NO_CRITICAL_SIGNAL");
-    expect(r.confidence).toBe("LOW");
-    expect(r.confidenceScore).toBe(0);
+    expect(r.verdict).toBe("INSUFFICIENT_COVERAGE");
+    // Ni score, ni label : rien n'a été mesuré, et 0 serait une mesure.
+    expect(r.confidenceScore).toBeNull();
+    expect(r.confidence).toBeNull();
+    expect(r.confidenceState).toBe("NOT_MEASURED");
+    expect(r.coverage.measured).toBe(0);
   });
 
   it("NO_CRITICAL action wording is empty (no action prompt)", () => {
@@ -594,9 +602,12 @@ describe("verdict.matrix — confidence label discretization", () => {
     expect(r.confidenceScore).toBe(0);
   });
 
-  it("LOW label when no engines ran (empty input)", () => {
+  it("aucun moteur : le label n'est pas LOW, il est ABSENT", () => {
+    // « LOW » est une confiance mesurée basse. L'absence de mesure n'en est
+    // pas une, et la servir comme telle était la sentinelle rassurante.
     const r = decide([]);
-    expect(r.confidence).toBe("LOW");
+    expect(r.confidence).toBeNull();
+    expect(r.confidenceState).toBe("NOT_MEASURED");
   });
 });
 
