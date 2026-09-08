@@ -475,6 +475,45 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour le P0 « cross-case contamination » du PDF légal.
+#
+# UN SEUL CHEMIN : src/lib/pdf/kol/templateKolLegal.ts.
+#
+# Mesuré le 2026-09-08 en production, PDF lawyer demandé pour « ravedao » —
+# un profil qui n'a AUCUN rapport avec bkokoski. Le document rend :
+#
+#   « Participants: @bkokoski (Brandon Kokoski) · @GordonGekko ·
+#     @planted (Djordje Stupar) »
+#   « HeaiDUtMQ hub — $210K USDC coordinated cashout »
+#   « Wallet 1234Co (consolidated $256,969 USDC) »
+#   « Total loss estimate ($4.5M) »
+#
+# 14 valeurs monétaires et 5 mentions nominatives sont écrites EN DUR dans le
+# gabarit. Elles ne viennent d'aucun champ, donc aucune gate de publication ne
+# peut les atteindre — ni celle de BUILD 10, ni celle de #308.
+#
+# 235 lignes (L860→fin) ne portent AUCUNE interpolation : ce sont des sections
+# de dossier appartenant à d'autres personnes, rendues dans le document de
+# n'importe quel profil. Et $210K est un montant dont la publication a été
+# RETIRÉE le 16 août.
+#
+# Le document porte « Contact for legal process ». Il est conçu pour sortir.
+#
+# EXPOSITION MESURÉE : `?token=<ADMIN_TOKEN>` dans l'URL suffit — 200, sans
+# Basic. Le proxy ne garde pas /api/pdf/kol.
+#
+# DOCTRINE : NO DATA ⇒ NO STORY. Les narrations et montants en dur partent.
+# Rien n'est substitué — ni 0, ni null, ni texte inventé. Une section sans
+# donnée gouvernée est OMISE. Aucun moteur juridique n'est reconstruit.
+#
+# Autorisation humaine explicite (David, qualification GPT P0 PUBLICATION /
+# CROSS-CASE CONTAMINATION).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-legal-crosscase$ ]]; then
+    EXEMPT_LEGAL_CROSSCASE_PATTERNS=(
+        "^src/lib/pdf/kol/templateKolLegal\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +717,20 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche legal-crosscase, exempter STRICTEMENT le gabarit légal.
+    # Aucun wildcard : templateKol.ts, engine.ts et les copies .bak restent
+    # gelés — le correctif n'a pas besoin d'eux.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-legal-crosscase$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_LEGAL_CROSSCASE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
