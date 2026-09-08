@@ -475,6 +475,39 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 10 / P0 PUBLIC — la projection publique du dossier.
+#
+# DEUX ROUTES, nommées une par une, aucun wildcard.
+#
+# Mesuré le 2026-09-08, en GET NON AUTHENTIFIÉ sur la production :
+#
+#   scan/timeline/<mint 44 canonique> -> pivotAddress = mint 43 SYNTHÉTIQUE
+#   scan/solana?mint=<mint 44>        -> 4 thread_url portant le 43
+#
+# `loadCaseByMint` résout l'alias À L'ENTRÉE (casefileLookupKey) et rend le JSON
+# brut À LA SORTIE. Les deux routes sérialisent ce brut. Le défaut est donc à la
+# PROJECTION PUBLIQUE, après le chargement et avant la réponse — et il n'existe
+# aucun fichier libre entre les deux : la sérialisation est écrite dans chaque
+# route. C'est la raison d'indivisibilité, et elle vaut séparément pour chacune.
+#
+# `caseDb.ts` n'est PAS touché : gater au retour de `loadCaseByMint` changerait
+# la sémantique pour ses 13 appelants, dont six alimentent computeTigerScore.
+# Arbitrage GPT : « Gate the PUBLIC PROJECTION after loadCaseByMint and before
+# response serialization. »
+#
+# PÉRIMÈTRE : résolution d'identité par `resolveToCanonicalMint`, la gate
+# canonique, réutilisée et jamais dupliquée. Aucune authentification ajoutée,
+# aucun rate limit, aucun changement de scoring — le défaut est une publication
+# legacy, pas l'accessibilité publique. Si la résolution échoue : omission.
+#
+# Autorisation humaine explicite (David, GO sur inventaire chiffré rendu).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-public-projection$ ]]; then
+    EXEMPT_BUILD10_P0_PUBLIC_PATTERNS=(
+        "^src/app/api/scan/timeline/\[address\]/route\.ts$"
+        "^src/app/api/scan/solana/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -834,6 +867,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche p0-public-projection, exempter STRICTEMENT les 2 routes
+    # nommées. Aucun wildcard : toute autre route src/app/api/ reste bloquée.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-public-projection$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_BUILD10_P0_PUBLIC_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
