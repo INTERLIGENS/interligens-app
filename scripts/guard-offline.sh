@@ -475,31 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# Exceptions pour BUILD 10 / P0 — CHEMIN B, containment « absence → rassurance ».
-# Une seule route : /api/casefile lit les holders on-chain et coerce l'échec.
-#
-#   fetchHolders échoue → catch { return null }
-#     → parseFloat(holders?.top10_pct ?? "0") = 0
-#     → concentration_flags: []        ← identique à « aucune concentration »
-#
-# `fetchHolders` est DÉFINI et CONSOMMÉ dans ce fichier : la coercition vit
-# dans la même fonction que l'appel provider, et aucun fichier libre ne peut
-# distinguer « holders null » d'une mesure réelle « top10 = 0 » sans que la
-# route expose la différence. C'est la raison d'indivisibilité.
-#
-# Périmètre : porter `measured` À CÔTÉ de la valeur — règle durable ratifiée,
-# la dégradation ne remplace jamais la valeur. Le calcul ne bouge pas : ni
-# poids, ni seuil, ni formule, ni agrégation. Aucune collecte supplémentaire.
-#
-# Autorisation humaine explicite (David, GO EXEMPTION sur inventaire rendu —
-# docs/reports/build10-p0-coercion.md). Exemption STRICTEMENT limitée à ce
-# fichier ; AUCUN wildcard sur src/app/api/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-chemin-b$ ]]; then
-    EXEMPT_BUILD10_CHEMIN_B_PATTERNS=(
-        "^src/app/api/casefile/route\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -859,19 +834,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche p0-chemin-b (BUILD 10), exempter STRICTEMENT la route
-    # casefile. Aucun wildcard : toute autre route src/app/api/ reste bloquée.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-p0-chemin-b$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_BUILD10_CHEMIN_B_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
