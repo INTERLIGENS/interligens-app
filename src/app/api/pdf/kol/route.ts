@@ -4,7 +4,7 @@ import { renderKolPdf } from "@/lib/pdf/kol/templateKol"
 import { renderKolPdfLegal } from "@/lib/pdf/kol/templateKolLegal"
 import { checkAuth } from "@/lib/security/auth"
 import { PUBLISHED_LAUNDRY_FILTER, redactLaundryTrail } from "@/lib/laundry/publicationGate"
-import { isMonetaryClaimPublished, redactEvidenceAmount, redactMonetary } from "@/lib/publication/monetaryGate"
+import { isMonetaryClaimPublished, redactEvidenceAmount, redactMonetary, redactEvidenceNarrative, redactObjectNarrative } from "@/lib/publication/monetaryGate"
 
 export async function GET(request: NextRequest) {
   // P0 SEC: gate the KOL dossier PDF behind ADMIN_TOKEN. Same pattern as
@@ -36,7 +36,21 @@ export async function GET(request: NextRequest) {
 
     // Chaque montant de preuve passe par le point de filtrage, quel que soit
     // son type : `redactEvidenceAmount` classe lui-même encaissement / ampleur.
-    kol.evidences = kol.evidences.map((e: any) => ({ ...e, amountUsd: redactEvidenceAmount(kol, e) })) as typeof kol.evidences
+    //
+    // Le montant ET la prose partent ensemble. Mesuré le 2026-09-08 : sur
+    // bkokoski, 16 descriptions portent un montant, et les nombres écrits dans
+    // la phrase sont EXACTEMENT ceux que la ligne du dessus vient d'annuler —
+    // $150,500, $190,600, $73,045, $90,000, $80,000, $20,000. Retirer le champ
+    // en laissant le texte ne retire rien : ça déplace.
+    //
+    // Aucun montant n'est cherché dans le texte. La décision se prend sur le
+    // PORTEUR — la famille de la preuve — et c'est la même question que pour le
+    // montant, posée au même endroit.
+    kol.evidences = kol.evidences.map((e: any) => ({
+      ...e,
+      amountUsd: redactEvidenceAmount(kol, e),
+      description: redactEvidenceNarrative(kol, e),
+    })) as typeof kol.evidences
 
     // ─── BUILD 10 / FENÊTRE 1 — LES DEUX TOTAUX DU PROFIL ──────────────────
     //
@@ -123,7 +137,36 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     })
 
-    const publishedTrail = redactLaundryTrail(laundryTrail as { publication?: unknown } | null)
+    // ─── LE TRAIL PORTE SON PROPRE ÉTAT, MAIS PAS CELUI DU PROFIL ────────
+    //
+    // `redactLaundryTrail` (A12) ne consulte que `LaundryTrail.publication`. Un
+    // trail `published` appartenant à un profil dont les proceeds sont RETIRÉS
+    // passait donc entier — mesuré sur GordonGekko le 2026-09-08.
+    //
+    // Les interrupteurs se composent en ET : c'est la règle écrite en tête de
+    // `monetaryGate.ts`, et `isCompositeMonetaryClaimPublished` l'implémente
+    // déjà. On l'appelle, on ne la réécrit pas.
+    // Les quatre champs de prose du trail, nommés — pas de `any` : ce qui n'est
+    // pas nommé ici ne passe pas par la gate, et doit donc se voir.
+    type ProseTrail = {
+      narrativeText?: string | null
+      narrativeTextFr?: string | null
+      evidenceNote?: string | null
+      evidenceNoteFr?: string | null
+    }
+    const trailBrut = redactLaundryTrail(laundryTrail as { publication?: unknown } | null)
+    const prose = (trailBrut ?? {}) as ProseTrail
+    const gateProse = (t: string | null | undefined) =>
+      redactObjectNarrative(kol, laundryTrail?.publication, t)
+    const publishedTrail = trailBrut
+      ? {
+          ...trailBrut,
+          narrativeText: gateProse(prose.narrativeText),
+          narrativeTextFr: gateProse(prose.narrativeTextFr),
+          evidenceNote: gateProse(prose.evidenceNote),
+          evidenceNoteFr: gateProse(prose.evidenceNoteFr),
+        }
+      : trailBrut
     const html = mode === "lawyer" ? renderKolPdfLegal(kol) : renderKolPdf(kol, mode, publishedTrail, lang)
 
     if (format === "html") {

@@ -235,3 +235,89 @@ export function isCompositeMonetaryClaimPublished(
   if (objectPublication === undefined) return true;
   return isOpen(objectPublication);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LE TEXTE LIBRE EST UN PORTEUR, ET IL A ÉTÉ OUBLIÉ
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// L'en-tête de ce fichier nomme trois porteurs pour un même chiffre, dont
+// « LaundryTrail narrativeText — moved $210K USDC across 4 wallets ». Le
+// containment a fermé les deux premiers — le champ structuré et l'agrégat — et
+// pas le troisième.
+//
+// Mesuré le 2026-09-08, en transaction lecture seule :
+//
+//   16  descriptions de KolEvidence portant un montant, sur profil WITHDRAWN
+//    1  LaundryTrail dont la publication est ouverte alors que le profil, lui,
+//       est WITHDRAWN
+//
+// Sur bkokoski, les nombres écrits dans la phrase sont EXACTEMENT ceux que
+// `redactEvidenceAmount` venait d'annuler dans la ligne d'à côté :
+// $150,500 · $190,600 · $73,045 · $90,000 · $80,000 · $20,000. Le montant était
+// retiré du champ et republié dans le texte, sur la même page.
+//
+// ─── Pourquoi aucun montant n'est cherché dans le texte ───────────────────
+//
+// Détecter des sommes dans de la prose demanderait une méthode : quelles
+// écritures, quelles devises, quels faux positifs, et que faire d'un « $64k »
+// approximatif. Ce serait une méthodologie nouvelle, et elle échouerait sur le
+// premier montant écrit en toutes lettres.
+//
+// La décision se prend donc sur le PORTEUR, pas sur le contenu : une preuve
+// d'ENCAISSEMENT appartenant à un profil dont l'encaissement est retiré ne
+// publie pas sa prose, quelle qu'elle soit. C'est la même question que pour son
+// montant, posée au même endroit, avec la même réponse.
+//
+// Un type d'évidence non classé relève des DEUX familles — le fail-closed déjà
+// posé par `evidenceFamily` — donc il est couvert sans être énuméré.
+//
+// ─── L'absence est dite, et elle nomme le CHAMP ───────────────────────────
+//
+// Le motif porte `WITHHELD`, le mot déjà en service, et cite l'interrupteur qui
+// a décidé — jamais ce qui est retenu. Expliquer un retrait en montrant ce qu'on
+// retire annule le retrait.
+
+/** Le motif d'un texte non publié. Nomme le champ décideur, jamais le contenu. */
+export const NARRATIVE_WITHHELD_NOTICE =
+  "WITHHELD — narrative not published (field: proceedsPublication)";
+
+/**
+ * La prose d'une preuve, projetée pour un document.
+ *
+ * Rend le texte tel quel quand la famille de la preuve est publiable, et le
+ * motif de retrait sinon. Ne rend jamais la chaîne vide ni `null` : une prose
+ * disparue en silence se lit « rien à signaler », ce qui est une affirmation.
+ *
+ * `undefined`/`null` en entrée signifie « cette preuve n'a pas de prose » — ce
+ * n'est pas un retrait, et ça ne doit pas en devenir un.
+ */
+export function redactEvidenceNarrative(
+  profile: MonetaryPublicationCarrier,
+  evidence: { type?: string | null; description?: string | null } | null | undefined,
+): string | null {
+  const texte = evidence?.description;
+  if (texte == null || texte === "") return texte ?? null;
+  return isMonetaryClaimPublished(profile, evidenceFamily(evidence?.type))
+    ? texte
+    : NARRATIVE_WITHHELD_NOTICE;
+}
+
+/**
+ * Le narratif d'un objet qui porte SON PROPRE état de publication — un
+ * `LaundryTrail`, aujourd'hui.
+ *
+ * `redactLaundryTrail` (A12) ne consulte que l'état du trail. Un trail
+ * `published` appartenant à un profil dont les proceeds sont retirés passait
+ * donc entier : c'est le cas mesuré sur GordonGekko. La composition en ET est
+ * déjà écrite dans `isCompositeMonetaryClaimPublished` ; elle est appelée ici.
+ */
+export function redactObjectNarrative(
+  profile: MonetaryPublicationCarrier,
+  objectPublication: unknown,
+  texte: string | null | undefined,
+): string | null {
+  if (texte == null || texte === "") return texte ?? null;
+  return isCompositeMonetaryClaimPublished(profile, objectPublication, "proceeds")
+    ? texte
+    : NARRATIVE_WITHHELD_NOTICE;
+}
