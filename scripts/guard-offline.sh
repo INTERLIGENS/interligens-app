@@ -475,6 +475,52 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour le P0 SECURITY « ADMIN_TOKEN en query string ».
+#
+# TROIS CHEMINS. Deux pour la cause commune, un pour l'exception de doctrine.
+#
+# ─── La cause commune ─────────────────────────────────────────────────────
+#
+# `extractBearerToken` (src/lib/security/auth.ts) lit le secret dans TROIS
+# endroits, dont `?token=` en query. Mesuré en production : 9 routes
+# authentifient réellement par cette voie — pdf/kol, pdf/casefile, casefile,
+# casefile/pdf, report/casefile, report/v2, osint/insights, osint/signals,
+# osint/watchlist.
+#
+# Un secret en query string vit dans l'historique du navigateur, les en-têtes
+# Referer, les journaux de serveur et de CDN, et se colle dans un message. Le
+# lien qui rend un dossier légal complet devient copiable tel quel.
+#
+# `auth.test.ts` vit dans le même dossier gelé et affirme aujourd'hui que la
+# voie query FONCTIONNE : il fait partie du même correctif, pas d'un
+# élargissement.
+#
+# Hors périmètre, et volontairement : `scan/grounding` et `market/summary`
+# lisent aussi `?token=`, mais il y désigne une ADRESSE DE TOKEN, pas un secret.
+#
+# ─── L'exception de doctrine, autorisée nommément ────────────────────────
+#
+# « GOVERNED != PUBLISHABLE NOMINATIVE ASSERTION. Dans un artefact
+#   Investigator/Counsel, une mention nominative d'un tiers doit être
+#   explicitement fondée ET admissible. Sans fondation : omission. »
+#
+# Violation démontrée sur cette surface : `KolProfile.notes` est rendu dans le
+# PDF légal (templateKolLegal.ts:441) et nomme des tiers — mesuré sur 6 profils.
+# Les colonnes de fondation et d'admissibilité (sourceUrl, claimType,
+# confidenceLevel, methodologyRef, lastReviewedAt) N'EXISTENT PAS sur ce
+# modèle : le champ ne peut donc structurellement pas satisfaire la doctrine.
+# Le champ est OMIS de l'artefact Counsel. Rien n'est substitué, rien n'est
+# transformé en accusation, la donnée reste intacte en base.
+#
+# Autorisation humaine explicite (David, GO immédiat sur qualification GPT).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-token-query-removal$ ]]; then
+    EXEMPT_TOKEN_QUERY_PATTERNS=(
+        "^src/lib/security/auth\.ts$"
+        "^src/lib/security/auth\.test\.ts$"
+        "^src/lib/pdf/kol/templateKolLegal\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +724,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche token-query-removal, exempter STRICTEMENT les 3 chemins
+    # nommés. Aucun wildcard : le reste de src/lib/security/ reste gelé.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-token-query-removal$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_TOKEN_QUERY_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
