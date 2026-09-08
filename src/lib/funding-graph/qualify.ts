@@ -45,19 +45,43 @@ export const RENT_EXEMPT_MINIMUM_LAMPORTS =
   ACCOUNT_STORAGE_OVERHEAD_BYTES * LAMPORTS_PER_BYTE_YEAR * RENT_EXEMPTION_THRESHOLD_YEARS;
 
 /**
- * ██ LE PLANCHER : 895 880 lamports. ██
+ * ██ 895 880 lamports — UNE QUANTITÉ, PLUS UNE CONCLUSION. ██
  *
- * Ce qu'il faut pour qu'un wallet EXISTE et agisse UNE FOIS. En dessous, le
- * destinataire ne peut ni ouvrir son compte ni signer : le transfert
- * n'établit mécaniquement aucune capacité d'action.
+ * Ce qu'il faut pour qu'un compte système nu soit exempt de loyer, plus une
+ * signature. C'est tout ce que ce nombre mesure, et c'est tout ce qu'il dit.
  *
- * C'est délibérément le plancher le PLUS FAIBLE défendable. Il n'affirme rien
- * sur ce qui serait économiquement significatif — cette question demanderait
- * une définition que ce build n'a pas mandat de poser.
+ * ─── Ce qu'il faisait, et pourquoi c'était faux ─────────────────────────
+ *
+ * Il servait de PREMIÈRE branche de l'arbre de décision : sous ce montant, la
+ * relation était classée DUST, avant même de regarder qui était le bailleur.
+ * Un acteur DÉJÀ IDENTIFIÉ dans l'affaire pouvait donc être qualifié de
+ * poussière parce qu'il avait envoyé peu — la provenance était écrasée par
+ * une somme.
+ *
+ * Un montant faible NE DÉMONTRE PAS l'absence d'une relation de financement.
+ * Le seuil mesurait une exigence de RENT et servait de proxy à une propriété
+ * RELATIONNELLE. Un montant établit un montant ; il n'établit ni relation, ni
+ * absence de relation, ni significativité.
+ *
+ * ─── Ce qu'il fait maintenant ────────────────────────────────────────────
+ *
+ * Il reste, à sa valeur exacte — le corriger en nombre l'aurait rendu
+ * exactement faux plus longtemps. Il n'entre plus dans la décision : il est
+ * rendu comme un FAIT MONÉTAIRE, à côté de la catégorie, avec une réserve qui
+ * dit ce qu'il n'établit pas. La qualification, elle, se fait sur la
+ * provenance et le contexte.
  */
 export const DUST_FLOOR_LAMPORTS = RENT_EXEMPT_MINIMUM_LAMPORTS + LAMPORTS_PER_SIGNATURE;
 
 export type FundingRelationshipCategory =
+  /**
+   * ██ HISTORIQUE — plus jamais produite. ██
+   *
+   * Conservée dans l'union parce que des lignes écrites avant ce containment
+   * la portent, et qu'aucune donnée historique n'est purgée. Un lecteur qui
+   * rencontre `DUST` lit une qualification produite sous une méthodologie
+   * retirée, pas un fait sur le sujet.
+   */
   | "DUST"
   | "SELF_OR_KNOWN_ACTOR"
   | "KNOWN_EXCHANGE"
@@ -113,6 +137,15 @@ export interface QualifiedFundingRelationship {
     totalLamports: number;
     /** Signatures : la preuve opposable, jamais agrégée. */
     txSignatures: string[];
+    /**
+     * Le total est-il sous le montant qui permettrait au destinataire
+     * d'exister et de signer une fois ?
+     *
+     * C'est un FAIT MONÉTAIRE, rendu à côté de la catégorie et jamais dedans.
+     * Il ne qualifie pas la relation : un bailleur identifié qui envoie peu
+     * reste un bailleur identifié.
+     */
+    belowOperationalFloorLamports: boolean;
     earliestBlockTimeSeconds: number | null;
     latestBlockTimeSeconds: number | null;
   };
@@ -159,12 +192,20 @@ export function qualifyFundingRelationship(
   if (edges.length === 0) {
     category = "UNKNOWN";
     reason = "aucune arête fournie — rien à qualifier";
-  } else if (totalLamports < DUST_FLOOR_LAMPORTS) {
-    category = "DUST";
-    reason =
-      `total ${totalLamports} lamports sous le plancher d'opération ` +
-      `${DUST_FLOOR_LAMPORTS} (rent-exemption ${RENT_EXEMPT_MINIMUM_LAMPORTS} + ` +
-      `une signature ${LAMPORTS_PER_SIGNATURE})`;
+    // ── LA BRANCHE DUST A ÉTÉ RETIRÉE, ET SEULEMENT ELLE ────────────────
+    //
+    // Elle était évaluée EN PREMIER, donc elle passait avant
+    // SELF_OR_KNOWN_ACTOR, KNOWN_EXCHANGE et PRIVATE_SHARED_FUNDER : un
+    // montant faible suffisait à écarter une relation qu'une provenance
+    // établissait par ailleurs.
+    //
+    // Rien n'est déplacé à sa place. Les branches suivantes reposent chacune
+    // sur une preuve indépendante du montant — l'identité du bailleur, une
+    // étiquette auditable, le nombre de sujets atteints — et le cas qui n'en
+    // a aucune tombe sur `UNKNOWN`, la sortie neutre déjà existante. Le
+    // registre de similarité l'écarte déjà du vocabulaire et rend
+    // NOT_OBSERVED : une insuffisance n'y devient ni une propriété, ni de la
+    // réassurance.
   } else if (subjects.includes(input.funder) || known.has(input.funder)) {
     category = "SELF_OR_KNOWN_ACTOR";
     reason = subjects.includes(input.funder)
@@ -225,6 +266,14 @@ export function qualifyFundingRelationship(
         : [],
       reservations: [
         "QUALIFICATION IS NOT INTERPRETATION — no coordination, insider or fraud finding is produced.",
+        ...(totalLamports < DUST_FLOOR_LAMPORTS
+          ? [
+              `TOTAL BELOW OPERATIONAL FLOOR (${totalLamports} < ${DUST_FLOOR_LAMPORTS} lamports) — ` +
+                "this is a MONETARY FACT ONLY. A low amount does not establish the absence of a " +
+                "funding relationship, nor its presence, nor significance. Qualification rests on " +
+                "provenance and context.",
+            ]
+          : []),
         ...(input.coverage.complete
           ? []
           : [
@@ -248,6 +297,7 @@ export function qualifyFundingRelationship(
       edgeCount: edges.length,
       totalLamports,
       txSignatures: edges.map((e) => e.txSignature),
+      belowOperationalFloorLamports: totalLamports < DUST_FLOOR_LAMPORTS,
       earliestBlockTimeSeconds: times.length ? Math.min(...times) : null,
       latestBlockTimeSeconds: times.length ? Math.max(...times) : null,
     },

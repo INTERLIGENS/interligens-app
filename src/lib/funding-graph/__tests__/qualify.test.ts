@@ -101,20 +101,26 @@ describe("Q2 - chaque reclassement vers PRIVATE est un échec", () => {
     expect(q.category).toBe("SELF_OR_KNOWN_ACTOR");
   });
 
-  // ═══ MUTATION 3 — DUST → PRIVATE ═══════════════════════════════════════
-  it("MUTATION : sous le plancher d'opération, 2 sujets ne font pas un signal", () => {
+  // ═══ RETOURNÉ PAR LE CONTAINMENT DUST_FLOOR ═══════════════════════════
+  // Ce test bénissait le défaut : il exigeait qu'un montant faible SUFFISE à
+  // écarter deux sujets atteints. Un montant faible ne démontre pas l'absence
+  // d'une relation. Le fait monétaire, lui, est conservé.
+  it("sous le plancher, 2 sujets restent 2 sujets — le montant ne les efface plus", () => {
     const q = qualifyFundingRelationship({
       funder: FUNDER, subjectsReached: [S1, S2],
       edges: [edge(S1, 10_000, "sigA"), edge(S2, 10_000, "sigB")],
       coverage: COMPLETE,
     });
-    expect(q.category).toBe("DUST");
-    expect(q.category).not.toBe("PRIVATE_SHARED_FUNDER"); // 🔴
+    expect(q.category).toBe("PRIVATE_SHARED_FUNDER");
+    expect(q.category).not.toBe("DUST");
     expect(q.evidence.totalLamports).toBe(20_000);
-    expect(q.evidence.totalLamports).toBeLessThan(DUST_FLOOR_LAMPORTS);
+    expect(q.evidence.belowOperationalFloorLamports).toBe(true);
   });
 
-  it("le plancher est INCLUSIF vers le haut : exactement 895 880 n'est pas de la poussière", () => {
+  it("franchir le plancher ne change plus AUCUNE catégorie", () => {
+    // Le plancher était le seul endroit où ce nombre agissait. De part et
+    // d'autre, la qualification est la même : elle se fait sur la provenance
+    // et le contexte, pas sur une somme.
     const at = qualifyFundingRelationship({
       funder: FUNDER, subjectsReached: [S1, S2],
       edges: [edge(S1, DUST_FLOOR_LAMPORTS, "sigA"), edge(S2, 0, "sigB")],
@@ -126,7 +132,10 @@ describe("Q2 - chaque reclassement vers PRIVATE est un échec", () => {
       edges: [edge(S1, DUST_FLOOR_LAMPORTS - 1, "sigA")],
       coverage: COMPLETE,
     });
-    expect(below.category).toBe("DUST");
+    expect(below.category).toBe("PRIVATE_SHARED_FUNDER");
+    // Seul le FAIT monétaire les distingue, et il est rendu comme tel.
+    expect(at.evidence.belowOperationalFloorLamports).toBe(false);
+    expect(below.evidence.belowOperationalFloorLamports).toBe(true);
   });
 
   // ═══ MUTATION 4 — ÉTIQUETTE NON AUDITABLE TRAITÉE COMME EXCHANGE ═══════
@@ -240,14 +249,18 @@ describe("Q2 - chaque reclassement vers PRIVATE est un échec", () => {
     expect(q.evidence.txSignatures).toEqual(["sigA", "sigB"]);
   });
 
-  it("l'ordre d'évaluation privilégie toujours la lecture la plus FAIBLE", () => {
-    // Poussière ET exchange ET sujet : la poussière l'emporte.
+  it("l'identité du bailleur n'est plus écrasée par un montant faible", () => {
+    // RETOURNÉ : avant, montant faible ET exchange ET sujet — la poussière
+    // l'emportait, et un acteur DÉJÀ IDENTIFIÉ dans l'affaire sortait en
+    // « poussière ». C'est l'aggravant mesuré : la provenance perdait contre
+    // une somme.
     const q = qualifyFundingRelationship({
       funder: S1, subjectsReached: [S1, S2],
       edges: [{ ...edge(S2, 1_000, "sigA"), fromWallet: S1 }],
       addressLabel: { ...exchangeLabel, address: S1 }, coverage: COMPLETE,
     });
-    expect(q.category).toBe("DUST");
+    expect(q.category).toBe("SELF_OR_KNOWN_ACTOR");
+    expect(q.evidence.belowOperationalFloorLamports).toBe(true);
   });
 
   it("la qualification est déterministe", () => {
