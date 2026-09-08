@@ -812,3 +812,131 @@ le défaut.
 - Aucune mesure de l'**UI** — la gate `/access` tient, et je n'ai saisi aucun code.
 - Aucun appel **RPC** ni **POST**, conformément au mandat.
 - `main` **figé**, aucun déploiement, aucun merge.
+
+---
+
+# S7 · Les surfaces de liste — trois comptes différents pour un même corpus
+
+Ajouté après la synthèse : trois routes listent les KOL publiés et **ne rendent
+pas le même nombre**.
+
+| route | rend | filtre appliqué |
+|---|---|---|
+| `/api/kol/leaderboard` | **32 profils** | `PUBLIC_KOL_FILTER` seul |
+| `/api/kol` | **18 profils** | `PUBLIC_KOL_FILTER` **+ `riskFlag: { not: 'unverified' }`** |
+| `/api/v1/kol` | **20 résultats** | `PUBLIC_KOL_FILTER` + `take: limit` (**défaut 20**) |
+
+## L'écart s'explique entièrement, et l'arithmétique ferme
+
+`/api/kol` applique un filtre supplémentaire que les deux autres n'ont pas.
+Mesuré en base sur les 32 publiés :
+
+| `riskFlag` | profils |
+|---|---|
+| **`unverified`** | **14** |
+| `confirmed_scammer` | 3 |
+| `high` | 3 |
+| `flagged` · `confirmed_rug` · `confirmed` | 2 chacun |
+| `confirmed_scheme` · `under_investigation` · `paid-promo` · `promoter` · `victim_pool` · `high_risk` | 1 chacun |
+
+**32 − 14 = 18.** Le compte est exact.
+
+`/api/v1/kol` rend 20 par **pagination** (`limit` par défaut à 20, plafonné à
+100), pas par filtrage. Ce n'est pas une perte : c'est une page.
+
+| objet | catégorie |
+|---|---|
+| les 14 profils absents de `/api/kol` | **`INTENTIONALLY_NOT_SHOWN`** — filtre explicite, mais **incohérent entre surfaces** |
+| les 12 derniers de `/api/v1/kol` | pagination — aucune catégorie |
+
+**Ce que je consigne** : un consommateur qui interroge `/api/kol` voit 18 profils,
+celui qui interroge `/api/kol/leaderboard` en voit 32. Les deux sont des surfaces
+publiques du même corpus. Aucune des deux ne dit qu'elle filtre. **Le filtre est
+intentionnel ; son inconsistance entre surfaces ne l'est probablement pas** — mais
+c'est un arbitrage, pas une mesure, et je ne le tranche pas.
+
+## Le vocabulaire de `riskFlag` est fragmenté
+
+**12 valeurs distinctes pour 32 profils.** Plusieurs se recouvrent visiblement :
+
+- `high` (3) et `high_risk` (1)
+- `confirmed` (2), `confirmed_scammer` (3), `confirmed_rug` (2),
+  `confirmed_scheme` (1)
+- `promoter` (1) et `paid-promo` (1)
+
+Ce n'est pas un vide, donc **aucune catégorie BUILD 10 ne s'applique**. Je le
+signale parce que le filtre de `/api/kol` s'appuie sur une **égalité de chaîne**
+(`not: 'unverified'`) : tout futur libellé mal orthographié passerait le filtre
+sans que personne ne le remarque.
+
+---
+
+# S8 · Un corpus de 341 931 lignes que rien ne sert
+
+| table | lignes | dernier écrit | lu par une route API ? |
+|---|---|---|---|
+| **`intel_canonical_entities`** | **341 931** | **il y a 5 h** (aujourd'hui 03:xx) | **NON** |
+
+Recherche dans `src/app/` — l'intégralité des routes : **aucune occurrence** de
+`intel_canonical_entities` ni de `intelCanonicalEntity`. Les seuls fichiers qui
+la nomment sont :
+
+```
+src/lib/intelligence/ingest.ts        ← l'écrivain
+src/lib/intelligence/reaper.ts        ← le nettoyeur
+src/lib/data-nature/registry.ts       ← la déclaration de nature
+src/lib/intelligence/__tests__/…      ← un test
+```
+
+**Un écrivain, un nettoyeur, aucun lecteur de surface.**
+
+Les crons `ofac` (01:00) et `scamsniffer` (01:30) tournent, ont tourné il y a 5
+heures, et alimentent fidèlement une table de **341 931 entités canoniques** —
+le plus gros volume de toute la base — qu'**aucune surface publique n'expose**.
+
+| objet | catégorie |
+|---|---|
+| `intel_canonical_entities` | **`PIPE_NOT_CONNECTED`** — à la plus grande échelle mesurée |
+
+> **Réserve de méthode** : je n'ai cherché que dans `src/app/`. Une route pourrait
+> l'atteindre par une fonction de `src/lib/` que je n'ai pas remontée — c'est
+> précisément la chaîne que T2 instruit côté CODE. Ce que j'affirme est exact et
+> borné : **aucune route ne nomme cette table**. La confirmation définitive
+> appartient à la convergence.
+
+---
+
+# ADDENDA À LA SYNTHÈSE
+
+Les deux surfaces mesurées après coup modifient le décompte :
+
+| catégorie | ajout |
+|---|---|
+| `PIPE_NOT_CONNECTED` | **+1** — `intel_canonical_entities` (341 931 lignes) → **10 au total** |
+| `INTENTIONALLY_NOT_SHOWN` | **+14** — les profils `unverified` absents de `/api/kol` |
+
+**Le nombre de blancs silencieux reste à 1** : les trois surfaces de liste rendent
+des comptes différents, mais chacune rend un corpus cohérent avec son propre
+filtre. Aucune ne prétend être exhaustive. Ce n'est pas un blanc muet, c'est une
+incohérence de contrat entre surfaces.
+
+## Ce qui frappe, au terme de la reconnaissance
+
+Le produit ne ment pas. Sur toutes les surfaces mesurées, **un seul vide ne dit
+pas pourquoi il est vide**, et c'est `distribution`.
+
+Le problème n'est pas l'honnêteté — elle est bonne, et par endroits remarquable :
+un retrait signalé sur la même réponse, un catalogue vide qui explique son vide,
+un renderer qui retire une section plutôt que d'emprunter celle du voisin.
+
+Le problème est ailleurs, et il est double :
+
+1. **Ce qui alimente n'alimente plus.** Trois collecteurs morts, un désactivé,
+   quatre non traçables, et les tables du corpus KOL figées depuis 82 à 136
+   jours.
+2. **Ce qui est collecté n'est pas servi.** 341 931 entités écrites chaque nuit
+   et lues par personne ; 10 lignes de shillers et de smoking gun sans lecteur ;
+   cinq colonnes de claim déclarées et jamais écrites.
+
+**Aucun de ces deux problèmes ne se voit depuis une surface publique.** C'est
+pour cela qu'il fallait mesurer la base.
