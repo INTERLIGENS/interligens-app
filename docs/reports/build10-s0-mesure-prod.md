@@ -1450,3 +1450,61 @@ publique ne le montre**, parce qu'aucune ne lit cette table.
 un lecteur, puisque rien n'est servi du tout. C'est un **angle mort
 opérationnel** : 86 items sont sortis de la file, une voie de retour existe, et
 rien ne relie les deux.
+
+## 9.5 — Synthèse des quatre constats
+
+| # | constat watchdog | chiffre | verdict de l'instruction |
+|---|---|---|---|
+| 1 | OFAC périmé à 13 j | **exact** | **conclusion à requalifier** — le collecteur tourne (874 enregistrements ce matin) ; le champ lu est déclaré LEGACY par le code lui-même |
+| 2 | 1 evidence orpheline | **exact** | **déjà instruite le 2026-09-03** — cause non tranchable, absence de marqueur délibérée |
+| 3 | forta périmé à 152 j | **exact** | **cause différente** — le collecteur n'est pas arrêté, **il n'a jamais été armé** |
+| 4 | 160 `MODEL_NOT_FOUND` résiduels | **exact** | **résidu surestimé** — 86 des 160 sont hors file, le vrai résidu est 75 |
+
+**Les quatre chiffres du watchdog sont confirmés au chiffre près. Trois des
+quatre conclusions demandent une correction.** Ce n'est pas un défaut du
+watchdog : c'est ce qu'une sonde peut dire depuis l'extérieur, contre ce qu'une
+instruction établit en remontant la chaîne.
+
+### Le motif commun
+
+Trois des quatre constats ont la **même forme** : un compteur exact, adossé à un
+champ ou à une hypothèse qui ne mesure pas ce qu'on croit.
+
+| constat | le compteur mesure | ce qu'on lui fait dire |
+|---|---|---|
+| 1 | dernier **changement** de contenu | dernière **observation** de la source |
+| 3 | dernière **écriture** de forta | activité d'un collecteur **jamais branché** |
+| 4 | items en erreur | items **récupérables au prochain run** |
+
+Et le constat 2 est le contre-exemple exact : là, quelqu'un **a refusé** de poser
+un marqueur dont la cause n'était pas établie. C'est le bon comportement, et il
+produit un compteur à 1 qui reste visible plutôt qu'un faux motif rassurant.
+
+### Effet sur le décompte BUILD 10
+
+| catégorie | avant S9 | ajouts S9 | total |
+|---|---|---|---|
+| `BUG` | 1 | **+3** — absence de contrôle de fraîcheur dans `computeTigerScore` · `registry.schedule` ≠ `vercel.json` · `filePath` `null` alors que `notes` porte le chemin | **4** |
+| `PIPE_NOT_CONNECTED` | 10 | **+3** — collecteur forta · fraîcheur des sources en surface · voie de reprise des 86 | **13** |
+| `NOT_MEASURABLE` | 5 | **+3** — `lastSeenAt` comme sonde · `recordsNew`/`recordsUpdated` à `null` · cause de la pièce orpheline | **8** |
+| `DATA_ABSENT` | ~40 | **+3** — confirmation par entité · pondération par l'âge · statut « abandonné » | **~43** |
+| `INTENTIONALLY_NOT_SHOWN` | ~37 | **+3** — absence de marqueur sur l'orpheline · garde TSA · non-priorisation des erreurs | **~40** |
+
+### Les blancs silencieux — la liste passe de 1 à 2
+
+| # | objet | pourquoi il est silencieux |
+|---|---|---|
+| 1 | `on_chain.distribution` (S5) | une panne de lecture des porteurs rend `concentration_flags: []`, indistinguable d'un jeton sans risque de concentration |
+| **2** | **l'âge d'une source de renseignement** (9.1 + 9.3) | un verdict peut intégrer une liste vieille de 152 jours sans que rien, sur aucune surface, ne le dise — et `computeTigerScore` n'a aucun contrôle de date |
+
+Les deux ont la **même signature** : un défaut d'information qui se manifeste
+comme une absence de signal de risque. C'est le motif que le fondateur a nommé
+« absence → réassurance », et il est maintenant mesuré sur deux chemins
+indépendants.
+
+### Ce qui n'a pas été touché
+
+`0 write · 0 DDL · 0 collecte déclenchée · 0 Helius · 0 RPC · 0 POST.`
+**Aucun cron relancé. Aucun drainage. TSA non activée** — `TSA_PRIMARY_URL` et
+`TSA_URL_FALLBACK` intactes, 34 pièces en attente inchangées. `main` figé à
+`4d5cdccc`, aucun déploiement, aucun merge.
