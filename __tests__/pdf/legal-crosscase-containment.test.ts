@@ -272,10 +272,22 @@ describe("les notes de profil ne sortent plus dans l'artefact Counsel", () => {
   });
 
   it("MUTANT DE SUR-CORRECTION · rien n'est substitué à la place", () => {
-    const avec = renderKolPdfLegal({ ...PROFIL_A, notes: NOTES });
-    const sans = renderKolPdfLegal({ ...PROFIL_A, notes: null });
-    // Le document est le MÊME : le champ n'est pas rendu, ni remplacé par un
-    // motif, un vide typé ou une reformulation.
+    // ─── INSTABILITÉ CORRIGÉE ───────────────────────────────────────────
+    //
+    // La version initiale comparait les deux rendus BRUTS. Le document
+    // embarque un `Report ID` et un horodatage dérivés de l'horloge : deux
+    // rendus séparés d'une milliseconde diffèrent, et le test rougissait au
+    // hasard. Il est passé en local et a rougi en CI — c'est-à-dire qu'il
+    // passait par chance, ce qui ne prouve rien.
+    //
+    // Les champs volatils sont neutralisés ; la comparaison porte sur ce que
+    // le test prétend vérifier, et sur rien d'autre.
+    const stable = (h: string) =>
+      h
+        .replace(/INTL-[A-Z0-9]+-KOL/g, "INTL-<id>-KOL")
+        .replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, "<utc>");
+    const avec = stable(renderKolPdfLegal({ ...PROFIL_A, notes: NOTES }));
+    const sans = stable(renderKolPdfLegal({ ...PROFIL_A, notes: null }));
     expect(avec).toBe(sans);
   });
 
