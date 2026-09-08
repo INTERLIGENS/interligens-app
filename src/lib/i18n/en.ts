@@ -7,8 +7,11 @@ export const en = {
   status: "STATUS",
   claims: "CLAIMS",
   claimsStatus: "Claims Status",
-  claimsSubtitle: (penalty: number, mult: number, score: number, count: number) =>
-    `${count} referenced claims — score: penalty=${penalty} × ${mult} = ${score}`,
+  // BUILD 10 · P3 — la phrase affirmait « score : pénalité × multiplicateur
+  // = score » à côté du nombre de claims. Les claims sont désormais
+  // canoniques, le score reste legacy : cette dérivation serait fausse.
+  claimsSubtitle: (count: number) =>
+    `${count} referenced claims — rendered from the canonical case file authority.`,
   flags: "Flags",
   offchainEvidence: "Off-chain Evidence",
   detectivePack: "Detective Evidence Pack",
@@ -45,6 +48,8 @@ export const en = {
   engine: "Engine",
   offchainSource: "Offchain Source",
   tier: "Tier",
+  withheldLabel: "Withheld",
+  withheldScore: "Score withheld — this document does not publish the corpus it was computed from. Field: off_chain.source",
   score: "Score",
   claimsCount: "Claims count",
   footer: (year: number) =>

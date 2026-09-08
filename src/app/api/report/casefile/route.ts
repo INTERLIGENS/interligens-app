@@ -5,6 +5,11 @@ import chromium from "@sparticuz/chromium-min";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { checkAuth } from "@/lib/security/auth";
+import {
+  loadPublicProjection,
+  canonicalRefForMint,
+} from "@/lib/casefile/publicProjection";
+import { safeEvidenceUrl } from "@/lib/kol-memory/publicIdentityProjection";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -40,29 +45,69 @@ export async function GET(req: NextRequest) {
   const casefile = await r.json();
   console.log("[REPORT_OFFCHAIN]", { source: casefile?.off_chain?.source, claims: casefile?.off_chain?.claims?.length ?? 0 });
 
-  // Enrich with FR translations
-  if (lang === "fr") {
-    try {
-      const botifyRaw = require("../../../../../data/cases/botify.json");
-      if (botifyRaw.case_meta?.summary_fr) {
-        casefile.off_chain.summary = botifyRaw.case_meta.summary_fr;
-      }
-      (casefile as any)._raw_claims = botifyRaw.claims ?? [];
-      casefile.off_chain.claims = casefile.off_chain.claims.map((c: any) => {
-        const raw = botifyRaw.claims?.find((r: any) => r.claim_id === c.id);
-        return {
-          ...c,
-          title: raw?.title_fr ?? c.title,
-          status: c.status === "REFERENCED" ? "RÉFÉRENCÉ" : c.status,
-        };
-      });
-      casefile.off_chain.status = casefile.off_chain.status === "Referenced" ? "Référencé" : casefile.off_chain.status;
-      // Fix descriptions: remove unproven on-chain assertions
-      casefile.off_chain.claims = casefile.off_chain.claims.map((c: any) => {
-        const raw = botifyRaw.claims?.find((r: any) => r.claim_id === c.id);
-        return { ...c, description: raw?.description_fr ?? c.description };
-      });
-    } catch(e) { console.error("[i18n] FR enrichment failed", e); }
+  // ── BUILD 10 · P3 — LES CLAIMS DU PDF VIENNENT DE L'AUTORITÉ ────────────
+  //
+  // ██  LEGACY_SCORING_INPUT n'alimente plus le PDF CaseFile.              ██
+  //
+  // Avant : les claims arrivaient de /api/scan/solana, qui les tire de
+  // `loadCaseByMint` et pose `off_chain.source = "case_db"`. Le PDF publiait
+  // donc le corpus legacy — ce que la doctrine ratifiée interdit nommément
+  // (« ni le PDF ni l'export CaseFile »).
+  //
+  // Et un `require("data/cases/botify.json")` enrichissait les titres FR :
+  // une SECONDE lecture de la même autorité legacy, dans le même fichier.
+  //
+  // Les deux sont partis. Les claims viennent de la projection canonique,
+  // dans la locale demandée — la projection porte `titleFr` et
+  // `descriptionFr`, il n'y a plus rien à enrichir.
+  //
+  // AUCUN CHAMP DE SCORE N'EST TOUCHÉ : `risk` et `tiger_score` traversent
+  // inchangés. Ils sont calculés dans le scan, à partir de `rawClaims`, que
+  // cette substitution ne lit ni ne modifie.
+  const ref = canonicalRefForMint(mint);
+  if (ref) {
+    const dossier = await loadPublicProjection(ref, "api/report/casefile");
+    casefile.off_chain.source = "canonical";
+    casefile.off_chain.case_id = dossier.ref;
+    casefile.off_chain.summary = dossier.title;
+    casefile.off_chain.claims = dossier.claims.map((c) => ({
+      id: c.claimId,
+      title: (lang === "fr" ? c.titleFr : null) ?? c.title,
+      severity: c.severity ?? "",
+      status: c.status ?? "",
+      description: (lang === "fr" ? c.descriptionFr : null) ?? c.description ?? "",
+      // Une pièce n'est listée que si elle est PUBLIABLE : la projection ne
+      // rend que celles qui portent empreinte, origine et capture.
+      evidence_files: c.provenance.sources.map((s) => s.sourceId),
+      // ─── BUILD 10 / FENÊTRE 1 — LE LIEN NE POINTE PAS UNE IDENTITÉ FERMÉE ──
+      //
+      // Question laissée ouverte par le handoff T2 (§6b), faute d'accès base.
+      // Mesurée ici le 2026-09-08 sur `CaseFileClaim` : 4 des 14 `threadUrl`
+      // canoniques portent la clé synthétique 43 — C3, C4, C5 et C7 de
+      // IL-SHILL-BOTIFY-001, les mêmes quatre URL que le P0 a fermées sur
+      // scan/timeline et scan/solana. 0 porte la clé canonique.
+      //
+      // Ce patch fait de ce champ un NOUVEAU point de consommation : sans la
+      // gate, le PDF publierait vers un jeton qui n'est pas le sujet du dossier,
+      // dans un document destiné à un conseil. La gate canonique posée au P0
+      // est RÉUTILISÉE, jamais recopiée ; une URL sans identité fermée la
+      // traverse inchangée.
+      thread_url: safeEvidenceUrl(c.provenance.threadUrl) || null,
+      category: c.category ?? "",
+    }));
+    casefile.off_chain.sources = dossier.sources.map((s) => ({
+      source_id: s.sourceId,
+      filename: null,
+      caption: s.caption,
+      captured_at: s.capturedAt,
+    }));
+  } else {
+    // Aucun dossier canonique pour ce mint : on ne se rabat PAS sur le corpus
+    // legacy servi par le scan. Le document rend une liste vide, et
+    // `off_chain.source` le dit.
+    casefile.off_chain.source = "none";
+    casefile.off_chain.claims = [];
+    casefile.off_chain.sources = [];
   }
 
   // Fix 4: inject market data from scan if missing

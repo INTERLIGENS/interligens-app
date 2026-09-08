@@ -4,7 +4,7 @@ import { renderKolPdf } from "@/lib/pdf/kol/templateKol"
 import { renderKolPdfLegal } from "@/lib/pdf/kol/templateKolLegal"
 import { checkAuth } from "@/lib/security/auth"
 import { PUBLISHED_LAUNDRY_FILTER, redactLaundryTrail } from "@/lib/laundry/publicationGate"
-import { isMonetaryClaimPublished, redactEvidenceAmount } from "@/lib/publication/monetaryGate"
+import { isMonetaryClaimPublished, redactEvidenceAmount, redactMonetary } from "@/lib/publication/monetaryGate"
 
 export async function GET(request: NextRequest) {
   // P0 SEC: gate the KOL dossier PDF behind ADMIN_TOKEN. Same pattern as
@@ -37,6 +37,33 @@ export async function GET(request: NextRequest) {
     // Chaque montant de preuve passe par le point de filtrage, quel que soit
     // son type : `redactEvidenceAmount` classe lui-même encaissement / ampleur.
     kol.evidences = kol.evidences.map((e: any) => ({ ...e, amountUsd: redactEvidenceAmount(kol, e) })) as typeof kol.evidences
+
+    // ─── BUILD 10 / FENÊTRE 1 — LES DEUX TOTAUX DU PROFIL ──────────────────
+    //
+    // Les montants de PREUVE passaient par la gate depuis A15. Les deux TOTAUX
+    // du profil, eux, partaient au gabarit tels quels.
+    //
+    // Mesuré le 2026-09-08, PDF servi en production avec authentification :
+    //
+    //     GordonGekko  $580K        OrbitApe  $817K        bkokoski  $211K
+    //
+    // — c'est-à-dire `totalDocumented`, sur trois profils dont le retrait avait
+    // été DÉCIDÉ le 16 août et enregistré dans KolProceedsPublicationLog. Six
+    // profils sont concernés en base ; trois ont été mesurés servis.
+    //
+    // La gate n'est pas recopiée, elle est appelée. Elle rend `null` et jamais
+    // `0` : zéro affirmerait « cette personne n'a rien encaissé », ce qui est
+    // une affirmation, et une affirmation fausse. Le gabarit rend l'absence.
+    //
+    // `totalScammed` passe par la MÊME gate sous sa PROPRE famille. Les deux
+    // interrupteurs sont distincts par construction — « ce qu'elle a encaissé »
+    // et « ce que ses victimes ont perdu » ne sont pas la même affirmation, et
+    // les fondre ferait disparaître l'une avec l'autre. Aujourd'hui les six
+    // profils portent `monetaryClaimsPublication='published'`, donc ce total ne
+    // bouge pas : la gate ne change pas la sortie, elle la GOUVERNE. Sans elle,
+    // le jour où ce second interrupteur est basculé, rien ne l'écouterait ici.
+    kol.totalDocumented = redactMonetary(kol, kol.totalDocumented, "proceeds") as typeof kol.totalDocumented
+    kol.totalScammed = redactMonetary(kol, kol.totalScammed, "scam_scale") as typeof kol.totalScammed
 
     // Build cashout evidence from KolProceedsEvent if no onchain_cashout in KolEvidence
     const hasCashoutEvidence = kol.evidences.some((e: any) => e.type === "onchain_cashout")
