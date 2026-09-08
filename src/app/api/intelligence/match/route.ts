@@ -13,6 +13,7 @@ import {
   RATE_LIMIT_PRESETS,
 } from "@/lib/security/rateLimit";
 import { matchEntity, lookupValue } from "@/lib/intelligence";
+import { readSanctionCoverage, assessSanction } from "@/lib/intelligence/sanctionCoverage";
 import { prisma } from "@/lib/prisma";
 import { normalizeValue, buildDedupKey } from "@/lib/intelligence/normalize";
 import type { IntelEntityType } from "@/lib/intelligence";
@@ -31,13 +32,15 @@ async function isRetailSafe(value: string): Promise<boolean> {
   return false;
 }
 
-function emptySignal() {
+function emptySignal(coverage: Awaited<ReturnType<typeof readSanctionCoverage>>) {
   return NextResponse.json({
     match: false,
     ims: 0,
     ics: 0,
     matchCount: 0,
     hasSanction: false,
+    sanctionAssessment: assessSanction(false, coverage),
+    sanctionsCoverage: coverage,
     topRiskClass: null,
     sourceSlug: null,
     externalUrl: null,
@@ -55,8 +58,20 @@ async function handleLookup(value: string, type?: string, chain?: string, req?: 
     ? await matchEntity({ type: type as IntelEntityType, value, chain })
     : await lookupValue(value, chain);
 
+    // ── BUILD 10 / P1 — la couverture voyage À CÔTÉ du booléen ──────────
+    //
+    // `hasSanction: false` ne peut pas signifier « contrôle sanctions négatif »
+    // si des sources réglementaires attendues n'ont pas été consultées. Mesuré
+    // le 2026-09-08 : `amf` et `fca` sont TIER 1 et n'avaient AUCUN run.
+    //
+    // Le booléen garde EXACTEMENT sa valeur. `sanctionsCoverage` la qualifie, et
+    // `sanctionAssessment` distingue les trois cas — MATCHED, NO_MATCH_COMPLETE,
+    // NO_MATCH_PARTIAL. Aucune sanction inventée, aucun `false` retourné en
+    // `true`, aucun poids ni seuil modifié.
+    const coverage = await readSanctionCoverage();
+
   if (signal.matchCount > 0 && !(await isRetailSafe(value))) {
-    return emptySignal();
+    return emptySignal(coverage);
   }
 
   return NextResponse.json({
@@ -65,6 +80,8 @@ async function handleLookup(value: string, type?: string, chain?: string, req?: 
     ics: signal.ics,
     matchCount: signal.matchCount,
     hasSanction: signal.hasSanction,
+    sanctionAssessment: assessSanction(signal.hasSanction, coverage),
+    sanctionsCoverage: coverage,
     topRiskClass: signal.topRiskClass,
     sourceSlug: signal.sourceSlug,
     externalUrl: signal.externalUrl,
