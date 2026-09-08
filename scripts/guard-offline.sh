@@ -475,6 +475,44 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 10 / P1 — armement AMF et couverture de sanction.
+#
+# TROIS FICHIERS, nommés un par un, aucun wildcard.
+#
+# 1. vercel.json
+#    Armer un collecteur Vercel EST une entrée dans ce fichier. Il n'existe
+#    aucun autre point de déclaration : la route générique
+#    /api/intelligence/ingest/[slug] accepte déjà le slug `amf`, le registre le
+#    déclare déjà, et `SOURCES` le câble déjà (ingest.ts:65). Un cron ne s'arme
+#    nulle part ailleurs — c'est la raison d'indivisibilité.
+#
+# 2. src/app/api/scan/intelligence/route.ts
+# 3. src/app/api/intelligence/match/route.ts
+#    Les deux rendent `hasSanction: false` — une AFFIRMATION booléenne — sans
+#    dire quelles sources ont été consultées. Mesuré : amf et fca sont
+#    NOT_ARMED, donc « pas de sanction » est affirmé sur une couverture
+#    incomplète. Le booléen est CONSTRUIT dans ces deux routes, à partir d'un
+#    signal qui ne porte pas la couverture ; aucun fichier libre ne peut y
+#    ajouter l'état sans que la route l'expose. C'est la raison d'indivisibilité,
+#    et elle vaut séparément pour chacune des deux.
+#
+# PÉRIMÈTRE : porter la COUVERTURE à côté du booléen — règle durable ratifiée,
+# la dégradation ne remplace jamais la valeur. `false` n'est jamais transformé
+# en `true`, aucune sanction n'est inventée, aucun poids ni seuil ne bouge, et
+# AMF n'est jamais présenté comme contribuant au TigerScore : sa contribution
+# mesurée y est nulle (matcher.ts n'essaie ni DOMAIN ni PROJECT sur une adresse).
+#
+# Autorisation humaine explicite (David, GO sur inventaire rendu —
+# docs/reports/build10-p1-amf-fca.md). fca reste NOT_ARMED
+# (PROVIDER_CREDENTIALS_REQUIRED), goplus reste NOT_ARMED derrière.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build10-p1$ ]]; then
+    EXEMPT_BUILD10_P1_PATTERNS=(
+        "^vercel\.json$"
+        "^src/app/api/scan/intelligence/route\.ts$"
+        "^src/app/api/intelligence/match/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -834,6 +872,20 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche build10-p1, exempter STRICTEMENT les 3 fichiers nommés.
+    # Aucun wildcard : toute autre route src/app/api/ reste bloquée, prisma/ et
+    # src/components/ aussi.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build10-p1$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_BUILD10_P1_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
