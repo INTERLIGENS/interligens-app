@@ -1208,3 +1208,122 @@ porterait un horodatage valide sur un contenu absent.
 **Ce n'est pas un blanc silencieux** : le compteur est à 1, la pièce est nommée,
 son statut est `EXCLUDED`, et sa raison est écrite en toutes lettres. C'est un
 **inconnu déclaré**, ce qui est le comportement recherché.
+
+## 9.3 — Source intel « périmée » : forta n'est pas arrêté, il n'a **jamais été armé**
+
+Chiffres du watchdog confirmés : **forta 152,5 j** · **scamsniffer 0,2 j**.
+
+### Le collecteur existe, la route existe, le cron n'existe pas
+
+| élément | état |
+|---|---|
+| `fetchForta()` | **présent** — `src/lib/intelligence/sources/forta.ts:55` |
+| enregistré dans la carte des sources | **oui** — `ingest.ts:68`, `forta: fetchForta` |
+| déclaré au registre | **oui** — `registry.ts:44`, tier 2, `entityTypes: ["ADDRESS","CONTRACT"]` |
+| route d'ingestion | **oui** — `/api/intelligence/ingest/[slug]` accepte n'importe quel slug |
+| **cron dans `vercel.json`** | **AUCUN** — les 17 crons ne déclarent que `ofac` et `scamsniffer` |
+| runs dans `intel_ingestion_batches` | **AUCUN** — slugs présents : `scamsniffer`, `ofac`, **et rien d'autre** |
+
+Et le point le plus net :
+
+| source | `schedule` déclaré au registre | cron réellement armé |
+|---|---|---|
+| `forta` | **`"0 */6 * * *"` — toutes les 6 heures** | **aucun** |
+
+**Le registre annonce une cadence de six heures pour une source que rien
+n'exécute.** Ce n'est pas un collecteur arrêté : c'est un collecteur **complet et
+jamais branché**. Il n'a produit aucun run depuis que la table de batches existe.
+
+### Ce que forta a effectivement déposé
+
+| mesure | valeur |
+|---|---|
+| entités canoniques `strongestSource='forta'` | **1** |
+| observations `intel_source_observations` slug `forta` | **3** |
+| dernière observation | **2026-04-08 18:58** |
+| `firstSeenAt` = `lastSeenAt` | **oui** — jamais ré-observée |
+
+L'entité unique :
+
+| champ | valeur |
+|---|---|
+| `type` | `DOMAIN` |
+| `value` | **`@lynk0x`** |
+| `riskClass` | `HIGH` |
+| `sourceCount` | 2 |
+| `isActive` | **`true`** |
+
+> À signaler sans le trancher : `@lynk0x` est aussi le handle d'un **profil KOL
+> publié** (l'un des 32 mesurés en S1). La donnée forta est de type `DOMAIN`, donc
+> ce n'est pas nécessairement le même sujet — mais la coïncidence mérite d'être
+> vue par quelqu'un qui connaît le corpus.
+
+### Qui consomme forta, et quel est l'effet mesurable de son âge
+
+`src/lib/intelligence/scorer.ts` :
+
+```
+:25   forta: 0.10                                       ← le poids le plus faible
+:28   const DEDUP_GROUP = new Set(["goplus","scamsniffer","forta"])   ← « only winner counts »
+:31   const REGULATORY_SOURCES = new Set(["ofac","amf","fca"])        ← celles-ci s'empilent
+```
+
+Deux conséquences mesurables :
+
+1. **forta pèse 0,10**, le plus faible de toutes les sources — contre 0,12 pour
+   scamsniffer et 0,15 pour goplus.
+2. **forta est dans le groupe dédupliqué** : seul le gagnant compte. Comme les
+   deux autres membres du groupe le surpondèrent, forta **ne peut pratiquement
+   jamais gagner** la déduplication dès qu'une autre source technique matche la
+   même adresse.
+
+**L'effet mesurable de l'âge de forta sur les sorties est donc : une entité, de
+poids 0,10, déduplicable.** C'est réel, et c'est petit. Je le dis dans les deux
+sens : la source est bien périmée de 152 jours, et son influence sur un verdict
+est marginale par construction.
+
+### Aucun contrôle de fraîcheur ici non plus
+
+Recherche de `lastSeenAt|freshness|stale|maxAge|ageDays` dans `scorer.ts` :
+**aucune occurrence**. Le seul filtre est `listIsActive` (booléen), qui vaut
+`true` sur l'entité forta. **Un âge de 152 jours n'a aucun effet sur le calcul.**
+
+### Un consommateur qui ne dit pas que sa source a cinq mois
+
+C'est la formulation de la consigne, et elle est exacte : **aucune surface
+n'expose l'âge d'une source** (établi en S8 — aucune route ne nomme
+`intel_canonical_entities`). Un verdict qui intègre forta ne mentionne ni la
+source, ni sa date, ni sa cadence supposée.
+
+### Confirmation croisée avec 9.1 — les trois horodatages ont gelé le même jour
+
+`intel_source_observations.lastVerifiedAt`, par source :
+
+| source | observations | dernier `lastVerifiedAt` |
+|---|---|---|
+| `scamsniffer` | 341 061 | **2026-08-26 01:35** |
+| `ofac` | 869 | **2026-08-26 01:01** |
+| `forta` | 3 | 2026-04-08 18:58 |
+
+**ScamSniffer et OFAC portent la même date de gel : le 2026-08-26.** C'est la
+confirmation indépendante de l'analyse de 9.1 — la garde `IS DISTINCT FROM` a été
+posée ce jour-là, et les trois horodatages LEGACY se sont figés au même instant.
+
+Que `scamsniffer` paraisse néanmoins frais dans `intel_canonical_entities`
+(0,2 j) et gelé dans `intel_source_observations` (13 j) s'explique par le même
+mécanisme vu des deux côtés : son **contenu** change tous les jours, donc les
+lignes d'entités sont réécrites ; ses **observations**, elles, ne changent pas et
+restent gelées.
+
+### Classement
+
+| objet | catégorie | justification |
+|---|---|---|
+| **collecteur forta** | **`PIPE_NOT_CONNECTED`** | code complet, route disponible, registre déclarant une cadence de 6 h — **aucun cron ne l'invoque** |
+| écart entre `registry.schedule` et `vercel.json` | **`BUG`** | deux déclarations de cadence qui se contredisent, sans que rien ne le signale |
+| âge d'une source en surface | **`PIPE_NOT_CONNECTED`** | mesurable en base, exposé nulle part |
+| absence de pondération par l'âge dans `scorer.ts` | **`DATA_ABSENT`** | le modèle de scoring n'a pas de notion d'ancienneté ; ce n'est pas un défaut d'implémentation, c'est une dimension absente du contrat |
+
+**Ce constat est un blanc silencieux au sens strict** : un verdict peut intégrer
+une source vieille de cinq mois sans que rien, nulle part, ne le dise. Il rejoint
+`on_chain.distribution` (S5) dans la liste — **elle passe donc de 1 à 2**.
