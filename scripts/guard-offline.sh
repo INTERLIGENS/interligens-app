@@ -475,6 +475,57 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 10 / FENÊTRE 1 — le containment monétaire du PDF KOL,
+# et la bascule du PDF CaseFile vers l'autorité canonique.
+#
+# CINQ CHEMINS, nommés un par un, aucun wildcard.
+#
+# ─── Pourquoi cinq et pas trois ────────────────────────────────────────────
+#
+# Le périmètre annoncé en portait trois. La mesure du 2026-09-08 l'a élargi, et
+# c'est cette mesure qui l'a démontré, pas une préférence :
+#
+#   · en base : 6 profils portent proceedsPublication='withdrawn'
+#   · en prod, PDF servi avec authentification admin :
+#       GordonGekko $580K · OrbitApe $817K · bkokoski $211K
+#     soit `kol.totalDocumented` publié SANS AUCUNE GATE
+#
+# Fermer ça à la route ne suffit PAS, et c'est le point : neutraliser
+# `totalDocumented` DÉCLENCHE le repli des gabarits —
+#
+#     const totalDocumented = kol.totalDocumented ?? evidences.reduce(…, 0)
+#
+# — qui recalcule un montant à partir des événements bruts. Le ruling GPT
+# l'interdit nommément. Et aucune valeur passable depuis la route ne signifie
+# « retiré » : null et undefined déclenchent le repli, 0 et NaN seraient une
+# substitution, que le même ruling interdit. La gate et le repli sont donc
+# INDISSOCIABLES — même cause, même fenêtre.
+#
+# ─── Ce que chaque chemin porte ────────────────────────────────────────────
+#
+#   api/pdf/kol/route.ts        la gate monétaire canonique sur totalDocumented
+#   lib/pdf/kol/templateKol.ts  retrait du repli reduce() — 1 ligne
+#   …/templateKolLegal.ts       idem, plus la phrase narrative de la l. 249
+#   api/report/casefile/route.ts   claims canoniques, 2 chemins legacy retirés
+#   components/pdf/pdfRenderer.ts  TigerScore retiré du document
+#
+# PÉRIMÈTRE : la gate canonique est RÉUTILISÉE, jamais recopiée. Aucun montant
+# de substitution, aucun recalcul alternatif, aucun 0. Aucune authentification
+# ajoutée, aucun scoring modifié. Les 3 copies mortes templateKolLegal.ts.bak2/
+# .bak3/.bak4 ne sont PAS touchées, et src/lib/pdf/engine.ts non plus : hors
+# chemin, en backlog nommé.
+#
+# Autorisation humaine explicite (David, GO option 1 après arbitrage GPT).
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-f1-pdf-containment$ ]]; then
+    EXEMPT_BUILD10_F1_PATTERNS=(
+        "^src/app/api/pdf/kol/route\.ts$"
+        "^src/app/api/report/casefile/route\.ts$"
+        "^src/components/pdf/pdfRenderer\.ts$"
+        "^src/lib/pdf/kol/templateKol\.ts$"
+        "^src/lib/pdf/kol/templateKolLegal\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +729,20 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche f1-pdf-containment, exempter STRICTEMENT les 5 chemins
+    # nommés. Aucun wildcard : tout autre src/app/api/, src/lib/pdf/ ou
+    # src/components/ reste bloqué — y compris les 3 copies .bak du gabarit.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-f1-pdf-containment$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_BUILD10_F1_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
