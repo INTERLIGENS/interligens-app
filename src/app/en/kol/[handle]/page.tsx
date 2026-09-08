@@ -1,5 +1,11 @@
 'use client'
 import BetaNav from "@/components/beta/BetaNav";
+import {
+  classifyResponse,
+  thrownState,
+  isNonConstat,
+  type SectionState,
+} from "@/lib/risk/sectionState";
 import KolNarrative from '@/components/kol/KolNarrative'
 import CashoutProof from '@/components/kol/CashoutProof'
 import ShillToExitCard from '@/components/kol/ShillToExitCard'
@@ -109,6 +115,22 @@ export default function KOLPage() {
   const [coordination, setCoordination] = useState<any>(null)
   const [transparency, setTransparency] = useState<any[]>([])
   const [shillResult, setShillResult] = useState<ShillToExitResult | null>(null)
+
+  // ── BUILD 10 · P2 — TROIS ÉTATS PAR SECTION, PAS DEUX ─────────────────
+  //
+  // Une fiche qui NOMME une personne ne doit jamais transformer un échec de
+  // collecte en absence de signal. Sans cet état, la section disparaissait
+  // dans les trois cas — collecte réussie et vide, panne, ou accès nominatif
+  // refusé — et le lecteur lisait « rien à signaler sur cette personne ».
+  const [sectionState, setSectionState] = useState<Record<string, SectionState>>({
+    laundry: "LOADING",
+    cluster: "LOADING",
+    coordination: "LOADING",
+    transparency: "LOADING",
+    shill: "LOADING",
+  })
+  const marquer = (champ: string, etat: SectionState) =>
+    setSectionState((prev) => ({ ...prev, [champ]: etat }))
   const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(null)
 
   useEffect(() => {
@@ -118,44 +140,67 @@ export default function KOLPage() {
       .then(d => { if (d.found) setKol(d.kol); else setNotFound(true) })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
-    fetch('/api/laundry/' + handle)
-      .then(r => r.json())
-      .then(d => { if (d) setLaundryTrail(d) })
-      .catch(() => {})
-    fetch('/api/cluster/' + handle)
-      .then(r => r.json())
-      .then(d => { if (d && d.relatedActors?.length > 0) setCluster(d) })
-      .catch(() => {})
-    fetch('/api/coordination/' + handle)
-      .then(r => r.json())
-      .then(d => { if (d && d.signals?.length > 0) setCoordination(d) })
-      .catch(() => {})
-    fetch('/api/transparency/wallets?handle=' + handle)
-      .then(r => r.json())
-      .then(d => { if (d?.wallets?.length > 0) setTransparency(d.wallets) })
-      .catch(() => {})
-    fetch('/api/v1/shill-to-exit?handle=' + encodeURIComponent(handle))
-      .then(r => r.ok ? r.json() : null)
-      .then((d: ShillToExitResult | null) => {
-        if (d?.detected) {
-          setShillResult(d)
-          // Trigger narrative after shill data is available
-          fetch('/api/v1/narrative', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              kolHandle: handle,
-              tokenSymbol: d.tokenSymbol,
-              totalProceedsUsd: d.total_proceeds_usd,
-              deltaHours: d.max_delta_minutes ? d.max_delta_minutes / 60 : undefined,
-            }),
-          })
-            .then(r => r.ok ? r.json() : null)
-            .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
-            .catch(() => {})
-        }
+    // ── BUILD 10 · P2 — chaque appel classe sa réponse ─────────────────
+    //
+    // `r.ok` est enfin testé. Sans lui, un 401 nominatif était parsé comme
+    // une charge normale, la garde `length > 0` échouait, et la section
+    // disparaissait — indistinguable d'une absence réelle.
+    //
+    // `classifyResponse` range en trois : accès refusé PAR CONCEPTION (401),
+    // panne, ou charge mesurée. Une charge vide n'est une information SUR LA
+    // PERSONNE que si la réponse est `ok`.
+    // Accès typés, sans `any` : ce qui compte est « la liste est-elle vide »,
+    // pas la forme exacte de la charge.
+    const champObjet = (d: unknown, k: string): unknown =>
+      d && typeof d === "object" ? (d as Record<string, unknown>)[k] : undefined;
+    const listeVide = (d: unknown, k: string): boolean => {
+      const v = champObjet(d, k);
+      return !Array.isArray(v) || v.length === 0;
+    };
+
+    const appel = async (
+      champ: string,
+      url: string,
+      vide: (d: unknown) => boolean,
+      pose: (d: unknown) => void,
+    ) => {
+      try {
+        const r = await fetch(url)
+        const d = await r.json().catch(() => null)
+        const etat = classifyResponse(r.ok, r.status, d, vide(d))
+        marquer(champ, etat)
+        if (etat === 'MEASURED') pose(d)
+      } catch {
+        marquer(champ, thrownState())
+      }
+    }
+
+    appel('laundry', '/api/laundry/' + handle,
+      (d) => !d, (d) => setLaundryTrail(d))
+    appel('cluster', '/api/cluster/' + handle,
+      (d) => listeVide(d, 'relatedActors'), (d) => setCluster(d))
+    appel('coordination', '/api/coordination/' + handle,
+      (d) => listeVide(d, 'signals'), (d) => setCoordination(d))
+    appel('transparency', '/api/transparency/wallets?handle=' + handle,
+      (d) => listeVide(d, 'wallets'), (d) => setTransparency(champObjet(d, 'wallets') as unknown[]))
+    appel('shill', '/api/v1/shill-to-exit?handle=' + encodeURIComponent(handle),
+      (d) => champObjet(d, 'detected') !== true, (d) => {
+        const sd = d as ShillToExitResult;
+        setShillResult(sd)
+        fetch('/api/v1/narrative', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kolHandle: handle,
+            tokenSymbol: sd.tokenSymbol,
+            totalProceedsUsd: sd.total_proceeds_usd,
+            deltaHours: sd.max_delta_minutes ? sd.max_delta_minutes / 60 : undefined,
+          }),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(n => { if (n?.narrative_en) setNarrativeResult(n) })
+          .catch(() => {})
       })
-      .catch(() => {})
   }, [handle])
 
   const fmtUsd = (n?: number) => {
@@ -456,6 +501,38 @@ export default function KOLPage() {
         <ProceedsCard handle={kol.handle} lang="en" />
 
         {/* ── SHILL-TO-EXIT TIMELINE ── */}
+
+        {/* ── BUILD 10 · P2 — L'ABSENCE NON CONSTATÉE SE DIT ────────────────
+            Un vide sur une fiche qui NOMME quelqu'un se lit « rien à signaler
+            sur cette personne ». Il ne peut porter cette lecture que si la
+            collecte a RÉUSSI. Panne et rétention délibérée sont donc dites,
+            et distinguées l'une de l'autre. */}
+        {(() => {
+          const nonConstates = [
+                    { champ: "laundry", nom: "Laundry trail" },
+                    { champ: "cluster", nom: "Related actors" },
+                    { champ: "coordination", nom: "Coordination signals" },
+                    { champ: "transparency", nom: "Declared wallets" },
+                    { champ: "shill", nom: "Shill-to-exit" },
+          ].filter((x) => isNonConstat(sectionState[x.champ]));
+          if (nonConstates.length === 0) return null;
+          return (
+            <div style={{ border: "1px solid #6b728055", background: "#0A0A0A", borderRadius: 10, padding: 16, margin: "16px 0" }}>
+              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", color: "#6b7280", marginBottom: 8 }}>
+                SIGNAL NOT AVAILABLE
+              </div>
+              {nonConstates.map((x) => (
+                <div key={x.champ} style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.7, marginTop: 6 }}>
+                  <span style={{ fontFamily: "monospace", color: "#d1d5db" }}>{x.nom}</span>
+                  {" — "}
+                  {sectionState[x.champ] === "INTENTIONALLY_UNAVAILABLE"
+                    ? "This section requires authenticated nominative access. It is withheld by design, not because nothing was found."
+                    : "This section could not be collected. That is a collection failure, not a finding about this person — no conclusion should be drawn from its absence."}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
         {shillResult && <ShillToExitTimeline result={shillResult} lang="en" />}
 
         {/* ── NARRATIVE ── */}
