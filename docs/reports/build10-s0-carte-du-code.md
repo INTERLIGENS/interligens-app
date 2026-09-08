@@ -495,3 +495,80 @@ bouton est-il conditionné à cette résolution ? **À vérifier** : si le lien 
 rendu inconditionnellement, un lecteur clique et reçoit un 404 brut.
 
 *Non vérifié à ce stade* — je le note et je poursuis.
+
+---
+
+# LES DEUX RÉSERVES CONNUES — INSTRUITES
+
+## R1 · Les `evidenceRefs: []` de VINE
+
+**La distinction demandée est réelle, et elle est plus nette que prévu.**
+
+Les 8 claims VINE en base portent `evidenceRefs = '[]'`. L'audit d'intégrité
+est vert. Il l'est **parce qu'il n'y a aucune référence à casser**, pas parce
+que des références résolvent : `auditClaims` ne produit `BROKEN_REFERENCE`
+qu'en parcourant `evidenceRefs`, et parcourir une liste vide ne produit rien.
+
+Mais la source, elle, n'est pas vide. Mesuré dans `src/data/vine-osint.json` :
+**les 9 claims portent tous des `evidence_refs` non vides** — de 1 à 11
+entrées chacun, 39 au total.
+
+Le vide vient de la **migration**, et il est délibéré. `generate-migration-sql.mjs` :
+
+```
+-- Retenus sur `thread_url`. `evidenceRefs` est laissé VIDE : les 39 références
+-- de VINE sont à 33 de la prose (« screenshots TBC », descriptions de méthode)
+-- et le fichier ne porte AUCUN registre `sources`. Les insérer comme si elles
+-- résolvaient serait leur donner une valeur probante qu'elles n'ont pas.
+```
+
+La décision est juste et elle est tracée. Mais elle laisse deux choses :
+
+| constat | catégorie |
+|---|---|
+| 39 références existent en amont et n'atteignent pas la base | `PIPE_NOT_CONNECTED` |
+| VINE n'a **aucun registre `sources`** — rien contre quoi résoudre | `COLLECTOR_MISSING` |
+| l'audit vert ne distingue pas « rien à casser » de « tout résout » | **blanc silencieux dans l'INSTRUMENT lui-même** |
+
+Le troisième point est le plus important pour BUILD 10 : ce n'est pas une
+donnée qui manque, c'est **un indicateur qui rend la même couleur pour deux
+situations opposées**. Un dossier sans aucune référence et un dossier dont
+toutes les références résolvent produisent le même rapport d'intégrité.
+
+`summarizeFindings` compte `BROKEN_REFERENCE = 0` dans les deux cas. Rien ne
+distingue 0 sur 0 de 0 sur 39.
+
+## R2 · C13 — la réserve était mal posée, et la mesure le montre
+
+L'énoncé disait : *« C13 est absent de la série C9–C17 de VINE. »*
+
+**Mesuré : la série est COMPLÈTE dans la source.** `src/data/vine-osint.json`
+porte 9 `new_claims`, C9 à C17, sans trou :
+
+```
+serie : [9, 10, 11, 12, 13, 14, 15, 16, 17]
+manquants dans l'intervalle : aucun
+```
+
+C13 n'est pas absent de la série. **Il est absent de la MIGRATION**, et la
+règle qui l'écarte est explicite :
+
+```js
+const vClaims = (vine.new_claims ?? []).filter((c) => c.thread_url);
+```
+
+**C13 est le seul des neuf sans `thread_url`.** Il a pourtant trois
+`evidence_refs`. La règle de rétention retient sur `thread_url` — donc C13
+tombe, et le compte passe de 9 à 8.
+
+| | |
+|---|---|
+| catégorie | **`PIPE_NOT_CONNECTED`** — le claim existe en amont, la règle de transfert l'écarte |
+| **pas** `DATA_ABSENT` | la donnée existe, complète, dans la source |
+| **pas** `BUG` | le filtre fait exactement ce qu'il déclare faire |
+| blanc silencieux | **oui** — nulle part, ni en base ni sur une surface, il n'est écrit qu'un claim a été écarté au transfert. Le dossier VINE porte 8 claims et rien ne dit qu'il y en avait 9. |
+
+C'est le cas d'école du build : **une décision juste, tracée dans le script qui
+l'applique, et invisible partout où le résultat est lu.** Le SQL de migration
+est un artefact d'exécution ; le dossier, lui, ne porte aucune trace du
+neuvième claim.
