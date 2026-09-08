@@ -144,3 +144,188 @@ jamais rien porter.
 
 **Aucun écart entre ce que la base contient et ce que l'API sert**, hors les
 retraits qui sont déclarés. Cette surface est saine.
+
+---
+
+# S2 · Les dossiers CaseFile — corpus, preuve, et deux tables orphelines
+
+## Le corpus réel
+
+`token_casefiles` porte **4 dossiers**. Un seul est publié.
+
+| ref | codename | `publishStatus` | `tigerScore` | verdict | `publishedDate` |
+|---|---|---|---|---|---|
+| `IL-PND-LAB-001` | **LAB** | **`published`** | 91 | AVOID | 2026-05-20 |
+| `IL-CONC-BLACKBULL-001` | BLACKBULL | `draft` | 0 | CONCENTRATION_RISK | `null` |
+| `IL-SHILL-BOTIFY-001` | BOTIFY | `draft` | `null` | UNDETERMINED | `null` |
+| `IL-SHILL-VINE-001` | VINE | `draft` | `null` | UNDETERMINED | `null` |
+
+> **À consigner** : les deux dossiers que les surfaces CaseFile servent — BOTIFY
+> et VINE — sont en **`draft`**, avec `verdict: UNDETERMINED` et `tigerScore: null`.
+> Le seul dossier `published`, LAB, n'est **pas** celui que `/api/casefile` rend
+> sur les mints mesurés. Non instruit ici : je le note, je ne le tranche pas.
+
+Volumétrie des tables du domaine :
+
+| table | lignes | |
+|---|---|---|
+| `CaseFileClaim` | **16** | 8 BOTIFY + 8 VINE |
+| `CaseFileSource` | **8** | **BOTIFY seul** |
+| `CaseFileShiller` | **9** | **VINE seul** |
+| `CaseFileSmokingGun` | **1** | **VINE seul** |
+| `token_casefiles` | 4 | |
+| `platform_casefiles` | 1 | |
+| `VaultCaseFile` · `casefiles` | **0** | tables vides |
+
+## L'écart de couverture de preuve — BOTIFY contre VINE
+
+Les deux dossiers ne manquent pas des mêmes choses. Ils sont **complémentaires**,
+et c'est le fait central de cette section.
+
+| champ (8 claims chacun) | BOTIFY | VINE | catégorie |
+|---|---|---|---|
+| scellés (`contentHash`) | **8/8** | **8/8** | — |
+| `description` / `descriptionFr` | 8/8 | 8/8 | — |
+| **`evidenceRefs`** | **8/8 peuplés** | **0/8 — tous vides** | `DATA_ABSENT` (VINE) |
+| **`claimDate`** | **0/8 — tous `NULL`** | **8/8 peuplés** | `DATA_ABSENT` (BOTIFY) |
+| `threadUrl` | 6/8 | **8/8** | `DATA_ABSENT` (BOTIFY ×2) |
+| `actors` | **0/8 `NULL`** | **8/8 peuplés** | `DATA_ABSENT` (BOTIFY) |
+| lignes `CaseFileSource` | **8** | **0** | `DATA_ABSENT` (VINE) |
+| lignes `CaseFileShiller` | **0** | **9** | `DATA_ABSENT` (BOTIFY) |
+| lignes `CaseFileSmokingGun` | **0** | **1** | `DATA_ABSENT` (BOTIFY) |
+
+**BOTIFY porte ses références et ses sources, mais aucune date et aucun acteur.
+VINE porte ses dates, ses acteurs, ses shillers et son smoking gun, mais aucune
+référence de preuve.**
+
+### Ce qui manquerait pour que VINE porte de la preuve
+
+Deux écritures, dans cet ordre, et aucune n'existe aujourd'hui :
+
+1. **Des lignes dans `CaseFileSource`** pour `IL-SHILL-VINE-001`. La table est à
+   **0** pour ce dossier. Chaque ligne demande au minimum `sourceId`,
+   `sourceType`, `caption` et `capturedAt` — les quatre champs que BOTIFY
+   remplit.
+2. **`evidenceRefs` peuplé** sur les 8 claims VINE, pointant vers ces `sourceId`.
+   Aujourd'hui les 8 portent `[]`.
+
+Tant que le premier point n'est pas fait, peupler le second produirait **8
+`BROKEN_REFERENCE`** — une référence en forme de clef qui ne résout pas. L'ordre
+n'est pas cosmétique.
+
+### Pourquoi l'audit d'intégrité est vert sur VINE
+
+`auditClaims` ne lève `BROKEN_REFERENCE` qu'**en parcourant `evidenceRefs`**.
+Sur un tableau vide, la boucle ne s'exécute pas. Le vert de VINE ne dit donc pas
+« ses références résolvent » : il dit **« il n'y a rien à vérifier »**.
+
+C'est exactement l'écart signalé en clôture de BUILD 9, et il est ici mesuré :
+**0 source au registre, 0 référence, 0 constat.**
+
+### La qualité de la preuve BOTIFY, elle aussi mesurée
+
+Les 8 sources de BOTIFY ne sont pas complètes :
+
+| champ de `CaseFileSource` | peuplé sur 8 | catégorie |
+|---|---|---|
+| `sourceType` · `filename` · `caption` · `capturedAt` | **8/8** | — |
+| **`sourceUrl`** | **0/8** | `DATA_ABSENT` |
+| **`sha256`** | **0/8** | `DATA_ABSENT` |
+| **`snapshotId`** | **0/8** | `DATA_ABSENT` |
+
+Les 8 sources sont des captures nommées et datées, **sans URL, sans empreinte et
+sans snapshot**. Un lecteur Counsel ne peut donc pas les vérifier de façon
+indépendante : il lit une légende et une date, pas une pièce opposable.
+
+**Ce n'est pas un blanc silencieux** — la projection publique rend `source_url:
+null` et `sha256: null` explicitement, mesuré sur `/api/casefile`. Mais c'est un
+plafond de couverture qu'il faut nommer.
+
+## Deux tables écrites que rien ne lit
+
+| table | lignes | lue par le lecteur canonique ? | catégorie |
+|---|---|---|---|
+| `CaseFileShiller` | **9** (VINE) | **NON** | **`PIPE_NOT_CONNECTED`** |
+| `CaseFileSmokingGun` | **1** (VINE) | **NON** | **`PIPE_NOT_CONNECTED`** |
+
+Vérifié : ni `canonicalReader.ts`, ni `publicProjection.ts`, ni `internalView.ts`
+ne les interrogent. `pdfGeneratorPublic.ts` n'en fait **aucune** mention. Les
+deux noms n'apparaissent dans `src/` que comme **types TypeScript** dans
+`pdfGenerator.ts` — `CaseFileInput.shillers` et `smoking_guns` — c'est-à-dire la
+forme d'une charge fournie à `/api/casefile/generate`, jamais une lecture de
+table.
+
+**Dix lignes de données existent en base et ne sont servies par aucune surface.**
+
+## Cinq colonnes déclarées, jamais écrites
+
+`CaseFileClaim` porte cinq colonnes à **0/16 peuplées**, sur les deux dossiers :
+
+| colonne | peuplée | mentionnée dans `src/lib/casefile/` | catégorie |
+|---|---|---|---|
+| `rowNature` | **0/16** | 1 fois — dans le SQL de supplantation, comme colonne reportée | `PIPE_NOT_CONNECTED` |
+| `natureBasis` | **0/16** | **0 fois** | `PIPE_NOT_CONNECTED` |
+| `methodRef` | **0/16** | **0 fois** | `PIPE_NOT_CONNECTED` |
+| `exclusionReason` | **0/16** | 1 fois — dans un **commentaire** | `PIPE_NOT_CONNECTED` |
+| `excludedField` | **0/16** | **0 fois** | `PIPE_NOT_CONNECTED` |
+
+Conséquence mesurée et contre-intuitive : le PDF public affiche
+`REASON: Excluded from publication · FIELD: state`. Cette mention **n'est pas
+lue depuis `exclusionReason` / `excludedField`** — ces colonnes sont vides. Elle
+est **dérivée de `state`** au rendu. Les deux colonnes prévues pour porter le
+motif existent en base et ne servent à rien.
+
+## Aucun écrivain applicatif pour le corpus CaseFile
+
+Recherche d'une écriture sur `CaseFileClaim` dans tout `src/` : **une seule
+occurrence**, `renderSupersedeSql` dans `sealGuard.ts`, qui **rend du SQL et ne
+l'exécute jamais**.
+
+**Aucun code applicatif n'insère, ne met à jour ni ne supprime un claim.** Les
+16 lignes proviennent des patches SQL appliqués à la main dans Neon. Il n'existe
+donc **pas de collecteur** pour ce corpus.
+
+| objet | catégorie |
+|---|---|
+| écrivain / collecteur de claims CaseFile | **`COLLECTOR_MISSING`** |
+| écrivain / collecteur de sources CaseFile | **`COLLECTOR_MISSING`** |
+
+C'est la raison structurelle pour laquelle VINE n'a pas de sources : **rien ne
+peut lui en créer** sans passer par un patch SQL écrit à la main.
+
+## C13 — la question tranchée par la mesure
+
+L'énoncé était de chercher s'il a existé, **sans présumer qu'il manque**.
+
+| recherche | résultat |
+|---|---|
+| lignes `CaseFileClaim` avec `claimId='C13'` | **aucune** |
+| `claimId` distincts en base | `C1`…`C12`, `C14`…`C17` — **16 valeurs** |
+| claims portant un `supersedes` | **aucun**, sur les 16 |
+| occurrences de `C13` dans les patches `docs/prep/patches/BUILD9/*.sql` | **0** |
+| occurrences de `C9`…`C12`, `C14`…`C17` dans ces mêmes patches | **2 chacune** |
+| occurrences de `C13` ailleurs dans le dépôt | **0** — les seuls résultats sont un contrat USDT `0xdAC17F…C13D831ec7`, sans rapport |
+
+**`C13` n'a jamais existé.** La source d'insertion elle-même saute ce numéro,
+alors qu'elle nomme deux fois chacun de ses voisins. Ce n'est pas une
+suppression, c'est un trou de numérotation à la rédaction.
+
+**Catégorie : aucune.** Il n'y a pas de donnée absente — il n'y a jamais eu de
+donnée.
+
+> **Observation de méthode** : le constat `VERSION_GAP` de l'audit d'intégrité
+> détecte les trous dans la suite des `version` **d'un même `claimId`**. Il ne
+> regarde pas la suite des `claimId`. Un identifiant manquant dans la série est
+> donc structurellement invisible à l'audit. Ce n'est pas un défaut — c'est hors
+> de son périmètre déclaré — mais il faut le savoir avant de lire un audit vert
+> comme une garantie d'exhaustivité.
+
+## Bilan S2
+
+| catégorie | objets |
+|---|---|
+| `DATA_ABSENT` | `evidenceRefs` VINE (8) · `claimDate` BOTIFY (8) · `actors` BOTIFY (8) · `threadUrl` BOTIFY (2) · `CaseFileSource` VINE (0 ligne) · `sourceUrl`/`sha256`/`snapshotId` BOTIFY (8 chacun) |
+| `PIPE_NOT_CONNECTED` | `CaseFileShiller` (9 lignes) · `CaseFileSmokingGun` (1 ligne) · 5 colonnes de `CaseFileClaim` |
+| `COLLECTOR_MISSING` | écrivain de claims · écrivain de sources |
+| `BUG` | **0** |
+| sans catégorie | `C13` — n'a jamais existé |
