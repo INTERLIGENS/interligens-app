@@ -631,7 +631,13 @@ deux surfaces de navigation du corpus.
 
 ---
 
-# SYNTHÈSE S0
+# SYNTHÈSE INTERMÉDIAIRE — surfaces 1 à 8
+
+> **Ce bilan est PARTIEL.** Il a été écrit au fil de l'eau, avant les surfaces
+> 9 à 11. Le bilan qui fait foi est **SYNTHÈSE S0 — FINALE**, en fin de
+> document. Les deux sont conservés : effacer celui-ci masquerait l'ordre dans
+> lequel les constats sont tombés.
+
 
 ## Comptage par catégorie
 
@@ -794,3 +800,105 @@ un **autre** handler.
 | catégorie | `PIPE_NOT_CONNECTED` (handler non armé) + `BUG` (échec silencieux) |
 | blanc silencieux | **oui** — un digest non envoyé ne se voit nulle part |
 | non vérifié | la présence de `RESEND_API_KEY` en production. Je n'ai pas accès aux variables d'environnement, et je n'en ai pas cherché. |
+
+---
+
+# SYNTHÈSE S0 — FINALE
+
+Remplace la synthèse intermédiaire. Onze surfaces traitées, dans l'ordre
+Investor/Counsel.
+
+## Comptage par catégorie
+
+Uniquement les constats **mesurés** dans ce document.
+
+| catégorie | constats |
+|---|---|
+| `PIPE_NOT_CONNECTED` | **10** |
+| `COLLECTOR_MISSING` | **5** |
+| `BUG` | **7** |
+| `DATA_ABSENT` | **4** |
+| `INTENTIONALLY_NOT_SHOWN` | **2** |
+| `NOT_MEASURABLE` | **0** |
+| **à classer** | **4** — `amf`, `fca`, `forta`, `goplus`, tant qu'aucune surface ne les cite |
+
+### `PIPE_NOT_CONNECTED` — 10
+
+11 handlers cron orphelins · 6 colonnes de `token_casefiles` posées par SQL
+manuel · claims dupliqués en dur sur `/cases/botify/evidence` · 39
+`evidence_refs` VINE non transférées · C13 écarté au transfert · méthodologie
+publiée ↔ score publié · date de révision légale ↔ date git · `chrome-guard`
+hôte et chemin · handler `security-weekly-digest` non armé · registre des
+sources ↔ `vercel.json` (cadences divergentes)
+
+### `COLLECTOR_MISSING` — 5
+
+aucun writer de `token_casefiles` · `tigerScore` jamais écrit par le moteur ·
+faits statiques du PDF jamais rafraîchis · VINE sans registre `sources` ·
+`/dataroom/score` figé dans un HTML de 647 Ko
+
+### `BUG` — 7
+
+claims rendus `CONFIRMED` alors qu'`ATTACHED` · mint synthétique publié ·
+« rug-pull » interdit et rendu · lien de partage derrière le gate · `?? 0` →
+GREEN · échec indistinguable de l'absence sur 5 appels nominatifs · envoi
+d'e-mail sauté en silence
+
+### `DATA_ABSENT` — 4
+
+date d'observation des faits statiques · adresses de démonstration ·
+montants non quantifiés · `/fr/cases/botify` inexistante
+
+## Les BLANCS SILENCIEUX — **17**
+
+| # | où | ce qu'un lecteur ne peut pas distinguer |
+|---|---|---|
+| 1-3 | fiche dossier · `founders`, `keyWallets`, `sources` vides | absence de donnée / absence de section |
+| 4 | fiche dossier · bloc canonique vide | pas de claims / chaîne débranchée |
+| 5 | PDF · faits statiques | aucun champ de date n'est rendu |
+| 6-10 | KOL · laundry, cluster, coordination, transparency, shill-to-exit | absence / API en échec |
+| 11-12 | `/explorer`, `/watchlist` | aucun résultat / échec |
+| 13 | `/demo` × 4 | **pire espèce** — score absent → `0` → **GREEN** |
+| 14 | dossier VINE | 8 claims, rien ne dit qu'il y en avait 9 |
+| 15 | audit d'intégrité | `0 sur 0` = `0 sur 39` — le blanc est dans l'**instrument** |
+| 16 | `/fr/cases/botify` | 404 sans indication que le dossier existe en `en` |
+| 17 | digest e-mail | envoyé / sauté faute de clef |
+
+**Sept sur dix-sept portent sur une personne nommée ou sur un verdict**
+(6 à 10, 13, et 14 par ricochet). C'est là qu'une absence muette se lit comme
+un constat favorable.
+
+## Les trois constats que je remonterais en premier
+
+1. **`?? 0` → GREEN.** Une donnée manquante produit le verdict le plus
+   rassurant que le produit sache écrire. C'est l'inversion exacte d'une
+   doctrine ratifiée en BUILD 9, jamais appliquée à la couche scan.
+2. **Cinq blancs silencieux sur la fiche nominative.** Échec réseau et absence
+   de donnée rendent le même écran, sur la surface qui nomme des personnes.
+3. **`/cases/botify/evidence`** — une troisième autorité CaseFile, publique,
+   qui rend `CONFIRMED` ce que l'autorité porte en `ATTACHED`, publie le mint
+   synthétique et emploie un mot interdit par le contrat de wording.
+
+## Ce que je n'ai pas traité
+
+62 pages admin · ~90 pages publiques hors des onze traitées · 157 routes API
+admin · les surfaces investigateurs, mm, guard, intégrations. Par épuisement
+de la file, pas par choix : l'ordre Investor/Counsel a été respecté.
+
+## Chiffres explicitement NON vérifiés
+
+- le comptage `?? 0` (97) est un **comptage**, pas un audit ligne à ligne —
+  seules les 4 pages `/demo` sont vérifiées ;
+- les 11 handlers orphelins le sont **au regard du dépôt** ; un déclencheur
+  externe n'est pas exclu ;
+- le gate sur `/shared/case/<token>` est mesuré **dans le code**, jamais
+  exercé en production ;
+- ce que rend `chrome-guard` quand son fetch échoue : non mesuré ;
+- la présence de `RESEND_API_KEY` en production : non mesurée ;
+- **aucun comptage de lignes en base** : pas de connexion, et je n'en ai pas
+  cherché. Tout ce qui précède est établi sur le CODE.
+
+---
+
+*Fin de S0. Lecture seule, 0 write, 0 DDL, 0 collecte, 0 RPC. Aucun chemin
+gelé franchi. Aucune correction appliquée. PR ouverte, non mergée.*
