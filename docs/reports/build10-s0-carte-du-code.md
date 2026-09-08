@@ -801,6 +801,89 @@ un **autre** handler.
 | blanc silencieux | **oui** — un digest non envoyé ne se voit nulle part |
 | non vérifié | la présence de `RESEND_API_KEY` en production. Je n'ai pas accès aux variables d'environnement, et je n'en ai pas cherché. |
 
+
+---
+
+# SURFACE 12 · `/scan` ET `/demo` — ET LA QUESTION LAISSÉE OUVERTE AU §3.c
+
+## 12.1 · `/scan` gère son échec — et c'est à dire
+
+L'appel principal a un vrai chemin d'erreur :
+
+```ts
+if (!res.ok) { setError(data.message ?? data.error ?? "Unknown error"); return; }
+...
+catch { setError("Network error. Please try again."); }
+```
+
+**C'est le comportement attendu**, et c'est le seul endroit du produit où je
+l'ai trouvé aussi net. Il mérite d'être noté : le motif correct existe déjà
+dans la maison.
+
+L'appel secondaire, lui, retombe dans le motif commun :
+
+```ts
+fetch(`/api/v1/scan-context?...`, { signal: AbortSignal.timeout(8_000) })
+  .then(d => { if (d) setScanContextData(d); })
+  .catch(() => {})
+```
+
+Un contexte lent au-delà de 8 s est **indistinguable** d'un contexte absent.
+**Blanc silencieux n° 18.**
+
+## 12.2 · Les sept routes de scan par chaîne existent
+
+`bsc` · `base` · `arbitrum` · `hyper` · `tron` · `eth` · `solana` — plus `evm`.
+Toutes présentes. Aucun trou de câblage ici.
+
+## 12.3 · La méthodologie publique promet un signal qui ne peut pas se produire
+
+`/<loc>/methodology/tigerscore` liste les signaux d'intelligence :
+
+| signal annoncé | état mesuré |
+|---|---|
+| « OFAC / Sanctions check — Screened against 332K+ sanctioned entities » | source **armée** |
+| « Scam Sniffer » | source **armée** |
+| **« GoPlus — Honeypot and phishing contract detection »** | **jamais collectée** |
+| « Casefile claims — Cross-referenced against **5 published cases** » | voir 12.4 |
+| « KOL Registry correlation » | non instruit |
+
+`goplus` est déclaré au registre avec l'horaire `realtime`, il porte un poids
+dans le scoreur (`goplus: 0.15`) et appartient au groupe de déduplication
+`goplus + scamsniffer + forta`. Le module `sources/goplus.ts` existe et exporte
+`fetchGoPlusToken` / `fetchGoPlusAddress`.
+
+Mais : **aucun cron ne l'arme**, et la route que les pages `/demo` appellent —
+`/api/scan/intelligence` — **ne le référence pas**. Elle interroge la base via
+`matchEntity`, c'est-à-dire ce qu'une ingestion a écrit. Sans ingestion GoPlus,
+aucune correspondance GoPlus ne peut remonter.
+
+| | |
+|---|---|
+| catégorie | `PIPE_NOT_CONNECTED` — le module, le poids et la place au registre existent ; le déclenchement, non |
+| écart promesse ↔ capacité | **oui, sur une page de méthodologie publique** |
+| blanc silencieux | non : le signal n'apparaît simplement jamais. Un lecteur qui a lu la page l'attend et ne saura pas qu'il ne viendra pas |
+
+`amf`, `fca` et `forta` ne sont cités par **aucune** page publique — pour
+eux, le registre est en avance sur le produit, ce n'est pas un trou.
+
+## 12.4 · « 5 published cases » — un compte que le dépôt ne sait pas produire
+
+Le dépôt contient **deux** seeds de dossier : `seed-lab.ts` (`tokenCaseFile`)
+et `seed-cbex.ts` (`platformCaseFile`). Quatre `ref` apparaissent dans le code
+(LAB, CBEX, BOTIFY, VINE), les deux dernières sans seed.
+
+Le chiffre **5** est écrit en dur dans la page. Rien dans le code ne le
+produit ni ne le vérifie.
+
+| | |
+|---|---|
+| catégorie | `PIPE_NOT_CONNECTED` — le compte réel est en base, la page porte une constante |
+| **non vérifié** | **je n'affirme pas que 5 est faux.** Des lignes créées par SQL manuel peuvent porter le total à 5, voire plus. Ce que je mesure, c'est qu'**aucune chaîne ne relie ce chiffre à la base**, et qu'il ne bougera pas quand le corpus bougera. |
+
+C'est la même famille que la date de révision légale (§9.1) : une constante
+juste aujourd'hui, que rien ne maintient juste.
+
 ---
 
 # SYNTHÈSE S0 — FINALE
@@ -814,7 +897,7 @@ Uniquement les constats **mesurés** dans ce document.
 
 | catégorie | constats |
 |---|---|
-| `PIPE_NOT_CONNECTED` | **10** |
+| `PIPE_NOT_CONNECTED` | **13** |
 | `COLLECTOR_MISSING` | **5** |
 | `BUG` | **7** |
 | `DATA_ABSENT` | **4** |
@@ -829,7 +912,9 @@ manuel · claims dupliqués en dur sur `/cases/botify/evidence` · 39
 `evidence_refs` VINE non transférées · C13 écarté au transfert · méthodologie
 publiée ↔ score publié · date de révision légale ↔ date git · `chrome-guard`
 hôte et chemin · handler `security-weekly-digest` non armé · registre des
-sources ↔ `vercel.json` (cadences divergentes)
+sources ↔ `vercel.json` (cadences divergentes) · **GoPlus promis par la
+méthodologie et jamais collecté** · **« 5 published cases » constante non
+reliée** · `scan-context` sans chemin d'échec
 
 ### `COLLECTOR_MISSING` — 5
 
@@ -849,7 +934,7 @@ d'e-mail sauté en silence
 date d'observation des faits statiques · adresses de démonstration ·
 montants non quantifiés · `/fr/cases/botify` inexistante
 
-## Les BLANCS SILENCIEUX — **17**
+## Les BLANCS SILENCIEUX — **18**
 
 | # | où | ce qu'un lecteur ne peut pas distinguer |
 |---|---|---|
@@ -863,8 +948,9 @@ montants non quantifiés · `/fr/cases/botify` inexistante
 | 15 | audit d'intégrité | `0 sur 0` = `0 sur 39` — le blanc est dans l'**instrument** |
 | 16 | `/fr/cases/botify` | 404 sans indication que le dossier existe en `en` |
 | 17 | digest e-mail | envoyé / sauté faute de clef |
+| 18 | `/scan` · `scan-context` | contexte absent / dépassement des 8 s |
 
-**Sept sur dix-sept portent sur une personne nommée ou sur un verdict**
+**Sept sur dix-huit portent sur une personne nommée ou sur un verdict**
 (6 à 10, 13, et 14 par ricochet). C'est là qu'une absence muette se lit comme
 un constat favorable.
 
