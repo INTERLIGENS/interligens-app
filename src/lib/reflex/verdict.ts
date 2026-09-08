@@ -198,19 +198,47 @@ function computeConflicts(
     .sort((a, b) => a.code.localeCompare(b.code));
 }
 
+/**
+ * Les causes qui NE SONT PAS des manques.
+ *
+ * Un moteur absent parce que la propriété ne s'applique pas, ou parce que le
+ * contrat ne la demande pas, n'a rien à faire au dénominateur des attendus.
+ * Toute autre absence — panne, jamais sollicité sans raison connue — en est.
+ */
+const HORS_CONTRAT: ReadonlySet<MeasurementState> = new Set<MeasurementState>([
+  "NOT_APPLICABLE",
+  "NOT_REQUESTED_BY_CONTRACT",
+]);
+
 function computeCoverage(engines: readonly ReflexEngineOutput[]): ReflexCoverage {
-  const missing: ReflexEngineCoverage[] = engines
-    .filter((e) => !e.ran)
-    .map((e) => ({
-      engine: e.engine,
-      // `error` posé = tentative échouée ; absent = jamais sollicité.
-      reason: (e.error ? "FAILURE" : "NOT_MEASURED") as MeasurementState,
-      ...(e.error ? { detail: e.error } : {}),
-    }));
+  const absents = engines.filter((e) => !e.ran);
+
+  const decrire = (e: ReflexEngineOutput): ReflexEngineCoverage => ({
+    engine: e.engine,
+    // La cause POSÉE par le contrat gagne : elle est connue, et UNKNOWN lui
+    // serait un mensonge par imprécision. À défaut, `error` posé = tentative
+    // échouée ; rien du tout = jamais sollicité, cause inconnue.
+    reason: e.reason ?? ((e.error ? "FAILURE" : "NOT_MEASURED") as MeasurementState),
+    ...(e.error ? { detail: e.error } : {}),
+  });
+
+  const decrits = absents.map(decrire);
+  const notExpected = decrits.filter((d) => HORS_CONTRAT.has(d.reason));
+  const missing = decrits.filter((d) => !HORS_CONTRAT.has(d.reason));
+
+  const measured = engines.filter((e) => e.ran).length;
+  // Les ATTENDUS : l'inventaire moins ce que le contrat ne demande pas ici.
+  const expected = engines.length - notExpected.length;
+
   return {
     total: engines.length,
-    measured: engines.filter((e) => e.ran).length,
+    measured,
+    expected,
+    // Un moteur qui a tourné était forcément attendu — le contrat ne le
+    // sollicite pas autrement.
+    expectedMeasured: measured,
     missing,
+    notExpected,
   };
 }
 
@@ -375,7 +403,9 @@ export function decide(
     // STRUCTUREL et vérifiable — des moteurs DIFFÉRENTS ont produit des
     // signaux de sévérités opposées, et seuls certains ont motivé le verdict.
     conflicts: computeConflicts(signals, reasonsSource),
-    // Dégradé dès qu'UN moteur n'a pas pu se prononcer — pas seulement à zéro.
+    // Dégradé UNIQUEMENT quand un ATTENDU manque. Un moteur hors contrat n'est
+    // pas une panne, et le compter comme telle éteignait le signal en le
+    // laissant allumé en permanence.
     degraded: coverage.missing.length > 0,
   };
 }

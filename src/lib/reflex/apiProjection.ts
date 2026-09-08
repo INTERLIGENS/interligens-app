@@ -35,8 +35,19 @@ export function localizedResponse(
     // ── L'état de mesure, servi explicitement ──────────────────────────
     confidenceState: result.confidenceState,
     coverage: {
+      // Les TROIS notions, servies séparément. Les confondre faisait passer
+      // « quatre moteurs ne s'appliquent pas ici » pour « quatre manquent ».
       total: result.coverage.total,
       measured: result.coverage.measured,
+      expected: result.coverage.expected,
+      expectedMeasured: result.coverage.expectedMeasured,
+      // Ce que le contrat ne demandait pas — visible, avec sa cause exacte,
+      // pour qu'un lecteur voie que l'absence est normale plutôt que de la
+      // déduire d'un silence.
+      notExpected: result.coverage.notExpected.map((m) => ({
+        engine: m.engine,
+        reason: m.reason,
+      })),
       missing: result.coverage.missing.map((m) => ({
         engine: m.engine,
         reason: m.reason,

@@ -59,7 +59,7 @@ const SAMPLE_VERDICT: ReflexVerdictResult = {
   confidence: "MEDIUM",
   confidenceScore: 0.5,
   confidenceState: "MEASURED" as const,
-  coverage: { total: 0, measured: 0, missing: [] },
+  coverage: { total: 0, measured: 0, expected: 0, expectedMeasured: 0, missing: [], notExpected: [] },
   degraded: false,
   conflicts: [],
 };
@@ -97,7 +97,7 @@ function fakeRow(over: Record<string, unknown> = {}) {
     confidence: "MEDIUM",
     confidenceScore: 0.5,
     confidenceState: "MEASURED" as const,
-    coverage: { total: 0, measured: 0, missing: [] },
+    coverage: { total: 0, measured: 0, expected: 0, expectedMeasured: 0, missing: [], notExpected: [] },
     degraded: false,
     conflicts: [],
     signalsManifest: { engines: [] },
@@ -294,6 +294,24 @@ describe("BUILD 11 — la relecture ne réeffondre pas l'axe de mesure", () => {
     const r = await findById("x");
     expect(r?.confidenceState).toBe("NOT_APPLICABLE");
     expect(r?.coverage.measured).toBe(2);
+    // BUILD 11.1 — `offchain` sur un SOLANA_TOKEN ne s'applique pas : la
+    // relecture RECALCULE la cause au lieu de la deviner, donc ce n'est plus
+    // un manque et le document n'est plus dégradé.
+    expect(r?.coverage.notExpected.map((m) => m.engine)).toEqual(["offchain"]);
+    expect(r?.coverage.missing).toEqual([]);
+    expect(r?.degraded).toBe(false);
+  });
+
+  it("MUTANT — une panne d'un ATTENDU dégrade toujours, à la relecture aussi", async () => {
+    // La sur-correction inverse : le signal doit rester capable d'alerter.
+    mockFindUnique.mockResolvedValue(
+      avecMoteurs("NO_CRITICAL_SIGNAL", [
+        { engine: "knownBad", ran: false },
+        { engine: "tigerscore", ran: true },
+      ]),
+    );
+    const r = await findById("x");
+    expect(r?.coverage.missing.map((m) => m.engine)).toEqual(["knownBad"]);
     expect(r?.degraded).toBe(true);
   });
 
@@ -310,9 +328,12 @@ describe("BUILD 11 — la relecture ne réeffondre pas l'axe de mesure", () => {
     expect(r?.coverage.measured).toBe(0);
   });
 
-  it("`error` n'étant pas persisté, la cause est UNKNOWN — et le dit", async () => {
+  it("`error` n'étant pas persisté, un ATTENDU manquant sort en UNKNOWN — et le dit", async () => {
+    // Ce qui reste réellement perdu après coup : une panne et un « jamais
+    // sollicité sans cause » se confondent. UNKNOWN est le mot pour ça, et il
+    // reste RÉSERVÉ à ce cas — les causes connues, elles, sont recalculées.
     mockFindUnique.mockResolvedValue(
-      avecMoteurs("NO_CRITICAL_SIGNAL", [{ engine: "offchain", ran: false }]),
+      avecMoteurs("NO_CRITICAL_SIGNAL", [{ engine: "knownBad", ran: false }]),
     );
     const r = await findById("x");
     expect(r?.coverage.missing.map((m) => m.reason)).toEqual(["UNKNOWN"]);

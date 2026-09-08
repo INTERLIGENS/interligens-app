@@ -30,6 +30,7 @@ import {
 } from "./adapters";
 import { runCasefileMatch } from "./casefileMatch";
 import { REFLEX_ENGINES_VERSION } from "./constants";
+import { contractAbsenceReason } from "./engineContract";
 import { classify } from "./inputRouter";
 import { buildSignalsManifest, computeSignalsHash } from "./manifestHash";
 import {
@@ -63,12 +64,19 @@ export interface RunReflexOptions {
   dedupWindowSeconds?: number;
 }
 
-const NOOP_ENGINE = (engine: ReflexEngineOutput["engine"]): ReflexEngineOutput => ({
-  engine,
-  ran: false,
-  ms: 0,
-  signals: [],
-});
+/**
+ * Un moteur non sollicité. La CAUSE l'accompagne quand le contrat la connaît.
+ *
+ * Sans elle, l'orchestrateur produisait un `ran: false` muet, et la couverture
+ * ne pouvait plus que deviner — donc dire UNKNOWN, donc dégrader.
+ */
+const NOOP_ENGINE = (
+  engine: ReflexEngineOutput["engine"],
+  inputType: ReflexResolvedInput["type"],
+): ReflexEngineOutput => {
+  const reason = contractAbsenceReason(engine, inputType);
+  return { engine, ran: false, ms: 0, signals: [], ...(reason ? { reason } : {}) };
+};
 
 function extractTigerScore(out: ReflexEngineOutput): number | null {
   if (!out.ran || !out.raw) return null;
@@ -116,20 +124,34 @@ export async function runReflex(
           tigerInput: enrichment.tigerInput,
           withIntel: true,
         })
-      : Promise.resolve(NOOP_ENGINE("tigerscore")),
+      : Promise.resolve(NOOP_ENGINE("tigerscore", resolvedInput.type)),
     enrichment.offChainInput
       ? runOffChain({
           resolvedInput,
           offChainInput: enrichment.offChainInput,
         })
-      : Promise.resolve(NOOP_ENGINE("offchain")),
+      : Promise.resolve(NOOP_ENGINE("offchain", resolvedInput.type)),
     enrichment.narrativeText
       ? runNarrative({
           resolvedInput,
           text: enrichment.narrativeText,
         })
-      : Promise.resolve(NOOP_ENGINE("narrative")),
+      : Promise.resolve(NOOP_ENGINE("narrative", resolvedInput.type)),
   ]);
+
+  // ─── LA CAUSE EST ATTACHÉE DEPUIS L'AUTORITÉ UNIQUE ───────────────────
+  //
+  // `recidivism` et `coordination` rendent `ran: false` sur une garde de type
+  // explicite, sans dire pourquoi. Plutôt que de recopier la règle dans chaque
+  // adaptateur — cinq endroits à maintenir, cinq à désynchroniser — elle est
+  // lue ici, une fois, dans `engineContract.ts`.
+  //
+  // Une cause déjà posée par le moteur n'est jamais écrasée.
+  const attacherCause = (e: ReflexEngineOutput): ReflexEngineOutput => {
+    if (e.ran || e.reason) return e;
+    const reason = contractAbsenceReason(e.engine, resolvedInput.type);
+    return reason ? { ...e, reason } : e;
+  };
 
   const engines: ReflexEngineOutput[] = [
     knownBad,
@@ -140,7 +162,7 @@ export async function runReflex(
     tigerscore,
     offchain,
     narrative,
-  ];
+  ].map(attacherCause);
 
   // 3. Build deterministic manifest + hash
   const signalsManifest = buildSignalsManifest(
