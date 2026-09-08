@@ -36,8 +36,45 @@ export interface EvidenceLink {
 }
 
 export interface OnChainForScore {
-  distribution?: { top10_pct?: string | null };
-  markets?: { liquidity_usd?: number | null };
+  distribution?: {
+    top10_pct?: string | null;
+    /**
+     * BUILD 10 · P0 — l'état de MESURE, posé par la route depuis le
+     * chemin B. Il voyage À CÔTÉ de `top10_pct`, il ne le remplace pas.
+     */
+    measurement?: string | null;
+  };
+  markets?: {
+    liquidity_usd?: number | null;
+    markets_measurement?: string | null;
+  };
+}
+
+/**
+ * ─── BUILD 10 · P0 — CE QUI N'EST PAS MESURÉ NE CORROBORE PAS ─────────────
+ *
+ * ██  PIPE CLOSURE. Aucun nombre, aucun poids, aucun seuil ne change.      ██
+ *
+ * `linkEvidence` corrobore un claim quand `top10 > 40` ou quand la liquidité
+ * est dans une fenêtre basse. Ces deux tests s'appliquaient à des valeurs
+ * COERCÉES : `parseFloat(null ?? "0") = 0` et `Number(null ?? 0) = 0`.
+ *
+ * Un zéro coercé ne franchissait aucun des deux seuils, donc une panne ne
+ * corroborait rien — et le claim restait « Referenced » au lieu d'être
+ * « Corroborated ». Le score en sortait PLUS BAS, c'est-à-dire plus favorable.
+ *
+ * La correction ne touche pas aux seuils : elle refuse de LIRE une valeur qui
+ * n'a pas été mesurée. Sur une observation réellement mesurée, le résultat est
+ * identique au caractère près — c'est démontré par test, pas jugé.
+ *
+ * Une mesure absente (`measurement` non fourni) est traitée comme MESURÉE :
+ * les appelants qui ne posent pas encore l'état gardent EXACTEMENT le
+ * comportement d'avant. C'est ce qui fait de ce changement une fermeture de
+ * tuyau et non une modification de scoring.
+ */
+function estMesure(etat: string | null | undefined): boolean {
+  // `undefined` = l'appelant ne renseigne pas l'état → comportement d'origine.
+  return etat === undefined || etat === null || etat === "MEASURED";
 }
 
 /**
@@ -54,14 +91,18 @@ export function linkEvidence(
   return claims.map((c) => {
     const checks: Array<{ check: string; result: string }> = [];
     let status = c.status ?? "Referenced";
+    // Les valeurs sont calculées EXACTEMENT comme avant.
     const top10 = parseFloat(onChain?.distribution?.top10_pct ?? "0");
     const liq = Number(onChain?.markets?.liquidity_usd ?? 0);
+    // Ce qui est ajouté : on ne corrobore pas sur une valeur non mesurée.
+    const top10Mesure = estMesure(onChain?.distribution?.measurement);
+    const liqMesure = estMesure(onChain?.markets?.markets_measurement);
 
-    if ((c.id === "C5" || c.id === "C7") && top10 > 40) {
+    if ((c.id === "C5" || c.id === "C7") && top10Mesure && top10 > 40) {
       checks.push({ check: "top10_concentration", result: `Top-10: ${top10}%` });
       status = "Corroborated";
     }
-    if (c.id === "C1" && liq > 0 && liq < 100000) {
+    if (c.id === "C1" && liqMesure && liq > 0 && liq < 100000) {
       checks.push({ check: "low_liquidity", result: `Liquidity: $${liq.toLocaleString()}` });
       status = "Corroborated";
     }

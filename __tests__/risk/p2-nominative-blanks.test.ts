@@ -165,6 +165,30 @@ describe("P2 — les cinq appels muets ont disparu des deux fiches", () => {
     }
   });
 
+  it("MUTANT — la charge n'est posée QUE sur un état MESURÉ", () => {
+    // TROU DE PREUVE comblé. Retirer cette garde faisait rendre la section
+    // malgré une panne — l'échec redevenait une donnée — et AUCUN test ne
+    // rougissait. Un mutant qui ne mord pas n'est pas une preuve.
+    for (const p of PAGES_KOL) {
+      expect(codeSeul(p), p).toContain("if (etat === 'MEASURED') pose(d)");
+    }
+  });
+
+  it("MUTANT — les CINQ sections figurent dans la liste des non-constats rendus", () => {
+    // TROU DE PREUVE comblé. Retirer n'importe laquelle des cinq de la liste
+    // rendue la faisait disparaître SILENCIEUSEMENT du signalement — le blanc
+    // silencieux revenait pour cette section — et aucun test ne rougissait.
+    for (const p of PAGES_KOL) {
+      const src = readFileSync(p, "utf8");
+      const bloc = src.slice(src.indexOf("const nonConstates = ["), src.indexOf("].filter("));
+      for (const champ of ["laundry", "cluster", "coordination", "transparency", "shill"]) {
+        expect(bloc, `${p} — ${champ} absent du rendu`).toContain(`champ: "${champ}"`);
+      }
+      // Et leur NOMBRE : en ajouter une sixième non suivie rougirait aussi.
+      expect((bloc.match(/champ: "/g) ?? []).length, p).toBe(5);
+    }
+  });
+
   it("le rendu DISTINGUE la rétention de la panne", () => {
     for (const p of PAGES_KOL) {
       const src = readFileSync(p, "utf8");
