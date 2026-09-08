@@ -1,3 +1,4 @@
+import { TX_READ_CONFIG, classifyRpcRead, unreadable, type ParsedTx, type UnreadableTx } from "@/lib/solana/txRead";
 // src/lib/kol/proceeds.ts
 // Observed Proceeds computation engine — v1 methodology
 //
@@ -44,23 +45,38 @@ async function helius(method: string, params: any[]) {
     signal: AbortSignal.timeout(15000),
   });
   const j = await res.json();
-  return j.result ?? null;
+  // ─── P0 AGAVE TX V1 — `j.error` N'EST PLUS AVALÉ ──────────────────────
+  //
+  // `j.result ?? null` faisait d'un refus explicite du nœud une absence. La
+  // réponse brute est désormais rendue telle quelle ; c'est l'appelant qui la
+  // classe et distingue « il n'y a rien » de « nous n'avons pas pu lire ».
+  return j;
 }
 
 async function fetchWalletGeneralSwaps(
   walletAddress: string,
   knownWalletAddresses: Set<string>
-): Promise<any[]> {
+): Promise<{ events: any[]; unreadable: UnreadableTx[] }> {
+  /** Les signatures connues dont le corps n'a pas pu être lu. */
+  const illisibles: UnreadableTx[] = [];
   const events: any[] = [];
-  const sigs = await helius("getSignaturesForAddress", [walletAddress, { limit: 20 }]);
-  if (!sigs?.length) return events;
+  const sigs = (await helius("getSignaturesForAddress", [walletAddress, { limit: 20 }]))?.result ?? null;
+  if (!sigs?.length) return { events, unreadable: illisibles };
 
   for (const sigInfo of sigs.slice(0, 10)) {
     try {
-      const tx = await helius("getTransaction", [
-        sigInfo.signature,
-        { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
-      ]);
+      const lu = classifyRpcRead<ParsedTx>(
+        await helius("getTransaction", [sigInfo.signature, TX_READ_CONFIG]),
+      );
+      // Une signature connue dont le corps est refusé n'est PAS une absence :
+      // on la consigne, avec son code et sa cause, au lieu de la perdre.
+      const refus = unreadable(sigInfo.signature, lu);
+      if (refus) {
+        illisibles.push(refus);
+        continue;
+      }
+      if (lu.kind !== "value") continue;
+      const tx = lu.value;
       if (!tx || tx.meta?.err) continue;
 
       const accountKeys: any[] = tx.transaction?.message?.accountKeys ?? [];
@@ -102,7 +118,9 @@ async function fetchWalletGeneralSwaps(
       });
     } catch { continue; }
   }
-  return events;
+  // La liste des illisibles voyage À CÔTÉ des événements : une signature
+  // dont le corps a été refusé n'est ni un événement, ni un néant.
+  return { events, unreadable: illisibles };
 }
 
 async function fetchSOLEventsForCA(
@@ -110,27 +128,37 @@ async function fetchSOLEventsForCA(
   tokenCA: string,
   caseId: string,
   knownWalletAddresses: Set<string>
-): Promise<any[]> {
+): Promise<{ events: any[]; unreadable: UnreadableTx[] }> {
+  /** Les signatures connues dont le corps n'a pas pu être lu. */
+  const illisibles: UnreadableTx[] = [];
   const events: any[] = [];
 
-  const tokenAccounts = await helius("getTokenAccountsByOwner", [
+  const tokenAccounts = (await helius("getTokenAccountsByOwner", [
     walletAddress,
     { mint: tokenCA },
     { encoding: "jsonParsed" },
-  ]);
+  ]))?.result ?? null;
 
-  if (!tokenAccounts?.value?.length) return events;
+  if (!tokenAccounts?.value?.length) return { events, unreadable: illisibles };
   const tokenAccount = tokenAccounts.value[0].pubkey;
 
-  const sigs = await helius("getSignaturesForAddress", [tokenAccount, { limit: 100 }]);
-  if (!sigs?.length) return events;
+  const sigs = (await helius("getSignaturesForAddress", [tokenAccount, { limit: 100 }]))?.result ?? null;
+  if (!sigs?.length) return { events, unreadable: illisibles };
 
   for (const sigInfo of sigs.slice(0, 50)) {
     try {
-      const tx = await helius("getTransaction", [
-        sigInfo.signature,
-        { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
-      ]);
+      const lu = classifyRpcRead<ParsedTx>(
+        await helius("getTransaction", [sigInfo.signature, TX_READ_CONFIG]),
+      );
+      // Une signature connue dont le corps est refusé n'est PAS une absence :
+      // on la consigne, avec son code et sa cause, au lieu de la perdre.
+      const refus = unreadable(sigInfo.signature, lu);
+      if (refus) {
+        illisibles.push(refus);
+        continue;
+      }
+      if (lu.kind !== "value") continue;
+      const tx = lu.value;
       if (!tx || tx.meta?.err) continue;
 
       const blockTime = tx.blockTime;
@@ -198,7 +226,9 @@ async function fetchSOLEventsForCA(
     } catch { continue; }
   }
 
-  return events;
+  // La liste des illisibles voyage À CÔTÉ des événements : une signature
+  // dont le corps a été refusé n'est ni un événement, ni un néant.
+  return { events, unreadable: illisibles };
 }
 
 export async function computeProceedsForHandle(handle: string): Promise<{
@@ -207,7 +237,14 @@ export async function computeProceedsForHandle(handle: string): Promise<{
   eventCount: number;
   skipped?: boolean;
   error?: string;
+  /**
+   * Les signatures connues dont le corps n'a pas pu être lu. Elles ne sont ni
+   * des événements, ni une absence : ce champ existe pour qu'elles ne
+   * disparaissent pas du décompte en silence.
+   */
+  unreadableTx?: UnreadableTx[];
 }> {
+  const illisiblesTotal: UnreadableTx[] = [];
   const lastMs = _lastRecompute.get(handle);
   if (lastMs !== undefined && Date.now() - lastMs < DEBOUNCE_MS) {
     return { success: true, totalProceedsUsd: 0, eventCount: 0, skipped: true };
@@ -246,7 +283,8 @@ export async function computeProceedsForHandle(handle: string): Promise<{
       if (wallet.chain?.toUpperCase() === "SOL") {
         for (const { caseId, ca } of caseCAs) {
           console.log(`  wallet ${wallet.address.slice(0,8)}... × CA ${caseId}`);
-          const events = await fetchSOLEventsForCA(wallet.address, ca, caseId, knownAddresses);
+          const { events, unreadable: nonLus } = await fetchSOLEventsForCA(wallet.address, ca, caseId, knownAddresses);
+          illisiblesTotal.push(...nonLus);
           console.log(`  → ${events.length} events`);
           allEvents.push(...events);
         }
@@ -261,7 +299,8 @@ export async function computeProceedsForHandle(handle: string): Promise<{
       .slice(0, 5);
     for (const wallet of walletsToScan) {
       console.log(`  wallet ${wallet.address.slice(0, 8)}... — general swap scan`);
-      const swapEvents = await fetchWalletGeneralSwaps(wallet.address, knownAddresses);
+      const { events: swapEvents, unreadable: nonLusSwap } = await fetchWalletGeneralSwaps(wallet.address, knownAddresses);
+      illisiblesTotal.push(...nonLusSwap);
       console.log(`  → ${swapEvents.length} swap events`);
       allEvents.push(...swapEvents);
     }
@@ -349,7 +388,21 @@ export async function computeProceedsForHandle(handle: string): Promise<{
     );
 
     _lastRecompute.set(handle, Date.now());
-    return { success: true, totalProceedsUsd: fullTotal, eventCount: dedupedEvents.length };
+    // Les signatures illisibles sortent AVEC le résultat. Sans ce champ, un
+    // total calculé sur 8 transactions lues et 12 refusées serait
+    // indistinguable d'un total calculé sur 8 transactions et rien d'autre.
+    if (illisiblesTotal.length > 0) {
+      console.warn(
+        `[proceeds] ${handle} : ${illisiblesTotal.length} signature(s) connue(s) dont le corps n'a pas pu être lu`,
+        illisiblesTotal.map((u) => `${u.signature.slice(0, 12)}… ${u.state}/${u.code}`),
+      );
+    }
+    return {
+      success: true,
+      totalProceedsUsd: fullTotal,
+      eventCount: dedupedEvents.length,
+      ...(illisiblesTotal.length > 0 ? { unreadableTx: illisiblesTotal } : {}),
+    };
   } catch (err: any) {
     console.error("[computeProceeds]", err);
     return { success: false, totalProceedsUsd: 0, eventCount: 0, error: err.message };

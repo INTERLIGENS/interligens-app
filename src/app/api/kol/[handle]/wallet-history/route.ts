@@ -1,3 +1,4 @@
+import { TX_READ_CONFIG, classifyRpcRead, unreadable, type ParsedTx, type UnreadableTx } from "@/lib/solana/txRead";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PUBLIC_KOL_FILTER } from "@/lib/kol/publishGate";
@@ -24,7 +25,9 @@ async function heliusRpc(method: string, params: any[]) {
     });
     if (!res.ok) return null;
     const j = await res.json();
-    return j.result ?? null;
+    // P0 AGAVE TX V1 — la réponse brute est rendue ; c'est l'appelant qui
+    // classe, et qui distingue une absence d'un refus.
+    return j;
   } catch (err) {
     console.warn("[wallet-history] helius rpc error", method, err);
     return null;
@@ -65,12 +68,14 @@ async function fetchTokenMetadata(mints: string[]) {
 }
 
 async function scanWallet(address: string) {
+  /** Signatures connues dont le corps n'a pas pu être lu. */
+  const illisibles: UnreadableTx[] = [];
   const mints = new Map<string, { lastSeen: number; txCount: number }>();
 
-  const sigs = await heliusRpc("getSignaturesForAddress", [
+  const sigs = (await heliusRpc("getSignaturesForAddress", [
     address,
     { limit: 150 },
-  ]);
+  ]))?.result ?? null;
   if (!sigs || !Array.isArray(sigs)) return mints;
 
   const toProcess = sigs.slice(0, 150);
@@ -79,15 +84,19 @@ async function scanWallet(address: string) {
     const batch = toProcess.slice(i, i + 10);
     const results = await Promise.all(
       batch.map((s: any) =>
-        heliusRpc("getTransaction", [
-          s.signature,
-          { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
-        ])
+        heliusRpc("getTransaction", [s.signature, TX_READ_CONFIG])
       )
     );
     for (let j = 0; j < results.length; j++) {
-      const tx = results[j];
       const sigInfo = batch[j];
+      // Un refus de version est consigné, jamais confondu avec une absence.
+      const lu = classifyRpcRead<ParsedTx>(results[j]);
+      const refus = unreadable(sigInfo?.signature ?? "", lu);
+      if (refus) {
+        illisibles.push(refus);
+        continue;
+      }
+      const tx = lu.kind === "value" ? lu.value : null;
       if (!tx || tx.meta?.err) continue;
       const blockTime: number | undefined = tx.blockTime ?? sigInfo?.blockTime;
       const ts = blockTime ? blockTime * 1000 : Date.now();
@@ -112,6 +121,14 @@ async function scanWallet(address: string) {
     }
   }
 
+  // Un refus de lecture est CONSIGNÉ, jamais absorbé : un scan qui n'a lu
+  // qu'une partie des transactions ne doit pas se présenter comme complet.
+  if (illisibles.length > 0) {
+    console.warn(
+      `[wallet-history] ${address} : ${illisibles.length} signature(s) connue(s) illisible(s)`,
+      illisibles.map((u) => `${u.signature.slice(0, 12)}… ${u.state}/${u.code}`),
+    );
+  }
   return mints;
 }
 

@@ -1,3 +1,4 @@
+import { TX_READ_CONFIG, classifyRpcRead, unreadable, type UnreadableTx } from "@/lib/solana/txRead";
 // src/lib/freshness/engine.ts
 // Freshness / Recency signal engine — V1
 
@@ -81,7 +82,8 @@ async function helius(
       signal: AbortSignal.timeout(10_000),
     });
     const j = await r.json() as { result?: unknown };
-    return j.result ?? null;
+    // P0 AGAVE TX V1 — la réponse brute est rendue ; l'appelant classe.
+    return j;
   } catch {
     return null;
   }
@@ -91,11 +93,11 @@ async function getSolanaFirstTxTime(
   address: string,
   fetchFn: typeof fetch,
 ): Promise<Date | null> {
-  const sigs = await helius(
+  const sigs = ((await helius(
     "getSignaturesForAddress",
     [address, { limit: 1000 }],
     fetchFn,
-  ) as Array<{ signature: string; blockTime?: number }> | null;
+  )) as { result?: unknown })?.result as Array<{ signature: string; blockTime?: number }> | null;
   if (!sigs?.length) return null;
   const oldest = sigs[sigs.length - 1];
   if (!oldest.blockTime) return null;
@@ -106,11 +108,13 @@ async function getSolanaMintAuthority(
   mint: string,
   fetchFn: typeof fetch,
 ): Promise<string | null> {
-  const info = await helius(
+  const info = ((await helius(
     "getParsedAccountInfo",
     [mint, { encoding: "jsonParsed" }],
     fetchFn,
-  ) as { value?: { data?: { parsed?: { info?: { mintAuthority?: string } } } } } | null;
+  )) as { result?: unknown })?.result as
+    | { value?: { data?: { parsed?: { info?: { mintAuthority?: string } } } } }
+    | null;
   return info?.value?.data?.parsed?.info?.mintAuthority ?? null;
 }
 
@@ -118,26 +122,36 @@ async function countRecentLaunches(
   deployer: string,
   windowMs: number,
   fetchFn: typeof fetch,
-): Promise<number> {
-  const sigs = await helius(
+): Promise<{ count: number; unreadable: UnreadableTx[] }> {
+  const sigs = ((await helius(
     "getSignaturesForAddress",
     [deployer, { limit: 100 }],
     fetchFn,
-  ) as Array<{ signature: string; blockTime?: number }> | null;
-  if (!sigs?.length) return 0;
+  )) as { result?: unknown })?.result as Array<{ signature: string; blockTime?: number }> | null;
+  if (!sigs?.length) return { count: 0, unreadable: [] };
   const cutoff = Date.now() - windowMs;
   const recent = sigs.filter((s) => s.blockTime && s.blockTime * 1_000 >= cutoff);
-  if (!recent.length) return 0;
+  if (!recent.length) return { count: 0, unreadable: [] };
 
   let count = 0;
+  /** Signatures connues dont le corps n'a pas pu être lu. */
+  const illisibles: UnreadableTx[] = [];
   for (const sig of recent.slice(0, 20)) {
     try {
-      const tx = await helius(
-        "getTransaction",
-        [sig.signature, { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }],
-        fetchFn,
-      ) as { transaction?: { message?: { instructions?: Array<{ programId?: string; parsed?: { type?: string } }> } } } | null;
-      if (!tx) continue;
+      const lu = classifyRpcRead<{
+        transaction?: { message?: { instructions?: Array<{ programId?: string; parsed?: { type?: string } }> } };
+      }>(await helius("getTransaction", [sig.signature, TX_READ_CONFIG], fetchFn));
+      // ─── P0 AGAVE TX V1 ──────────────────────────────────────────────
+      // Un refus de lecture n'est pas « pas de mint ici ». Le compteur ne
+      // l'absorbe pas : il le consigne à part, et le résultat dira sur
+      // combien de transactions il a réellement porté.
+      const refus = unreadable(sig.signature, lu);
+      if (refus) {
+        illisibles.push(refus);
+        continue;
+      }
+      if (lu.kind !== "value") continue;
+      const tx = lu.value;
       const instrs = tx.transaction?.message?.instructions ?? [];
       const hasInitMint = instrs.some(
         (i) =>
@@ -147,7 +161,10 @@ async function countRecentLaunches(
       if (hasInitMint) count++;
     } catch { /* skip */ }
   }
-  return count;
+  // Le décompte voyage AVEC ce qu'il n'a pas pu lire. Un `0` obtenu sur 20
+  // transactions refusées n'est pas le même fait qu'un `0` obtenu sur 20
+  // transactions lues — et c'est exactement la confusion que ce P0 ferme.
+  return { count, unreadable: illisibles };
 }
 
 // ── EVM helpers ─────────────────────────────────────────────────────────────
@@ -173,7 +190,8 @@ async function evmRpc(
       signal: AbortSignal.timeout(8_000),
     });
     const j = await r.json() as { result?: unknown };
-    return j.result ?? null;
+    // P0 AGAVE TX V1 — la réponse brute est rendue ; l'appelant classe.
+    return j;
   } catch {
     return null;
   }
@@ -304,7 +322,22 @@ export async function computeFreshnessSignals(
         );
       }
 
-      const launches = await countRecentLaunches(deployerAddr, 48 * 3_600_000, _fetchFn);
+      const { count: launches, unreadable: launchesIllisibles } =
+        await countRecentLaunches(deployerAddr, 48 * 3_600_000, _fetchFn);
+      // ─── P0 AGAVE TX V1 ────────────────────────────────────────────────
+      // Un décompte obtenu sur des transactions REFUSÉES n'est pas un
+      // décompte : il ne dit pas « ce deployer n'a rien lancé », il dit
+      // « nous n'avons pas pu regarder ». Le signal ne se fabrique donc pas
+      // sur un dénombrement qui n'a pas pu être fait — et l'inverse, taire
+      // un vrai décompte parce qu'une transaction sans rapport a échoué,
+      // serait la sur-correction symétrique : seul le cas où RIEN n'a été
+      // lu est écarté.
+      if (launchesIllisibles.length > 0) {
+        console.warn(
+          `[freshness] ${deployerAddr} : ${launchesIllisibles.length} signature(s) illisible(s) — décompte partiel`,
+          launchesIllisibles.map((u) => `${u.signature.slice(0, 12)}… ${u.state}/${u.code}`),
+        );
+      }
       if (launches >= 2) {
         const sev: Exclude<FreshnessSeverity, "NONE"> =
           launches >= 5 ? "CRITICAL" : launches >= 3 ? "HIGH" : "MEDIUM";
