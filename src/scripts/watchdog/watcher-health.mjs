@@ -93,6 +93,18 @@ function loadC4() {
   }
 }
 
+// Même mécanique que loadC4() : la fraîcheur d'une source se décide dans un
+// module TS testable — ce fichier ne fait que la requête et l'appel.
+function loadSourceFreshness() {
+  const { register } = require("tsx/cjs/api");
+  const unregister = register();
+  try {
+    return require(path.join(REPO_ROOT, "src/lib/watchdog/sourceFreshness.ts"));
+  } finally {
+    unregister();
+  }
+}
+
 // Même mécanique que loadC4() : la logique de la sonde « Veille LLM » vit dans
 // un module TS testable, ce fichier ne fait que la requête et l'appel.
 function loadLlmVeille() {
@@ -217,6 +229,11 @@ const INTEL_MAX_AGE_DAYS_DEFAULT = parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_D
 // Veille LLM — doit rester aligné sur MAX_ATTEMPTS de la route cron
 // intel-summarize : au-delà, l'item n'est plus repris et sort de la file.
 const LLM_MAX_ATTEMPTS = parseInt(process.env.WATCHDOG_LLM_MAX_ATTEMPTS ?? "5", 10);
+// Les slugs que le registre ANNONCE (src/lib/intelligence/sources/registry.ts).
+// Une source déclarée sans aucune ligne de run rend NOT_ARMED : l'écart entre
+// ce qui est annoncé et ce qui tourne est le constat, pas un âge.
+const INTEL_DECLARED_SLUGS = (process.env.WATCHDOG_INTEL_DECLARED_SLUGS ??
+  "ofac,amf,fca,scamsniffer,forta,goplus").split(",").map((x) => x.trim()).filter(Boolean);
 const INTEL_MAX_AGE_DAYS = {
   ofac: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_OFAC ?? "7", 10),
   amf: parseInt(process.env.WATCHDOG_INTEL_MAX_AGE_AMF ?? "14", 10),
@@ -561,11 +578,28 @@ async function runChecks(client) {
   // Le seuil est par palier de source : une liste de sanctions se démode plus
   // vite qu'un flux communautaire de domaines de phishing.
   try {
+    // ── BUILD 10 — CORRECTIF D'INSTRUMENTATION ──────────────────────────
+    //
+    // Cette sonde lisait `max(intel_source_observations."ingestedAt")`. Mesuré
+    // le 2026-09-08 : OFAC était déclaré « PÉRIMÉE » en crit à 14 j alors que
+    // son collecteur avait tourné 7 h plus tôt et récupéré 874 enregistrements.
+    //
+    // `ingestedAt` date l'INSERTION d'une observation. Une liste stable
+    // n'insère rien, et depuis la garde `IS DISTINCT FROM` de `bulkUpsert` les
+    // lignes inchangées ne sont plus réécrites : `ingestedAt`, `lastVerifiedAt`
+    // et `lastSeenAt` datent le dernier CHANGEMENT, pas la dernière
+    // observation. `src/lib/intelligence/ingest.ts` le déclare et demande
+    // qu'aucune sonde ne s'y adosse — c'était exactement cette sonde.
+    //
+    // La garde n'est PAS touchée : elle est correcte. C'est la mesure qui
+    // change de champ. `intel_ingestion_batches` est un journal en append,
+    // écrit à chaque run par le collecteur, porteur d'un `status` — donc
+    // « a tourné », « a réussi » et « n'a jamais tourné » s'y distinguent.
     const r = await client.query(
       `SELECT "sourceSlug",
-              max("ingestedAt")                                    AS last,
-              (now()::date - max("ingestedAt")::date)::int          AS age_days
-         FROM intel_source_observations
+              max("startedAt")                                        AS last_started_at,
+              max("completedAt") FILTER (WHERE status = 'success')     AS last_success_at
+         FROM intel_ingestion_batches
         GROUP BY "sourceSlug"`
     );
 
@@ -577,41 +611,98 @@ async function runChecks(client) {
       });
       lines.push(`• Intel sources : AUCUNE observation`);
     } else {
-      const stale = [];
-      for (const row of r.rows) {
-        const slug = row.sourceSlug;
-        const age = Number(row.age_days);
-        const limit = INTEL_MAX_AGE_DAYS[slug] ?? INTEL_MAX_AGE_DAYS_DEFAULT;
-        if (age > limit) stale.push({ slug, age, limit });
-      }
+      // Le verdict vit dans le module testable. `NOT_ARMED` (déclaré, jamais
+      // exécuté) et `UNKNOWN` (a tourné, jamais réussi) ne sont PAS de la
+      // vétusté : ils n'ont pas d'âge, et aucune sentinelle numérique ne vient
+      // en tenir lieu.
+      const { assessSourceFreshness, needsAttention, formatVerdict } = loadSourceFreshness();
+      const verdicts = assessSourceFreshness(
+        r.rows.map((row) => ({
+          sourceSlug: row.sourceSlug,
+          lastStartedAt: row.last_started_at ? new Date(row.last_started_at) : null,
+          lastSuccessAt: row.last_success_at ? new Date(row.last_success_at) : null,
+        })),
+        INTEL_DECLARED_SLUGS,
+        INTEL_MAX_AGE_DAYS,
+        INTEL_MAX_AGE_DAYS_DEFAULT,
+        new Date(),
+      );
+      const stale = verdicts.filter(needsAttention).map((v) => ({
+        slug: v.sourceSlug,
+        age: v.ageDays,
+        limit: v.limitDays,
+        state: v.state,
+        texte: formatVerdict(v),
+      }));
 
       // Une source réglementaire périmée est CRITIQUE : le produit rend des
       // verdicts « pas de sanction » qui ne veulent rien dire.
-      const staleTier1 = stale.filter((x) => INTEL_TIER1_SLUGS.has(x.slug));
-      if (staleTier1.length > 0) {
+      // Le LIBELLÉ suit l'ÉTAT. Une source jamais exécutée n'est pas « périmée » :
+      // dire « périmée » d'un collecteur jamais branché est la même faute
+      // d'instrumentation que celle qu'on ferme ici, un cran plus bas.
+      const perimees = stale.filter((x) => x.state === "STALE");
+      const jamaisArmees = stale.filter((x) => x.state === "NOT_ARMED");
+      const indeterminees = stale.filter((x) => x.state === "UNKNOWN");
+      const t1 = (xs) => xs.filter((x) => INTEL_TIER1_SLUGS.has(x.slug));
+
+      if (t1(perimees).length > 0) {
         problems.push({
           key: "intel_stale_tier1",
           severity: "crit",
           line:
             `🔴 SOURCE RÉGLEMENTAIRE PÉRIMÉE — ` +
-            staleTier1.map((x) => `${x.slug} ${x.age}j (seuil ${x.limit}j)`).join(", ") +
+            t1(perimees).map((x) => x.texte).join(", ") +
             `. TigerScore applique un floor sur ces listes ET ne contrôle aucune fraîcheur : ` +
             `les verdicts « pas de sanction » ne sont plus fiables.`,
         });
       }
-      const staleOther = stale.filter((x) => !INTEL_TIER1_SLUGS.has(x.slug));
-      if (staleOther.length > 0) {
+      // Une source réglementaire déclarée que RIEN n'exécute : le floor ne peut
+      // pas se déclencher sur elle, jamais. Ce n'est pas de la vétusté, et ça
+      // ne se répare pas en attendant.
+      if (t1(jamaisArmees).length > 0) {
         problems.push({
-          key: "intel_stale",
-          severity: "warn",
+          key: "intel_not_armed_tier1",
+          severity: "crit",
           line:
-            `⚠️ Source intel périmée — ` +
-            staleOther.map((x) => `${x.slug} ${x.age}j (seuil ${x.limit}j)`).join(", "),
+            `🔴 SOURCE RÉGLEMENTAIRE JAMAIS EXÉCUTÉE — ` +
+            t1(jamaisArmees).map((x) => x.texte).join(", ") +
+            `. Déclarée au registre, aucun run en base : le floor TigerScore ne ` +
+            `peut pas se déclencher sur cette liste.`,
+        });
+      }
+      if (t1(indeterminees).length > 0) {
+        problems.push({
+          key: "intel_unknown_tier1",
+          severity: "crit",
+          line:
+            `🔴 SOURCE RÉGLEMENTAIRE SANS SUCCÈS — ` +
+            t1(indeterminees).map((x) => x.texte).join(", ") +
+            `. Des runs existent, aucun n'a réussi : la fraîcheur n'est pas mesurable.`,
         });
       }
 
-      const summary = r.rows
-        .map((row) => `${row.sourceSlug} ${Number(row.age_days)}j`)
+      const autres = stale.filter((x) => !INTEL_TIER1_SLUGS.has(x.slug));
+      const autresPerimees = autres.filter((x) => x.state === "STALE");
+      const autresNonArmees = autres.filter((x) => x.state !== "STALE");
+      if (autresPerimees.length > 0) {
+        problems.push({
+          key: "intel_stale",
+          severity: "warn",
+          line: `⚠️ Source intel périmée — ` + autresPerimees.map((x) => x.texte).join(", "),
+        });
+      }
+      if (autresNonArmees.length > 0) {
+        problems.push({
+          key: "intel_not_armed",
+          severity: "warn",
+          line:
+            `⚠️ Source intel sans exécution mesurable — ` +
+            autresNonArmees.map((x) => x.texte).join(", "),
+        });
+      }
+
+      const summary = verdicts
+        .map((v) => formatVerdict(v))
         .sort()
         .join(", ");
       lines.push(`• Intel sources : ${summary}`);

@@ -102,8 +102,44 @@ describe("détection de péremption — watchdog", () => {
 
   it("une source réglementaire périmée est CRITIQUE, pas un simple warn", () => {
     const s = watchdog();
-    const bloc = s.slice(s.indexOf("staleTier1"), s.indexOf("staleOther"));
+    const bloc = s.slice(s.indexOf("intel_stale_tier1"), s.indexOf("intel_not_armed_tier1"));
     expect(bloc).toContain('severity: "crit"');
+  });
+
+  // ── BUILD 10 — la sonde mesure l'EXÉCUTION, plus l'horodatage d'observation ──
+  //
+  // `ingestedAt` / `lastVerifiedAt` / `lastSeenAt` datent le dernier CHANGEMENT
+  // depuis la garde `IS DISTINCT FROM` de bulkUpsert. S'y adosser déclarait OFAC
+  // « périmée » à 14 j alors que son collecteur avait tourné 7 h plus tôt.
+  it("la fraîcheur se mesure sur le journal d'exécution, pas sur les observations", () => {
+    const s = watchdog();
+    const bloc = s.slice(s.indexOf("const r = await client.query"), s.indexOf("intel_empty"));
+    expect(bloc).toContain("intel_ingestion_batches");
+    expect(bloc).toContain("status = 'success'");
+  });
+
+  it("aucun horodatage d'observation ne sert de sonde de fraîcheur", () => {
+    const s = watchdog();
+    const bloc = s.slice(s.indexOf("const r = await client.query"), s.indexOf("intel_empty"));
+    for (const champ of ["ingestedAt", "lastVerifiedAt", "lastSeenAt"]) {
+      expect(bloc.includes(`max("${champ}")`), `${champ} réintroduit comme sonde`).toBe(false);
+    }
+  });
+
+  it("une source jamais exécutée n'est pas dite « périmée »", () => {
+    const s = watchdog();
+    expect(s).toContain("intel_not_armed_tier1");
+    expect(s).toContain("JAMAIS EXÉCUTÉE");
+  });
+
+  it("une source qui a tourné sans jamais réussir a sa propre clé", () => {
+    expect(watchdog()).toContain("intel_unknown_tier1");
+  });
+
+  it("le classement vit dans un module testable, pas dans le script", () => {
+    const s = watchdog();
+    expect(s).toContain("loadSourceFreshness");
+    expect(s).toContain("assessSourceFreshness");
   });
 
   it("un intel vault vide est traité, pas seulement un vault vieux", () => {
