@@ -618,3 +618,197 @@ chaque vide est nommé.
 **Aucune fuite croisée, aucun contenu fabriqué, aucun blanc muet.** Le défaut
 n'est pas dans le rendu : il est en amont, dans un corpus dont la preuve n'a ni
 empreinte ni origine.
+
+---
+
+# S5 · `/api/casefile` champ par champ — et un blanc qui rassure
+
+Comparaison des deux dossiers sur **39 chemins de champ** de la réponse JSON.
+
+## Champs vides sur les DEUX dossiers
+
+| champ | BOTIFY | VINE | catégorie |
+|---|---|---|---|
+| `off_chain.tiger_score` | `null` | `null` | `DATA_ABSENT` signalé (rendu « Not established » au PDF) |
+| `on_chain.asset.mintAuthority` | `null` | `null` | voir ci-dessous |
+| **`on_chain.distribution.top_holders`** | **`[]`** | **`[]`** | voir ci-dessous |
+| **`on_chain.distribution.top10_pct`** | **`null`** | **`null`** | voir ci-dessous |
+| **`on_chain.distribution.concentration_flags`** | **`[]`** | **`[]`** | voir ci-dessous |
+
+## Champs qui diffèrent
+
+| champ | BOTIFY | VINE | lecture |
+|---|---|---|---|
+| `off_chain.sources` | **`[8]`** | **`[]`** | conforme à S2 — VINE n'a aucune ligne `CaseFileSource` |
+| `on_chain.flows.notable_wallets` | **`[]`** | **`[4]`** | **attendu et documenté** |
+
+`notable_wallets` vide sur BOTIFY est **explicitement attendu** : le commentaire
+de la route indique que ces adresses viennent désormais de
+`token_casefiles."keyWallets"`, que BOTIFY n'en porte aucun, et qu'en fabriquer
+pour remplir la forme serait le défaut qu'on ferme. **`DATA_ABSENT`, intentionnel
+et documenté.**
+
+Ce qui fonctionne par ailleurs : `on_chain.markets` est **entièrement peuplé** sur
+les deux dossiers — `dex`, `price_usd`, `liquidity_usd`, `volume_24h_usd`,
+`fdv_usd`, `primary_pool`. Une source externe répond donc bien.
+
+## Le blanc silencieux — `distribution`
+
+C'est le seul **blanc muet** trouvé sur l'ensemble de la reconnaissance, et il
+porte sur un signal de risque.
+
+`fetchHolders` interroge le RPC Solana public et **avale toute erreur** :
+
+```ts
+async function fetchHolders(mint) {
+  try {
+    const r = await fetch("https://api.mainnet-beta.solana.com", { …,
+      signal: AbortSignal.timeout(6000) });
+    …
+    if (!holders.length) return null;
+    …
+  } catch { return null; }        // ← toute cause, sans trace
+}
+```
+
+Puis, en aval :
+
+```ts
+const top10 = parseFloat(holders?.top10_pct ?? "0");   // null  →  0
+if (top10 > 50) concentrationFlags.push("high_top10_concentration");
+if (top10 > 70) concentrationFlags.push("extreme_concentration");
+```
+
+**Conséquence mesurée.** Quand la lecture des porteurs échoue — timeout de 6 s,
+RPC public saturé, erreur réseau, réponse vide — la réponse rend :
+
+```json
+"distribution": { "top_holders": [], "top10_pct": null, "concentration_flags": [] }
+```
+
+Aucun champ d'erreur, aucun marqueur d'indisponibilité. **Un échec de lecture et
+un jeton sans concentration produisent exactement la même sortie.**
+
+Et le défaut penche du mauvais côté : `top10` retombe à `0`, donc **aucun
+drapeau de concentration n'est levé**. `concentration_flags: []` se lit
+« aucun problème de concentration détecté ». Une panne muette produit un signal
+rassurant.
+
+> **Je n'ai pas testé le RPC.** Le mandat interdit tout appel RPC. Je ne peux donc
+> pas dire si `api.mainnet-beta.solana.com` répond en ce moment — seulement que
+> le bloc est vide sur les deux dossiers, que `markets` est peuplé (donc le
+> réseau sortant fonctionne), et que **le code ne permet pas de distinguer les
+> deux causes**.
+
+| objet | catégorie |
+|---|---|
+| `distribution.top_holders` · `top10_pct` · `concentration_flags` | **`BUG`** — blanc silencieux sur un signal de risque, orienté vers la réassurance |
+
+C'est le seul champ de toute la reconnaissance que je classe en `BUG`.
+
+## Et la tension de S4 devient concrète
+
+Le PDF BOTIFY affirme :
+
+> *Top-3 holder concentration reached 62% at peak, with 78% top-10 (source:
+> Solscan holder queries).*
+
+alors que **la lecture vivante des porteurs, sur la même surface produit, rend un
+bloc vide**. Le chiffre publié vient du gabarit statique ; le lecteur live ne le
+porte pas et ne le confirme pas.
+
+Ce n'est pas une contradiction — le PDF cite explicitement Solscan et un « pic »
+passé, pas une mesure du jour. Mais **le produit publie une concentration de
+62 %/78 % et, dans le même temps, son propre lecteur de concentration ne rend
+rien.** À verser au dossier de doctrine ouvert en S4.
+
+---
+
+# S6 · Surfaces non mesurées
+
+| surface | raison | catégorie |
+|---|---|---|
+| `/en/cases/lab` · `/fr/cases/lab` · pages KOL | **gate beta `/access`** — redirection vers un formulaire de code NDA. Aucun code saisi. | **`NOT_MEASURABLE`** |
+| `/api/casefile/generate` | exige un `POST`. Mandat en lecture seule. | **`NOT_MEASURABLE`** |
+| exécution de 15 crons sur 17 | aucune trace dans `JobRunLog` | **`NOT_MEASURABLE`** |
+| disponibilité du RPC Solana public | tout appel RPC interdit par le mandat | **`NOT_MEASURABLE`** |
+| 55 tables vides | distinguer collecteur manquant / feature jamais lancée / vestige demande de savoir si un écrivain existe — moitié CODE | renvoyé à la convergence |
+
+**Ces surfaces sont non mesurées, pas vides.** La distinction est le point de la
+consigne, et je m'y tiens : je n'ai pas de mesure, donc je n'ai pas de verdict.
+
+---
+
+# SYNTHÈSE
+
+## Décompte par catégorie
+
+| catégorie | nombre | où |
+|---|---|---|
+| `DATA_ABSENT` | **~40 champs** | 9 scalaires KOL + 2 relations KOL · `evidenceRefs` VINE · `claimDate`/`actors`/`threadUrl` BOTIFY · `CaseFileSource` VINE · `sourceUrl`/`sha256`/`snapshotId` BOTIFY · tigerScore ×2 · catalogue OSINT ×2 · 8 sections PDF · `notable_wallets` BOTIFY |
+| `INTENTIONALLY_NOT_SHOWN` | **~23** | 6 montants retirés (2 256 175 $) · 16 profils sans wallet publiable · `builtFromEventId` |
+| `PIPE_NOT_CONNECTED` | **9** | `CaseFileShiller` · `CaseFileSmokingGun` · 5 colonnes de `CaseFileClaim` · `shill-shadow` (2 tables, 90 j) · `watch-rescan`/`watch-alerts` (`WatchAlert` à 0) |
+| `COLLECTOR_MISSING` | **2** | écrivain de claims CaseFile · écrivain de sources CaseFile |
+| `NOT_MEASURABLE` | **5 surfaces** | UI derrière `/access` · `/generate` · exécution de 15 crons · RPC Solana · `shill-feed` |
+| **`BUG`** | **1** | **`on_chain.distribution` — blanc silencieux orienté réassurance** |
+| sans catégorie | 1 | `C13` — n'a jamais existé |
+
+## La liste des blancs silencieux
+
+Un **blanc silencieux** est un vide qui ne dit pas pourquoi il est vide. Sur
+l'ensemble des surfaces mesurées, il y en a **un seul** :
+
+| # | champ | pourquoi il est silencieux |
+|---|---|---|
+| **1** | `on_chain.distribution` (`top_holders`, `top10_pct`, `concentration_flags`) | `fetchHolders` avale l'erreur, `top10` retombe à `0`, aucun drapeau n'est levé. Panne et absence de risque sont indistinguables, et la sortie penche vers la réassurance. |
+
+**Tout le reste est nommé.** Les montants retirés portent `proceedsPublication:
+"withdrawn"`. Les sections PDF retirées portent leur motif et leur champ. Le
+TigerScore absent rend « Not established ». Le catalogue OSINT vide explique
+qu'aucun artefact ne satisfait l'exigence d'intégrité. C'est un résultat
+remarquable pour un produit à ce stade, et il faut le dire aussi clairement que
+le défaut.
+
+## L'état des collecteurs, en une ligne chacun
+
+| collecteur | état |
+|---|---|
+| `helius-scan` 04:00 | **actif** — `KolProceedsEvent` écrit il y a 3 h |
+| `watcher-v2` 06:00 | **actif** — `WatcherCampaign` il y a 1 h |
+| `daily-flow` 02:00 | **actif** — `social_post_candidates` il y a 1 h |
+| `ofac` 01:00 + `scamsniffer` 01:30 | **actifs** — 341 931 entités canoniques, il y a 5 h |
+| `weekly-digest` lun 08:00 | **actif** — `WatcherDigest` il y a 1 h |
+| `process-events` 03:00 | **produit** (`DomainEvent` il y a 3 h) — destination exacte non tracée |
+| `mm-batch-scan` 09:00 | **en attente de créneau** — normal |
+| `intel-rss` 07:00 + `intel-summarize` 07:30 | **en attente de créneau** — normal |
+| `watcher-bridge` 06:30 | **armé, désactivé** — `disabled` 270 fois sur 281 |
+| `shill-feed` horaire | **21 h sans production** — exécution non traçable |
+| `shill-shadow` 07:00 | **mort** — 90 jours sans écriture |
+| `watch-rescan` 08:00 | **mort** — `WatchAlert` n'a jamais reçu une ligne |
+| `watch-alerts` 08:00 | **mort** — même table à 0 |
+| `retail-process-queue` 05:00 · `reaper` 02:30 | **non traçables** — aucune trace, destination inconnue |
+
+**7 actifs · 2 en attente · 1 désactivé · 3 morts · 4 non traçables.**
+
+## Les trois faits qui comptent pour un lecteur Investor/Counsel
+
+1. **Ce qui est servi est exact et vieux.** Aucun écart entre base et sortie sur
+   la surface KOL. Mais `KolWallet` n'a pas été écrit depuis **82 jours**,
+   `KolEvidence` depuis **115**, `KolCase` depuis **136**. Le produit sert
+   fidèlement un corpus figé.
+
+2. **La preuve n'est pas opposable.** Les 8 sources de BOTIFY n'ont ni URL, ni
+   empreinte, ni snapshot — c'est mesuré, et c'est exactement pourquoi le
+   catalogue OSINT du PDF est vide. VINE n'a aucune source du tout, et **aucun
+   écrivain applicatif n'existe pour lui en créer**.
+
+3. **Un seul vide ment par omission**, et c'est un signal de risque :
+   `concentration_flags: []` ne distingue pas « pas de concentration » de « je
+   n'ai pas pu regarder ».
+
+## Ce que je n'ai pas fait, et qui reste ouvert
+
+- Aucune classification des **55 tables vides** — elle demande la moitié CODE.
+- Aucune mesure de l'**UI** — la gate `/access` tient, et je n'ai saisi aucun code.
+- Aucun appel **RPC** ni **POST**, conformément au mandat.
+- `main` **figé**, aucun déploiement, aucun merge.
