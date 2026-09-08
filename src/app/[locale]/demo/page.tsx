@@ -22,7 +22,11 @@ import type { Locale } from "@/lib/explanation/types";
 
 type Chain = "SOL" | "ETH" | "TRON" | "BSC" | "HYPER" | "HYPER_TOKEN_ID" | "BASE" | "ARBITRUM";
 type RiskLevel = "low" | "medium" | "high";
+import { getTierOrUnknown } from "@/lib/risk/tier";
+
 type Tier = "GREEN" | "ORANGE" | "RED";
+// BUILD 10 · P0 — quatrième état : aucun score mesuré. Ni vert, ni rouge.
+type TierOrUnknown = Tier | "UNKNOWN";
 
 interface TopProof {
   label: string;
@@ -33,7 +37,12 @@ interface TopProof {
 
 interface NormalizedScan {
   score: number;
-  tier: Tier;
+  // BUILD 10 · P0 — « UNKNOWN » quand aucun score n'a été mesuré.
+  // Le type le PORTE : sans ça, l'absence retomberait en GREEN au premier
+  // rendu qui suppose un palier, et le défaut se rejouerait ailleurs.
+  tier: TierOrUnknown;
+  /** `null` = aucun score mesuré. Jamais 0 par défaut. */
+  scoreMeasured: number | null;
   confidence: "Low" | "Medium" | "High";
   verdict: string;
   recommendations: string[];
@@ -86,11 +95,42 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
 
 function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   // Préférer tiger_score (boosteur market) si présent et plus élevé
-  const baseScore = Number(data?.score ?? data?.risk?.score ?? 0) || 0;
-  const tigerScore = Number(data?.tiger_score ?? 0) || 0;
-  const score = Math.max(baseScore, tigerScore);
-  const tierRaw = score >= 70 ? "RED" : score >= 40 ? "ORANGE" : (String(data?.tier ?? data?.risk?.tier ?? "GREEN").toUpperCase());
-  const tier = (["GREEN", "ORANGE", "RED"].includes(tierRaw) ? tierRaw : "GREEN") as Tier;
+  // ── BUILD 10 · P0 — un score absent n'est plus coercé en 0 ──────────────
+  //
+  // `Number(data?.tiger_score ?? 0) || 0` rendait 0 pour une donnée ABSENTE,
+  // et getTier(0) rend GREEN. Une réponse sans score produisait donc le
+  // verdict le plus rassurant du produit, en vert.
+  //
+  // `null` traverse désormais jusqu'au palier, qui rend UNKNOWN. Un zéro
+  // MESURÉ reste un zéro et reste GREEN — c'est la distinction rétablie.
+  const readScore = (v: unknown): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const baseScore = readScore(data?.score) ?? readScore(data?.risk?.score);
+  const tigerScore = readScore(data?.tiger_score);
+  const mesures = [baseScore, tigerScore].filter((n): n is number => n !== null);
+  const scoreOrNull = mesures.length > 0 ? Math.max(...mesures) : null;
+  const score = scoreOrNull ?? 0;
+  // ── BUILD 10 · P0 — DEUX coercitions ici, pas une ─────────────────────
+  //
+  // 1. `?? "GREEN"` : un palier ABSENT dans la réponse devenait le palier
+  //    favorable.
+  // 2. `includes(...) ? tierRaw : "GREEN"` : un palier INCONNU — une valeur
+  //    inattendue, une réponse d'une version antérieure — retombait lui aussi
+  //    sur le favorable, et le repli était muet.
+  //
+  // Les deux rendent désormais UNKNOWN. Un palier reste dérivé du score quand
+  // le score est mesuré : ce chemin-là n'a jamais été coercé.
+  const tierRaw =
+    scoreOrNull !== null && scoreOrNull >= 70 ? "RED"
+    : scoreOrNull !== null && scoreOrNull >= 40 ? "ORANGE"
+    : String(data?.tier ?? data?.risk?.tier ?? "").toUpperCase();
+  const tier: TierOrUnknown =
+    tierRaw === "GREEN" || tierRaw === "ORANGE" || tierRaw === "RED"
+      ? tierRaw
+      : getTierOrUnknown(scoreOrNull);
 
   const proofs: TopProof[] = [];
 
@@ -168,7 +208,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
   const recommendations = _ac.en;
 
   return {
-    score, tier,
+    score, tier, scoreMeasured: scoreOrNull,
     confidence: (chain === "ETH" || chain === "BSC" || chain === "HYPER" || chain === "BASE" || chain === "ARBITRUM") ? (data?.deep ? "High" : "Medium") : "Medium",
     verdict, recommendations,
     proofs: proofs.slice(0, 3),
@@ -433,7 +473,12 @@ function TigerScanPageInner() {
     }
   };
 
-  const getTierColor = (t: Tier) => t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
+  // BUILD 10 · P0 — UNKNOWN est GRIS. Ni vert (ce serait la coercition qu'on
+  // ferme), ni rouge (ce serait inventer un risque). Une absence est une
+  // absence, et elle se voit.
+  const getTierColor = (t: TierOrUnknown) =>
+    t === "UNKNOWN" ? "#6b7280" :
+    t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
 
   return (
     <div className="min-h-screen bg-black text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
@@ -717,7 +762,30 @@ function TigerScanPageInner() {
                 </div>
               )}
 
+              {/* ── BUILD 10 · P0 — L'ABSENCE SE DIT ────────────────────────────
+                  Sans score mesuré, le produit ne rend pas un verdict : il
+                  dit qu'il n'en a pas. Ni vert — ce serait la coercition
+                  qu'on ferme — ni rouge — ce serait inventer un risque. */}
+              {result.tier === "UNKNOWN" && (
+                <div style={{ border: "1px solid #6b728055", background: "#0A0A0A", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", color: "#6b7280", marginBottom: 8 }}>
+                    NOT EVALUATED
+                  </div>
+                  <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7 }}>
+                    No risk score could be measured for this address. This is
+                    not a clean result: it means the data required to produce a
+                    verdict was unavailable. Absence of a score is not absence
+                    of risk.
+                  </div>
+                </div>
+              )}
+
               {/* ── RETAIL VERDICT BANNER ── */}
+              {/* BUILD 10 · P0 — sans score mesuré, on ne rend PAS de bannière
+                  de verdict. Elle n'a que trois paliers, tous des affirmations
+                  sur le risque. Le bloc d'absence ci-dessus l'a déjà dit. */}
+              {result.tier !== "UNKNOWN" && (
+                <>
               <RetailVerdictBanner
                 tier={result.tier}
                 score={result.score}
@@ -737,6 +805,8 @@ function TigerScanPageInner() {
               />
 
               <WhatToDoNow lang="en" tier={result.tier} show={true} />
+                </>
+              )}
 
               <MarketWeather
                 lang="en"
@@ -748,7 +818,9 @@ function TigerScanPageInner() {
                 }
               />
 
-              <TigerRevealCard tier={result.tier} proofs={result.proofs} />
+              {result.tier !== "UNKNOWN" && (
+                <TigerRevealCard tier={result.tier} proofs={result.proofs} />
+              )}
 
               {/* Technical evidence (collapsible) */}
               <div className="bg-[#0A0A0A] border border-zinc-800 rounded-2xl p-6">
