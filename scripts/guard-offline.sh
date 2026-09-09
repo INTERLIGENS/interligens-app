@@ -475,6 +475,37 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# ── BUILD 12 · S3 — CÂBLAGE DE LA COUVERTURE SUR LE CHEMIN PRÉ-ACHAT ────────
+# Autorisation humaine explicite : mandat « BUILD 12 S3 », périmètre autorisé
+# tel que demandé.
+#
+# MESURE AVANT OUVERTURE. L'AUTORITÉ vit dans src/lib/intelligence/, qui est
+# LIBRE, et elle est déjà écrite, prouvée et mergée — 6 mutants, 6 mordent.
+# Seul le CÂBLAGE des routes en a besoin.
+#
+# Le défaut, mesuré le 2026-09-09 sur la MÊME adresse :
+#   /api/scan/intelligence → NO_MATCH_PARTIAL, negativeIsConclusive false
+#   /api/v1/score          → ALLOW, sources: [], « No major risk signals
+#                            detected. », AUCUN champ de couverture
+# Sur le chemin pré-achat, « jamais exécutée » est indistinguable de
+# « vérifiée, rien trouvé ».
+#
+# LES QUATRE ROUTES, une seule fenêtre : le motif ^src/app/api/ les couvre
+# déjà d'une seule exemption. Fractionner en deux danses doublerait le risque
+# pour le même périmètre gelé. Et `verdict: "SAFE"` est une réassurance
+# STRUCTURÉE servie aux partenaires — fermer le public en laissant le
+# partenaire ouvert, c'est contenir la moitié du P0 en sachant laquelle.
+#
+# NE COUVRE PAS : le reste de src/app/api/, prisma/, package.json, le lockfile.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s3-coverage-wiring$ ]]; then
+    EXEMPT_S3_COVERAGE_PATTERNS=(
+        "^src/app/api/v1/score/route\.ts$"
+        "^src/app/api/partner/v1/transaction-check/route\.ts$"
+        "^src/app/api/partner/v1/score-lite/route\.ts$"
+        "^src/app/api/partner/v1/batch-score/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -666,6 +697,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche s3-coverage-wiring, exempter les 4 routes du chemin pré-achat.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s3-coverage-wiring$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_S3_COVERAGE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
