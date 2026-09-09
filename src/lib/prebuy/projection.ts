@@ -25,6 +25,7 @@
 
 import type { ReflexVerdict } from "@/lib/reflex/types";
 import type { DecisionCanonique, ManqueMesure } from "./canonicalDecision";
+import type { IntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
 
 export type PreBuyLevel = "BLOCK" | "WARN" | "ALLOW";
 
@@ -117,10 +118,54 @@ export type PartnerVerdict = "SAFE" | "WARNING" | "AVOID";
  * `SAFE` ne sort plus que sur une projection ALLOW, c'est-à-dire adossée à une
  * mesure attendue réussie et à une identité résolue. Le retirer du domaine
  * casserait des partenaires ; l'émettre sans mesure violerait BUILD 12.
+ *
+ * ─── S4 · `SAFE` EST UNE RÉASSURANCE STRUCTURÉE ──────────────────────────
+ *
+ * ██  Une règle qui interdit une PHRASE rassurante vaut pour le JETON.     ██
+ *
+ * En S3 j'ai fermé la prose sur `/api/v1/score` et laissé ce jeton ouvert.
+ * `verdict: "SAFE"` dit exactement ce que la phrase disait — « rien de
+ * critique, tu peux y aller » — sous une forme que le partenaire consomme
+ * PROGRAMMATIQUEMENT, donc plus fort, pas moins.
+ *
+ * ─── Ce qui change, et ce qui NE change PAS ──────────────────────────────
+ *
+ * Le jeton passe à `WARNING`. `toPartnerRecommendation` reste `ALLOW` : c'est
+ * l'ACTION, et l'incomplétude de couverture n'a jamais converti un risque
+ * jeton en risque. Même forme qu'en S3, où le NIVEAU restait ALLOW et où
+ * seule la PHRASE cessait d'affirmer.
+ *
+ * OUI, VERDICT ET RECOMMANDATION DIVERGENT À NOUVEAU — et c'est délibéré.
+ * La divergence fermée en phase 2 venait de DEUX TABLES DE SEUILS qui
+ * répondaient à la même question avec des bornes différentes (35 contre 40).
+ * Celle-ci vient d'une DIMENSION supplémentaire, appliquée à la seule
+ * réassurance. L'action et la réassurance ne répondent pas à la même question :
+ * l'une dit quoi faire, l'autre dit ce qu'on a le droit d'affirmer.
+ *
+ * ─── LE DOMAINE NE BOUGE PAS ─────────────────────────────────────────────
+ *
+ * Trois valeurs, toujours les mêmes. Ajouter un jeton « indéterminé » serait
+ * plus expressif et casserait chaque partenaire qui teste `=== "SAFE"`. La
+ * rétrocompatibilité porte sur la FORME et le DOMAINE, pas sur la CONDITION
+ * D'ÉMISSION — c'est la règle ratifiée, et elle autorise exactement ceci.
+ *
+ * ─── SUR-CORRECTION, le troisième piège de la journée ────────────────────
+ *
+ * Une couverture COMPLÈTE garde son `SAFE`. Retirer le jeton trop largement
+ * livrerait un `WARNING` permanent à des partenaires qui le consomment par
+ * contrat, et l'alerte redeviendrait le fond. Le défaut du paramètre est donc
+ * l'ABSENCE de dégradation : un appelant qui ne fournit pas de couverture
+ * n'en invente pas une mauvaise.
  */
-export function toPartnerVerdict(p: PreBuyProjection): PartnerVerdict {
+export function toPartnerVerdict(
+  p: PreBuyProjection,
+  coverage?: Pick<IntelligenceCoverage, "negativeConclusive">,
+): PartnerVerdict {
   if (p.level === "BLOCK") return "AVOID";
   if (p.level === "WARN") return "WARNING";
+  // ALLOW — et c'est le seul endroit où la couverture entre en jeu : elle ne
+  // peut qu'EMPÊCHER une réassurance, jamais en produire une.
+  if (coverage && !coverage.negativeConclusive) return "WARNING";
   return "SAFE";
 }
 
@@ -145,6 +190,8 @@ export function buildPartnerReason(
   p: PreBuyProjection,
   score: number,
   signalsCount: number,
+  /** S4 — la même règle que le jeton. La prose ne peut pas rester en arrière. */
+  coverage?: Pick<IntelligenceCoverage, "negativeConclusive">,
 ): string {
   // Le préfixe `Score N/100 — ` est conservé au caractère près : des
   // partenaires le lisent. Ce qui change est la clause qui suit, et surtout la
@@ -161,6 +208,13 @@ export function buildPartnerReason(
     return p.because === "NO_CRITICAL_SIGNAL" || p.because === "INSUFFICIENT_COVERAGE"
       ? `${tete}the expected checks did not all complete — unverified, not safe`
       : `${tete}${signalsCount} risk signal${s(signalsCount)} detected, proceed with caution`;
+  }
+  // ALLOW — S4 : la clause rassurante exige un périmètre réellement vérifié,
+  // exactement comme le jeton. Elle ne prétend rien de plus que ce qui a été
+  // consulté, et elle ne dit PAS ce qui manque : le partenaire apprend que la
+  // couverture déclarée n'a pas été entièrement vérifiée, pas quelle source.
+  if (coverage && !coverage.negativeConclusive) {
+    return `${tete}no critical signal from the sources actually consulted — part of the declared coverage was not verified`;
   }
   return `${tete}no critical risk signals detected`;
 }
