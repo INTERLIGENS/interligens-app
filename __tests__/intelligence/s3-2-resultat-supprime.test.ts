@@ -68,6 +68,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   assessSanction,
   negativeIsConclusiveForAudience,
+  projectCoverageForAudience,
   buildSanctionCoverage,
 } from "@/lib/intelligence/sanctionCoverage";
 import { PUBLICATION_STATES, MEASUREMENT_STATES } from "@/lib/publication/absenceVocabulary";
@@ -183,6 +184,64 @@ describe("S3.2/B — publication et mesure restent deux axes", () => {
     expect(rienTrouve.conclusif).toBe(true);
   });
 
+  it("██ MUTANT — la projection retail ne porte AUCUN champ qui trahisse le retrait", () => {
+    // ─── L'ORACLE ÉNUMÉRABLE, et pourquoi le champ ne sort pas ────────
+    //
+    // Un `publicationState: "WITHHELD"` servi dirait « il y a quelque chose,
+    // et on te le cache ». Balayer des adresses reconstituerait la liste des
+    // entités sanctionnées-mais-masquées — le renseignement même que
+    // `displaySafety` protège. Une déclaration, pas une déduction.
+    const retire = projectCoverageForAudience(COUV_REELLE, "WITHHELD");
+    const vrai = projectCoverageForAudience(COUV_REELLE, "PUBLISHED");
+    // Les MÊMES clefs, toujours. Aucun champ n'apparaît sur retrait.
+    expect(Object.keys(retire).sort()).toEqual(Object.keys(vrai).sort());
+    expect(JSON.stringify(retire)).not.toContain("WITHHELD");
+    expect(JSON.stringify(retire)).not.toContain("publicationState");
+    // Et la conclusion, elle, a bien cessé.
+    expect(retire.negativeIsConclusive).toBe(false);
+    expect(retire.state).toBe("PARTIAL");
+  });
+
+  it("MUTANT — `state` et `negativeIsConclusive` ne se CONTREDISENT jamais", () => {
+    // Un `state: COMPLETE` à côté d'un `conclusif: false` serait un tell plus
+    // direct que celui qu'on garde : il n'existe aucune autre façon de
+    // produire ce couple.
+    for (const p of PUBLICATION_STATES) {
+      for (const c of [COUV_REELLE, COUV_PARTIELLE]) {
+        const proj = projectCoverageForAudience(c, p);
+        expect(proj.state === "COMPLETE", `${p} / ${c.state}`).toBe(proj.negativeIsConclusive);
+      }
+    }
+  });
+
+  it("SUR-CORRECTION — la projection ne touche PAS le détail des collecteurs", () => {
+    // Il décrit les collecteurs, pas cette adresse. Le falsifier serait mentir
+    // sur autre chose que ce qu'on veut taire.
+    const retire = projectCoverageForAudience(COUV_REELLE, "WITHHELD");
+    expect([...retire.expected]).toEqual([...COUV_REELLE.expected]);
+    expect(retire.consulted).toEqual(COUV_REELLE.consulted);
+    expect(retire.declaredNotArmed).toEqual(COUV_REELLE.declaredNotArmed);
+    expect(retire.notConsulted).toEqual(COUV_REELLE.notConsulted);
+  });
+
+  it("TROU DÉCLARÉ — le tell résiduel est mesuré, pas nié", () => {
+    // Une indistinguabilité STRICTE est impossible sans cesser de servir
+    // `notConsulted`/`expected` au retail — ce qui détruirait le contrat de
+    // S3/S3.1. On mesure ce qui reste au lieu de prétendre qu'il n'y a rien.
+    const retire = projectCoverageForAudience(COUV_REELLE, "WITHHELD");
+    const partielle = projectCoverageForAudience(COUV_PARTIELLE, "PUBLISHED");
+    // Les deux non-conclusions s'accordent sur ce qui compte…
+    expect(retire.negativeIsConclusive).toBe(partielle.negativeIsConclusive);
+    expect(retire.state).toBe(partielle.state);
+    // …et diffèrent encore ici. C'est le tell, nommé.
+    expect(retire.notConsulted).toEqual([]);
+    expect(partielle.notConsulted.length).toBeGreaterThan(0);
+    // Il se referme DE LUI-MÊME dès qu'un collecteur devient périmé : les deux
+    // deviennent alors indistinguables sur toute la projection.
+    const retireSousPeremption = projectCoverageForAudience(COUV_PARTIELLE, "WITHHELD");
+    expect(JSON.stringify(retireSousPeremption)).toBe(JSON.stringify(partielle));
+  });
+
   it("le retrait NE RÉVÈLE RIEN de ce qui est retiré", () => {
     // La contrainte de containment : on cesse d'affirmer, on ne divulgue pas.
     // La sortie ne porte ni source, ni classe de risque, ni compte.
@@ -213,11 +272,17 @@ vi.mock("@/lib/prisma", () => ({
       findMany: async () => [
         { handle: "ofac", status: "active", defaultVisibility: "public" },
         { handle: "forta", status: "active", defaultVisibility: "public" },
+        // MESURÉ : `nansen` est la seule source du registre avec
+        // `retailAdmissible: false`. Elle sert ici de source NON publiable
+        // mais parfaitement PROVENANCÉE — le seul montage qui isole un refus
+        // de NIVEAU ENTITÉ de tous les autres.
+        { handle: "nansen", status: "active", defaultVisibility: "internal" },
       ],
     },
     intelIngestionBatch: {
       findMany: async () => [
         { sourceSlug: "ofac", startedAt: new Date("2020-01-01"), completedAt: new Date("2030-01-01") },
+        { sourceSlug: "nansen", startedAt: new Date("2020-01-01"), completedAt: new Date("2030-01-01") },
       ],
     },
   },
@@ -225,6 +290,7 @@ vi.mock("@/lib/prisma", () => ({
 
 const POLICY = new Map([
   ["ofac", { retailAdmissible: true }],
+  ["nansen", { retailAdmissible: false }],
   // MESURÉ : `forta` est retail-admissible au registre. Ce n'est donc PAS la
   // politique de source qui l'écarte — c'est la provenance d'ingestion (AX).
   ["forta", { retailAdmissible: true }],
@@ -240,7 +306,10 @@ const POLICY = new Map([
  * distincts, et les confondre m'a fait écrire une fixture qui ne prouvait
  * rien.
  */
-const PROVENANCE = new Map([["ofac", [{ from: new Date("2020-01-01"), to: new Date("2030-01-01") }]]]);
+const PROVENANCE = new Map([
+  ["ofac", [{ from: new Date("2020-01-01"), to: new Date("2030-01-01") }]],
+  ["nansen", [{ from: new Date("2020-01-01"), to: new Date("2030-01-01") }]],
+]);
 
 const observation = () => ({
   id: "o1",
@@ -257,18 +326,19 @@ const observation = () => ({
 beforeEach(() => entiteMock.findUnique.mockReset());
 
 describe("S3.2/C — le matcher distingue les deux absences", () => {
-  it("MUTANT — entité RETIRÉE au retail → WITHHELD, et le signal reste vide", async () => {
+  it("MUTANT — retrait par AUDIENCE → WITHHELD, et le signal reste vide", async () => {
+    // Une observation PROVENANCÉE, d'une source non publiable, sur une entité
+    // non autorisée : le seul montage où le refus est un RETRAIT et rien
+    // d'autre. La preuve existe et est admissible en soi — on décide de ne pas
+    // la montrer à ce public.
     const { matchEntity } = await import("@/lib/intelligence/matcher");
     entiteMock.findUnique.mockResolvedValue({
       isActive: true,
       displaySafety: "INTERNAL_ONLY",
       riskClass: "HIGH",
-      // `forta` n'a AUCUNE fenêtre d'ingestion : l'observation est écrite hors
-      // pipeline, donc non provenancée, donc écartée par AX. C'est le cas RÉEL
-      // des 3 lignes forta mesurées en production.
-      observations: [{ ...observation(), sourceSlug: "forta", riskClass: "HIGH" }],
+      observations: [{ ...observation(), sourceSlug: "nansen", riskClass: "HIGH" }],
     });
-    const s = await matchEntity({ type: "ADDRESS", value: "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41" }, "RETAIL", POLICY, PROVENANCE);
+    const s = await matchEntity({ type: "ADDRESS", value: "0xdeadbeef" }, "RETAIL", POLICY, PROVENANCE);
     expect(s.publicationState).toBe("WITHHELD");
     // ██ Et RIEN n'est divulgué : le signal est vide, comme avant.
     expect(s.matchCount).toBe(0);
@@ -304,6 +374,49 @@ describe("S3.2/C — le matcher distingue les deux absences", () => {
     expect(s.publicationState).toBe("PUBLISHED");
   });
 
+  it("██ MUTANT — une preuve INADMISSIBLE n'est PAS un retrait", async () => {
+    // ─── LA CORRECTION LA PLUS FINE DE S3.2 ───────────────────────────
+    //
+    // `0xa5b0edf6…01d41` : ligne `ofac` DÉLISTÉE, plus une ligne `forta`
+    // écrite hors pipeline donc non provenancée. Ma première version la
+    // faisait basculer en WITHHELD — elle aurait transformé un DÉFAUT DE
+    // DONNÉES connu (3 lignes, backlog AX) en non-conclusion permanente sur
+    // cette adresse.
+    //
+    // Une ligne qui n'atteint pas le rang de preuve n'est pas un
+    // renseignement qu'on dissimule. Et un délistage OFAC est un négatif
+    // VRAI — le plus important à servir correctement.
+    const { matchEntity } = await import("@/lib/intelligence/matcher");
+    entiteMock.findUnique.mockResolvedValue({
+      isActive: true,
+      displaySafety: "INTERNAL_ONLY",
+      riskClass: "HIGH",
+      // `forta` n'a AUCUNE fenêtre d'ingestion : refus
+      // `UNPROVEN_INGESTION_PROVENANCE`, pas un refus d'audience.
+      observations: [{ ...observation(), sourceSlug: "forta", riskClass: "HIGH" }],
+    });
+    const s = await matchEntity({ type: "ADDRESS", value: "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41" }, "RETAIL", POLICY, PROVENANCE);
+    expect(s.publicationState).toBe("PUBLISHED");
+    expect(assessSanction(s.hasSanction, COUV_REELLE, s.publicationState)).toBe("NO_MATCH_COMPLETE");
+  });
+
+  it("██ MUTANT — la visibilité est une LISTE BLANCHE : ANALYST_REVIEWED retient aussi", async () => {
+    // La règle ne s'écrit PAS `!= INTERNAL_ONLY`. `ANALYST_REVIEWED` a été
+    // relu et n'est explicitement PAS publiable au scanner. Un raccourci sur
+    // le seul `INTERNAL_ONLY` laisserait ce cas produire un négatif concluant.
+    const { matchEntity } = await import("@/lib/intelligence/matcher");
+    for (const clearance of ["ANALYST_REVIEWED", "UN_ETAT_QUE_LE_VOCABULAIRE_IGNORE"]) {
+      entiteMock.findUnique.mockResolvedValue({
+        isActive: true,
+        displaySafety: clearance,
+        riskClass: "HIGH",
+        observations: [{ ...observation(), sourceSlug: "nansen", riskClass: "HIGH" }],
+      });
+      const s = await matchEntity({ type: "ADDRESS", value: "0x03" }, "RETAIL", POLICY, PROVENANCE);
+      expect(s.publicationState, `clearance ${clearance}`).toBe("WITHHELD");
+    }
+  });
+
   it("SUR-CORRECTION — un match ADMISSIBLE sort normalement, en PUBLISHED", async () => {
     const { matchEntity } = await import("@/lib/intelligence/matcher");
     entiteMock.findUnique.mockResolvedValue({
@@ -334,7 +447,7 @@ describe("S3.2/C — le matcher distingue les deux absences", () => {
             isActive: true,
             displaySafety: "INTERNAL_ONLY",
             riskClass: "HIGH",
-            observations: [{ ...observation(), sourceSlug: "forta", riskClass: "HIGH" }],
+            observations: [{ ...observation(), sourceSlug: "nansen", riskClass: "HIGH" }],
           }
         : null;
     });

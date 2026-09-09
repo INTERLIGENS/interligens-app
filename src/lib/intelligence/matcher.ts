@@ -170,7 +170,7 @@ export async function matchEntity(
   // scoreur existant sur les contributions admissibles restantes — on ne
   // corrige pas un score après coup, on ne lui donne pas l'entrée.
   const index = provenance ?? (await loadIngestionProvenance());
-  const { retained } = admitObservations({
+  const { retained, refused } = admitObservations({
     entity: { isActive: entity.isActive, displaySafety: entity.displaySafety },
     // AX — chaque instance porte sa provenance. C'est un FAIT sur la ligne,
     // calculé ici, jamais supposé par le prédicat.
@@ -189,20 +189,59 @@ export async function matchEntity(
   // ██  trouvé » : c'est « trouvé, et retiré ».                             ██
   //
   // Jusqu'ici les deux rendaient `SIGNAL_VIDE`, et la route en tirait
-  // `NO_MATCH_COMPLETE` avec `negativeIsConclusive: true`. Sur 0xa5b0edf6…,
-  // adresse RÉELLEMENT sanctionnée OFAC, c'était une affirmation concluante
-  // de propreté. Mesuré en production le 2026-09-09.
+  // `NO_MATCH_COMPLETE` avec `negativeIsConclusive: true` — une affirmation
+  // concluante de propreté sur un résultat qu'on venait de retirer.
+  //
+  // Le témoin, mesuré le 2026-09-09 : `TA3941uFAvmVibSkQ6fMJXxmaSNovX86mz`,
+  // observation `ofac`/SANCTION ACTIVE. Le matcher rend matchCount 1 et
+  // hasSanction TRUE ; la route servait hasSanction false, NO_MATCH_COMPLETE.
+  // (J'avais d'abord nommé 0xa5b0edf6… : sa ligne ofac est DÉLISTÉE, elle
+  // n'est pas le cas — voir plus bas, elle ne doit surtout pas basculer.)
   //
   // Ce qui suit ne révèle RIEN du retrait : ni source, ni classe de risque,
   // ni compte. Le signal reste vide — seule sa PUBLICATION est typée, et
   // c'est ce qui fait cesser l'affirmation. EXCLUSION ≠ ÉLECTION, à l'étage
   // du contrat.
   //
+  // ─── TOUS LES REFUS NE SONT PAS DES RETRAITS ──────────────────────────
+  //
+  // ██  Une preuve INADMISSIBLE n'est pas un renseignement CACHÉ.          ██
+  //
+  // Ma première version posait `WITHHELD` dès que `retained` était vide. Elle
+  // aurait fait basculer `0xa5b0edf6…01d41`, dont la seule observation active
+  // est une ligne `forta` écrite hors pipeline — refusée pour
+  // `UNPROVEN_INGESTION_PROVENANCE`. Or cette ligne n'est pas une observation
+  // qu'on dissimule : c'est une ligne qui n'atteint pas le rang de preuve.
+  // La compter comme un retrait laisserait un DÉFAUT DE DONNÉES connu (3
+  // lignes, déjà au backlog AX) dégrader cette adresse en permanence.
+  //
+  // Même raisonnement pour un délistage : `OBSERVATION_INACTIVE` veut dire que
+  // la liste ne la porte plus. C'est un négatif VRAI, et le plus important à
+  // servir correctement — une sortie de liste OFAC doit pouvoir se lire.
+  //
+  // Seul un refus de NIVEAU ENTITÉ pour cette AUDIENCE est un retrait : on a
+  // une preuve admissible, et on a décidé de ne pas la montrer à ce public.
+  //
+  // ─── La règle de visibilité est une LISTE BLANCHE ─────────────────────
+  //
+  // Elle ne s'écrit pas `!= INTERNAL_ONLY` : `ANALYST_REVIEWED` a été relu et
+  // n'est explicitement PAS publiable. Les deux refus d'entité comptent, et
+  // `ENTITY_CLEARANCE_UNKNOWN` aussi — un état d'autorisation que le
+  // vocabulaire ne connaît pas ne se lit jamais comme une permission.
+  const retraitParAudience = refused.some(
+    (r) =>
+      r.refus === "ENTITY_INTERNAL_ONLY_AND_SOURCE_NOT_RETAIL_ADMISSIBLE" ||
+      r.refus === "ENTITY_ANALYST_REVIEWED_AND_SOURCE_NOT_RETAIL_ADMISSIBLE" ||
+      r.refus === "ENTITY_CLEARANCE_UNKNOWN_AND_SOURCE_NOT_RETAIL_ADMISSIBLE",
+  );
+
   // Le cas `entity.observations.length === 0`, traité plus haut, reste un
   // négatif VRAI : rien d'actif n'existe, donc rien n'a été retiré, et il
   // garde `PUBLISHED`. Les confondre ici remplacerait une fausse réassurance
   // par une alerte permanente — le même défaut sous un autre signe.
-  if (retained.length === 0) return { ...SIGNAL_VIDE, publicationState: "WITHHELD" };
+  if (retained.length === 0) {
+    return retraitParAudience ? { ...SIGNAL_VIDE, publicationState: "WITHHELD" } : SIGNAL_VIDE;
+  }
 
   const obs: SourceObservationMinimal[] = retained.map((o) => ({
     id: o.id,
