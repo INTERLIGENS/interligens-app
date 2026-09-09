@@ -8,7 +8,10 @@ import { prisma } from "@/lib/prisma";
 import {
   admitObservations,
   loadSourcePolicy,
+  loadIngestionProvenance,
+  observationIsProvenanced,
   type IntelAudience,
+  type IngestionProvenanceIndex,
   type SourcePolicy,
 } from "./retailAdmissibility";
 import { normalizeValue, buildDedupKey } from "./normalize";
@@ -136,6 +139,8 @@ export async function matchEntity(
    * gouvernance serait inventer une règle.
    */
   policy?: SourcePolicy,
+  /** L'index de provenance, quand l'appelant l'a déjà chargé. Même raison. */
+  provenance?: IngestionProvenanceIndex,
 ): Promise<IntelSignal> {
   const normalized = normalizeValue(target.type, target.value);
   const dedupKey = buildDedupKey(target.type, normalized);
@@ -162,9 +167,15 @@ export async function matchEntity(
   // `hasSanction`, ni le vainqueur. Le résultat est donc exactement celui du
   // scoreur existant sur les contributions admissibles restantes — on ne
   // corrige pas un score après coup, on ne lui donne pas l'entrée.
+  const index = provenance ?? (await loadIngestionProvenance());
   const { retained } = admitObservations({
     entity: { isActive: entity.isActive, displaySafety: entity.displaySafety },
-    observations: entity.observations,
+    // AX — chaque instance porte sa provenance. C'est un FAIT sur la ligne,
+    // calculé ici, jamais supposé par le prédicat.
+    observations: entity.observations.map((o) => ({
+      ...o,
+      ingestionProvenanceProven: observationIsProvenanced(index, o.sourceSlug, o.ingestedAt),
+    })),
     audience,
     policy: policy ?? (await loadSourcePolicy()),
   });
@@ -234,12 +245,13 @@ export async function lookupValue(
 ): Promise<IntelSignal> {
   const types = guessEntityTypes(value);
 
-  // Chargée UNE fois pour toute la consultation, pas une fois par type.
+  // Chargées UNE fois pour toute la consultation, pas une fois par type.
   const policy = await loadSourcePolicy();
+  const provenance = await loadIngestionProvenance();
 
   // Try each type, return first match with signal
   for (const type of types) {
-    const signal = await matchEntity({ type, value, chain }, audience, policy);
+    const signal = await matchEntity({ type, value, chain }, audience, policy, provenance);
     if (signal.matchCount > 0) return signal;
   }
 

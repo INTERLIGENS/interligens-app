@@ -22,6 +22,27 @@ vi.mock("@/lib/prisma", () => ({
     // `SourceRegistry` avant d'agréger. Le mock la fournit avec les valeurs
     // RÉELLES mesurées le 2026-09-09 : `ofac` et `forta` y sont tous deux
     // `public` / `active`.
+    // AX — la provenance d'ingestion est un cinquième facteur : le matcher lit
+    // les fenêtres de lot pour décider si une INSTANCE est gouvernée.
+    intelIngestionBatch: {
+      findMany: vi.fn(async () => [
+        {
+          sourceSlug: "ofac",
+          startedAt: new Date("2026-01-01T00:00:00Z"),
+          completedAt: new Date("2027-01-01T00:00:00Z"),
+        },
+        {
+          sourceSlug: "forta",
+          startedAt: new Date("2026-01-01T00:00:00Z"),
+          completedAt: new Date("2027-01-01T00:00:00Z"),
+        },
+        {
+          sourceSlug: "chainalysis",
+          startedAt: new Date("2026-01-01T00:00:00Z"),
+          completedAt: new Date("2027-01-01T00:00:00Z"),
+        },
+      ]),
+    },
     sourceRegistry: {
       findMany: vi.fn(async () => [
         { handle: "ofac", status: "active", defaultVisibility: "public" },

@@ -14,8 +14,21 @@
 //
 // ─── L'autorité est COMPOSÉE, aucun champ unique ne s'y substitue ─────────
 //
-//   CYCLE DE VIE ENTITÉ   × CYCLE DE VIE OBSERVATION
-//   × ADMISSIBILITÉ PREUVE/SOURCE × AUDIENCE
+//   AUTORITÉ DE SOURCE × PROVENANCE D'INGESTION × CYCLE DE VIE OBSERVATION
+//   × CYCLE DE VIE ENTITÉ × AUDIENCE
+//
+// ─── AX — pourquoi l'autorité de source ne suffit PAS ─────────────────────
+//
+// Mesuré le 2026-09-09 : `forta` est PRÉSENT au registre et déclaré publiable,
+// donc le prédicat le laissait passer. Or ses 3 observations n'ont AUCUN lot
+// d'ingestion — écriture hors pipeline. Et elles ne sont pas seules : les 8
+// observations sans lot ont toutes été écrites dans le MÊME intervalle de
+// 333 millisecondes, le 2026-04-08 à 18:58:32 UTC, entrelacées entre `ofac`,
+// `forta` et `scamsniffer`. La signature d'un seed, pas d'un run.
+//
+// Une observation qui fait autorité pour le retail doit avoir une provenance
+// d'ingestion GOUVERNÉE ET TRAÇABLE. La source dit qui a le droit de parler ;
+// la provenance dit que cette instance-ci vient bien de là.
 //
 // Les deux premiers axes sont des faits sur la ligne. Le troisième est une
 // POLITIQUE, et elle existait déjà : `SourceRegistry` la porte, curée à la
@@ -56,10 +69,18 @@ export interface EntityAdmissibilityFacts {
   displaySafety: EntityDisplaySafety | string;
 }
 
-/** Le cycle de vie de l'observation, et la source qui la porte. */
+/** Le cycle de vie de l'observation, la source qui la porte, sa provenance. */
 export interface ObservationAdmissibilityFacts {
   sourceSlug: string;
   listIsActive: boolean;
+  /**
+   * L'instance se rattache-t-elle à un lot d'ingestion gouverné.
+   *
+   * `undefined` n'est PAS « oui » : un appelant qui ne sait pas répondre n'a
+   * pas prouvé la provenance, et le défaut d'une preuve absente est son
+   * absence. Voir `admitObservations`.
+   */
+  ingestionProvenanceProven?: boolean;
 }
 
 /**
@@ -73,6 +94,15 @@ export type RefusAdmissibilite =
   | "ENTITY_INTERNAL_ONLY_AND_SOURCE_NOT_RETAIL_ADMISSIBLE"
   /** Entité RELUE mais explicitement pas encore autorisée au scanner. */
   | "ENTITY_ANALYST_REVIEWED_AND_SOURCE_NOT_RETAIL_ADMISSIBLE"
+  /**
+   * L'instance d'observation ne se rattache à aucun lot d'ingestion gouverné.
+   *
+   * Vocabulaire ratifié : DECLARED → SCHEDULED → REGISTERED → EXECUTED →
+   * PROVENANCED → ADMISSIBLE. Cette ligne s'arrête avant PROVENANCED.
+   * `MEASURED` n'apparaît pas ici : c'est un état de requête, pas une
+   * identité de source.
+   */
+  | "UNPROVEN_INGESTION_PROVENANCE"
   /** Un état d'autorisation que le vocabulaire ne connaît pas. */
   | "ENTITY_CLEARANCE_UNKNOWN_AND_SOURCE_NOT_RETAIL_ADMISSIBLE";
 
@@ -145,6 +175,54 @@ export async function loadSourcePolicy(): Promise<SourcePolicy> {
 }
 
 /**
+ * Les fenêtres d'exécution des lots d'ingestion, par source.
+ *
+ * Il n'existe AUCUNE clé étrangère entre une observation et son lot — mesuré :
+ * ni colonne, ni `meta.batchId`, ni `externalId`. La provenance se prouve donc
+ * par l'appartenance de `ingestedAt` à une fenêtre d'exécution FERMÉE de la
+ * même source. C'est déterministe et reproductible depuis les données
+ * stockées ; ce n'est pas une heuristique de proximité.
+ */
+export type IngestionProvenanceIndex = ReadonlyMap<
+  string,
+  ReadonlyArray<{ from: Date; to: Date }>
+>;
+
+export async function loadIngestionProvenance(): Promise<IngestionProvenanceIndex> {
+  const rows = await prisma.intelIngestionBatch.findMany({
+    select: { sourceSlug: true, startedAt: true, completedAt: true },
+  });
+  const m = new Map<string, Array<{ from: Date; to: Date }>>();
+  for (const r of rows) {
+    // Un lot NON TERMINÉ n'a rien prouvé. On ne lui invente pas de durée par
+    // défaut : inventer une fenêtre serait inventer une règle.
+    if (!r.completedAt) continue;
+    const l = m.get(r.sourceSlug) ?? [];
+    l.push({ from: r.startedAt, to: r.completedAt });
+    m.set(r.sourceSlug, l);
+  }
+  return m;
+}
+
+/**
+ * Cette instance d'observation se rattache-t-elle à un lot gouverné ?
+ *
+ * Bornes INCLUSES : une ligne écrite à l'instant exact où le lot démarre ou
+ * s'achève lui appartient.
+ */
+export function observationIsProvenanced(
+  index: IngestionProvenanceIndex,
+  sourceSlug: string,
+  ingestedAt: Date,
+): boolean {
+  const t = ingestedAt.getTime();
+  for (const w of index.get(sourceSlug) ?? []) {
+    if (t >= w.from.getTime() && t <= w.to.getTime()) return true;
+  }
+  return false;
+}
+
+/**
  * L'entité est-elle autorisée retail AU NIVEAU ENTITÉ.
  *
  * `ANALYST_REVIEWED` ne l'est pas : le schéma le dit — « Human-reviewed. Not
@@ -170,9 +248,10 @@ export interface AdmissionResult<T> {
  * entité ne s'appliquent pas : une entité retirée d'une liste OFAC doit rester
  * LISIBLE en interne, c'est même la première chose qu'un analyste veut voir.
  *
- * RETAIL — l'entité doit être vivante, l'observation doit être vivante, et
- * l'autorité de publication doit venir SOIT de l'entité (RETAIL_SAFE) SOIT de
- * la source (le registre la déclare publiable). Les deux voies sont
+ * RETAIL — l'entité doit être vivante, l'observation doit être vivante, sa
+ * PROVENANCE D'INGESTION doit être prouvée, et l'autorité de publication doit
+ * venir SOIT de l'entité (RETAIL_SAFE) SOIT de la source (le registre la
+ * déclare publiable). Les deux dernières voies sont
  * INDÉPENDANTES : c'est ce qui permet à une observation OFAC directe et active
  * de contribuer alors même que l'entité est INTERNAL_ONLY.
  */
@@ -199,6 +278,14 @@ export function admitObservations<T extends ObservationAdmissibilityFacts>(args:
     }
     if (!entity.isActive) {
       refused.push({ observation: o, refus: "ENTITY_INACTIVE" });
+      continue;
+    }
+    // AX — la PROVENANCE, cinquième facteur, et elle est indépendante des
+    // autres. Une source publiable ne rend pas gouvernée une ligne écrite
+    // hors pipeline. `undefined` vaut « non prouvée » : le défaut est
+    // l'absence de la preuve, pas sa présence supposée.
+    if (o.ingestionProvenanceProven !== true) {
+      refused.push({ observation: o, refus: "UNPROVEN_INGESTION_PROVENANCE" });
       continue;
     }
     const sourceAutorisee = policy.get(o.sourceSlug)?.retailAdmissible === true;
