@@ -4,6 +4,40 @@ exports[`/api/v1/score snapshot — 'EVM mid-cap — GordonGekko (known-bad)' > 
 {
   "api_version": "v1",
   "cached": false,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "mint": "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41",
   "phantom_disclaimer": "This token has critical risk signals. Swapping is strongly discouraged.",
   "phantom_warning_level": "BLOCK",
@@ -29,6 +63,40 @@ exports[`/api/v1/score snapshot — 'EVM mid-cap — random EOA' > matches the l
 {
   "api_version": "v1",
   "cached": false,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "mint": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
   "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
   "phantom_warning_level": "WARN",
@@ -44,6 +112,40 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — DAI' > matches the locked r
 {
   "api_version": "v1",
   "cached": false,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "mint": "0x6b175474e89094c44da98b954eedeac495271d0f",
   "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
   "phantom_warning_level": "WARN",
@@ -59,6 +161,40 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — LINK' > matches the locked 
 {
   "api_version": "v1",
   "cached": false,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "mint": "0x514910771af9ca656af840dff83e8264ecf986ca",
   "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
   "phantom_warning_level": "WARN",
@@ -74,6 +210,40 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — USDC ETH' > matches the loc
 {
   "api_version": "v1",
   "cached": false,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "mint": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
   "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
   "phantom_warning_level": "WARN",
@@ -89,6 +259,40 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — USDT ETH' > matches the loc
 {
   "api_version": "v1",
   "cached": false,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "mint": "0xdac17f958d2ee523a2206206994597c13d831ec7",
   "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
   "phantom_warning_level": "WARN",
@@ -104,6 +308,40 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — wBTC' > matches the locked 
 {
   "api_version": "v1",
   "cached": false,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "mint": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
   "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
   "phantom_warning_level": "WARN",
@@ -120,6 +358,40 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap A' > matches the locked respons
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 800000,
   "mint": "MidCapTokenA1111111111111111111111111111111A",
   "mintAuthority": null,
@@ -145,6 +417,40 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap B' > matches the locked respons
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 400000,
   "mint": "MidCapTokenB1111111111111111111111111111111B",
   "mintAuthority": null,
@@ -170,6 +476,40 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap C' > matches the locked respons
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 1500000,
   "mint": "MidCapTokenC1111111111111111111111111111111C",
   "mintAuthority": null,
@@ -195,6 +535,40 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — BONK' > matches the locked 
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 8000000,
   "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
   "mintAuthority": null,
@@ -227,6 +601,40 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — JUP' > matches the locked r
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 4000000,
   "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
   "mintAuthority": null,
@@ -259,6 +667,40 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDC' > matches the locked 
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 50000000,
   "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   "mintAuthority": null,
@@ -291,6 +733,40 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDT' > matches the locked 
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 30000000,
   "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
   "mintAuthority": null,
@@ -323,6 +799,40 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — wSOL' > matches the locked 
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 80000000,
   "mint": "So11111111111111111111111111111111111111112",
   "mintAuthority": null,
@@ -361,6 +871,40 @@ exports[`/api/v1/score snapshot — 'casefile — BOTIFY (real)' > matches the l
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 2000,
   "mint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
   "mintAuthority": null,
@@ -394,6 +938,40 @@ exports[`/api/v1/score snapshot — 'casefile — GHOST (synthetic)' > matches t
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 8000,
   "mint": "GhostTokenSynthetic11111111111111111111111ab",
   "mintAuthority": null,
@@ -444,6 +1022,40 @@ exports[`/api/v1/score snapshot — 'casefile — RAVE (synthetic)' > matches th
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 5000,
   "mint": "RaveTokenSynthetic111111111111111111111111ab",
   "mintAuthority": null,
@@ -500,6 +1112,40 @@ exports[`/api/v1/score snapshot — 'casefile — SOLAXY (synthetic)' > matches 
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 4500,
   "mint": "SoaxySynthetic1111111111111111111111111111aa",
   "mintAuthority": null,
@@ -550,6 +1196,40 @@ exports[`/api/v1/score snapshot — 'casefile — VINE (synthetic)' > matches th
   "api_version": "v1",
   "cached": false,
   "freezeAuthority": null,
+  "intelligenceCoverage": {
+    "consultedMeasured": [],
+    "declaredNotArmed": [
+      {
+        "reason": "NOT_MEASURED",
+        "source": "ofac",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "amf",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "fca",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "scamsniffer",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "forta",
+      },
+      {
+        "reason": "NOT_MEASURED",
+        "source": "goplus",
+      },
+    ],
+    "denominator": 0,
+    "expected": [],
+    "negativeConclusive": false,
+    "notConsulted": [],
+    "state": "PARTIAL",
+  },
   "liquidityUsd": 3000,
   "mint": "VineSynthetic1111111111111111111111111111aa",
   "mintAuthority": null,

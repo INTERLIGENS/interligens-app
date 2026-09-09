@@ -4,6 +4,7 @@ import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } fr
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
+import { readIntelligenceCoverage, type IntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
 import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
 import {
@@ -70,6 +71,8 @@ type PartnerScoreLiteResponse = {
   as_of: string;
   version: "v1";
   powered_by: "INTERLIGENS";
+  /** BUILD 12 · S3 — la couverture, à côté du verdict. Champ ADDITIF. */
+  intelligence_coverage?: IntelligenceCoverage;
 };
 
 // ── GET handler ────────────────────────────────────────────────────────────
@@ -208,6 +211,8 @@ export async function GET(req: NextRequest) {
       }),
     );
 
+    // S3 — le contrat porte la couverture.
+    const intelligenceCoverage = await readIntelligenceCoverage();
     const payload: PartnerScoreLiteResponse = {
       address: normalized,
       score,
@@ -218,6 +223,7 @@ export async function GET(req: NextRequest) {
       as_of: new Date().toISOString(),
       version: "v1",
       powered_by: "INTERLIGENS",
+      intelligence_coverage: intelligenceCoverage,
     };
 
     setCached(address, payload);

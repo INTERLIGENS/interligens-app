@@ -12,6 +12,7 @@ import {
   type PublicScoreResponse,
   type PublicSignal,
 } from "@/lib/publicScore/schema";
+import { readIntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
 import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
 import {
@@ -211,7 +212,10 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const phantom = phantomFromProjection(evmProjection);
+      // S3 — LE CONTRAT D'ABORD. La couverture est portée À CÔTÉ du résultat :
+      // `sources: []` ne peut pas rester la seule représentation d'un no-match.
+      const intelligenceCoverage = await readIntelligenceCoverage();
+      const phantom = phantomFromProjection(evmProjection, intelligenceCoverage);
 
       const communityScans = await upsertScanAggregate(normalized);
 
@@ -222,6 +226,7 @@ export async function GET(request: NextRequest) {
         verdict: finalVerdict,
         phantom_warning_level: phantom.level,
         phantom_disclaimer: phantom.disclaimer,
+        intelligenceCoverage,
         signals,
         sources,
         cached: false,
@@ -403,7 +408,9 @@ export async function GET(request: NextRequest) {
     }
     if (scamLineage !== "NONE") sources.push("Lineage Graph");
 
-    const phantom = phantomFromProjection(solProjection);
+    // S3 — le contrat porte la couverture, sur le chemin SOL aussi.
+    const intelligenceCoverage = await readIntelligenceCoverage();
+    const phantom = phantomFromProjection(solProjection, intelligenceCoverage);
 
     const communityScans = await upsertScanAggregate(mint);
 
@@ -415,6 +422,7 @@ export async function GET(request: NextRequest) {
       verdict: finalVerdict,
       phantom_warning_level: phantom.level,
       phantom_disclaimer: phantom.disclaimer,
+      intelligenceCoverage,
       signals,
       sources,
       cached: market.cache_hit,

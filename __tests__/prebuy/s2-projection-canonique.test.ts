@@ -521,6 +521,25 @@ vi.mock("@/lib/intelligence", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: { tokenScanAggregate: { upsert: vi.fn(async () => ({ communityScans: 1 })) } },
 }));
+// S3 — le contrôle positif exige une couverture COMPLÈTE : la phrase
+// rassurante ne s'émet plus sur un périmètre incomplet, et sans base le
+// lecteur tombe sur son cas fail-closed.
+vi.mock("@/lib/intelligence/sanctionCoverage", async (orig) => {
+  const reel = await orig<typeof import("@/lib/intelligence/sanctionCoverage")>();
+  return {
+    ...reel,
+    readIntelligenceCoverage: vi.fn(async () => ({
+      expected: ["ofac", "scamsniffer"],
+      consultedMeasured: ["ofac", "scamsniffer"],
+      notConsulted: [],
+      declaredNotArmed: [],
+      denominator: 2,
+      state: "COMPLETE",
+      negativeConclusive: true,
+    })),
+  };
+});
+
 vi.mock("@/lib/prebuy/canonicalTokenIdentity", async (orig) => {
   const reel = await orig<typeof import("@/lib/prebuy/canonicalTokenIdentity")>();
   return { ...reel, probeCanonicalTokenIdentity: vi.fn() };
