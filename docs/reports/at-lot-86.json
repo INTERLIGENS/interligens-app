@@ -1,0 +1,702 @@
+{
+  "genere": "2026-09-09T13:43:42.982Z",
+  "colonne": "chain",
+  "avant_distinctes": [
+    "ethereum"
+  ],
+  "cible": null,
+  "total": 86,
+  "usdt": 85,
+  "sans_code_devise": 1,
+  "lignes": [
+    {
+      "id": "cmnj0gimg008nzyd9n80hwt15",
+      "value": "16iWn2J1McqjToYLHSsAyS6En3QA8YQ91H",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ghbg008hzyd93qe8sjxx",
+      "value": "1CF46Rfbp97absrs7zb7dFfZS6qBXUm9EP",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0gi6t008lzyd956u6u8r6",
+      "value": "1Df883c96LVauVsx9FEgnsourD8DELwCUQ",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ggvt008fzyd9t59u6o56",
+      "value": "1KUUJPkyDhamZXgpsyXqNGc3x1QPXtdhgz",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ghr4008jzyd9rnt6xo91",
+      "value": "1LrxsRd7zNuxPJcL5rttnoeJFy1y4AffYY",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0h2t100b7zyd9dsibjgzn",
+      "value": "3E6ZCKRrsdPc35chA9Eftp1h3DLW18NFNV",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0gnex0099zyd9xli8gw5h",
+      "value": "3LtcaPbCj87CwJHnRX3vh7c2y9RZQqeSy8",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0em380001zyd9ay945iqq",
+      "value": "TA3941uFAvmVibSkQ6fMJXxmaSNovX86mz",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0emr30003zyd97trlq8ou",
+      "value": "TA39q3p75XRSWYAEaSF7dANtyksoa3sLge",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0en6q0005zyd9fx42bjua",
+      "value": "TBATDh41qMQ1yeVYecneEvhpfayYmkAQWS",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0eo220009zyd97aaaitrx",
+      "value": "TBWRDpQsW1ZVPGGaBAwVLNb7iqmVBuM1nj",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0eohq000bzyd953u6nnxy",
+      "value": "TBYRhsZR7Mdn9ezpGVLwZiNVnGm8wZGLAD",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0eoxd000dzyd9sumbgkxt",
+      "value": "TBZefVsyQpzzxc2WSCLbZBECvxVdzGqdtC",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0enme0007zyd9k8h0w73k",
+      "value": "TBwghbQMsBC5xcUxE7ZpYXhfDMXZAfiFv6",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n1gb001bgylu2fb56zcg",
+      "value": "TC4VsFHJdZ66BdwobZxkudVZBVmQZgCP65",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0epd1000fzyd90x6qpzng",
+      "value": "TC5UNu3LGrjjVCuLNDdVgjm4oL5cQAyFRZ",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0epso000hzyd9ebn46bxz",
+      "value": "TCA7AfTSuDmgYk2VaezfPuZF4Z4X8wxwcQ",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0eq8c000jzyd9rng02xj8",
+      "value": "TDNKsLvsY2iSznyghddXz7ZDRc4X3191Z8",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ncou002rgyluk8iypcsn",
+      "value": "TDdbRFoBTEmE3qiR69Y6rKRSG1hoF65QaE",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n40u001ngyluaz240vjr",
+      "value": "TDprk9jeYPVm6khkBp1u7fwuyJcEJFrPWD",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n360001jgylun7iojkc9",
+      "value": "TDwN1Eq62bqvVhfGAjdRRJjE46jsi5KNMV",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0eqo0000lzyd96ei747sc",
+      "value": "TE3mCcPULjPUE7ykX7RArDPAhyahoy3d2j",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0mt8p0009gylub27kter4",
+      "value": "TEAqwfMhXLaomXhZ8KeMhx3njGmQEDnsUR",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0msdd0005gyluj9hcv8hf",
+      "value": "TEFph7dZoUN5233cGEzF6XFwRpjPF8fQDS",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0er3o000nzyd95fvplkcf",
+      "value": "TF4J8Gp7zbS8NA3HLuxsLdx7Ebzr6weCGn",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0gg0h008bzyd9o2ijvnni",
+      "value": "TFFvv7NAWmbcVfA7QN81mMvUC25TWj1WJx",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0erjb000pzyd9krqdluea",
+      "value": "TFdHux43bs21qRsygv5WQWfgtbQeT6nXey",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0es1j000rzyd993b5l6im",
+      "value": "TFrH3dcpnR3tADrAcfyJwiK4brsgf3B7PG",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0esh7000tzyd9ax8lzhq0",
+      "value": "TFurWgnyNMq9bhLrLoT9FGnrLfAL2BtR5R",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0esww000vzyd9i9huuiio",
+      "value": "TGDaYNWFXi9HJ7NacfETF15vhUH7eRhKzt",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n03j0015gylu7rqnpzad",
+      "value": "TGJVc32ig2u8tQsYMLE7KXHT5NDQroaVNU",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ets7000zzyd9pah46g35",
+      "value": "TGKgLatirRpTugS6wgCUKerjLbzWKXAVqx",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0eu7u0011zyd9qtcya13s",
+      "value": "TGMFaAXH15oaW8MpcNHLid6NbMKWaaNPdC",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ev350015zyd96qrlt3uz",
+      "value": "TGRZZsD8gxahF5oE6C7K8LLRHqQzoPa5bX",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n2ql001hgylua78w9u7f",
+      "value": "TGUPpmW2bAnMCLe5ih2CFisfCHk4gTFDsx",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0etcj000xzyd9aik3absz",
+      "value": "TGdpkwNVFjw2DnbHBCFKLvCygPVPz9w4iM",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0euni0013zyd95otn4w9b",
+      "value": "TGpNzk9noyvCCdnFPuSg5cqptPs16LjXZq",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n10w0019gyluutmkfh9q",
+      "value": "TH96tFMn8KGiYSLiwcV3E2UiaJc8jmcbz3",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0evit0017zyd9cw1g8fct",
+      "value": "THEQTsqPhRDDfgcfBW5npH5Lr9PZhpthrf",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0evyg0019zyd9cgom73s0",
+      "value": "THHb5iMAbZgQYY19h6uY66y5xt6e11gcZC",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ewts001dzyd9yg0qsbb3",
+      "value": "THUqqeevBQS3EYordDJKwp8DLFknesnfCD",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0gemt0085zyd9v1n3vbtc",
+      "value": "THh5woR8qfmDsNknQ3agPYzQSiRtMnKsTh",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ewe4001bzyd9s8kgfmzz",
+      "value": "THob8vRrpDybXeqZDj8ukQhMjJVJ5nCbTW",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ex9n001fzyd98b9moor8",
+      "value": "TJ812KESWjzJZGEWBPFCu74Js5zQS7jN5A",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0expb001hzyd9pf90ra0k",
+      "value": "TJBg9SxwiUUoqJGk18vK9avxkuV8GrKMK7",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "21979e8f-19d1-428f-be41-8cf5a3e74b7e",
+      "value": "TJCBpxZ3yC7C7oegSRZMFxBcscmUVeSA36",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": null
+    },
+    {
+      "id": "cmnj0naga002hgylungcbeumq",
+      "value": "TLM3zA3EWycoDX4ZX4gKze7sgfbdkntTum",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ge760083zyd90auudpiw",
+      "value": "TLNRT524dzL5FF1nJHDhYEMFpeWjLjRbz1",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ey50001jzyd9389gfb6k",
+      "value": "TLRMHPjLGXsVpD9RVzSfat6zDiVDrd4b4w",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n3lf001lgylup3gz6abe",
+      "value": "TM6Kix9wH8cYQ4rLpFifsQ4ddH3rPX3f8p",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0eykn001lzyd9pne442rt",
+      "value": "TMECKT19hfumcK3KqQKbhxkn1ohyeR58xu",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0msta0007gylu3vzmrlph",
+      "value": "TMGLqRQ4twjW8wJhVH1mQR7nUThpGHUsN3",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ez0a001nzyd92e9xphx7",
+      "value": "TMgnRWb9xFMtktny9Lzty21QYLLQD93ft6",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ezfx001pzyd92n60nypb",
+      "value": "TMiSGhXXVsvJzqwGbwAsGiFxWg2eALZoM5",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f0b7001tzyd9yi1a1g0r",
+      "value": "TPF9UQhqpV18BPWg5xo6MeB3h8t4iEg9gP",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f16i001xzyd9jda8fftp",
+      "value": "TPPR7e8hGC57dexrE2jy1f94wtuGyVP6Dp",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ezvk001rzyd9hsfag1xm",
+      "value": "TPcUZYthDfxNsHQnZZGBM1BDNBeNSjfPZE",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f0qu001vzyd9cdco9w7e",
+      "value": "TPo3JyryRcQ3uhBWexeYhtkpMitsUwY4uB",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n1vr001dgylu4t2ejq83",
+      "value": "TQ5mpZPbQMSq2s1vSM3RJgiB1AsTsiTpFZ",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f1m7001zzyd9cx0alvhq",
+      "value": "TQKQ4ntejdYYJpuYkFz8oCSDoXW6RKRDdY",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f21v0021zyd95a9nlztp",
+      "value": "TQthYM5nLqwAEr6DScC8tRtw29ncEB53mK",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f2hj0023zyd9wuytxntr",
+      "value": "TR18rEj7gWjKBJLYrowyfnvjWLTTsXGngK",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f2x60025zyd92ipo3xxi",
+      "value": "TRkGqvaobVp4XDNmSceRo5hDcJYDTFmYjd",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0gfks0089zyd90c5fv6au",
+      "value": "TTAHMdqoom4f2VTWniroPWQHcTRZ4caoH4",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f3v30029zyd9pnkqd411",
+      "value": "TTUqoT6EAmiM1xLvwVwxhjvjaoEUGtKDdZ",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f3ct0027zyd9wglp7t5x",
+      "value": "TTct1DezYvriNWU7Wi3mygLoskkaw61mra",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0mzo40013gyluawom58ih",
+      "value": "TTgcTTNbNuFdbrhvbjMZVrdU5KALyzDaPw",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f4aq002bzyd9j7dvqdoj",
+      "value": "TTzMs5AR66jr9mQMkWfCHVwd3AiLLYPepQ",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f4qe002dzyd9cspomb3s",
+      "value": "TUKsuPVb8kgJVFp5x528KC5HisUVdzxami",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0gf530087zyd9bkf0jf72",
+      "value": "TV5ZTpKDszLTF6XcMnPongS33pwBgF91by",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f561002fzyd9ifmxb4mo",
+      "value": "TVDsEFm19zLV8HeXdt6G75rLroxnp6uqpV",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0ku0x00sdzyd9ful6rce8",
+      "value": "TVacWx7F5wgMgn49L5frDf9KLgdYy8nPHL",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n4g8001pgylunysx5dfe",
+      "value": "TVn4q7L4fKEPbygi7UHq1CKfZxtbeuMV5q",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f5lo002hzyd9k2lm67mf",
+      "value": "TVu2SiQrWSnfwk8quAeDxfiaLy6FHzYkMA",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f61b002jzyd9coywsbeb",
+      "value": "TVyiDQ25H6Rx6PcNV1WyjGasGSa8ehj1Uv",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f6gz002lzyd9f5uwso4f",
+      "value": "TW3RgbhYkFEFnmRJ9mE9b83T9XYSMkjwuD",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n8qk0029gylukdouofze",
+      "value": "TWBAPzpPiZarfVsY2BLXeaLhNHurn4wkWG",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f6wm002nzyd9bwspqyea",
+      "value": "TWwv8FQiES3yHGig7y3zJWYuPaZfSV3vmY",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0j62b00krzyd9p85os1z2",
+      "value": "TX5GV4DyfxNB3rPkzZJhmqZ1efVmL4rEqG",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n2b7001fgyluki6l5k1i",
+      "value": "TXEaKf4rT3rMoD3Vuqnuhwr6vLq6BL5t33",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0n0ix0017gylubkt6z05q",
+      "value": "TXEsK1sEsKjZ1xtHitnyAAoqw3WLdYdRNW",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f7rw002rzyd9brkuw1qb",
+      "value": "TXFUYHVJMDyKikutvCG6qNgTUS5pxtZhHs",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f7c9002pzyd9suqemsgh",
+      "value": "TXc4kRiMEcdXRxWpSKkD5qKaARExN4uxPq",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f87k002tzyd91e3s1k5w",
+      "value": "TYD6a4PAAfAgegEdDf9oZUnW4DFmS8jeFT",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f8n7002vzyd9azpma9rp",
+      "value": "TYK29mbyvVxLaLUKdFSTRADMwoxaVbVZQg",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    },
+    {
+      "id": "cmnj0f92u002xzyd96gmyn48a",
+      "value": "TYxwUhoLPF7AgfG9GaXFEp8CQi8K8KG1m3",
+      "avant": "ethereum",
+      "type": "ADDRESS",
+      "riskClass": "SANCTION",
+      "ofac_currencytype": "USDT"
+    }
+  ],
+  "note": "Le champ d'identité dérivé (sha256 du type et de la valeur) est volontairement absent : le scanner de secrets le signale comme cle generique, et le retour arriere porte sur `id`. On ne desserre pas un scanner pour un champ inutile."
+}
