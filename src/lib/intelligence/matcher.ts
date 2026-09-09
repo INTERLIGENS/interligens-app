@@ -117,6 +117,8 @@ const SIGNAL_VIDE: IntelSignal = {
   sourceSlug: null,
   externalUrl: null,
   winner: null,
+  // Une absence VRAIE ne porte aucune décision de retrait.
+  publicationState: "PUBLISHED",
 };
 
 // ── Public lookup ───────────────────────────────────────────────────────────
@@ -180,7 +182,27 @@ export async function matchEntity(
     policy: policy ?? (await loadSourcePolicy()),
   });
 
-  if (retained.length === 0) return SIGNAL_VIDE;
+  // ─── S3.2 · LE POINT EXACT OÙ LES DEUX ABSENCES SE CONFONDAIENT ───────
+  //
+  // ██  L'entité EXISTE, ses observations sont ACTIVES, et l'admissibilité  ██
+  // ██  n'en retient aucune pour cette audience. Ce n'est PAS « rien        ██
+  // ██  trouvé » : c'est « trouvé, et retiré ».                             ██
+  //
+  // Jusqu'ici les deux rendaient `SIGNAL_VIDE`, et la route en tirait
+  // `NO_MATCH_COMPLETE` avec `negativeIsConclusive: true`. Sur 0xa5b0edf6…,
+  // adresse RÉELLEMENT sanctionnée OFAC, c'était une affirmation concluante
+  // de propreté. Mesuré en production le 2026-09-09.
+  //
+  // Ce qui suit ne révèle RIEN du retrait : ni source, ni classe de risque,
+  // ni compte. Le signal reste vide — seule sa PUBLICATION est typée, et
+  // c'est ce qui fait cesser l'affirmation. EXCLUSION ≠ ÉLECTION, à l'étage
+  // du contrat.
+  //
+  // Le cas `entity.observations.length === 0`, traité plus haut, reste un
+  // négatif VRAI : rien d'actif n'existe, donc rien n'a été retiré, et il
+  // garde `PUBLISHED`. Les confondre ici remplacerait une fausse réassurance
+  // par une alerte permanente — le même défaut sous un autre signe.
+  if (retained.length === 0) return { ...SIGNAL_VIDE, publicationState: "WITHHELD" };
 
   const obs: SourceObservationMinimal[] = retained.map((o) => ({
     id: o.id,
@@ -223,6 +245,8 @@ export async function matchEntity(
   }, obs[0]);
 
   return {
+    // Un match SERVI : rien n'a été retiré de ce qui suit.
+    publicationState: "PUBLISHED",
     ims,
     ics,
     matchCount: obs.length,
@@ -249,11 +273,18 @@ export async function lookupValue(
   const policy = await loadSourcePolicy();
   const provenance = await loadIngestionProvenance();
 
+  // S3.2 — un retrait rencontré sur N'IMPORTE QUEL type essayé doit survivre
+  // à la boucle. `lookupValue` tente jusqu'à cinq types et ne gardait que le
+  // premier match ; un signal WITHHELD, ayant `matchCount: 0`, était jeté avec
+  // les autres et l'absence redevenait indistinguable d'un vrai négatif.
+  let retireSurUnType = false;
+
   // Try each type, return first match with signal
   for (const type of types) {
     const signal = await matchEntity({ type, value, chain }, audience, policy, provenance);
     if (signal.matchCount > 0) return signal;
+    if (signal.publicationState === "WITHHELD") retireSurUnType = true;
   }
 
-  return SIGNAL_VIDE;
+  return retireSurUnType ? { ...SIGNAL_VIDE, publicationState: "WITHHELD" } : SIGNAL_VIDE;
 }

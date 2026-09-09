@@ -26,7 +26,7 @@
 // dans le watchdog et dans une réponse d'API.
 
 import type { FreshnessVerdict } from "../watchdog/sourceFreshness";
-import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
+import type { MeasurementState, PublicationState } from "@/lib/publication/absenceVocabulary";
 
 /**
  * Les sources RÉGLEMENTAIRES DÉCLARÉES. Identique à `INTEL_TIER1_SLUGS` du
@@ -222,12 +222,54 @@ export function buildSanctionCoverage(
  */
 export type SanctionAssessment = "MATCHED" | "NO_MATCH_COMPLETE" | "NO_MATCH_PARTIAL";
 
+/**
+ * ─── S3.2 · UN RÉSULTAT SUPPRIMÉ NE PRODUIT JAMAIS UN NÉGATIF CONCLUANT ───
+ *
+ * ██  Deux axes, deux raisons de ne pas conclure, et ils ne se collapsent  ██
+ * ██  PAS.                                                                ██
+ *
+ *   couverture incomplète    on n'a pas tout REGARDÉ    (MEASUREMENT)
+ *   publication retirée      on a trouvé, et retiré     (PUBLICATION)
+ *
+ * Le second manquait. Mesuré en production le 2026-09-09 sur 0xa5b0edf6…,
+ * adresse RÉELLEMENT sanctionnée OFAC : `NO_MATCH_COMPLETE` avec
+ * `negativeIsConclusive: true` — une affirmation concluante de propreté.
+ *
+ * Le paramètre a un DÉFAUT `PUBLISHED`, et c'est délibéré : le défaut
+ * inverse — traiter toute absence d'information comme un retrait — rendrait
+ * chaque scan non concluant, et l'alerte redeviendrait le fond. Un appelant
+ * qui SAIT qu'un retrait a eu lieu le dit ; c'est le matcher, et il le sait.
+ *
+ * On ne révèle RIEN du retrait : ni source, ni classe, ni compte. On cesse
+ * seulement d'affirmer.
+ */
 export function assessSanction(
   hasSanction: boolean,
   coverage: SanctionCoverage,
+  publicationState: PublicationState = "PUBLISHED",
 ): SanctionAssessment {
+  // Trouver prime sur avoir tout regardé — un match réel sort TOUJOURS, et un
+  // retrait ne peut pas l'effacer.
   if (hasSanction) return "MATCHED";
+  // Un résultat retiré pour cette audience ne conclut rien, quelle que soit la
+  // qualité de la couverture. Les deux conditions sont indépendantes : exiger
+  // les deux est ce qui empêche l'une de racheter l'autre.
+  if (publicationState !== "PUBLISHED") return "NO_MATCH_PARTIAL";
   return coverage.negativeIsConclusive ? "NO_MATCH_COMPLETE" : "NO_MATCH_PARTIAL";
+}
+
+/**
+ * Ce qu'un négatif autorise à conclure, les DEUX axes composés.
+ *
+ * `negativeIsConclusive` seul ne suffit plus : il ne parle que des
+ * collecteurs. Cette fonction est la seule place où les deux se rencontrent,
+ * pour qu'aucune surface n'en compose sa propre version.
+ */
+export function negativeIsConclusiveForAudience(
+  coverage: SanctionCoverage,
+  publicationState: PublicationState = "PUBLISHED",
+): boolean {
+  return coverage.negativeIsConclusive && publicationState === "PUBLISHED";
 }
 
 // ═══ BUILD 12 · S3 — LA COUVERTURE, GÉNÉRALISÉE AU CHEMIN PRÉ-ACHAT ═══════
