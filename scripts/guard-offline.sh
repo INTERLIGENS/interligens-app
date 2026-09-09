@@ -475,6 +475,45 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# ── FENÊTRE S3.2 · UN RÉSULTAT SUPPRIMÉ NE CONCLUT JAMAIS ──────────────────
+#
+# ██  Le moteur TROUVE la sanction. La route la REMPLACE par une            ██
+# ██  affirmation concluante de propreté.                                   ██
+#
+# Mesuré en production le 2026-09-09, sur TA3941uFAvmVibSkQ6fMJXxmaSNovX86mz,
+# observation ofac/SANCTION ACTIVE :
+#
+#   matcher, en local        matchCount 1   hasSanction TRUE
+#   /api/scan/intelligence   servi          hasSanction false, NO_MATCH_COMPLETE
+#
+# 866 des 867 entités à observation OFAC active sont dans ce cas ; une seule
+# est RETAIL_SAFE. Ce n'est pas une absence mal typée, c'est une RÉÉCRITURE.
+#
+# DEUX FICHIERS, UN ARGUMENT CHACUN. Les deux routes ont la même forme : une
+# branche de suppression qui SAIT DÉJÀ qu'elle supprime, et un retour normal.
+# La branche passe "WITHHELD" à assessSanction et projette la couverture pour
+# l'audience. Rien d'autre.
+#
+# LE CHAMP publicationState NE SORT PAS. Un champ valant WITHHELD sur une route
+# publique serait un ORACLE ÉNUMÉRABLE : balayer des adresses reconstituerait
+# la liste des entités sanctionnées-mais-masquées — le renseignement même que
+# displaySafety protège. L'appelant apprend qu'on ne conclut pas ; il n'apprend
+# pas pourquoi.
+#
+# L'AUTORITÉ EST DÉJÀ MERGÉE ET LIBRE (#356 et le complément) : assessSanction,
+# negativeIsConclusiveForAudience et projectCoverageForAudience vivent dans
+# src/lib/intelligence/. Seule la CONSOMMATION manque, et elle est gelée.
+#
+# NE COUVRE PAS : le reste de src/app/api/, src/components/, prisma/,
+# package.json, le lockfile. Aucune promotion RETAIL_SAFE, aucun write, aucun
+# changement d'admissibilite.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s32-publication-axis$ ]]; then
+    EXEMPT_S32_PUBLICATION_PATTERNS=(
+        "^src/app/api/scan/intelligence/route\\.ts$"
+        "^src/app/api/intelligence/match/route\\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +717,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # FENÊTRE S3.2 — les DEUX routes qui consomment l'axe de publication.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s32-publication-axis$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_S32_PUBLICATION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
