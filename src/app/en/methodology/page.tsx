@@ -84,7 +84,7 @@ export default function MethodologyPage() {
           {[
             { label: "7 chains live", body: "Solana, Ethereum, Base, Arbitrum, BSC, TRON, Neon." },
             { label: "On-chain signals", body: "Holder concentration, liquidity depth, token age, volume analysis, cluster risk, deployer history." },
-            { label: "Case intelligence", body: "OFAC / sanctions, Scam Sniffer, GoPlus, casefile claims, and the KOL registry — 370+ profiles, 220 with linked wallets." },
+            { label: "Case intelligence", body: "OFAC / sanctions, Scam Sniffer, casefile claims, and the KOL registry — 370+ profiles, 220 with linked wallets." },
             { label: "Market data", body: "DexScreener real-time pricing and pump.fun launch detection." },
             { label: "Social intelligence", body: "Watcher V2 — 79 handles, captured automatically every 72 hours." },
           ].map((s) => (

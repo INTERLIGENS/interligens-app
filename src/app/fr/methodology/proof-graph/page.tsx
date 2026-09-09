@@ -47,7 +47,6 @@ const BRANCHES: {
     children: [
       { name: "OFAC / Sanctions", status: "LIVE" },
       { name: "Scam Sniffer", status: "LIVE" },
-      { name: "GoPlus", status: "LIVE" },
       { name: "Allégations de dossier", status: "LIVE" },
       { name: "Registre KOL", status: "LIVE" },
     ],
