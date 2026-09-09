@@ -106,6 +106,106 @@ export function assessSanction(
   return coverage.negativeIsConclusive ? "NO_MATCH_COMPLETE" : "NO_MATCH_PARTIAL";
 }
 
+// ═══ BUILD 12 · S3 — LA COUVERTURE, GÉNÉRALISÉE AU CHEMIN PRÉ-ACHAT ═══════
+//
+// ██  NEVER_EXECUTED ne projette JAMAIS en NO_MATCH.                       ██
+//
+// Ce qui précède ferme le motif pour les SANCTIONS, sur deux routes. Mesuré le
+// 2026-09-09, il en manquait deux : `/api/v1/score` et `/api/partner/v1/*`
+// servent `sources: []` et « No major risk signals detected. » pendant que
+// `amf` et `fca` n'ont JAMAIS tourné — 0 lot, 0 observation. Sur le chemin
+// pré-achat, « jamais exécutée » est indistinguable de « vérifiée, rien
+// trouvé ».
+//
+// Ce n'est PAS une seconde autorité. `buildSanctionCoverage` prend déjà son
+// périmètre en PARAMÈTRE : la généralisation était prévue, elle n'est pas
+// réécrite. Ce qui suit ajoute le vocabulaire d'absence TYPÉ et le
+// dénominateur, que la forme sanctions n'avait pas besoin de porter.
+//
+// ─── AU2 — le dénominateur n'inclut pas une source sans run ───────────────
+//
+// Le périmètre ANNONCÉ est le périmètre RÉELLEMENT vérifié. Une source
+// déclarée et jamais exécutée n'entre pas au dénominateur : elle est NOMMÉE
+// dans `notVerified`, avec son motif. Gonfler le dénominateur gonflerait aussi
+// le périmètre vide — c'est le critère B4/B5 du corpus de T2.
+
+import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
+
+/**
+ * Les sources d'intelligence DÉCLARÉES par la politique du scoreur.
+ * Déclarées ne veut pas dire exécutées : c'est tout le sujet.
+ */
+export const DECLARED_INTELLIGENCE_SOURCES = [
+  "ofac",
+  "amf",
+  "fca",
+  "scamsniffer",
+  "forta",
+  "goplus",
+] as const;
+
+/**
+ * L'état de fraîcheur, traduit dans le vocabulaire d'absence RATIFIÉ.
+ * Aucun jeton inventé — critère B2b.
+ */
+export function freshnessToMeasurementState(state: string): MeasurementState {
+  switch (state) {
+    case "FRESH":
+      return "MEASURED";
+    case "STALE":
+      return "STALE";
+    // Jamais armée : la capacité n'a pas produit une ligne. Ce n'est ni
+    // « non applicable » — elle est déclarée — ni « inconnu ».
+    case "NOT_ARMED":
+      return "NOT_MEASURED";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+export interface IntelligenceCoverage {
+  readonly state: SanctionCoverageState;
+  /** Le périmètre RÉELLEMENT vérifié. Jamais le périmètre déclaré. */
+  readonly verifiedScope: readonly string[];
+  /** La taille de ce périmètre — le dénominateur honnête. */
+  readonly denominator: number;
+  /** Les déclarées non vérifiées, avec leur motif TYPÉ. Jamais un simple absent. */
+  readonly notVerified: readonly { readonly source: string; readonly reason: MeasurementState }[];
+  /** Ce qu'un no-match autorise à conclure. */
+  readonly negativeIsConclusive: boolean;
+}
+
+/**
+ * La couverture d'intelligence, sur le périmètre déclaré passé en argument.
+ *
+ * Même question que `buildSanctionCoverage` — « cette source a-t-elle été
+ * observée ? » — sur un périmètre plus large, et avec le motif typé.
+ */
+export function buildIntelligenceCoverage(
+  verdicts: readonly FreshnessVerdict[],
+  declared: readonly string[] = DECLARED_INTELLIGENCE_SOURCES,
+): IntelligenceCoverage {
+  const parSlug = new Map(verdicts.map((v) => [v.sourceSlug, v]));
+  const verifiedScope: string[] = [];
+  const notVerified: { source: string; reason: MeasurementState }[] = [];
+
+  for (const slug of declared) {
+    // Une source dont on n'a AUCUN verdict n'est pas fraîche par défaut.
+    const etat = parSlug.get(slug)?.state ?? "NOT_ARMED";
+    if (etat === "FRESH") verifiedScope.push(slug);
+    else notVerified.push({ source: slug, reason: freshnessToMeasurementState(etat) });
+  }
+
+  return {
+    state: notVerified.length === 0 ? "COMPLETE" : "PARTIAL",
+    verifiedScope,
+    // AU2 — le dénominateur EST le périmètre vérifié, pas le déclaré.
+    denominator: verifiedScope.length,
+    notVerified,
+    negativeIsConclusive: notVerified.length === 0,
+  };
+}
+
 // ─── Le lecteur — une requête, sur le journal d'exécution ─────────────────
 //
 // Même source de vérité que la sonde du watchdog : `intel_ingestion_batches`,
