@@ -475,6 +475,37 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# ── FENÊTRE S4 · LE JETON PARTENAIRE OBÉIT À LA RÈGLE DE LA PROSE ──────────
+#
+# ██  En S3 j'ai fermé la prose sur /api/v1/score et laissé le jeton ouvert. ██
+#
+# Mesuré : toPartnerVerdict(p) rend "SAFE" depuis p.level seul, et AUCUN des
+# quatre sites d'appel ne reçoit intelligenceCoverage — score-lite:219,
+# batch-score:153, transaction-check:156 et :203.
+#
+# verdict: "SAFE" dit exactement ce que la phrase disait, sous une forme que le
+# partenaire consomme PROGRAMMATIQUEMENT. Donc plus fort, pas moins. T2 a
+# trouvé le meme trou par un autre chemin (son critere C6) : deux chemins, meme
+# trou.
+#
+# L'AUTORITÉ EST DÉJÀ MERGÉE ET LIBRE (#361) : toPartnerVerdict et
+# buildPartnerReason acceptent la couverture, six mutants le prouvent. Seule la
+# CONSOMMATION manque, et elle est gelée.
+#
+# CE QUI NE CHANGE PAS : toPartnerRecommendation reste ALLOW — l'incomplétude
+# de couverture interdit une affirmation, elle ne convertit pas un risque jeton
+# en risque. Et le domaine reste à trois valeurs.
+#
+# NE COUVRE PAS : /api/v1/score, /api/scan/intelligence, /api/intelligence/match,
+# le reste de src/app/api/, prisma/, package.json, le lockfile.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s4-partner-token$ ]]; then
+    EXEMPT_S4_PARTNER_PATTERNS=(
+        "^src/app/api/partner/v1/score-lite/route\\.ts$"
+        "^src/app/api/partner/v1/batch-score/route\\.ts$"
+        "^src/app/api/partner/v1/transaction-check/route\\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -678,6 +709,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # FENÊTRE S4 — les TROIS routes partenaires qui émettent le jeton.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s4-partner-token$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_S4_PARTNER_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
