@@ -4,6 +4,9 @@ import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } fr
 import { computeTigerScoreWithIntel, type TigerInput } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
+import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
+import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import { projectPreBuy, toPartnerVerdict, toSwapTier } from "@/lib/prebuy/projection";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
@@ -23,17 +26,12 @@ const MAX_ADDRESSES = 10;
 type Verdict = "SAFE" | "WARNING" | "AVOID";
 type Tier = "GREEN" | "ORANGE" | "RED";
 
-function toVerdict(score: number): Verdict {
-  if (score >= 70) return "AVOID";
-  if (score >= 35) return "WARNING";
-  return "SAFE";
-}
-
-function toTier(score: number): Tier {
-  if (score >= 70) return "RED";
-  if (score >= 35) return "ORANGE";
-  return "GREEN";
-}
+// ─── BUILD 12 · S2 — quatrième et dernière copie de la table ──────────────
+//
+// Verdict et tier dérivent désormais de la projection canonique. Le domaine de
+// valeurs ne bouge pas : `SAFE` et `GREEN` restent émissibles. Ce qui change
+// est la CONDITION — une projection ALLOW, donc une mesure attendue réussie et
+// une identité résolue.
 
 type BatchResult =
   | { address: string; score: number; verdict: Verdict; tier: Tier }
@@ -52,6 +50,9 @@ async function scoreOne(address: string): Promise<BatchResult> {
 
   try {
     let finalScore: number;
+    let manquants: ManqueMesure[] = [];
+    let attendus = 1;
+    let attestations: IdentityAttestation[] = [];
 
     if (!isEvm) {
       // SOL: full enrichment — same pipeline as /api/v1/score
@@ -92,6 +93,15 @@ async function scoreOne(address: string): Promise<BatchResult> {
       });
 
       finalScore = Math.max(tigerScan.score, intel.finalScore);
+      attendus = 2;
+      manquants = market.data_unavailable
+        ? [{ engine: "market", reason: "FAILURE" }]
+        : [];
+      attestations = [
+        { source: "casefile", attests: caseFile != null },
+        { source: "market_pair", attests: !market.data_unavailable && Boolean(market.url) },
+        { source: "intelligence_match", attests: intel.intelligence != null },
+      ];
     } else {
       const input: TigerInput = {
         chain: "ETH",
@@ -105,13 +115,30 @@ async function scoreOne(address: string): Promise<BatchResult> {
         ),
       ]);
       finalScore = intel.finalScore;
+      manquants = [{ engine: "market", reason: "NOT_REQUESTED_BY_CONTRACT" }];
+      attestations = [
+        { source: "knownBad", attests: knownBad !== null },
+        { source: "intelligence_match", attests: intel.intelligence != null },
+      ];
     }
+
+    const projection = projectPreBuy(
+      canonicalPreBuyDecision({
+        score: finalScore,
+        measurement: {
+          expected: attendus,
+          expectedMeasured: attendus - manquants.filter((m) => m.reason === "FAILURE").length,
+          missing: manquants,
+        },
+        identity: resolveTokenIdentity({ syntacticallyValid: true, attestations }),
+      }),
+    );
 
     return {
       address: normalized,
       score: finalScore,
-      verdict: toVerdict(finalScore),
-      tier: toTier(finalScore),
+      verdict: toPartnerVerdict(projection),
+      tier: toSwapTier(projection),
     };
   } catch (err) {
     return {

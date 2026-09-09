@@ -4,6 +4,9 @@ import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } fr
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
+import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
+import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import { projectPreBuy, toPartnerVerdict, toSwapTier } from "@/lib/prebuy/projection";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
@@ -43,17 +46,15 @@ function setCached(address: string, payload: PartnerScoreLiteResponse): void {
 type Verdict = "SAFE" | "WARNING" | "AVOID";
 type Tier = "GREEN" | "ORANGE" | "RED";
 
-function toVerdict(score: number): Verdict {
-  if (score >= 70) return "AVOID";
-  if (score >= 35) return "WARNING";
-  return "SAFE";
-}
-
-function toTier(score: number): Tier {
-  if (score >= 70) return "RED";
-  if (score >= 35) return "ORANGE";
-  return "GREEN";
-}
+// ─── BUILD 12 · S2 — `SAFE` reste, sa CONDITION change ────────────────────
+//
+// Les deux tables de seuils qui vivaient ici étaient la troisième et la
+// quatrième copie de la même règle. Elles sont supprimées : le verdict et le
+// tier dérivent tous deux de la projection canonique.
+//
+// Le domaine de valeurs est INCHANGÉ — `SAFE` en fait toujours partie, et le
+// retirer casserait des partenaires. Ce qui change est QUAND il sort : plus
+// jamais sur le seul score, seulement sur une projection ALLOW.
 
 type PartnerScoreLiteResponse = {
   address: string;
@@ -109,6 +110,9 @@ export async function GET(req: NextRequest) {
 
     let score: number;
     let signalsCount: number;
+    let manquants: ManqueMesure[] = [];
+    let attendus = 1;
+    let attestations: IdentityAttestation[] = [];
 
     if (isEvm) {
       const intel = await Promise.race([
@@ -122,6 +126,11 @@ export async function GET(req: NextRequest) {
       ]);
       score = intel.finalScore;
       signalsCount = intel.drivers.length;
+      manquants = [{ engine: "market", reason: "NOT_REQUESTED_BY_CONTRACT" }];
+      attestations = [
+        { source: "knownBad", attests: knownBad !== null },
+        { source: "intelligence_match", attests: intel.intelligence != null },
+      ];
     } else {
       // SOL: full enrichment — same pipeline as /api/v1/score
       const caseFile = loadCaseByMint(normalized);
@@ -164,13 +173,34 @@ export async function GET(req: NextRequest) {
       signalsCount =
         tigerScan.drivers.length +
         intel.drivers.filter((d) => d.id === "intelligence_overlay").length;
+      attendus = 2;
+      manquants = market.data_unavailable
+        ? [{ engine: "market", reason: "FAILURE" }]
+        : [];
+      attestations = [
+        { source: "casefile", attests: caseFile != null },
+        { source: "market_pair", attests: !market.data_unavailable && Boolean(market.url) },
+        { source: "intelligence_match", attests: intel.intelligence != null },
+      ];
     }
+
+    const projection = projectPreBuy(
+      canonicalPreBuyDecision({
+        score,
+        measurement: {
+          expected: attendus,
+          expectedMeasured: attendus - manquants.filter((m) => m.reason === "FAILURE").length,
+          missing: manquants,
+        },
+        identity: resolveTokenIdentity({ syntacticallyValid: true, attestations }),
+      }),
+    );
 
     const payload: PartnerScoreLiteResponse = {
       address: normalized,
       score,
-      verdict: toVerdict(score),
-      tier: toTier(score),
+      verdict: toPartnerVerdict(projection),
+      tier: toSwapTier(projection),
       signals_count: signalsCount,
       cache_hit: false,
       as_of: new Date().toISOString(),

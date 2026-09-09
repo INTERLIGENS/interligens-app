@@ -30,13 +30,13 @@ exports[`/api/v1/score snapshot — 'EVM mid-cap — random EOA' > matches the l
   "api_version": "v1",
   "cached": false,
   "mint": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [],
   "timestamp": "2026-05-13T10:00:00.000Z",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
 }
 `;
 
@@ -45,13 +45,13 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — DAI' > matches the locked r
   "api_version": "v1",
   "cached": false,
   "mint": "0x6b175474e89094c44da98b954eedeac495271d0f",
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [],
   "timestamp": "2026-05-13T10:00:00.000Z",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
 }
 `;
 
@@ -60,13 +60,13 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — LINK' > matches the locked 
   "api_version": "v1",
   "cached": false,
   "mint": "0x514910771af9ca656af840dff83e8264ecf986ca",
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [],
   "timestamp": "2026-05-13T10:00:00.000Z",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
 }
 `;
 
@@ -75,13 +75,13 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — USDC ETH' > matches the loc
   "api_version": "v1",
   "cached": false,
   "mint": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [],
   "timestamp": "2026-05-13T10:00:00.000Z",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
 }
 `;
 
@@ -90,13 +90,13 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — USDT ETH' > matches the loc
   "api_version": "v1",
   "cached": false,
   "mint": "0xdac17f958d2ee523a2206206994597c13d831ec7",
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [],
   "timestamp": "2026-05-13T10:00:00.000Z",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
 }
 `;
 
@@ -105,13 +105,13 @@ exports[`/api/v1/score snapshot — 'EVM top-cap — wBTC' > matches the locked 
   "api_version": "v1",
   "cached": false,
   "mint": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "This address could not be resolved to a known token by any of our sources. Treat this as unidentified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [],
   "timestamp": "2026-05-13T10:00:00.000Z",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
 }
 `;
 
@@ -124,8 +124,8 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap A' > matches the locked respons
   "mint": "MidCapTokenA1111111111111111111111111111111A",
   "mintAuthority": null,
   "pairAgeDays": 200,
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [
@@ -135,7 +135,7 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap A' > matches the locked respons
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;
@@ -149,8 +149,8 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap B' > matches the locked respons
   "mint": "MidCapTokenB1111111111111111111111111111111B",
   "mintAuthority": null,
   "pairAgeDays": 90,
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [
@@ -160,7 +160,7 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap B' > matches the locked respons
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;
@@ -174,8 +174,8 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap C' > matches the locked respons
   "mint": "MidCapTokenC1111111111111111111111111111111C",
   "mintAuthority": null,
   "pairAgeDays": 300,
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 0,
   "signals": [],
   "sources": [
@@ -185,7 +185,7 @@ exports[`/api/v1/score snapshot — 'SOL mid-cap C' > matches the locked respons
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;
@@ -199,8 +199,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — BONK' > matches the locked 
   "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
   "mintAuthority": null,
   "pairAgeDays": 600,
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 20,
   "signals": [
     {
@@ -217,7 +217,7 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — BONK' > matches the locked 
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;
@@ -231,8 +231,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — JUP' > matches the locked r
   "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
   "mintAuthority": null,
   "pairAgeDays": 365,
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 20,
   "signals": [
     {
@@ -249,7 +249,7 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — JUP' > matches the locked r
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;
@@ -263,8 +263,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDC' > matches the locked 
   "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   "mintAuthority": null,
   "pairAgeDays": 1200,
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 20,
   "signals": [
     {
@@ -281,7 +281,7 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDC' > matches the locked 
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;
@@ -295,8 +295,8 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDT' > matches the locked 
   "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
   "mintAuthority": null,
   "pairAgeDays": 1500,
-  "phantom_disclaimer": "No critical signal was returned. The completeness of the checks behind this result is not established — this is not a confirmation that the token is safe.",
-  "phantom_warning_level": "ALLOW",
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
   "score": 20,
   "signals": [
     {
@@ -313,7 +313,7 @@ exports[`/api/v1/score snapshot — 'SOL top-cap — USDT' > matches the locked 
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "GREEN",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;

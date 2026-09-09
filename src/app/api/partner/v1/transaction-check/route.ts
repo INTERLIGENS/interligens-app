@@ -4,6 +4,15 @@ import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } fr
 import { computeTigerScoreWithIntel, type TigerInput } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
+import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
+import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import {
+  projectPreBuy,
+  toPartnerVerdict,
+  toPartnerRecommendation,
+  buildPartnerReason,
+  type PreBuyProjection,
+} from "@/lib/prebuy/projection";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 import { loadCaseByMint } from "@/lib/caseDb";
 import { getMarketSnapshot } from "@/lib/marketProviders";
@@ -36,33 +45,41 @@ const SUPPORTED_CHAINS = Object.keys(CHAIN_MAP) as SupportedChain[];
 type Verdict = "SAFE" | "WARNING" | "AVOID";
 type Recommendation = "ALLOW" | "WARN" | "BLOCK";
 
-function toVerdict(score: number): Verdict {
-  if (score >= 70) return "AVOID";
-  if (score >= 35) return "WARNING";
-  return "SAFE";
-}
-
-function toRecommendation(score: number): Recommendation {
-  if (score >= 70) return "BLOCK";
-  if (score >= 40) return "WARN";
-  return "ALLOW";
-}
-
-function buildReason(score: number, signalsCount: number): string {
-  const rec = toRecommendation(score);
-  if (rec === "BLOCK")
-    return `Score ${score}/100 — ${signalsCount} high-risk signal${signalsCount !== 1 ? "s" : ""} detected`;
-  if (rec === "WARN")
-    return `Score ${score}/100 — ${signalsCount} risk signal${signalsCount !== 1 ? "s" : ""} detected, proceed with caution`;
-  return `Score ${score}/100 — no critical risk signals detected`;
-}
+// ─── BUILD 12 · S2 — DEUX DÉFAUTS FERMÉS ICI ──────────────────────────────
+//
+// Ce qu'il y avait :
+//
+//   function toVerdict(score)        { ... if (score >= 35) return "WARNING"; }
+//   function toRecommendation(score) { ... if (score >= 40) return "WARN"; }
+//
+// Deux dérivations indépendantes du même score, avec deux bornes différentes.
+// Dans la bande 35–39, UNE SEULE réponse portait `verdict_to: "WARNING"` ET
+// `recommendation: "ALLOW"` : le verdict et l'action divergeaient à
+// l'intérieur d'un même objet. Elles dérivent maintenant toutes deux de la
+// MÊME projection, donc la divergence n'est plus corrigée — elle est devenue
+// inexprimable.
+//
+//   function buildReason(score, signalsCount)
+//
+// La phrase « no critical risk signals detected » était construite sur le seul
+// score, sans aucun état de mesure. C'était le défaut fermé côté
+// /api/v1/score, resté ouvert côté partenaire. Même traitement.
+//
+// Le domaine de valeurs ne bouge pas — `SAFE` reste. Ce qui change est QUAND
+// il sort : uniquement sur une projection ALLOW, donc adossée à une mesure
+// attendue réussie et à une identité résolue.
 
 // ── Score helper ──────────────────────────────────────────────────────────────
 
 async function scoreAddress(
   address: string,
   chain: TigerInput["chain"]
-): Promise<{ score: number; verdict: Verdict; signals_count: number } | null> {
+): Promise<{
+  score: number;
+  verdict: Verdict;
+  signals_count: number;
+  projection: PreBuyProjection;
+} | null> {
   try {
     const isEvm = isValidEvmAddress(address);
     const normalized = isEvm ? address.toLowerCase() : address;
@@ -107,12 +124,35 @@ async function scoreAddress(
       });
 
       const finalScore = Math.max(tigerScan.score, intel.finalScore);
+      const solManquants: ManqueMesure[] = market.data_unavailable
+        ? [{ engine: "market", reason: "FAILURE" }]
+        : [];
+      const solAttest: IdentityAttestation[] = [
+        { source: "casefile", attests: caseFile != null },
+        { source: "market_pair", attests: !market.data_unavailable && Boolean(market.url) },
+        { source: "intelligence_match", attests: intel.intelligence != null },
+      ];
+      const projection = projectPreBuy(
+        canonicalPreBuyDecision({
+          score: finalScore,
+          measurement: {
+            expected: 2,
+            expectedMeasured: 2 - solManquants.length,
+            missing: solManquants,
+          },
+          identity: resolveTokenIdentity({
+            syntacticallyValid: true,
+            attestations: solAttest,
+          }),
+        }),
+      );
       return {
         score: finalScore,
-        verdict: toVerdict(finalScore),
+        verdict: toPartnerVerdict(projection),
         signals_count:
           tigerScan.drivers.length +
           intel.drivers.filter((d) => d.id === "intelligence_overlay").length,
+        projection,
       };
     }
 
@@ -128,10 +168,28 @@ async function scoreAddress(
       ),
     ]);
 
+    const evmProjection = projectPreBuy(
+      canonicalPreBuyDecision({
+        score: intel.finalScore,
+        measurement: {
+          expected: 1,
+          expectedMeasured: 1,
+          missing: [{ engine: "market", reason: "NOT_REQUESTED_BY_CONTRACT" }],
+        },
+        identity: resolveTokenIdentity({
+          syntacticallyValid: true,
+          attestations: [
+            { source: "knownBad", attests: knownBad !== null },
+            { source: "intelligence_match", attests: intel.intelligence != null },
+          ],
+        }),
+      }),
+    );
     return {
       score: intel.finalScore,
-      verdict: toVerdict(intel.finalScore),
+      verdict: toPartnerVerdict(evmProjection),
       signals_count: intel.drivers.length,
+      projection: evmProjection,
     };
   } catch {
     return null;
@@ -213,8 +271,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const recommendation = toRecommendation(resultTo.score);
-  const reason = buildReason(resultTo.score, resultTo.signals_count);
+  // Une seule source pour l'action, le verdict et la phrase.
+  const recommendation: Recommendation = toPartnerRecommendation(resultTo.projection);
+  const reason = buildPartnerReason(
+    resultTo.projection,
+    resultTo.score,
+    resultTo.signals_count,
+  );
 
   console.info(
     "[partner/transaction-check] to=%s from=%s chain=%s score_to=%d recommendation=%s",

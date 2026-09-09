@@ -8,10 +8,13 @@ import {
   isValidMint,
   isValidEvmAddress,
   mapSeverity,
-  derivePhantomWarning,
+  phantomFromProjection,
   type PublicScoreResponse,
   type PublicSignal,
 } from "@/lib/publicScore/schema";
+import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
+import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import { projectPreBuy, toSwapTier } from "@/lib/prebuy/projection";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { loadCaseByMint } from "@/lib/caseDb";
@@ -154,7 +157,32 @@ export async function GET(request: NextRequest) {
       );
 
       const finalScore = intel.finalScore;
-      const finalVerdict = finalScore >= 70 ? "RED" : finalScore >= 35 ? "ORANGE" : "GREEN";
+
+      // ── BUILD 12 · S2 — la décision vient de l'autorité canonique ──────
+      // Le chemin EVM ne consulte ni marché, ni holders, ni lignée : ils sont
+      // HORS CONTRAT ici, donc ils ne dégradent rien. C'est la distinction de
+      // BUILD 11.1, réutilisée et non redéfinie.
+      const evmDecision = canonicalPreBuyDecision({
+        score: finalScore,
+        measurement: {
+          expected: 1,
+          expectedMeasured: 1,
+          missing: [
+            { engine: "market", reason: "NOT_REQUESTED_BY_CONTRACT" },
+            { engine: "holders", reason: "NOT_REQUESTED_BY_CONTRACT" },
+            { engine: "scam_lineage", reason: "NOT_REQUESTED_BY_CONTRACT" },
+          ],
+        },
+        identity: resolveTokenIdentity({
+          syntacticallyValid: true,
+          attestations: [
+            { source: "knownBad", attests: knownBad !== null },
+            { source: "intelligence_match", attests: intel.intelligence != null },
+          ],
+        }),
+      });
+      const evmProjection = projectPreBuy(evmDecision);
+      const finalVerdict = toSwapTier(evmProjection);
 
       const signals: PublicSignal[] = intel.drivers.map((d) => ({
         id: d.id,
@@ -171,7 +199,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const phantom = derivePhantomWarning(finalVerdict);
+      const phantom = phantomFromProjection(evmProjection);
 
       const communityScans = await upsertScanAggregate(normalized);
 
@@ -222,6 +250,10 @@ export async function GET(request: NextRequest) {
 
     // 3. Determine scam lineage (fail-open)
     let scamLineage: "CONFIRMED" | "REFERENCED" | "NONE" = "NONE";
+    // Le `catch` plus bas laissait "NONE" — la valeur FAVORABLE — sans laisser
+    // de trace. La valeur ne bouge pas ; ce qui est ajouté est de SAVOIR que
+    // c'est un défaut de mesure. BUILD 10 · P0, appliqué à ce site-ci.
+    let scamLineageMeasured = true;
     try {
       const graphUrl = new URL(`/api/scan/solana/graph?mint=${mint}`, request.url);
       const graphRes = await fetch(graphUrl.toString(), { cache: "no-store", signal: AbortSignal.timeout(6000) });
@@ -231,7 +263,10 @@ export async function GET(request: NextRequest) {
         if (status === "CONFIRMED") scamLineage = "CONFIRMED";
         else if (status === "REFERENCED") scamLineage = "REFERENCED";
       }
-    } catch { /* fail-open */ }
+      else if (!graphRes.ok) scamLineageMeasured = false;
+    } catch {
+      scamLineageMeasured = false;
+    }
 
     // 4. Compute TigerScore via adapter
     //
@@ -277,7 +312,56 @@ export async function GET(request: NextRequest) {
     );
 
     const finalScore = Math.max(tigerScan.score, intel.finalScore);
-    const finalVerdict = finalScore >= 70 ? "RED" : finalScore >= 35 ? "ORANGE" : "GREEN";
+
+    // ── BUILD 12 · S2 — la décision vient de l'autorité canonique ────────
+    // Quatre capacités sont ATTENDUES sur ce chemin. Celles qui échouent sont
+    // nommées ; le verdict n'est plus dérivé d'un seuil écrit ici.
+    const solManquants: ManqueMesure[] = [
+      ...(market.data_unavailable
+        ? [{ engine: "market", reason: "FAILURE" as const }]
+        : []),
+      // `holders` reste VISIBLE — il est publié dans la réponse avec
+      // `topHolderUnavailableReason` — mais il n'entre PAS au dénominateur
+      // ATTENDU de la décision, et ce n'est pas une commodité :
+      //
+      //   1. son absence est DÉJÀ consommée par le moteur, qui reçoit
+      //      `holders_unavailable` et baisse sa confiance en conséquence.
+      //      La compter ici la pénaliserait une seconde fois ;
+      //   2. mesuré en production le 2026-09-09, il est indisponible des deux
+      //      côtés — filtre Helius trop large, et 429 sur le RPC public. Une
+      //      capacité éteinte en permanence mettrait `degraded` à `true` sur
+      //      TOUTE réponse SOL, et BUILD 11.1 a tranché : un signal d'alerte
+      //      allumé en régime normal n'alerte plus, il devient le fond.
+      //
+      // C'est le précédent `narrative` de BUILD 11.1 — présent à l'inventaire,
+      // absent du dénominateur.
+      ...(holders.available
+        ? []
+        : [{ engine: "holders", reason: "NOT_REQUESTED_BY_CONTRACT" as const }]),
+      ...(scamLineageMeasured
+        ? []
+        : [{ engine: "scam_lineage", reason: "FAILURE" as const }]),
+    ];
+    const solIdentity: IdentityAttestation[] = [
+      { source: "casefile", attests: caseFile != null },
+      { source: "market_pair", attests: !market.data_unavailable && Boolean(market.url) },
+      { source: "intelligence_match", attests: intel.intelligence != null },
+    ];
+    const solDecision = canonicalPreBuyDecision({
+      score: finalScore,
+      measurement: {
+        expected: 3,
+        expectedMeasured:
+          3 - solManquants.filter((m) => m.reason === "FAILURE").length,
+        missing: solManquants,
+      },
+      identity: resolveTokenIdentity({
+        syntacticallyValid: true,
+        attestations: solIdentity,
+      }),
+    });
+    const solProjection = projectPreBuy(solDecision);
+    const finalVerdict = toSwapTier(solProjection);
 
     // 6. Build signals array
     const allDrivers = [...tigerScan.drivers];
@@ -307,7 +391,7 @@ export async function GET(request: NextRequest) {
     }
     if (scamLineage !== "NONE") sources.push("Lineage Graph");
 
-    const phantom = derivePhantomWarning(finalVerdict);
+    const phantom = phantomFromProjection(solProjection);
 
     const communityScans = await upsertScanAggregate(mint);
 
