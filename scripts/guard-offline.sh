@@ -475,54 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# ── BUILD 12 · S3 — CÂBLAGE DE LA COUVERTURE SUR LE CHEMIN PRÉ-ACHAT ────────
-# Autorisation humaine explicite : mandat « BUILD 12 S3 », périmètre autorisé
-# tel que demandé.
-#
-# MESURE AVANT OUVERTURE. L'AUTORITÉ vit dans src/lib/intelligence/, qui est
-# LIBRE, et elle est déjà écrite, prouvée et mergée — 6 mutants, 6 mordent.
-# Seul le CÂBLAGE des routes en a besoin.
-#
-# Le défaut, mesuré le 2026-09-09 sur la MÊME adresse :
-#   /api/scan/intelligence → NO_MATCH_PARTIAL, negativeIsConclusive false
-#   /api/v1/score          → ALLOW, sources: [], « No major risk signals
-#                            detected. », AUCUN champ de couverture
-# Sur le chemin pré-achat, « jamais exécutée » est indistinguable de
-# « vérifiée, rien trouvé ».
-#
-# LES QUATRE ROUTES, une seule fenêtre : le motif ^src/app/api/ les couvre
-# déjà d'une seule exemption. Fractionner en deux danses doublerait le risque
-# pour le même périmètre gelé. Et `verdict: "SAFE"` est une réassurance
-# STRUCTURÉE servie aux partenaires — fermer le public en laissant le
-# partenaire ouvert, c'est contenir la moitié du P0 en sachant laquelle.
-#
-# EXTENSION D'UN SEUL CHEMIN, ET C'EST UN TEST — mesurée après ouverture.
-#
-# `partner-api.test.ts` est rangé SOUS la route qu'il juge, donc sous le
-# préfixe gelé. Le guard l'attrape par coïncidence de rangement, pas parce
-# qu'il est du code servi : il n'est chargé par aucune route.
-#
-# Il a besoin du mock parce que la lecture de couverture fait un aller-retour
-# BASE. Mesuré : 2905 ms à froid, ~300 ms à chaud. Sans mock, le test expire à
-# 5000 ms — vérifié, 1 échec sur 19. Ce fichier mocke DÉJÀ chacune de ses
-# coutures base (tigerscore/engine, entities/knownBad, caseDb,
-# marketProviders, tigerscore/adapter) : le câblage en introduit une nouvelle,
-# et sa convention exige qu'elle le soit aussi.
-#
-# Ce n'est PAS un élargissement du périmètre : le fichier appartient au même
-# câblage que les quatre routes, et rien d'autre n'est ouvert.
-#
-# NE COUVRE PAS : le reste de src/app/api/, prisma/, package.json, le lockfile.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s3-coverage-wiring$ ]]; then
-    EXEMPT_S3_COVERAGE_PATTERNS=(
-        "^src/app/api/v1/score/route\.ts$"
-        "^src/app/api/partner/v1/transaction-check/route\.ts$"
-        "^src/app/api/partner/v1/score-lite/route\.ts$"
-        "^src/app/api/partner/v1/batch-score/route\.ts$"
-        "^src/app/api/partner/v1/__tests__/partner-api\.test\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -714,18 +666,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche s3-coverage-wiring, exempter les 4 routes du chemin pré-achat.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s3-coverage-wiring$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_S3_COVERAGE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
