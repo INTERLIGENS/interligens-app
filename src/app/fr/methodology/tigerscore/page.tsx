@@ -35,7 +35,6 @@ const SIGNAL_GROUPS: {
     signals: [
       { code: "Contrôle OFAC / Sanctions", desc: "Croisé avec 332K+ entités sanctionnées." },
       { code: "Scam Sniffer", desc: "Intégration de base de données d'adresses frauduleuses tierce." },
-      { code: "GoPlus", desc: "Détection de contrats honeypot et phishing." },
       { code: "Allégations de dossier", desc: "Croisé avec 5 dossiers publiés." },
       { code: "Corrélation Registre KOL", desc: "Mis en correspondance avec les profils d'influenceurs documentés." },
     ],

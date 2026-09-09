@@ -29,7 +29,7 @@ export default function MethodologyPageFR() {
           {[
             { label: '7 chaînes en production', body: 'Solana, Ethereum, Base, Arbitrum, BSC, TRON, Neon.' },
             { label: 'Signaux on-chain', body: "Concentration des détenteurs, profondeur de liquidité, âge du token, analyse du volume, risque de cluster, historique du déployeur." },
-            { label: 'Intelligence de dossier', body: "OFAC / sanctions, Scam Sniffer, GoPlus, allégations de dossier et registre KOL — 370+ profils, 220 avec portefeuilles liés." },
+            { label: 'Intelligence de dossier', body: "OFAC / sanctions, Scam Sniffer, allégations de dossier et registre KOL — 370+ profils, 220 avec portefeuilles liés." },
             { label: 'Données de marché', body: 'Prix DexScreener en temps réel et détection des lancements pump.fun.' },
             { label: 'Intelligence sociale', body: 'Watcher V2 — 79 comptes, capturés automatiquement toutes les 72 heures.' },
           ].map(s => (
