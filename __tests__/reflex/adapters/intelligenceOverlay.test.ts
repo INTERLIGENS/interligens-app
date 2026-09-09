@@ -27,6 +27,8 @@ const NO_MATCH = {
   sourceSlug: null,
   externalUrl: null,
   winner: null,
+  // S3.2 — une absence VRAIE : rien n'a été retiré pour cette audience.
+  publicationState: "PUBLISHED",
 } as const;
 
 beforeEach(() => {
