@@ -521,12 +521,18 @@ vi.mock("@/lib/intelligence", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: { tokenScanAggregate: { upsert: vi.fn(async () => ({ communityScans: 1 })) } },
 }));
+vi.mock("@/lib/prebuy/canonicalTokenIdentity", async (orig) => {
+  const reel = await orig<typeof import("@/lib/prebuy/canonicalTokenIdentity")>();
+  return { ...reel, probeCanonicalTokenIdentity: vi.fn() };
+});
 
 import { getMarketSnapshot } from "@/lib/marketProviders";
+import { probeCanonicalTokenIdentity } from "@/lib/prebuy/canonicalTokenIdentity";
 import { GET as scoreGET } from "@/app/api/v1/score/route";
 import { NextRequest } from "next/server";
 
 const mockMarket = vi.mocked(getMarketSnapshot);
+const mockProbe = vi.mocked(probeCanonicalTokenIdentity);
 const originalFetch = globalThis.fetch;
 
 describe("S2/8 — CONTRÔLE POSITIF : ALLOW reste atteignable de bout en bout", () => {
@@ -564,6 +570,32 @@ describe("S2/8 — CONTRÔLE POSITIF : ALLOW reste atteignable de bout en bout",
     expect(body.phantom_warning_level).toBe("ALLOW");
     expect(body.phantom_disclaimer).toBe("No major risk signals detected.");
     expect(body.verdict).toBe("GREEN");
+  });
+
+  it("AL — un contrat EVM dont l'identité canonique est ATTESTÉE sort ALLOW", async () => {
+    // Preuve que la ROUTE consomme l'attestation. Sans elle, un mutant qui
+    // retirait `canonical_token_resolution` de la liste d'attestations
+    // survivait : rien n'exerçait le chemin EVM de la route.
+    mockProbe.mockResolvedValue({ attested: true, chain: "ETH", address: "0x", refusal: null });
+    const res = await scoreGET(
+      new NextRequest("https://x.test/api/v1/score?mint=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
+    );
+    const body = await res.json();
+    expect(body.phantom_warning_level).toBe("ALLOW");
+    expect(body.verdict).toBe("GREEN");
+  });
+
+  it("AL — le MÊME contrat, identité NON attestée → WARN, jamais ALLOW", async () => {
+    // Discriminant apparié : une seule variable change, l'attestation.
+    mockProbe.mockResolvedValue({
+      attested: false, chain: null, address: null, refusal: "NOT_RESOLVED",
+    });
+    const res = await scoreGET(
+      new NextRequest("https://x.test/api/v1/score?mint=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
+    );
+    const body = await res.json();
+    expect(body.phantom_warning_level).toBe("WARN");
+    expect(body.phantom_disclaimer).toMatch(/could not be resolved/i);
   });
 
   it("le MÊME mint, graphe injoignable → WARN, et la cause est dite", async () => {

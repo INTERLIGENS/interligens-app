@@ -6,6 +6,10 @@ import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
 import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import {
+  probeCanonicalTokenIdentity,
+  PREBUY_EVM_CHAINS,
+} from "@/lib/prebuy/canonicalTokenIdentity";
 import { projectPreBuy, toPartnerVerdict, toSwapTier } from "@/lib/prebuy/projection";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 import { loadCaseByMint } from "@/lib/caseDb";
@@ -116,9 +120,17 @@ async function scoreOne(address: string): Promise<BatchResult> {
       ]);
       finalScore = intel.finalScore;
       manquants = [{ engine: "market", reason: "NOT_REQUESTED_BY_CONTRACT" }];
+      // AL — l'identité canonique, sondée. Le fail-closed est DANS l'adaptateur :
+      // une panne provider ne remonte pas, elle produit une non-attestation.
+      const canonique = await probeCanonicalTokenIdentity({
+        address: normalized,
+        chainHint: "ETH",
+        allowedChains: PREBUY_EVM_CHAINS,
+      });
       attestations = [
         { source: "knownBad", attests: knownBad !== null },
         { source: "intelligence_match", attests: intel.intelligence != null },
+        { source: "canonical_token_resolution", attests: canonique.attested },
       ];
     }
 

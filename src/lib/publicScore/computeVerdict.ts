@@ -35,6 +35,10 @@ import {
   type ManqueMesure,
 } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import {
+  probeCanonicalTokenIdentity,
+  PREBUY_EVM_CHAINS,
+} from "@/lib/prebuy/canonicalTokenIdentity";
 import { projectPreBuy, toSwapTier, type PreBuyProjection } from "@/lib/prebuy/projection";
 
 // ─── BUILD 10 · P0 — « la base a échoué » ≠ « aucune lignée » ──────────────
@@ -113,9 +117,19 @@ export async function measurePreBuy(target: string): Promise<PreBuyMeasurement> 
       expectedMeasured: 1,
       missing: HORS_CONTRAT_EVM,
     };
+    // AL — l'identité canonique, sondée. Avant, les deux seules attestations
+    // EVM étaient `knownBad` et `intelligence_match` : la seule façon d'être
+    // attesté était d'être connu comme MAUVAIS, donc un actif propre ne
+    // pouvait structurellement pas résoudre.
+    const canonique = await probeCanonicalTokenIdentity({
+      address: normalized,
+      chainHint: "ETH",
+      allowedChains: PREBUY_EVM_CHAINS,
+    });
     const attestations: IdentityAttestation[] = [
       { source: "knownBad", attests: knownBad !== null },
       { source: "intelligence_match", attests: intel.intelligence != null },
+      { source: "canonical_token_resolution", attests: canonique.attested },
     ];
     const decision = canonicalPreBuyDecision({
       score: intel.finalScore,

@@ -36,6 +36,15 @@ export const IDENTITY_AUTHORITIES = [
   "market_pair",
   /** La couche intelligence a apparié CETTE ADRESSE à une entité connue. */
   "intelligence_match",
+  /**
+   * AL — la résolution canonique atteste (chainId, contractAddress).
+   *
+   * Elle est clé sur l'adresse et sur elle seule : le résolveur ne reçoit ni
+   * ticker ni texte, et son prédicat d'attestation exige que la chaîne
+   * SÉLECTIONNÉE soit dans le périmètre demandé. Sans quoi le mint SOLANA
+   * d'USDC, interrogé avec un indice ETH, attesterait une identité EVM.
+   */
+  "canonical_token_resolution",
 ] as const;
 
 export type IdentityAuthority = (typeof IDENTITY_AUTHORITIES)[number];
