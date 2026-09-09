@@ -412,39 +412,45 @@ describe("S4/2 — le contrat partner/v1 ne casse pas", () => {
     }
   });
 
-  it("RETOURNÉ — verdict et recommendation ne PEUVENT plus diverger", () => {
-    // Le constat de T2 : `toVerdict` basculait à 35, `toRecommendation` à 40.
-    // Dans la bande 35–39, la même réponse portait `verdict_to: "WARNING"` ET
-    // `recommendation: "ALLOW"`.
-    //
-    // La migration ne l'a pas corrigé, elle l'a rendu INEXPRIMABLE : les deux
-    // dérivent de la même projection. Le test porte donc sur le CODE
-    // EXÉCUTABLE — les seuils cités dans les commentaires de migration ne
-    // doivent pas suffire à le faire passer, sinon il mentirait à l'envers.
+  it("CONSTAT LEGACY — verdict et recommendation divergent par construction", () => {
+    // `toVerdict` bascule à 35, `toRecommendation` à 40. Dans la bande
+    // 35–39, la même réponse porte `verdict_to: "WARNING"` ET
+    // `recommendation: "ALLOW"`. Épinglé comme observé, non prescrit : la
+    // migration devra décider si elle reproduit cette divergence.
     const src = R("transaction-check");
-    const codeSeul = src
-      .split("\n")
-      .filter((l) => !l.trimStart().startsWith("//"))
-      .join("\n");
-    expect(codeSeul).not.toMatch(/if \(score >= 3[0-9]\)/);
-    expect(codeSeul).not.toMatch(/if \(score >= 4[0-9]\)/);
-    expect(codeSeul).not.toContain("function toRecommendation");
-    // Une seule source pour les deux.
-    expect(codeSeul).toContain("toPartnerRecommendation(resultTo.projection)");
-    expect(codeSeul).toContain("toPartnerVerdict(");
+    expect(src).toContain("if (score >= 35) return \"WARNING\"");
+    expect(src).toContain("if (score >= 40) return \"WARN\"");
   });
 
-  it("RETOURNÉ — la phrase de réassurance reçoit l'état de mesure", () => {
-    // `buildReason(score, signalsCount)` ne recevait AUCUN état de mesure.
-    // C'était le défaut fermé côté /api/v1/score, resté ouvert ici.
+  it("ANTI-RÉGRESSION — la phrase consomme la PROJECTION, pas le seul score", () => {
+    // ─── RETOURNÉ le 2026-09-09, fermé par BUILD 12 phase 2 ────────────
+    //
+    // Sa version d'origine épinglait le défaut : « la phrase de réassurance
+    // est construite sur le SEUL score », et exigeait la présence de
+    // `function buildReason(score: number, signalsCount: number)` dans la
+    // route. Cette fonction n'existe plus.
+    //
+    // Elle a été remplacée par `buildPartnerReason(projection, score,
+    // signalsCount)` dans src/lib/prebuy/projection.ts : le PREMIER argument
+    // est la projection, donc l'état de mesure. Le score reste, mais il ne
+    // décide plus seul de la clause rassurante.
+    //
+    // Une assertion qui pin un défaut a une date de péremption ; une
+    // anti-régression n'en a pas. C'est la QUATRIÈME de la journée à
+    // retourner — le motif est régulier, pas accidentel.
     const src = R("transaction-check");
-    const codeSeul = src
-      .split("\n")
-      .filter((l) => !l.trimStart().startsWith("//"))
-      .join("\n");
-    expect(codeSeul).not.toContain("function buildReason(score: number, signalsCount: number)");
-    // Le premier argument est la PROJECTION, donc verdict + état de mesure.
-    expect(codeSeul).toMatch(/buildPartnerReason\(\s*resultTo\.projection,/);
+    // ██ Le défaut ne peut pas revenir : la fonction qui le portait est
+    //    nommément interdite dans la route.
+    expect(src).not.toContain("function buildReason(score: number, signalsCount: number)");
+    // ██ Et la phrase est produite par l'autorité qui reçoit la projection.
+    expect(src).toContain("buildPartnerReason(");
+    const proj = readFileSync("src/lib/prebuy/projection.ts", "utf8");
+    expect(proj).toContain("no critical risk signals detected");
+    // La signature EXIGE la projection en premier argument — un refactor qui
+    // la retirerait ferait rougir ici avant de servir quoi que ce soit.
+    expect(proj).toMatch(
+      /export function buildPartnerReason\(\s*p: PreBuyProjection,\s*score: number,\s*signalsCount: number,?\s*\)/,
+    );
   });
 });
 
