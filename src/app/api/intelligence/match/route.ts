@@ -13,7 +13,11 @@ import {
   RATE_LIMIT_PRESETS,
 } from "@/lib/security/rateLimit";
 import { matchEntity, lookupValue } from "@/lib/intelligence";
-import { readSanctionCoverage, assessSanction } from "@/lib/intelligence/sanctionCoverage";
+import {
+  readSanctionCoverage,
+  assessSanction,
+  projectCoverageForAudience,
+} from "@/lib/intelligence/sanctionCoverage";
 import { prisma } from "@/lib/prisma";
 import { normalizeValue, buildDedupKey } from "@/lib/intelligence/normalize";
 import type { IntelEntityType } from "@/lib/intelligence";
@@ -32,15 +36,30 @@ async function isRetailSafe(value: string): Promise<boolean> {
   return false;
 }
 
-function emptySignal(coverage: Awaited<ReturnType<typeof readSanctionCoverage>>) {
+/**
+ * ─── S3.2 · L'APPELANT DIT S'IL SUPPRIME ─────────────────────────────────
+ *
+ * Cette fonction sert DEUX cas qui n'ont rien à voir : une absence vraie, et
+ * un match retiré pour cette audience. Elle les rendait identiques, et c'est
+ * ce qui produisait `NO_MATCH_COMPLETE` sur un résultat supprimé.
+ *
+ * Le défaut du paramètre est `PUBLISHED` : un appelant qui ne supprime rien
+ * n'invente pas un retrait. Celui qui supprime le dit.
+ */
+function emptySignal(
+  coverage: Awaited<ReturnType<typeof readSanctionCoverage>>,
+  publicationState: "PUBLISHED" | "WITHHELD" = "PUBLISHED",
+) {
   return NextResponse.json({
     match: false,
     ims: 0,
     ics: 0,
     matchCount: 0,
     hasSanction: false,
-    sanctionAssessment: assessSanction(false, coverage),
-    sanctionsCoverage: coverage,
+    // AUCUN champ ajouté : un `publicationState` servi serait un oracle
+    // énumérable sur les entités masquées.
+    sanctionAssessment: assessSanction(false, coverage, publicationState),
+    sanctionsCoverage: projectCoverageForAudience(coverage, publicationState),
     topRiskClass: null,
     sourceSlug: null,
     externalUrl: null,
@@ -70,8 +89,13 @@ async function handleLookup(value: string, type?: string, chain?: string, req?: 
     // `true`, aucun poids ni seuil modifié.
     const coverage = await readSanctionCoverage();
 
+  // ── S3.2 — le moteur a TROUVÉ, et on décide de ne pas le montrer ────
+  //
+  // Mesuré le 2026-09-09 : matchCount 1 / hasSanction TRUE côté matcher,
+  // NO_MATCH_COMPLETE servi ici. `hasSanction: false` ne change pas — c'est la
+  // CONCLUSION qui cesse.
   if (signal.matchCount > 0 && !(await isRetailSafe(value))) {
-    return emptySignal(coverage);
+    return emptySignal(coverage, "WITHHELD");
   }
 
   return NextResponse.json({
@@ -80,8 +104,9 @@ async function handleLookup(value: string, type?: string, chain?: string, req?: 
     ics: signal.ics,
     matchCount: signal.matchCount,
     hasSanction: signal.hasSanction,
-    sanctionAssessment: assessSanction(signal.hasSanction, coverage),
-    sanctionsCoverage: coverage,
+    // Le retrait décidé à l'étage MATCHER voyage sur le signal.
+    sanctionAssessment: assessSanction(signal.hasSanction, coverage, signal.publicationState),
+    sanctionsCoverage: projectCoverageForAudience(coverage, signal.publicationState),
     topRiskClass: signal.topRiskClass,
     sourceSlug: signal.sourceSlug,
     externalUrl: signal.externalUrl,

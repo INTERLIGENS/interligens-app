@@ -13,7 +13,11 @@ import {
   RATE_LIMIT_PRESETS,
 } from "@/lib/security/rateLimit";
 import { lookupValue, matchEntity } from "@/lib/intelligence";
-import { readSanctionCoverage, assessSanction } from "@/lib/intelligence/sanctionCoverage";
+import {
+  readSanctionCoverage,
+  assessSanction,
+  projectCoverageForAudience,
+} from "@/lib/intelligence/sanctionCoverage";
 import { prisma } from "@/lib/prisma";
 import { normalizeValue, buildDedupKey } from "@/lib/intelligence/normalize";
 import type { IntelEntityType } from "@/lib/intelligence";
@@ -61,14 +65,54 @@ async function handleLookup(req: Request, value: string, type?: string, chain?: 
     }
 
     if (!isRetailSafe) {
+      // ─── S3.2 · CETTE BRANCHE SAIT QU'ELLE SUPPRIME ─────────────────
+      //
+      // ██  Le moteur a TROUVÉ (`signal.matchCount > 0`). On décide de ne  ██
+      // ██  pas le montrer à ce public. Ce n'est pas « rien trouvé ».      ██
+      //
+      // Mesuré le 2026-09-09 sur TA3941uFAvmVibSkQ6fMJXxmaSNovX86mz,
+      // observation ofac/SANCTION ACTIVE : le matcher rendait matchCount 1 et
+      // hasSanction TRUE, cette branche servait NO_MATCH_COMPLETE avec
+      // negativeIsConclusive true. Une affirmation concluante de propreté sur
+      // un résultat qu'on venait de retirer.
+      //
+      // `hasSanction: false` NE CHANGE PAS — le retrait reste un retrait, et
+      // le révéler serait divulguer ce que la gate protège. C'est la
+      // CONCLUSION qui cesse : on n'affirme plus.
+      //
+      // ET AUCUN CHAMP N'EST AJOUTÉ. Un `publicationState: "WITHHELD"` servi
+      // ici serait un ORACLE ÉNUMÉRABLE : balayer des adresses reconstituerait
+      // la liste des entités sanctionnées-mais-masquées. L'appelant apprend
+      // qu'on ne conclut pas ; il n'apprend pas pourquoi.
+      // ─── ET LA FORME DE LA CHARGE UTILE EST UN ORACLE, ELLE AUSSI ──
+      //
+      // ██  Cette branche rendait 7 clefs. Le retour normal en rend 12.   ██
+      //
+      // Un appelant distinguait donc « retiré » de « rien trouvé » EN
+      // COMPTANT LES CHAMPS — sans lire une seule valeur. C'est un oracle
+      // plus direct que tout ce que le contenu pouvait trahir, et il
+      // PRÉCÈDE S3.2 : la branche a toujours été tronquée.
+      //
+      // Mesuré en écrivant le verrou de route : 7 clefs contre 12. La route
+      // voisine `/api/intelligence/match` ne l'avait pas — son `emptySignal`
+      // rend déjà la forme complète.
+      //
+      // Les quatre champs manquants valent `null` sur une absence vraie. Les
+      // rendre ici ne divulgue donc RIEN : c'est exactement ce qu'un négatif
+      // sert, et c'est le point.
       return NextResponse.json({
         match: false,
         ims: 0,
         ics: 0,
         matchCount: 0,
         hasSanction: false,
-        sanctionAssessment: assessSanction(false, coverage),
-        sanctionsCoverage: coverage,
+        sanctionAssessment: assessSanction(false, coverage, "WITHHELD"),
+        sanctionsCoverage: projectCoverageForAudience(coverage, "WITHHELD"),
+        topRiskClass: null,
+        sourceSlug: null,
+        externalUrl: null,
+        matchBasis: null,
+        _nature: natureOfTransformation("compute", ["THIRD_PARTY_DATA"]),
       });
     }
   }
@@ -79,8 +123,10 @@ async function handleLookup(req: Request, value: string, type?: string, chain?: 
     ics: signal.ics,
     matchCount: signal.matchCount,
     hasSanction: signal.hasSanction,
-    sanctionAssessment: assessSanction(signal.hasSanction, coverage),
-    sanctionsCoverage: coverage,
+    // Le retrait décidé à l'étage MATCHER voyage sur le signal. Il ne
+    // concerne PAS un refus de provenance ni un délistage — voir matcher.ts.
+    sanctionAssessment: assessSanction(signal.hasSanction, coverage, signal.publicationState),
+    sanctionsCoverage: projectCoverageForAudience(coverage, signal.publicationState),
     topRiskClass: signal.topRiskClass,
     sourceSlug: signal.sourceSlug,
     externalUrl: signal.externalUrl,

@@ -272,6 +272,58 @@ export function negativeIsConclusiveForAudience(
   return coverage.negativeIsConclusive && publicationState === "PUBLISHED";
 }
 
+/**
+ * ─── S3.2 · LA PROJECTION RETAIL — ET SON TROU, DÉCLARÉ ──────────────────
+ *
+ * ██  `publicationState` NE SORT PAS. Ce serait un ORACLE ÉNUMÉRABLE.      ██
+ *
+ * Un champ valant `WITHHELD` sur une route publique dirait à l'appelant « il
+ * y a quelque chose, et on te le cache ». N'importe qui pourrait balayer des
+ * adresses et reconstituer la liste des entités sanctionnées-mais-masquées —
+ * exactement le renseignement que `displaySafety` existe pour protéger. Ce
+ * n'est pas une déductibilité par différence : c'est une déclaration.
+ *
+ * L'objet de CONTRAT porte les deux axes, distincts. La projection RETAIL ne
+ * rend que la CONCLUSION : on ne conclut pas. Elle ne dit pas pourquoi.
+ *
+ * ─── CE QUE CETTE PROJECTION NE FERME PAS, ET JE LE DIS ──────────────────
+ *
+ * Une indistinguabilité STRICTE est impossible sans retirer le détail de
+ * couverture du retail. Mesuré sur les trois cas servis :
+ *
+ *   retiré              state PARTIAL · notConsulted []           · conclusif false
+ *   couverture partielle state PARTIAL · notConsulted [amf STALE] · conclusif false
+ *   négatif vrai         state COMPLETE · notConsulted []          · conclusif true
+ *
+ * Le tell résiduel est `notConsulted: []` AVEC `state: PARTIAL`. Il ne peut
+ * être fermé qu'en cessant de servir `notConsulted`/`expected` au retail —
+ * ce qui détruirait le contrat construit en S3 et S3.1, et c'est un
+ * arbitrage produit, pas une correction.
+ *
+ * Il se referme aussi de lui-même dès qu'un collecteur devient PÉRIMÉ : les
+ * deux premières lignes deviennent alors indistinguables. Le tell tient à ce
+ * que la couverture soit COMPLÈTE en permanence aujourd'hui.
+ *
+ * On compose `state` EN MÊME TEMPS que `negativeIsConclusive` : les deux
+ * sortent du même booléen dans le constructeur, et les laisser se
+ * contredire — `COMPLETE` à côté de `conclusif: false` — serait un tell plus
+ * direct que celui qu'on garde.
+ */
+export function projectCoverageForAudience(
+  coverage: SanctionCoverage,
+  publicationState: PublicationState = "PUBLISHED",
+): SanctionCoverage {
+  const conclusif = negativeIsConclusiveForAudience(coverage, publicationState);
+  // Rien n'est ajouté, rien n'est retiré : les mêmes clefs, toujours. Le
+  // détail des collecteurs reste VRAI — il décrit les collecteurs, pas cette
+  // adresse, et le falsifier serait mentir sur autre chose.
+  return {
+    ...coverage,
+    state: conclusif ? "COMPLETE" : "PARTIAL",
+    negativeIsConclusive: conclusif,
+  };
+}
+
 // ═══ BUILD 12 · S3 — LA COUVERTURE, GÉNÉRALISÉE AU CHEMIN PRÉ-ACHAT ═══════
 //
 // ██  NEVER_EXECUTED ne projette JAMAIS en NO_MATCH.                       ██
