@@ -475,6 +475,30 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# ── AL · ADAPTATEUR D'IDENTITÉ CANONIQUE EVM ────────────────────────────────
+# Autorisation humaine explicite : mandat « AL — ADAPTATEUR D'IDENTITÉ EVM ».
+#
+# MESURE AVANT OUVERTURE. L'adaptateur vit dans src/lib/prebuy/, qui est LIBRE,
+# et le chemin libre (publicScore/computeVerdict.ts) est déjà câblé sans
+# fenêtre. Mais les QUATRE routes ci-dessous construisent CHACUNE leurs
+# attestations d'identité EVM en ligne, et toutes les quatre n'en ont que deux
+# — `knownBad` et `intelligence_match`. Mesuré : la seule façon d'être attesté
+# sur EVM est d'être connu comme MAUVAIS, donc USDC et USDT sortent en WARN.
+#
+# Elles ne reçoivent aucune logique : elles ajoutent une attestation à une
+# liste. En laisser une seule derrière recréerait la divergence entre surfaces
+# que BUILD 12 phase 2 a fermée.
+#
+# NE COUVRE PAS : le reste de src/app/api/, prisma/, package.json, le lockfile.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-al-evm-identity$ ]]; then
+    EXEMPT_AL_IDENTITY_PATTERNS=(
+        "^src/app/api/v1/score/route\.ts$"
+        "^src/app/api/partner/v1/transaction-check/route\.ts$"
+        "^src/app/api/partner/v1/score-lite/route\.ts$"
+        "^src/app/api/partner/v1/batch-score/route\.ts$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -666,6 +690,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche al-evm-identity, exempter les 4 routes mesurées.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-al-evm-identity$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_AL_IDENTITY_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
