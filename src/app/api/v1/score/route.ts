@@ -14,6 +14,10 @@ import {
 } from "@/lib/publicScore/schema";
 import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import {
+  probeCanonicalTokenIdentity,
+  PREBUY_EVM_CHAINS,
+} from "@/lib/prebuy/canonicalTokenIdentity";
 import { projectPreBuy, toSwapTier } from "@/lib/prebuy/projection";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
@@ -162,6 +166,13 @@ export async function GET(request: NextRequest) {
       // Le chemin EVM ne consulte ni marché, ni holders, ni lignée : ils sont
       // HORS CONTRAT ici, donc ils ne dégradent rien. C'est la distinction de
       // BUILD 11.1, réutilisée et non redéfinie.
+      // AL — l'identité canonique, sondée. Le fail-closed est DANS l'adaptateur :
+      // une panne provider ne remonte pas, elle produit une non-attestation.
+      const canonique = await probeCanonicalTokenIdentity({
+        address: normalized,
+        chainHint: "ETH",
+        allowedChains: PREBUY_EVM_CHAINS,
+      });
       const evmDecision = canonicalPreBuyDecision({
         score: finalScore,
         measurement: {
@@ -178,6 +189,7 @@ export async function GET(request: NextRequest) {
           attestations: [
             { source: "knownBad", attests: knownBad !== null },
             { source: "intelligence_match", attests: intel.intelligence != null },
+            { source: "canonical_token_resolution", attests: canonique.attested },
           ],
         }),
       });
