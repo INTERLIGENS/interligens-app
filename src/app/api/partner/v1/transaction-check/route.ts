@@ -4,7 +4,7 @@ import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } fr
 import { computeTigerScoreWithIntel, type TigerInput } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
-import { readIntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
+import { readIntelligenceCoverage, type IntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
 import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
 import {
@@ -76,9 +76,11 @@ type Recommendation = "ALLOW" | "WARN" | "BLOCK";
 
 // ── Score helper ──────────────────────────────────────────────────────────────
 
+/** S4 — la couverture descend en PARAMÈTRE : une seule lecture par requête. */
 async function scoreAddress(
   address: string,
-  chain: TigerInput["chain"]
+  chain: TigerInput["chain"],
+  intelligenceCoverage: IntelligenceCoverage
 ): Promise<{
   score: number;
   verdict: Verdict;
@@ -153,7 +155,7 @@ async function scoreAddress(
       );
       return {
         score: finalScore,
-        verdict: toPartnerVerdict(projection),
+        verdict: toPartnerVerdict(projection, intelligenceCoverage),
         signals_count:
           tigerScan.drivers.length +
           intel.drivers.filter((d) => d.id === "intelligence_overlay").length,
@@ -200,7 +202,7 @@ async function scoreAddress(
     );
     return {
       score: intel.finalScore,
-      verdict: toPartnerVerdict(evmProjection),
+      verdict: toPartnerVerdict(evmProjection, intelligenceCoverage),
       signals_count: intel.drivers.length,
       projection: evmProjection,
     };
@@ -272,9 +274,14 @@ export async function POST(req: NextRequest) {
   const tigerChain = CHAIN_MAP[chainKey];
 
   // Score addresses in parallel
+  // S3/S4 — UNE lecture par requête, avant les deux scores. Elle décrit l'état
+  // des collecteurs, pas une adresse : deux lectures pour `to` et `from`
+  // coûteraient deux allers-retours base pour une information identique.
+  const intelligenceCoverage = await readIntelligenceCoverage();
+
   const [resultTo, resultFrom] = await Promise.all([
-    scoreAddress(toAddr, tigerChain),
-    fromAddr ? scoreAddress(fromAddr, tigerChain) : Promise.resolve(null),
+    scoreAddress(toAddr, tigerChain, intelligenceCoverage),
+    fromAddr ? scoreAddress(fromAddr, tigerChain, intelligenceCoverage) : Promise.resolve(null),
   ]);
 
   if (!resultTo) {
@@ -286,12 +293,13 @@ export async function POST(req: NextRequest) {
 
   // Une seule source pour l'action, le verdict et la phrase.
   // S3 — le contrat porte la couverture à côté de la recommandation.
-  const intelligenceCoverage = await readIntelligenceCoverage();
   const recommendation: Recommendation = toPartnerRecommendation(resultTo.projection);
   const reason = buildPartnerReason(
     resultTo.projection,
     resultTo.score,
     resultTo.signals_count,
+    // S4 — la prose ne peut pas rester en arrière du jeton.
+    intelligenceCoverage,
   );
 
   console.info(
