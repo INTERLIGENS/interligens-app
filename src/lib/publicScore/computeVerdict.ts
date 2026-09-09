@@ -1,4 +1,25 @@
-import { isValidEvmAddress } from "./schema";
+// ─── BUILD 12 · S2 — computeVerdict N'EST PLUS UNE AUTORITÉ ────────────────
+//
+// ██  Elle mesure. Elle ne décide plus.                                    ██
+//
+// Ce fichier portait sa propre table de seuils :
+//
+//   function toVerdict(score) { if (score >= 70) return "RED";
+//                               if (score >= 35) return "ORANGE";
+//                               return "GREEN"; }
+//
+// Trois autres copies de la même règle vivaient dans api/v1/score et dans les
+// routes partenaires — dont une qui basculait à 40 au lieu de 35, ce qui
+// faisait diverger le verdict et l'action à l'intérieur d'un seul objet.
+//
+// La table a été DÉPLACÉE dans `src/lib/prebuy/canonicalDecision.ts`, à un
+// seul endroit. Ici il ne reste que la MESURE : quelles capacités ont été
+// demandées, lesquelles ont abouti, et ce qui atteste l'identité de la cible.
+// Le verdict rendu est désormais une PROJECTION de la décision canonique.
+//
+// Aucun seuil nouveau : 70 et 35 sont ceux d'avant, déplacés, pas choisis.
+
+import { isValidEvmAddress, isValidMint } from "./schema";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { loadCaseByMint } from "@/lib/caseDb";
@@ -7,12 +28,14 @@ import { isKnownBadEvm } from "@/lib/entities/knownBad";
 import { prisma } from "@/lib/prisma";
 import type { SwapVerdict } from "@/lib/safe-swap/types";
 import { degraded, type MeasuredVerdict } from "@/lib/risk/degradation";
-
-function toVerdict(score: number): SwapVerdict {
-  if (score >= 70) return "RED";
-  if (score >= 35) return "ORANGE";
-  return "GREEN";
-}
+import {
+  canonicalPreBuyDecision,
+  type DecisionCanonique,
+  type FaitsDeMesure,
+  type ManqueMesure,
+} from "@/lib/prebuy/canonicalDecision";
+import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
+import { projectPreBuy, toSwapTier, type PreBuyProjection } from "@/lib/prebuy/projection";
 
 // ─── BUILD 10 · P0 — « la base a échoué » ≠ « aucune lignée » ──────────────
 //
@@ -47,40 +70,77 @@ async function getScamLineage(
 }
 
 /**
- * BUILD 10 · P0 — le verdict, ET ce sur quoi il n'a PAS pu s'appuyer.
- *
- * `computeVerdict` conserve sa signature : aucun appelant n'est cassé, et le
- * calcul est identique au caractère près. Ce qui est ajouté est un canal
- * PARALLÈLE — les champs dont la mesure a échoué — pour que la surface puisse
- * dire à son lecteur qu'un verdict a été rendu sur données partielles.
+ * Le résultat complet d'une mesure pré-achat : la décision canonique, sa
+ * projection, et les nombres bruts pour les surfaces qui les publient.
  */
-export async function computeVerdictMeasured(
-  mint: string,
-): Promise<MeasuredVerdict<SwapVerdict>> {
-  const isEvm = isValidEvmAddress(mint);
+export interface PreBuyMeasurement {
+  decision: DecisionCanonique;
+  projection: PreBuyProjection;
+  /** Le score legacy, publié tel quel par les contrats qui l'exposent. */
+  score: number;
+  signalsCount: number;
+}
+
+/**
+ * Le contrat de mesure ATTENDUE, par famille de cible.
+ *
+ * SOL : marché, tigerscore et lignée de scam sont demandés — les trois.
+ * EVM : seul tigerscore est demandé ; le marché et la lignée ne sont pas
+ *       consultés sur ce chemin, donc ils sont NOT_REQUESTED_BY_CONTRACT et
+ *       ne dégradent rien. C'est la distinction de BUILD 11.1, réutilisée et
+ *       non redéfinie.
+ */
+const HORS_CONTRAT_EVM: ManqueMesure[] = [
+  { engine: "market", reason: "NOT_REQUESTED_BY_CONTRACT" },
+  { engine: "scam_lineage", reason: "NOT_REQUESTED_BY_CONTRACT" },
+];
+
+/** L'unique chemin de mesure pré-achat. Tout le reste en dérive. */
+export async function measurePreBuy(target: string): Promise<PreBuyMeasurement> {
+  const isEvm = isValidEvmAddress(target);
+  const syntacticallyValid = isEvm || isValidMint(target);
 
   if (isEvm) {
-    const normalized = mint.toLowerCase();
+    const normalized = target.toLowerCase();
     const knownBad = isKnownBadEvm(normalized);
     const intel = await computeTigerScoreWithIntel(
       { chain: "ETH", evm_known_bad: knownBad !== null, evm_is_contract: false },
       normalized,
     );
-    // Chemin EVM : aucune des deux entrées dégradables n'est consultée ici.
-    return { verdict: toVerdict(intel.finalScore), degraded: [] };
+
+    const measurement: FaitsDeMesure = {
+      expected: 1,
+      expectedMeasured: 1,
+      missing: HORS_CONTRAT_EVM,
+    };
+    const attestations: IdentityAttestation[] = [
+      { source: "knownBad", attests: knownBad !== null },
+      { source: "intelligence_match", attests: intel.intelligence != null },
+    ];
+    const decision = canonicalPreBuyDecision({
+      score: intel.finalScore,
+      measurement,
+      identity: resolveTokenIdentity({ syntacticallyValid, attestations }),
+    });
+    return {
+      decision,
+      projection: projectPreBuy(decision),
+      score: intel.finalScore,
+      signalsCount: intel.drivers.length,
+    };
   }
 
   const [caseFile, market, scamLineageResult] = await Promise.all([
-    Promise.resolve(loadCaseByMint(mint)),
-    getMarketSnapshot("solana", mint),
-    getScamLineage(mint),
+    Promise.resolve(loadCaseByMint(target)),
+    getMarketSnapshot("solana", target),
+    getScamLineage(target),
   ]);
 
   const tigerScan = computeTigerScoreFromScan({
     chain: "SOL",
     scan_type: "token",
     no_casefile: !caseFile,
-    mint_address: mint,
+    mint_address: target,
     market_url: market.url,
     pair_age_days: market.pair_age_days,
     liquidity_usd: market.liquidity_usd,
@@ -99,28 +159,73 @@ export async function computeVerdictMeasured(
   });
 
   const intel = await computeTigerScoreWithIntel(
-    { chain: "SOL", scan_type: "token", no_casefile: !caseFile, mint_address: mint },
-    mint,
+    { chain: "SOL", scan_type: "token", no_casefile: !caseFile, mint_address: target },
+    target,
   );
 
-  // Les entrées non mesurées sont NOMMÉES — un champ, jamais une valeur.
-  const manquants = [
-    ...(scamLineageResult.measured ? [] : [degraded("scam_lineage", "PROVIDER_UNAVAILABLE")]),
-    ...(market.data_unavailable ? [degraded("market", "PROVIDER_UNAVAILABLE")] : []),
+  // Les capacités attendues qui ont échoué sont NOMMÉES — un champ, jamais
+  // une valeur substituée.
+  const manquants: ManqueMesure[] = [
+    ...(scamLineageResult.measured
+      ? []
+      : [{ engine: "scam_lineage", reason: "FAILURE" as const }]),
+    ...(market.data_unavailable
+      ? [{ engine: "market", reason: "FAILURE" as const }]
+      : []),
   ];
+  const measurement: FaitsDeMesure = {
+    expected: 3,
+    expectedMeasured: 3 - manquants.length,
+    missing: manquants,
+  };
+
+  const attestations: IdentityAttestation[] = [
+    { source: "casefile", attests: caseFile != null },
+    { source: "market_pair", attests: !market.data_unavailable && Boolean(market.url) },
+    { source: "intelligence_match", attests: intel.intelligence != null },
+  ];
+
+  const score = Math.max(tigerScan.score, intel.finalScore);
+  const decision = canonicalPreBuyDecision({
+    score,
+    measurement,
+    identity: resolveTokenIdentity({ syntacticallyValid, attestations }),
+  });
+
   return {
-    verdict: toVerdict(Math.max(tigerScan.score, intel.finalScore)),
-    degraded: manquants,
+    decision,
+    projection: projectPreBuy(decision),
+    score,
+    signalsCount:
+      tigerScan.drivers.length +
+      intel.drivers.filter((d) => d.id === "intelligence_overlay").length,
   };
 }
 
 /**
- * Le verdict seul. Signature d'origine, comportement d'origine.
+ * ADAPTATEUR — le verdict swap, et ce sur quoi il n'a PAS pu s'appuyer.
  *
- * Conservée telle quelle : les appelants existants ne changent pas, et la
- * dégradation reste disponible pour qui la demande. Un appelant qui rend ce
- * verdict à un utilisateur devrait préférer `computeVerdictMeasured` — c'est
- * ce que P1/P2 auront à instruire, surface par surface.
+ * La signature ne change pas. Ce qui change est que le verdict n'est plus
+ * calculé ici : il est projeté depuis la décision canonique.
+ */
+export async function computeVerdictMeasured(
+  mint: string,
+): Promise<MeasuredVerdict<SwapVerdict>> {
+  const m = await measurePreBuy(mint);
+  return {
+    verdict: toSwapTier(m.projection),
+    degraded: m.decision.coverage.missing
+      .filter((x) => x.reason === "FAILURE")
+      .map((x) => degraded(x.engine, "PROVIDER_UNAVAILABLE")),
+  };
+}
+
+/**
+ * ADAPTATEUR de compatibilité. Signature d'origine, conservée pour les
+ * appelants qui n'ont pas besoin du canal de mesure.
+ *
+ * Un appelant qui rend ce verdict à un utilisateur doit préférer
+ * `measurePreBuy` : il y trouve la décision ET son état de mesure.
  */
 export async function computeVerdict(mint: string): Promise<SwapVerdict> {
   return (await computeVerdictMeasured(mint)).verdict;

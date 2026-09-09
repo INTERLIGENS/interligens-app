@@ -250,19 +250,30 @@ describe("P7 — aucun score ni seuil forensique inventé", () => {
     expect(comparaisons.sort()).toEqual(["< 2", "> 0"]);
   });
 
-  it("derivePhantomWarning n'introduit aucun seuil chiffré", () => {
+  it("la projection publique n'introduit aucun seuil chiffré", () => {
+    // DÉPLACÉ EN PHASE 2, et le test le suit plutôt que de le relâcher : la
+    // suffisance ne vit plus dans schema.ts mais dans `contratSatisfait`, à
+    // l'endroit unique où un état devient une décision.
     const code = codeSeul(SRC_SCHEMA);
-    const debut = code.indexOf("export function derivePhantomWarning");
+    const debut = code.indexOf("export function phantomFromProjection");
     const fin = code.indexOf("export type PublicErrorResponse");
     expect(debut).toBeGreaterThan(-1);
     expect(fin).toBeGreaterThan(debut);
-    const corps = code.slice(debut, fin);
-    // Seul `> 0` subsiste : « le contrat attendait-il quelque chose ». La
-    // suffisance se lit `expectedMeasured >= expected`, jamais contre un
-    // nombre choisi.
-    const chiffres = corps.match(/[<>]=?\s*\d+|\d+\s*[<>]=?/g) ?? [];
-    expect(chiffres).toEqual(["> 0"]);
-    expect(corps).toContain("support.expectedMeasured >= support.expected");
+    // Aucune comparaison chiffrée du tout dans la traduction publique.
+    expect(code.slice(debut, fin)).not.toMatch(/[<>]=?\s*\d+|\d+\s*[<>]=?/);
+
+    // Et là où la suffisance vit, elle se lit `expectedMeasured >= expected` —
+    // jamais contre un nombre choisi. `> 0` est « le contrat attendait-il
+    // quelque chose », pas un seuil.
+    const canon = codeSeul(
+      readFileSync(join(RACINE, "src/lib/prebuy/canonicalDecision.ts"), "utf8"),
+    );
+    const cs = canon.slice(
+      canon.indexOf("export function contratSatisfait"),
+      canon.indexOf("export function estDegrade"),
+    );
+    expect(cs).toContain("m.expectedMeasured >= m.expected");
+    expect(cs.match(/[<>]=?\s*\d+|\d+\s*[<>]=?/g)).toEqual(["> 0"]);
   });
 
   it("la suffisance est une COMPARAISON DE COUVERTURE, pas un seuil choisi", () => {

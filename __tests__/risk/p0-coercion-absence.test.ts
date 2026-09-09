@@ -146,8 +146,16 @@ describe("CHEMIN C1 — « la base a échoué » ≠ « aucune lignée »", () =
   });
 
   it("l'indisponibilité du marché est nommée elle aussi", () => {
-    expect(code).toContain('degraded("market", "PROVIDER_UNAVAILABLE")');
-    expect(code).toContain('degraded("scam_lineage", "PROVIDER_UNAVAILABLE")');
+    // DÉPLACÉ EN BUILD 12 · S2, et le test suit le déplacement au lieu de
+    // relâcher ce qu'il protégeait. La propriété est inchangée : les deux
+    // capacités sont NOMMÉES quand elles échouent, aucune n'est absorbée.
+    // Ce qui change est la forme — l'échec est d'abord porté sur l'axe mesure
+    // (`reason: "FAILURE"`), puis traduit dans le vocabulaire `degraded`.
+    expect(code).toContain('{ engine: "market", reason: "FAILURE" as const }');
+    expect(code).toContain('{ engine: "scam_lineage", reason: "FAILURE" as const }');
+    // Et la traduction préserve le NOM du champ — elle ne le remplace pas par
+    // une étiquette générique.
+    expect(code).toContain('degraded(x.engine, "PROVIDER_UNAVAILABLE")');
   });
 });
 
