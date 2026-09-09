@@ -27,7 +27,11 @@ export async function POST(req: NextRequest) {
 
   // Mode 1: Lookup existing intelligence for an address
   if (mode === "lookup" && address) {
-    const signal = await lookupValue(address);
+    // AM · P0 — audience INTERNE, déclarée. C'est un outil d'analyste : il doit
+    // voir les entités INTERNAL_ONLY, c'est son objet. Le défaut de
+    // `lookupValue` est RETAIL, donc l'omission serait un aveuglement
+    // silencieux ; on le dit plutôt que de dépendre d'un défaut.
+    const signal = await lookupValue(address, undefined, "INTERNAL");
     return NextResponse.json({ signal });
   }
 
@@ -44,8 +48,8 @@ export async function POST(req: NextRequest) {
       ...(addressResults.status === "fulfilled" ? addressResults.value : []),
     ];
 
-    // Also lookup in existing DB
-    const signal = await lookupValue(address);
+    // Also lookup in existing DB — audience INTERNE, même raison.
+    const signal = await lookupValue(address, chain, "INTERNAL");
 
     return NextResponse.json({
       address,
