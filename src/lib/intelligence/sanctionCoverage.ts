@@ -163,46 +163,87 @@ export function freshnessToMeasurementState(state: string): MeasurementState {
   }
 }
 
+/**
+ * Les quatre états que le CONTRAT doit distinguer, ratifiés :
+ *
+ *   EXPECTED            les capacités réellement ARMÉES et gouvernées
+ *   CONSULTED-MEASURED  celles des attendues effectivement observées
+ *   NOT_CONSULTED       attendues, non observées, AVEC leur motif typé
+ *   NEGATIVE_CONCLUSIVE ce qu'un no-match autorise à conclure
+ *
+ * ─── EXPECTED ≠ DECLARED, et c'est le cœur ───────────────────────────────
+ *
+ * Une source DÉCLARÉE et jamais exécutée n'entre PAS au dénominateur attendu.
+ * Sinon `amf` et `fca` — non opérationnelles en permanence — feraient sortir
+ * CHAQUE scan en dégradé, et l'alerte deviendrait le fond.
+ *
+ * C'est exactement le piège de `holders` fermé en phase 2 : le compter aux
+ * attendus aurait mis `degraded: true` sur toute réponse SOL. Présent à
+ * l'inventaire, absent du dénominateur.
+ *
+ * Elles ne disparaissent pas pour autant : elles sortent dans
+ * `declaredNotArmed`, nommées, avec leur motif. Le lecteur voit qu'elles
+ * existent et qu'elles n'ont jamais tourné — il ne le devine pas.
+ *
+ * ─── Ce qui dégrade, en revanche ──────────────────────────────────────────
+ *
+ * Une source ARMÉE dont l'observation est PÉRIMÉE (`STALE`) est attendue et
+ * manquante : elle dégrade. On compte `FRESH`, jamais `!== NOT_ARMED` — une
+ * copie écrite ainsi compterait une source périmée comme consultée.
+ */
 export interface IntelligenceCoverage {
-  readonly state: SanctionCoverageState;
-  /** Le périmètre RÉELLEMENT vérifié. Jamais le périmètre déclaré. */
-  readonly verifiedScope: readonly string[];
-  /** La taille de ce périmètre — le dénominateur honnête. */
+  /** EXPECTED — les capacités réellement armées. Le dénominateur honnête. */
+  readonly expected: readonly string[];
+  /** CONSULTED-MEASURED — les attendues effectivement observées. */
+  readonly consultedMeasured: readonly string[];
+  /** NOT_CONSULTED — attendues, non observées, avec motif TYPÉ. */
+  readonly notConsulted: readonly { readonly source: string; readonly reason: MeasurementState }[];
+  /**
+   * Déclarées mais JAMAIS armées. Contexte, pas dénominateur : elles ne
+   * dégradent rien, et elles restent visibles.
+   */
+  readonly declaredNotArmed: readonly { readonly source: string; readonly reason: MeasurementState }[];
+  /** = `expected.length`. Jamais la taille du périmètre déclaré. */
   readonly denominator: number;
-  /** Les déclarées non vérifiées, avec leur motif TYPÉ. Jamais un simple absent. */
-  readonly notVerified: readonly { readonly source: string; readonly reason: MeasurementState }[];
-  /** Ce qu'un no-match autorise à conclure. */
-  readonly negativeIsConclusive: boolean;
+  readonly state: SanctionCoverageState;
+  /** NEGATIVE_CONCLUSIVE. Faux si rien n'est attendu — un périmètre vide ne conclut pas. */
+  readonly negativeConclusive: boolean;
 }
 
-/**
- * La couverture d'intelligence, sur le périmètre déclaré passé en argument.
- *
- * Même question que `buildSanctionCoverage` — « cette source a-t-elle été
- * observée ? » — sur un périmètre plus large, et avec le motif typé.
- */
 export function buildIntelligenceCoverage(
   verdicts: readonly FreshnessVerdict[],
   declared: readonly string[] = DECLARED_INTELLIGENCE_SOURCES,
 ): IntelligenceCoverage {
   const parSlug = new Map(verdicts.map((v) => [v.sourceSlug, v]));
-  const verifiedScope: string[] = [];
-  const notVerified: { source: string; reason: MeasurementState }[] = [];
+  const expected: string[] = [];
+  const consultedMeasured: string[] = [];
+  const notConsulted: { source: string; reason: MeasurementState }[] = [];
+  const declaredNotArmed: { source: string; reason: MeasurementState }[] = [];
 
   for (const slug of declared) {
-    // Une source dont on n'a AUCUN verdict n'est pas fraîche par défaut.
+    // Sans verdict, la source n'a jamais été observée : NOT_ARMED, pas
+    // « fraîche par défaut ».
     const etat = parSlug.get(slug)?.state ?? "NOT_ARMED";
-    if (etat === "FRESH") verifiedScope.push(slug);
-    else notVerified.push({ source: slug, reason: freshnessToMeasurementState(etat) });
+    if (etat === "NOT_ARMED") {
+      // Déclarée, jamais armée. Hors dénominateur, mais NOMMÉE.
+      declaredNotArmed.push({ source: slug, reason: freshnessToMeasurementState(etat) });
+      continue;
+    }
+    expected.push(slug);
+    // `FRESH`, et rien d'autre. `STALE` est armée mais périmée : elle manque.
+    if (etat === "FRESH") consultedMeasured.push(slug);
+    else notConsulted.push({ source: slug, reason: freshnessToMeasurementState(etat) });
   }
 
   return {
-    state: notVerified.length === 0 ? "COMPLETE" : "PARTIAL",
-    verifiedScope,
-    // AU2 — le dénominateur EST le périmètre vérifié, pas le déclaré.
-    denominator: verifiedScope.length,
-    notVerified,
-    negativeIsConclusive: notVerified.length === 0,
+    expected,
+    consultedMeasured,
+    notConsulted,
+    declaredNotArmed,
+    denominator: expected.length,
+    state: notConsulted.length === 0 && expected.length > 0 ? "COMPLETE" : "PARTIAL",
+    // Un périmètre attendu VIDE ne conclut rien : personne n'a regardé.
+    negativeConclusive: notConsulted.length === 0 && expected.length > 0,
   };
 }
 
