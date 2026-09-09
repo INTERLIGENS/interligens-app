@@ -45,6 +45,12 @@
     },
     "GHSA-p9j2-gv94-2wf4": {
       "count": 1
+    },
+    "GHSA-p293-qw3h-jr36": {
+      "count": 1
+    },
+    "GHSA-2xp9-vwfh-vxw4": {
+      "count": 1
     }
   },
   "basic-ftp": {
@@ -86,6 +92,9 @@
   },
   "extract-zip": {
     "GHSA-jmr9-qjv8-65gv": {
+      "count": 1
+    },
+    "GHSA-7pqw-9j4j-h8q3": {
       "count": 1
     }
   },
