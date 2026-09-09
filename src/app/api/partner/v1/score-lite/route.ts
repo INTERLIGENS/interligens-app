@@ -216,7 +216,7 @@ export async function GET(req: NextRequest) {
     const payload: PartnerScoreLiteResponse = {
       address: normalized,
       score,
-      verdict: toPartnerVerdict(projection),
+      verdict: toPartnerVerdict(projection, intelligenceCoverage),
       tier: toSwapTier(projection),
       signals_count: signalsCount,
       cache_hit: false,

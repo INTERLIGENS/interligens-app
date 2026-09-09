@@ -42,7 +42,17 @@ type BatchResult =
   | { address: string; score: number; verdict: Verdict; tier: Tier }
   | { address: string; error: string };
 
-async function scoreOne(address: string): Promise<BatchResult> {
+/**
+ * S4 — la couverture descend en PARAMÈTRE, elle n'est pas relue par item.
+ *
+ * Elle décrit l'état des collecteurs, pas une adresse : la relire par item la
+ * ferait passer pour une propriété de l'adresse, et coûterait un aller-retour
+ * base par élément du lot (~300 ms chacun, mesuré en S3).
+ */
+async function scoreOne(
+  address: string,
+  intelligenceCoverage: IntelligenceCoverage,
+): Promise<BatchResult> {
   const isEvm = isValidEvmAddress(address);
   const isSol = isValidMint(address);
 
@@ -150,7 +160,7 @@ async function scoreOne(address: string): Promise<BatchResult> {
     return {
       address: normalized,
       score: finalScore,
-      verdict: toPartnerVerdict(projection),
+      verdict: toPartnerVerdict(projection, intelligenceCoverage),
       tier: toSwapTier(projection),
     };
   } catch (err) {
@@ -215,8 +225,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const intelligenceCoverage: IntelligenceCoverage = await readIntelligenceCoverage();
+
   const settled = await Promise.allSettled(
-    (addresses as string[]).map((a) => scoreOne(a.trim()))
+    // S3/S4 — la couverture est lue UNE fois pour le lot, AVANT la boucle, et
+    // descend dans chaque item. Elle décrit l'état des collecteurs, pas une
+    // adresse : la relire par item la ferait passer pour une propriété de
+    // l'adresse, et coûterait un aller-retour base par élément.
+    (addresses as string[]).map((a) => scoreOne(a.trim(), intelligenceCoverage))
   );
 
   const results: BatchResult[] = settled.map((r, i) =>
@@ -231,11 +247,6 @@ export async function POST(req: NextRequest) {
     "[partner/batch-score] processed=%d errors=%d",
     results.length, errors
   );
-
-  // S3 — la couverture est portée UNE fois pour le lot : elle décrit l'état
-  // des collecteurs, pas une adresse. La répéter par item la ferait passer
-  // pour une propriété de l'adresse.
-  const intelligenceCoverage: IntelligenceCoverage = await readIntelligenceCoverage();
 
   return NextResponse.json(
     { results, processed: results.length, errors, version: "v1", intelligence_coverage: intelligenceCoverage },
