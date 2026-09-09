@@ -475,42 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# ── BUILD 12 PHASE 2 — PROJECTION CANONIQUE (S2→S5) ─────────────────────────
-# Autorisation humaine explicite : mandat « BUILD 12 PHASE 2 — S2 → S5. GO
-# FENÊTRE », exécutant le ruling AK (REFLEX autorité unique, computeVerdict
-# rétrogradé en adaptateur).
-#
-# MESURE AVANT OUVERTURE. La logique décisionnelle vit dans des fichiers LIBRES
-# (src/lib/prebuy/, src/lib/publicScore/) ; les routes ne font que l'APPELER.
-# La phase 1 avait pu éviter la fenêtre entièrement par ce moyen. Ici elle ne
-# le peut pas, et voici pourquoi, fichier par fichier :
-#
-#   · v1/score          — appelle derivePhantomWarning(verdict) avec UN seul
-#                         argument. La projection doit consommer verdict + état
-#                         de mesure ; aucun fichier libre ne peut ajouter cet
-#                         argument à la place de l'appelant.
-#   · transaction-check — porte DANS la route les deux défauts à fermer :
-#                         toVerdict bascule à 35 et toRecommendation à 40 (bande
-#                         35–39 : verdict et action divergent dans un seul
-#                         objet), et buildReason(score, signalsCount) construit
-#                         la phrase de réassurance sur le SEUL score.
-#   · score-lite        — émettent le jeton `SAFE` sur le seul score, sans
-#   · batch-score         aucun état de mesure. Le jeton RESTE dans le domaine
-#                         de valeurs ; ce qui change est QUAND il sort.
-#
-# NE COUVRE PAS : le reste de src/app/api/, prisma/, src/components/.
-# admin/prebuy/verdict n'y est PAS : il délègue déjà à src/lib/prebuy/, libre.
-# api/v1/scan-context et components/scan/ScoreCard.tsx n'y sont PAS : ils
-# n'émettent aucun verdict — vérifié, pas supposé.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build12-projection$ ]]; then
-    EXEMPT_BUILD12_PROJECTION_PATTERNS=(
-        "^src/app/api/v1/score/route\.ts$"
-        "^src/app/api/partner/v1/transaction-check/route\.ts$"
-        "^src/app/api/partner/v1/score-lite/route\.ts$"
-        "^src/app/api/partner/v1/batch-score/route\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -702,18 +666,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche build12-projection, exempter les 4 routes mesurées.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-build12-projection$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_BUILD12_PROJECTION_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
