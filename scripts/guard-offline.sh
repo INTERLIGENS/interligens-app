@@ -475,27 +475,6 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
-# ── AM · P0 — AUDIENCE EXPLICITE SUR LE SEUL CONSOMMATEUR INTERNE ───────────
-# Autorisation humaine explicite : mandat « AM — FERMETURE ».
-#
-# MESURE AVANT OUVERTURE. L'autorité d'admissibilité vit dans
-# src/lib/intelligence/retailAdmissibility.ts, qui est LIBRE, et le défaut
-# d'audience est RETAIL — donc les quatre autres appelants (les deux routes
-# publiques, tigerscore/engine.ts, l'overlay REFLEX) sont fermés SANS fenêtre.
-#
-# Il reste UN fichier, et un seul : admin/intelligence/ingest est le seul
-# consommateur authentiquement INTERNE des six. Sans qu'il déclare INTERNAL,
-# le durcissement l'aveuglerait sur les données INTERNAL_ONLY — exactement ce
-# que le mandat interdit. La route ne porte aucune logique : elle passe un
-# argument.
-#
-# NE COUVRE PAS : le reste de src/app/api/, prisma/, src/components/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-am-retail-admissibility$ ]]; then
-    EXEMPT_AM_AUDIENCE_PATTERNS=(
-        "^src/app/api/admin/intelligence/ingest/route\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -687,18 +666,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche am-retail-admissibility, exempter la seule route interne.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-am-retail-admissibility$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_AM_AUDIENCE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
