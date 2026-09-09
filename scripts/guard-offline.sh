@@ -475,6 +475,25 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
     )
 fi
 
+# ── AN · MONTÉE DE SÉCURITÉ next 16.1.6 → 16.3.3 ────────────────────────────
+# Autorisation humaine explicite : mandat « AN — MONTÉE DE SÉCURITÉ ».
+#
+# Plancher PATCHÉ vérifié pour GHSA-p293-qw3h-jr36 et GHSA-2xp9-vwfh-vxw4.
+# On vise 16.3.3, PAS 16.3.4 : on ne monte pas plus haut pour de la fraîcheur.
+#
+# Fenêtre DÉPENDANCES DÉDIÉE : le manifeste et le lockfile, rien d'autre.
+# Aucun nettoyage opportuniste, aucun refactor de dépendances. `next` et
+# `eslint-config-next` sont versionnés en verrou — les laisser désalignés
+# serait la résolution qui casse, pas un choix de confort.
+#
+# NE COUVRE PAS : src/, prisma/, .github/, vercel.json.
+if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-next-security-upgrade$ ]]; then
+    EXEMPT_AN_NEXT_PATTERNS=(
+        "^package\.json$"
+        "^pnpm-lock\.yaml$"
+    )
+fi
+
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -666,6 +685,18 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche next-security-upgrade, exempter manifeste + lockfile.
+    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-next-security-upgrade$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_AN_NEXT_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
