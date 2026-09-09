@@ -20,6 +20,46 @@ const ELIGIBLE_STATUSES: ReadonlySet<string | null> = new Set([
 
 export const EXCLUDED_STATUS = "EXCLUDED" as const;
 
+/**
+ * La liste canonique, exposée. Elle sert au watchdog, qui doit restreindre sa
+ * POPULATION SQL aux mêmes artefacts que ceux jugés ici.
+ *
+ * Sans elle, le watchdog inspectait TOUT `EvidenceItem` — sonde de
+ * déploiement comprise — et déclarait « orpheline » une pièce que
+ * `eligibleForEvidenceChain` refuse déjà. Un watchdog d'intégrité de preuve
+ * n'inspecte que ce qui est RÉELLEMENT éligible à entrer dans la chaîne.
+ */
+export const ELIGIBLE_EVIDENTIARY_STATUSES: readonly (string | null)[] =
+  Object.freeze([...ELIGIBLE_STATUSES]);
+
+/**
+ * La MÊME liste, rendue en clause SQL. Le watchdog ne réécrit pas le
+ * prédicat : il le DÉRIVE. Ajouter un état éligible ici le propage à la
+ * requête sans qu'on y pense — c'est le point.
+ *
+ * `column` est un identifiant de colonne fourni par l'appelant, jamais une
+ * valeur utilisateur : il est cité entre guillemets doubles et validé.
+ */
+export function eligibleStatusSqlClause(column: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(column)) {
+    throw new Error(`eligibleStatusSqlClause: nom de colonne invalide: ${column}`);
+  }
+  const col = `"${column}"`;
+  const nulOk = ELIGIBLE_EVIDENTIARY_STATUSES.includes(null);
+  const valeurs = ELIGIBLE_EVIDENTIARY_STATUSES.filter(
+    (v): v is string => typeof v === "string",
+  );
+  const parts: string[] = [];
+  if (nulOk) parts.push(`${col} IS NULL`);
+  if (valeurs.length > 0) {
+    parts.push(`${col} IN (${valeurs.map((v) => `'${v.replace(/'/g, "''")}'`).join(", ")})`);
+  }
+  // Aucun état éligible : la population est vide, et on le dit explicitement
+  // plutôt que de rendre une clause vide qui laisserait tout passer.
+  if (parts.length === 0) return "FALSE";
+  return parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`;
+}
+
 export interface EvidenceEligibilityInput {
   readonly evidentiaryStatus?: string | null;
 }

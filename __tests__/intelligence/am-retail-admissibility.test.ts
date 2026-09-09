@@ -440,12 +440,18 @@ const POLITIQUE_MESUREE: SourcePolicy = new Map([
 
 const O = (o: Partial<ObservationAdmissibilityFacts> & { sourceSlug: string }) => ({
   listIsActive: true,
+  // AX — provenance PROUVÉE par défaut dans les fixtures : les autres axes
+  // doivent mordre pour eux-mêmes, pas parce que la provenance manque.
+  ingestionProvenanceProven: true,
   ...o,
 });
 
 function admettre(
   entity: EntityAdmissibilityFacts,
-  observations: ReturnType<typeof O>[],
+  // Le type LARGE, pas `ReturnType<typeof O>` : `ingestionProvenanceProven`
+  // y est optionnel, et c'est exactement ce qu'un test sur son ABSENCE doit
+  // pouvoir exprimer. Le typage l'a attrapé ; vitest ne l'aurait pas vu.
+  observations: ObservationAdmissibilityFacts[],
   audience: IntelAudience,
   policy: SourcePolicy = POLITIQUE_MESUREE,
 ) {
@@ -556,6 +562,84 @@ describe("AM/3 — les 6 fixtures exigées, sur le code livré", () => {
     expect(ar.retained).toHaveLength(0);
     expect(io.refused[0].refus).not.toBe(ar.refused[0].refus);
     expect(ar.refused[0].refus).toContain("ANALYST_REVIEWED");
+  });
+
+  it("AX — une observation SANS lot d'ingestion n'est pas retail-admissible", () => {
+    // Mesuré : `forta` est au registre et déclaré publiable, mais ses 3
+    // observations n'ont aucun lot. La source dit qui a le droit de parler ;
+    // la provenance dit que CETTE instance vient bien de là.
+    const r = admettre(
+      { isActive: true, displaySafety: "RETAIL_SAFE" },
+      [{ sourceSlug: "forta", listIsActive: true, ingestionProvenanceProven: false }],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(0);
+    expect(r.refused[0].refus).toBe("UNPROVEN_INGESTION_PROVENANCE");
+  });
+
+  it("AX — `undefined` n'est PAS une provenance prouvée", () => {
+    // Le défaut d'une preuve absente est son absence. Un appelant qui ne sait
+    // pas répondre n'a rien prouvé.
+    const r = admettre(
+      { isActive: true, displaySafety: "RETAIL_SAFE" },
+      [{ sourceSlug: "ofac", listIsActive: true }],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(0);
+    expect(r.refused[0].refus).toBe("UNPROVEN_INGESTION_PROVENANCE");
+  });
+
+  it("AX — la provenance est INDÉPENDANTE de l'autorité de source", () => {
+    // Une source publiable ne rend pas gouvernée une ligne écrite hors
+    // pipeline, et une provenance prouvée ne rend pas publiable une source
+    // interne. Les deux axes doivent tenir séparément.
+    const gouverneeMaisInterne = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "chainalysis" })],
+      "RETAIL",
+    );
+    expect(gouverneeMaisInterne.retained).toHaveLength(0);
+    const publiableMaisNonGouvernee = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [{ sourceSlug: "ofac", listIsActive: true, ingestionProvenanceProven: false }],
+      "RETAIL",
+    );
+    expect(publiableMaisNonGouvernee.retained).toHaveLength(0);
+  });
+
+  it("SUR-CORRECTION AX — une observation AVEC lot valide passe toujours", () => {
+    const r = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "ofac" })],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(1);
+    expect(r.refused).toHaveLength(0);
+  });
+
+  it("SUR-CORRECTION AX — l'audience INTERNE n'est PAS neutralisée par la provenance", () => {
+    // Une ligne écrite hors pipeline reste LISIBLE en interne : c'est la
+    // première chose qu'un analyste veut voir. Le durcissement retail ne doit
+    // pas l'aveugler.
+    const r = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [{ sourceSlug: "forta", listIsActive: true, ingestionProvenanceProven: false }],
+      "INTERNAL",
+    );
+    expect(r.retained).toHaveLength(1);
+    expect(r.refused).toHaveLength(0);
+  });
+
+  it("le vocabulaire du refus ne confond pas MEASURED avec une identité de source", () => {
+    // DECLARED → SCHEDULED → REGISTERED → EXECUTED → PROVENANCED → ADMISSIBLE.
+    // `MEASURED` est un état de requête, pas une étape de gouvernance.
+    const r = admettre(
+      { isActive: true, displaySafety: "RETAIL_SAFE" },
+      [{ sourceSlug: "forta", listIsActive: true, ingestionProvenanceProven: false }],
+      "RETAIL",
+    );
+    expect(r.refused[0].refus).not.toContain("MEASURED");
+    expect(r.refused[0].refus).toContain("PROVENANCE");
   });
 
   it("le prédicat de source lit les CHAMPS DU REGISTRE, sans nom en dur", () => {

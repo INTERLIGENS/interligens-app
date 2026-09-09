@@ -93,6 +93,27 @@ function loadC4() {
   }
 }
 
+// Même mécanique que loadC4() : le PÉRIMÈTRE de la chaîne de preuve est décidé
+// par une autorité canonique testable, et ce fichier ne fait que la requête.
+//
+// AW — le watchdog inspectait TOUT `EvidenceItem`, sans filtre d'éligibilité.
+// Il a donc compté « orpheline » une sonde post-déploiement à casefileId null
+// et evidentiaryStatus EXCLUDED — une pièce que `eligibleForEvidenceChain`
+// refuse déjà — et bloqué l'activation TSA sur cette base.
+//
+// La clause SQL est DÉRIVÉE de la même liste, jamais réécrite ici. Et on ne
+// filtre PAS sur un nom de sonde ni sur capturedBy : un tel filtre marcherait
+// aujourd'hui et serait faux au prochain artefact non éligible.
+function loadEvidenceEligibility() {
+  const { register } = require("tsx/cjs/api");
+  const unregister = register();
+  try {
+    return require(path.join(REPO_ROOT, "src/lib/evidence-chain/eligibility.ts"));
+  } finally {
+    unregister();
+  }
+}
+
 // Même mécanique que loadC4() : la fraîcheur d'une source se décide dans un
 // module TS testable — ce fichier ne fait que la requête et l'appel.
 function loadSourceFreshness() {
@@ -463,8 +484,13 @@ async function runChecks(client) {
   // (demande David : voir si N ne redescend pas) ; warn seulement au-delà du
   // seuil WATCHDOG_TSA_PENDING_WARN (déf 50) — filet anti-dérive, pas du bruit.
   try {
+    const { eligibleStatusSqlClause } = loadEvidenceEligibility();
+    const eligible = eligibleStatusSqlClause("evidentiaryStatus");
+    // Même périmètre que le compteur d'orphelines : une pièce exclue de la
+    // chaîne n'a pas à être horodatée, donc elle n'est pas « en attente ».
     const r = await client.query(
-      `SELECT count(*)::int AS n FROM "EvidenceItem" WHERE "tsaToken" IS NULL`
+      `SELECT count(*)::int AS n FROM "EvidenceItem"
+        WHERE "tsaToken" IS NULL AND ${eligible}`
     );
     const n = r.rows[0]?.n ?? 0;
     const warnAt = parseInt(process.env.WATCHDOG_TSA_PENDING_WARN ?? "50", 10);
@@ -513,13 +539,15 @@ async function runChecks(client) {
     //      complète : elle porterait un jeton TSA valide sur un contenu absent.
     //      Tant que l'écart n'est pas à zéro — ou expliqué — ne pas configurer
     //      TSA_PRIMARY_URL / TSA_URL_FALLBACK.
+    const { eligibleStatusSqlClause: clauseEligible } = loadEvidenceEligibility();
+    const eligibleR2 = clauseEligible("evidentiaryStatus");
     const r = await client.query(
       `SELECT
          count(*)::int                                                  AS total,
          count(*) FILTER (WHERE "notes" LIKE '[R2:UNAVAILABLE]%')::int AS accidental,
          count(*) FILTER (WHERE "notes" LIKE '%HASH-ONLY%')::int        AS deliberate
        FROM "EvidenceItem"
-       WHERE "r2Key" IS NULL`
+       WHERE "r2Key" IS NULL AND ${eligibleR2}`
     );
     const total = r.rows[0]?.total ?? 0;
     const accidental = r.rows[0]?.accidental ?? 0;
@@ -531,6 +559,7 @@ async function runChecks(client) {
     const nomme = await client.query(
       `SELECT count(*)::int AS n FROM "EvidenceItem"
         WHERE "r2Key" IS NULL
+          AND ${eligibleR2}
           AND ("notes" LIKE '[R2:UNAVAILABLE]%' OR "notes" LIKE '%HASH-ONLY%')`
     );
     const orphelins = total - (nomme.rows[0]?.n ?? 0);

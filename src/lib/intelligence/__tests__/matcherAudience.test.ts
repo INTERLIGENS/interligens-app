@@ -20,6 +20,27 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     canonicalEntity: { findUnique: vi.fn() },
+    // AX — la provenance d'ingestion est un cinquième facteur : le matcher lit
+    // les fenêtres de lot pour décider si une INSTANCE est gouvernée.
+    intelIngestionBatch: {
+      findMany: vi.fn(async () => [
+        {
+          sourceSlug: "ofac",
+          startedAt: new Date("2026-01-01T00:00:00Z"),
+          completedAt: new Date("2027-01-01T00:00:00Z"),
+        },
+        {
+          sourceSlug: "forta",
+          startedAt: new Date("2026-01-01T00:00:00Z"),
+          completedAt: new Date("2027-01-01T00:00:00Z"),
+        },
+        {
+          sourceSlug: "chainalysis",
+          startedAt: new Date("2026-01-01T00:00:00Z"),
+          completedAt: new Date("2027-01-01T00:00:00Z"),
+        },
+      ]),
+    },
     sourceRegistry: { findMany: vi.fn() },
   },
 }));
@@ -29,6 +50,7 @@ import { prisma } from "@/lib/prisma";
 
 const mockEntity = prisma.canonicalEntity.findUnique as unknown as ReturnType<typeof vi.fn>;
 const mockRegistry = prisma.sourceRegistry.findMany as unknown as ReturnType<typeof vi.fn>;
+const mockBatches = prisma.intelIngestionBatch.findMany as unknown as ReturnType<typeof vi.fn>;
 
 /** Le registre au 2026-09-09, réduit. `chainalysis` y est `internal_only`. */
 const REGISTRE = [
@@ -81,6 +103,12 @@ beforeEach(() => {
   mockEntity.mockReset();
   mockRegistry.mockReset();
   mockRegistry.mockResolvedValue(REGISTRE);
+  mockBatches.mockReset();
+  mockBatches.mockResolvedValue([
+    { sourceSlug: "ofac", startedAt: new Date("2026-01-01T00:00:00Z"), completedAt: new Date("2027-01-01T00:00:00Z") },
+    { sourceSlug: "forta", startedAt: new Date("2026-01-01T00:00:00Z"), completedAt: new Date("2027-01-01T00:00:00Z") },
+    { sourceSlug: "chainalysis", startedAt: new Date("2026-01-01T00:00:00Z"), completedAt: new Date("2027-01-01T00:00:00Z") },
+  ]);
 });
 
 describe("AM — l'écarté n'entre dans AUCUN calcul", () => {
@@ -142,6 +170,53 @@ describe("AM — l'écarté n'entre dans AUCUN calcul", () => {
 
     const retail = await matchEntity({ type: "ADDRESS", value: "0xdead" }, "RETAIL");
     expect(retail.matchCount).toBe(0);
+  });
+
+  it("MUTANT — la provenance est calculée PAR INSTANCE, pas supposée", async () => {
+    // Preuve manquante trouvée par un mutant : le matcher pouvait poser
+    // `ingestionProvenanceProven: true` en dur et rien ne rougissait, parce
+    // que les fenêtres mockées couvraient toutes les observations.
+    //
+    // Ici les DEUX observations viennent de sources publiables et actives ;
+    // seule leur DATE les sépare. Celle qui tombe hors de toute fenêtre de
+    // lot n'a pas de provenance gouvernée, et ne doit pas contribuer.
+    mockRegistry.mockResolvedValue(REGISTRE);
+    mockBatches.mockResolvedValue([
+      {
+        sourceSlug: "ofac",
+        startedAt: new Date("2026-08-01T00:00:00Z"),
+        completedAt: new Date("2026-08-31T23:59:59Z"),
+      },
+      {
+        sourceSlug: "forta",
+        startedAt: new Date("2026-08-01T00:00:00Z"),
+        completedAt: new Date("2026-08-31T23:59:59Z"),
+      },
+    ]);
+    mockEntity.mockResolvedValue(
+      entite("RETAIL_SAFE", [
+        { ...obsOfac, ingestedAt: new Date("2026-08-25T01:03:16Z") }, // DANS la fenêtre
+        {
+          ...obsChainalysis,
+          sourceSlug: "forta",
+          ingestedAt: new Date("2026-04-08T18:58:32Z"), // HORS de toute fenêtre
+        },
+      ]),
+    );
+    const signal = await matchEntity({ type: "ADDRESS", value: "0xdead" }, "RETAIL");
+    expect(signal.matchCount).toBe(1);
+    expect(signal.sourceSlug).toBe("ofac");
+  });
+
+  it("MUTANT — un lot NON TERMINÉ ne prouve rien", async () => {
+    // `completedAt` null = fenêtre ouverte. On ne lui invente pas de durée
+    // par défaut : inventer une fenêtre serait inventer une règle.
+    mockBatches.mockResolvedValue([
+      { sourceSlug: "ofac", startedAt: new Date("2026-01-01T00:00:00Z"), completedAt: null },
+    ]);
+    mockEntity.mockResolvedValue(entite("RETAIL_SAFE", [obsOfac]));
+    const signal = await matchEntity({ type: "ADDRESS", value: "0xdead" }, "RETAIL");
+    expect(signal.matchCount).toBe(0);
   });
 
   it("MUTANT — `lookupValue` PROPAGE l'audience qu'on lui donne", async () => {
