@@ -43,6 +43,7 @@ import {
   type CanonicalChain,
   type TokenResolution,
 } from "@/lib/token-resolution/v3";
+import { normalizeAddress } from "@/lib/token-resolution/v3/address";
 import { createProviderContext } from "@/lib/token-resolution/v3/providersPublic";
 
 /** Pourquoi l'identité n'est pas attestée. Nommé, jamais fabriqué. */
@@ -51,6 +52,8 @@ export type IdentityProbeRefusal =
   | "UNSUPPORTED_BY_CALLER"
   | "CHAIN_OUT_OF_SCOPE"
   | "NO_SELECTION"
+  /** L'adresse retenue n'est pas une adresse CANONIQUE pour sa propre chaîne. */
+  | "ADDRESS_NOT_CANONICAL_FOR_CHAIN"
   | "RESOLVER_FAILURE";
 
 export interface CanonicalIdentityProbe {
@@ -74,20 +77,63 @@ const REFUSE = (refusal: IdentityProbeRefusal, detail?: string): CanonicalIdenti
 });
 
 /**
- * LE prédicat d'attestation. Les trois conditions, ENSEMBLE.
+ * L'ÉVALUATION D'ATTESTATION — les SIX conditions, en un seul endroit.
  *
- * Exporté pour être jugé directement : un test qui ne pourrait l'exercer qu'à
- * travers un appel réseau ne prouverait pas grand-chose.
+ *   1. l'appel resolver s'est terminé sans exception échappée .. (dans la sonde)
+ *   2. status === "RESOLVED"
+ *   3. callerSupport === "supported"
+ *   4. une identité `selected` EXISTE, adresse comprise
+ *   5. selected.chain ∈ allowedChains déclarées par l'appelant
+ *   6. selected.address est CANONIQUE pour selected.chain
+ *
+ * La sixième est la plus fine et c'est celle qui compte : sans elle on peut
+ * attester une adresse MAL FORMÉE sur une chaîne pourtant autorisée. Le
+ * périmètre serait bon, l'identité non — la même famille que la substitution
+ * de chaîne, un cran plus bas.
+ *
+ * La canonicité n'est PAS revalidée ici : `normalizeAddress` du module de
+ * résolution la porte déjà, chaîne par chaîne, avec sa liste fermée de sept
+ * chaînes canoniques et la casse EVM. On l'appelle, on ne la réécrit pas.
+ *
+ * UNE SEULE implémentation, deux vues : `isCanonicallyAttested` en est le
+ * booléen. Écrire le prédicat deux fois était le défaut mesuré au tour
+ * précédent — un mutant qui retirait une condition dans la seconde copie
+ * survivait. Il ne peut plus y avoir de seconde copie.
  */
+export type AttestationOutcome =
+  | { attested: true; chain: CanonicalChain; address: string }
+  | { attested: false; refusal: Exclude<IdentityProbeRefusal, "RESOLVER_FAILURE"> };
+
+export function evaluateCanonicalAttestation(
+  r: Pick<TokenResolution, "status" | "callerSupport" | "selected">,
+  allowedChains: readonly CanonicalChain[],
+): AttestationOutcome {
+  if (r.status !== "RESOLVED") return { attested: false, refusal: "NOT_RESOLVED" };
+  if (r.callerSupport !== "supported") {
+    return { attested: false, refusal: "UNSUPPORTED_BY_CALLER" };
+  }
+  const selected = r.selected;
+  if (!selected || !selected.chain || !selected.address) {
+    return { attested: false, refusal: "NO_SELECTION" };
+  }
+  if (!allowedChains.includes(selected.chain)) {
+    return { attested: false, refusal: "CHAIN_OUT_OF_SCOPE" };
+  }
+  const norm = normalizeAddress(selected.address, selected.chain);
+  if (!norm.valid || norm.address === null) {
+    return { attested: false, refusal: "ADDRESS_NOT_CANONICAL_FOR_CHAIN" };
+  }
+  // L'adresse rendue est la forme CANONIQUE, pas celle qu'on a demandée : une
+  // sonde qui rendrait l'entrée masquerait une normalisation.
+  return { attested: true, chain: selected.chain, address: norm.address };
+}
+
+/** Le booléen. Vue sur `evaluateCanonicalAttestation`, jamais une seconde copie. */
 export function isCanonicallyAttested(
   r: Pick<TokenResolution, "status" | "callerSupport" | "selected">,
   allowedChains: readonly CanonicalChain[],
 ): boolean {
-  if (r.status !== "RESOLVED") return false;
-  if (r.callerSupport !== "supported") return false;
-  const chain = r.selected?.chain ?? null;
-  if (chain === null) return false;
-  return allowedChains.includes(chain);
+  return evaluateCanonicalAttestation(r, allowedChains).attested;
 }
 
 export interface ProbeIdentityArgs {
@@ -138,24 +184,15 @@ export async function probeCanonicalTokenIdentity(
     return REFUSE("RESOLVER_FAILURE", e instanceof Error ? e.message : String(e));
   }
 
-  // UNE SEULE autorité pour le prédicat. Les vérifications ci-dessous ne le
-  // rejouent pas : elles NOMMENT la cause du refus une fois qu'il est prononcé.
-  //
-  // Écrire le prédicat deux fois était le défaut : un mutant qui retirait la
-  // contrainte de périmètre ICI survivait, parce que les tests exerçaient
-  // l'autre copie. Un mutant qui ne mord pas est une preuve manquante.
-  if (!isCanonicallyAttested(resolution, allowedChains)) {
-    if (resolution.status !== "RESOLVED") return REFUSE("NOT_RESOLVED");
-    if (resolution.callerSupport !== "supported") return REFUSE("UNSUPPORTED_BY_CALLER");
-    if (!resolution.selected) return REFUSE("NO_SELECTION");
-    return REFUSE("CHAIN_OUT_OF_SCOPE");
-  }
-  const selected = resolution.selected!;
+  // UNE SEULE autorité. La sonde ne rejoue aucune condition : elle transporte
+  // le verdict et sa cause.
+  const verdict = evaluateCanonicalAttestation(resolution, allowedChains);
+  if (!verdict.attested) return REFUSE(verdict.refusal);
 
   return {
     attested: true,
-    chain: selected.chain,
-    address: selected.address ?? address,
+    chain: verdict.chain,
+    address: verdict.address,
     refusal: null,
   };
 }
