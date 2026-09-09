@@ -71,7 +71,7 @@ describe("intelligenceOverlay adapter", () => {
   it("maps reflex chain 'evm' to 'ethereum' for the intelligence lookup", async () => {
     mockLookup.mockResolvedValue(NO_MATCH);
     await runIntelligenceOverlay(SAMPLE_INPUT);
-    expect(mockLookup).toHaveBeenCalledWith("0xabc", "ethereum");
+    expect(mockLookup).toHaveBeenCalledWith("0xabc", "ethereum", "RETAIL");
   });
 
   it("returns ran:false + error on lookup failure", async () => {

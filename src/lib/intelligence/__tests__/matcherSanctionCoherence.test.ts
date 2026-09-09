@@ -16,7 +16,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { canonicalEntity: { findUnique: vi.fn() } },
+  prisma: {
+    canonicalEntity: { findUnique: vi.fn() },
+    // AM · P0 — `matchEntity` lit désormais la politique de source dans
+    // `SourceRegistry` avant d'agréger. Le mock la fournit avec les valeurs
+    // RÉELLES mesurées le 2026-09-09 : `ofac` et `forta` y sont tous deux
+    // `public` / `active`.
+    sourceRegistry: {
+      findMany: vi.fn(async () => [
+        { handle: "ofac", status: "active", defaultVisibility: "public" },
+        { handle: "forta", status: "active", defaultVisibility: "public" },
+      ]),
+    },
+  },
 }));
 
 import { matchEntity } from "../matcher";
@@ -30,6 +42,16 @@ function entityWith(riskClass: string, activeObservations: unknown[]) {
     type: "ADDRESS",
     value: "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41",
     riskClass,
+    // AM · P0 — les deux axes que le matcher ignorait. Le fixture porte les
+    // DÉFAUTS DU SCHÉMA : `isActive` true, `displaySafety` INTERNAL_ONLY. Sans
+    // eux il ne modélisait plus une ligne réelle — les colonnes sont NOT NULL.
+    //
+    // Et il vaut mieux qu'il porte INTERNAL_ONLY : ces tests démontrent alors,
+    // sans le chercher, que l'admissibilité par la SOURCE fonctionne — une
+    // entité non autorisée au niveau entité contribue quand même, parce que
+    // `ofac` et `forta` sont déclarés publiables par le registre.
+    isActive: true,
+    displaySafety: "INTERNAL_ONLY",
     observations: activeObservations,
   };
 }

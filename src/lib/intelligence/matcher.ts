@@ -5,6 +5,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from "@/lib/prisma";
+import {
+  admitObservations,
+  loadSourcePolicy,
+  type IntelAudience,
+  type SourcePolicy,
+} from "./retailAdmissibility";
 import { normalizeValue, buildDedupKey } from "./normalize";
 import type {
   IntelEntityType,
@@ -90,14 +96,52 @@ function guessEntityTypes(value: string): IntelEntityType[] {
   return ["ADDRESS", "CONTRACT", "TOKEN_CA", "DOMAIN", "PROJECT"];
 }
 
+/**
+ * L'absence de signal. Une seule définition : le littéral était recopié à deux
+ * endroits, et l'admissibilité en aurait ajouté un troisième.
+ *
+ * `matchCount: 0` est ce que lit le consommateur (`engine.ts:518`) pour dire
+ * NO_MATCH. Une contribution écartée produit donc exactement le même résultat
+ * qu'une entité inconnue : le scoreur ne reçoit rien, il n'a rien à corriger.
+ */
+const SIGNAL_VIDE: IntelSignal = {
+  ims: 0,
+  ics: 0,
+  matchCount: 0,
+  hasSanction: false,
+  topRiskClass: null,
+  matchBasis: null,
+  sourceSlug: null,
+  externalUrl: null,
+  winner: null,
+};
+
 // ── Public lookup ───────────────────────────────────────────────────────────
 
 export async function matchEntity(
-  target: MatchTarget
+  target: MatchTarget,
+  // ─── AM · P0 — L'AUDIENCE EST EXPLICITE, ET SON DÉFAUT EST RETAIL ───────
+  //
+  // Le défaut est le cas CONSERVATEUR : un appelant qui ne se déclare pas
+  // n'obtient pas d'autorité de décision retail sur des contributions
+  // inadmissibles. Les consommateurs internes légitimes déclarent INTERNAL —
+  // ils sont peu nombreux, et ils le disent.
+  audience: IntelAudience = "RETAIL",
+  /**
+   * La politique de source, quand l'appelant l'a déjà chargée.
+   *
+   * `lookupValue` essaie jusqu'à cinq types : sans ce passage, le registre
+   * était relu cinq fois pour une seule consultation. Il n'y a pas de cache et
+   * pas de TTL — inventer une durée de fraîcheur pour une politique de
+   * gouvernance serait inventer une règle.
+   */
+  policy?: SourcePolicy,
 ): Promise<IntelSignal> {
   const normalized = normalizeValue(target.type, target.value);
   const dedupKey = buildDedupKey(target.type, normalized);
 
+  // Le matcher LOCALISE toujours l'entité — c'est la gate d'audience qui décide
+  // ensuite quelles contributions portent une autorité, pas la requête.
   const entity = await prisma.canonicalEntity.findUnique({
     where: { dedupKey },
     include: {
@@ -109,20 +153,25 @@ export async function matchEntity(
   });
 
   if (!entity || entity.observations.length === 0) {
-    return {
-      ims: 0,
-      ics: 0,
-      matchCount: 0,
-      hasSanction: false,
-      topRiskClass: null,
-      matchBasis: null,
-      sourceSlug: null,
-      externalUrl: null,
-      winner: null,
-    };
+    return SIGNAL_VIDE;
   }
 
-  const obs: SourceObservationMinimal[] = entity.observations.map((o) => ({
+  // ── L'ADMISSIBILITÉ, avant toute agrégation ───────────────────────────
+  //
+  // Une observation écartée n'entre dans AUCUN calcul : ni IMS, ni ICS, ni
+  // `hasSanction`, ni le vainqueur. Le résultat est donc exactement celui du
+  // scoreur existant sur les contributions admissibles restantes — on ne
+  // corrige pas un score après coup, on ne lui donne pas l'entrée.
+  const { retained } = admitObservations({
+    entity: { isActive: entity.isActive, displaySafety: entity.displaySafety },
+    observations: entity.observations,
+    audience,
+    policy: policy ?? (await loadSourcePolicy()),
+  });
+
+  if (retained.length === 0) return SIGNAL_VIDE;
+
+  const obs: SourceObservationMinimal[] = retained.map((o) => ({
     id: o.id,
     sourceSlug: o.sourceSlug,
     sourceTier: o.sourceTier,
@@ -179,25 +228,20 @@ export async function matchEntity(
 
 export async function lookupValue(
   value: string,
-  chain?: string
+  chain?: string,
+  /** Même défaut conservateur que `matchEntity`. */
+  audience: IntelAudience = "RETAIL",
 ): Promise<IntelSignal> {
   const types = guessEntityTypes(value);
 
+  // Chargée UNE fois pour toute la consultation, pas une fois par type.
+  const policy = await loadSourcePolicy();
+
   // Try each type, return first match with signal
   for (const type of types) {
-    const signal = await matchEntity({ type, value, chain });
+    const signal = await matchEntity({ type, value, chain }, audience, policy);
     if (signal.matchCount > 0) return signal;
   }
 
-  return {
-    ims: 0,
-    ics: 0,
-    matchCount: 0,
-    hasSanction: false,
-    topRiskClass: null,
-    matchBasis: null,
-    sourceSlug: null,
-    externalUrl: null,
-    winner: null,
-  };
+  return SIGNAL_VIDE;
 }

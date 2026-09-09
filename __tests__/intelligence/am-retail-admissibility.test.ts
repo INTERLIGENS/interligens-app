@@ -2,15 +2,26 @@
 //
 // ██  Des critères, pas une implémentation. Aucune ligne de production ici.  ██
 //
-// La règle ratifiée :
+// Le contrat, RÉVISÉ après la mesure de non-monotonie :
 //
-//   « Une entité inactive ou INTERNAL_ONLY ne doit pas influencer une décision
-//     retail/partenaire au seul motif qu'une observation active subsiste. »
+//   « Une décision retail ne peut recevoir d'autorité QUE de contributions
+//     retail-admissibles. Après retrait d'une contribution inadmissible, le
+//     résultat doit ÊTRE ÉGAL au résultat du scoreur existant sur les
+//     contributions admissibles qui restent — que le risque monte, baisse ou
+//     ne bouge pas. »
 //
-// Trois axes, INDÉPENDAMMENT :
-//   entity.isActive === true
-//   entity.displaySafety === RETAIL_SAFE
-//   l'observation / la liste pertinente reste active
+// La preuve directionnelle a été RÉVOQUÉE : « removing inadmissible evidence
+// must always move risk in the safer direction » est INVALID, parce que la
+// couche n'est pas monotone (delta additif et plancher montent, plafond 72
+// descend). La distinction qui la remplace :
+//
+//   échec de mesure → fausse absence → réassurance ......... FAIL-OPEN
+//   preuve inadmissible retirée → recalcul sur l'admissible  AUTORITÉ CORRECTE
+//
+// L'autorité est COMPOSÉE de quatre facteurs, et aucun champ unique ne s'y
+// substitue :
+//   CYCLE DE VIE ENTITÉ × CYCLE DE VIE OBSERVATION
+//   × ADMISSIBILITÉ PREUVE/SOURCE × AUDIENCE
 //
 // ─── Pourquoi ce fichier existe avant le correctif ────────────────────────
 //
@@ -35,6 +46,14 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  admitObservations,
+  sourceIsRetailAdmissible,
+  type EntityAdmissibilityFacts,
+  type ObservationAdmissibilityFacts,
+  type IntelAudience,
+  type SourcePolicy,
+} from "@/lib/intelligence/retailAdmissibility";
 
 // ═══ LE CONTRAT ══════════════════════════════════════════════════════════
 
@@ -72,7 +91,7 @@ interface Admissibilite {
 type Impl = (e: Entity, a: Audience) => Admissibilite;
 
 // ─────────────────────────────────────────────────────────────────────────
-// TODO(AM · VOIE EN ARBITRAGE) — LA SEULE CONDITION NON TRANCHÉE.
+// LA VOIE EST TRANCHÉE — et elle existait déjà.
 //
 // Mesuré en production le 2026-09-09 : 342 062 entités actives, dont
 // **2** RETAIL_SAFE ; 866 entités de classe SANCTION (source `ofac`), toutes
@@ -83,27 +102,30 @@ type Impl = (e: Entity, a: Audience) => Admissibilite;
 // l'effet irait dans le sens NON SÛR, ce qui est l'inverse de la preuve
 // directionnelle exigée.
 //
-// Les trois voies nommées, en arbitrage, AUCUNE choisie ici :
-//   1. promouvoir les sources réglementaires gouvernées en RETAIL_SAFE (write) ;
-//   2. rendre l'admissibilité gouvernée par la SOURCE et non par l'entité ;
-//   3. gater tout sauf la contribution sanction (change le scoring).
+// L'admissibilité par la PREUVE/SOURCE est INDÉPENDANTE de l'autorisation de
+// niveau entité, et elle est portée par `SourceRegistry` — curée à la main,
+// mesurée le 2026-09-09 : Chainalysis, Elliptic, Nansen, TRM Labs, AML Bot et
+// Crystal y sont `internal_only`, les régulateurs y sont `public`.
 //
-// La FORME est figée ci-dessous ; la CONDITION reste ouverte. Aucune liste de
-// sources en dur, aucun seuil, aucune anticipation.
+// On la LIT (`status === "active" && defaultVisibility === "public"`), on ne la
+// réécrit pas, et AUCUN nom de source n'est codé en dur nulle part.
 // ─────────────────────────────────────────────────────────────────────────
-type ConditionDeVoie = (o: Observation) => boolean;
+/** La politique de source, telle que le registre l'exprime. */
+type SourceAdmissible = (sourceSlug: string) => boolean;
 
 /**
- * Le comportement par défaut du témoin en attendant l'arbitrage : AUCUNE
- * exemption. C'est le cas conservateur pour tout ce qui n'est pas une sanction,
- * et c'est précisément pourquoi les cas SANCTION sont marqués `it.todo` plus
- * bas plutôt que tranchés ici.
+ * Le registre tel que MESURÉ le 2026-09-09 : les trois slugs qui produisent
+ * réellement des observations y sont `public` / `active`. `chainalysis` est
+ * dans le registre en `internal_only` — il sert de contrôle négatif.
+ * `inconnue` n'y est pas du tout : le registre est l'autorité, ce qu'il ne
+ * connaît pas n'a pas été gouverné.
  */
-const AUCUNE_EXEMPTION: ConditionDeVoie = () => false;
+const REGISTRE_MESURE: SourceAdmissible = (slug) =>
+  ["ofac", "scamsniffer", "forta"].includes(slug);
 
 // ═══ LE TÉMOIN — indépendant, satisfiabilité seule ═══════════════════════
 
-function fabriquerTemoin(exempte: ConditionDeVoie): Impl {
+function fabriquerTemoin(sourceAdmissible: SourceAdmissible): Impl {
   return (e, audience) => {
     const actives = e.observations.filter((o) => o.listIsActive);
 
@@ -118,10 +140,14 @@ function fabriquerTemoin(exempte: ConditionDeVoie): Impl {
     // RETAIL — les trois axes, chacun vérifié pour lui-même.
     if (!e.isActive) return { admissible: false, retenues: [], refus: "ENTITY_INACTIVE" };
 
-    const exemptees = actives.filter(exempte);
+    // Les DEUX voies d'autorité de publication sont INDÉPENDANTES : l'entité
+    // autorisée au niveau entité, OU la source déclarée publiable. C'est ce
+    // qui permet à une observation OFAC directe de contribuer alors que
+    // l'entité est INTERNAL_ONLY.
+    const parLaSource = actives.filter((o) => sourceAdmissible(o.sourceSlug));
     if (e.displaySafety !== "RETAIL_SAFE") {
-      return exemptees.length > 0
-        ? { admissible: true, retenues: exemptees, refus: null }
+      return parLaSource.length > 0
+        ? { admissible: true, retenues: parLaSource, refus: null }
         : { admissible: false, retenues: [], refus: "NOT_RETAIL_SAFE" };
     }
     if (actives.length === 0) {
@@ -131,12 +157,14 @@ function fabriquerTemoin(exempte: ConditionDeVoie): Impl {
   };
 }
 
-const TEMOIN = fabriquerTemoin(AUCUNE_EXEMPTION);
+const TEMOIN = fabriquerTemoin(REGISTRE_MESURE);
 
 // ═══ FABRIQUES ═══════════════════════════════════════════════════════════
 
 const obs = (o: Partial<Observation> = {}): Observation => ({
-  sourceSlug: "scamsniffer",
+  // Source par défaut NON gouvernée : ainsi les critères d'ENTITÉ mordent
+  // pour eux-mêmes. Une source admissible masquerait l'axe entité.
+  sourceSlug: "inconnue",
   listIsActive: true,
   riskClass: "HIGH",
   ...o,
@@ -313,19 +341,9 @@ describe("AM/1 — chaque mutant mord, et sur la propriété visée", () => {
   });
 });
 
-// ═══ LA PREUVE DIRECTIONNELLE ════════════════════════════════════════════
-//
-// La plus importante : un retrait d'admissibilité doit produire un EFFET, et
-// l'effet doit aller dans le sens SÛR.
-//
-// Elle est écrite en deux moitiés, et les deux comptent :
-//   · sens SÛR   — retirer RETAIL_SAFE d'une entité qui ATTÉNUE le risque doit
-//                  faire remonter la sévérité, jamais la conserver ;
-//   · sens NON SÛR — retirer RETAIL_SAFE d'une entité qui AGGRAVE le risque
-//                  ferait redescendre la sévérité. C'est le piège mesuré en
-//                  production sur les sanctions OFAC, et le test le nomme.
+// ═══ LE CONTRAT RÉVISÉ — 4 preuves, et AUCUNE sur la direction ═══════════
 
-/** Sévérité ordonnée. Aucun score : des rangs, pour comparer un SENS. */
+/** Sévérité ordonnée. Aucun score : des rangs, pour comparer un RÉSULTAT. */
 const RANG = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, SANCTION: 4 } as const;
 
 function severiteRetail(e: Entity, impl: Impl): number {
@@ -334,123 +352,226 @@ function severiteRetail(e: Entity, impl: Impl): number {
   return Math.max(RANG.NONE, ...r.retenues.map((o) => RANG[o.riskClass as keyof typeof RANG] ?? 0));
 }
 
-describe("AM/2 — preuve directionnelle", () => {
-  it("le retrait de RETAIL_SAFE produit un EFFET — il ne conserve jamais la contribution", () => {
-    const avant = ent({ displaySafety: "RETAIL_SAFE" });
-    const apres = ent({ displaySafety: "INTERNAL_ONLY" });
-    expect(TEMOIN(avant, "RETAIL").admissible).toBe(true);
-    expect(TEMOIN(apres, "RETAIL").admissible).toBe(false);
-    expect(TEMOIN(avant, "RETAIL").retenues).not.toEqual(TEMOIN(apres, "RETAIL").retenues);
-  });
-
-  it("seul `displaySafety` change entre les deux — c'est bien lui qui produit l'effet", () => {
-    const avant = ent({ displaySafety: "RETAIL_SAFE" });
-    const apres = { ...avant, displaySafety: "INTERNAL_ONLY" as DisplaySafety };
-    expect({ ...avant, displaySafety: null }).toEqual({ ...apres, displaySafety: null });
-    expect(TEMOIN(avant, "RETAIL").admissible).not.toBe(TEMOIN(apres, "RETAIL").admissible);
-  });
-
-  /**
-   * LE SENS, ET POURQUOI IL N'EST PAS ACQUIS.
-   *
-   * Mesuré dans `src/lib/intelligence/scorer.ts` : la couche d'intelligence
-   * agit sur le score par TROIS mécanismes, et ils ne vont pas dans le même
-   * sens quand on retire une contribution.
-   *
-   *   · delta additif  `adjustedScore = base + cappedDelta`, cappedDelta ≥ 0
-   *                    → retirer FAIT BAISSER le risque  (sens NON SÛR)
-   *   · plancher 15    sanction active et score < 15 → 15
-   *                    → retirer FAIT BAISSER le risque  (sens NON SÛR)
-   *   · plafond 72     totalIms > 20 ET maxIcs > 0,40 ET score > 72 → 72
-   *                    → retirer FAIT REMONTER le risque (sens SÛR)
-   *
-   * Donc la preuve 5 n'est satisfaisable que pour les entités qui pilotent le
-   * PLAFOND. Pour toutes les autres, le retrait rassure.
-   *
-   * NON MESURÉ, et dit plutôt que supposé : je ne sais pas si le plafond se
-   * déclenche en production. `ims` et `ics` ne sont pas des colonnes — ils sont
-   * calculés à la lecture (`matcher.ts:34`). Les mesurer en SQL demanderait de
-   * réimplémenter le scoreur, ce qui serait inventer de la méthodologie.
-   */
-  it("CONSTAT — le retrait d'admissibilité RETIRE la contribution, il ne la conserve jamais", () => {
-    // C'est la moitié de la preuve 5 qui est acquise quelle que soit la voie :
-    // l'effet EXISTE. Le SENS de l'effet dépend du mécanisme, ci-dessus.
-    for (const classe of ["LOW", "MEDIUM", "HIGH", "SANCTION"] as const) {
-      const e = ent({ observations: [obs({ riskClass: classe })] });
-      const retire = { ...e, displaySafety: "INTERNAL_ONLY" as DisplaySafety };
-      expect(TEMOIN(e, "RETAIL").retenues, classe).toHaveLength(1);
-      expect(TEMOIN(retire, "RETAIL").retenues, classe).toHaveLength(0);
-    }
-  });
-
-  it("CONSTAT — sur un delta additif, le retrait va dans le sens NON SÛR", () => {
-    // Ce test ne demande pas que ce soit acceptable. Il épingle que ça l'est,
-    // pour qu'on ne puisse pas fermer la fuite en croyant le contraire.
-    const e = ent({ displaySafety: "RETAIL_SAFE", observations: [obs({ riskClass: "HIGH" })] });
-    const retire = { ...e, displaySafety: "INTERNAL_ONLY" as DisplaySafety };
-    expect(severiteRetail(retire, TEMOIN)).toBeLessThan(severiteRetail(e, TEMOIN));
-  });
-
-  it.todo(
-    "SENS SÛR sur le PLAFOND — retirer une entité qui plafonne à 72 doit faire REMONTER le score " +
-      "[BLOQUÉ : exige de savoir si le plafond se déclenche, non mesurable sans réimplémenter le scoreur]",
-  );
-
-  it.todo(
-    "SENS NON SÛR sur les SANCTIONS — une entité SANCTION ne doit PAS perdre sa sévérité " +
-      "[BLOQUÉ : voie en arbitrage — voir TODO(AM · VOIE EN ARBITRAGE)]",
-  );
-
-  // ── LA FIXTURE DE PRODUCTION ─────────────────────────────────────────
-  //
-  // Mesurée le 2026-09-09 sur le déploiement servi `interligens-b65i0gatb`,
-  // via GET /api/v1/score. Adresse listée OFAC — donnée publique par nature.
-  // Elle est épinglée ICI pour qu'une régression qui la ferait sortir du WARN
-  // casse un test au lieu de passer inaperçue.
-  const FIXTURE_OFAC_PROD = {
-    mint: "1Df883c96LVauVsx9FEgnsourD8DELwCUQ",
-    score: 15, // le plancher sanction — engine.ts:545
-    verdict: "ORANGE",
-    phantom_warning_level: "WARN",
-    sources: ["ofac"],
-    signals: ["intelligence_overlay"],
-    // L'entité derrière ce signal, mesurée en base :
-    entite: { isActive: true, displaySafety: "INTERNAL_ONLY", riskClass: "SANCTION" },
-  } as const;
-
-  it("FIXTURE — l'adresse OFAC mesurée doit rester au-dessus de NONE", () => {
-    // Le test ne rejoue pas la production : il épingle le fait que l'entité
-    // derrière ce WARN est INTERNAL_ONLY, donc que la fermeture naïve la
-    // ferait tomber à zéro. C'est le cas qui a produit l'arrêt.
-    const e = ent({
-      isActive: FIXTURE_OFAC_PROD.entite.isActive,
-      displaySafety: FIXTURE_OFAC_PROD.entite.displaySafety,
-      observations: [obs({ sourceSlug: "ofac", riskClass: "SANCTION" })],
+describe("AM/2 — le contrat révisé", () => {
+  it("P1 — une contribution INADMISSIBLE ne peut pas affecter le résultat retail", () => {
+    const seuleInadmissible = ent({
+      displaySafety: "INTERNAL_ONLY",
+      observations: [obs({ sourceSlug: "inconnue", riskClass: "HIGH" })],
     });
-    expect(severiteRetail(e, TEMOIN)).toBe(RANG.NONE);
-    expect(FIXTURE_OFAC_PROD.phantom_warning_level).toBe("WARN");
-    expect(FIXTURE_OFAC_PROD.score).toBe(15);
+    expect(TEMOIN(seuleInadmissible, "RETAIL").retenues).toHaveLength(0);
+    expect(severiteRetail(seuleInadmissible, TEMOIN)).toBe(RANG.NONE);
   });
 
-  it("et la voie retenue devra faire remonter cette fixture à SANCTION", () => {
-    // La FORME de la vérification est figée ; la CONDITION est en arbitrage.
-    // Ce test montre que la batterie SAIT exprimer la réponse attendue, sans
-    // la choisir : on injecte une condition de voie hypothétique et on vérifie
-    // que le témoin la respecte. Aucune liste en dur n'entre en production.
-    const voieHypothetique: ConditionDeVoie = (o) => o.riskClass === "SANCTION";
-    const temoinAvecVoie = fabriquerTemoin(voieHypothetique);
-    const e = ent({
+  it("P2 — une contribution ADMISSIBLE le peut", () => {
+    const parLEntite = ent({ displaySafety: "RETAIL_SAFE" });
+    const parLaSource = ent({
       displaySafety: "INTERNAL_ONLY",
       observations: [obs({ sourceSlug: "ofac", riskClass: "SANCTION" })],
     });
-    expect(severiteRetail(e, temoinAvecVoie)).toBe(RANG.SANCTION);
-    // Et la voie ne doit rien relâcher d'autre : un HIGH INTERNAL_ONLY reste
-    // inadmissible même sous cette hypothèse.
+    expect(severiteRetail(parLEntite, TEMOIN)).toBe(RANG.HIGH);
+    expect(severiteRetail(parLaSource, TEMOIN)).toBe(RANG.SANCTION);
+  });
+
+  it("P3 — retrait ou désactivation RETIRE l'autorité", () => {
+    const base = ent({
+      displaySafety: "INTERNAL_ONLY",
+      observations: [obs({ sourceSlug: "ofac", riskClass: "SANCTION" })],
+    });
+    expect(TEMOIN(base, "RETAIL").admissible).toBe(true);
+    // trois retraits, trois pertes d'autorité, indépendamment
+    expect(TEMOIN({ ...base, isActive: false }, "RETAIL").admissible).toBe(false);
     expect(
-      severiteRetail(ent({ displaySafety: "INTERNAL_ONLY" }), temoinAvecVoie),
-    ).toBe(RANG.NONE);
-    // Et la batterie complète reste satisfaite sous cette voie.
-    expect(batterie(temoinAvecVoie)).toEqual([]);
+      TEMOIN({ ...base, observations: [obs({ sourceSlug: "ofac", listIsActive: false })] }, "RETAIL")
+        .admissible,
+    ).toBe(false);
+    const sansPolitique = fabriquerTemoin(() => false);
+    expect(sansPolitique(base, "RETAIL").admissible).toBe(false);
+  });
+
+  it("P4 — le résultat est EXACTEMENT celui du scoreur sur les entrées admissibles restantes", () => {
+    // La propriété centrale du contrat révisé. On ne corrige pas un résultat
+    // après coup : on ne donne pas l'entrée. Donc juger une entité mixte doit
+    // donner le MÊME résultat que juger la même entité réduite d'avance à ses
+    // seules contributions admissibles.
+    const mixte = ent({
+      displaySafety: "INTERNAL_ONLY",
+      observations: [
+        obs({ sourceSlug: "ofac", riskClass: "SANCTION" }),
+        obs({ sourceSlug: "inconnue", riskClass: "HIGH" }),
+        obs({ sourceSlug: "forta", riskClass: "MEDIUM" }),
+        obs({ sourceSlug: "chainalysis", riskClass: "HIGH" }),
+        obs({ sourceSlug: "ofac", riskClass: "LOW", listIsActive: false }),
+      ],
+    });
+    const retenues = TEMOIN(mixte, "RETAIL").retenues;
+    const preFiltre = ent({
+      displaySafety: "RETAIL_SAFE",
+      observations: retenues,
+    });
+    expect(TEMOIN(preFiltre, "RETAIL").retenues).toEqual(retenues);
+    expect(severiteRetail(mixte, TEMOIN)).toBe(severiteRetail(preFiltre, TEMOIN));
+    // et ce qui reste est exactement ce qui devait rester
+    expect(retenues.map((o) => o.sourceSlug).sort()).toEqual(["forta", "ofac"]);
+  });
+
+  it("P5 — AUCUNE exigence sur la DIRECTION du mouvement", () => {
+    // Le retrait fait BAISSER ici, et c'est acceptable : ce qui compte est que
+    // le résultat soit soutenu, pas qu'il aille dans un sens. La preuve
+    // directionnelle a été révoquée après la mesure de non-monotonie.
+    const avant = ent({ displaySafety: "RETAIL_SAFE" });
+    const apres = { ...avant, displaySafety: "INTERNAL_ONLY" as DisplaySafety };
+    expect(severiteRetail(apres, TEMOIN)).toBeLessThan(severiteRetail(avant, TEMOIN));
+    // Le test l'ÉPINGLE au lieu de l'interdire. Aucune assertion de sens.
+  });
+});
+
+// ═══ LES 6 FIXTURES — contre le CODE RÉEL ════════════════════════════════
+//
+// La batterie au-dessus juge le témoin. Celles-ci jugent `admitObservations`,
+// la fonction d'admissibilité réellement livrée.
+
+const POLITIQUE_MESUREE: SourcePolicy = new Map([
+  // Le registre au 2026-09-09, réduit aux sources qui comptent ici.
+  ["ofac", { retailAdmissible: true }],
+  ["forta", { retailAdmissible: true }],
+  ["scamsniffer", { retailAdmissible: true }],
+  ["chainalysis", { retailAdmissible: false }], // `internal_only` au registre
+]);
+
+const O = (o: Partial<ObservationAdmissibilityFacts> & { sourceSlug: string }) => ({
+  listIsActive: true,
+  ...o,
+});
+
+function admettre(
+  entity: EntityAdmissibilityFacts,
+  observations: ReturnType<typeof O>[],
+  audience: IntelAudience,
+  policy: SourcePolicy = POLITIQUE_MESUREE,
+) {
+  return admitObservations({ entity, observations, audience, policy });
+}
+
+describe("AM/3 — les 6 fixtures exigées, sur le code livré", () => {
+  it("A — INTERNAL HIGH, preuve non retail-admissible → n'influence PAS le retail", () => {
+    const r = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "chainalysis" })],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(0);
+    expect(r.refused[0].refus).toBe("ENTITY_INTERNAL_ONLY_AND_SOURCE_NOT_RETAIL_ADMISSIBLE");
+  });
+
+  it("B — OFAC actif et gouverné → influence MÊME si l'entité est INTERNAL_ONLY", () => {
+    // La fixture qui a produit l'arrêt. Les deux voies d'autorité sont
+    // indépendantes : la source suffit.
+    const r = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "ofac" })],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(1);
+    expect(r.refused).toHaveLength(0);
+  });
+
+  it("C — la MÊME observation OFAC devient inactive → cesse de contribuer", () => {
+    const r = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "ofac", listIsActive: false })],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(0);
+    expect(r.refused[0].refus).toBe("OBSERVATION_INACTIVE");
+  });
+
+  it("D — l'entité devient inactive → cesse de contribuer", () => {
+    const r = admettre(
+      { isActive: false, displaySafety: "RETAIL_SAFE" },
+      [O({ sourceSlug: "ofac" })],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(0);
+    expect(r.refused[0].refus).toBe("ENTITY_INACTIVE");
+  });
+
+  it("E — la SOURCE perd son admissibilité retail → cesse de contribuer", () => {
+    // Aucune donnée ne change : seule la politique bascule. C'est le test qui
+    // prouve que l'axe source est réellement consulté, et non décoratif.
+    const revoquee: SourcePolicy = new Map([["ofac", { retailAdmissible: false }]]);
+    const r = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "ofac" })],
+      "RETAIL",
+      revoquee,
+    );
+    expect(r.retained).toHaveLength(0);
+  });
+
+  it("F — audience INTERNE → la visibilité interne est préservée", () => {
+    // Entité inactive, non autorisée, source non gouvernée : rien de tout cela
+    // ne doit aveugler un analyste.
+    const r = admettre(
+      { isActive: false, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "chainalysis" }), O({ sourceSlug: "inconnue" })],
+      "INTERNAL",
+    );
+    expect(r.retained).toHaveLength(2);
+    expect(r.refused).toHaveLength(0);
+  });
+
+  it("F bis — mais une observation MORTE reste morte, même en interne", () => {
+    // Le seul axe qui s'applique aux deux audiences. Le relâcher en interne
+    // ressusciterait une ligne retirée d'une liste.
+    const r = admettre(
+      { isActive: true, displaySafety: "RETAIL_SAFE" },
+      [O({ sourceSlug: "ofac", listIsActive: false })],
+      "INTERNAL",
+    );
+    expect(r.retained).toHaveLength(0);
+    expect(r.refused[0].refus).toBe("OBSERVATION_INACTIVE");
+  });
+
+  it("une source ABSENTE du registre n'est pas admissible — le registre est l'autorité", () => {
+    // Mesuré : `amf`, `fca` et `goplus` ne joignent pas (`goplus` côté code
+    // contre `goplusec` côté registre). Aucun ne produit d'observation
+    // aujourd'hui ; le jour où l'un le fera, il sera refusé et VISIBLE.
+    const r = admettre(
+      { isActive: true, displaySafety: "INTERNAL_ONLY" },
+      [O({ sourceSlug: "goplus" })],
+      "RETAIL",
+    );
+    expect(r.retained).toHaveLength(0);
+  });
+
+  it("INTERNAL_ONLY et ANALYST_REVIEWED refusent tous deux, sans se CONFONDRE", () => {
+    // Les deux nient l'autorité de niveau entité. Ils ne disent pas la même
+    // chose : l'un n'a jamais été relu, l'autre l'a été et n'est explicitement
+    // pas encore autorisé au scanner. Un opérateur doit savoir laquelle des
+    // deux actions il lui reste.
+    const o = [O({ sourceSlug: "chainalysis" })];
+    const io = admettre({ isActive: true, displaySafety: "INTERNAL_ONLY" }, o, "RETAIL");
+    const ar = admettre({ isActive: true, displaySafety: "ANALYST_REVIEWED" }, o, "RETAIL");
+    expect(io.retained).toHaveLength(0);
+    expect(ar.retained).toHaveLength(0);
+    expect(io.refused[0].refus).not.toBe(ar.refused[0].refus);
+    expect(ar.refused[0].refus).toContain("ANALYST_REVIEWED");
+  });
+
+  it("le prédicat de source lit les CHAMPS DU REGISTRE, sans nom en dur", () => {
+    expect(sourceIsRetailAdmissible({ status: "active", defaultVisibility: "public" })).toBe(true);
+    expect(sourceIsRetailAdmissible({ status: "active", defaultVisibility: "internal_only" })).toBe(false);
+    expect(sourceIsRetailAdmissible({ status: "retired", defaultVisibility: "public" })).toBe(false);
+    // Et aucun nom de source n'apparaît dans le module.
+    const src = readFileSync(join(__dirname, "..", "..", "src/lib/intelligence/retailAdmissibility.ts"), "utf8");
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l) => !l.trimStart().startsWith("//"))
+      .join("\n");
+    for (const nom of ["ofac", "amf", "fca", "goplus", "scamsniffer", "forta", "chainalysis"]) {
+      expect(code, `nom de source en dur : ${nom}`).not.toContain(`"${nom}"`);
+    }
   });
 });
 

@@ -52,7 +52,12 @@ export async function runIntelligenceOverlay(
   }
 
   try {
-    const signal = await lookupValue(input.address, intelChain(input.chain));
+    // AM · P0 — l'audience est DÉCLARÉE : REFLEX rend un verdict servi, donc
+    // ses contributions doivent être retail-admissibles. Le défaut de
+    // `lookupValue` est déjà RETAIL ; on le dit quand même, parce qu'un
+    // consommateur qui rend un verdict à un utilisateur ne doit pas dépendre
+    // d'un défaut pour être correct.
+    const signal = await lookupValue(input.address, intelChain(input.chain), "RETAIL");
     if (!signal || signal.matchCount === 0) {
       return {
         engine: "intelligenceOverlay",
