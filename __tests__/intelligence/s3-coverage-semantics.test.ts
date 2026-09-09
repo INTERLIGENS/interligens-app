@@ -33,7 +33,8 @@ import {
   freshnessToMeasurementState,
   DECLARED_INTELLIGENCE_SOURCES,
   buildSanctionCoverage,
-  EXPECTED_SANCTION_SOURCES,
+  deriveArmedCapabilities,
+  DECLARED_SANCTION_SOURCES,
 } from "@/lib/intelligence/sanctionCoverage";
 import { MEASUREMENT_STATES } from "@/lib/publication/absenceVocabulary";
 import { phantomFromProjection } from "@/lib/publicScore/schema";
@@ -172,27 +173,68 @@ describe("S3/B — les critères du corpus AU", () => {
 });
 
 describe("S3/1 — UNE autorité, étendue et non recopiée", () => {
-  it("la forme SANCTIONS existante est intacte", () => {
-    expect([...EXPECTED_SANCTION_SOURCES]).toEqual(["ofac", "amf", "fca"]);
+  it("la forme SANCTIONS applique la MÊME règle — elle n'est plus « intacte »", () => {
+    // ⚠ CE TEST S'APPELAIT « la forme SANCTIONS existante est intacte », et
+    // c'était le mot de trop. « Intacte » voulait dire : elle porte encore le
+    // défaut. Elle épinglait `PARTIAL` / `false` sur le régime NOMINAL.
+    expect([...DECLARED_SANCTION_SOURCES]).toEqual(["ofac", "amf", "fca"]);
     const s = buildSanctionCoverage([v("ofac", "FRESH")]);
-    expect(s.state).toBe("PARTIAL");
+    expect(s.state).toBe("COMPLETE");
+    expect(s.expected).toEqual(["ofac"]);
     expect(s.consulted).toEqual(["ofac"]);
-    expect(s.notConsulted.map((x) => x.source)).toEqual(["amf", "fca"]);
-    expect(s.negativeIsConclusive).toBe(false);
+    // Les jamais armées ne disparaissent pas : elles changent de champ.
+    expect(s.notConsulted).toEqual([]);
+    expect(s.declaredNotArmed.map((x) => x.source)).toEqual(["amf", "fca"]);
+    expect(s.negativeIsConclusive).toBe(true);
   });
 
-  it("les deux formes s'accordent sur QUI a été observé", () => {
-    // C'est ce qui distingue une extension d'une copie. Elles divergent
-    // volontairement sur le DÉNOMINATEUR — la forme sanctions attend les trois
-    // régulateurs par contrat, la forme générale attend les armées.
-    const large = buildIntelligenceCoverage([v("ofac", "FRESH")], [...EXPECTED_SANCTION_SOURCES]);
-    const sanctions = buildSanctionCoverage([v("ofac", "FRESH")]);
-    expect(large.consultedMeasured).toEqual([...sanctions.consulted]);
-    const vusCommeManquants = [
-      ...large.notConsulted.map((x) => x.source),
-      ...large.declaredNotArmed.map((x) => x.source),
-    ].sort();
-    expect(vusCommeManquants).toEqual([...sanctions.notConsulted.map((x) => x.source)].sort());
+  it("MUTANT — les deux formes s'accordent sur le VERDICT, pas sur le périmètre commun", () => {
+    // ██ L'ANCIENNE VERSION MESURAIT LA BONNE CHOSE AU MAUVAIS ENDROIT.
+    //
+    // Elle comparait `consultedMeasured` à `consulted` — le périmètre COMMUN,
+    // {ofac}, sur lequel les deux formes s'accordaient effectivement. Ce qui
+    // divergeait était EXPECTED, donc le VERDICT. Et son commentaire
+    // justifiait la divergence : « elles divergent VOLONTAIREMENT sur le
+    // dénominateur ». C'est cette phrase qui a laissé le défaut debout.
+    //
+    // Mesuré en production le 2026-09-09, même adresse, deux surfaces servies :
+    //   /api/scan/intelligence  PARTIAL   negativeIsConclusive false
+    //   /api/v1/score           COMPLETE  negativeConclusive   true
+    //
+    // On compare donc les VERDICTS, sur le même périmètre déclaré, dans les
+    // quatre états de fraîcheur. Une divergence doit faire rougir.
+    for (const etat of ["FRESH", "STALE", "UNKNOWN", "NOT_ARMED"] as const) {
+      const verdicts = [v("ofac", etat), v("amf", "NOT_ARMED")];
+      const perimetre = [...DECLARED_SANCTION_SOURCES];
+      const sanctions = buildSanctionCoverage(verdicts, perimetre);
+      const large = buildIntelligenceCoverage(verdicts, perimetre);
+      expect(
+        sanctions.negativeIsConclusive,
+        `ofac ${etat} : verdicts contradictoires entre les deux surfaces`,
+      ).toBe(large.negativeConclusive);
+      expect(sanctions.state, `ofac ${etat} : états contradictoires`).toBe(large.state);
+      expect([...sanctions.expected], `ofac ${etat} : dénominateurs divergents`).toEqual([
+        ...large.expected,
+      ]);
+      expect([...sanctions.consulted]).toEqual([...large.consultedMeasured]);
+      expect(sanctions.declaredNotArmed.map((x) => x.source)).toEqual(
+        large.declaredNotArmed.map((x) => x.source),
+      );
+    }
+  });
+
+  it("MUTANT — UNE seule dérivation d'armement, consommée par les deux formes", () => {
+    // Si chacune dérivait EXPECTED de son côté, le défaut reviendrait sous une
+    // autre forme. `deriveArmedCapabilities` est l'unique règle ; seul le
+    // périmètre déclaré distingue les deux formes.
+    const verdicts = [v("ofac", "FRESH"), v("amf", "STALE"), v("scamsniffer", "FRESH")];
+    const d = deriveArmedCapabilities(verdicts, ["ofac", "amf", "fca", "scamsniffer"]);
+    expect([...d.armed]).toEqual(["ofac", "amf", "scamsniffer"]);
+    expect(d.notArmed.map((x) => x.source)).toEqual(["fca"]);
+    // Et les deux formes rendent EXACTEMENT ce périmètre sur le même déclaré.
+    const perimetre = ["ofac", "amf", "fca", "scamsniffer"];
+    expect([...buildSanctionCoverage(verdicts, perimetre).expected]).toEqual([...d.armed]);
+    expect([...buildIntelligenceCoverage(verdicts, perimetre).expected]).toEqual([...d.armed]);
   });
 
   it("MUTANT — le dénominateur ne peut pas redevenir le périmètre déclaré", () => {

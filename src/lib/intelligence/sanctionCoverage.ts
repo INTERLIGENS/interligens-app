@@ -26,13 +26,31 @@
 // dans le watchdog et dans une réponse d'API.
 
 import type { FreshnessVerdict } from "../watchdog/sourceFreshness";
+import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
 
 /**
- * Les sources RÉGLEMENTAIRES attendues pour qu'un « pas de sanction » soit un
- * contrôle. Identique à `INTEL_TIER1_SLUGS` du watchdog — même liste, même
- * raison : ce sont les listes qui déclenchent le floor.
+ * Les sources RÉGLEMENTAIRES DÉCLARÉES. Identique à `INTEL_TIER1_SLUGS` du
+ * watchdog — même liste, même raison : ce sont les listes qui déclenchent le
+ * floor.
+ *
+ * ─── S3.1 — ce nom a changé, et le changement EST la correction ───────────
+ *
+ * Elle s'appelait `EXPECTED_SANCTION_SOURCES`. Le nom énonçait le défaut :
+ * une liste FIGÉE servait de périmètre ATTENDU. Avec les données réelles —
+ * `ofac` FRESH, `amf` et `fca` jamais exécutées — la couverture sortait
+ * `PARTIAL` / `negativeIsConclusive: false` sur TOUT scan, en permanence.
+ *
+ * Mesuré en production le 2026-09-09, sur `/api/scan/intelligence`, la MÊME
+ * adresse que `/api/v1/score` servait déjà `COMPLETE` :
+ *
+ *   scan/intelligence   PARTIAL   negativeIsConclusive false   consulted [ofac]
+ *   v1/score            COMPLETE  negativeConclusive   true    expected [ofac, scamsniffer]
+ *
+ * Deux surfaces servies, une seule adresse, deux affirmations épistémiques
+ * contradictoires. DÉCLARÉ n'est pas ATTENDU : le nom le dit désormais, et
+ * `expected` se DÉRIVE.
  */
-export const EXPECTED_SANCTION_SOURCES = ["ofac", "amf", "fca"] as const;
+export const DECLARED_SANCTION_SOURCES = ["ofac", "amf", "fca"] as const;
 
 export type SanctionCoverageState =
   /** Toutes les sources réglementaires attendues ont été observées récemment. */
@@ -42,47 +60,153 @@ export type SanctionCoverageState =
 
 export interface SanctionCoverage {
   readonly state: SanctionCoverageState;
+  /**
+   * EXPECTED — les régulatrices réellement ARMÉES. DÉRIVÉ, jamais choisi.
+   * Ajouté en S3.1 : c'est le champ dont l'absence rendait la dégradation
+   * permanente invisible.
+   */
+  readonly expected: readonly string[];
   /** Les sources réglementaires effectivement observées. */
   readonly consulted: readonly string[];
   /** Celles qui manquent, avec leur état — jamais un simple « absent ». */
   readonly notConsulted: readonly { readonly source: string; readonly state: string }[];
   /**
+   * Déclarées mais JAMAIS armées. Contexte, pas dénominateur — elles restent
+   * NOMMÉES au lieu de disparaître. Symétrique du champ homonyme de
+   * `IntelligenceCoverage` : c'est la MÊME dérivation qui les produit.
+   */
+  readonly declaredNotArmed: readonly {
+    readonly source: string;
+    readonly reason: MeasurementState;
+  }[];
+  /**
    * Ce que le booléen `hasSanction: false` autorise à conclure.
-   * `true` seulement quand la couverture est complète.
+   * `true` seulement quand la couverture est complète ET non vide.
    */
   readonly negativeIsConclusive: boolean;
 }
 
+// ─── S3.1 · LA DÉRIVATION DE L'ARMEMENT — UNE SEULE, POUR LES DEUX FORMES ──
+//
+// ██  Si les deux formes dérivaient EXPECTED chacune de son côté, le défaut ██
+// ██  reviendrait sous une autre forme. Elles consomment la même.          ██
+//
+// C'est la même exigence qu'en S3 : on étend, on ne recopie pas. La règle est
+// celle du ruling : « Expected coverage comes from actually ARMED / GOVERNED
+// capability » — jamais de la liste des déclarées, et sans aucun quorum. Le
+// périmètre suit la capacité armée UN POUR UN : un seuil choisi serait un
+// nombre inventé, et le ruling l'interdit aussi.
+//
+// ─── Ce qui sert de preuve d'armement, et sa limite ───────────────────────
+//
+// `NOT_ARMED` de `sourceFreshness.ts` signifie exactement « déclarée au
+// registre, AUCUNE ligne de run ». C'est un fait d'EXÉCUTION lu sur le journal
+// `intel_ingestion_batches`, pas une déclaration d'intention.
+//
+// La limite, et je la déclare : une capacité pourrait être gouvernée — cron
+// armé, entrée au registre — et n'avoir pas encore produit son premier lot.
+// Elle serait ici « non armée ». C'est le sens CONSERVATEUR de l'erreur : on
+// ne compte comme attendue que ce qui a effectivement tourné au moins une
+// fois. L'inverse — croire une capacité armée sur sa seule déclaration — est
+// précisément le défaut fermé ici.
+
+export interface ArmedCapabilities {
+  /** Les capacités qui ont réellement produit au moins un lot. */
+  readonly armed: readonly string[];
+  /** Les déclarées qui n'ont jamais tourné, NOMMÉES avec leur motif typé. */
+  readonly notArmed: readonly {
+    readonly source: string;
+    readonly reason: MeasurementState;
+  }[];
+  /** Le verdict de fraîcheur par slug armé, pour éviter une seconde lecture. */
+  readonly freshnessBySlug: ReadonlyMap<string, string>;
+}
+
 /**
- * La couverture, à partir des verdicts de fraîcheur déjà calculés.
+ * L'état de fraîcheur, traduit dans le vocabulaire d'absence RATIFIÉ.
+ * Aucun jeton inventé — critère B2b.
+ */
+export function freshnessToMeasurementState(state: string): MeasurementState {
+  switch (state) {
+    case "FRESH":
+      return "MEASURED";
+    case "STALE":
+      return "STALE";
+    // Jamais armée : la capacité n'a pas produit une ligne. Ce n'est ni
+    // « non applicable » — elle est déclarée — ni « inconnu ».
+    case "NOT_ARMED":
+      return "NOT_MEASURED";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+/**
+ * LA dérivation. Les deux formes de couverture la consomment avec LEUR
+ * périmètre déclaré — c'est le périmètre qui diffère, jamais la règle.
+ */
+export function deriveArmedCapabilities(
+  verdicts: readonly FreshnessVerdict[],
+  declared: readonly string[],
+): ArmedCapabilities {
+  const parSlug = new Map(verdicts.map((v) => [v.sourceSlug, v]));
+  const armed: string[] = [];
+  const notArmed: { source: string; reason: MeasurementState }[] = [];
+  const freshnessBySlug = new Map<string, string>();
+
+  for (const slug of declared) {
+    // Sans verdict, la source n'a jamais été observée : NOT_ARMED, pas
+    // « fraîche par défaut ».
+    const etat = parSlug.get(slug)?.state ?? "NOT_ARMED";
+    if (etat === "NOT_ARMED") {
+      notArmed.push({ source: slug, reason: freshnessToMeasurementState(etat) });
+      continue;
+    }
+    armed.push(slug);
+    freshnessBySlug.set(slug, etat);
+  }
+  return { armed, notArmed, freshnessBySlug };
+}
+
+/**
+ * La couverture SANCTIONS, à partir des verdicts de fraîcheur déjà calculés.
  *
- * Une source compte comme consultée si elle est `FRESH`. `STALE`, `UNKNOWN` et
- * `NOT_ARMED` ne comptent pas — pour trois raisons différentes, et le détail les
- * distingue au lieu de les fondre en « absente ».
+ * Une source compte comme consultée si elle est `FRESH`. `STALE` et `UNKNOWN`
+ * ne comptent pas — elles sont ARMÉES et manquantes, donc elles dégradent.
+ * `NOT_ARMED` ne dégrade pas : elle n'est pas attendue, elle est nommée.
+ *
+ * Le second paramètre est le périmètre DÉCLARÉ, pas l'attendu. Le renommer
+ * n'est pas cosmétique : c'est ce que la fonction reçoit, et l'appeler
+ * `expected` était l'origine de la confusion.
  */
 export function buildSanctionCoverage(
   verdicts: readonly FreshnessVerdict[],
-  expected: readonly string[] = EXPECTED_SANCTION_SOURCES,
+  declared: readonly string[] = DECLARED_SANCTION_SOURCES,
 ): SanctionCoverage {
-  const parSlug = new Map(verdicts.map((v) => [v.sourceSlug, v]));
+  const { armed, notArmed, freshnessBySlug } = deriveArmedCapabilities(verdicts, declared);
   const consulted: string[] = [];
   const notConsulted: { source: string; state: string }[] = [];
 
-  for (const slug of expected) {
-    const v = parSlug.get(slug);
-    // Une source attendue dont on n'a AUCUN verdict n'est pas « fraîche par
-    // défaut » : elle est non observée, et on le dit avec le même mot que le
-    // watchdog emploie pour un collecteur jamais exécuté.
-    const state = v?.state ?? "NOT_ARMED";
+  for (const slug of armed) {
+    const state = freshnessBySlug.get(slug) ?? "UNKNOWN";
     if (state === "FRESH") consulted.push(slug);
     else notConsulted.push({ source: slug, state });
   }
 
+  // ██ LES DEUX BORNES, ET AUCUNE NE SUFFIT SEULE.
+  //
+  // `notConsulted.length === 0` seul rendrait « complet » vrai d'un périmètre
+  // VIDE — la sur-correction par le vide, où personne n'a regardé et où le
+  // contrat conclut quand même. `armed.length > 0` la ferme.
+  const conclusif = notConsulted.length === 0 && armed.length > 0;
+
   return {
-    state: notConsulted.length === 0 ? "COMPLETE" : "PARTIAL",
+    state: conclusif ? "COMPLETE" : "PARTIAL",
+    expected: armed,
     consulted,
     notConsulted,
-    negativeIsConclusive: notConsulted.length === 0,
+    declaredNotArmed: notArmed,
+    negativeIsConclusive: conclusif,
   };
 }
 
@@ -129,8 +253,6 @@ export function assessSanction(
 // dans `notVerified`, avec son motif. Gonfler le dénominateur gonflerait aussi
 // le périmètre vide — c'est le critère B4/B5 du corpus de T2.
 
-import type { MeasurementState } from "@/lib/publication/absenceVocabulary";
-
 /**
  * Les sources d'intelligence DÉCLARÉES par la politique du scoreur.
  * Déclarées ne veut pas dire exécutées : c'est tout le sujet.
@@ -143,25 +265,6 @@ export const DECLARED_INTELLIGENCE_SOURCES = [
   "forta",
   "goplus",
 ] as const;
-
-/**
- * L'état de fraîcheur, traduit dans le vocabulaire d'absence RATIFIÉ.
- * Aucun jeton inventé — critère B2b.
- */
-export function freshnessToMeasurementState(state: string): MeasurementState {
-  switch (state) {
-    case "FRESH":
-      return "MEASURED";
-    case "STALE":
-      return "STALE";
-    // Jamais armée : la capacité n'a pas produit une ligne. Ce n'est ni
-    // « non applicable » — elle est déclarée — ni « inconnu ».
-    case "NOT_ARMED":
-      return "NOT_MEASURED";
-    default:
-      return "UNKNOWN";
-  }
-}
 
 /**
  * Les quatre états que le CONTRAT doit distinguer, ratifiés :
@@ -214,22 +317,19 @@ export function buildIntelligenceCoverage(
   verdicts: readonly FreshnessVerdict[],
   declared: readonly string[] = DECLARED_INTELLIGENCE_SOURCES,
 ): IntelligenceCoverage {
-  const parSlug = new Map(verdicts.map((v) => [v.sourceSlug, v]));
-  const expected: string[] = [];
+  // ██ LA MÊME DÉRIVATION QUE LA FORME SANCTIONS. Pas une copie : l'appel.
+  //
+  // S3.1 : deux dérivations parallèles auraient recréé le défaut sous une
+  // autre forme en six semaines. C'est le périmètre déclaré qui distingue les
+  // deux formes, jamais la règle d'armement.
+  const { armed, notArmed, freshnessBySlug } = deriveArmedCapabilities(verdicts, declared);
+  const expected: readonly string[] = armed;
   const consultedMeasured: string[] = [];
   const notConsulted: { source: string; reason: MeasurementState }[] = [];
-  const declaredNotArmed: { source: string; reason: MeasurementState }[] = [];
+  const declaredNotArmed: { source: string; reason: MeasurementState }[] = [...notArmed];
 
-  for (const slug of declared) {
-    // Sans verdict, la source n'a jamais été observée : NOT_ARMED, pas
-    // « fraîche par défaut ».
-    const etat = parSlug.get(slug)?.state ?? "NOT_ARMED";
-    if (etat === "NOT_ARMED") {
-      // Déclarée, jamais armée. Hors dénominateur, mais NOMMÉE.
-      declaredNotArmed.push({ source: slug, reason: freshnessToMeasurementState(etat) });
-      continue;
-    }
-    expected.push(slug);
+  for (const slug of armed) {
+    const etat = freshnessBySlug.get(slug) ?? "UNKNOWN";
     // `FRESH`, et rien d'autre. `STALE` est armée mais périmée : elle manque.
     if (etat === "FRESH") consultedMeasured.push(slug);
     else notConsulted.push({ source: slug, reason: freshnessToMeasurementState(etat) });
@@ -290,7 +390,7 @@ export async function readSanctionCoverage(): Promise<SanctionCoverage> {
         lastStartedAt: r.last_started_at ? new Date(r.last_started_at) : null,
         lastSuccessAt: r.last_success_at ? new Date(r.last_success_at) : null,
       })),
-      [...EXPECTED_SANCTION_SOURCES],
+      [...DECLARED_SANCTION_SOURCES],
       LIMITS,
       DEFAULT_LIMIT_DAYS,
       new Date(),
