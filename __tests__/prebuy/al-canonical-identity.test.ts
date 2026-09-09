@@ -21,6 +21,7 @@ import { join } from "node:path";
 
 import {
   isCanonicallyAttested,
+  evaluateCanonicalAttestation,
   PREBUY_EVM_CHAINS,
 } from "@/lib/prebuy/canonicalTokenIdentity";
 import { IDENTITY_AUTHORITIES, resolveTokenIdentity } from "@/lib/prebuy/identity";
@@ -39,16 +40,38 @@ const FIXTURES = {
   usdtEth: "0xdac17f958d2ee523a2206206994597c13d831ec7",
 } as const;
 
-/** Une résolution, réduite à ce que le prédicat lit. */
+/**
+ * Une résolution, réduite à ce que le prédicat lit.
+ *
+ * L'adresse par défaut est CANONIQUE pour sa chaîne : la sixième condition
+ * refuse une adresse mal formée, et un fixture bâclé (`0x0`) ferait échouer
+ * les cas nominaux pour la mauvaise raison.
+ */
+const ADDR_CANONIQUE: Record<string, string> = {
+  ETH: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  BASE: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  BSC: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  ARBITRUM: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  SOL: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  TRON: "TA3941uFAvmVibSkQ6fMJXxmaSNovX86mz",
+  HYPER: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+};
 const res = (o: {
   status: string;
   callerSupport: string;
   chain?: CanonicalChain | null;
+  address?: string | null;
 }) =>
   ({
     status: o.status,
     callerSupport: o.callerSupport,
-    selected: o.chain === undefined || o.chain === null ? null : { chain: o.chain, address: "0x0" },
+    selected:
+      o.chain === undefined || o.chain === null
+        ? null
+        : {
+            chain: o.chain,
+            address: o.address === undefined ? ADDR_CANONIQUE[o.chain] : o.address,
+          },
   }) as Parameters<typeof isCanonicallyAttested>[0];
 
 // ═══ LE PRÉDICAT — les trois conditions, ENSEMBLE ════════════════════════
@@ -111,6 +134,85 @@ describe("AL/0 — le prédicat d'attestation", () => {
         s,
       ).toBe(false);
     }
+  });
+
+  it("MUTANT — `selected` ABSENT n'atteste pas, quatrième condition", () => {
+    expect(
+      isCanonicallyAttested(
+        res({ status: "RESOLVED", callerSupport: "supported", chain: null }),
+        PREBUY_EVM_CHAINS,
+      ),
+    ).toBe(false);
+    // Et une sélection SANS ADRESSE non plus : une chaîne seule n'est pas une
+    // identité. C'est le cas que la lecture `selected?.chain` laissait passer.
+    const sansAdresse = evaluateCanonicalAttestation(
+      res({ status: "RESOLVED", callerSupport: "supported", chain: "ETH", address: null }),
+      PREBUY_EVM_CHAINS,
+    );
+    expect(sansAdresse.attested).toBe(false);
+    expect(sansAdresse).toMatchObject({ refusal: "NO_SELECTION" });
+  });
+
+  it("MUTANT — une adresse NON CANONIQUE sur une chaîne AUTORISÉE n'atteste pas", () => {
+    // La sixième condition, et la plus fine : le périmètre est bon, l'identité
+    // ne l'est pas. Une adresse Solana « sélectionnée sur ETH », un hex trop
+    // court, une chaîne vide — la chaîne est autorisée à chaque fois.
+    for (const mauvaise of [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // base58 Solana
+      "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb4", // 39 hex
+      "0xZZb86991c6218b36c1d19d4a2e9eb0ce3606eb48", // hors alphabet hex
+      "0x0",
+      "   ",
+    ]) {
+      const r = evaluateCanonicalAttestation(
+        res({ status: "RESOLVED", callerSupport: "supported", chain: "ETH", address: mauvaise }),
+        PREBUY_EVM_CHAINS,
+      );
+      expect(r.attested, mauvaise).toBe(false);
+    }
+  });
+
+  it("l'adresse rendue est la forme CANONIQUE, pas celle qu'on a passée", () => {
+    // Casse EVM : le module normalise en minuscules. Rendre l'entrée
+    // masquerait la normalisation.
+    const r = evaluateCanonicalAttestation(
+      res({
+        status: "RESOLVED",
+        callerSupport: "supported",
+        chain: "ETH",
+        address: "0xA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48",
+      }),
+      PREBUY_EVM_CHAINS,
+    );
+    expect(r).toEqual({
+      attested: true,
+      chain: "ETH",
+      address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    });
+  });
+
+  it("MUTANT — le prédicat booléen est une VUE, pas une seconde copie", () => {
+    // On vient de payer ce défaut : le prédicat écrit deux fois laissait
+    // survivre un mutant. Les deux vues doivent s'accorder sur TOUS les cas.
+    const cas = [
+      res({ status: "RESOLVED", callerSupport: "supported", chain: "ETH" }),
+      res({ status: "RESOLVED", callerSupport: "supported", chain: "SOL" }),
+      res({ status: "RESOLVED", callerSupport: "unsupported_by_caller", chain: "ETH" }),
+      res({ status: "UNRESOLVED", callerSupport: "supported", chain: "ETH" }),
+      res({ status: "RESOLVED", callerSupport: "supported", chain: null }),
+      res({ status: "RESOLVED", callerSupport: "supported", chain: "ETH", address: "0x0" }),
+    ];
+    for (const c of cas) {
+      expect(isCanonicallyAttested(c, PREBUY_EVM_CHAINS)).toBe(
+        evaluateCanonicalAttestation(c, PREBUY_EVM_CHAINS).attested,
+      );
+    }
+    // Et la source ne contient qu'UNE implémentation de la table.
+    const code = codeSeul(SRC_ADAPT);
+    expect(code.match(/status !== "RESOLVED"/g) ?? []).toHaveLength(1);
+    expect(code.match(/callerSupport !== "supported"/g) ?? []).toHaveLength(1);
+    expect(code.match(/allowedChains\.includes/g) ?? []).toHaveLength(1);
+    expect(code.match(/normalizeAddress\(/g) ?? []).toHaveLength(1);
   });
 
   it("aucune sélection → pas d'attestation", () => {
