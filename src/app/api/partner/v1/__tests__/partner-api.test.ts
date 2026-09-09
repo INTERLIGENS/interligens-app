@@ -3,6 +3,28 @@ import { NextRequest } from "next/server";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
+// S3 — la lecture de couverture fait un aller-retour BASE. Ce fichier juge le
+// contrat partenaire, pas la couverture : sans ce mock il tape la vraie base et
+// devient lent puis instable sous charge.
+vi.mock("@/lib/intelligence/sanctionCoverage", async (orig) => {
+  const reel = await orig<typeof import("@/lib/intelligence/sanctionCoverage")>();
+  return {
+    ...reel,
+    readIntelligenceCoverage: vi.fn(async () => ({
+      expected: ["ofac", "scamsniffer"],
+      consultedMeasured: ["ofac", "scamsniffer"],
+      notConsulted: [],
+      declaredNotArmed: [
+        { source: "amf", reason: "NOT_MEASURED" },
+        { source: "fca", reason: "NOT_MEASURED" },
+      ],
+      denominator: 2,
+      state: "COMPLETE",
+      negativeConclusive: true,
+    })),
+  };
+});
+
 vi.mock("@/lib/tigerscore/engine", () => ({
   computeTigerScoreWithIntel: vi.fn().mockResolvedValue({
     finalScore: 85,

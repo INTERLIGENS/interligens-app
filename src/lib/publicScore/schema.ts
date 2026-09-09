@@ -1,5 +1,6 @@
 import { canonicalPreBuyDecision, contratSatisfait } from "@/lib/prebuy/canonicalDecision";
 import { projectPreBuy, REASSURANCE, type PreBuyProjection } from "@/lib/prebuy/projection";
+import type { IntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
 
 export type SignalSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
@@ -42,6 +43,15 @@ export type PublicScoreResponse = {
   mintAuthority?: boolean | null;
   freezeAuthority?: boolean | null;
   communityScans?: number | null;
+  /**
+   * BUILD 12 · S3 — la COUVERTURE, à côté du résultat.
+   *
+   * `sources: []` ne peut pas rester la seule représentation d'un no-match :
+   * une source jamais exécutée s'y lisait comme « vérifiée, rien trouvé ».
+   * Ce champ porte les quatre états ratifiés — attendues, consultées, non
+   * consultées avec motif, et ce que le négatif autorise à conclure.
+   */
+  intelligenceCoverage?: IntelligenceCoverage;
 };
 
 /**
@@ -51,7 +61,14 @@ export type PublicScoreResponse = {
  * `PreBuyProjection` — donc un verdict ET un état de mesure — vers le
  * vocabulaire public. Il n'y a plus deux endroits où l'on décide.
  */
-export function phantomFromProjection(p: PreBuyProjection): {
+export function phantomFromProjection(
+  p: PreBuyProjection,
+  /**
+   * L'état de couverture des sources d'intelligence. Optionnel, et son absence
+   * est le cas conservateur — pas une couverture complète supposée.
+   */
+  coverage?: Pick<IntelligenceCoverage, "negativeConclusive">,
+): {
   level: PhantomWarningLevel;
   disclaimer: string;
 } {
@@ -62,6 +79,29 @@ export function phantomFromProjection(p: PreBuyProjection): {
     };
   }
   if (p.level === "ALLOW") {
+    // BUILD 12 · S3 — LA PROJECTION VIENT APRÈS LE CONTRAT.
+    //
+    // La phrase rassurante affirme une absence de signal. Elle ne peut pas
+    // être servie quand le périmètre RÉELLEMENT vérifié est incomplet : ce
+    // serait affirmer plus que ce qui a été regardé.
+    //
+    // `coverage` est optionnel et les appelants qui ne le fournissent pas
+    // tombent dans le cas conservateur — le défaut est l'absence de la mesure
+    // au point de consommation.
+    //
+    // Le NIVEAU reste `ALLOW` : « do not force provider noise into retail
+    // UI ». Un collecteur périmé n'est pas un risque sur le jeton, et le faire
+    // basculer en WARN rendrait l'alerte permanente. C'est la PHRASE qui cesse
+    // d'affirmer, pas le niveau qui invente une gravité.
+    if (coverage && !coverage.negativeConclusive) {
+      return {
+        level: "ALLOW",
+        disclaimer:
+          "No critical signal was returned by the sources actually consulted. " +
+          "Part of the declared intelligence coverage was not verified — " +
+          "this is not a confirmation that the token is safe.",
+      };
+    }
     return { level: "ALLOW", disclaimer: `${REASSURANCE}.` };
   }
 

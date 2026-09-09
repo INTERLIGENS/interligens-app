@@ -36,6 +36,9 @@ import {
   EXPECTED_SANCTION_SOURCES,
 } from "@/lib/intelligence/sanctionCoverage";
 import { MEASUREMENT_STATES } from "@/lib/publication/absenceVocabulary";
+import { phantomFromProjection } from "@/lib/publicScore/schema";
+import { projectPreBuy } from "@/lib/prebuy/projection";
+import type { DecisionCanonique } from "@/lib/prebuy/canonicalDecision";
 import type { FreshnessVerdict } from "@/lib/watchdog/sourceFreshness";
 
 const v = (sourceSlug: string, state: string): FreshnessVerdict =>
@@ -195,5 +198,62 @@ describe("S3/1 — UNE autorité, étendue et non recopiée", () => {
   it("MUTANT — le dénominateur ne peut pas redevenir le périmètre déclaré", () => {
     const c = buildIntelligenceCoverage(REEL);
     expect(c.denominator).toBeLessThan(DECLARED_INTELLIGENCE_SOURCES.length);
+  });
+});
+
+// ═══ S3/2 — LA PROJECTION VIENT APRÈS LE CONTRAT ═════════════════════════
+
+const DECISION_PROPRE: DecisionCanonique = {
+  verdict: "NO_CRITICAL_SIGNAL",
+  verdictSource: "REFLEX",
+  expectedContractSatisfied: true,
+  degraded: false,
+  coverage: { expected: 4, expectedMeasured: 4, missing: [] },
+  identityResolved: true,
+};
+
+describe("S3/2 — la phrase rassurante et le périmètre vérifié", () => {
+  const allow = projectPreBuy(DECISION_PROPRE);
+
+  it("le niveau reste ALLOW — on ne fabrique pas une gravité", () => {
+    // « Do not force provider noise into retail UI. » Un collecteur périmé
+    // n'est pas un risque sur le jeton. Faire basculer en WARN rendrait
+    // l'alerte permanente — le défaut sous un autre signe.
+    expect(phantomFromProjection(allow, { negativeConclusive: false }).level).toBe("ALLOW");
+    expect(phantomFromProjection(allow, { negativeConclusive: true }).level).toBe("ALLOW");
+  });
+
+  it("MUTANT — couverture incomplète : la phrase n'AFFIRME plus", () => {
+    const d = phantomFromProjection(allow, { negativeConclusive: false }).disclaimer;
+    expect(d).not.toBe("No major risk signals detected.");
+    expect(d).toMatch(/sources actually consulted/i);
+    expect(d).toMatch(/not a confirmation that the token is safe/i);
+  });
+
+  it("SUR-CORRECTION — couverture complète : la phrase revient", () => {
+    // Ne plus jamais la dire serait la sur-correction symétrique.
+    expect(phantomFromProjection(allow, { negativeConclusive: true }).disclaimer).toBe(
+      "No major risk signals detected.",
+    );
+  });
+
+  it("sans information de couverture, le cas CONSERVATEUR", () => {
+    // Le défaut est l'absence de la mesure au point de consommation.
+    expect(phantomFromProjection(allow).disclaimer).toBe("No major risk signals detected.");
+  });
+
+  it("BLOCK et WARN ne bougent pas d'un caractère", () => {
+    const stop = projectPreBuy({ ...DECISION_PROPRE, verdict: "STOP" });
+    const verify = projectPreBuy({ ...DECISION_PROPRE, verdict: "VERIFY" });
+    for (const cov of [undefined, { negativeConclusive: false }, { negativeConclusive: true }]) {
+      expect(phantomFromProjection(stop, cov)).toEqual({
+        level: "BLOCK",
+        disclaimer: "This token has critical risk signals. Swapping is strongly discouraged.",
+      });
+      expect(phantomFromProjection(verify, cov)).toEqual({
+        level: "WARN",
+        disclaimer: "This token shows elevated risk. Proceed with caution.",
+      });
+    }
   });
 });

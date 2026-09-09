@@ -4,6 +4,7 @@ import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } fr
 import { computeTigerScoreWithIntel, type TigerInput } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
+import { readIntelligenceCoverage, type IntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
 import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
 import {
@@ -231,8 +232,13 @@ export async function POST(req: NextRequest) {
     results.length, errors
   );
 
+  // S3 — la couverture est portée UNE fois pour le lot : elle décrit l'état
+  // des collecteurs, pas une adresse. La répéter par item la ferait passer
+  // pour une propriété de l'adresse.
+  const intelligenceCoverage: IntelligenceCoverage = await readIntelligenceCoverage();
+
   return NextResponse.json(
-    { results, processed: results.length, errors, version: "v1" },
+    { results, processed: results.length, errors, version: "v1", intelligence_coverage: intelligenceCoverage },
     { status: 200, headers: CORS_HEADERS }
   );
 }

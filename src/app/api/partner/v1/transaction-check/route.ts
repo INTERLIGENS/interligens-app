@@ -4,6 +4,7 @@ import { checkRateLimit, rateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } fr
 import { computeTigerScoreWithIntel, type TigerInput } from "@/lib/tigerscore/engine";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { isValidMint, isValidEvmAddress } from "@/lib/publicScore/schema";
+import { readIntelligenceCoverage } from "@/lib/intelligence/sanctionCoverage";
 import { canonicalPreBuyDecision, type ManqueMesure } from "@/lib/prebuy/canonicalDecision";
 import { resolveTokenIdentity, type IdentityAttestation } from "@/lib/prebuy/identity";
 import {
@@ -284,6 +285,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Une seule source pour l'action, le verdict et la phrase.
+  // S3 — le contrat porte la couverture à côté de la recommandation.
+  const intelligenceCoverage = await readIntelligenceCoverage();
   const recommendation: Recommendation = toPartnerRecommendation(resultTo.projection);
   const reason = buildPartnerReason(
     resultTo.projection,
@@ -306,6 +309,7 @@ export async function POST(req: NextRequest) {
       chain: chainKey,
       version: "v1",
       powered_by: "INTERLIGENS",
+      intelligence_coverage: intelligenceCoverage,
     },
     { status: 200, headers: CORS_HEADERS }
   );

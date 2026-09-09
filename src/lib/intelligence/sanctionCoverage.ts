@@ -300,3 +300,39 @@ export async function readSanctionCoverage(): Promise<SanctionCoverage> {
     return buildSanctionCoverage([]);
   }
 }
+
+/**
+ * La couverture d'INTELLIGENCE courante, sur le périmètre déclaré complet.
+ *
+ * Même journal d'exécution que `readSanctionCoverage` — `intel_ingestion_batches`,
+ * écrit par le collecteur lui-même. Une seule requête agrégée.
+ *
+ * Fail-closed identique : une panne de lecture ne rend PAS une couverture
+ * complète. Toutes les sources ressortent sans verdict, donc jamais armées, et
+ * le périmètre attendu est vide — ce qui ne conclut rien.
+ */
+export async function readIntelligenceCoverage(): Promise<IntelligenceCoverage> {
+  try {
+    const rows = await prisma.$queryRawUnsafe<BatchRow[]>(
+      `SELECT "sourceSlug",
+              max("startedAt")                                      AS last_started_at,
+              max("completedAt") FILTER (WHERE status = 'success')   AS last_success_at
+         FROM intel_ingestion_batches
+        GROUP BY "sourceSlug"`,
+    );
+    const verdicts = assessSourceFreshness(
+      rows.map((r) => ({
+        sourceSlug: r.sourceSlug,
+        lastStartedAt: r.last_started_at ? new Date(r.last_started_at) : null,
+        lastSuccessAt: r.last_success_at ? new Date(r.last_success_at) : null,
+      })),
+      [...DECLARED_INTELLIGENCE_SOURCES],
+      LIMITS,
+      DEFAULT_LIMIT_DAYS,
+      new Date(),
+    );
+    return buildIntelligenceCoverage(verdicts);
+  } catch {
+    return buildIntelligenceCoverage([]);
+  }
+}
