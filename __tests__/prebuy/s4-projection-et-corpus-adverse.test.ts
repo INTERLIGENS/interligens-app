@@ -448,8 +448,11 @@ describe("S4/2 — le contrat partner/v1 ne casse pas", () => {
     expect(proj).toContain("no critical risk signals detected");
     // La signature EXIGE la projection en premier argument — un refactor qui
     // la retirerait ferait rougir ici avant de servir quoi que ce soit.
+    // S4 — la signature accepte désormais un quatrième paramètre OPTIONNEL,
+    // la couverture. On exige les trois premiers dans l'ordre, sans clore la
+    // parenthèse : la fermer interdirait l'extension qui suit.
     expect(proj).toMatch(
-      /export function buildPartnerReason\(\s*p: PreBuyProjection,\s*score: number,\s*signalsCount: number,?\s*\)/,
+      /export function buildPartnerReason\(\s*p: PreBuyProjection,\s*score: number,\s*signalsCount: number,/,
     );
   });
 });

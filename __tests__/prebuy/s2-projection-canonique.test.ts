@@ -315,7 +315,19 @@ describe("S2/4 — la phrase partenaire n'est émise que si la mesure la soutien
 
   it("la signature ne reçoit plus (score, signalsCount) seuls", () => {
     // Premier paramètre : la projection, donc verdict + état de mesure.
-    expect(buildPartnerReason.length).toBe(3);
+    //
+    // S4 — le `?` de TypeScript est effacé à l'exécution : `Function.length`
+    // compte le quatrième paramètre, et il vaut désormais 4. Je l'avais écrit
+    // l'inverse ; mesuré, c'est 4.
+    //
+    // Un nombre ne dit de toute façon PAS quels paramètres : `(score,
+    // signalsCount, x, y)` vaudrait 4 aussi. C'est la SIGNATURE qui porte la
+    // propriété, et elle exige la projection EN PREMIER.
+    expect(buildPartnerReason.length).toBe(4);
+    const src = lire("src/lib/prebuy/projection.ts");
+    expect(src).toMatch(
+      /export function buildPartnerReason\(\s*p: PreBuyProjection,\s*score: number,\s*signalsCount: number,/,
+    );
   });
 });
 
