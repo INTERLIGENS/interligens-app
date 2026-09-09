@@ -496,6 +496,22 @@ fi
 # STRUCTURÉE servie aux partenaires — fermer le public en laissant le
 # partenaire ouvert, c'est contenir la moitié du P0 en sachant laquelle.
 #
+# EXTENSION D'UN SEUL CHEMIN, ET C'EST UN TEST — mesurée après ouverture.
+#
+# `partner-api.test.ts` est rangé SOUS la route qu'il juge, donc sous le
+# préfixe gelé. Le guard l'attrape par coïncidence de rangement, pas parce
+# qu'il est du code servi : il n'est chargé par aucune route.
+#
+# Il a besoin du mock parce que la lecture de couverture fait un aller-retour
+# BASE. Mesuré : 2905 ms à froid, ~300 ms à chaud. Sans mock, le test expire à
+# 5000 ms — vérifié, 1 échec sur 19. Ce fichier mocke DÉJÀ chacune de ses
+# coutures base (tigerscore/engine, entities/knownBad, caseDb,
+# marketProviders, tigerscore/adapter) : le câblage en introduit une nouvelle,
+# et sa convention exige qu'elle le soit aussi.
+#
+# Ce n'est PAS un élargissement du périmètre : le fichier appartient au même
+# câblage que les quatre routes, et rien d'autre n'est ouvert.
+#
 # NE COUVRE PAS : le reste de src/app/api/, prisma/, package.json, le lockfile.
 if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s3-coverage-wiring$ ]]; then
     EXEMPT_S3_COVERAGE_PATTERNS=(
@@ -503,6 +519,7 @@ if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-s3-coverage-wiring$ ]]; then
         "^src/app/api/partner/v1/transaction-check/route\.ts$"
         "^src/app/api/partner/v1/score-lite/route\.ts$"
         "^src/app/api/partner/v1/batch-score/route\.ts$"
+        "^src/app/api/partner/v1/__tests__/partner-api\.test\.ts$"
     )
 fi
 
