@@ -78,6 +78,7 @@ export type Audience = "ANONYMOUS" | "PARTNER" | "OPERATOR";
 
 declare const ADMIS: unique symbol;
 declare const PROJETE: unique symbol;
+declare const GARANTIE: unique symbol;
 
 /**
  * L'AXE 1 — qui est admis, et par quoi.
@@ -92,19 +93,79 @@ export interface Admission<A extends Audience> {
   readonly [ADMIS]: true;
 }
 
+// ─── LA CHARGE — ce que la frontière sait émettre, et elle le DÉCLARE ────
+//
+// Mesuré sur les 19 routes du dépôt qui construisent une réponse : SEPT
+// rendent un corps que `JSON.stringify` ne sait pas produire — un PDF, des
+// octets, un CSV. Une frontière incapable d'exprimer ce que la route doit
+// émettre est contournée, et ici le contournement serait le cas MAJORITAIRE
+// des artefacts portables — c'est-à-dire précisément ceux dont la gouvernance
+// compte le plus.
+//
+// La forme est DÉCLARÉE dans la charge, jamais devinée d'un `typeof`. Deviner
+// la forme d'un corps est la même faute que deviner l'intention d'une clause :
+// ça marche jusqu'au jour où deux formes se ressemblent.
+//
+// ⚠ AUCUN MEMBRE `Response` ICI, ET C'EST DÉLIBÉRÉ. Une charge qui pourrait
+// transporter une réponse déjà construite rouvrirait exactement le trou mesuré
+// sur l'enveloppement lâche : la projection ne peut ni lire ni restreindre un
+// objet `Response`, donc elle compilerait sans rien projeter.
+export type Charge =
+  | { readonly forme: "json"; readonly valeur: object }
+  | { readonly forme: "texte"; readonly texte: string; readonly typeMime: string }
+  | { readonly forme: "octets"; readonly octets: Uint8Array; readonly typeMime: string }
+  | { readonly forme: "flux"; readonly flux: ReadableStream<Uint8Array>; readonly typeMime: string };
+
+/**
+ * LE NIVEAU DE GARANTIE — et il n'est PAS uniforme selon la forme.
+ *
+ *   RESTREINTE  sur du JSON, la projection LIT la donnée et en retire. Ce qui
+ *               sort est ce qui a été retenu, et l'écart est démontrable.
+ *   ATTESTEE    sur un flux d'octets, elle ne peut RIEN retirer. Elle ne peut
+ *               qu'attester que le document a été PRODUIT sous une décision
+ *               d'audience.
+ *
+ * Ce sont DEUX PROPRIÉTÉS, et la seconde est plus faible. La question de
+ * savoir si elles doivent porter le même nom n'est pas tranchée ici — elle est
+ * NOMMÉE, et la frontière la rend visible plutôt que de laisser croire à une
+ * garantie uniforme. Un invariant qui laisserait croire qu'il couvre tout
+ * serait pire que son absence.
+ */
+export type Garantie = "RESTREINTE" | "ATTESTEE";
+
+/**
+ * REFUSE QU'UNE `Response` ENTRE PAR LE CHEMIN JSON.
+ *
+ * Trouvé en cherchant si l'élargissement avait rouvert le trou de
+ * l'enveloppement lâche. Il ne l'avait pas rouvert — il était DÉJÀ LÀ, sur le
+ * chemin JSON, depuis la première écriture : `Out extends object` accepte une
+ * `Response`, qui se faisait alors sérialiser en `{}`.
+ *
+ * Ce n'était pas une fuite — rien de non projeté ne sortait — mais c'est la
+ * même FORME : un objet opaque entre dans le pipeline et la projection ne peut
+ * rien en dire. Une signature plus riche est une signature plus facile à
+ * satisfaire par accident ; celle-ci l'était déjà, et l'élargissement aurait
+ * rendu la faute plus tentante puisque le binaire devient légitime à côté.
+ */
+export type PasUneReponse<T> = T extends Response ? never : T;
+
+export type GarantieDe<C extends Charge> = C extends { forme: "json" } ? "RESTREINTE" : "ATTESTEE";
+
 /**
  * L'AXE 2 — ce que cette audience peut recevoir.
  *
- * La marque porte l'audience : une valeur projetée pour `PARTNER` n'est pas
- * assignable là où une valeur projetée pour `ANONYMOUS` est attendue, et
- * réciproquement. Les deux axes voyagent ensemble dans la valeur émise.
+ * La marque porte l'audience ET le niveau de garantie. Une valeur projetée
+ * pour `PARTNER` n'est pas assignable là où une valeur `ANONYMOUS` est
+ * attendue ; une charge ATTESTEE n'est pas assignable là où une charge
+ * RESTREINTE est exigée. Les deux distinctions voyagent dans la valeur émise.
  */
-export type Admissible<A extends Audience, T extends object> = T & {
+export type Admissible<A extends Audience, C extends Charge = Charge> = C & {
   readonly [PROJETE]: A;
+  readonly [GARANTIE]: GarantieDe<C>;
 };
 
 const marquer = <A extends Audience>(audience: A, etabliePar: string): Admission<A> =>
-  ({ audience, etabliePar } as Admission<A>);
+  ({ audience, etabliePar } as unknown as Admission<A>);
 
 /** Admission par une porte d'authentification d'opérateur. */
 export function admettreOperateur(porte: string): Admission<"OPERATOR"> {
@@ -129,7 +190,7 @@ export function admettreAnonyme(motif: string): Admission<"ANONYMOUS"> {
 }
 
 /**
- * LA PROJECTION — seul constructeur d'une valeur admissible.
+ * LA PROJECTION JSON — garantie RESTREINTE.
  *
  * Elle prend l'admission, l'entrée, et la fonction qui restreint. La valeur
  * rendue n'existe que parce que la projection a tourné : c'est en cela que la
@@ -138,10 +199,58 @@ export function admettreAnonyme(motif: string): Admission<"ANONYMOUS"> {
 export function projeter<A extends Audience, In, Out extends object>(
   admission: Admission<A>,
   entree: In,
-  projection: (entree: In) => Out,
-): Admissible<A, Out> {
+  projection: (entree: In) => PasUneReponse<Out>,
+): Admissible<A, { forme: "json"; valeur: Out }> {
   void admission;
-  return projection(entree) as Admissible<A, Out>;
+  return { forme: "json", valeur: projection(entree) } as unknown as Admissible<
+    A, { forme: "json"; valeur: Out }
+  >;
+}
+
+/**
+ * LA PRODUCTION DE DOCUMENT — garantie ATTESTEE, et la frontière le DIT.
+ *
+ * `produire` reçoit l'entrée et rend les octets. Elle est exigée pour la même
+ * raison que la projection JSON : sans elle, la valeur émise n'aurait rien
+ * traversé. Ce qui change n'est pas le caractère portant de la marque — c'est
+ * ce que la marque peut établir.
+ */
+export function projeterDocument<A extends Audience, In>(
+  admission: Admission<A>,
+  entree: In,
+  produire: (entree: In) => Uint8Array,
+  typeMime: string,
+): Admissible<A, { forme: "octets"; typeMime: string; octets: Uint8Array }> {
+  void admission;
+  return { forme: "octets", typeMime, octets: produire(entree) } as Admissible<
+    A, { forme: "octets"; typeMime: string; octets: Uint8Array }
+  >;
+}
+
+/** Production d'un corps textuel non-JSON — CSV, HTML. Garantie ATTESTEE. */
+export function projeterTexte<A extends Audience, In>(
+  admission: Admission<A>,
+  entree: In,
+  produire: (entree: In) => string,
+  typeMime: string,
+): Admissible<A, { forme: "texte"; typeMime: string; texte: string }> {
+  void admission;
+  return { forme: "texte", typeMime, texte: produire(entree) } as Admissible<
+    A, { forme: "texte"; typeMime: string; texte: string }
+  >;
+}
+
+/** Production d'un flux. Garantie ATTESTEE, et par construction non relisible. */
+export function projeterFlux<A extends Audience, In>(
+  admission: Admission<A>,
+  entree: In,
+  produire: (entree: In) => ReadableStream<Uint8Array>,
+  typeMime: string,
+): Admissible<A, { forme: "flux"; typeMime: string; flux: ReadableStream<Uint8Array> }> {
+  void admission;
+  return { forme: "flux", typeMime, flux: produire(entree) } as Admissible<
+    A, { forme: "flux"; typeMime: string; flux: ReadableStream<Uint8Array> }
+  >;
 }
 
 /**
@@ -159,10 +268,26 @@ export function projeter<A extends Audience, In, Out extends object>(
  */
 export function projeterIntegralement<T extends object>(
   admission: Admission<"OPERATOR">,
-  entree: T,
-): Admissible<"OPERATOR", T> {
+  entree: PasUneReponse<T>,
+): Admissible<"OPERATOR", { forme: "json"; valeur: T }> {
   void admission;
-  return entree as Admissible<"OPERATOR", T>;
+  return { forme: "json", valeur: entree } as unknown as Admissible<
+    "OPERATOR", { forme: "json"; valeur: T }
+  >;
+}
+
+/**
+ * EXIGER LA GARANTIE FORTE.
+ *
+ * Un consommateur qui a besoin d'une restriction DÉMONTRÉE, et pas seulement
+ * attestée, l'exige par le type. C'est ce qui rend la différence des deux
+ * propriétés mécanique plutôt que documentaire : une charge attestée n'est
+ * pas assignable ici, et le compilateur le dit.
+ */
+export function exigerRestreinte<A extends Audience, T extends object>(
+  valeur: Admissible<A, { forme: "json"; valeur: T }>,
+): Admissible<A, { forme: "json"; valeur: T }> {
+  return valeur;
 }
 
 /**
@@ -171,13 +296,39 @@ export function projeterIntegralement<T extends object>(
  * Elle n'accepte que ce qui a traversé une projection. Un objet nu n'a aucun
  * chemin de type vers ce paramètre : c'est ce qui rend la déclaration
  * inévitable plutôt que recommandée.
+ *
+ * Statut et en-têtes arbitraires sont portés ici — ils étaient déjà couverts,
+ * et la mesure l'a confirmé : le trou n'était jamais le statut ni le CORS,
+ * c'était le CORPS.
  */
-export function repondre<A extends Audience, T extends object>(
-  valeur: Admissible<A, T>,
+export function repondre<A extends Audience, C extends Charge>(
+  valeur: Admissible<A, C>,
   init?: { status?: number; headers?: Record<string, string> },
 ): Response {
-  return new Response(JSON.stringify(valeur), {
-    status: init?.status ?? 200,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-  });
+  const charge = valeur as unknown as Charge;
+  const enTetes: Record<string, string> = { ...(init?.headers ?? {}) };
+  const statut = init?.status ?? 200;
+
+  switch (charge.forme) {
+    case "json":
+      return new Response(JSON.stringify(charge.valeur), {
+        status: statut,
+        headers: { "content-type": "application/json", ...enTetes },
+      });
+    case "texte":
+      return new Response(charge.texte, {
+        status: statut,
+        headers: { "content-type": charge.typeMime, ...enTetes },
+      });
+    case "octets":
+      return new Response(charge.octets as unknown as BodyInit, {
+        status: statut,
+        headers: { "content-type": charge.typeMime, ...enTetes },
+      });
+    case "flux":
+      return new Response(charge.flux, {
+        status: statut,
+        headers: { "content-type": charge.typeMime, ...enTetes },
+      });
+  }
 }
