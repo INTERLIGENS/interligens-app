@@ -293,10 +293,31 @@ describe("S17/al1 — CONSTAT : le chemin canonique existe, et il est complet", 
     expect(c).toContain("vine: VINE_CASEFILE_REF,");
   });
 
-  it("⛔ mais l'écran qui GÉNÈRE le dossier affiche une référence PÉRIMÉE", () => {
-    // `CASE-2025-BOTIFY-001` dans l'écran même dont la route résout par
-    // `IL-SHILL-BOTIFY-001`. Deux espaces de nommage à un clic d'écart.
-    expect(codeSeul(SRC(ADMIN_PAGE))).toContain("BOTIFY — CASE-2025-BOTIFY-001");
+  // ── CE BLOC A CHANGÉ DE SENS, ET SEULEMENT SUR L'UN DE SES DEUX FAITS ──
+  //
+  // Il ÉPINGLAIT deux choses à la fois, et il avait tort de les tenir
+  // ensemble : (1) l'écran affichait un millésime périmé, et (2) l'écran
+  // n'affiche pas l'autorité par laquelle sa propre route résout.
+  //
+  // Le lot d'alignement a fermé (1) et n'a pas touché (2). Les deux sont donc
+  // SÉPARÉS ici, ce que la première écriture aurait dû faire : une assertion
+  // qui porte deux faits se retourne mal, parce qu'un seul des deux bouge et
+  // qu'on est alors tenté de tout garder ou tout jeter.
+  it("CLÔTURE — l'écran n'affiche plus un millésime périmé", () => {
+    const c = codeSeul(SRC(ADMIN_PAGE));
+    expect(c).toContain("BOTIFY — CASE-2024-BOTIFY-001");
+    // Par CAPACITÉ, et non contre la valeur exacte qui a disparu : ce qui est
+    // interdit est TOUT millésime autre que celui de la valeur stockée, y
+    // compris un futur qu'aucune écriture d'aujourd'hui ne connaît.
+    expect(c, "un millésime périmé est revenu dans l'écran de génération")
+      .not.toMatch(/CASE-(?!2024-)\d{4}-BOTIFY/);
+  });
+
+  it("⛔ RESTE OUVERT — l'écran n'affiche toujours pas l'autorité par laquelle sa route résout", () => {
+    // Deux espaces de nommage à un clic d'écart. L'alignement des millésimes
+    // a rapproché les formes ; il n'a pas fait de l'écran une surface qui
+    // nomme l'identité gouvernée. C'est le second fait, intact, et c'est lui
+    // que RC-5 vise sur cette surface.
     expect(codeSeul(SRC(ADMIN_PAGE))).not.toContain("IL-SHILL-BOTIFY-001");
   });
 });

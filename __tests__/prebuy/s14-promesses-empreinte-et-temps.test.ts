@@ -59,6 +59,9 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
+import { buildCaseFileHtml } from "@/lib/casefile/pdfGenerator";
+import { buildBotifyInput } from "@/lib/casefile/presets";
+import { BOTIFY_CASEFILE_REF } from "@/lib/casefile/publicProjection";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
 /** ⚠ Les sondes lisent le CODE SEUL — une citation en commentaire ne compte pas. */
@@ -374,14 +377,49 @@ describe("S14/ac2 — CRITÈRE : une empreinte nomme son sujet, et vérifie quel
 // AXE AD · DEUX FAITS TEMPORELS, PAS UN
 // ═════════════════════════════════════════════════════════════════════════
 
+// ─── CE BLOC A CHANGÉ DE SENS, ET IL A GAGNÉ UN INVARIANT ────────────────
+//
+// Il ÉPINGLAIT : « les canoniques portent la GÉNÉRATION, jamais le SNAPSHOT »,
+// c'est-à-dire qu'aucun des trois générateurs ne portait les DEUX faits — quand
+// les données ont été mesurées, et quand le document a été fabriqué. Confondre
+// les deux perd de l'information : un tirage d'aujourd'hui peut porter une
+// mesure d'hier.
+//
+// Le lot d'identité d'artefact a fermé le défaut sur le canonique INTERNE, et
+// il l'a fermé de la SEULE bonne manière : au lieu de fabriquer une valeur
+// quand la mesure manque, le document NOMME SON ABSENCE. C'est cet invariant-là
+// qui est désormais gardé, et il est plus fort que le constat qu'il remplace —
+// le constat disait qu'un champ manquait, la garde dit qu'on ne le comblera
+// jamais en silence.
 describe("S14/ad1 — CONSTAT : chacun porte le fait qui manque à l'autre", () => {
-  it("les canoniques portent la GÉNÉRATION, jamais le SNAPSHOT", () => {
-    for (const g of [CANON_INTERNE, CANON_PUBLIC]) {
-      expect(codeSeul(SRC(g)), g).toMatch(/Generated|generatedOn/);
-      expect(codeSeul(SRC(g)), `${g} porte un snapshot`).not.toMatch(
-        /scanned_at|snapshot|computed_at/,
-      );
-    }
+  const rendreInterne = (snapshot_at?: string) =>
+    buildCaseFileHtml({
+      ...buildBotifyInput(),
+      ...(snapshot_at ? { snapshot_at } : {}),
+      canonical: { ref: BOTIFY_CASEFILE_REF, claims: [] },
+    });
+
+  it("CLÔTURE — l'INTERNE porte le snapshot quand il l'a, et le rend tel quel", () => {
+    const html = rendreInterne("2026-08-25T04:00:00.000Z");
+    expect(html).toContain("2026-08-25T04:00:00.000Z");
+  });
+
+  it("⚑ L'INVARIANT — sans snapshot, le document NOMME l'absence au lieu de la combler", () => {
+    // Le défaut qu'on interdit ici n'est pas l'absence de la mesure : c'est
+    // qu'un lecteur prenne l'horodatage de GÉNÉRATION pour celui de la MESURE.
+    // Le document doit le dire, et le dire à cet endroit-là.
+    const html = rendreInterne();
+    expect(html).toContain("not recorded");
+    expect(html, "l'absence est comblée en silence par l'heure de génération")
+      .toMatch(/Data snapshot[\s\S]{0,200}?not recorded[^<]*NOT the measurement time/);
+  });
+
+  it("⛔ RESTE OUVERT — le canonique PUBLIC ne porte toujours aucun snapshot", () => {
+    // La fermeture est partielle, et l'écrire comme une clôture ferait
+    // disparaître du corpus la moitié qui reste.
+    expect(codeSeul(SRC(CANON_PUBLIC))).toMatch(/Generated|generatedOn/);
+    expect(codeSeul(SRC(CANON_PUBLIC)), "le public en a acquis un — retourner ce constat")
+      .not.toMatch(/snapshot|scanned_at|computed_at/);
   });
 
   it("le NON autoritaire porte le SNAPSHOT, jamais la GÉNÉRATION", () => {
@@ -390,7 +428,12 @@ describe("S14/ad1 — CONSTAT : chacun porte le fait qui manque à l'autre", () 
     expect(c).not.toMatch(/Generated:|generatedOn/);
   });
 
-  it("aucun des trois ne porte les DEUX", () => {
+  it("UN SEUL des trois porte les DEUX — et c'est le gouverné", () => {
+    // Le recensement est conservé à l'identique, seul le résultat attendu
+    // change : c'est ce qui fait de ce retournement une garde et non une
+    // réécriture. Si le canonique interne reperdait l'un des deux faits, ou si
+    // un autre générateur acquérait les deux sans qu'on l'ait décidé, cette
+    // ligne rougirait — sur le même mécanisme, sur les mêmes trois fichiers.
     const porte = (g: string) => {
       const c = codeSeul(SRC(g));
       return {
@@ -398,10 +441,15 @@ describe("S14/ad1 — CONSTAT : chacun porte le fait qui manque à l'autre", () 
         snap: /scanned_at|snapshot|computed_at/.test(c),
       };
     };
-    for (const g of GENERATEURS) {
-      const p = porte(g);
-      expect(p.gen && p.snap, `${g} porte les deux — le constat est périmé`).toBe(false);
-    }
+    const lesDeux = GENERATEURS.filter((g) => porte(g).gen && porte(g).snap);
+    expect(lesDeux).toEqual([CANON_INTERNE]);
+
+    // Et l'inversion de départ tient toujours pour les deux autres : le non
+    // autoritaire porte la mesure sans la génération, le canonique public la
+    // génération sans la mesure. Chacun porte encore le fait qui manque à
+    // l'autre — c'est le titre de ce bloc, et il reste vrai à deux tiers.
+    expect(porte(NON_AUTORITAIRE)).toEqual({ gen: false, snap: true });
+    expect(porte(CANON_PUBLIC)).toEqual({ gen: true, snap: false });
   });
 });
 

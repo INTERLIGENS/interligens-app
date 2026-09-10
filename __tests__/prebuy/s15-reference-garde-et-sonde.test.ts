@@ -182,21 +182,44 @@ const REFS_CODE: Record<string, string[]> = recenser(codeSeul);
 /** Ce que le dépôt MENTIONNE : tout, commentaires compris. */
 const REFS_TEXTE: Record<string, string[]> = recenser((s) => s);
 
-describe("S15/ag1 — CONSTAT : deux références portées, une troisième produite", () => {
-  it("le dépôt en PORTE deux, découvertes et non énumérées", () => {
+// ─── CE BLOC A CHANGÉ DE SENS, ET C'EST LE PLUS PROPRE DES SIX ───────────
+//
+// Il ÉPINGLAIT : « deux références portées, une troisième produite ». Deux
+// millésimes littéraux dans les sources, et un troisième fabriqué à l'exécution
+// par la réécriture d'horloge.
+//
+// Les deux causes ont été fermées séparément : le preset et le libellé admin
+// ont été alignés sur le millésime de la valeur stockée, et la réécriture a été
+// retirée de la route servante.
+//
+// LE MÉCANISME DE RECENSEMENT N'EST PAS TOUCHÉ — c'est ce qui fait de ce
+// retournement une garde et non une réécriture. L'univers reste DÉCOUVERT ;
+// seul le résultat attendu change. Le jour où un quatrième millésime apparaît
+// n'importe où sous `src/` ou `data/`, y compris dans un fichier qui n'existe
+// pas encore, cette ligne rougit sans que personne ait eu à y penser. Une
+// liste écrite à la main aurait, elle, confirmé son auteur en silence.
+describe("S15/ag1 — CLÔTURE : une seule référence portée, aucune produite", () => {
+  it("le dépôt n'en PORTE plus qu'UNE, découverte et non énumérée", () => {
     // L'univers est DÉCOUVERT — `.tsx` compris, faute de quoi la forme du
     // preset admin échappe. Voir la rectification en tête.
-    expect(Object.keys(REFS_CODE).sort()).toEqual(["2024", "2025"]);
+    expect(Object.keys(REFS_CODE).sort()).toEqual(["2024"]);
+    // Le seuil est conservé tel quel : il garde contre l'autre sens de la
+    // panne — un recensement qui ne trouverait plus rien du tout et rendrait
+    // le même vert qu'un dépôt conforme.
     expect(REFS_CODE["2024"].length).toBeGreaterThanOrEqual(5);
-    expect([...REFS_CODE["2025"]].sort()).toEqual([
-      "src/app/admin/casefile-generator/page.tsx",
-      "src/lib/casefile/presets.ts",
-    ]);
+    // Les deux fichiers qui portaient l'autre millésime sont désormais du
+    // bon côté, et c'est vérifié NOMMÉMENT : leur alignement est le correctif,
+    // et un correctif qui se défait doit rougir là où il a été fait.
+    for (const f of ["src/app/admin/casefile-generator/page.tsx", "src/lib/casefile/presets.ts"]) {
+      expect(REFS_CODE["2024"], `${f} a reperdu son alignement`).toContain(f);
+    }
   });
 
-  it("la troisième n'est un littéral NULLE PART — elle est produite par l'horloge", () => {
-    // C'est la mesure que la première écriture manquait : la forme SERVIE
-    // n'existe pas dans les sources. Elle naît du `replace` ancré ci-dessous.
+  it("et la troisième n'est toujours un littéral NULLE PART — plus rien ne la produit", () => {
+    // Elle n'a jamais été écrite ; elle naissait de la réécriture, retirée
+    // depuis. L'assertion est inchangée et sa raison a changé : elle gardait
+    // contre une valeur fabriquée à l'exécution, elle garde maintenant contre
+    // sa réintroduction en dur.
     expect(REFS_CODE["2026"]).toBeUndefined();
   });
 
@@ -218,10 +241,19 @@ describe("S15/ag1 — CONSTAT : deux références portées, une troisième produ
     expect(SRC("data/cases/botify.json")).toContain("CASE-2024-BOTIFY-001");
   });
 
-  it("LA CAUSE — la route servante réécrit l'année avec l'horloge", () => {
-    // Le cœur du défaut, et il tient en une ligne.
-    expect(codeSeul(SRC("src/app/api/scan/solana/route.ts"))).toContain(
-      "case_id.replace(/CASE-\\d{4}-/, `CASE-${new Date().getFullYear()}-`)",
+  it("LA CAUSE EST FERMÉE — la route servante ne dérive plus la référence de l'horloge", () => {
+    // Le cœur du défaut tenait en une ligne ; sa fermeture aussi. L'assertion
+    // est retournée SUR LE MÊME POINT DE CODE, et elle est écrite PAR CAPACITÉ
+    // plutôt que contre la chaîne exacte qui a disparu :
+    //
+    //   · l'affectation est un passage direct, sans transformation
+    //   · et AUCUNE horloge ne touche cette valeur, sous quelque écriture que
+    //     ce soit — c'est ce second point qui garde vraiment, puisqu'une
+    //     réintroduction se ferait sûrement sous une autre forme littérale.
+    const c = codeSeul(SRC("src/app/api/scan/solana/route.ts"));
+    expect(c).toContain("off_chain.case_id = caseFile.case_meta.case_id;");
+    expect(c, "une horloge est revenue toucher la référence servie").not.toMatch(
+      /case_id[^;\n]*(?:getFullYear|getUTCFullYear|Date\.now|new Date\()/,
     );
   });
 
@@ -232,9 +264,18 @@ describe("S15/ag1 — CONSTAT : deux références portées, une troisième produ
     expect(codeSeul(p)).toContain("caseId.match(/^CASE-\\d{4}-(.+?)-\\d+$/)");
   });
 
-  it("CONSÉQUENCE — deux tirages de part et d'autre du nouvel an divergent", () => {
-    // Reproduction annoncée de l'expression du site (ancrée ci-dessus) : ce
-    // qui est démontré est la propriété de la réécriture, pas la route.
+  it("POURQUOI C'ÉTAIT UN DÉFAUT — deux tirages de part et d'autre du nouvel an divergeaient", () => {
+    // Conservé après la fermeture, et pour une raison : ce qui est démontré
+    // ici est la PROPRIÉTÉ de la réécriture, pas la route. Elle explique
+    // pourquoi la ligne retirée devait l'être — un défaut qui paraissait
+    // parfaitement stable à tout test écrit dans l'année, et cassait en
+    // silence une fois par an en invalidant rétroactivement les citations
+    // déjà émises.
+    //
+    // Le retirer maintenant que le défaut est clos laisserait la garde
+    // ci-dessus sans son motif : quelqu'un qui la trouverait dans six mois
+    // saurait QUOI est interdit et pas POURQUOI, ce qui est exactement la
+    // condition d'un retour du défaut sous une autre écriture.
     const reecrire = (stocke: string, annee: number) =>
       stocke.replace(/CASE-\d{4}-/, `CASE-${annee}-`);
     expect(reecrire("CASE-2024-BOTIFY-001", 2026)).toBe("CASE-2026-BOTIFY-001");
