@@ -282,7 +282,15 @@ describe("S17/al1 — CONSTAT : le chemin canonique existe, et il est complet", 
     expect(c).toContain("generateCaseFilePdf");
     expect(c).toContain("loadCanonicalCaseFile");
     // Et elle résout les claims par l'AUTORITÉ, pas par le preset.
-    expect(c).toContain("BOTIFY_CASEFILE_REF");
+    //
+    // ⚠ L'ASSERTION PORTE SUR L'USAGE, PAS SUR L'IDENTIFIANT. Première
+    // écriture : `toContain("BOTIFY_CASEFILE_REF")`, qui passait tant que le
+    // nom apparaissait QUELQUE PART — import compris. Une route qui importerait
+    // la constante sans jamais s'en servir l'aurait satisfaite. La mutation M3
+    // l'a montré en ne touchant que la ligne d'import : elle a muté, et le test
+    // n'a pas mordu. Une assertion plus lâche que son nom, une fois de plus.
+    expect(c).toContain("botify: BOTIFY_CASEFILE_REF,");
+    expect(c).toContain("vine: VINE_CASEFILE_REF,");
   });
 
   it("⛔ mais l'écran qui GÉNÈRE le dossier affiche une référence PÉRIMÉE", () => {
