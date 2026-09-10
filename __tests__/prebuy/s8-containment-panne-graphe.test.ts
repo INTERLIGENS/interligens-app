@@ -37,7 +37,7 @@ import type { DecisionCanonique } from "@/lib/prebuy/canonicalDecision";
 let captee: DecisionCanonique | null = null;
 
 vi.mock("@/lib/prebuy/projection", async (orig) => {
-  const real: any = await orig();
+  const real = (await orig()) as typeof import("@/lib/prebuy/projection");
   return {
     ...real,
     projectPreBuy: (d: DecisionCanonique) => {
@@ -71,7 +71,7 @@ vi.mock("@/lib/token/holderConcentration", () => ({
   }),
 }));
 vi.mock("@/lib/tigerscore/engine", async (orig) => {
-  const real: any = await orig();
+  const real = (await orig()) as typeof import("@/lib/tigerscore/engine");
   return {
     ...real,
     computeTigerScoreWithIntel: async () => ({
