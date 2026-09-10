@@ -13,6 +13,7 @@
  * dependency — it re-seeds correctly from a fresh git checkout.
  */
 import { PrismaClient, Prisma } from "@prisma/client";
+import { assignRef, withoutRef } from "../src/lib/casefile/ref";
 
 const prisma = new PrismaClient();
 const REF = "IL-PND-LAB-001";
@@ -467,10 +468,27 @@ const LAB = {
 async function main() {
   const data = { ...LAB, bodyMarkdown: BODY_MARKDOWN.trim() };
 
+  // BUILD 13 · S2 — LA RÉFÉRENCE PASSE PAR LA FRONTIÈRE GOUVERNÉE.
+  //
+  // Cet upsert écrivait `create: data, update: data`, où `data` porte
+  // `ref: REF`. Le `ref` ne bougeait donc pas par COÏNCIDENCE DE LITTÉRAL —
+  // les deux valeurs sont égales — et non parce que la colonne était exclue de
+  // la charge de mise à jour. Changer l'un des deux littéraux sans l'autre
+  // réécrivait l'identité du dossier, sans qu'aucune règle ne s'y oppose.
+  //
+  //   create: assignRef(data)   l'assignation est FOURNIE, et une seule fois
+  //   update: withoutRef(data)  la mise à jour ordinaire ne porte pas le ref
+  //
+  // `withoutRef` ne compare aucune valeur, et c'est ce qui distingue la
+  // propriété de la coïncidence : la règle est « le ref n'est PAS dans la
+  // charge », jamais « le ref ne change pas ».
+  //
+  // LA CAPACITÉ RESTE VIVE : ce seed écrit la même ligne qu'avant — tous les
+  // champs de `data` moins la colonne d'identité, que le `where` porte déjà.
   const result = await prisma.tokenCaseFile.upsert({
     where: { ref: REF },
-    create: data,
-    update: data,
+    create: assignRef(data),
+    update: withoutRef(data),
   });
 
   console.log(
