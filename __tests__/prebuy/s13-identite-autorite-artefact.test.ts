@@ -39,9 +39,27 @@
 //
 // Aucun chemin gelé touché. Aucune écriture prod. Aucune sémantique changée.
 
+// ─── RECTIFICATION DE LA PRÉMISSE CI-DESSUS (2026-09-10) ─────────────────
+//
+// « Les canoniques ne sont pas exécutables depuis la suite » était vrai à
+// l'écriture, et ne l'est plus : le lot d'identité d'artefact a EXPORTÉ les
+// deux constructeurs HTML — `buildCaseFileHtml` et `buildPublicReportHtml`.
+// Ils rendent une chaîne, sans puppeteer et sans base.
+//
+// Les preuves qui portaient sur la SOURCE faute de mieux passent donc au
+// COMPORTEMENT là où le retournement les touche. Ce n'est pas un embellissement
+// : une preuve lexicale mesure ce que le fichier CONTIENT, une preuve
+// comportementale mesure ce que le document PORTE, et c'est la seconde que
+// tient un lecteur.
+
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
+import { buildCaseFileHtml } from "@/lib/casefile/pdfGenerator";
+import { buildPublicReportHtml } from "@/lib/casefile/pdfGeneratorPublic";
+import { buildBotifyInput } from "@/lib/casefile/presets";
+import { projectForPublication, BOTIFY_CASEFILE_REF } from "@/lib/casefile/publicProjection";
+import type { CanonicalCaseFile } from "@/lib/casefile/canonicalReader";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
 /** ⚠ Les sondes lisent le CODE SEUL — une citation en commentaire ne compte pas. */
@@ -95,11 +113,50 @@ describe("S13/c1 — INVERSION 1 : le titre le plus officiel est sur le non auto
   });
 });
 
+// ─── CE BLOC A CHANGÉ DE SENS, ET SEULEMENT À MOITIÉ ─────────────────────
+//
+// Il ÉPINGLAIT : « les DEUX canoniques s'horodatent à la journée », de sorte
+// que deux tirages du même jour étaient temporellement indiscernables — alors
+// que le générateur NON autoritaire, lui, horodatait plus finement. Sur l'axe
+// qui compte pour une citation, l'artefact non gouverné était mieux identifié
+// que le gouverné.
+//
+// Le lot d'identité d'artefact a fermé la MOITIÉ de cette inversion : le
+// canonique INTERNE horodate désormais à la seconde. Le canonique PUBLIC, lui,
+// tronque toujours à la journée.
+//
+// L'assertion est donc RETOURNÉE pour la moitié fermée, et MAINTENUE comme
+// constat pour la moitié ouverte — sur les mêmes deux générateurs, au même
+// endroit. Une fermeture partielle qu'on écrirait comme une clôture ferait
+// disparaître du corpus la moitié qui reste.
 describe("S13/c2 — INVERSION 2 : le non autoritaire s'horodate mieux que les canoniques", () => {
-  it("LEXICAL — les DEUX canoniques s'horodatent à la JOURNÉE", () => {
-    for (const g of [CANON_INTERNE, CANON_PUBLIC]) {
-      expect(codeSeul(SRC(g)), g).toContain('new Date().toISOString().slice(0, 10)');
-    }
+  it("CLÔTURE — le canonique INTERNE horodate à la SECONDE, et ça se REND", () => {
+    // Comportemental : ce que le DOCUMENT porte, plus ce que le fichier
+    // contient. Un horodatage juste dans la source et perdu au rendu serait
+    // exactement le défaut que ce bloc surveille.
+    const html = buildCaseFileHtml({
+      ...buildBotifyInput(),
+      canonical: { ref: BOTIFY_CASEFILE_REF, claims: [] },
+    });
+    const m = html.match(/Generated at<\/span>[^<]*<span class="mono"[^>]*>([^<]*)<\/span>/);
+    expect(m?.[1], "l'horodatage de génération n'est plus rendu du tout").toBeTruthy();
+    expect(m![1], "revenu à la granularité JOUR").toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/,
+    );
+  });
+
+  it("⛔ RESTE OUVERT — le canonique PUBLIC tronque toujours à la JOURNÉE", () => {
+    const dossier: CanonicalCaseFile = {
+      ref: BOTIFY_CASEFILE_REF, codename: "BOTIFY", ticker: "$BOTIFY",
+      title: "t", tigerScore: null, verdict: "UNDETERMINED",
+      claims: [], sources: [], keyWallets: [],
+    };
+    const html = buildPublicReportHtml("en", projectForPublication(dossier, "s13"));
+    const m = html.match(/<div class="cover-meta">[^<]*·\s*([^<]*)<\/div>/);
+    expect(m?.[1]).toBeTruthy();
+    // Le jour où cette assertion rougit, l'inversion est close pour de bon et
+    // ce test doit être retourné à son tour. Le rouge sera la notification.
+    expect(m![1], "l'inversion est close — retourner ce constat").toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it("COMPORTEMENTAL — le non autoritaire rend l'HEURE, donc deux tirages diffèrent", () => {
@@ -108,16 +165,42 @@ describe("S13/c2 — INVERSION 2 : le non autoritaire s'horodate mieux que les c
     expect(a).not.toBe(b);
   });
 
-  it("CONSÉQUENCE — deux tirages canoniques du même jour n'ont aucun champ d'identité qui diffère", () => {
-    // Ni version, ni horodatage à l'heure, ni numéro de tirage, dans aucun des
-    // deux générateurs canoniques. Un conseil qui reçoit deux exemplaires ne
-    // peut pas dire lequel est lequel.
-    for (const g of [CANON_INTERNE, CANON_PUBLIC]) {
-      const c = codeSeul(SRC(g));
-      expect(c, `${g} porte un numéro de version de document`).not.toMatch(
-        /doc(ument)?[_ ]?version|revision|tirage/i,
-      );
-    }
+  // ── UN FAUX VERT, DÉCOUVERT PAR LE RETOURNEMENT LUI-MÊME ───────────────
+  //
+  // Cette assertion PASSAIT encore après la fermeture, et son énoncé était
+  // devenu faux. Elle affirmait « aucun champ d'identité qui diffère » et ne
+  // vérifiait que l'absence des mots « version / revision / tirage » : le
+  // canonique interne porte désormais un instant à la seconde, qui distingue
+  // deux tirages, et aucun de ces trois mots.
+  //
+  // C'est le motif S10 pris en flagrant délit sur moi : une assertion PLUS
+  // LÂCHE QUE SON NOM survit à la fermeture du défaut qu'elle décrivait, et
+  // son vert se met à certifier le contraire de ce qu'il annonce. Un
+  // retournement qui n'aurait touché que les tests ROUGES l'aurait laissée là.
+  //
+  // Elle est donc retournée aussi, et sur le fait — pas sur le vocabulaire.
+  it("CONSÉQUENCE — seul l'INTERNE porte de quoi distinguer deux tirages", () => {
+    const interne = buildCaseFileHtml({
+      ...buildBotifyInput(),
+      canonical: { ref: BOTIFY_CASEFILE_REF, claims: [] },
+    });
+    const dossier: CanonicalCaseFile = {
+      ref: BOTIFY_CASEFILE_REF, codename: "BOTIFY", ticker: "$BOTIFY",
+      title: "t", tigerScore: null, verdict: "UNDETERMINED",
+      claims: [], sources: [], keyWallets: [],
+    };
+    const pub = buildPublicReportHtml("en", projectForPublication(dossier, "s13"));
+
+    /** Un instant à la seconde : le seul champ RENDU qui sépare deux tirages. */
+    const instantDeTirage = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/;
+    expect(interne, "l'interne a perdu son instant de tirage").toMatch(instantDeTirage);
+    expect(pub, "le public en a acquis un — retourner ce constat").not.toMatch(instantDeTirage);
+
+    // ⚠ L'EMPREINTE N'EST PAS UN CHAMP DE TIRAGE, et la confondre avec un
+    // serait exactement l'erreur que le document se donne la peine d'écarter :
+    // elle identifie la SOURCE, pas l'exemplaire, et deux tirages de la même
+    // source la portent identique. Elle ne distingue donc rien ici.
+    expect(interne).toContain("not</strong> of this PDF file");
   });
 
   it("et aucun des trois ne porte de VERSION de document", () => {

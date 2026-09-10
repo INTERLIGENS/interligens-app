@@ -410,6 +410,19 @@ describe("S18/ag2b — MESURE : QUI PRODUIT la référence, et ce qui est RENDU"
     expect(c).toContain("casefile.off_chain.claims = []");
   });
 
+  // ── CE BLOC N'EST PAS CLOS, ET UNE SEULE DE SES LIGNES A BOUGÉ ─────────
+  //
+  // Le retrait de la réécriture d'horloge a fermé une CAUSE VOISINE, pas
+  // celle-ci. Le constat porte sur DEUX ESPACES DANS UN SEUL EMPLACEMENT, et
+  // il reste vrai mot pour mot.
+  //
+  // Et il est devenu PLUS NET, ce qui est le contraire de ce qu'on attendrait
+  // d'une fermeture : tant que le producteur legacy réécrivait son millésime,
+  // l'ambiguïté de nommage se confondait avec une instabilité temporelle, et
+  // on pouvait croire qu'en stabilisant l'un on réglait l'autre. Les deux
+  // producteurs émettent désormais des valeurs STABLES — et elles sont
+  // toujours de deux familles différentes, dans le même champ, sans marque.
+  // Il ne reste que le défaut de publication, seul et sans excuse.
   it("DEUX espaces atterrissent dans le MÊME emplacement rendu", () => {
     // C'est le cœur de la question posée : ce n'est pas un défaut de nommage,
     // c'est un défaut de PUBLICATION. Un seul champ, un seul renderer, un
@@ -418,12 +431,14 @@ describe("S18/ag2b — MESURE : QUI PRODUIT la référence, et ce qui est RENDU"
     expect(renderer, "l'emplacement unique où la référence est imprimée")
       .toContain("${off_chain.case_id ?? \"—\"}");
 
-    // Producteur 1 — la voie canonique y met `IL-SHILL-*`.
+    // Producteur 1 — la voie canonique y met l'identité gouvernée.
     expect(aplat(codeSeul(SRC("src/app/api/report/casefile/route.ts"))))
       .toContain("casefile.off_chain.case_id = dossier.ref;");
-    // Producteur 2 — la voie legacy y met `CASE-YYYY-*`, réécrit par l'horloge.
+    // Producteur 2 — la voie legacy y met la forme STOCKÉE, désormais telle
+    // quelle. Seule cette ligne a été retournée : la valeur ne se dérive plus
+    // de l'horloge, et elle appartient toujours à l'autre espace.
     expect(aplat(codeSeul(SRC("src/app/api/scan/solana/route.ts"))))
-      .toContain("off_chain.case_id = caseFile.case_meta.case_id.replace(/CASE-\\d{4}-/, `CASE-${new Date().getFullYear()}-`);");
+      .toContain("off_chain.case_id = caseFile.case_meta.case_id;");
   });
 
   it("et le lecteur n'a AUCUN moyen de savoir laquelle il regarde", () => {

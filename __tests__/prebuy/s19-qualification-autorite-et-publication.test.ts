@@ -488,25 +488,55 @@ describe("S19/ag4a — 1 · LES DEUX SONT DISPONIBLES AU MÊME MOMENT", () => {
     expect(c).toContain("input = { ...(body.source === \"vine\" ? buildVineInput() : buildBotifyInput()), canonical: { ref: dossier.ref, claims: dossier.claims }, };");
   });
 
-  it("le preset y apporte la forme NON gouvernée", () => {
-    expect(codeSeul(SRC(PRESETS))).toContain('case_id: "CASE-2025-BOTIFY-001"');
+  it("le preset y apporte toujours la forme NON gouvernée — seul son millésime a changé", () => {
+    // Le constat n'est PAS clos : le preset apporte une identité d'un autre
+    // espace que celui par lequel la route résout, et c'est cela le fait. Que
+    // son millésime ait été aligné sur la valeur stockée corrige une seconde
+    // divergence, pas celle-ci.
+    //
+    // Écrit par CAPACITÉ : ce qui compte est que le preset porte une forme de
+    // l'espace hérité, quel qu'en soit le millésime — un futur réalignement ne
+    // doit pas faire disparaître ce constat en silence.
+    expect(codeSeul(SRC(PRESETS)), "le preset a cessé de porter une forme héritée")
+      .toMatch(/case_id: "CASE-\d{4}-BOTIFY-001"/);
+    expect(codeSeul(SRC(PRESETS))).toContain('case_id: "CASE-2024-BOTIFY-001"');
     // VINE : même collision, valeur lue dans le JSON du preset.
     expect(codeSeul(SRC(PRESETS))).toContain("case_id: meta.case_id");
-    expect(SRC("src/data/vine-osint.json")).toContain('"CASE-2025-VINE-001"');
+    expect(SRC("src/data/vine-osint.json")).toMatch(/"CASE-\d{4}-VINE-001"/);
   });
 
-  it("LA RÈGLE QUI TRANCHE — il n'y en a pas : c'est le gabarit qui décide", () => {
-    // Et il décide en faveur de la NON gouvernée, sur tous les emplacements
-    // d'adressage. L'autorité gouvernée n'obtient qu'un sous-titre.
+  // ── CE BLOC A CHANGÉ DE SENS SUR UN EMPLACEMENT SUR QUATRE ─────────────
+  //
+  // Il ÉPINGLAIT : « c'est le gabarit qui décide, et il décide contre
+  // l'autorité gouvernée sur TOUS les emplacements d'adressage ». Le lot
+  // d'identité d'artefact a déplacé le PIED DE PAGE vers l'autorité gouvernée,
+  // et lui seul. Le titre de tête, la clé d'archive et le nom de fichier
+  // portent toujours la forme du preset.
+  //
+  // Le « tous » est donc faux et le fait demeure. L'assertion est réécrite
+  // pour MESURER LE PARTAGE au lieu de l'affirmer en bloc : c'est cette
+  // répartition-là qui est le sujet de RC-5, et une formulation en bloc
+  // aurait perdu l'information au moment précis où elle devient actionnable.
+  it("LA RÈGLE QUI TRANCHE — il n'y en a toujours pas, et le gabarit décide en ordre dispersé", () => {
     const g = codeSeul(SRC(PDF_INTERNE));
+
+    // Les trois emplacements qui portent ENCORE la forme non gouvernée.
     expect(g, "le TITRE du document").toContain("<h1>${esc(m.case_id)}</h1>");
-    expect(g, "le PIED DE PAGE de chaque page").toContain("<span>${esc(m.case_id)} — CONFIDENTIEL</span>");
     expect(g, "la CLÉ D'ARCHIVE R2").toContain("input.case_meta.case_id.replace(");
     expect(aplat(codeSeul(SRC(ROUTE_GENERATE))), "le NOM DE FICHIER servi")
       .toContain('filename="${input.case_meta.case_id}.pdf"');
-    // …et l'autorité gouvernée, une fois, au milieu.
-    expect(g, "l'autorité gouvernée n'a qu'un sous-titre de section")
-      .toContain("Claims — autorité canonique · ${esc(input.canonical.ref)}");
+
+    // Celui qui est passé à l'autorité gouvernée — et il l'a fait par une
+    // DÉRIVATION, pas par une valeur figée : c'est ce qui le rend transposable
+    // aux trois autres, et c'est pourquoi on l'ancre ici plutôt que de se
+    // contenter de constater le résultat.
+    expect(g, "le pied de page est reparti vers la forme non gouvernée")
+      .toContain("<span>${esc(ref)} — CONFIDENTIEL</span>");
+    expect(g, "la dérivation du pied a été remplacée par une valeur figée")
+      .toContain("const ref = input.canonical?.ref || m.case_id;");
+
+    // …et l'autorité gouvernée conserve son sous-titre de section.
+    expect(g).toContain("Claims — autorité canonique · ${esc(input.canonical.ref)}");
   });
 });
 
@@ -522,19 +552,39 @@ describe("S19/ag4b — 2 · DEUX ARTEFACTS DU MÊME DOSSIER SE CONTREDISENT", ()
     expect(codeSeul(SRC(PDF_INTERNE))).toContain("<h1>${esc(m.case_id)}</h1>");
   });
 
-  it("CONSÉQUENCE — trois formes pour un dossier, selon l'artefact reçu", () => {
-    // Reproduction de la propriété, pas de la route. Le lecteur du PDF interne
-    // lit 2025 ; celui du scan lit l'autorité gouvernée si la voie canonique
-    // s'arme, et une forme datée sinon — 2026 aujourd'hui, 2024 après le
-    // correctif temporel. Trois valeurs, un dossier, aucun lien visible.
-    const formesVues = new Set([
-      "CASE-2025-BOTIFY-001",                                    // PDF interne
-      BOTIFY_REF,                                                // scan, voie canonique
-      "CASE-2024-BOTIFY-001".replace(/CASE-\d{4}-/, "CASE-2026-"), // scan, voie legacy
-    ]);
-    expect(formesVues.size).toBe(3);
-    // Et rien dans ces trois valeurs ne permet de les rapprocher, sauf le
-    // fragment `BOTIFY` — qui est un codename, pas une identité.
+  // ── UN SECOND FAUX VERT, DÉCOUVERT PAR LE RETOURNEMENT ────────────────
+  //
+  // Cette assertion PASSAIT après la fermeture, et son énoncé était devenu
+  // faux : elle construisait son ensemble de trois valeurs EN LOCAL, à la
+  // main. Rien ne la reliait aux sources, donc rien ne pouvait la faire
+  // rougir quand le dépôt est passé à deux formes.
+  //
+  // C'est la même faute que le faux vert de S13, sous une autre écriture, et
+  // c'est la faute générique de ce corpus quand il « reproduit une propriété
+  // plutôt qu'une route » : une reproduction ne se périme jamais toute seule.
+  // Le retournement des ROUGES ne l'aurait pas trouvée — il a fallu relire les
+  // blocs voisins de chaque rouge.
+  //
+  // Elle est donc reconstruite DEPUIS LES SOURCES, et c'est ce qui la rend
+  // capable de se périmer à l'avenir.
+  it("CONSÉQUENCE — DEUX formes pour un dossier, selon l'artefact reçu", () => {
+    const formesVues = new Set<string>();
+    // (1) PDF interne — la forme portée par le preset, lue dans le preset.
+    formesVues.add(codeSeul(SRC(PRESETS)).match(/case_id: "(CASE-\d{4}-BOTIFY-001)"/)![1]);
+    // (2) scan, voie canonique — l'autorité gouvernée.
+    formesVues.add(BOTIFY_REF);
+    // (3) scan, voie legacy — la valeur STOCKÉE, servie telle quelle depuis
+    //     que la dérivation d'horloge a été retirée. Lue dans le magasin.
+    formesVues.add(SRC("data/cases/botify.json").match(/"(CASE-\d{4}-BOTIFY-001)"/)![1]);
+
+    // Trois artefacts, et il ne reste que DEUX valeurs : la voie legacy et le
+    // PDF interne ont convergé. C'est un vrai gain, et il ne clôt rien — deux
+    // espaces de nommage pour un dossier restent deux.
+    expect(formesVues.size).toBe(2);
+
+    // Et rien dans ces valeurs ne permet de les rapprocher, sauf le fragment
+    // du codename — qui n'est pas une identité, et dont la règle d'opacité
+    // ratifiée dit désormais qu'il ne porte aucune autorité (voir S21).
     expect([...formesVues].every((f) => f.includes("BOTIFY"))).toBe(true);
     expect([...formesVues].filter((f) => f.startsWith("IL-"))).toHaveLength(1);
   });
@@ -627,9 +677,22 @@ describe("S19/ag3i — 8 · INDÉPENDANCE (i) : la VALEUR gouvernée est stable"
 });
 
 describe("S19/ag3j — 8 · INDÉPENDANCE (ii) : l'identité RENDUE ne l'est PAS", () => {
-  it("TEMPS — la voie legacy réécrit l'identité imprimée avec l'horloge", () => {
-    expect(aplat(codeSeul(SRC("src/app/api/scan/solana/route.ts"))))
-      .toContain("off_chain.case_id = caseFile.case_meta.case_id.replace(/CASE-\\d{4}-/, `CASE-${new Date().getFullYear()}-`);");
+  // ── L'AXE « TEMPS » EST CLOS, ET IL ÉTAIT UN DES CINQ ──────────────────
+  //
+  // Ce bloc qualifiait l'indépendance de l'identité RENDUE sur cinq axes.
+  // L'axe TEMPS épinglait que la voie legacy dérivait l'identité imprimée de
+  // l'horloge ; il est fermé. Les autres axes de ce bloc — RENDERER, FORMAT —
+  // ne le sont pas, et le verdict d'ensemble d'ag3k ne bouge donc pas.
+  //
+  // L'assertion est retournée sur le MÊME point de code, et écrite par
+  // CAPACITÉ : ce qui est interdit est qu'une horloge, sous quelque écriture
+  // que ce soit, touche l'identité servie.
+  it("TEMPS — CLOS : la voie legacy ne dérive plus l'identité imprimée de l'horloge", () => {
+    const c = aplat(codeSeul(SRC("src/app/api/scan/solana/route.ts")));
+    expect(c).toContain("off_chain.case_id = caseFile.case_meta.case_id;");
+    expect(c, "une horloge est revenue toucher l'identité servie").not.toMatch(
+      /case_id[^;]{0,120}(?:getFullYear|getUTCFullYear|Date\.now|new Date\()/,
+    );
   });
 
   it("RENDERER — deux gabarits, deux identités à l'emplacement de tête", () => {
