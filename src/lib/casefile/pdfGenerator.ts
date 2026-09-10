@@ -240,42 +240,48 @@ function buildHtml(input: CaseFileInput): string {
   // l'axe qui compte pour une citation, l'artefact non gouverné était mieux
   // identifié que le gouverné. C'est cette inversion-là qu'on ferme.
   const generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-  // La référence est imprimée AVEC L'AUTORITÉ QUI LA NOMME, et jamais nue.
+  // ─── L'IDENTITÉ DU DOCUMENT, ET D'OÙ ELLE VIENT ────────────────────────
   //
-  // Mesuré le 2026-09-10 : le même dossier BOTIFY portait TROIS références, de
-  // la forme `CASE-<ANNÉE>-BOTIFY-001`. Les années sont citées ici SANS la
-  // référence complète, délibérément : un recensement qui découvre les porteurs
-  // en balayant les sources compterait ce commentaire comme un porteur de plus.
-  // Une documentation qui CITE une valeur ne doit pas se faire passer pour une
-  // surface qui la DÉCLARE.
+  // ██  Un seul terme d'identité par document, et il dit son autorité.     ██
   //
-  //   année 2024   la valeur STOCKÉE — les deux `botify.json`, 8 fichiers, et
-  //                elle est FONDÉE : `case_meta.opened_at = 2024-11-01`
-  //   année 2025   `src/lib/casefile/presets.ts` — la même faute, figée dans le
-  //                code l'an dernier ; alignée sur 2024 par ce lot
-  //   année 2026   la valeur SERVIE cette année, et celle du PDF réel rangé au
-  //                dataroom investisseur
+  // `ref` est la SEULE valeur d'identité que ce gabarit imprime. Elle vient de
+  // l'enregistrement canonique quand l'appelant en fournit un, et des
+  // métadonnées de l'entrée sinon — et le document DIT laquelle des deux, à
+  // côté de la valeur, via `refSource`. Une référence imprimée nue laisserait
+  // le lecteur supposer une autorité qu'on ne lui a pas donnée.
   //
-  // La cause n'est pas une autorité de nommage double : c'est une RÉÉCRITURE EN
-  // TRANSIT. `src/app/api/scan/solana/route.ts:184` remplace l'année du dossier
-  // par L'ANNÉE COURANTE à l'instant de la requête —
+  // L'invariant tient en une ligne : TOUT EMPLACEMENT D'IDENTITÉ DE CE
+  // DOCUMENT DÉRIVE DE `ref`. Titre de tête, encart d'identité, pied de page.
+  // Ne pas y ajouter un emplacement qui lirait `m.case_id` directement : ce
+  // serait rouvrir la divergence que cette dérivation ferme, et `__tests__/
+  // prebuy/s20-cardinalite-de-citation.test.ts` la mesure au rendu — l'union
+  // des emplacements d'un document doit avoir un cardinal de 1.
   //
-  //     case_id.replace(/CASE-\d{4}-/, `CASE-${new Date().getFullYear()}-`)
+  // ⚠ CE QUI N'EST PAS ENCORE COUVERT PAR CET INVARIANT : la clé d'archive,
+  // plus bas, dérive encore de `case_meta.case_id`. L'écart est nommé ici plutôt
+  // que tu : un invariant qui laisserait croire qu'il couvre tout serait pire
+  // que son absence. Son alignement est un lot à part, hors du périmètre de
+  // celui-ci.
   //
-  // La référence imprimée sur la pièce change donc CHAQUE 1ᵉʳ JANVIER, ce qui
-  // invalide rétroactivement toute citation déjà émise, et paraît parfaitement
-  // stable à tout test écrit dans l'année. La conséquence est déjà connue en
-  // aval : `src/app/en/explorer/[caseId]/page.tsx:39-44` porte un contournement
-  // documenté qui nomme cette route comme la cause.
+  // ⚠ NE PAS CITER UNE RÉFÉRENCE COMPLÈTE DANS CE COMMENTAIRE. Un recensement
+  // qui découvre les porteurs en balayant les sources compterait la citation
+  // comme un porteur de plus. Une documentation qui CITE une valeur ne doit pas
+  // se faire passer pour une surface qui la DÉCLARE. L'année ou le motif
+  // suffisent.
   //
-  // CE CHEMIN-CI NE RÉÉCRIT PAS — c'est la seule réécriture du dépôt, et elle
-  // n'est pas ici. Le canonique porte donc une référence STABLE mais figée sur
-  // une mauvaise année. Deux défauts distincts, un seul dossier.
+  // ─── Historique ────────────────────────────────────────────────────────
   //
-  // Ce document ne présente donc pas cet identifiant comme stable ou citable
-  // entre systèmes : il dit de quel enregistrement il vient. Nommer la
-  // provenance est ce qu'on peut affirmer aujourd'hui ; unifier l'autorité de
-  // nommage et fermer la réécriture est un chantier, pas une mention.
+  // Ce bloc a décrit une réécriture d'identité en transit, au présent, et lui a
+  // survécu : elle est fermée depuis. La prose d'histoire d'un défaut ne reste
+  // pas normative une fois le défaut clos — elle finit par se lire comme une
+  // description de l'état, et c'est ainsi qu'un correctif se fait défaire par
+  // quelqu'un qui croit restaurer une cohérence.
+  //
+  // Le POURQUOI est conservé, mais à sa place : dans le corpus de tests, à côté
+  // de la garde qu'il motive (`__tests__/prebuy/s15-reference-garde-et-sonde.
+  // test.ts`, bloc « POURQUOI C'ÉTAIT UN DÉFAUT »). Une garde sans son motif
+  // dit ce qui est interdit et pas pourquoi ; du motif en production dit ce qui
+  // est, et se trompe.
   const ref = input.canonical?.ref || m.case_id;
   const refSource = input.canonical?.ref ? "canonical record" : "case metadata";
   const digest = caseFileSourceDigest(input);
@@ -339,7 +345,7 @@ tr:nth-child(even) td{background:#0a0a0a}
       <div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">INTERLIGENS CaseFile · ${
         estAdosseAuDossier ? "Canonical Artifact" : "Ungoverned Artifact"
       }</div>
-      <h1>${esc(m.case_id)}</h1>
+      <h1>${esc(ref)}</h1>
       <div class="sub">${esc(m.ticker || m.token_name || "")} ${m.chain ? `· ${esc(m.chain.toUpperCase())}` : ""} ${m.severity ? `· <span class="badge" style="background:${severityColor(m.severity)}">${esc(m.severity)}</span>` : ""}</div>
     </div>
     <div class="header-right">

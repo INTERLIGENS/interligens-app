@@ -32,17 +32,23 @@
 //   enregistré comme un MANQUE DE CAPACITÉ DE CITABILITÉ RC, en attente de
 //   ruling d'architecture, et non comblé ici.
 //
-// ─── POURQUOI CE FICHIER DOIT ÊTRE ROUGE AUJOURD'HUI ────────────────────
+// ─── CE FICHIER A ÉTÉ ÉCRIT ROUGE, ET IL EST PASSÉ AU VERT ──────────────
 //
-// Un critère qui ne rougit pas AVANT correction ne prouvera rien APRÈS. Le
-// rouge attendu est celui de (a) : le corps du document interne porte DEUX
-// valeurs, `m.case_id` en h1 et `ref` partout ailleurs. Mesuré sur l'état
-// servi (`origin/main`, rebasé le 2026-09-10) :
+// Un critère qui ne rougit pas AVANT correction ne prouve rien APRÈS. Celui-ci
+// a été écrit et commité alors qu'il rougissait, sur l'état servi : le corps du
+// document interne portait DEUX valeurs — le titre de tête lisait les
+// métadonnées de l'entrée quand les trois autres emplacements du même document
+// dérivaient déjà de `ref`.
 //
-//   pdfGenerator.ts:312   <h1>${esc(m.case_id)}</h1>          → CASE-2024-…
-//   pdfGenerator.ts:328   callout « Reference »               → IL-SHILL-…
-//   pdfGenerator.ts:416   titre de section « Claims — … »     → IL-SHILL-…
-//   pdfGenerator.ts:559   pied « ${ref} — CONFIDENTIEL »      → IL-SHILL-…
+// Le titre de tête dérive désormais de `ref`. La cardinalité est de 1, mesurée
+// sur les mêmes huit emplacements découverts, avec le même diagnostic par
+// emplacement — la carte n'a pas été retirée du message d'échec en même temps
+// que le rouge, précisément parce que c'est elle qui rendra le prochain rouge
+// lisible.
+//
+// Ce que ce fichier garde désormais : que la valeur reste UNE. Ce qu'il ne
+// garde pas : LAQUELLE — l'élection est ailleurs, et un critère de cardinalité
+// n'a pas à trancher une question d'autorité.
 //
 // ─── LA SONDE REND, ELLE NE GREP PAS ────────────────────────────────────
 //
@@ -241,15 +247,30 @@ describe("S20/a1 — CRITÈRE (a) : un dossier logique, un seul identifiant rend
     ).toBe(1);
   });
 
-  it("le gabarit INTERNE seul porte l'écart — le public n'y est pour rien", () => {
-    // Mesuré séparément parce que la conclusion diffère d'un gabarit à
-    // l'autre, et qu'un verdict global la cacherait. La correction de RC-5
-    // côté document se réduit ainsi à UN site, et le gabarit public n'a pas à
-    // être touché pour l'obtenir — il est gelé par la garde S20/g1.
+  // ── CE BLOC A CHANGÉ DE SENS — LE SEUL SITE DÉVIANT A ÉTÉ CORRIGÉ ──────
+  //
+  // Il ÉPINGLAIT : « le gabarit INTERNE seul porte l'écart », deux valeurs
+  // contre une. Le titre de tête lisait `m.case_id` quand les trois autres
+  // emplacements du même document dérivaient de `ref` ; il dérive désormais de
+  // `ref` comme eux.
+  //
+  // Le diagnostic PAR GABARIT est conservé, et ce n'est pas une redondance
+  // avec la cardinalité globale ci-dessus : celle-ci rendrait le même vert si
+  // les deux gabarits convergeaient un jour sur une valeur FAUSSE. Mesurer
+  // chaque gabarit séparément dit lequel a bougé, ce qu'un verdict d'ensemble
+  // ne dit jamais.
+  it("CLÔTURE — chaque gabarit, pris séparément, ne porte qu'UNE valeur", () => {
     const interne = releve(buildCaseFileHtml(entreeInterne()), INTERNE);
     const pub = releve(buildPublicReportHtml("en", projectForPublication(DOSSIER, "s20")), PUBLIC);
-    expect(new Set(pub.map((r) => r.valeur)).size).toBe(1);
-    expect(new Set(interne.map((r) => r.valeur)).size).toBe(2);
+    expect(new Set(pub.map((r) => r.valeur)).size, "le gabarit PUBLIC a divergé").toBe(1);
+    expect(new Set(interne.map((r) => r.valeur)).size, "le gabarit INTERNE a divergé").toBe(1);
+
+    // Et le titre de tête est ancré NOMMÉMENT, parce que c'est LE site qui a
+    // été corrigé : un correctif doit rougir là où il a été fait, pas
+    // seulement dans l'agrégat qui le contient.
+    const titre = interne.find((r) => r.nom.includes("titre de tête"))!;
+    expect(titre.valeur, "le titre de tête est reparti vers l'espace hérité")
+      .toBe(BOTIFY_CASEFILE_REF);
   });
 });
 

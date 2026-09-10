@@ -336,11 +336,35 @@ describe("S21/b — RC-7 : aucun consommateur ne LIT le contenu d'un ref", () =>
     // et n'est donc pas interdite par RC-7. Mais elle n'est pas libre pour
     // autant — chaque nouvelle occurrence doit être justifiée ici, et
     // l'écriture de ce test est le lieu où on s'en aperçoit.
+    // ── LE CLIQUET S'ANCRE SUR LE SITE, PAS SUR SA LIGNE ────────────────
+    //
+    // Première écriture : `["src/lib/casefile/pdfGenerator.ts:628"]`. Elle a
+    // rougi au lot suivant parce qu'un COMMENTAIRE réécrit plus haut dans le
+    // même fichier a décalé la ligne de six — la transformation, elle, n'avait
+    // pas bougé d'un caractère.
+    //
+    // C'est le défaut que j'avais nommé comme contrainte de conception une
+    // heure plus tôt, commis dans ma propre garde : UNE GARDE QUI ROUGIT SUR
+    // UNE ÉDITION SANS RAPPORT EST UNE GARDE QU'ON DÉSARME. Un numéro de ligne
+    // n'identifie pas un site de code, il identifie sa position — et la
+    // position bouge pour des raisons qui ne regardent pas la garde.
+    //
+    // Le cliquet porte donc sur le COUPLE (fichier, expression), qui est stable
+    // sous le déplacement et sensible à ce qui compte : si l'expression change,
+    // c'est une autre transformation, et elle doit être re-justifiée. La ligne
+    // reste dans le message d'échec, où elle sert à trouver le site sans
+    // jamais servir à décider.
     const transforms = balaye(TRANSFORMS);
+    const site = (t: string) => {
+      const [emplacement, expression] = t.split(" — ");
+      return `${emplacement.replace(/:\d+$/, "")} :: ${expression}`;
+    };
     expect(
-      transforms.map((t) => t.split(" — ")[0]),
+      transforms.map(site),
       `inventaire des transformations modifié :\n${transforms.map((t) => `      ${t}`).join("\n")}`,
-    ).toEqual(["src/lib/casefile/pdfGenerator.ts:628"]);
+    ).toEqual([
+      'src/lib/casefile/pdfGenerator.ts :: const slug = input.case_meta.case_id.replace(/[^a-zA-Z0-9-]/g, "_");',
+    ]);
 
     // ── LA SEULE, ET CE QU'ELLE EST EXACTEMENT ──────────────────────────
     //
