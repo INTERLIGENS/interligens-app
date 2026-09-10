@@ -232,103 +232,182 @@ describe("S7/q2 — CRITÈRE : la valeur favorable non mesurée est tracée et d
 });
 
 // ═════════════════════════════════════════════════════════════════════════
-// AXE R · UN ÉTAT RECONNU SUR UN CHEMIN, INEXISTANT SUR L'AUTRE
 // ═════════════════════════════════════════════════════════════════════════
+// AXE R · LES DEUX CHEMINS CLASSENT LE MÊME CAS DIFFÉREMMENT
+// ═════════════════════════════════════════════════════════════════════════
+//
+// ─── RECTIFICATION DATÉE DU 2026-09-10 — ma caractérisation était FAUSSE ──
+//
+// Ce que cet axe affirmait à sa première écriture, dans un nom de test et dans
+// le message de 678df86 :
+//
+//   « conséquence mesurée : sur le chemin qui se dit canonique, REFERENCED
+//     devient NONE » — « un mint REFERENCED devient NONE, c'est-à-dire la
+//     valeur FAVORABLE ».
+//
+// FAUX. J'avais lu `computeVerdict.ts` SEUL et déduit la divergence sans lire
+// la table du PRODUCTEUR. Mesurée le 2026-09-10, graph/route.ts:96 :
+//
+//   public :     clusters > 0 → CONFIRMED
+//                flagged  > 0 → REFERENCED
+//                sinon        → NONE
+//   canonique :  flagged  > 0 → CONFIRMED
+//                sinon        → NONE
+//
+// REFERENCED ne devient donc JAMAIS NONE. Ce qui se passe est différent, et
+// pire, parce que ça va dans les DEUX sens :
+//
+//   D1  clusters > 0, flagged = 0  →  public CONFIRMED, canonique NONE
+//       Direction FAVORABLE : un cas à liens devient un mint propre.
+//   D2  clusters = 0, flagged > 0  →  public REFERENCED, canonique CONFIRMED
+//       Direction AGGRAVANTE : le canonique PROMEUT. C'est la sur-correction
+//       « fabrique une lignée » — et elle est en production, pas dans un mutant.
+//   D3  pivotAddress de casse différente  →  le graphe replie
+//       (`mode: 'insensitive'`, graph/route.ts:14-17), le canonique cherche en
+//       exact seulement (computeVerdict.ts:60). Trouvé d'un côté, pas de
+//       l'autre. Direction FAVORABLE.
+//
+// LE CŒUR : le prédicat `flagged > 0` porte REFERENCED sur un chemin et
+// CONFIRMED sur l'autre. Ce n'est pas un état manquant, c'est une COLLISION
+// SÉMANTIQUE — le même fait, deux verdicts.
+//
+// Les critères R restent valides : ils portaient sur les propriétés d'un
+// classifieur de lignée, et ces propriétés ne changent pas. Ce qui est refait,
+// c'est le MODÈLE D'ENTRÉE — les deux chemins ne consomment pas le même objet,
+// et les modéliser tous deux comme `Lignee → Lignee` était l'erreur qui m'a
+// caché D2 et D3.
 
-describe("S7/r1 — CONSTAT : REFERENCED existe sur le chemin public, pas sur le canonique", () => {
-  it("le chemin public reconnaît CONFIRMED ET REFERENCED", () => {
-    const code = codeSeul(ROUTE_PUBLIQUE);
-    expect(code).toContain('if (status === "CONFIRMED") scamLineage = "CONFIRMED"');
-    expect(code).toContain('else if (status === "REFERENCED") scamLineage = "REFERENCED"');
+describe("S7/r1 — CONSTAT : deux tables de classification, mesurées", () => {
+  it("le producteur classe sur clusters PUIS flagged, en trois états", () => {
+    expect(aplat(codeSeul(SRC("src/app/api/scan/solana/graph/route.ts")))).toContain(
+      "overall_status: clusters.length > 0 ? 'CONFIRMED' : flaggedNodes.length > 0 ? 'REFERENCED' : 'NONE',",
+    );
   });
 
-  it("le chemin CANONIQUE déclare le type à trois valeurs mais n'en produit que deux", () => {
-    const code = codeSeul(CANONIQUE);
-    expect(code).toContain('type ScamLineage = "CONFIRMED" | "REFERENCED" | "NONE"');
-    // La seule production de lignée : un ternaire binaire. REFERENCED est
-    // INATTEIGNABLE — déclaré au type, jamais construit.
-    expect(code).toContain('flaggedNodes.length > 0 ? "CONFIRMED" : "NONE"');
-    expect(code).not.toMatch(/=\s*"REFERENCED"/);
+  it("le canonique classe sur flagged SEUL, en deux états — et promeut", () => {
+    const c = aplat(codeSeul(CANONIQUE));
+    expect(c).toContain('type ScamLineage = "CONFIRMED" | "REFERENCED" | "NONE"');
+    expect(c).toContain('lineage: flaggedNodes.length > 0 ? "CONFIRMED" : "NONE",');
+    // REFERENCED est déclaré au type et jamais construit.
+    expect(c).not.toMatch(/=\s*"REFERENCED"/);
   });
 
-  it("conséquence mesurée : sur le chemin qui se dit canonique, REFERENCED devient NONE", () => {
-    // C'est-à-dire la valeur FAVORABLE. Un mint référencé y est indistinguable
-    // d'un mint propre — et c'est le chemin qui se DÉCLARE canonique.
-    //
-    // ⚠ Assertion sur la source BRUTE, volontairement : la revendication
-    // d'autorité est en COMMENTAIRE. `codeSeul` la retirerait, et le test
-    // rougirait sur du code correct — c'est exactement le piège inverse de
-    // celui de S5, et je viens de m'y prendre en l'écrivant.
-    expect(CANONIQUE).toContain("L'unique chemin de mesure pré-achat");
-    // La revendication et l'aplatissement cohabitent dans le même fichier.
-    expect(codeSeul(CANONIQUE)).toContain('flaggedNodes.length > 0 ? "CONFIRMED" : "NONE"');
+  it("D3 — le producteur replie la casse, le canonique non", () => {
+    const g = aplat(codeSeul(SRC("src/app/api/scan/solana/graph/route.ts")));
+    expect(g).toContain("pivotAddress: { equals: mint, mode: 'insensitive' }");
+    const c = aplat(codeSeul(CANONIQUE));
+    expect(c).toContain("where: { pivotAddress: mint },");
+    expect(c).not.toContain("mode: 'insensitive'");
+    expect(c).not.toContain('mode: "insensitive"');
   });
 
-  it("et les deux chemins ne lisent même pas la même source", () => {
-    // Divergence supplémentaire, qu'aucun des deux corpus n'avait relevée :
-    // le public interroge le graphe par HTTP, le canonique interroge Prisma.
+  it("et les deux ne lisent pas la même source", () => {
     expect(codeSeul(ROUTE_PUBLIQUE)).toContain("/api/scan/solana/graph");
     expect(codeSeul(CANONIQUE)).toContain("prisma.graphCase.findFirst");
+  });
+
+  it("le chemin qui DIVERGE est celui qui se déclare canonique", () => {
+    // ⚠ source BRUTE : la revendication est un commentaire.
+    expect(CANONIQUE).toContain("L'unique chemin de mesure pré-achat");
   });
 });
 
 // ─── Le critère d'acceptation ────────────────────────────────────────────
 
-type SourceR = "CONFIRMED" | "REFERENCED" | "NONE";
-type ImplR = (s: SourceR) => Lignee;
-const SOURCES_R: SourceR[] = ["CONFIRMED", "REFERENCED", "NONE"];
+/** Ce que les deux chemins consomment RÉELLEMENT — et ce n'est pas une lignée. */
+interface EtatGraphe {
+  /** Le cas est-il trouvé par ce chemin ? (D3 : la casse.) */
+  trouve: boolean;
+  clusters: number;
+  flagged: number;
+}
+type Classifieur = (e: EtatGraphe) => Lignee;
 
-function batterieR(paire: { public: ImplR; canonique: ImplR }): string[] {
+const CAS: Array<{ nom: string; etat: EtatGraphe }> = [
+  { nom: "aucun cas", etat: { trouve: false, clusters: 0, flagged: 0 } },
+  { nom: "cas vide", etat: { trouve: true, clusters: 0, flagged: 0 } },
+  { nom: "D1 — liens, aucun nœud flaggé", etat: { trouve: true, clusters: 2, flagged: 0 } },
+  { nom: "D2 — nœuds flaggés, aucun lien", etat: { trouve: true, clusters: 0, flagged: 3 } },
+  { nom: "les deux", etat: { trouve: true, clusters: 2, flagged: 3 } },
+];
+
+const RANG: Record<Lignee, number> = { NONE: 0, REFERENCED: 1, CONFIRMED: 2 };
+
+function batterieR(paire: { public: Classifieur; canonique: Classifieur }): string[] {
   const v: string[] = [];
   const dit = (ok: boolean, c: string) => { if (!ok && !v.includes(c)) v.push(c); };
 
-  for (const chemin of [paire.public, paire.canonique]) {
-    // R1 — REFERENCED ne s'aplatit pas sur la valeur favorable.
-    dit(chemin("REFERENCED") !== "NONE", "R1 referenced-aplati-sur-none");
-    // R2 — SUR-CORRECTION. Il ne s'aplatit pas non plus sur CONFIRMED : ce
-    // n'est pas le même fait, et sur-corriger FABRIQUE une lignée.
-    dit(chemin("REFERENCED") !== "CONFIRMED", "R2 referenced-aplati-sur-confirmed");
-    // R4 — les deux états déjà reconnus ne bougent pas.
-    dit(chemin("CONFIRMED") === "CONFIRMED" && chemin("NONE") === "NONE", "R4 etats-connus-deplaces");
+  for (const { etat } of CAS) {
+    const a = paire.public(etat);
+    const b = paire.canonique(etat);
+
+    // R1 — aucun chemin ne fait tomber sur NONE ce que l'autre a classé.
+    dit(!((a !== "NONE" && b === "NONE") || (b !== "NONE" && a === "NONE")), "R1 divergence-vers-favorable");
+    // R2 — SUR-CORRECTION. Aucun chemin ne PROMEUT ce que l'autre a classé
+    // plus bas : REFERENCED et CONFIRMED ne sont pas le même fait.
+    dit(!(RANG[a] !== RANG[b] && a !== "NONE" && b !== "NONE"), "R2 divergence-vers-aggravant");
+    // R3 — même cas, même conclusion. Motif de l'axe K, 3e vérification.
+    dit(a === b, "R3 chemins-divergents");
+    // R4 — un cas trouvé et neutre reste NONE des deux côtés : on ne
+    // sur-corrige pas en classant tout le monde.
+    if (etat.trouve && etat.clusters === 0 && etat.flagged === 0) {
+      dit(a === "NONE" && b === "NONE", "R4 etats-neutres-deplaces");
+    }
+    // R5 — les trois états restent DISTINGUABLES : un classifieur qui aplatit
+    // tout sur une seule valeur satisfait R3 sans rien mesurer.
   }
-  // R3 — même mint, même fait : les deux chemins concluent pareil. C'est le
-  // motif de l'axe K, troisième vérification.
-  dit(
-    SOURCES_R.every((s) => paire.public(s) === paire.canonique(s)),
-    "R3 chemins-divergents",
-  );
+  const imagePublique = new Set(CAS.map((c) => paire.public(c.etat)));
+  dit(imagePublique.size >= 3, "R5 etats-aplatis");
   return v;
 }
 
-const IDENTITE: ImplR = (s) => s;
+/** Le témoin : la table du PRODUCTEUR, appliquée des deux côtés. */
+const TABLE_PRODUCTEUR: Classifieur = (e) =>
+  !e.trouve ? "NONE" : e.clusters > 0 ? "CONFIRMED" : e.flagged > 0 ? "REFERENCED" : "NONE";
+/** La table du canonique, telle qu'elle est aujourd'hui. */
+const TABLE_CANONIQUE: Classifieur = (e) =>
+  !e.trouve ? "NONE" : e.flagged > 0 ? "CONFIRMED" : "NONE";
 
-describe("S7/r2 — CRITÈRE : REFERENCED survit, sans être promu, et les deux chemins concordent", () => {
-  it("le TÉMOIN passe", () =>
-    expect(batterieR({ public: IDENTITE, canonique: IDENTITE })).toEqual([]));
+describe("S7/r2 — CRITÈRE : un cas, une classification, sur les deux chemins", () => {
+  it("le TÉMOIN passe — la même table des deux côtés", () =>
+    expect(batterieR({ public: TABLE_PRODUCTEUR, canonique: TABLE_PRODUCTEUR })).toEqual([]));
 
-  const MUTANTS_R: Array<{ nom: string; critere: string; paire: { public: ImplR; canonique: ImplR } }> = [
+  const MUTANTS_R: Array<{
+    nom: string;
+    critere: string;
+    paire: { public: Classifieur; canonique: Classifieur };
+  }> = [
     {
-      nom: "LE DÉFAUT ACTUEL — le canonique aplatit REFERENCED sur NONE",
-      critere: "R1 referenced-aplati-sur-none",
-      paire: { public: IDENTITE, canonique: (s) => (s === "CONFIRMED" ? "CONFIRMED" : "NONE") },
+      nom: "LE DÉFAUT ACTUEL, D1 — liens sans nœud flaggé : CONFIRMED contre NONE",
+      critere: "R1 divergence-vers-favorable",
+      paire: { public: TABLE_PRODUCTEUR, canonique: TABLE_CANONIQUE },
     },
     {
-      nom: "SUR-CORRECTION — REFERENCED promu en CONFIRMED, une lignée fabriquée",
-      critere: "R2 referenced-aplati-sur-confirmed",
+      nom: "LE DÉFAUT ACTUEL, D2 — flaggé sans lien : REFERENCED contre CONFIRMED",
+      critere: "R2 divergence-vers-aggravant",
+      paire: { public: TABLE_PRODUCTEUR, canonique: TABLE_CANONIQUE },
+    },
+    {
+      nom: "D3 — le repli de casse manque d'un côté : le cas est introuvable",
+      critere: "R1 divergence-vers-favorable",
       paire: {
-        public: (s) => (s === "NONE" ? "NONE" : "CONFIRMED"),
-        canonique: (s) => (s === "NONE" ? "NONE" : "CONFIRMED"),
+        public: TABLE_PRODUCTEUR,
+        canonique: (e) => TABLE_PRODUCTEUR({ ...e, trouve: false }),
       },
     },
     {
-      nom: "les deux chemins divergent sur le même mint",
-      critere: "R3 chemins-divergents",
-      paire: { public: IDENTITE, canonique: (s) => (s === "REFERENCED" ? "CONFIRMED" : s) },
+      nom: "SUR-CORRECTION — tout cas trouvé devient CONFIRMED, même vide",
+      critere: "R4 etats-neutres-deplaces",
+      paire: {
+        public: (e) => (e.trouve ? "CONFIRMED" : "NONE"),
+        canonique: (e) => (e.trouve ? "CONFIRMED" : "NONE"),
+      },
     },
     {
-      nom: "SUR-CORRECTION — tout devient CONFIRMED, y compris un mint propre",
-      critere: "R4 etats-connus-deplaces",
-      paire: { public: () => "CONFIRMED", canonique: () => "CONFIRMED" },
+      nom: "SUR-CORRECTION — les deux chemins s'accordent en aplatissant tout sur NONE",
+      // Concorder ne suffit pas : deux chemins d'accord sur rien sont d'accord.
+      critere: "R5 etats-aplatis",
+      paire: { public: () => "NONE", canonique: () => "NONE" },
     },
   ];
 
@@ -339,6 +418,27 @@ describe("S7/r2 — CRITÈRE : REFERENCED survit, sans être promu, et les deux 
       expect(viol, `tué, mais pas par ${m.critere}`).toContain(m.critere);
     });
   }
+
+  it("GARDE ANTI-VACUITÉ — chaque critère R est tué par au moins un mutant", () => {
+    // Règle ratifiée le 2026-09-10, dans les deux sens : tout critère nommé
+    // doit être tué, et aucun critère émis ne doit échapper à la liste.
+    const CRITERES_R = [
+      "R1 divergence-vers-favorable",
+      "R2 divergence-vers-aggravant",
+      "R3 chemins-divergents",
+      "R4 etats-neutres-deplaces",
+      "R5 etats-aplatis",
+    ];
+    const tues = new Set(MUTANTS_R.flatMap((m) => batterieR(m.paire)));
+    expect(CRITERES_R.filter((c) => !tues.has(c))).toEqual([]);
+    expect([...tues].filter((c) => !CRITERES_R.includes(c))).toEqual([]);
+  });
+
+  it("LA COLLISION, nommée — `flagged > 0` porte deux verdicts", () => {
+    const flaggeSansLien: EtatGraphe = { trouve: true, clusters: 0, flagged: 3 };
+    expect(TABLE_PRODUCTEUR(flaggeSansLien)).toBe("REFERENCED");
+    expect(TABLE_CANONIQUE(flaggeSansLien)).toBe("CONFIRMED");
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════
