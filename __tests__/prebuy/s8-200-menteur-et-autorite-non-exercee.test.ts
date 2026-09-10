@@ -85,6 +85,11 @@ describe("S8/t1 — CLÔTURE : la panne n'est plus servie en 200, ni lue comme u
   });
 
   it("BORNE DE CLASSE — trois consommateurs, et les deux autres n'ont AUCUN drapeau", () => {
+    // Balayage du 2026-09-10 : sans cette ligne, retirer des entrées de
+    // CONSOMMATEURS faisait passer la borne de classe avec un seul site
+    // inspecté. Un critère de PÉRIMÈTRE dont le périmètre peut se vider n'est
+    // pas un critère de périmètre.
+    expect(CONSOMMATEURS).toHaveLength(3);
     // Mesuré : le correctif P0 n'a été appliqué qu'à UN des trois sites. Les
     // deux autres avalent la panne en silence — `catch { /* fail-open */ }`,
     // sans même une variable pour dire que la mesure n'a pas eu lieu.
@@ -567,6 +572,14 @@ describe("S8/u2 — TÉMOIN : le jour où un consommateur gouverné dérive", ()
     "src/lib/publicScore/computeVerdict.ts",
   ];
 
+  it("le témoin inspecte bien CINQ surfaces — une liste vide le désarmerait", () => {
+    // Balayage du 2026-09-10 : `GOUVERNEES` vidée, `derivent` vaut [] et LES
+    // DEUX tests ci-dessous passent — le constat comme le témoin `it.fails`.
+    // Le témoin de non-dérivation se serait éteint sans un mot.
+    expect(GOUVERNEES).toHaveLength(5);
+    for (const f of GOUVERNEES) expect(SRC(f).length, f).toBeGreaterThan(100);
+  });
+
   it.fails("VIRE LE JOUR OÙ — au moins une surface gouvernée fournit un verdict REFLEX", () => {
     const derivent = GOUVERNEES.filter((f) => codeSeul(SRC(f)).includes("reflexVerdict"));
     expect(derivent.length).toBeGreaterThan(0);
@@ -574,6 +587,7 @@ describe("S8/u2 — TÉMOIN : le jour où un consommateur gouverné dérive", ()
 
   it("aujourd'hui, le compte des surfaces dérivantes est ZÉRO — et c'est ça, le constat", () => {
     const derivent = GOUVERNEES.filter((f) => codeSeul(SRC(f)).includes("reflexVerdict"));
+    expect(GOUVERNEES.length).toBeGreaterThan(0);
     expect(derivent).toEqual([]);
   });
 });

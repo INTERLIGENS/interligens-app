@@ -183,7 +183,15 @@ function evaluerGate(pop: LecturePopulation, defaut: DefautProtege): Verdict {
 // LES SONDES — ce qui rend les gates ROBUSTES À LA FORME
 // ═════════════════════════════════════════════════════════════════════════
 
-const PARTENAIRES = ["transaction-check", "score-lite", "batch-score"] as const;
+/**
+ * `readonly string[]` et NON `as const` : avec `as const`, `length` a le type
+ * littéral `3` et TypeScript refuse `PARTENAIRES.length === 0` comme une
+ * comparaison impossible (TS2367). Or c'est exactement le fail-safe qu'on
+ * veut — la liste peut se vider par ÉDITION, ce que le type ne voit pas. Un
+ * type qui interdit d'écrire la garde contre sa propre modification est un
+ * type trop précis pour l'usage.
+ */
+const PARTENAIRES: readonly string[] = ["transaction-check", "score-lite", "batch-score"];
 const ROUTE_PARTENAIRE = (p: string) => codeSeul(SRC(`src/app/api/partner/v1/${p}/route.ts`));
 const GRAPHE = () => codeSeul(SRC("src/app/api/scan/solana/graph/route.ts"));
 const CANONIQUE = () => codeSeul(SRC("src/lib/publicScore/computeVerdict.ts"));
@@ -235,7 +243,22 @@ function classificationsDivergentes(graphe: string, canonique: string): boolean 
   return !(producteurATroisEtats && canoniqueAligne && repliAligne);
 }
 
+/**
+ * ─── CORRIGÉ LE 2026-09-10, BALAYAGE ANTI-CONCORDANCE ───────────────────
+ *
+ * `ouvert: fabriquantes.length > 0` se DÉSARMAIT SILENCIEUSEMENT si
+ * `PARTENAIRES` devenait vide : zéro surface fabriquante, défaut « fermé »,
+ * GATE 1 VERTE POUR TOUJOURS. Une gate dont la moitié « défaut » s'éteint
+ * quand la liste qu'elle inspecte se vide n'est pas une gate stricte, c'est
+ * une gate qu'il suffit de vider.
+ *
+ * FAIL-SAFE, comme la sonde de la GATE 2 : liste vide ⇒ la sonde ne sait plus
+ * ce qu'elle inspecte ⇒ le défaut est déclaré OUVERT.
+ */
 const defautGate1 = (): DefautProtege => {
+  if (PARTENAIRES.length === 0) {
+    return { ouvert: true, libelle: "liste des surfaces partenaires VIDE — sonde désarmée" };
+  }
   const fabriquantes = PARTENAIRES.filter((p) => surfaceFabrique(ROUTE_PARTENAIRE(p)));
   return {
     ouvert: fabriquantes.length > 0,
@@ -344,6 +367,18 @@ describe("S9/g2 — déplacer le littéral ne rend pas vert", () => {
 // ═════════════════════════════════════════════════════════════════════════
 
 describe("S9/g3 — GATE 1 : la population ne précède pas le correctif partenaire", () => {
+  it("la sonde inspecte bien TROIS surfaces — une liste vide la désarmerait", () => {
+    // Balayage du 2026-09-10 : sans cette assertion, vider `PARTENAIRES`
+    // rendait la gate verte pour toujours. Ceinture, en plus du fail-safe.
+    expect(PARTENAIRES).toHaveLength(3);
+    expect(defautGate1().ouvert).toBe(true);
+  });
+
+  it("liste vide ⇒ défaut déclaré OUVERT, jamais fermé par défaut", () => {
+    const vide = { ouvert: true, libelle: "liste des surfaces partenaires VIDE — sonde désarmée" };
+    expect(evaluerGate(POP_SEEDEE, vide).etat).toBe("ROUGE");
+  });
+
   it("CONSTAT — les trois surfaces partenaires fabriquent encore", () => {
     const d = defautGate1();
     expect(d.ouvert).toBe(true);

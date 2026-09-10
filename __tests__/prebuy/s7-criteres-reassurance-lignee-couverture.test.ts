@@ -219,6 +219,23 @@ describe("S7/q2 — CRITÈRE : la valeur favorable non mesurée est tracée et d
     });
   }
 
+  it("GARDE ANTI-VACUITÉ — chaque critère Q est tué par au moins un mutant", () => {
+    // Balayage du 2026-09-10 : la batterie Q était la SEULE des quatre sans
+    // garde. Rien ne vérifiait que Q1, Q3 et Q3b soient atteignables.
+    const CRITERES_Q = [
+      "Q1 favorable-non-degradee",
+      "Q2 non-inventoriee",
+      "Q3 mesure-non-servie",
+      "Q3b mesure-inventoriee-comme-manquante",
+    ];
+    const tues = new Set(MUTANTS_Q.flatMap((m) => batterieQ(m.impl)));
+    expect(CRITERES_Q.filter((c) => !tues.has(c))).toEqual([]);
+    expect([...tues].filter((c) => !CRITERES_Q.includes(c))).toEqual([]);
+    // Et la table d'états ne peut pas se vider : batterieQ sur zéro état rend
+    // [], donc le témoin passerait et tous les mutants survivraient.
+    expect(ETATS_Q.length).toBeGreaterThanOrEqual(5);
+  });
+
   it("le critère vaut pour les TROIS routes, pas une", () => {
     // La batterie est agnostique de la route par construction : elle porte sur
     // un couple (état de mesure → sortie publiée), pas sur un fichier. Ce test
@@ -404,8 +421,18 @@ describe("S7/r2 — CRITÈRE : un cas, une classification, sur les deux chemins"
       },
     },
     {
-      nom: "SUR-CORRECTION — les deux chemins s'accordent en aplatissant tout sur NONE",
-      // Concorder ne suffit pas : deux chemins d'accord sur rien sont d'accord.
+      // ─── REQUALIFIÉ LE 2026-09-10, BALAYAGE ANTI-CONCORDANCE ───────────
+      //
+      // Étiqueté « SUR-CORRECTION » à la première écriture, donc comme un
+      // sur-ajustement HYPOTHÉTIQUE. FAUX : c'est le comportement SERVI
+      // aujourd'hui. GraphCase = 0, donc `getScamLineage` ne trouve jamais de
+      // cas et rend NONE, et le graphe rend `source: 'no_data'`, donc NONE.
+      // Les deux chemins aplatissent TOUT sur NONE, en production, maintenant.
+      //
+      // Ce n'est donc pas un mutant, c'est un CONSTAT — même faute que R2, qui
+      // décrivait comme un mutant à tuer une promotion déjà en production. Un
+      // corpus qui rejette le comportement servi n'est pas strict, il est faux.
+      nom: "CONSTAT — l'état SERVI aujourd'hui : population nulle, les deux chemins disent NONE",
       critere: "R5 etats-aplatis",
       paire: { public: () => "NONE", canonique: () => "NONE" },
     },
@@ -432,6 +459,18 @@ describe("S7/r2 — CRITÈRE : un cas, une classification, sur les deux chemins"
     const tues = new Set(MUTANTS_R.flatMap((m) => batterieR(m.paire)));
     expect(CRITERES_R.filter((c) => !tues.has(c))).toEqual([]);
     expect([...tues].filter((c) => !CRITERES_R.includes(c))).toEqual([]);
+  });
+
+  it("SOUS POPULATION NULLE, tout l'axe R se réduit à R5 — et c'est le point", () => {
+    // Mesuré le 2026-09-10. La production d'aujourd'hui satisfait R1, R2, R3
+    // ET R4 : deux chemins qui rendent NONE partout ne divergent jamais, ne
+    // promeuvent jamais, ne déplacent aucun état neutre. Seul R5 mord.
+    //
+    // C'est la forme la plus pure du piège : l'accord entre deux chemins est
+    // INVISIBLE comme défaut tant que les deux se taisent. Sans R5, cet axe
+    // entier serait vert sur une mesure qui n'a jamais eu lieu.
+    const TOUT_NONE: Classifieur = () => "NONE";
+    expect(batterieR({ public: TOUT_NONE, canonique: TOUT_NONE })).toEqual(["R5 etats-aplatis"]);
   });
 
   it("LA COLLISION, nommée — `flagged > 0` porte deux verdicts", () => {
@@ -585,6 +624,10 @@ describe("S7/s2 — ÉPINGLE : l'inatteignabilité, et elle rougit dans les DEUX
   });
 
   it("aucun plancher n'atteint 0 : le portail `expectedMeasured === 0` est mort partout", () => {
+    // `filter(...).toEqual([])` et `every(...)` sont TOUS DEUX satisfaits par
+    // un tableau vide. Balayage du 2026-09-10 : la non-vacuité est assertée
+    // ici, et non laissée au seul test frère qui compare la carte complète.
+    expect(SITES.length).toBe(8);
     expect(SITES.filter((s) => s.plancher === 0)).toEqual([]);
     expect(SITES.every((s) => s.plancher >= 1)).toBe(true);
   });
