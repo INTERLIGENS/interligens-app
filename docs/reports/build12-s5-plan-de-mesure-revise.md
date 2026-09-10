@@ -11,15 +11,36 @@ mesure plus rien.
 
 ---
 
-## 0 · CE QUE J'AI CHANGÉ AU PLAN, ET POURQUOI
+## 0 · CHAQUE ATTENTE MODIFIÉE, CLASSÉE — ET POURQUOI ELLE CHANGE
 
-| § | postulat d'origine | état mesuré le 2026-09-09 | verdict |
+La taxonomie qui gouverne est celle du ruling : **RATIFIED CONTRACT CHANGE ·
+BUG FIX · STALE ASSUMPTION**. Aucune attente n'est réécrite « pour la rendre
+verte » : chacune porte sa cause.
+
+| § | attente d'origine | classe | pourquoi elle change |
 |---|---|---|---|
-| 3 | « 21 clés, aucune ne s'ajoute » | **22 sur la cible A**, `intelligenceCoverage` ajoutée par S3 | **PÉRIMÉ** |
-| 3 | le jeu de clés est invariant | **20 clés sur B/C/D** — `name` et `symbol` sont CONDITIONNELS | **FAUX DÈS L'ORIGINE** |
-| 3 | domaine partenaire inchangé | vrai, mais S4 a changé la **condition d'émission** du jeton | **À REFORMULER** |
-| 1 | cible D sert `ALLOW` | sert **`ORANGE` / `WARN`** — la phase 2 a basculé | **DÉJÀ ACQUIS** |
-| 3bis | réserve sur `NOT_REQUESTED_BY_CONTRACT` | **fondée, et plus grave que décrit** | **TRANCHÉE, §5** |
+| 3 | « 21 clés, aucune ne s'ajoute » | **RATIFIED CONTRACT CHANGE** | S3 a ajouté `intelligenceCoverage`, champ ADDITIF ratifié. 22 clés sur A. |
+| 3 | le jeu de clés est invariant entre cibles | **DÉFAUT DU PLAN** — voir ci-dessous | `name`/`symbol` sont conditionnels ; 20 clés sur B/C/D. Vrai AVANT que le plan soit écrit. |
+| 3 | domaine partenaire inchangé | **RATIFIED CONTRACT CHANGE** | S4 a changé la CONDITION D'ÉMISSION du jeton, pas son domaine. |
+| 1 | cible D sert `ALLOW` | **STALE ASSUMPTION** | la phase 2 a basculé D en `ORANGE`/`WARN`. Le plan décrit un état quitté. |
+| 2 | témoin A « byte-identique sur tout l'objet » | **DÉFAUT DU PLAN** | sur-spécification : aurait déclenché un arrêt sur l'ajout LÉGITIME d'`intelligenceCoverage`. Voir §3. |
+| 3bis | motif `NOT_REQUESTED_BY_CONTRACT` | **BUG FIX** | le motif est émis conditionnellement à l'échec. Correctif §5. |
+
+### La quatrième case, et pourquoi je ne force pas les deux lignes dedans
+
+**« DÉFAUT DU PLAN » n'est aucune des trois.** Ce n'est pas un changement de
+contrat ratifié — rien n'a changé. Ce n'est pas un correctif de produit — le
+produit n'a jamais eu ce comportement. Ce n'est pas une hypothèse périmée — elle
+n'a jamais été vraie, pas même le jour où elle a été écrite.
+
+C'est une affirmation **fausse à l'écriture**, sur un plan de mesure. La
+distinction n'est pas académique : une hypothèse périmée signale qu'un
+déploiement est passé et qu'il faut re-mesurer ; un défaut du plan signale que
+**le plan lui-même n'a jamais mesuré ce qu'il croyait mesurer**, et que sa
+conclusion, si elle avait été verte, n'aurait rien prouvé.
+
+Les deux lignes concernées auraient l'une et l'autre déclenché un **arrêt pour
+une raison sans rapport avec la migration**.
 
 Le second point mérite d'être dit : le plan affirmait un jeu de clés invariant
 alors qu'il ne l'était **déjà pas** au moment où il a été écrit. `name` et
@@ -71,7 +92,30 @@ tient, et je ne la rouvre pas.
 
 ---
 
-## 3 · LE DISCRIMINANT APPARIÉ, ACTUALISÉ
+## 3 · LE TÉMOIN A — SUR QUELS CHAMPS EXACTEMENT
+
+**« Byte-identique sur tout l'objet » était une sur-spécification, et T2 l'a
+reconnue de lui-même.** Elle confondait le TÉMOIN avec le CONTRAT : elle aurait
+déclenché un arrêt sur l'ajout parfaitement légitime d'`intelligenceCoverage`
+par S3.
+
+La promesse d'identité byte-à-byte porte sur les **quatre champs de décision**,
+et sur eux seuls :
+
+```
+score · verdict · phantom_warning_level · topHolderSource
+```
+
+Mesuré aujourd'hui sur A : `70` · `RED` · `BLOCK` · `helius`. **A tient sur les
+quatre.**
+
+Le reste de la charge utile peut recevoir des champs ADDITIFS ratifiés sans que
+le témoin soit rompu. Ce qui reste interdit : qu'une clé du noyau **disparaisse**,
+ou qu'un des quatre champs de décision **bouge**.
+
+---
+
+## 3bis · LE DISCRIMINANT APPARIÉ, ACTUALISÉ
 
 | branche | cible | attendu |
 |---|---|---|
@@ -115,6 +159,18 @@ La forme et les domaines sont inchangés :
 bascule n'est **pas observable en production**. Elle est prouvée par le
 mécanisme — 6 mutants de bibliothèque, 6 mutants de route.
 
+### Ce que la mesure doit prouver sur le contrat partenaire
+
+1. le domaine reste à **trois** valeurs ;
+2. `SAFE` est **préservé** sur un cas sûr à couverture complète et concluante ;
+3. `WARNING` sort sur couverture **non concluante** ;
+4. la sémantique de blocage est préservée ;
+5. **la recommandation ne change PAS du seul fait que la couverture change.**
+
+Les points 2, 3 et 5 ne sont **pas** mesurables en production sans clé : ils
+sont prouvés par le mécanisme, et le rapport doit le dire au lieu de compter un
+401 pour une mesure.
+
 ---
 
 ## 5 · LA RÉSERVE DE T2, TRANCHÉE
@@ -143,6 +199,36 @@ Mesuré dans `canonicalDecision.ts` : `HORS_CONTRAT = ["NOT_APPLICABLE",
 SOL — exactement la dégradation permanente que BUILD 11.1 a fermée, et que S3.1
 a refermée aujourd'hui sur un autre axe. Le remède serait pire.
 
+### LA PRÉMISSE, MESURÉE — c'est elle qui décide
+
+Mon correctif rend l'affirmation STABLE. Il ne la rend VRAIE que si le contrat
+SOL n'attend réellement pas `holders`. Deux lectures étaient possibles :
+
+  (a) le contrat ne l'exige pas, l'implémentation le tente en bonus → le motif
+      est VRAI, le correctif est le bon
+  (b) le contrat l'attend et le code échoue → le motif est FAUX quelle que soit
+      la condition d'émission, et le correctif stabiliserait un mensonge
+
+**MESURÉ : c'est (a), sur trois preuves indépendantes.**
+
+1. **Le dénominateur est un littéral.** `expected: 3` sur le chemin SOL, sans
+   condition. Sur BOTIFY, où `holders` RÉUSSIT (`topHolderSource: helius`), le
+   dénominateur reste **3**. Si le contrat l'attendait, il vaudrait 4 en cas de
+   succès. Il ne le vaut jamais.
+2. **L'absence est déjà consommée par le moteur.** La route passe
+   `holders_unavailable: !holders.available` (l. 308) ; le moteur l'agrège dans
+   `rpcDown` et baisse la confiance (l. 397).
+3. **Le moteur porte déjà sa propre dégradation.** `missing.push("holders")` et
+   trois signaux marqués non évalués (l. 435). La compter au dénominateur
+   pré-achat serait une **troisième** pénalité pour un seul fait.
+
+Le motif est donc VRAI sur l'axe DÉNOMINATEUR. Ce qui est faux est sa
+CONDITION D'ÉMISSION, qui le fait ressembler à une conséquence de l'échec.
+
+**Une incohérence relevée au passage** : le commentaire de ce bloc s'ouvre sur
+« Quatre capacités sont ATTENDUES sur ce chemin » alors que le contrat déclare
+`expected: 3`. Le commentaire est faux, pas le code.
+
 ### MON ARBITRAGE
 
 **Il y a deux faits distincts, et un seul champ pour les porter :**
@@ -170,9 +256,21 @@ porter les deux axes dans la même structure. Ce serait la solution la plus
 expressive, et c'est une **décision de méthodologie** — un nouvel axe dans un
 vocabulaire ratifié. Je la signale, je ne la prends pas.
 
+### LA FORME CORRECTE A DÉJÀ UN NOM
+
+T2 dit la même chose un cran plus haut, et sa formulation est la bonne : le
+jeton est juste sur l'axe **DÉNOMINATEUR** et faux sur l'axe **CAUSE**, et un
+seul champ porte les deux. La structure qui les sépare **existe déjà** —
+`IntelligenceCoverage` distingue `expected` (appartenance au dénominateur) de
+`reason` (état observé).
+
+Ma correction est l'implémentation ; la sienne est le nom de la structure. Les
+deux se prennent ensemble, et **aucune n'exige un état nouveau**.
+
 **Statut** : arbitrage rendu, correctif **non appliqué**. `src/app/api/` est
-gelé et cette correction ne vaut pas une fenêtre à elle seule — à joindre au
-prochain chantier qui en ouvre une.
+gelé et cette correction ne vaut pas une fenêtre à elle seule — **à joindre au
+prochain chantier qui en ouvre une, probablement l'option 2 de AM**. Inscrit au
+backlog pour qu'il ne se perde pas.
 
 ---
 
@@ -198,7 +296,8 @@ preuve unitaire, jamais une preuve de production. Inchangé.
 1. Déclarer les limites du §6 dans le rapport — ce qui **ne sera pas** mesuré.
 2. Capturer l'AVANT sur les 4 cibles **et** les 7 témoins du §3.
 3. Déployer.
-4. Purger le cache ou attendre son expiration.
+4. **Purger le cache — obligatoire, pas optionnel.** Les quatre cibles
+   répondent `cached: true`. Sans purge, on mesure le cache et non le code.
 5. Capturer l'APRÈS, `diff`, expliquer **chaque** ligne.
 6. Comparer le noyau de 20 clés ; comparer les 2 conditionnelles **cible par
    cible**.
