@@ -38,11 +38,65 @@ type Lignee = "CONFIRMED" | "REFERENCED" | "NONE";
 // ═════════════════════════════════════════════════════════════════════════
 
 const GRAPHE = "src/app/api/scan/solana/graph/route.ts";
-/** Les TROIS consommateurs du graphe. La borne de classe, mesurée. */
+
+/**
+ * ─── RECTIFICATION DATÉE DU 2026-09-10 — l'univers en comptait TROIS ────
+ *
+ * Ce fichier a déclaré « les TROIS consommateurs du graphe » et l'a épinglé
+ * par `expect(CONSOMMATEURS).toHaveLength(3)`. Ils sont QUATRE : le quatrième
+ * est `report/casefile/route.ts`, la route qui rend le PDF de dossier — que
+ * j'ai étudiée en long dans S11 sans voir qu'elle appartenait à CETTE classe.
+ *
+ * L'assertion de non-vacuité ajoutée au balayage épinglait donc le MAUVAIS
+ * NOMBRE, ce qui rendait la sous-couverture plus difficile à voir, pas moins.
+ * Une garde de périmètre qui fige un périmètre faux est pire qu'aucune garde.
+ *
+ * L'invariant qui manquait, et qui est appliqué ici :
+ *   « A gate must prove 1. THE CLAIMED PROPERTY ; 2. THE GOVERNED SUBJECT
+ *     UNIVERSE IS ACTUALLY COVERED. »
+ *
+ * L'univers est désormais DÉCOUVERT depuis les sources, et la liste déclarée
+ * doit lui être ÉGALE. Énumérer n'est pas couvrir.
+ */
+const FICHIERS_APP: string[] = (() => {
+  const fs = require("node:fs");
+  const out: string[] = [];
+  const walk = (d: string) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = `${d}/${e.name}`;
+      if (e.isDirectory()) { if (e.name !== "node_modules") walk(p); }
+      else if (p.endsWith(".ts") || p.endsWith(".tsx")) out.push(p);
+    }
+  };
+  walk("src/app");
+  return out;
+})();
+
+/** L'UNIVERS : tout fichier qui interroge le graphe sans en faire partie. SIX. */
+const CONSOMMATEURS_DECOUVERTS: string[] = FICHIERS_APP.filter(
+  (f) => /api\/scan\/solana\/graph/.test(SRC(f)) && !f.includes("/graph/"),
+).sort();
+
+/**
+ * LE RÉTRÉCISSEMENT EST UNE RÈGLE, PAS UNE LISTE. L'univers compte SIX
+ * consommateurs ; deux sont les pages de démonstration `en/demo` et `fr/demo`,
+ * qui font le même `fetch` côté client. Elles subissent le même défaut, mais
+ * leur sortie n'est pas une mesure gouvernée — c'est une démo.
+ *
+ * Le sous-ensemble gouverné est donc défini par un PRÉDICAT vérifiable, et les
+ * exclus sont NOMMÉS avec leur raison. Rétrécir en silence un univers est la
+ * façon la plus simple de faire passer une borne de classe.
+ */
+const estRouteApi = (f: string) => f.startsWith("src/app/api/") && f.endsWith("/route.ts");
+const CONSOMMATEURS_GOUVERNES = CONSOMMATEURS_DECOUVERTS.filter(estRouteApi);
+const CONSOMMATEURS_HORS_GOUVERNANCE = CONSOMMATEURS_DECOUVERTS.filter((f) => !estRouteApi(f));
+
+/** Les QUATRE consommateurs gouvernés. La borne de classe, mesurée. */
 const CONSOMMATEURS = [
-  "src/app/api/v1/score/route.ts",
-  "src/app/api/scan/solana/route.ts",
   "src/app/api/mobile/v1/scan/route.ts",
+  "src/app/api/report/casefile/route.ts",
+  "src/app/api/scan/solana/route.ts",
+  "src/app/api/v1/score/route.ts",
 ] as const;
 
 // ─── CE BLOC A CHANGÉ DE SENS, ET C'EST VOULU ────────────────────────────
@@ -85,11 +139,15 @@ describe("S8/t1 — CLÔTURE : la panne n'est plus servie en 200, ni lue comme u
   });
 
   it("BORNE DE CLASSE — trois consommateurs, et les deux autres n'ont AUCUN drapeau", () => {
-    // Balayage du 2026-09-10 : sans cette ligne, retirer des entrées de
-    // CONSOMMATEURS faisait passer la borne de classe avec un seul site
-    // inspecté. Un critère de PÉRIMÈTRE dont le périmètre peut se vider n'est
-    // pas un critère de périmètre.
-    expect(CONSOMMATEURS).toHaveLength(3);
+    // L'UNIVERS EST COUVERT, pas énuméré : la liste déclarée doit être ÉGALE
+    // à celle découverte depuis les sources. Un consommateur ajoutant demain
+    // un `fetch` vers le graphe fait rougir ici, et pas dans six mois.
+    expect([...CONSOMMATEURS].sort()).toEqual(CONSOMMATEURS_GOUVERNES);
+    expect(CONSOMMATEURS.length).toBeGreaterThanOrEqual(4);
+    // Et rien ne disparaît : l'univers entier est reconstitué.
+    expect(
+      [...CONSOMMATEURS_GOUVERNES, ...CONSOMMATEURS_HORS_GOUVERNANCE].sort(),
+    ).toEqual(CONSOMMATEURS_DECOUVERTS);
     // Mesuré : le correctif P0 n'a été appliqué qu'à UN des trois sites. Les
     // deux autres avalent la panne en silence — `catch { /* fail-open */ }`,
     // sans même une variable pour dire que la mesure n'a pas eu lieu.
@@ -97,13 +155,35 @@ describe("S8/t1 — CLÔTURE : la panne n'est plus servie en 200, ni lue comme u
       expect(codeSeul(SRC(f)), `${f} ne consomme pas le graphe`).toContain(
         "/api/scan/solana/graph",
       );
-      expect(codeSeul(SRC(f)), `${f} ne teste pas .ok`).toMatch(/graphRes\.ok/);
-    }
-    expect(codeSeul(SRC("src/app/api/v1/score/route.ts"))).toContain("scamLineageMeasured");
-    for (const f of CONSOMMATEURS.slice(1)) {
-      expect(codeSeul(SRC(f)), `${f} a acquis un drapeau de mesure`).not.toMatch(
-        /[Mm]easured\s*=\s*false/,
+      expect(codeSeul(SRC(f)), `${f} ne teste pas le seul statut HTTP`).toMatch(
+        /(graphRes|gRes)\.ok/,
       );
+    }
+    // UN SEUL des quatre porte un drapeau de mesure. Les TROIS autres — dont
+    // la route du PDF de dossier, un livrable juridique — avalent la panne
+    // sans même une variable pour dire que la mesure n'a pas eu lieu.
+    expect(codeSeul(SRC("src/app/api/v1/score/route.ts"))).toContain("scamLineageMeasured");
+    const sansDrapeau = CONSOMMATEURS.filter(
+      (f) => !/[Mm]easured\s*=\s*false/.test(codeSeul(SRC(f))),
+    );
+    expect(sansDrapeau.sort()).toEqual([
+      "src/app/api/mobile/v1/scan/route.ts",
+      "src/app/api/report/casefile/route.ts",
+      "src/app/api/scan/solana/route.ts",
+    ]);
+  });
+
+  it("les exclus de la gouvernance sont NOMMÉS, avec leur raison", () => {
+    // Elles subissent le même défaut. Elles ne sont pas dans la classe parce
+    // que leur sortie n'est pas une mesure gouvernée — pas parce qu'on préfère
+    // ne pas les compter. Le jour où une page devient une surface de verdict,
+    // ce test rougit et la question se repose.
+    expect(CONSOMMATEURS_HORS_GOUVERNANCE).toEqual([
+      "src/app/en/demo/page.tsx",
+      "src/app/fr/demo/page.tsx",
+    ]);
+    for (const f of CONSOMMATEURS_HORS_GOUVERNANCE) {
+      expect(f, `${f} n'est plus une page`).toMatch(/page\.tsx$/);
     }
   });
 
@@ -562,6 +642,19 @@ describe("S8/u1 — CONSTAT : l'autorité de verdict est déclarée, jamais exer
  * `.skip` est le seul geste explicitement INTERDIT ici : il éteint le signal
  * en laissant croire qu'il veille. C'est la forme la plus discrète du seuil
  * mort, et elle est la raison d'être de ce paragraphe.
+ *
+ * ─── ET LA CONDITION D'ACTIVATION, même famille — 2026-09-10 ───────────
+ *
+ * Les gardes latentes de S7 et S9 (axes Q, R, et les deux HARD GATES) sont
+ * vertes parce que la population de lignée est nulle. Ce n'est PAS une réserve
+ * qu'on lèvera après coup : « activation requires SEEDED DB INTEGRATION PROOF
+ * BEFORE population may be introduced. »
+ *
+ * Avant la première ligne de GraphCase, dans cet ordre : l'étape CI qui
+ * exporte INTERLIGENS_GRAPH_POPULATION, puis le test d'intégration sur base
+ * seedée exerçant les VRAIES fonctions sur les trois cas (liens sans flag,
+ * flag sans lien, casse différente), puis seulement la population. Voir
+ * S9/g0. Peupler avant rend les deux P0 actifs en même temps, sans témoin.
  */
 describe("S8/u2 — TÉMOIN : le jour où un consommateur gouverné dérive", () => {
   const GOUVERNEES = [

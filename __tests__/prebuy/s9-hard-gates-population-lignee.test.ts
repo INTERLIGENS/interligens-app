@@ -61,6 +61,29 @@ const aplat = (s: string) => s.replace(/\s+/g, " ");
  * cette étape n'existe pas, les gates rendent NON_EVALUABLE — et surtout PAS
  * VERT. Un contrôle qui ne peut pas échouer ne contrôle rien ; un contrôle qui
  * ne peut pas s'évaluer doit le DIRE, pas se taire en vert.
+ *
+ * ─── CONDITION D'ACTIVATION, ratifiée le 2026-09-10 ─────────────────────
+ *
+ * ██  LE TROU DE PREUVE S9/g0 N'EST PAS UNE RÉSERVE, C'EST UNE CONDITION.  ██
+ *
+ * « Current production population zero is LEGITIMATE, but ACTIVATION REQUIRES
+ *   SEEDED DB INTEGRATION PROOF before population may be introduced. »
+ *
+ * Donc, dans l'ordre, et AVANT la première ligne de GraphCase :
+ *
+ *   1. l'étape CI qui compte les trois tables et exporte
+ *      INTERLIGENS_GRAPH_POPULATION — sans elle les gates rendent
+ *      NON_EVALUABLE, ce qui est honnête mais ne protège rien ;
+ *   2. le test d'intégration sur BASE SEEDÉE, exerçant les VRAIES fonctions
+ *      (`getScamLineage` et le handler du graphe) sur les trois cas mesurés :
+ *      liens sans nœud flaggé, nœud flaggé sans lien, casse différente du
+ *      pivotAddress. C'est ce que les corpus S7/S9 ne prouvent PAS — ils
+ *      prouvent que les deux TABLES divergent, pas que les deux FONCTIONS
+ *      divergent sur de vraies données ;
+ *   3. seulement ensuite, la population.
+ *
+ * Peupler avant 1 et 2 rend les deux P0 actifs en même temps, sans témoin
+ * pour le dire. L'ordre n'est pas une préférence de méthode.
  */
 type LecturePopulation =
   | { source: "MESURE"; graphCase: number; graphNode: number; graphEdge: number; date: string }
@@ -192,6 +215,32 @@ function evaluerGate(pop: LecturePopulation, defaut: DefautProtege): Verdict {
  * type trop précis pour l'usage.
  */
 const PARTENAIRES: readonly string[] = ["transaction-check", "score-lite", "batch-score"];
+
+/**
+ * ─── L'UNIVERS GOUVERNÉ EST COUVERT, PAS ÉNUMÉRÉ — 2026-09-10 ───────────
+ *
+ * « A gate must prove : 1. THE CLAIMED PROPERTY ; 2. THE GOVERNED SUBJECT
+ *   UNIVERSE IS ACTUALLY COVERED. EMPTY SUBJECT SET != PASS unless emptiness
+ *   is itself the governed expected state. »
+ *
+ * La première moitié était tenue par le fail-safe et l'assertion de longueur.
+ * La seconde ne l'était pas : `PARTENAIRES` était une LISTE ÉCRITE À LA MAIN.
+ * Une route partenaire ajoutée demain aurait échappé à la GATE 1 sans rien
+ * faire rougir — la gate aurait affiché VERT en ne gardant que trois quarts
+ * de son univers.
+ *
+ * L'univers est désormais DÉCOUVERT sur le disque, et la liste déclarée doit
+ * lui être ÉGALE.
+ */
+const PARTENAIRES_DECOUVERTS: readonly string[] = (() => {
+  const fs = require("node:fs");
+  return fs
+    .readdirSync("src/app/api/partner/v1", { withFileTypes: true })
+    .filter((e: any) => e.isDirectory() && e.name !== "__tests__")
+    .map((e: any) => e.name)
+    .filter((n: string) => fs.existsSync(`src/app/api/partner/v1/${n}/route.ts`))
+    .sort();
+})();
 const ROUTE_PARTENAIRE = (p: string) => codeSeul(SRC(`src/app/api/partner/v1/${p}/route.ts`));
 const GRAPHE = () => codeSeul(SRC("src/app/api/scan/solana/graph/route.ts"));
 const CANONIQUE = () => codeSeul(SRC("src/lib/publicScore/computeVerdict.ts"));
@@ -371,6 +420,9 @@ describe("S9/g3 — GATE 1 : la population ne précède pas le correctif partena
     // Balayage du 2026-09-10 : sans cette assertion, vider `PARTENAIRES`
     // rendait la gate verte pour toujours. Ceinture, en plus du fail-safe.
     expect(PARTENAIRES).toHaveLength(3);
+    // L'UNIVERS, couvert et non énuméré : une quatrième route partenaire fait
+    // rougir ici, au lieu d'échapper silencieusement à la gate.
+    expect([...PARTENAIRES].sort()).toEqual([...PARTENAIRES_DECOUVERTS]);
     expect(defautGate1().ouvert).toBe(true);
   });
 
