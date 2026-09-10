@@ -78,6 +78,32 @@
 //   Pour un ARTEFACT, chercher le bon mot dans le bon fichier ne suffit pas.
 //   La sonde REND, et lit ce qui en sort.
 //
+// ─── UNE SECONDE PROPRIÉTÉ ÉMERGENTE, ET ELLE EST TOMBÉE SUR SON AUTEUR ─
+//
+// ██  UN UNIVERS DÉCOUVERT ATTRAPE CE QU'UNE LISTE AURAIT CONFIRMÉ.        ██
+//
+// Constaté le 2026-09-10, contre moi. J'ai écrit que la forme 2026 n'était
+// « nulle part dans le dépôt ». Mon grep portait `--include='*.ts'
+// --include='*.json'` : il EXCLUAIT les `.tsx`, c'est-à-dire exactement la
+// page qui la porte. Même faute que l'exclusion de `src/lib/solanaGraph/`, qui
+// m'avait fait déclarer orphelin un moteur vivant.
+//
+// Ce qui l'a attrapée est S15/ag1, qui DÉCOUVRE l'univers au lieu de
+// l'énumérer : il a refusé de passer et m'a envoyé chercher. Une liste écrite
+// à la main aurait confirmé mon erreur en silence, et le commit serait parti.
+//
+// C'est le pendant de la propriété notée en tête de S10 — « ce corpus remarque
+// qu'on l'a vidé ». Les deux sont des conséquences de la FORME choisie, pas
+// des critères écrits, et aucune n'avait été posée comme objectif :
+//
+//   S10  un corpus qui asserte l'EXISTENCE de ses gardes signale son
+//        affaiblissement
+//   S15  un corpus qui DÉCOUVRE son univers signale l'erreur de son auteur
+//
+// Corollaire à tenir avec l'autre : ne jamais remplacer une découverte par une
+// liste au motif qu'elle serait « plus lisible ». La liste est plus lisible et
+// elle est d'accord avec vous, ce qui est exactement le problème.
+//
 // Aucun chemin gelé touché. Aucune écriture prod. Aucune sémantique changée.
 
 import { describe, it, expect } from "vitest";
