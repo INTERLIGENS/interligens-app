@@ -51,6 +51,26 @@ describe("S1B/a — le document porte son identité, pas seulement son contenu",
     expect(avecRef).toContain("IL-PND-CANON-042");
   });
 
+  it("et elle est imprimée AVEC l'autorité qui la nomme, jamais nue", () => {
+    // Mesuré : le même dossier BOTIFY porte CASE-2025-BOTIFY-001 depuis
+    // presets.ts et CASE-2026-BOTIFY-001 depuis data/cases/botify.json. Une
+    // référence instable est pire qu'une absence : le document doit donc dire
+    // DE QUEL enregistrement elle vient, et ne rien affirmer de plus.
+    expect(html).toContain("(case metadata)");
+    expect(
+      buildCaseFileHtml({ ...BASE, canonical: { ref: "IL-PND-CANON-042", claims: [] } }),
+    ).toContain("(canonical record)");
+  });
+
+  it("et le document NE L'AFFIRME PAS stable entre systèmes", () => {
+    expect(html).toMatch(/not asserted to be stable across systems/i);
+    // Aucune qualification de citabilité tant que l'autorité de nommage n'est
+    // pas unifiée — c'est un chantier, pas une mention.
+    for (const trop of ["citable", "stable identifier", "permanent reference"]) {
+      expect(html.toLowerCase()).not.toContain(trop);
+    }
+  });
+
   it("un ÉTAT D'AUTORITÉ, dans le vocabulaire du registre des surfaces", () => {
     expect(CASEFILE_AUTHORITY).toBe("CANONICAL");
     expect(html).toContain(">CANONICAL<");
