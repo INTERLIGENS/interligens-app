@@ -1,0 +1,381 @@
+// ─── BUILD 12 · S12 — L'AMBIGUÏTÉ OPÉRATIONNELLE, ET L'UNIVERS DU REGISTRE ─
+//
+// ██  X · une surface NON AUTORITAIRE ne peut pas produire un artefact      ██
+// ██      indistinguable de l'autoritaire                                   ██
+// ██  Y · l'univers du registre est COUVERT, pas énuméré — et il est borné  ██
+//
+// « Avant RC, EMPÊCHER L'AMBIGUÏTÉ OPÉRATIONNELLE : quelqu'un ne doit pas
+//   pouvoir choisir par hasard l'ancien endpoint et croire qu'il vient de
+//   générer le CaseFile INTERLIGENS. »
+//
+// ─── CE QUI REND CE RISQUE RÉEL, MESURÉ LE 2026-09-10 ───────────────────
+//
+// `renderCaseFilePDF` — le générateur des surfaces NON autoritaires — produit
+// un document dont l'en-tête porte :
+//
+//     <title>INTERLIGENS CaseFile</title>
+//     <div style="font-weight:900;font-size:20px;">INTERLIGENS</div>
+//
+// Le document se présente donc, SUR SA FACE, comme « le CaseFile INTERLIGENS ».
+// Et il n'existe AUCUNE marque d'autorité nulle part — ni chez lui, ni chez le
+// générateur autoritaire. La distinction entre autoritaire et non autoritaire
+// n'existe aujourd'hui que dans le CHEMIN D'URL.
+//
+// Or le chemin ne voyage pas avec le fichier. Le PDF, si.
+//
+// Aucun chemin gelé touché. Aucune écriture prod. Aucune sémantique changée.
+
+import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
+import { CASEFILE_SURFACES } from "@/lib/casefile/surfaceRegistry";
+
+const SRC = (p: string) => readFileSync(p, "utf8");
+/** ⚠ Les sondes lisent le CODE SEUL — une citation en commentaire ne compte pas. */
+const codeSeul = (s: string): string =>
+  s
+    .split("\n")
+    .filter((l) => {
+      const t = l.trimStart();
+      return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+    })
+    .join("\n");
+
+const RENDERER = "src/components/pdf/pdfRenderer.ts";
+const AUTORITAIRE = "src/app/api/casefile/pdf/route.ts";
+const NON_AUTORITAIRES = [
+  "src/app/api/pdf/casefile/route.ts",
+  "src/app/api/report/casefile/route.ts",
+] as const;
+
+const scanMinimal = (): any => ({
+  mint: "So11111111111111111111111111111111111111112",
+  scanned_at: new Date().toISOString(),
+  off_chain: { claims: [], source: "test", status: "Referenced", summary: "test", case_id: "TEST" },
+  on_chain: {
+    markets: {
+      source: null, primary_pool: null, dex: null, url: null, price: null,
+      liquidity_usd: null, volume_24h_usd: null, fdv_usd: null,
+      fetched_at: new Date().toISOString(), cache_hit: false,
+    },
+  },
+  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { claim_penalty: 0, severity_multiplier: 1 } },
+});
+
+// ═════════════════════════════════════════════════════════════════════════
+// AXE X · L'ARTEFACT NON AUTORITAIRE DOIT ÊTRE DISTINGUABLE
+// ═════════════════════════════════════════════════════════════════════════
+
+describe("S12/x1 — CONSTAT : le document non autoritaire se dit « INTERLIGENS CaseFile »", () => {
+  it("COMPORTEMENTAL — le générateur non autoritaire signe le document", () => {
+    const html = renderCaseFilePDF(scanMinimal(), "en", null);
+    expect(html).toContain("<title>INTERLIGENS CaseFile</title>");
+    expect(html).toContain(">INTERLIGENS</div>");
+  });
+
+  it("et il ne porte AUCUNE marque de non-autorité", () => {
+    const html = renderCaseFilePDF(scanMinimal(), "en", null);
+    expect(html).not.toMatch(/not authoritative|non autoritaire|unofficial|NOT THE CANONICAL/i);
+  });
+
+  it("les deux surfaces non autoritaires passent bien par ce générateur", () => {
+    for (const f of NON_AUTORITAIRES) {
+      expect(codeSeul(SRC(f)), f).toContain("renderCaseFilePDF");
+    }
+    // La surface autoritaire, elle, passe par un AUTRE générateur.
+    expect(codeSeul(SRC(AUTORITAIRE))).not.toContain("renderCaseFilePDF");
+    expect(codeSeul(SRC(AUTORITAIRE))).toMatch(/generateCaseFilePdf|pdfGeneratorPublic/);
+  });
+
+  it("MESURÉ — la distinction n'existe que dans le CHEMIN D'URL", () => {
+    // Et un chemin ne voyage pas avec le fichier. C'est tout le risque.
+    const marqueDAutorite = /AUTHORITATIVE|AUTORITAIRE|canonical_authority|authorityMark/;
+    expect(codeSeul(SRC(RENDERER))).not.toMatch(marqueDAutorite);
+    for (const g of ["src/lib/casefile/pdfGenerator.ts", "src/lib/casefile/pdfGeneratorPublic.ts"]) {
+      expect(codeSeul(SRC(g)), g).not.toMatch(marqueDAutorite);
+    }
+  });
+});
+
+// ─── Le critère d'acceptation ────────────────────────────────────────────
+
+type Autorite = "AUTORITAIRE" | "NON_AUTORITAIRE";
+/** Où une marque peut vivre. Une seule de ces places voyage avec la pièce. */
+interface Marquage {
+  /** Dans le document lui-même — la seule qui compte. */
+  dansLeDocument: boolean;
+  /** Dans l'en-tête ou le corps de la réponse HTTP — ne voyage pas. */
+  dansLaReponseHttp: boolean;
+}
+type ImplX = (a: Autorite) => Marquage;
+
+const AUTORITES: Autorite[] = ["AUTORITAIRE", "NON_AUTORITAIRE"];
+
+function batterieX(impl: ImplX): string[] {
+  const v: string[] = [];
+  const dit = (ok: boolean, c: string) => { if (!ok && !v.includes(c)) v.push(c); };
+
+  const na = impl("NON_AUTORITAIRE");
+  const au = impl("AUTORITAIRE");
+
+  // X1 — une pièce non autoritaire doit être distinguable SUR SA FACE.
+  dit(na.dansLeDocument === true, "X1 non-autoritaire-indistinguable");
+  // X2 — marquer la réponse HTTP ne suffit pas : le document circule, la
+  // réponse non. Un PDF transféré par courriel n'emporte aucun en-tête.
+  dit(!(na.dansLaReponseHttp && !na.dansLeDocument), "X2 marque-hors-du-document");
+  // X3 — SUR-CORRECTION. Le livrable canonique NE PORTE PAS de marque de
+  // non-autorité : une règle qui marque tout ne distingue rien.
+  dit(au.dansLeDocument === false, "X3 canonique-marque-non-autoritaire");
+  // X4 — les deux autorités doivent produire des faces DIFFÉRENTES. Marquer
+  // les deux identiquement, ou aucune, laisse l'ambiguïté entière.
+  dit(na.dansLeDocument !== au.dansLeDocument, "X4 faces-identiques");
+  return v;
+}
+
+const TEMOIN_X: ImplX = (a) => ({
+  dansLeDocument: a === "NON_AUTORITAIRE",
+  dansLaReponseHttp: a === "NON_AUTORITAIRE",
+});
+
+describe("S12/x2 — CRITÈRE : la marque vit DANS le document, et seulement sur le non autoritaire", () => {
+  it("le TÉMOIN passe", () => expect(batterieX(TEMOIN_X)).toEqual([]));
+
+  const MUTANTS_X: Array<{ nom: string; critere: string; impl: ImplX }> = [
+    {
+      nom: "LE DÉFAUT ACTUEL — aucune marque nulle part, les deux faces sont identiques",
+      critere: "X1 non-autoritaire-indistinguable",
+      impl: () => ({ dansLeDocument: false, dansLaReponseHttp: false }),
+    },
+    {
+      nom: "marqué UNIQUEMENT dans la réponse HTTP — le PDF part sans rien",
+      critere: "X2 marque-hors-du-document",
+      impl: (a) => ({ dansLeDocument: false, dansLaReponseHttp: a === "NON_AUTORITAIRE" }),
+    },
+    {
+      nom: "SUR-CORRECTION — TOUT est marqué non autoritaire, y compris le canonique",
+      critere: "X3 canonique-marque-non-autoritaire",
+      impl: () => ({ dansLeDocument: true, dansLaReponseHttp: true }),
+    },
+    {
+      nom: "PROMOTION IMPLICITE — la surface non autoritaire est traitée comme canonique",
+      // Elle génère un PDF, elle s'appelle « casefile », donc on la croit
+      // autoritaire. DECLARED CANONICALITY != CONSUMED AUTHORITY, transposé
+      // aux livrables : ce n'est pas le nom qui fait l'autorité.
+      critere: "X1 non-autoritaire-indistinguable",
+      impl: (a) => ({ dansLeDocument: false, dansLaReponseHttp: a === "AUTORITAIRE" }),
+    },
+  ];
+
+  for (const m of MUTANTS_X) {
+    it(`MORD — ${m.nom}`, () => {
+      const viol = batterieX(m.impl);
+      expect(viol, `SURVIVANT — ${m.nom}`).not.toEqual([]);
+      expect(viol, `tué, mais pas par ${m.critere}`).toContain(m.critere);
+    });
+  }
+
+  it("GARDE ANTI-VACUITÉ — chaque critère X est tué, et aucun n'échappe à la liste", () => {
+    const CRITERES_X = [
+      "X1 non-autoritaire-indistinguable",
+      "X2 marque-hors-du-document",
+      "X3 canonique-marque-non-autoritaire",
+      "X4 faces-identiques",
+    ];
+    const tues = new Set(MUTANTS_X.flatMap((m) => batterieX(m.impl)));
+    expect(CRITERES_X.filter((c) => !tues.has(c))).toEqual([]);
+    expect([...tues].filter((c) => !CRITERES_X.includes(c))).toEqual([]);
+    expect(AUTORITES).toHaveLength(2);
+    expect(MUTANTS_X.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("l'ambiguïté d'aujourd'hui, passée à la batterie : le défaut actuel MEURT", () => {
+    // La production ne satisfait pas ce critère, et c'est ce qu'on dit.
+    const AUJOURDHUI: ImplX = () => ({ dansLeDocument: false, dansLaReponseHttp: false });
+    expect(batterieX(AUJOURDHUI)).toContain("X1 non-autoritaire-indistinguable");
+    expect(batterieX(AUJOURDHUI)).toContain("X4 faces-identiques");
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════
+// AXE Y · L'UNIVERS DU REGISTRE — COUVERT, ET BORNÉ
+// ═════════════════════════════════════════════════════════════════════════
+//
+// L'univers gouverné, repris de la définition qui le borne : surfaces qui
+// SERVENT UNE DÉCISION OU UNE ASSERTION FORENSIC · GÉNÈRENT un
+// CaseFile/report/PDF/export · EXPOSENT une projection partenaire/retail/
+// counsel · PEUVENT FAIRE SORTIR UNE PIÈCE PORTABLE DU SYSTÈME.
+//
+// « Exhaustif dans son DOMAINE GOUVERNÉ, pas exhaustif sur src/app/api/**. »
+// Une garde qui exige l'impossible finit désactivée — l'argument anti-bruit
+// était juste ; ce qui était faux, c'est de garder la revendication absolue.
+
+/** Les marqueurs du domaine gouverné. Deux familles, tenues courtes. */
+const MARQUEURS_GOUVERNES: Array<{ famille: string; motif: RegExp }> = [
+  {
+    famille: "lecture de dossier",
+    motif:
+      /loadCaseByMint|loadPublicProjection|loadCanonicalCaseFile|toInternalCaseView|tokenCaseFile\.|platformCaseFile\.|IL-(?:PND|PON|SHILL|CONC)-[A-Z0-9]+-\d+/,
+  },
+  {
+    famille: "émission de pièce portable",
+    motif: /renderCaseFilePDF|generateCaseFilePdf|pdfGeneratorPublic|uploadPdf\(|puppeteer/,
+  },
+];
+
+const fichiersSource = (racine: string): string[] => {
+  const out: string[] = [];
+  for (const e of readdirSync(racine, { withFileTypes: true })) {
+    const p = join(racine, e.name);
+    if (e.isDirectory()) out.push(...fichiersSource(p));
+    else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) out.push(p);
+  }
+  return out;
+};
+
+const TOUS = fichiersSource("src/app");
+const GOUVERNEES = TOUS.filter((f) =>
+  MARQUEURS_GOUVERNES.some((m) => m.motif.test(codeSeul(SRC(f)))),
+).sort();
+const DECLAREES = new Set(CASEFILE_SURFACES.map((s) => s.file));
+const NON_DECLAREES = GOUVERNEES.filter((f) => !DECLAREES.has(f));
+const DECLAREES_NON_DETECTEES = [...DECLAREES].filter((f) => !GOUVERNEES.includes(f)).sort();
+
+describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE STRICT", () => {
+  it("ANTI-BRUIT — le domaine gouverné ne s'étend pas à toutes les routes", () => {
+    // Mesuré : 25 surfaces sur 599 fichiers de `src/app`. Une garde qui
+    // exigerait la déclaration de tout `src/app/api/**` finirait désactivée,
+    // et c'est ce que les auteurs du registre avaient raison de refuser.
+    expect(TOUS.length).toBeGreaterThan(400);
+    expect(GOUVERNEES.length).toBeLessThan(TOUS.length / 10);
+    expect(GOUVERNEES.length).toBeGreaterThan(0);
+  });
+
+  it("aucune route purement technique n'est capturée", () => {
+    // Le test de bruit, nommé : ces routes existent, elles ne publient rien.
+    for (const t of ["src/app/api/health/route.ts"]) {
+      if (TOUS.includes(t)) expect(GOUVERNEES, t).not.toContain(t);
+    }
+    expect(GOUVERNEES.filter((f) => /\/(health|cron|webhook|revalidate)\//.test(f))).toEqual([]);
+  });
+
+  it("CONSTAT — TREIZE surfaces gouvernées échappent au registre, et les voici", () => {
+    // Elles sont NOMMÉES. Une quatorzième fait rougir ce test le jour où elle
+    // apparaît — c'est tout ce qu'on demande à un témoin d'univers.
+    expect(NON_DECLAREES).toEqual([
+      "src/app/api/admin/graph/cases/[id]/pdf/route.ts",
+      "src/app/api/admin/plainte/generate/route.ts",
+      "src/app/api/mobile/v1/scan/route.ts",
+      "src/app/api/partner/v1/batch-score/route.ts",
+      "src/app/api/partner/v1/score-lite/route.ts",
+      "src/app/api/partner/v1/transaction-check/route.ts",
+      "src/app/api/pdf/casefile/route.ts",
+      "src/app/api/pdf/kol/route.ts",
+      "src/app/api/report/v2/route.ts",
+      "src/app/api/scan/solana/route.ts",
+      "src/app/api/scan/timeline/[address]/route.ts",
+      "src/app/api/v1/scan-context/route.ts",
+      "src/app/api/v1/score/route.ts",
+    ]);
+  });
+
+  it("les TROIS qui publient un dossier COMPLET hors registre sont dedans", () => {
+    for (const f of [
+      "src/app/api/scan/solana/route.ts",
+      "src/app/api/report/v2/route.ts",
+      "src/app/api/pdf/casefile/route.ts",
+    ]) {
+      expect(NON_DECLAREES, `${f} devrait être signalée`).toContain(f);
+    }
+  });
+
+  it("LIMITE DÉCLARÉE — le détecteur est une BORNE INFÉRIEURE, pas la vérité", () => {
+    // Une surface DÉCLARÉE échappe à mes marqueurs. Le détecteur ne remplace
+    // donc pas le registre : il l'ATTAQUE. Prétendre l'inverse ferait de ce
+    // fichier une autorité qu'il n'est pas — et c'est exactement l'erreur que
+    // l'axe U nomme.
+    expect(DECLAREES_NON_DETECTEES).toEqual(["src/app/api/admin/export/botify/route.ts"]);
+  });
+});
+
+// ─── Le critère d'acceptation ────────────────────────────────────────────
+
+interface Candidat { fichier: string; famille: string | null }
+type ImplY = (c: Candidat) => { gouvernee: boolean };
+
+const CANDIDATS: Candidat[] = [
+  { fichier: "src/app/api/pdf/casefile/route.ts", famille: "émission de pièce portable" },
+  { fichier: "src/app/api/report/v2/route.ts", famille: "émission de pièce portable" },
+  { fichier: "src/app/api/scan/solana/route.ts", famille: "lecture de dossier" },
+  { fichier: "src/app/api/health/route.ts", famille: null },
+  { fichier: "src/app/api/cron/ping/route.ts", famille: null },
+];
+
+function batterieY(impl: ImplY): string[] {
+  const v: string[] = [];
+  const dit = (ok: boolean, c: string) => { if (!ok && !v.includes(c)) v.push(c); };
+  for (const c of CANDIDATS) {
+    if (c.famille !== null) {
+      // Y1 — une surface du domaine gouverné ne s'échappe pas.
+      dit(impl(c).gouvernee === true, "Y1 surface-gouvernee-non-detectee");
+    } else {
+      // Y2 — SUR-CORRECTION. Une route technique n'entre pas dans l'univers :
+      // une garde bruyante finit désactivée, et une garde désactivée ne garde
+      // rien. L'anti-bruit est une PROPRIÉTÉ, pas une commodité.
+      dit(impl(c).gouvernee === false, "Y2 route-technique-capturee");
+    }
+  }
+  // Y3 — l'univers doit rester un sous-ensemble STRICT.
+  dit(CANDIDATS.some((c) => !impl(c).gouvernee), "Y3 univers-elargi-a-tout");
+  // Y4 — et non vide : un détecteur qui ne détecte rien satisfait Y2 et Y3.
+  dit(CANDIDATS.some((c) => impl(c).gouvernee), "Y4 univers-vide");
+  return v;
+}
+
+const TEMOIN_Y: ImplY = (c) => ({ gouvernee: c.famille !== null });
+
+describe("S12/y2 — CRITÈRE : couvrir le domaine gouverné, et lui seul", () => {
+  it("le TÉMOIN passe", () => expect(batterieY(TEMOIN_Y)).toEqual([]));
+
+  const MUTANTS_Y: Array<{ nom: string; critere: string; impl: ImplY }> = [
+    {
+      nom: "LE DÉFAUT ACTUEL — les marqueurs manquent `loadCaseByMint`, trois surfaces s'échappent",
+      critere: "Y1 surface-gouvernee-non-detectee",
+      impl: (c) => ({ gouvernee: c.famille === "émission de pièce portable" && !c.fichier.includes("pdf/casefile") }),
+    },
+    {
+      nom: "SUR-CORRECTION — l'univers devient TOUT `src/app/api/**`",
+      critere: "Y2 route-technique-capturee",
+      impl: () => ({ gouvernee: true }),
+    },
+    {
+      nom: "SUR-CORRECTION — plus rien n'est gouverné, le registre devient vide",
+      critere: "Y4 univers-vide",
+      impl: () => ({ gouvernee: false }),
+    },
+  ];
+
+  for (const m of MUTANTS_Y) {
+    it(`MORD — ${m.nom}`, () => {
+      const viol = batterieY(m.impl);
+      expect(viol, `SURVIVANT — ${m.nom}`).not.toEqual([]);
+      expect(viol, `tué, mais pas par ${m.critere}`).toContain(m.critere);
+    });
+  }
+
+  it("GARDE ANTI-VACUITÉ — chaque critère Y est tué, et aucun n'échappe à la liste", () => {
+    const CRITERES_Y = [
+      "Y1 surface-gouvernee-non-detectee",
+      "Y2 route-technique-capturee",
+      "Y3 univers-elargi-a-tout",
+      "Y4 univers-vide",
+    ];
+    const tues = new Set(MUTANTS_Y.flatMap((m) => batterieY(m.impl)));
+    // Y3 est co-déclenché par le mutant « tout est gouverné » : c'est voulu,
+    // les deux disent la même sur-correction sous deux angles.
+    expect(CRITERES_Y.filter((c) => !tues.has(c))).toEqual([]);
+    expect([...tues].filter((c) => !CRITERES_Y.includes(c))).toEqual([]);
+    expect(CANDIDATS).toHaveLength(5);
+    expect(CANDIDATS.filter((c) => c.famille === null)).toHaveLength(2);
+  });
+});
