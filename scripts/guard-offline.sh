@@ -458,26 +458,6 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
-# Exceptions pour BUILD 13 · S2 — LA FRONTIÈRE D'APPLICATION DU `ref`.
-# `prisma/seed-lab.ts:470` écrit `upsert({ where:{ref:REF}, create:data,
-# update:data })` où `data` porte `ref: REF` (ligne 372) : la stabilité de la
-# référence tient à une COÏNCIDENCE DE LITTÉRAL, pas à l'exclusion de la colonne
-# de la charge. Le geste est le routage de CET upsert par la primitive gouvernée
-# — `create: assignRef(data)` (RC-3, assignation unique) et
-# `update: withoutRef(data)` (RC-2, la mise à jour ordinaire ne porte pas le ref).
-# LA CAPACITÉ RESTE VIVE : le seed écrit toujours la même ligne, la clôture
-# l'exige (« no capability-removal closure »). Aucun nettoyage opportuniste,
-# aucun reformatage, aucun autre seed, aucune écriture DB depuis la CI, aucune
-# migration, aucun DDL. Autorisation humaine explicite (David, GPT — SEED WINDOW
-# GO) — voir PR description. Exemption STRICTEMENT limitée au SEUL fichier
-# prisma/ concerné ; AUCUN wildcard sur prisma/ (schema, migrations et tout
-# autre seed restent bloqués sur cette branche comme ailleurs).
-if [[ "$BRANCH" =~ ^hotfix/s2-seed-lab-frontiere$ ]]; then
-    EXEMPT_S2_SEED_LAB_PATTERNS=(
-        "^prisma/seed-lab\.ts$"
-    )
-fi
-
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -867,19 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche hotfix/s2-seed-lab-frontiere, exempter STRICTEMENT le SEUL
-    # fichier prisma/ du routage par la primitive (aucun wildcard prisma/).
-    if [[ "$BRANCH" =~ ^hotfix/s2-seed-lab-frontiere$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_S2_SEED_LAB_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
