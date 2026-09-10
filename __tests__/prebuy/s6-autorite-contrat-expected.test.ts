@@ -58,13 +58,52 @@
 //
 // A · le critère d'appartenance est le MOTIF, pas la présence dans `missing` ;
 // B · |missing| et `expected` sont indépendants (forme EVM en production) ;
-// C · le mutant d'APPARTENANCE mord : « holders DANS expected » a un
-//     comportement observable, et ce n'est pas celui de la production ;
+// C · « holders DANS expected » se réfute par un DILEMME sur deux règles de
+//     comptage — corrigé le 2026-09-10, voir la rectification ci-dessous ;
 // D · l'arithmétique du site n'est cohérente que sous la lecture HORS contrat ;
 // E · ancrage lexical du site et de l'autorité.
 //
 // A à D s'exécutent contre les FONCTIONS RÉELLES exportées par
 // canonicalDecision.ts. Aucune réimplémentation n'est testée à leur place.
+//
+// ─── RECTIFICATION DATÉE DU 2026-09-10 — la section C était SURQUALIFIÉE ──
+//
+// Ce que ce fichier affirmait à sa première écriture, et qui est FAUX :
+//
+//   « MUTANT-2 : l'état contradictoire est OBSERVABLE. » — et, dans le message
+//   de d8104ea : « Réfutation COMPORTEMENTALE de l'appartenance, indépendante
+//   de solManquants. »
+//
+// T1 l'a falsifié en construisant l'écriture que j'affirmais impossible.
+// ÉTAT B — `expected: 3`, `holders` PARMI les trois, décrément gaté sur
+// FAILURE. `holders` éteint émet alors NOT_REQUESTED_BY_CONTRACT, le décrément
+// ne le compte pas, `expectedMeasured` reste 3 : la branche l. 109 évalue
+// 3 < 3 → false, elle NE MORD PAS, et le motif est dans HORS_CONTRAT. L'état B
+// est donc INDISTINGUABLE de la production sur tout comportement observable.
+//
+// Mon ablation M-b ne prouvait pas ce que je lui faisais dire : elle prouve que
+// la l. 109 mord sur MA FIXTURE — qui pose `expected: 4`, donc 3 < 4 — et non
+// que la production emprunte cette branche. La production ne l'emprunte pas.
+//
+// CE QUI RÉFUTE RÉELLEMENT L'APPARTENANCE est un dilemme sur les deux seules
+// règles de comptage possibles, si `holders` était l'un des trois :
+//
+//   BRAS A — le décrément le compte. `holders` éteint en permanence (mesuré
+//            des deux côtés le 2026-09-09) donne 2/3, donc `degraded: true` sur
+//            TOUTE réponse SOL. Refusé explicitement par route.ts:348-351.
+//   BRAS C — le décrément ne le compte pas. `expectedMeasured` affirme alors
+//            TROIS attendus aboutis dont l'un est admis absent — contre sa
+//            propre définition, « Ceux des attendus qui ont abouti »
+//            (canonicalDecision.ts:52). La valeur ment.
+//
+// Les deux bras sont refusés, donc `holders` n'est pas l'un des trois. C'est
+// une réfutation DÉFINITIONNELLE, et elle est plus forte que l'affirmation
+// d'impossibilité qu'elle remplace, parce qu'elle est vérifiable : le bras C
+// s'exhibe, section C3.
+//
+// Même famille que l'avertissement de P4 : une garde décrite plus fort qu'elle
+// n'est. Un lecteur qui croirait tenir ici un `degraded: true` observable
+// serait déçu au premier test réel — C3 le lui montre au lieu de le lui cacher.
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -142,16 +181,17 @@ describe("B · la forme EVM en production réfute le comptage", () => {
   });
 });
 
-// ═══ C · LE MUTANT D'APPARTENANCE ═════════════════════════════════════════
+// ═══ C · LE DILEMME D'APPARTENANCE ════════════════════════════════════════
 
-describe("C · déplacer `holders` DANS `expected` mord", () => {
+describe("C · « holders DANS expected » se réfute par un dilemme, pas par une morsure", () => {
   /**
-   * Le mutant ne touche ni un seuil ni un compte de WARN : il déplace UNE
-   * ligne d'un côté à l'autre du dénominateur. Les deux formes possibles de
-   * ce déplacement sont testées, et les deux changent le comportement.
+   * Les mutants ne touchent ni un seuil ni un compte de WARN : ils déplacent
+   * UNE ligne d'un côté à l'autre du dénominateur. Mais ils ne mordent pas
+   * tous, et c'est le point — C1 est le BRAS A du dilemme, C3 est le BRAS C,
+   * et C3 ne mord sur RIEN d'observable. Voir la rectification en tête.
    */
 
-  it("MUTANT-1 — holders membre ET en panne : `degraded` bascule", () => {
+  it("C1 · BRAS A — holders membre ET compté au décrément : `degraded` bascule", () => {
     const mutant: FaitsDeMesure = {
       expected: 4,
       expectedMeasured: 3,
@@ -162,26 +202,55 @@ describe("C · déplacer `holders` DANS `expected` mord", () => {
     expect(contratSatisfait(mutant)).toBe(false);
   });
 
-  it("MUTANT-2 — holders membre ET HORS CONTRAT : l'état contradictoire est OBSERVABLE", () => {
+  it("C2 · le dénominateur gonflé mord — mais sur l'arithmétique, PAS sur l'appartenance", () => {
     /**
-     * C'est l'état que j'affirmais impossible — « simultanément DANS le
-     * dénominateur et HORS contrat, les deux ne peuvent pas être vrais
-     * ensemble ». Il est parfaitement exprimable. Ce qui est faux, c'est qu'il
-     * décrive la production : `estDegrade` mord dessus par sa PREMIÈRE branche
-     * (l'arithmétique, canonicalDecision.ts:109) avant même de regarder le
-     * motif. `holders` membre ferait donc `degraded: true` sur TOUTE réponse
-     * SOL — exactement ce que la justification de route.ts:348-351 refuse.
+     * Fixture d'origine de l'ancien « MUTANT-2 », conservée avec sa vraie
+     * portée. `expected: 4` fait évaluer 3 < 4 à la l. 109 : ce qui mord est
+     * le dénominateur GONFLÉ, pas le fait que `holders` soit membre. C'est
+     * précisément ce que mon ablation M-b mesurait, et rien de plus.
      */
-    const mutant: FaitsDeMesure = {
+    const gonfle: FaitsDeMesure = {
       expected: 4,
       expectedMeasured: 3,
       missing: [HOLDERS_HORS_CONTRAT],
     };
-    expect(estDegrade(mutant)).toBe(true);
+    expect(estDegrade(gonfle)).toBe(true);
     expect(estDegrade(PROD_HOLDERS_ETEINT)).toBe(false);
   });
 
-  it("le mutant traverse la décision canonique entière, pas seulement le prédicat", () => {
+  it("C3 · BRAS C — l'état B de T1 est INDISTINGUABLE de la production", () => {
+    /**
+     * ⚠ CE TEST N'EST PAS UNE GARDE. Il exhibe une LIMITE, et il est ici pour
+     * qu'aucun lecteur ne croie tenir un `degraded: true` observable.
+     *
+     * ÉTAT B — `expected: 3`, `holders` PARMI les trois, décrément gaté sur
+     * FAILURE. Aucun observable ne le sépare de la production : mêmes nombres,
+     * même `missing`, même verdict, même `degraded`. La l. 109 n'est pas
+     * empruntée. Si l'appartenance de `holders` devait se trancher par le
+     * comportement seul, elle serait INDÉCIDABLE.
+     */
+    const etatB: FaitsDeMesure = { expected: 3, expectedMeasured: 3, missing: [HOLDERS_HORS_CONTRAT] };
+
+    expect(estDegrade(etatB)).toBe(estDegrade(PROD_HOLDERS_ETEINT));
+    expect(contratSatisfait(etatB)).toBe(contratSatisfait(PROD_HOLDERS_ETEINT));
+    expect(etatB).toEqual(PROD_HOLDERS_ETEINT);
+
+    /**
+     * Ce qui tue le bras C n'est donc pas un comportement, c'est la DÉFINITION
+     * du champ : « Ceux des attendus qui ont abouti » (canonicalDecision.ts:52).
+     * Sous l'état B, cette valeur vaut 3 alors que l'un des trois est nommé
+     * absent dans `missing`. La valeur ment sur elle-même — et le mensonge est
+     * exhibable, lui.
+     */
+    const nommesAbsents = etatB.missing.map((m) => m.engine);
+    expect(nommesAbsents).toContain("holders");
+    expect(etatB.expectedMeasured).toBe(3);
+    // Trois aboutis affirmés, et l'un des trois est dans la liste des absents.
+    // C'est la contradiction, et elle est arithmétique, pas comportementale.
+    expect(etatB.expectedMeasured + nommesAbsents.length).toBeGreaterThan(etatB.expected);
+  });
+
+  it("C4 · le bras A traverse la décision canonique entière, pas seulement le prédicat", () => {
     const decide = (m: FaitsDeMesure) =>
       canonicalPreBuyDecision({
         score: 10,
