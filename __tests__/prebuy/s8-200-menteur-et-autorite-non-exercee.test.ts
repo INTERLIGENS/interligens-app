@@ -534,6 +534,29 @@ describe("S8/u1 — CONSTAT : l'autorité de verdict est déclarée, jamais exer
  *
  * Si tu veux le rouge franc malgré ce coût, c'est une ligne à changer et je la
  * change : `it.fails` → `it`, en retirant la négation.
+ *
+ * ─── CE QU'IL FAUDRA FAIRE LE JOUR OÙ IL ROUGIT — gravé le 2026-09-10 ────
+ *
+ * ██  RETIRER LE TÉMOIN. Pas le passer en `.skip`, pas le commenter, pas   ██
+ * ██  inverser l'assertion pour le rendre vert.                            ██
+ *
+ * Ce témoin rougit pour UNE seule raison possible : une surface gouvernée
+ * s'est mise à fournir un verdict REFLEX. Ce n'est pas une régression, c'est
+ * la fin de la dette qu'il enregistrait. Le geste correct, en un seul commit :
+ *
+ *   1. supprimer ce `it.fails` ET le `it` qui l'accompagne (« le compte des
+ *      surfaces dérivantes est ZÉRO ») — les deux disent la même dette, et
+ *      laisser le second en ferait une assertion FAUSSE gardée comme vraie ;
+ *   2. écrire à la place l'anti-régression correspondante : la surface qui
+ *      dérive doit CONTINUER de dériver, et `verdictSource` doit valoir
+ *      "REFLEX" sur son chemin ;
+ *   3. rectifier le constat S8/u1 — « l'autorité de verdict est déclarée,
+ *      jamais exercée » cesse d'être vrai le jour-là, et un dépôt qui garde
+ *      une affirmation périmée ment à qui le lira ensuite.
+ *
+ * `.skip` est le seul geste explicitement INTERDIT ici : il éteint le signal
+ * en laissant croire qu'il veille. C'est la forme la plus discrète du seuil
+ * mort, et elle est la raison d'être de ce paragraphe.
  */
 describe("S8/u2 — TÉMOIN : le jour où un consommateur gouverné dérive", () => {
   const GOUVERNEES = [
