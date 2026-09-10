@@ -92,6 +92,67 @@ export async function GET() {
   return repondre(projeterIntegralement(admettreAnonyme("motif"), dossier));
 }`,
   },
+
+  // ─── L'ÉLARGISSEMENT AUX CORPS NON-JSON ────────────────────────────────
+  //
+  // Mesuré sur le dépôt : SEPT routes sur dix-neuf rendent un corps que
+  // `JSON.stringify` ne sait pas produire. Une frontière incapable d'exprimer
+  // ce que la route doit émettre est contournée — et ici le contournement
+  // serait le cas MAJORITAIRE des artefacts portables, ceux dont la
+  // gouvernance compte le plus.
+  //
+  // Le risque de l'élargissement était précis : ouvrir une porte par laquelle
+  // le binaire échapperait à la frontière. Les deux cas suivants sont la
+  // mesure de ce risque, et c'est `octets-nus` qui décide.
+  {
+    nom: "document-projete",
+    compile: true,
+    source: `import { admettreAnonyme, projeterDocument, repondre } from "${MECANISME}";
+export async function GET() {
+  const a = admettreAnonyme("dossier public");
+  return repondre(
+    projeterDocument(a, { ref: "R" }, () => new Uint8Array([1]), "application/pdf"),
+    { status: 200, headers: { "content-disposition": "inline" } },
+  );
+}`,
+  },
+  {
+    nom: "octets-nus",
+    compile: false,
+    source: `import { repondre } from "${MECANISME}";
+export async function GET() {
+  return repondre({ forme: "octets", typeMime: "application/pdf", octets: new Uint8Array([1]) });
+}`,
+  },
+  {
+    nom: "reponse-comme-charge",
+    compile: false,
+    source: `import type { Charge } from "${MECANISME}";
+export const c: Charge = { forme: "reponse", reponse: new Response("x") };`,
+  },
+  {
+    nom: "projection-json-rend-response",
+    compile: false,
+    source: `import { admettreAnonyme, projeter, repondre } from "${MECANISME}";
+const a = admettreAnonyme("m");
+export async function GET() { return repondre(projeter(a, { ref: "R" }, () => new Response("x"))); }`,
+  },
+  {
+    nom: "attestee-la-ou-restreinte-exigee",
+    compile: false,
+    source: `import { admettreAnonyme, projeterDocument, exigerRestreinte } from "${MECANISME}";
+const a = admettreAnonyme("m");
+export const x = exigerRestreinte(
+  projeterDocument(a, { ref: "R" }, () => new Uint8Array([1]), "application/pdf"),
+);`,
+  },
+  {
+    nom: "restreinte-exigee-et-fournie",
+    compile: true,
+    source: `import { admettreAnonyme, projeter, exigerRestreinte } from "${MECANISME}";
+const a = admettreAnonyme("m");
+export const x = exigerRestreinte(projeter(a, { ref: "R", i: 1 }, (e) => ({ ref: e.ref })));`,
+  },
 ];
 
 let erreursParFichier = new Map<string, string>();
@@ -151,6 +212,35 @@ describe("S23/t — LA FORME : la frontière refuse ce qui n'a pas traversé", (
     // projeter » : il n'existe aucun chemin de type entre un objet nu et le
     // paramètre que la frontière accepte.
     expect(erreursParFichier.get("emission-brute")).toContain("not assignable");
+  });
+
+  // ─── (c) LA QUESTION QUE L'ÉLARGISSEMENT POSE, NOMMÉE ET NON TRANCHÉE ──
+  //
+  // Que veut dire « projeter » un PDF ?
+  //
+  //   Sur du JSON, la projection LIT la donnée et en retire. Ce qui sort est
+  //   ce qui a été retenu, et l'écart entre l'entrée et la sortie est
+  //   DÉMONTRABLE.
+  //
+  //   Sur un flux d'octets, elle ne peut RIEN retirer. Elle ne peut
+  //   qu'ATTESTER que le document a été produit sous une décision d'audience.
+  //
+  // Ce sont deux propriétés, et la seconde est PLUS FAIBLE. Faut-il qu'elles
+  // portent le même nom ? Ce fichier ne le tranche pas — ce n'est pas une
+  // question de mécanisme, c'est une question de ce qu'on a le droit
+  // d'affirmer, et elle appartient au même arbitrage que la classification
+  // d'audience.
+  //
+  // Ce que le mécanisme fait en attendant : il les REND DISTINCTES plutôt que
+  // de laisser croire à une garantie uniforme. Un consommateur qui exige une
+  // restriction démontrée le dit par le type, et une charge attestée n'y est
+  // pas assignable. C'est la règle déjà appliquée au générateur : un invariant
+  // qui laisserait croire qu'il couvre tout serait pire que son absence.
+  it("(c) LES DEUX GARANTIES SONT MÉCANIQUEMENT DISTINCTES, et la question reste ouverte", () => {
+    // Attestée là où restreinte est exigée → REFUSÉ par le compilateur.
+    expect(erreursParFichier.get("attestee-la-ou-restreinte-exigee")).toBeDefined();
+    // Restreinte exigée et fournie → accepté.
+    expect(erreursParFichier.get("restreinte-exigee-et-fournie")).toBeUndefined();
   });
 
   it("« intégrale anonyme » est refusée SUR L'AUDIENCE — le second axe mord", () => {
@@ -223,7 +313,15 @@ function classer(source: string): Classement {
   const effectifs = appels.map(resoudre);
 
   const contournee = effectifs.some((a) => /\bas\s+(?:unknown\s+as\s+)?(?:any|Admissible)/.test(a));
-  const portante = effectifs.some((a) => /^\s*projeter\s*\(/.test(a));
+  // ── LES FORMES DE PRODUCTION SONT TOUTES PORTANTES ────────────────────
+  //
+  // `projeterDocument`, `projeterTexte`, `projeterFlux` exigent une fonction de
+  // production au même titre que la projection JSON exige une restriction. Ne
+  // reconnaître que la forme JSON classerait toute route à artefact comme
+  // « sortie non projetée » — un faux rouge sur les sept routes non-JSON du
+  // dépôt, c'est-à-dire un impôt sur la seule famille de surfaces dont la
+  // gouvernance compte le plus. C'est M2 sous une autre écriture.
+  const portante = effectifs.some((a) => /^\s*projeter(?:Document|Texte|Flux)?\s*\(/.test(a));
   const integrale = effectifs.some((a) => /^\s*projeterIntegralement\s*\(/.test(a));
 
   const projection: Axe2 =
@@ -384,6 +482,24 @@ describe("S23/m — LES QUATRE MUTANTS", () => {
     const partenaireNu = classer(`const a = admettrePartenaire("k"); return repondre(d);`);
     expect(partenaireNu.audience).toBe("PARTNER");
     expect(partenaireNu.verdict).toBe("ROUGE");
+  });
+
+  it("NON-MUTANT — une route à ARTEFACT n'est pas taxée par la garde", () => {
+    // Le faux rouge que cette assertion existe pour empêcher : la garde ne
+    // reconnaissait d'abord que la projection JSON, et aurait classé « sortie
+    // non projetée » les sept routes non-JSON du dépôt — un impôt sur la seule
+    // famille de surfaces dont la gouvernance compte le plus.
+    for (const forme of ["projeterDocument", "projeterTexte", "projeterFlux"]) {
+      const r = classer(`
+        const a = admettreAnonyme("dossier public");
+        return repondre(${forme}(a, dossier, produire, "application/pdf"), { status: 200 });`);
+      expect(r.verdict, forme).toBe("CLASSEE");
+      expect(r.projection, forme).toBe("portante");
+    }
+    // Et l'émission intégrale reste distincte de la production : les deux sont
+    // portantes, elles ne disent pas la même chose.
+    const integrale = classer(`const a = admettreOperateur("g"); return repondre(projeterIntegralement(a, d));`);
+    expect(integrale.projection).toBe("integrale");
   });
 
   it("NON-MUTANT — une surface conforme n'est pas signalée", () => {
