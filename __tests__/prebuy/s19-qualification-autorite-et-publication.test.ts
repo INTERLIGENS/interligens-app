@@ -520,13 +520,25 @@ describe("S19/ag4a — 1 · LES DEUX SONT DISPONIBLES AU MÊME MOMENT", () => {
   it("LA RÈGLE QUI TRANCHE — il n'y en a toujours pas, et le gabarit décide en ordre dispersé", () => {
     const g = codeSeul(SRC(PDF_INTERNE));
 
-    // Les trois emplacements qui portent ENCORE la forme non gouvernée.
-    expect(g, "le TITRE du document").toContain("<h1>${esc(m.case_id)}</h1>");
+    // Les emplacements qui portent ENCORE la forme non gouvernée. Ils étaient
+    // trois ; le titre de tête est passé à la dérivation, et ils sont deux.
+    // Tous deux sont HORS DU CORPS DU DOCUMENT — un nom de fichier et une clé
+    // d'archive —, ce qui n'est pas un détail de périmètre : ce sont
+    // précisément les deux emplacements qu'aucun rendu ne montre au lecteur,
+    // donc les deux qu'une relecture d'artefact ne peut pas attraper.
     expect(g, "la CLÉ D'ARCHIVE R2").toContain("input.case_meta.case_id.replace(");
     expect(aplat(codeSeul(SRC(ROUTE_GENERATE))), "le NOM DE FICHIER servi")
       .toContain('filename="${input.case_meta.case_id}.pdf"');
 
-    // Celui qui est passé à l'autorité gouvernée — et il l'a fait par une
+    // Le TITRE DE TÊTE, passé à la dérivation après le pied de page. Il est
+    // ancré nommément parce que c'est le site corrigé : un correctif doit
+    // rougir là où il a été fait, pas seulement dans l'agrégat qui le contient.
+    expect(g, "le TITRE du document est reparti vers la forme non gouvernée")
+      .toContain("<h1>${esc(ref)}</h1>");
+    expect(g, "un emplacement du CORPS lit encore les métadonnées d'entrée")
+      .not.toMatch(/<h1>\$\{esc\(m\.case_id\)\}/);
+
+    // Le pied de page — et il l'a fait par une
     // DÉRIVATION, pas par une valeur figée : c'est ce qui le rend transposable
     // aux trois autres, et c'est pourquoi on l'ancre ici plutôt que de se
     // contenter de constater le résultat.
@@ -548,8 +560,19 @@ describe("S19/ag4b — 2 · DEUX ARTEFACTS DU MÊME DOSSIER SE CONTREDISENT", ()
     expect(aplat(codeSeul(SRC(PDF_SCAN)))).toContain("${off_chain.case_id ?? \"—\"}");
   });
 
-  it("le générateur INTERNE met la forme non gouvernée au même emplacement", () => {
-    expect(codeSeul(SRC(PDF_INTERNE))).toContain("<h1>${esc(m.case_id)}</h1>");
+  // ── CE CONSTAT EST CLOS, ET LE BLOC QUI LE CONTIENT NE L'EST PAS ───────
+  //
+  // Il épinglait que le générateur interne mettait la forme non gouvernée à
+  // l'emplacement d'identité de tête. Il l'y met désormais la forme gouvernée.
+  //
+  // Mais le bloc s'appelle « DEUX ARTEFACTS DU MÊME DOSSIER SE CONTREDISENT »,
+  // et ils se contredisent toujours : le PDF interne porte l'identité
+  // gouvernée, le renderer du scan porte ce que sa route lui donne, et les
+  // deux routes qui l'alimentent ne mettent pas la même famille dans ce champ.
+  // La contradiction a changé de porteur, elle n'a pas disparu.
+  it("le générateur INTERNE met désormais l'autorité GOUVERNÉE à l'emplacement de tête", () => {
+    expect(codeSeul(SRC(PDF_INTERNE))).toContain("<h1>${esc(ref)}</h1>");
+    expect(codeSeul(SRC(PDF_INTERNE))).not.toMatch(/<h1>\$\{esc\(m\.case_id\)\}/);
   });
 
   // ── UN SECOND FAUX VERT, DÉCOUVERT PAR LE RETOURNEMENT ────────────────
@@ -695,11 +718,29 @@ describe("S19/ag3j — 8 · INDÉPENDANCE (ii) : l'identité RENDUE ne l'est PAS
     );
   });
 
-  it("RENDERER — deux gabarits, deux identités à l'emplacement de tête", () => {
+  // ── L'AXE « RENDERER » EST CLOS DU CÔTÉ GOUVERNÉ, ET LUI SEUL ──────────
+  //
+  // L'assertion négative de la première écriture était mal visée, et le
+  // retournement le montre : elle interdisait UNE ÉCRITURE PRÉCISE
+  // (`input.canonical.ref` en tête) plutôt que la propriété. Le correctif a
+  // rendu l'emplacement gouverné par une AUTRE écriture — la variable dérivée —
+  // et l'assertion négative serait restée verte en certifiant le contraire de
+  // ce qu'elle annonçait. Encore une assertion plus lâche que son nom.
+  //
+  // Elle est donc reprise sur la PROPRIÉTÉ : l'emplacement de tête ne lit plus
+  // les métadonnées d'entrée, quelle que soit la façon dont il obtient sa
+  // valeur gouvernée.
+  it("RENDERER — le gabarit interne a rejoint l'autorité gouvernée en tête", () => {
     expect(codeSeul(SRC(PDF_SCAN)), "gabarit du scan").toContain("off_chain.case_id");
-    expect(codeSeul(SRC(PDF_INTERNE)), "gabarit interne").toContain("<h1>${esc(m.case_id)}</h1>");
-    // Et le gabarit interne ne met JAMAIS l'autorité gouvernée en tête.
-    expect(codeSeul(SRC(PDF_INTERNE))).not.toContain("<h1>${esc(input.canonical.ref)}");
+    expect(codeSeul(SRC(PDF_INTERNE)), "gabarit interne")
+      .toMatch(/<h1>\$\{esc\(ref\)\}<\/h1>/);
+    expect(codeSeul(SRC(PDF_INTERNE)), "l'emplacement de tête relit les métadonnées d'entrée")
+      .not.toMatch(/<h1>\$\{esc\(m\.case_id\)\}/);
+
+    // Le gabarit du SCAN, lui, n'a pas bougé : il imprime la chaîne qu'on lui
+    // donne, sans nommer l'espace dont elle vient. Les deux routes qui
+    // l'alimentent y mettent deux familles. C'est l'axe qui reste ouvert.
+    expect(codeSeul(SRC(PDF_SCAN))).not.toContain("IL-SHILL");
   });
 
   it("FORMAT — le conteneur décide, et il décide contre l'autorité gouvernée", () => {
