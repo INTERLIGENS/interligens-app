@@ -458,31 +458,6 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
-# Exceptions pour le containment BUILD 12 · S8 — LE 200 MENTEUR.
-# P0 PUBLICATION / COVERAGE INTEGRITY FAIL-OPEN, ratifié : le `catch` de
-# /api/scan/solana/graph rendait un 200 portant `overall_status: 'NONE'` — la
-# valeur FAVORABLE — avec un champ `error`. Les trois consommateurs serveur
-# testent `graphRes.ok`, VRAI : une panne d'accès aux données était lue comme
-# une lignée MESURÉE à « aucune ». Mesuré sur /api/v1/score le 2026-09-10 :
-# `expectedMeasured` 3/3, `degraded: false`, `phantom_warning_level` ALLOW, et
-# un objet `coverage` identique au caractère près à celui d'une vraie mesure.
-# INVARIANT posé : PROVIDER/DATA FAILURE != MEASURED ABSENCE.
-# Deux fichiers, deux gestes : le producteur rend un 5xx et ne porte plus de
-# lignée sur panne (voie du précédent `solana/holders/route.ts:24-30`) ; le
-# consommateur gouverné cesse de compter un corps porteur d'`error` comme une
-# mesure. Aucun code-motif nouveau (`FAILURE` existant), aucune écriture DB,
-# aucune migration, méthodologie de lignée NON touchée. Gate de sur-correction
-# verte : une lignée réellement mesurée à NONE reste mesurée, non dégradée.
-# Autorisation humaine explicite (David, voie 1) — voir PR description.
-# Exemption STRICTEMENT limitée aux 2 fichiers src/app/api/ concernés ;
-# AUCUN wildcard sur src/app/api/ (toute autre route reste bloquée).
-if [[ "$BRANCH" =~ ^hotfix/s8-graph-200-menteur$ ]]; then
-    EXEMPT_S8_GRAPH_MENTEUR_PATTERNS=(
-        "^src/app/api/scan/solana/graph/route\.ts$"
-        "^src/app/api/v1/score/route\.ts$"
-    )
-fi
-
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -872,19 +847,6 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche hotfix/s8-graph-200-menteur, exempter STRICTEMENT les 2
-    # fichiers src/app/api/ du containment (aucun wildcard src/app/api/).
-    if [[ "$BRANCH" =~ ^hotfix/s8-graph-200-menteur$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_S8_GRAPH_MENTEUR_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
