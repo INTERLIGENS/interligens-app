@@ -276,9 +276,18 @@ export async function GET(request: NextRequest) {
       const graphRes = await fetch(graphUrl.toString(), { cache: "no-store", signal: AbortSignal.timeout(6000) });
       if (graphRes.ok) {
         const graphData = await graphRes.json();
-        const status = graphData?.overall_status as string | undefined;
-        if (status === "CONFIRMED") scamLineage = "CONFIRMED";
-        else if (status === "REFERENCED") scamLineage = "REFERENCED";
+        // BUILD 12 · S8 — LA CEINTURE, côté consommateur. Un corps porteur
+        // d'un champ `error` n'est pas une mesure, quel que soit le statut
+        // HTTP qui l'accompagne. Le producteur ne ment plus (graph/route.ts
+        // rend désormais un 500), mais DEUX autres routes internes servent
+        // encore cette forme — `scan/corroboration` et `scan/timeline/auto`.
+        // La garde ne dépend donc pas du seul producteur corrigé.
+        if (graphData?.error !== undefined) scamLineageMeasured = false;
+        else {
+          const status = graphData?.overall_status as string | undefined;
+          if (status === "CONFIRMED") scamLineage = "CONFIRMED";
+          else if (status === "REFERENCED") scamLineage = "REFERENCED";
+        }
       }
       else if (!graphRes.ok) scamLineageMeasured = false;
     } catch {

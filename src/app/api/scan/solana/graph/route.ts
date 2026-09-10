@@ -124,14 +124,34 @@ export async function GET(req: NextRequest) {
 
   } catch (e: any) {
     console.error('[GRAPH ROUTE]', e)
+    // ─── BUILD 12 · S8 — UNE PANNE N'EST PAS UNE MESURE ──────────────────
+    //
+    // Ce `catch` rendait un 200 portant `overall_status: 'NONE'` — la valeur
+    // FAVORABLE — accompagnée d'un champ `error`. Les trois consommateurs
+    // serveur testent `graphRes.ok`, qui valait VRAI : une panne d'accès aux
+    // données était donc lue comme une lignée MESURÉE à « aucune ».
+    //
+    // Mesuré le 2026-09-10 sur /api/v1/score, dans cet état exact :
+    // `expectedMeasured` 3/3, `degraded: false`, `phantom_warning_level`
+    // ALLOW — et un objet `coverage` IDENTIQUE AU CARACTÈRE PRÈS à celui
+    // d'une lignée réellement mesurée à NONE. Le contrat servi ne pouvait pas
+    // distinguer « mesuré, aucune lignée » de « jamais mesuré ».
+    //
+    // Le précédent est au dépôt, et il a été fermé du même côté — celui du
+    // PRODUCTEUR. src/app/api/solana/holders/route.ts:24-30 :
+    //
+    //     « Un drapeau de succes qui ment est pire qu'une absence de drapeau. »
+    //
+    // Seul le STATUT cesse de mentir. `overall_status` disparaît du corps
+    // d'erreur : une panne ne porte aucune valeur de lignée, pas même la
+    // valeur neutre. La méthodologie de lignée n'est pas touchée.
     return NextResponse.json({
       clusters: [],
       related_projects: [],
-      overall_status: 'NONE',
       error: e.message,
       limits: { seeds_used: 0, max_seeds: 50, tx_fetched: 0, wallets_expanded_hop1: 0 },
       provider: { name: 'INTERLIGENS' },
       query: { hops: 1, days: 30 }
-    })
+    }, { status: 500 })
   }
 }
