@@ -13,6 +13,31 @@
 //
 // Les correctifs sont dans les fichiers concernés ; ici on garde le résultat
 // et on empêche sa réouverture. Aucune écriture prod, aucun chemin gelé.
+//
+// ─── UNE PROPRIÉTÉ QUE PERSONNE N'AVAIT POSÉE COMME OBJECTIF ─────────────
+//
+// ██  CE CORPUS REMARQUE QU'ON L'A VIDÉ.                                   ██
+//
+// Constaté le 2026-09-10, par accident et de la pire façon : une boucle de
+// mutation restaurait par `git checkout -- __tests__/prebuy/`, dans un
+// répertoire qui portait huit correctifs NON COMMITÉS. Le premier mutant les
+// a tous effacés.
+//
+// Ce sont les tests de PRÉSENCE DES GARDES de ce fichier — S10/q1 et S10/q1b —
+// qui ont rougi dès le second mutant, et ce rouge est ce qui a fait regarder.
+// Le balayage a détecté sa propre destruction.
+//
+// Ce n'est donc pas un accident heureux, c'est la conséquence directe de la
+// forme choisie : un corpus qui asserte l'EXISTENCE de ses propres gardes,
+// et pas seulement leur résultat, signale son affaiblissement — qu'il vienne
+// d'une suppression délibérée, d'un `.skip`, d'un refactor distrait ou d'un
+// `git checkout` de trop. La règle qui en découle, adoptée le même jour :
+// COMMITER AVANT TOUTE BOUCLE DE RESTAURATION DESTRUCTIVE — une boucle qui
+// restaure par `checkout` traite tout le non-commité comme jetable, ce qui
+// est vrai de ses propres mutations et faux du travail qui l'entoure.
+//
+// Corollaire à tenir : ne jamais retirer un test de présence de garde sous
+// prétexte qu'il « ne teste rien de métier ». C'est lui qui tient les autres.
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
