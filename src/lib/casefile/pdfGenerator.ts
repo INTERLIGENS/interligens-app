@@ -239,7 +239,39 @@ function buildHtml(input: CaseFileInput): string {
   // l'axe qui compte pour une citation, l'artefact non gouverné était mieux
   // identifié que le gouverné. C'est cette inversion-là qu'on ferme.
   const generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  // La référence est imprimée AVEC L'AUTORITÉ QUI LA NOMME, et jamais nue.
+  //
+  // Mesuré le 2026-09-10 : le même dossier BOTIFY porte TROIS références.
+  //
+  //   CASE-2024-BOTIFY-001   la valeur STOCKÉE — `data/cases/botify.json` et
+  //                          `src/data/cases/botify.json`, 8 fichiers du dépôt
+  //   CASE-2025-BOTIFY-001   `src/lib/casefile/presets.ts:55` — la même faute,
+  //                          figée dans le code l'an dernier
+  //   CASE-2026-BOTIFY-001   la valeur SERVIE cette année, et celle du PDF réel
+  //                          rangé au dataroom investisseur
+  //
+  // La cause n'est pas une autorité de nommage double : c'est une RÉÉCRITURE EN
+  // TRANSIT. `src/app/api/scan/solana/route.ts:184` remplace l'année du dossier
+  // par L'ANNÉE COURANTE à l'instant de la requête —
+  //
+  //     case_id.replace(/CASE-\d{4}-/, `CASE-${new Date().getFullYear()}-`)
+  //
+  // La référence imprimée sur la pièce change donc CHAQUE 1ᵉʳ JANVIER, ce qui
+  // invalide rétroactivement toute citation déjà émise, et paraît parfaitement
+  // stable à tout test écrit dans l'année. La conséquence est déjà connue en
+  // aval : `src/app/en/explorer/[caseId]/page.tsx:39-44` porte un contournement
+  // documenté qui nomme cette route comme la cause.
+  //
+  // CE CHEMIN-CI NE RÉÉCRIT PAS — c'est la seule réécriture du dépôt, et elle
+  // n'est pas ici. Le canonique porte donc une référence STABLE mais figée sur
+  // une mauvaise année. Deux défauts distincts, un seul dossier.
+  //
+  // Ce document ne présente donc pas cet identifiant comme stable ou citable
+  // entre systèmes : il dit de quel enregistrement il vient. Nommer la
+  // provenance est ce qu'on peut affirmer aujourd'hui ; unifier l'autorité de
+  // nommage et fermer la réécriture est un chantier, pas une mention.
   const ref = input.canonical?.ref || m.case_id;
+  const refSource = input.canonical?.ref ? "canonical record" : "case metadata";
   const digest = caseFileSourceDigest(input);
 
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
@@ -288,7 +320,7 @@ tr:nth-child(even) td{background:#0a0a0a}
   // avant de lire ce que ça dit. Quatre faits, aucun jugement de valeur.
   html += `<div class="callout" style="border-left-color:${ACCENT};margin-bottom:18px">
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px 18px;font-size:9px;color:#aaa">
-      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Reference</span> · <span class="mono" style="color:#fff">${esc(ref)}</span></div>
+      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Reference</span> · <span class="mono" style="color:#fff">${esc(ref)}</span> <span style="color:#666">(${refSource})</span></div>
       <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Authority</span> · <span style="color:#fff;font-weight:700">${CASEFILE_AUTHORITY}</span></div>
       <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Generated at</span> · <span class="mono" style="color:#fff">${generatedAt}</span></div>
       <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Document format</span> · <span class="mono" style="color:#fff">${CASEFILE_DOC_FORMAT}</span></div>
@@ -299,6 +331,7 @@ tr:nth-child(even) td{background:#0a0a0a}
       }</span></div>
       <div style="grid-column:1/-1"><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Source digest</span> · <span class="mono" style="color:#fff">${digest}</span></div>
       <div style="grid-column:1/-1;color:#666;font-size:8px;line-height:1.5">
+        Reference names the record this document was built from, as named by the authority shown in brackets. It is not asserted to be stable across systems.<br>
         Source digest is the SHA-256 of the source record this document was built from — <strong>not</strong> of this PDF file. A file cannot contain its own digest.
         Two renderings of the same source carry the same digest.
       </div>
