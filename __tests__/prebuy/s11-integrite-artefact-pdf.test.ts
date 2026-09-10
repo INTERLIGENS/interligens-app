@@ -225,8 +225,13 @@ const FICHIERS_SRC: string[] = (() => {
  * `scheduler.ts`, qui est le hop. Voir la rectification en tête.
  */
 function importateursTransitifs(cible: RegExp): string[] {
+  // Le graphe est construit sur le CODE, jamais sur le texte brut : un
+  // commentaire qui cite un chemin de module n'est pas un import. Recensé au
+  // brut, un fichier qui documente le moteur entrerait dans sa fermeture
+  // transitive et la propagerait à tous ses propres importateurs.
+  // (Aligné sur S15/ag1, pris en défaut sur exactement ce motif.)
   const atteints = new Set<string>();
-  let frontiere = FICHIERS_SRC.filter((f) => cible.test(SRC(f)) && !cible.test(f));
+  let frontiere = FICHIERS_SRC.filter((f) => cible.test(codeSeul(SRC(f))) && !cible.test(f));
   while (frontiere.length > 0) {
     const suivant: string[] = [];
     for (const f of frontiere) {
@@ -237,7 +242,7 @@ function importateursTransitifs(cible: RegExp): string[] {
       const court = mod.split("/").pop()!;
       const re = new RegExp(`from\\s+["'](?:@/${mod}|\\./${court}|\\.\\./[^"']*${court})["']`);
       for (const g of FICHIERS_SRC) {
-        if (!atteints.has(g) && g !== f && re.test(SRC(g))) suivant.push(g);
+        if (!atteints.has(g) && g !== f && re.test(codeSeul(SRC(g)))) suivant.push(g);
       }
     }
     frontiere = suivant;

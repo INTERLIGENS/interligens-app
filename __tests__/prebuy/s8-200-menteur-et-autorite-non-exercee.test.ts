@@ -72,9 +72,17 @@ const FICHIERS_APP: string[] = (() => {
   return out;
 })();
 
-/** L'UNIVERS : tout fichier qui interroge le graphe sans en faire partie. SIX. */
+/**
+ * L'UNIVERS : tout fichier qui interroge le graphe sans en faire partie. SIX.
+ *
+ * Le filtre lit le CODE, jamais le texte brut : un fichier qui NOMME la route
+ * dans un commentaire — pour expliquer qu'il ne l'appelle pas, par exemple —
+ * n'en est pas un consommateur. Recensé au brut, il le deviendrait, et
+ * l'univers gouverné grossirait d'un fichier qui ne fait rien.
+ * (Aligné sur S15/ag1, qui a été pris en défaut sur exactement ce motif.)
+ */
 const CONSOMMATEURS_DECOUVERTS: string[] = FICHIERS_APP.filter(
-  (f) => /api\/scan\/solana\/graph/.test(SRC(f)) && !f.includes("/graph/"),
+  (f) => /api\/scan\/solana\/graph/.test(codeSeul(SRC(f))) && !f.includes("/graph/"),
 ).sort();
 
 /**

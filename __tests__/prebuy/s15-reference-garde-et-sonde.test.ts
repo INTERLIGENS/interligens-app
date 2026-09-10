@@ -107,7 +107,7 @@
 // Aucun chemin gelé touché. Aucune écriture prod. Aucune sémantique changée.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 
@@ -144,28 +144,72 @@ const fichiers = (racine: string): string[] => {
   return out;
 };
 
-/** L'univers est DÉCOUVERT : toute référence de dossier BOTIFY, où qu'elle soit. */
-const REFS_TROUVEES: Record<string, string[]> = (() => {
+// ─── RECTIFICATION — ag1 recensait le TEXTE, pas le CODE ─────────────────
+//
+// Première écriture : `SRC(f).matchAll(...)`. Un fichier qui CITE une
+// référence dans un commentaire — pour la documenter, pour expliquer un
+// contournement — était compté comme la PORTANT.
+//
+// T1 l'a fait rougir sans rien casser : son commentaire S1B dans
+// `pdfGenerator.ts` cite les formes 2025 et 2026 pour les expliquer. Ni son
+// commentaire ni ce test n'étaient faux — le test lisait au mauvais niveau
+// d'abstraction, alors que S8 utilise `codeSeul()` pour exactement ce motif.
+// Une garde de recensement en retard sur les gardes qu'elle accompagne.
+//
+// CE QUE LA CORRECTION A RÉVÉLÉ, et c'est plus qu'un raccommodage : sous
+// `codeSeul`, l'année 2026 DISPARAÎT. Elle n'est un littéral NULLE PART —
+// dans `explorer/[caseId]/page.tsx` elle n'apparaît que dans le commentaire
+// qui décrit le contournement. Le titre « trois références » était donc lui
+// aussi au mauvais niveau : le dépôt porte DEUX littérales, et la troisième
+// est PRODUITE À L'EXÉCUTION par la réécriture d'horloge — ce que le test
+// « CONSÉQUENCE » ci-dessous démontrait déjà, sans que ag1 en tire la leçon.
+//
+// Les deux recensements sont donc conservés, et SÉPARÉS : ce qui est porté
+// (code) et ce qui est mentionné (texte). Les confondre était le défaut.
+
+const recenser = (transformer: (s: string) => string): Record<string, string[]> => {
   const out: Record<string, string[]> = {};
   for (const f of [...fichiers("src"), ...fichiers("data")]) {
-    for (const m of SRC(f).matchAll(/CASE-(\d{4})-BOTIFY-001/g)) {
+    for (const m of transformer(SRC(f)).matchAll(/CASE-(\d{4})-BOTIFY-001/g)) {
       (out[m[1]] ??= []).includes(f) || (out[m[1]] ??= []).push(f);
     }
   }
   return out;
-})();
+};
 
-describe("S15/ag1 — CONSTAT : trois références pour un seul dossier", () => {
-  it("le dépôt en porte TROIS, découvertes et non énumérées", () => {
-    // L'univers est DÉCOUVERT — `.tsx` compris, faute de quoi la troisième
-    // échappe. Voir la rectification en tête.
-    expect(Object.keys(REFS_TROUVEES).sort()).toEqual(["2024", "2025", "2026"]);
-    expect(REFS_TROUVEES["2024"].length).toBeGreaterThanOrEqual(5);
-    expect([...REFS_TROUVEES["2025"]].sort()).toEqual([
+/** Ce que le dépôt PORTE : littéraux de code, commentaires exclus. */
+const REFS_CODE: Record<string, string[]> = recenser(codeSeul);
+/** Ce que le dépôt MENTIONNE : tout, commentaires compris. */
+const REFS_TEXTE: Record<string, string[]> = recenser((s) => s);
+
+describe("S15/ag1 — CONSTAT : deux références portées, une troisième produite", () => {
+  it("le dépôt en PORTE deux, découvertes et non énumérées", () => {
+    // L'univers est DÉCOUVERT — `.tsx` compris, faute de quoi la forme du
+    // preset admin échappe. Voir la rectification en tête.
+    expect(Object.keys(REFS_CODE).sort()).toEqual(["2024", "2025"]);
+    expect(REFS_CODE["2024"].length).toBeGreaterThanOrEqual(5);
+    expect([...REFS_CODE["2025"]].sort()).toEqual([
       "src/app/admin/casefile-generator/page.tsx",
       "src/lib/casefile/presets.ts",
     ]);
-    expect(REFS_TROUVEES["2026"]).toEqual(["src/app/en/explorer/[caseId]/page.tsx"]);
+  });
+
+  it("la troisième n'est un littéral NULLE PART — elle est produite par l'horloge", () => {
+    // C'est la mesure que la première écriture manquait : la forme SERVIE
+    // n'existe pas dans les sources. Elle naît du `replace` ancré ci-dessous.
+    expect(REFS_CODE["2026"]).toBeUndefined();
+  });
+
+  it("elle est en revanche MENTIONNÉE, et une mention n'est pas un porteur", () => {
+    // La distinction que ag1 confondait. Le fichier qui la cite la cite pour
+    // décrire le contournement qu'il applique — il ne l'émet pas.
+    expect(REFS_TEXTE["2026"] ?? []).toContain("src/app/en/explorer/[caseId]/page.tsx");
+    for (const [annee, fichiersCode] of Object.entries(REFS_CODE)) {
+      for (const f of fichiersCode) {
+        expect(REFS_TEXTE[annee], `${f} porte ${annee} sans être recensé au texte`)
+          .toContain(f);
+      }
+    }
   });
 
   it("la source que le PDF lit RÉELLEMENT porte la forme 2024", () => {
@@ -426,13 +470,35 @@ describe("S15/ae2 — CRITÈRE : la garde tient, la cause est vraie, le zéro se
 // conclut à l'ABSENCE d'un contenu RENDU doit porter sur un rendu, jamais sur
 // une source — parce qu'un libellé peut vivre dans une table i18n.
 
-const CORPUS_ARTEFACT = [
+// ─── L'AUTO-AUDIT PORTE SUR UN CORPUS DE BRANCHE, ET LE DIT ──────────────
+//
+// S12, S13 et S14 vivent sur la branche BUILD 12. Une reprise de S15 seul,
+// sur une autre branche, ne les a pas : `readFileSync` levait `ENOENT` et le
+// fichier entier tombait — ce qui a coûté à T1 la reprise de tout S15 pour
+// une dépendance de corpus, pas pour un défaut.
+//
+// Le corpus est donc RÉSOLU, pas supposé. Ce qui est absent est NOMMÉ, et
+// l'audit refuse de se déclarer vert sur un corpus vide : une garde qui
+// n'inspecte rien ne prouve rien.
+
+const CORPUS_DECLARE = [
   "__tests__/prebuy/s12-ambiguite-operationnelle-et-registre.test.ts",
   "__tests__/prebuy/s13-identite-autorite-artefact.test.ts",
   "__tests__/prebuy/s14-promesses-empreinte-et-temps.test.ts",
 ] as const;
 
+const CORPUS_ARTEFACT = CORPUS_DECLARE.filter((f) => existsSync(f));
+const CORPUS_ABSENT = CORPUS_DECLARE.filter((f) => !existsSync(f));
+const AVEC_S12 = CORPUS_ARTEFACT.includes(CORPUS_DECLARE[0]) ? it : it.skip;
+
 describe("S15/ah1 — AUTO-AUDIT : nos négations d'artefact portent sur un RENDU", () => {
+  it("le corpus audité est RÉSOLU, et non vide", () => {
+    // Si tout le corpus manque, l'audit ci-dessous serait vert sans avoir rien
+    // lu. C'est le mode d'échec qu'une garde de recensement doit refuser.
+    expect(CORPUS_ARTEFACT.length, `corpus absent : ${CORPUS_ABSENT.join(", ")}`)
+      .toBeGreaterThan(0);
+  });
+
   it("chaque `not.toMatch`/`not.toContain` sur un contenu rendu porte sur `html`", () => {
     // On extrait les assertions négatives et on vérifie leur SUJET. Une
     // négation sur `SRC(...)` reste légitime quand elle vise du CODE (un
@@ -453,16 +519,16 @@ describe("S15/ah1 — AUTO-AUDIT : nos négations d'artefact portent sur un REND
     expect(suspectes, "négation d'un libellé AFFICHÉ, faite sur la SOURCE").toEqual([]);
   });
 
-  it("et l'inventaire positif de S12 est bien fait sur un rendu", () => {
-    const s12 = SRC(CORPUS_ARTEFACT[0]);
+  AVEC_S12("et l'inventaire positif de S12 est bien fait sur un rendu", () => {
+    const s12 = SRC(CORPUS_DECLARE[0]);
     expect(s12).toContain("MESURÉ SUR L'ARTEFACT");
     expect(s12).toContain('expect(html, `le document ne porte plus : ${marque}`).toContain(marque)');
   });
 
-  it("SUR-CORRECTION — un grep sur du CODE reste légitime", () => {
+  AVEC_S12("SUR-CORRECTION — un grep sur du CODE reste légitime", () => {
     // La règle vise les CONTENUS RENDUS. Une garde, un appel, un littéral de
     // contrat se cherchent dans la source, et c'est correct.
-    const s12 = SRC(CORPUS_ARTEFACT[0]);
+    const s12 = SRC(CORPUS_DECLARE[0]);
     expect(s12).toContain('expect(codeSeul(SRC(AUTORITAIRE))).not.toContain("renderCaseFilePDF")');
   });
 });
