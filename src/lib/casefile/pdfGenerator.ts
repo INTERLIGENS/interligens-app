@@ -5,6 +5,7 @@
 //
 // Sections are included only when the corresponding input data is present.
 
+import { createHash } from "node:crypto";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
@@ -15,6 +16,76 @@ const CHROMIUM_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v143.0.4/chromium-v143.0.4-pack.x64.tar";
 
 const ACCENT = "#FF6B00";
+
+// ─── BUILD 13 · S1B — L'IDENTITÉ PORTABLE DU DOCUMENT ──────────────────────
+//
+// ██  Ce qui distingue deux documents doit VOYAGER AVEC LE FICHIER.        ██
+//
+// Mesuré le 2026-09-10 : trois générateurs produisent des PDF nommés
+// `casefile-*.pdf`, et AUCUN ne portait de marque d'autorité. Le générateur
+// NON autoritaire (`src/components/pdf/pdfRenderer.ts`) s'intitulait
+// « INTERLIGENS CaseFile » — la formulation la plus officielle des trois —
+// quand celui-ci disait « INTERLIGENS — CASEFILE ». La distinction n'existait
+// que dans le CHEMIN D'URL, qui ne voyage pas avec le fichier.
+//
+// La doctrine appliquée ici n'est pas nouvelle : elle est au dépôt depuis
+// BUILD 10 · P3, en tête de `__tests__/casefile/pdf-report-authority.test.ts` —
+//
+//     « Admin-only contrôle QUI PEUT PRODUIRE l'artefact. Cela ne gouverne
+//       pas CE QUE L'ARTEFACT PEUT PUBLIER. »
+//
+// On dit CE QUE C'EST, jamais ce que ça vaut : aucune formule suggérant une
+// certification, un agrément ou une valeur probante.
+
+/**
+ * Version du FORMAT DE DOCUMENT. Délibérément nommée à part, et dans un autre
+ * espace de noms, que le `version: "1.0"` de `GraphReport`
+ * (`src/lib/solanaGraph/types.ts:27`) : ce sont deux objets sans rapport, et
+ * les confondre est exactement le raccourci qui a laissé une garde
+ * insatisfiable en place six mois. Un lecteur qui voit `casefile-doc/1` ne
+ * peut pas le prendre pour la version d'un rapport de graphe.
+ */
+export const CASEFILE_DOC_FORMAT = "casefile-doc/1";
+
+/**
+ * L'état d'autorité, dans le vocabulaire du registre des surfaces
+ * (`src/lib/casefile/surfaceRegistry.ts` — CANONICAL | PRESET | NONE). Le
+ * document IMPRIME ce que le registre DÉCLARE : l'autorité visuelle ne peut
+ * pas contredire l'autorité gouvernée.
+ */
+export const CASEFILE_AUTHORITY = "CANONICAL";
+
+/** Sérialisation déterministe : clés triées, à toute profondeur. */
+function stable(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v) ?? "null";
+  if (Array.isArray(v)) return `[${v.map(stable).join(",")}]`;
+  const o = v as Record<string, unknown>;
+  return `{${Object.keys(o)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${stable(o[k])}`)
+    .join(",")}}`;
+}
+
+/**
+ * L'empreinte de l'ENREGISTREMENT SOURCE — pas du PDF.
+ *
+ * Un PDF ne peut pas porter son propre sha256 : l'y insérer change le fichier,
+ * donc change l'empreinte. C'est structurellement impossible, et le précédent
+ * du dépôt fait déjà le bon geste — `renderGraphPDF(graphCase, lang, sha256)`
+ * (`src/lib/pdf/graph/templateGraph.ts:34`) reçoit l'empreinte de la DONNÉE.
+ *
+ * Le champ est donc nommé et légendé pour qu'aucun lecteur ne croie tenir
+ * l'empreinte du fichier qu'il a en main. Affirmer le contraire sur un
+ * livrable destiné à un conseil serait précisément la classe de défaut qu'on
+ * vient de fermer.
+ *
+ * L'horodatage de génération n'entre PAS dans le calcul : l'empreinte
+ * identifie la source, pas le tirage. Deux tirages de la même source portent
+ * donc la même empreinte, et c'est voulu.
+ */
+export function caseFileSourceDigest(input: unknown): string {
+  return createHash("sha256").update(stable(input), "utf8").digest("hex");
+}
 
 // ── Input types ──────────────────────────────────────────────────────────────
 
@@ -107,6 +178,17 @@ export type CaseFileCanonicalBlock = {
 
 export type CaseFileInput = {
   case_meta: CaseFileMeta;
+  /**
+   * Quand les DONNÉES ont été mesurées — distinct de quand le document a été
+   * produit. Un dossier a besoin des deux faits, et les confondre perd de
+   * l'information : un tirage d'aujourd'hui peut porter une mesure d'hier.
+   *
+   * Optionnel parce qu'aucun appelant ne le transporte AUJOURD'HUI. Quand il
+   * manque, le document le DIT au lieu de laisser le lecteur supposer que
+   * l'horodatage de génération est celui de la mesure. On ne fabrique pas la
+   * valeur manquante ; on nomme son absence.
+   */
+  snapshot_at?: string;
   timeline?: CaseFileTimelineEvent[];
   shillers?: CaseFileShiller[];
   wallets_onchain?: CaseFileWallet[];
@@ -150,7 +232,15 @@ function severityColor(s?: string): string {
 
 function buildHtml(input: CaseFileInput): string {
   const m = input.case_meta;
-  const now = new Date().toISOString().slice(0, 10);
+  // À LA SECONDE, et non à la journée. Mesuré le 2026-09-10 : les deux
+  // générateurs canoniques tronquaient à `slice(0, 10)`, si bien que deux
+  // tirages canoniques du même jour étaient TEMPORELLEMENT INDISTINGUABLES —
+  // alors que le générateur NON autoritaire, lui, horodatait à la minute. Sur
+  // l'axe qui compte pour une citation, l'artefact non gouverné était mieux
+  // identifié que le gouverné. C'est cette inversion-là qu'on ferme.
+  const generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  const ref = input.canonical?.ref || m.case_id;
+  const digest = caseFileSourceDigest(input);
 
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -181,15 +271,37 @@ tr:nth-child(even) td{background:#0a0a0a}
   // HEADER
   html += `<div class="header">
     <div class="header-left">
-      <div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">INTERLIGENS — CASEFILE</div>
+      <div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">INTERLIGENS CaseFile · Canonical Artifact</div>
       <h1>${esc(m.case_id)}</h1>
       <div class="sub">${esc(m.ticker || m.token_name || "")} ${m.chain ? `· ${esc(m.chain.toUpperCase())}` : ""} ${m.severity ? `· <span class="badge" style="background:${severityColor(m.severity)}">${esc(m.severity)}</span>` : ""}</div>
     </div>
     <div class="header-right">
-      Generated: ${now}<br>
+      Generated: ${generatedAt}<br>
       ${m.deployer ? `Deployer: ${esc(m.deployer)}<br>` : ""}
       ${m.mint ? `Mint: <span class="mono">${esc(m.mint)}</span><br>` : ""}
       ${m.status ? `Status: ${esc(m.status)}` : ""}
+    </div>
+  </div>`;
+
+  // ── IDENTITÉ DE L'ARTEFACT ────────────────────────────────────────────
+  // Elle est en tête, pas en annexe : un lecteur doit savoir CE QU'IL TIENT
+  // avant de lire ce que ça dit. Quatre faits, aucun jugement de valeur.
+  html += `<div class="callout" style="border-left-color:${ACCENT};margin-bottom:18px">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px 18px;font-size:9px;color:#aaa">
+      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Reference</span> · <span class="mono" style="color:#fff">${esc(ref)}</span></div>
+      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Authority</span> · <span style="color:#fff;font-weight:700">${CASEFILE_AUTHORITY}</span></div>
+      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Generated at</span> · <span class="mono" style="color:#fff">${generatedAt}</span></div>
+      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Document format</span> · <span class="mono" style="color:#fff">${CASEFILE_DOC_FORMAT}</span></div>
+      <div style="grid-column:1/-1"><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Data snapshot</span> · <span class="mono" style="color:#fff">${
+        input.snapshot_at
+          ? esc(input.snapshot_at)
+          : "not recorded — the generation time above is NOT the measurement time"
+      }</span></div>
+      <div style="grid-column:1/-1"><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Source digest</span> · <span class="mono" style="color:#fff">${digest}</span></div>
+      <div style="grid-column:1/-1;color:#666;font-size:8px;line-height:1.5">
+        Source digest is the SHA-256 of the source record this document was built from — <strong>not</strong> of this PDF file. A file cannot contain its own digest.
+        Two renderings of the same source carry the same digest.
+      </div>
     </div>
   </div>`;
 
@@ -402,9 +514,11 @@ tr:nth-child(even) td{background:#0a0a0a}
   }
 
   // FOOTER
+  // Le pied porte l'identité une seconde fois : une page détachée du reste
+  // doit rester attribuable.
   html += `<div class="footer">
-    <span>INTERLIGENS — app.interligens.com — ${now}</span>
-    <span>${esc(m.case_id)} — CONFIDENTIEL</span>
+    <span>INTERLIGENS CaseFile · ${CASEFILE_AUTHORITY} · ${CASEFILE_DOC_FORMAT} · ${generatedAt}</span>
+    <span>${esc(ref)} — CONFIDENTIEL</span>
   </div></div></body></html>`;
 
   return html;
