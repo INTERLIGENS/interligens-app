@@ -193,6 +193,66 @@ tel quel en le sachant.
 
 ---
 
+# ██ RECLASSIFICATION DU 2026-09-10 — TAXONOMIE GPT
+
+« For EVERY changed S5 expectation, classify: RATIFIED CONTRACT CHANGE · BUG
+FIX · STALE ASSUMPTION. Do NOT merely rewrite snapshots to green. »
+
+Ma révision d'hier disait « tient / périmée ». Ce n'est pas cette taxonomie.
+Reclassé, avec une QUATRIÈME case que les trois ne couvrent pas.
+
+| attente | classe | pourquoi |
+|---|---|---|
+| A byte-identique sur toute la charge utile | **RATIFIED CONTRACT CHANGE** | S3 a ajouté `intelligenceCoverage` — champ ADDITIF, aucune clé disparue |
+| rétrocompat partenaire sur la valeur émise | **RATIFIED CONTRACT CHANGE** | S4/#361 a changé la CONDITION d'émission de `SAFE` ; forme et domaine intacts |
+| D `ALLOW`, « doit basculer » | **BUG FIX** | le fail-open d'identité est fermé, D sert `ORANGE/WARN` |
+| les deux formes se contredisent | **BUG FIX** | #355 |
+| A, B, C inchangées | — | rien n'a changé, rien à classer |
+| **« les 21 clés sont invariantes »** | **██ DÉFAUT DU PLAN** | FAUX DÈS L'ORIGINE : B/C/D servent 20 clés, `name` et `symbol` sont conditionnels au jeton résolu. Ce n'était vrai aucun jour. Trouvé par T1. |
+| **« C et B doivent basculer en WARN »** | **██ DÉFAUT DU PLAN** | FAUX DÈS L'ORIGINE : `holders` était déjà hors du dénominateur quand j'ai écrit le plan. J'avais prédit une bascule que le code interdisait déjà. |
+
+**La quatrième case est nécessaire** : un défaut du plan n'est ni un changement
+de contrat, ni un correctif, ni une hypothèse devenue fausse. C'est une
+assertion qui n'a jamais été vraie, et la distinguer importe — les trois
+premières se corrigent en suivant le code, celle-ci se corrige en admettant
+qu'on avait mal regardé.
+
+---
+
+# ██ POINT 3 — LA PRÉMISSE `holders`, TRANCHÉE PAR LA MESURE
+
+Question posée : le contrat SOL attend-il `holders`, ou l'implémentation le
+tente-t-elle en bonus ?
+
+**Mesuré : le contrat l'ATTEND.** `api/v1/score/route.ts` :
+
+```
+expected: 3                                    ← dénominateur codé en dur
+solManquants : market · holders · scam_lineage ← exactement trois moteurs
+expectedMeasured: 3 - (entrées de motif FAILURE)
+```
+
+`holders` est **l'un des trois** du dénominateur. Ce qui l'empêche de dégrader
+n'est pas son absence d'`expected` — il y est — c'est son MOTIF :
+`NOT_REQUESTED_BY_CONTRACT` figure dans `HORS_CONTRAT`, donc il ne décrémente
+pas et ne déclenche pas `estDegrade`.
+
+**Donc le motif est faux quelle que soit la condition d'émission**, et pour une
+raison plus nette que celle que j'avançais hier : la ligne est simultanément
+**dans le dénominateur** (comptée dans les 3) et **hors contrat** (par son
+motif). Les deux ne peuvent pas être vrais ensemble.
+
+C'est **le motif qui fait le travail de l'appartenance**. La forme correcte
+n'exige aucun état nouveau : sortir `holders` d'`expected` — le dénominateur
+passe à 2 — et lui laisser son état observé, `FAILURE`, qui est la réalité
+causale mesurée en prod (`Too many accounts requested`, `HTTP 429`). Le refus
+est d'ailleurs DÉJÀ dit sur l'autre axe, `topHolderUnavailableReason`.
+
+Je ne l'implémente pas : décision de contrat, et le dénominateur qui passe de
+3 à 2 change ce que « couverture complète » veut dire.
+
+---
+
 # ██ RÉVISION DU 2026-09-09 — CE PLAN ÉTAIT PÉRIMÉ
 
 Écrit avant S3, S3.1, S3.2 et S4. Je lui applique le filtre que j'ai érigé en
