@@ -1,0 +1,398 @@
+// ─── BUILD 12 · S23 — LA MARQUE PORTANTE, ET SES QUATRE MUTANTS ──────────
+//
+// ██  On ne peut pas DIRE qu'on projette sans PROJETER.                    ██
+//
+// La porte ratifiée :
+//
+//   « A projection declaration counts only if it CAUSALLY PRODUCES the value
+//     accepted by the governed response boundary. DECLARATION IS EVIDENCE
+//     ONLY WHEN LOAD-BEARING. »
+//
+// ─── CE FICHIER NE CLASSE AUCUNE ROUTE RÉELLE ───────────────────────────
+//
+// Tout est démontré sur CORPUS SYNTHÉTIQUE, et ce n'est pas un pis-aller :
+// un mécanisme prouvé sur un corpus qu'on contrôle est PROUVÉ ; le même
+// mécanisme lâché sur le dépôt MESURE le dépôt, ce qui est une autre question
+// et une autre décision. Le tri des surfaces réelles est un jugement normatif
+// de produit — il vient après, et il n'appartient pas à ce fichier.
+//
+// ─── DEUX NIVEAUX, ET LE SECOND EXISTE PARCE QUE LE PREMIER SE CONTOURNE ─
+//
+//   LE TYPE      `repondre()` n'accepte que ce qui a traversé une projection.
+//                Émettre une donnée brute NE COMPILE PAS. C'est ce qui rend la
+//                déclaration inévitable au lieu de recommandée.
+//
+//   LA GARDE     un `as` suffit à faire taire le compilateur. La garde de
+//                capacité est le FILET SOUS LE TYPE — jamais son doublon.
+//
+// C'est exactement la forme retenue pour RC-7 : une marque de type, et une
+// garde en dessous pour attraper les casts. Deux mécanismes de la même
+// famille se relisent ; en avoir deux formes différentes pour deux problèmes
+// identiques aurait été la vraie dette.
+//
+// ─── LES DEUX AXES SONT ORTHOGONAUX ─────────────────────────────────────
+//
+//   AXE 1 · QUI est admis ?                     `Admission<A>`
+//   AXE 2 · QUE peut recevoir cette audience ?  `Admissible<A, T>`
+//
+// Aucun ne se substitue à l'autre, et le critère porte DEUX classifications
+// par surface, jamais un booléen. Une clé partenaire authentifie ; elle
+// n'entitule pas à tout. Faire dériver le second axe du premier rendrait un
+// blanc-seing à toute surface authentifiée — c'est-à-dire là où il coûte le
+// plus cher.
+//
+// Aucun chemin gelé touché. Aucune route réelle classée. Aucune modification
+// du registre ni de sa garde.
+
+import { describe, it, expect, beforeAll } from "vitest";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+
+const MECANISME = resolve("src/lib/governance/audienceProjection");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NIVEAU 1 — LE TYPE : la non-conformité NE COMPILE PAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CORPUS_TYPE: ReadonlyArray<{ nom: string; compile: boolean; source: string }> = [
+  {
+    nom: "conforme",
+    compile: true,
+    source: `import { admettreAnonyme, projeter, repondre } from "${MECANISME}";
+const dossier = { ref: "R", interne: "ne sort pas" };
+export async function GET() {
+  const a = admettreAnonyme("index public des dossiers");
+  return repondre(projeter(a, dossier, (e) => ({ ref: e.ref })));
+}`,
+  },
+  {
+    nom: "emission-brute",
+    compile: false,
+    source: `import { repondre } from "${MECANISME}";
+const dossier = { ref: "R", interne: "ne sort pas" };
+export async function GET() { return repondre(dossier); }`,
+  },
+  {
+    nom: "integrale-operateur",
+    compile: true,
+    source: `import { admettreOperateur, projeterIntegralement, repondre } from "${MECANISME}";
+const dossier = { ref: "R", interne: "sort, l'audience y a droit" };
+export async function GET() {
+  return repondre(projeterIntegralement(admettreOperateur("requireAdminApi"), dossier));
+}`,
+  },
+  {
+    nom: "integrale-anonyme",
+    compile: false,
+    source: `import { admettreAnonyme, projeterIntegralement, repondre } from "${MECANISME}";
+const dossier = { ref: "R", interne: "ne sort pas" };
+export async function GET() {
+  return repondre(projeterIntegralement(admettreAnonyme("motif"), dossier));
+}`,
+  },
+];
+
+let erreursParFichier = new Map<string, string>();
+
+beforeAll(() => {
+  const dir = mkdtempSync(join(tmpdir(), "s23-"));
+  try {
+    const chemins = CORPUS_TYPE.map((c) => {
+      const p = join(dir, `${c.nom}.ts`);
+      writeFileSync(p, c.source, "utf8");
+      return p;
+    });
+    let sortie = "";
+    try {
+      execFileSync(
+        "npx",
+        ["tsc", "--noEmit", "--strict", "--target", "es2022", "--module", "esnext",
+         "--moduleResolution", "bundler", "--lib", "es2022,dom", ...chemins],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+    } catch (e) {
+      sortie = String((e as { stdout?: string }).stdout ?? "");
+    }
+    for (const ligne of sortie.split("\n")) {
+      const m = ligne.match(/([^/\\]+)\.ts\(\d+,\d+\): (error TS\d+: .*)/);
+      if (m && !erreursParFichier.has(m[1])) erreursParFichier.set(m[1], m[2]);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 120_000);
+
+describe("S23/t — LA FORME : la frontière refuse ce qui n'a pas traversé", () => {
+  // La garde de la garde : si `tsc` n'a rien tourné, tout paraîtrait conforme.
+  // Un « rien à signaler » et un « je n'ai pas regardé » rendent le même vert.
+  it("PRÉALABLE — le compilateur a effectivement tourné et rendu des erreurs", () => {
+    expect(erreursParFichier.size, "aucune erreur : tsc n'a pas tourné").toBeGreaterThan(0);
+  });
+
+  it.each(CORPUS_TYPE.map((c) => [c.nom, c.compile] as const))(
+    "%s — compile = %s",
+    (nom, compile) => {
+      const err = erreursParFichier.get(nom);
+      if (compile) {
+        expect(err, `${nom} devait compiler, et le compilateur refuse : ${err}`).toBeUndefined();
+      } else {
+        expect(err, `${nom} devait être REFUSÉ par le type, et il passe`).toBeDefined();
+        // Refusé pour la BONNE raison : un argument inassignable à la
+        // frontière, pas un import cassé ou une faute de frappe.
+        expect(err).toMatch(/TS2345|TS2322/);
+      }
+    },
+  );
+
+  it("« émission brute » est refusée SUR LA VALEUR, pas sur autre chose", () => {
+    // C'est la démonstration de « on ne peut pas dire qu'on projette sans
+    // projeter » : il n'existe aucun chemin de type entre un objet nu et le
+    // paramètre que la frontière accepte.
+    expect(erreursParFichier.get("emission-brute")).toContain("not assignable");
+  });
+
+  it("« intégrale anonyme » est refusée SUR L'AUDIENCE — le second axe mord", () => {
+    // L'émission intégrale existe pour ne pas taxer la doctrine d'accès ; elle
+    // reste réservée à l'audience à droits maximaux, et c'est le TYPE qui le
+    // tient, pas une convention.
+    expect(erreursParFichier.get("integrale-anonyme")).toContain("Admission");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NIVEAU 2 — LA GARDE DE CAPACITÉ : le filet sous le type
+// ═══════════════════════════════════════════════════════════════════════════
+
+type Axe1 = "ANONYMOUS" | "PARTNER" | "OPERATOR" | null;
+type Axe2 = "portante" | "integrale" | "absente" | "contournee";
+
+interface Classement {
+  readonly audience: Axe1;
+  readonly projection: Axe2;
+  /** Une déclaration présente dans le fichier mais que la réponse n'utilise pas. */
+  readonly decorative: boolean;
+  readonly verdict: "CLASSEE" | "ROUGE";
+  readonly motif: string;
+}
+
+const codeSeul = (s: string): string =>
+  s.split("\n").filter((l) => {
+    const t = l.trimStart();
+    return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+  }).join("\n");
+
+/**
+ * LE CLASSEUR — deux axes, jamais un booléen.
+ *
+ * Il lit ce que le code FAIT sur son chemin de réponse, jamais ce qu'il
+ * annonce ailleurs. C'est toute la différence entre une déclaration portante
+ * et une déclaration décorative, et c'est ce qui rend M4 possible.
+ */
+function classer(source: string): Classement {
+  const c = codeSeul(source);
+
+  const audience: Axe1 =
+    /admettreOperateur\s*\(/.test(c) ? "OPERATOR"
+    : /admettrePartenaire\s*\(/.test(c) ? "PARTNER"
+    : /admettreAnonyme\s*\(/.test(c) ? "ANONYMOUS"
+    : null;
+
+  // Ce qui arrive RÉELLEMENT à la frontière. On lit l'argument de `repondre(`,
+  // pas le fichier : une projection écrite plus haut et jamais branchée ne
+  // compte pas — c'est précisément la définition de « décoratif ».
+  const appels = [...c.matchAll(/repondre\s*\(\s*([\s\S]{0,160}?)[,)]/g)].map((m) => m[1]);
+
+  // ── SUIVRE L'AFFECTATION, SINON LA GARDE TAXE UN STYLE ────────────────
+  //
+  // `const vue = projeter(…); return repondre(vue)` est la même chose que
+  // `return repondre(projeter(…))`, et une garde qui ne reconnaîtrait que la
+  // seconde écriture rougirait sur du code irréprochable. Elle serait alors
+  // désarmée, et il ne resterait ni l'une ni l'autre.
+  //
+  // Trouvé en écrivant M1 : j'avais posé le commentaire d'alerte SANS
+  // l'assertion qui va avec, ce qui aurait laissé le faux positif dans une
+  // garde verte. Une assertion plus lâche que son nom, pour la quatrième fois.
+  const resoudre = (arg: string): string => {
+    const id = arg.trim();
+    if (!/^[A-Za-z_$][\w$]*$/.test(id)) return arg;
+    const m = c.match(new RegExp(String.raw`\b(?:const|let|var)\s+${id}\s*(?::[^=]+)?=\s*([\s\S]{0,200}?);`));
+    return m ? m[1] : arg;
+  };
+  const effectifs = appels.map(resoudre);
+
+  const contournee = effectifs.some((a) => /\bas\s+(?:unknown\s+as\s+)?(?:any|Admissible)/.test(a));
+  const portante = effectifs.some((a) => /^\s*projeter\s*\(/.test(a));
+  const integrale = effectifs.some((a) => /^\s*projeterIntegralement\s*\(/.test(a));
+
+  const projection: Axe2 =
+    contournee ? "contournee" : portante ? "portante" : integrale ? "integrale" : "absente";
+
+  // DÉCORATIF : la déclaration existe dans le fichier et la réponse ne la
+  // consomme pas. C'est la troisième clause rouge, et elle est la seule qui
+  // attrape le cas où quelqu'un a fait le geste sans le brancher.
+  const declareAilleurs = /projeter(?:Integralement)?\s*\(/.test(c);
+  const decorative = declareAilleurs && projection === "absente";
+
+  let verdict: Classement["verdict"] = "CLASSEE";
+  let motif = "audience déclarée, sortie portée";
+  if (audience === null) { verdict = "ROUGE"; motif = "AUDIENCE NON DÉCLARÉE — l'absence de porte ne prouve pas une publication intentionnelle"; }
+  else if (projection === "contournee") { verdict = "ROUGE"; motif = "CONTOURNEMENT — un cast fait taire le type, la valeur n'a rien traversé"; }
+  else if (decorative) { verdict = "ROUGE"; motif = "DÉCLARATION DÉCORATIVE — présente dans le fichier, non consommée par le chemin de réponse"; }
+  else if (projection === "absente") { verdict = "ROUGE"; motif = "SORTIE NON PROJETÉE — une audience déclarée n'entitule pas à tout"; }
+  else if (projection === "integrale" && audience !== "OPERATOR") { verdict = "ROUGE"; motif = "ÉMISSION INTÉGRALE hors audience à droits maximaux"; }
+
+  return { audience, projection, decorative, verdict, motif };
+}
+
+// ─── La clause textuelle identique — le sujet de M4 ──────────────────────
+//
+// Reproduite ici parce qu'elle est le fait qui rend tout ce module nécessaire :
+// écrite comme décision d'accès ou comme filtre d'affichage, elle est LA MÊME
+// SUITE DE CARACTÈRES. Rien dans le texte ne les sépare, et c'est pourquoi
+// aucune relecture ne le pouvait.
+const CLAUSE = `const lignes = await db.dossiers.findMany({ where: { isPublic: true } });`;
+
+describe("S23/m — LES QUATRE MUTANTS", () => {
+  it("M1 — LA MARQUE EST PORTANTE : retirer la projection rend ROUGE", () => {
+    // Sans ce mutant, la marque est décorative et personne ne le sait. C'est
+    // la troisième clause rouge ratifiée : « decorative declaration not
+    // consumed by response path → RED ».
+    const portee = classer(`
+      const a = admettreAnonyme("index public");
+      const vue = projeter(a, dossier, (e) => ({ ref: e.ref }));
+      return repondre(vue);`);
+    // ⚠ La forme portée passe par une VARIABLE, et c'est le témoin de
+    // non-régression du suivi d'affectation : sans lui, la garde n'attraperait
+    // que le style d'écriture le plus direct et rougirait sur l'autre.
+    expect(portee.audience).toBe("ANONYMOUS");
+    expect(portee.verdict, "la garde taxe une écriture au lieu d'une propriété").toBe("CLASSEE");
+    expect(portee.projection).toBe("portante");
+    expect(portee.decorative).toBe(false);
+
+    const decorative = classer(`
+      const a = admettreAnonyme("index public");
+      const vue = projeter(a, dossier, (e) => ({ ref: e.ref }));
+      return repondre(dossier as Admissible<"ANONYMOUS", typeof dossier>);`);
+    expect(decorative.verdict).toBe("ROUGE");
+    expect(decorative.projection).toBe("contournee");
+
+    const brute = classer(`
+      const a = admettreAnonyme("index public");
+      return repondre(dossier);`);
+    expect(brute.verdict).toBe("ROUGE");
+    expect(brute.projection).toBe("absente");
+    expect(brute.motif).toContain("n'entitule pas à tout");
+  });
+
+  it("M2 — LA DOCTRINE D'ACCÈS N'EST PAS TAXÉE : opérateur sans projection reste VERT", () => {
+    // Ce qui empêche la garde de devenir un impôt qu'on désarme. Une surface
+    // d'opérateur n'a pas à rédiger une projection restrictive pour satisfaire
+    // un formalisme — mais elle doit DIRE son audience, et l'émission
+    // intégrale reste une affirmation explicite plutôt qu'un silence.
+    const operateur = classer(`
+      const a = admettreOperateur("requireAdminApi");
+      return repondre(projeterIntegralement(a, dossier));`);
+    expect(operateur.verdict).toBe("CLASSEE");
+    expect(operateur.audience).toBe("OPERATOR");
+    expect(operateur.projection).toBe("integrale");
+
+    // Et la même écriture pour une audience non maximale reste rouge : le
+    // dégrèvement est attaché à l'audience, pas à la commodité.
+    const partenaire = classer(`
+      const a = admettrePartenaire("clé partenaire");
+      return repondre(projeterIntegralement(a, dossier));`);
+    expect(partenaire.verdict).toBe("ROUGE");
+    expect(partenaire.motif).toContain("hors audience à droits maximaux");
+  });
+
+  it("M3 — LE CAST NE PASSE PAS : le type se tait, la garde parle", () => {
+    // Leçon du huitième mutant de S21, transposée sans rien changer. Le
+    // compilateur accepte les trois écritures ci-dessous ; c'est ici qu'elles
+    // meurent, et c'est pour cela que la garde est le filet SOUS le type et
+    // non son doublon.
+    for (const cast of [
+      `repondre(dossier as Admissible<"ANONYMOUS", typeof dossier>)`,
+      `repondre(dossier as any)`,
+      `repondre(dossier as unknown as Admissible<"PARTNER", typeof dossier>)`,
+    ]) {
+      const r = classer(`const a = admettreAnonyme("m");\nreturn ${cast};`);
+      expect(r.verdict, cast).toBe("ROUGE");
+      expect(r.projection, cast).toBe("contournee");
+    }
+  });
+
+  // ── M4 · CELUI QUI FONDE TOUT LE MÉCANISME ────────────────────────────
+  //
+  // T1 a mesuré une IMPOSSIBILITÉ : `where: { isPublic: true }` écrit comme
+  // décision d'accès est textuellement identique à la même ligne écrite comme
+  // filtre d'affichage. Aucune relecture ne peut les distinguer, parce qu'il
+  // n'y a rien à distinguer dans le texte.
+  //
+  // M4 est l'EXACTE NÉGATION de cette impossibilité : deux surfaces portant la
+  // MÊME clause, mot pour mot, l'une marquée et l'autre non. Si la marque ne
+  // les séparait pas, tout ce module serait une décoration coûteuse.
+  it("M4 — MÊME CLAUSE TEXTUELLE, deux verdicts : la marque distingue ce que le texte ne peut pas", () => {
+    const marquee = classer(`
+      const a = admettreAnonyme("index public des dossiers publiés");
+      ${CLAUSE}
+      return repondre(projeter(a, lignes, (l) => l.map((x) => ({ ref: x.ref }))));`);
+
+    const nue = classer(`
+      ${CLAUSE}
+      return repondre(lignes);`);
+
+    // La clause est bien IDENTIQUE dans les deux — c'est la prémisse, et elle
+    // est vérifiée plutôt que supposée.
+    expect(marquee).not.toEqual(nue);
+    expect(CLAUSE).toBe(CLAUSE.trim());
+
+    expect(marquee.verdict).toBe("CLASSEE");
+    expect(marquee.audience).toBe("ANONYMOUS");
+    expect(marquee.projection).toBe("portante");
+
+    expect(nue.verdict).toBe("ROUGE");
+    expect(nue.audience).toBeNull();
+    expect(nue.motif).toContain("AUDIENCE NON DÉCLARÉE");
+
+    // ██ Et la phrase que ce mutant rend exécutable ██
+    //
+    // « L'absence de garde ne prouve jamais une publication intentionnelle. »
+    //
+    // La surface nue n'est pas déclarée COUPABLE — elle est déclarée NON
+    // CLASSÉE. La distinction est tout le sujet : le défaut n'a jamais été
+    // qu'une route non gardée soit dangereuse, c'est que le système ne puisse
+    // pas DIRE si elle est projetée à dessein ou oubliée par accident.
+    expect(nue.verdict).toBe("ROUGE");
+    expect(nue.motif).not.toContain("dangereu");
+  });
+
+  it("LES DEUX AXES SONT INDÉPENDANTS — quatre combinaisons, quatre verdicts distincts", () => {
+    // La conséquence mécanique du refus de collapser les doctrines : le
+    // classement porte DEUX valeurs, et aucune ne se déduit de l'autre.
+    const cas = [
+      { nom: "anonyme + projetée", src: `const a = admettreAnonyme("m"); return repondre(projeter(a, d, f));`, attendu: "CLASSEE" },
+      { nom: "anonyme + nue", src: `const a = admettreAnonyme("m"); return repondre(d);`, attendu: "ROUGE" },
+      { nom: "opérateur + intégrale", src: `const a = admettreOperateur("g"); return repondre(projeterIntegralement(a, d));`, attendu: "CLASSEE" },
+      { nom: "partenaire + intégrale", src: `const a = admettrePartenaire("k"); return repondre(projeterIntegralement(a, d));`, attendu: "ROUGE" },
+    ] as const;
+    for (const c of cas) expect(classer(c.src).verdict, c.nom).toBe(c.attendu);
+
+    // Authentifié n'implique PAS sortie libre : c'est la ligne qui décline la
+    // simplification à un seul axe, et elle est ici exécutable.
+    const partenaireNu = classer(`const a = admettrePartenaire("k"); return repondre(d);`);
+    expect(partenaireNu.audience).toBe("PARTNER");
+    expect(partenaireNu.verdict).toBe("ROUGE");
+  });
+
+  it("NON-MUTANT — une surface conforme n'est pas signalée", () => {
+    // Une garde qui rougit sur du code irréprochable est désarmée, et il ne
+    // reste ni l'une ni l'autre.
+    const r = classer(`
+      const a = admettreAnonyme("index public des dossiers publiés");
+      return repondre(projeter(a, lignes, (l) => ({ ref: l.ref })));`);
+    expect(r.verdict).toBe("CLASSEE");
+    expect(r.decorative).toBe(false);
+  });
+});
