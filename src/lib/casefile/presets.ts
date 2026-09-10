@@ -52,7 +52,7 @@ export function buildVineInput(): CaseFileInput {
 export function buildBotifyInput(): CaseFileInput {
   return {
     case_meta: {
-      case_id: "CASE-2025-BOTIFY-001",
+      case_id: "CASE-2024-BOTIFY-001",
       token_name: "BOTIFY",
       ticker: "$BOTIFY",
       mint: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacija4vWcns9Th69xb",

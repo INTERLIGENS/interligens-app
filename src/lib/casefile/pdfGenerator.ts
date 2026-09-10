@@ -241,14 +241,19 @@ function buildHtml(input: CaseFileInput): string {
   const generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
   // La référence est imprimée AVEC L'AUTORITÉ QUI LA NOMME, et jamais nue.
   //
-  // Mesuré le 2026-09-10 : le même dossier BOTIFY porte TROIS références.
+  // Mesuré le 2026-09-10 : le même dossier BOTIFY portait TROIS références, de
+  // la forme `CASE-<ANNÉE>-BOTIFY-001`. Les années sont citées ici SANS la
+  // référence complète, délibérément : un recensement qui découvre les porteurs
+  // en balayant les sources compterait ce commentaire comme un porteur de plus.
+  // Une documentation qui CITE une valeur ne doit pas se faire passer pour une
+  // surface qui la DÉCLARE.
   //
-  //   CASE-2024-BOTIFY-001   la valeur STOCKÉE — `data/cases/botify.json` et
-  //                          `src/data/cases/botify.json`, 8 fichiers du dépôt
-  //   CASE-2025-BOTIFY-001   `src/lib/casefile/presets.ts:55` — la même faute,
-  //                          figée dans le code l'an dernier
-  //   CASE-2026-BOTIFY-001   la valeur SERVIE cette année, et celle du PDF réel
-  //                          rangé au dataroom investisseur
+  //   année 2024   la valeur STOCKÉE — les deux `botify.json`, 8 fichiers, et
+  //                elle est FONDÉE : `case_meta.opened_at = 2024-11-01`
+  //   année 2025   `src/lib/casefile/presets.ts` — la même faute, figée dans le
+  //                code l'an dernier ; alignée sur 2024 par ce lot
+  //   année 2026   la valeur SERVIE cette année, et celle du PDF réel rangé au
+  //                dataroom investisseur
   //
   // La cause n'est pas une autorité de nommage double : c'est une RÉÉCRITURE EN
   // TRANSIT. `src/app/api/scan/solana/route.ts:184` remplace l'année du dossier
