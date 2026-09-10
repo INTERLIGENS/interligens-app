@@ -20,8 +20,17 @@
 //
 // ─── (b) RÉSOLUTION ─────────────────────────────────────────────────────
 //
-//   Cette valeur unique, présentée au résolveur de citation du produit, rend
-//   l'enregistrement dont le document a été construit.
+//   Cette valeur unique doit être résoluble EXACTEMENT, par une AUTORITÉ
+//   D'IDENTITÉ DE DOSSIER GOUVERNÉE, vers LE dossier logique qui a produit
+//   l'artefact.
+//
+//   Le critère ne désigne aucun résolveur, et n'en importe aucun : il dit ce
+//   qui devrait exister, pas ce qui existe. RÉSOLVEUR DE RECHERCHE ≠
+//   RÉSOLVEUR DE CITATION, et prendre le premier pour référence — même
+//   implicitement, même faute de mieux — serait l'élire par effet de bord.
+//   Aucune capacité du dépôt ne satisfait ce contrat aujourd'hui : c'est
+//   enregistré comme un MANQUE DE CAPACITÉ DE CITABILITÉ RC, en attente de
+//   ruling d'architecture, et non comblé ici.
 //
 // ─── POURQUOI CE FICHIER DOIT ÊTRE ROUGE AUJOURD'HUI ────────────────────
 //
@@ -120,44 +129,74 @@ const entreeInterne = () => ({
 interface Emplacement {
   /** Où le lecteur le voit. Pas où le code l'écrit. */
   readonly nom: string;
-  readonly extrait: (html: string) => string | null;
+  /**
+   * Le MOTIF DE POSITION, gardé accessible et non refermé dans une closure.
+   *
+   * La garde de non-régression en a besoin pour altérer UN emplacement et un
+   * seul : les quatre emplacements publics portant aujourd'hui la même valeur,
+   * une substitution textuelle naïve les toucherait tous les quatre et le
+   * mutant ne prouverait rien.
+   */
+  readonly motif: RegExp;
 }
 
-const premier = (re: RegExp) => (html: string): string | null => {
-  const m = html.match(re);
+const valeurDe = (html: string, e: Emplacement): string | null => {
+  const m = html.match(e.motif);
   return m?.[1] ? m[1].trim() : null;
+};
+
+/**
+ * TOUTES les occurrences d'un emplacement, pas la première.
+ *
+ * Deux des quatre emplacements publics — l'en-tête et le pied — sont répétés
+ * sur les neuf pages du document. Ne lire que la première occurrence laisserait
+ * passer une régression qui ne toucherait que la page 5, c'est-à-dire une
+ * régression invisible à la relecture et parfaitement présente sur la pièce.
+ */
+const toutesValeursDe = (html: string, e: Emplacement): string[] =>
+  [...html.matchAll(new RegExp(e.motif.source, "g"))].map((m) => (m[1] ?? "").trim());
+
+/**
+ * Altère UN emplacement, et un seul.
+ *
+ * La substitution est faite DANS la portion capturée par le motif de position,
+ * jamais sur le document entier : les emplacements portant la même valeur, un
+ * `replace` global les toucherait tous et le mutant, passant partout, ne
+ * prouverait rien du tout.
+ */
+const muter = (html: string, e: Emplacement, nouvelle: string): string => {
+  const m = html.match(e.motif);
+  if (!m?.[1]) throw new Error(`mutation impossible — emplacement introuvable : ${e.nom}`);
+  return html.replace(m[0], m[0].replace(m[1], nouvelle));
 };
 
 /** Gabarit INTERNE — `buildCaseFileHtml`. */
 const INTERNE: readonly Emplacement[] = [
-  { nom: "interne · titre de tête (h1)", extrait: premier(/<h1>([^<]*)<\/h1>/) },
+  { nom: "interne · titre de tête (h1)", motif: /<h1>([^<]*)<\/h1>/ },
   {
     nom: "interne · encart d'identité, champ « Reference »",
-    extrait: premier(/Reference<\/span>[^<]*<span class="mono"[^>]*>([^<]*)<\/span>/),
+    motif: /Reference<\/span>[^<]*<span class="mono"[^>]*>([^<]*)<\/span>/,
   },
   {
     nom: "interne · titre de la section des claims",
-    extrait: premier(/Claims — autorité canonique · ([^(<]*)\(/),
+    motif: /Claims — autorité canonique · ([^(<]*)\(/,
   },
-  {
-    nom: "interne · pied de page",
-    extrait: premier(/<span>([^<]*) — CONFIDENTIEL<\/span>/),
-  },
+  { nom: "interne · pied de page", motif: /<span>([^<]*) — CONFIDENTIEL<\/span>/ },
 ];
 
 /** Gabarit PUBLIC — `buildPublicReportHtml`. */
 const PUBLIC: readonly Emplacement[] = [
-  { nom: "public · <title> du document", extrait: premier(/<title>[^<]*·\s*([^<]*)<\/title>/) },
-  { nom: "public · référence de couverture", extrait: premier(/<div class="cover-case">([^<]*)<\/div>/) },
-  { nom: "public · en-tête de page", extrait: premier(/<div class="case-ref">[^<]*·\s*([^<]*)<\/div>/) },
+  { nom: "public · <title> du document", motif: /<title>[^<]*·\s*([^<]*)<\/title>/ },
+  { nom: "public · référence de couverture", motif: /<div class="cover-case">([^<]*)<\/div>/ },
+  { nom: "public · en-tête de page", motif: /<div class="case-ref">[^<]*·\s*([^<]*)<\/div>/ },
   {
     nom: "public · pied de page",
-    extrait: premier(/<footer class="page-footer">\s*<span>[^<]*<\/span>\s*<span>([^<]*)<\/span>/),
+    motif: /<footer class="page-footer">\s*<span>[^<]*<\/span>\s*<span>([^<]*)<\/span>/,
   },
 ];
 
 const releve = (html: string, emplacements: readonly Emplacement[]) =>
-  emplacements.map((e) => ({ nom: e.nom, valeur: e.extrait(html) }));
+  emplacements.map((e) => ({ nom: e.nom, valeur: valeurDe(html, e) }));
 
 // ═══ (a) CARDINALITÉ ═════════════════════════════════════════════════════
 
@@ -202,45 +241,166 @@ describe("S20/a1 — CRITÈRE (a) : un dossier logique, un seul identifiant rend
     ).toBe(1);
   });
 
-  it("le gabarit PUBLIC, à lui seul, est déjà conforme — il est à geler, pas à corriger", () => {
-    // Mesuré séparément parce que la conclusion diffère du gabarit interne, et
-    // qu'un test qui ne rend qu'un verdict global le cacherait. Le public ne
-    // fait rien de mal ; le fermer ici empêche une correction de l'interne de
-    // le casser au passage.
-    const html = buildPublicReportHtml("en", projectForPublication(DOSSIER, "s20"));
-    const valeurs = releve(html, PUBLIC).map((r) => r.valeur);
-    expect(new Set(valeurs).size).toBe(1);
+  it("le gabarit INTERNE seul porte l'écart — le public n'y est pour rien", () => {
+    // Mesuré séparément parce que la conclusion diffère d'un gabarit à
+    // l'autre, et qu'un verdict global la cacherait. La correction de RC-5
+    // côté document se réduit ainsi à UN site, et le gabarit public n'a pas à
+    // être touché pour l'obtenir — il est gelé par la garde S20/g1.
+    const interne = releve(buildCaseFileHtml(entreeInterne()), INTERNE);
+    const pub = releve(buildPublicReportHtml("en", projectForPublication(DOSSIER, "s20")), PUBLIC);
+    expect(new Set(pub.map((r) => r.valeur)).size).toBe(1);
+    expect(new Set(interne.map((r) => r.valeur)).size).toBe(2);
   });
+});
+
+// ═══ GARDE — LE GABARIT PUBLIC EST CONFORME, DONC IL EST GELÉ ════════════
+//
+// ██  Ce qui est conforme SANS GARDE le reste par chance.                  ██
+//
+// Un constat dit ce qui est ; une garde dit ce qui ne doit plus changer. La
+// différence n'est pas rhétorique, elle se voit au MUTANT : un test qui se
+// contenterait de relire les quatre valeurs d'aujourd'hui passerait tout
+// aussi bien sur un gabarit qui les aurait FIGÉES EN DUR — c'est-à-dire sur
+// le défaut exact qu'il prétend interdire.
+//
+// C'est la distinction posée en AG3 sur la STABILITÉ, transposée d'un cran :
+// conformité par COÏNCIDENCE de littéral vs conformité par DÉRIVATION. La
+// seconde se démontre, la première se relit.
+//
+// Et c'est le seul endroit du chantier qui s'acquiert sans attendre un
+// arbitrage : geler le conforme ne préjuge de rien sur l'issue, puisque les
+// quatre emplacements suivront le `ref` quelle que soit la valeur qu'il
+// portera.
+
+describe("S20/g1 — GARDE : les quatre emplacements publics DÉRIVENT du ref", () => {
+  /**
+   * Deux sondes qui ne partagent aucun fragment avec la valeur réelle, ni
+   * entre elles, ni avec aucun espace de nommage du produit.
+   *
+   * C'est délibéré et c'est tout l'intérêt : un emplacement qui aurait figé
+   * une valeur en dur, ou qui la dériverait d'une autre source que le `ref`
+   * reçu, ne peut pas suivre CES valeurs-là par hasard. Une sonde qui
+   * ressemblerait à une référence réelle laisserait justement passer le
+   * défaut qu'on cherche.
+   */
+  const SONDE_A = "QQ-PROBE-ALPHA-777";
+  const SONDE_B = "WW-AUTRE-BETA-042";
+
+  const renduAvec = (ref: string) =>
+    buildPublicReportHtml("en", projectForPublication({ ...DOSSIER, ref }, "s20"));
+
+  it("DÉRIVATION — les quatre suivent le ref REÇU, ils n'y coïncident pas", () => {
+    for (const sonde of [SONDE_A, SONDE_B]) {
+      for (const r of releve(renduAvec(sonde), PUBLIC)) {
+        expect(r.valeur, `${r.nom} ne suit pas le ref reçu`).toBe(sonde);
+      }
+    }
+  });
+
+  it("TOTALITÉ — l'emplacement répété porte la même valeur sur TOUTES les pages", () => {
+    const html = renduAvec(SONDE_A);
+    for (const e of PUBLIC) {
+      const toutes = toutesValeursDe(html, e);
+      expect(toutes.length, `${e.nom} : aucune occurrence trouvée`).toBeGreaterThan(0);
+      expect([...new Set(toutes)], `${e.nom} varie d'une page à l'autre`).toEqual([SONDE_A]);
+    }
+  });
+
+  // ── LE MUTANT, UN PAR EMPLACEMENT ──────────────────────────────────────
+  //
+  // Quatre mutants et non un seul : un mutant unique prouverait que la garde
+  // attrape UNE régression, pas qu'elle couvre les quatre emplacements. Le
+  // jour où l'un d'eux cesse d'être lu — un balisage qui change, un motif qui
+  // ne matche plus — son mutant survit, et c'est lui qui le dit.
+  it.each(PUBLIC.map((e) => [e.nom, e] as const))(
+    "MUTANT — « %s » reparti vers un autre espace TUE la garde",
+    (_nom, emplacement) => {
+      const mute = muter(renduAvec(SONDE_A), emplacement, "CASE-2024-BOTIFY-001");
+      const releves = releve(mute, PUBLIC);
+
+      // (a) la cardinalité le voit
+      expect(new Set(releves.map((r) => r.valeur)).size).toBe(2);
+      // (b) la dérivation le voit, et NOMME l'emplacement fautif
+      const fautif = releves.find((r) => r.nom === emplacement.nom)!;
+      expect(fautif.valeur).not.toBe(SONDE_A);
+      // (c) les trois autres sont indemnes — le mutant est bien CIBLÉ, sinon
+      //     il passerait pour un succès en ayant tout cassé.
+      const autres = releves.filter((r) => r.nom !== emplacement.nom);
+      expect(autres.every((r) => r.valeur === SONDE_A)).toBe(true);
+    },
+  );
 });
 
 // ═══ (b) RÉSOLUTION ══════════════════════════════════════════════════════
 
-describe("S20/b1 — CRITÈRE (b) : la valeur citée est acceptée par le résolveur", () => {
+describe("S20/b1 — CRITÈRE (b) : la valeur émise est résoluble par une autorité", () => {
+  // ─── CE CRITÈRE NE DÉSIGNE AUCUN RÉSOLVEUR, ET C'EST SA FORME ─────────
+  //
+  //   RÉSOLVEUR DE RECHERCHE ≠ RÉSOLVEUR DE CITATION.
+  //
+  // Une première rédaction de ce bloc prenait la surface de recherche du
+  // produit pour référence — elle y lisait la règle d'extraction de clé et
+  // mesurait le critère contre elle. C'était l'élire par effet de bord :
+  // exactement le motif que ce corpus refuse, commis dans le test censé le
+  // fermer. Une surface qui trouve des enregistrements par correspondance
+  // approchante n'acquiert pas l'autorité de résoudre une identité citée
+  // parce qu'elle est la seule qui existe.
+  //
+  // Le critère décrit donc la CAPACITÉ ATTENDUE par son contrat, et rien
+  // d'autre. Il ne nomme aucun module, n'en importe aucun, et ne se
+  // satisferait pas d'un module qui viendrait à porter ce nom : ce qu'il
+  // exige, c'est une résolution EXACTE et GOUVERNÉE vers LE dossier logique
+  // qui a produit l'artefact.
+
   /**
-   * LA RÈGLE D'EXTRACTION DE CLÉ DU RÉSOLVEUR, telle qu'elle est servie.
+   * Le contrat, et lui seul. Trois exigences, aucune implémentation :
    *
-   * `src/app/en/explorer/[caseId]/page.tsx:43` — la seule surface du produit
-   * qui résolve un dossier À PARTIR D'UNE RÉFÉRENCE. Recopiée ici et non
-   * importée : la page est un composant client qui monte `useParams`, et
-   * l'importer exercerait Next, pas la règle.
-   *
-   * Le repli n'a jamais été posé comme une règle d'identité — il est né
-   * comme un contournement documenté de la réécriture annuelle. Il est
-   * pourtant, aujourd'hui, le SEUL pont entre deux millésimes d'un même
-   * dossier. Une élection par effet de bord, déjà en place.
+   *   EXACTE      la valeur émise résout telle qu'elle est reçue. Aucune
+   *               troncature, aucune extraction de fragment, aucun repli.
+   *   GOUVERNÉE   l'autorité qui répond est celle qui a produit l'artefact,
+   *               et elle le déclare.
+   *   TOTALE      elle rend LE dossier logique, pas un enregistrement qui
+   *               lui ressemble.
    */
-  const cleDeRepli = (ref: string): string | null =>
-    ref.match(/^CASE-\d{4}-(.+?)-\d+$/)?.[1] ?? null;
+  type ResolveurDeCitationGouverne = (valeurEmise: string) => { readonly ref: string } | null;
 
-  it("CONSTAT — le repli du résolveur est agnostique à l'année, et ne l'est qu'à elle", () => {
-    // Le pont entre millésimes existe, et c'est le contournement lui-même.
-    expect(cleDeRepli("CASE-2024-BOTIFY-001")).toBe("BOTIFY");
-    expect(cleDeRepli("CASE-2026-BOTIFY-001")).toBe("BOTIFY");
-    expect(cleDeRepli("CASE-2024-BOTIFY-001")).toBe(cleDeRepli("CASE-2026-BOTIFY-001"));
+  /**
+   * LE REGISTRE DES CAPACITÉS QUI SATISFONT CE CONTRAT.
+   *
+   * VIDE PAR MESURE, PAS PAR OMISSION — et c'est le résultat, pas un travail
+   * qui resterait à faire ici. Aucune capacité du dépôt ne satisfait les
+   * trois exigences à la fois aujourd'hui, et la conclusion à en tirer n'est
+   * pas d'en écrire une : c'est un MANQUE DE CAPACITÉ DE CITABILITÉ, enregistré
+   * comme tel, en attente de ruling d'architecture.
+   *
+   * Inventer ici le résolveur manquant serait élire une forme d'identité par
+   * la porte de service — la même faute d'un cran plus bas.
+   */
+  const RESOLVEURS_GOUVERNES: readonly ResolveurDeCitationGouverne[] = [];
 
-    // Et il ne franchit rien d'autre : la référence gouvernée ne produit
-    // aucune clé, donc la page retombe sur la seule recherche par titre exact.
-    expect(cleDeRepli(BOTIFY_CASEFILE_REF)).toBeNull();
+  it("CONSTAT — l'aliasing heuristique historique n'est PAS de la résolution d'identité", () => {
+    // La règle de repli qui vit dans la surface de recherche efface le
+    // millésime d'une référence avant de chercher. Elle est reproduite ici
+    // pour être QUALIFIÉE, jamais pour servir de mesure — c'est un ALIASING
+    // HEURISTIQUE HÉRITÉ, et le fait qu'il ait été posé délibérément ne lui
+    // confère aucune autorité présente.
+    const aliasHeuristique = (v: string): string | null =>
+      v.match(/^CASE-\d{4}-(.+?)-\d+$/)?.[1] ?? null;
+
+    // Ce qu'il fait réellement : il rend deux millésimes indiscernables. Ce
+    // n'est pas un rapprochement de dossiers, c'est une PERTE d'information
+    // présentée comme une correspondance. Les deux entrées ci-dessous ne
+    // désignent pas le même dossier POUR CE CODE — il ne les compare jamais :
+    // il les tronque toutes deux et perd ce qui les distinguait.
+    expect(aliasHeuristique("CASE-2024-BOTIFY-001")).toBe("BOTIFY");
+    expect(aliasHeuristique("CASE-2026-BOTIFY-001")).toBe("BOTIFY");
+
+    // Et il n'est pas EXACT, ce qui suffit à le disqualifier du contrat sans
+    // rien préjuger de sa légitimité comme aide à la recherche.
+    expect(aliasHeuristique("CASE-2024-BOTIFY-001")).not.toBe("CASE-2024-BOTIFY-001");
+
+    // Aucun candidat n'est admis au registre de ce fait.
+    expect(RESOLVEURS_GOUVERNES).toHaveLength(0);
   });
 
   // ── it.fails, jamais .skip ──────────────────────────────────────────────
@@ -249,22 +409,26 @@ describe("S20/b1 — CRITÈRE (b) : la valeur citée est acceptée par le résol
   // une propriété que personne n'a exercée, ce qui est le motif que ce corpus
   // ferme depuis S10. `it.fails` la GARDE au décompte, avec son verdict à
   // l'envers — et le jour où elle passe, le harnais rougit et exige qu'on
-  // retire le marqueur. La bascule est donc forcée par la mécanique, pas
-  // confiée à la mémoire de celui qui armera la surface.
+  // retire le marqueur. La bascule est forcée par la mécanique, pas confiée à
+  // la mémoire de celui qui armera la capacité.
   //
-  // RAISON NOMMÉE DU ROUGE, et elle n'est pas un oubli :
-  //   `src/lib/explorer/explorerItems.ts` interroge `kolCase` (titre = caseId)
-  //   et `platformCaseFile` (titre = codename). `tokenCaseFile` n'y est JAMAIS
-  //   interrogée. La référence gouvernée n'est atteignable depuis aucune
-  //   orthographe.
+  // RAISON NOMMÉE DU ROUGE, et ce n'est pas un oubli :
   //
-  // CE QUE COÛTE SA LEVÉE : indexer `tokenCaseFile.ref` dans le résolveur est
-  // une SURFACE PUBLIQUE NOUVELLE, pas un renommage. Le marqueur se retire
-  // dans le changement même qui arme la surface — jamais avant, jamais après.
+  //   AUCUN RÉSOLVEUR DE CITATION GOUVERNÉ N'EXISTE.
+  //
+  //   La seule surface du produit qui résolve quoi que ce soit à partir d'une
+  //   chaîne est un résolveur de RECHERCHE, et un résolveur de recherche ne
+  //   peut pas tenir ce rôle : il répond par correspondance, là où une
+  //   citation exige une identité. Aucune modification de cette surface n'est
+  //   envisagée ni préparée par ce fichier.
+  //
+  //   Statut : MANQUE DE CAPACITÉ DE CITABILITÉ RC, ruling d'architecture en
+  //   attente. Le marqueur se retire dans le changement même qui arme la
+  //   capacité ratifiée — jamais avant, et jamais en désignant l'existant.
   it.fails(
-    "⛔ RÉSOLUTION — la référence gouvernée est acceptée par le résolveur de citation",
+    "⛔ RÉSOLUTION — une capacité de résolution de citation gouvernée est disponible",
     () => {
-      expect(cleDeRepli(BOTIFY_CASEFILE_REF)).not.toBeNull();
+      expect(RESOLVEURS_GOUVERNES.length).toBeGreaterThan(0);
     },
   );
 });
