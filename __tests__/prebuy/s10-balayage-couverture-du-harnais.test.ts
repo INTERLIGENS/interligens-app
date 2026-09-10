@@ -49,6 +49,16 @@ const S8 = "s8-200-menteur-et-autorite-non-exercee.test.ts";
 const S9 = "s9-hard-gates-population-lignee.test.ts";
 const CORPUS = [S6, S7, S8, S9] as const;
 
+/** Source SANS commentaires : une sonde de LECTURE ne doit pas lire les citations. */
+const codeSeulDe = (n: string): string =>
+  T(n)
+    .split("\n")
+    .filter((l) => {
+      const t = l.trimStart();
+      return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+    })
+    .join("\n");
+
 // ═════════════════════════════════════════════════════════════════════════
 // Q1 · SATISFAITS PAR CONCORDANCE, OU PAR UN VIDE
 // ═════════════════════════════════════════════════════════════════════════
@@ -84,10 +94,24 @@ const CORPUS = [S6, S7, S8, S9] as const;
 //     les mutants ou jeter la batterie, donc rougir.
 
 describe("S10/q1 — aucune assertion de périmètre n'est satisfaite par un vide", () => {
+  /**
+   * ⚠ CES SONDES LISENT `codeSeulDe`, PAS LA SOURCE BRUTE — corrigé le
+   * 2026-09-10, après un FAUX VERT dans cette garde même.
+   *
+   * `{ fichier: S8, garde: "expect(CONSOMMATEURS).toHaveLength(3)" }` a
+   * continué de passer APRÈS que cette assertion eut été remplacée dans S8 par
+   * la couverture d'univers — parce que la rectification écrite en tête de S8
+   * CITE l'ancienne ligne dans un commentaire. La garde chargée d'empêcher les
+   * gardes de disparaître validait donc sa propre nécrologie.
+   *
+   * C'est la quatrième occurrence de l'ancre qui matche une citation, et la
+   * seule où elle produit un FAUX VERT plutôt qu'un faux rouge. Elle est la
+   * plus dangereuse pour cette raison.
+   */
   const GARDES: Array<{ fichier: string; garde: string }> = [
     { fichier: S9, garde: "expect(PARTENAIRES).toHaveLength(3)" },
     { fichier: S9, garde: "liste des surfaces partenaires VIDE — sonde désarmée" },
-    { fichier: S8, garde: "expect(CONSOMMATEURS).toHaveLength(3)" },
+    { fichier: S8, garde: "expect([...CONSOMMATEURS].sort()).toEqual(CONSOMMATEURS_GOUVERNES)" },
     { fichier: S8, garde: "expect(GOUVERNEES).toHaveLength(5)" },
     { fichier: S7, garde: "expect(SITES.length).toBe(8)" },
     { fichier: S7, garde: "expect(PARTENAIRES).toHaveLength(3)" },
@@ -95,15 +119,33 @@ describe("S10/q1 — aucune assertion de périmètre n'est satisfaite par un vid
 
   for (const g of GARDES) {
     it(`${g.fichier} porte encore : ${g.garde}`, () => {
-      expect(T(g.fichier)).toContain(g.garde);
+      expect(codeSeulDe(g.fichier), "présent en COMMENTAIRE ne compte pas").toContain(g.garde);
     });
   }
 
   it("la GATE 1 est fail-safe : liste vide ⇒ défaut OUVERT, jamais fermé", () => {
     // La ceinture, en plus des bretelles. Une gate ne se désarme pas parce
     // qu'on a vidé ce qu'elle inspecte.
-    expect(T(S9)).toContain("if (PARTENAIRES.length === 0)");
-    expect(T(S9)).toContain("ouvert: true");
+    expect(codeSeulDe(S9)).toContain("if (PARTENAIRES.length === 0)");
+    expect(codeSeulDe(S9)).toContain("ouvert: true");
+  });
+
+  it("L'UNIVERS GOUVERNÉ est COUVERT, pas énuméré — les deux surfaces", () => {
+    // « THE GOVERNED SUBJECT UNIVERSE IS ACTUALLY COVERED. » Une liste écrite
+    // à la main ne prouve pas la couverture : elle prouve qu'on a écrit une
+    // liste. Les deux univers sont désormais DÉCOUVERTS sur le disque.
+    expect(codeSeulDe(S9)).toContain("PARTENAIRES_DECOUVERTS");
+    expect(codeSeulDe(S9)).toContain("expect([...PARTENAIRES].sort()).toEqual([...PARTENAIRES_DECOUVERTS])");
+    expect(codeSeulDe(S8)).toContain("CONSOMMATEURS_DECOUVERTS");
+    expect(codeSeulDe(S8)).toContain("CONSOMMATEURS_HORS_GOUVERNANCE");
+  });
+
+  it("et le rétrécissement de l'univers est une RÈGLE, pas une liste", () => {
+    // Deux des six consommateurs du graphe sont exclus : ce sont des pages de
+    // démo. L'exclusion passe par un prédicat vérifiable et les exclus sont
+    // nommés — retirer des sujets en silence est la façon la plus simple de
+    // faire passer une borne de classe.
+    expect(codeSeulDe(S8)).toContain("const estRouteApi = (f: string) =>");
   });
 });
 
@@ -127,13 +169,13 @@ describe("S10/q1b — chaque batterie a sa garde anti-vacuité, dans les DEUX se
   it("les quatre batteries existent, et aucune n'a été retirée du balayage", () => {
     expect(BATTERIES).toHaveLength(4);
     for (const b of BATTERIES) {
-      expect(T(b.fichier), `${b.batterie} a disparu`).toContain(`function ${b.batterie}`);
+      expect(codeSeulDe(b.fichier), `${b.batterie} a disparu`).toContain(`function ${b.batterie}`);
     }
   });
 
   for (const b of BATTERIES) {
     it(`${b.batterie} — garde présente, et dans les deux sens`, () => {
-      const src = T(b.fichier);
+      const src = codeSeulDe(b.fichier);
       expect(src, `${b.liste} n'est pas déclarée`).toContain(`const ${b.liste} = [`);
       // Sens 1 : tout critère déclaré est tué.
       expect(src).toContain(`${b.liste}.filter((c) => !tues.has(c))`);
@@ -235,9 +277,22 @@ describe("S10/q3 — la dépendance à la population, mesurée et déclarée", (
   });
 
   it("la seule dépendance à la population est INJECTÉE, et elle est dans les gates", () => {
-    expect(T(S9)).toContain("INTERLIGENS_GRAPH_POPULATION");
+    /**
+     * ⚠ LA SONDE VISE LA LECTURE, PAS LA MENTION. Première écriture :
+     * `not.toContain("INTERLIGENS_GRAPH_POPULATION")` sur la source BRUTE —
+     * qui rougissait dès qu'un autre fichier CITAIT la variable dans un
+     * commentaire, ce qu'a fait S8 en documentant la condition d'activation.
+     * Une ancre qui matche une citation, quatrième fois dans ce travail : ici
+     * elle accusait un fichier correct au lieu d'en absoudre un fautif.
+     *
+     * Ce qui compte est qu'aucun corpus hors gates ne LISE une population.
+     */
+    const lit = (f: string) =>
+      /process\.env\s*\[?\s*["']?INTERLIGENS_GRAPH_POPULATION/.test(codeSeulDe(f)) ||
+      /lirePopulation\s*\(/.test(codeSeulDe(f));
+    expect(lit(S9), "les gates doivent lire la population").toBe(true);
     for (const f of [S6, S7, S8]) {
-      expect(T(f), `${f} lit une population`).not.toContain("INTERLIGENS_GRAPH_POPULATION");
+      expect(lit(f), `${f} LIT une population`).toBe(false);
     }
   });
 

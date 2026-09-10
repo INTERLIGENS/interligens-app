@@ -28,15 +28,50 @@
 // Il y a DEUX producteurs de graphe, et la garde valide la forme de l'un
 // contre la réponse de l'autre :
 //
-//   solanaGraph/engine.ts:20   construit `{version:"1.0", provider:{name:"Helius"}}`
-//                              → et n'a AUCUN appelant dans tout src/. ORPHELIN.
-//   scan/solana/graph/route.ts rend `provider: 'INTERLIGENS Graph DB'`, lit
-//                              PRISMA, et n'émet AUCUN `version`.
+//   VOIE A · ASYNCHRONE, et elle est VIVANTE
+//     POST /api/scan/solana/graph/jobs  → scheduler.processNextJob
+//       → buildGraphReport (engine.ts:9) → GraphReport {version:"1.0",
+//         provider:{name:"Helius"}}, rangé au cache de job, relu par
+//         GET /api/scan/solana/graph/jobs/[id]. Réponse 202 + job_id.
+//     Son commentaire d'en-tête le dit : « this endpoint enqueues a Helius
+//     graph scan (external $ cost, shared HELIUS key) ».
 //
-// La route PDF interroge le second et valide contre le premier. L'instruction
-// « configurez HELIUS_API_KEY » était donc VRAIE — pour un producteur qui a
-// été débranché. C'est une instruction gelée au moment d'un remplacement de
-// producteur, et c'est pour ça qu'elle est plausible et fausse à la fois.
+//   VOIE B · SYNCHRONE, celle que le PDF interroge
+//     GET /api/scan/solana/graph → prisma.graphCase, provider
+//     'INTERLIGENS Graph DB', et AUCUN champ `version`.
+//
+// La route PDF interroge la VOIE B et valide contre la forme de la VOIE A.
+// Les deux producteurs sont VIVANTS ; ce qui manque est le câblage entre eux.
+//
+// ─── RECTIFICATION DATÉE DU 2026-09-10 ──────────────────────────────────
+//
+// Ce que ce fichier a affirmé à sa première écriture, et dans le message de
+// c722a2b : « solanaGraph/engine.ts:20 [...] n'a AUCUN appelant dans tout
+// src/. ORPHELIN. »
+//
+// FAUX. T1 avait raison, et je le dis aussi nettement que je l'ai dit pour
+// l'état B. `scheduler.ts:4` importe `buildGraphReport` et l'appelle l. 14 ;
+// `jobs/route.ts:3` importe `scheduler`. La chaîne est INDIRECTE, en deux
+// hops, et elle est vivante.
+//
+// COMMENT JE ME SUIS TROMPÉ, et c'est la même faute que dans le résolveur de
+// l'axe W, deux heures plus tôt : mon balayage EXCLUAIT `src/lib/solanaGraph/`
+// pour ignorer les auto-références — donc excluait exactement le fichier qui
+// porte le hop. Un résolveur qui s'arrête au premier hop ne mesure pas une
+// chaîne, il mesure un import direct. Il est transitif désormais.
+//
+// CE QUE ÇA CHANGE, ET CE QUE ÇA NE CHANGE PAS :
+//
+//   change   BUILD 13 est un problème de CÂBLAGE, pas une décision de
+//            résurrection. Avec une contrainte réelle : la voie vivante est
+//            ASYNCHRONE (202 + job_id + cache), le rendu PDF est SYNCHRONE.
+//            Le câblage n'est pas une ligne.
+//   ne change pas
+//            l'axe W tient, et il est PLUS net. Le producteur RÉEL de cette
+//            surface reste la voie B, qui ne dépend pas de Helius.
+//            L'instruction est vraie POUR UNE AUTRE VOIE, existante — voilà
+//            pourquoi elle est plausible, et pourquoi une sonde par
+//            sous-chaîne aurait conclu qu'elle est correcte.
 //
 // ─── TROU DE PREUVE, DÉCLARÉ ────────────────────────────────────────────
 //
@@ -73,6 +108,7 @@ const RENDERER = "src/components/pdf/pdfRenderer.ts";
 const ROUTE_PDF = "src/app/api/report/casefile/route.ts";
 const GRAPHE = "src/app/api/scan/solana/graph/route.ts";
 const ENGINE = "src/lib/solanaGraph/engine.ts";
+const JOBS = "src/app/api/scan/solana/graph/jobs/route.ts";
 
 /** Le scan minimal, repris de src/lib/solanaGraph/__tests__/graph.test.ts. */
 const scanMinimal = (): any => ({
@@ -135,11 +171,26 @@ describe("S11/c2 — LEXICAL : la garde ne peut être satisfaite par aucun jeton
     expect(codeSeul(SRC(GRAPHE))).not.toMatch(/version\s*:/);
   });
 
-  it("le SEUL constructeur de `version: \"1.0\"` est un moteur ORPHELIN", () => {
+  it("le SEUL constructeur de `version: \"1.0\"` est VIVANT, par la voie JOBS", () => {
     expect(codeSeul(SRC(ENGINE))).toContain('version:"1.0"');
     expect(codeSeul(SRC(ENGINE))).toContain('provider:{name:"Helius"');
-    // Et rien ne l'importe : la garde valide la forme d'un producteur débranché.
-    expect(APPELANTS_ENGINE).toEqual([]);
+    // Chaîne TRANSITIVE, résolue depuis les sources — pas un import direct.
+    expect(codeSeul(SRC("src/lib/solanaGraph/scheduler.ts"))).toContain(
+      'import { buildGraphReport } from "./engine"',
+    );
+    expect(codeSeul(SRC("src/lib/solanaGraph/scheduler.ts"))).toContain("await buildGraphReport(");
+    expect(codeSeul(SRC(JOBS))).toContain('from "@/lib/solanaGraph/scheduler"');
+    // Et la fermeture transitive atteint bien la route publique.
+    expect(ATTEIGNENT_ENGINE).toContain("src/lib/solanaGraph/scheduler.ts");
+    expect(ATTEIGNENT_ENGINE).toContain(JOBS);
+  });
+
+  it("mais cette voie N'EST PAS celle que le PDF interroge", () => {
+    // Le PDF fait un GET synchrone sur la route Prisma ; la voie vivante est
+    // un POST asynchrone qui rend 202 + job_id. Deux producteurs, deux formes.
+    expect(codeSeul(SRC(ROUTE_PDF))).toContain("/api/scan/solana/graph?mint=");
+    expect(codeSeul(SRC(ROUTE_PDF))).not.toContain("/graph/jobs");
+    expect(codeSeul(SRC(JOBS))).toContain("{status:202}");
   });
 
   it("donc `graphReport` est TOUJOURS null, et c'est STRUCTUREL", () => {
@@ -168,9 +219,34 @@ const FICHIERS_SRC: string[] = (() => {
   return out;
 })();
 
-const APPELANTS_ENGINE = FICHIERS_SRC.filter(
-  (f) => !f.startsWith("src/lib/solanaGraph/") && /solanaGraph\/engine/.test(SRC(f)),
-);
+/**
+ * Fermeture TRANSITIVE des importateurs d'un module. Première écriture :
+ * un filtre à UN hop qui excluait le paquet lui-même — donc excluait
+ * `scheduler.ts`, qui est le hop. Voir la rectification en tête.
+ */
+function importateursTransitifs(cible: RegExp): string[] {
+  const atteints = new Set<string>();
+  let frontiere = FICHIERS_SRC.filter((f) => cible.test(SRC(f)) && !cible.test(f));
+  while (frontiere.length > 0) {
+    const suivant: string[] = [];
+    for (const f of frontiere) {
+      if (atteints.has(f)) continue;
+      atteints.add(f);
+      // Le nom de module tel qu'on l'importerait : chemin sans extension.
+      const mod = f.replace(/^src\//, "").replace(/\.tsx?$/, "");
+      const court = mod.split("/").pop()!;
+      const re = new RegExp(`from\\s+["'](?:@/${mod}|\\./${court}|\\.\\./[^"']*${court})["']`);
+      for (const g of FICHIERS_SRC) {
+        if (!atteints.has(g) && g !== f && re.test(SRC(g))) suivant.push(g);
+      }
+    }
+    frontiere = suivant;
+  }
+  return [...atteints].sort();
+}
+
+/** Les fichiers qui atteignent `buildGraphReport`, directement ou non. */
+const ATTEIGNENT_ENGINE = importateursTransitifs(/solanaGraph\/engine|from ["']\.\/engine["']/);
 
 // ═════════════════════════════════════════════════════════════════════════
 // AXE V · UNE ABSENCE STRUCTURELLE N'EST PAS UN RÉSULTAT DE MESURE
