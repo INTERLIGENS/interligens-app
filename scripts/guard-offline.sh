@@ -458,6 +458,24 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 13 · S1 — LA RÉFÉRENCE DE DOSSIER NE SE DÉRIVE PAS DE
+# L'HORLOGE. La route servante réécrit l'année de `case_meta.case_id` avec
+# l'année COURANTE de la requête ; la référence imprimée sur la pièce change
+# donc chaque 1ᵉʳ janvier, ce qui invalide rétroactivement toute citation déjà
+# émise. Le geste est le RETRAIT de cette seule réécriture : la route rend la
+# valeur stockée telle quelle. Aucun nettoyage opportuniste, aucune écriture DB,
+# aucune migration, aucun couplage scoring/TigerScore/PDF. Le contournement aval
+# de l'explorer n'est PAS retiré ici — il compense la réécriture ET franchit un
+# autre espace de nommage ; retirer la cause ne retire pas automatiquement le
+# contournement. Autorisation humaine explicite (David, GPT validé) — voir PR
+# description. Exemption STRICTEMENT limitée au SEUL fichier src/app/api/
+# concerné ; AUCUN wildcard sur src/app/api/ (toute autre route reste bloquée).
+if [[ "$BRANCH" =~ ^hotfix/s1-reference-horloge$ ]]; then
+    EXEMPT_S1_REFERENCE_HORLOGE_PATTERNS=(
+        "^src/app/api/scan/solana/route\.ts$"
+    )
+fi
+
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -847,6 +865,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche hotfix/s1-reference-horloge, exempter STRICTEMENT le SEUL
+    # fichier src/app/api/ du retrait (aucun wildcard src/app/api/).
+    if [[ "$BRANCH" =~ ^hotfix/s1-reference-horloge$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_S1_REFERENCE_HORLOGE_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
