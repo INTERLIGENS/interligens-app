@@ -37,16 +37,92 @@ import path from "node:path";
 
 const RACINE = path.resolve(__dirname, "../..");
 
-// ── Les trois porteurs DÉCLARÉS ─────────────────────────────────────────────
+// ── LE REGISTRE — des porteurs CLASSÉS, jamais un nombre ───────────────────
 //
-// Périmètre A ratifié : « identity printed/named by a portable CaseFile
-// artifact ». Cette liste n'est pas la mesure — c'est ce que la mesure doit
-// retrouver toute seule. Si elles divergent, c'est la liste qui a tort.
-const PORTEURS_DECLARES: readonly string[] = [
-  "src/app/api/casefile/generate/route.ts",
-  "src/app/api/pdf/casefile/route.ts",
-  "src/app/api/report/v2/route.ts",
-];
+// ██  Un compte est une liste déguisée. On classe, on ne compte pas.  ██
+//
+// La garde ne défend PAS « il y en a trois ». Elle défend « tout porteur
+// découvert porte un ÉTAT ». Les deux propriétés se ressemblent tant que rien
+// ne bouge, et divergent dès que quelque chose bouge :
+//
+//   un porteur NOUVEAU, absent du registre    → ROUGE   (c'est le but)
+//   un porteur RETIRÉ du dépôt                → VERT    (un compte rougirait)
+//
+// Le cliquet porte donc sur une IDENTITÉ — le chemin du fichier — jamais sur
+// un total ni sur une coordonnée. Une ligne qui se déplace ne déclasse rien.
+
+export type EtatPorteur =
+  /** Émet la référence FONDÉE dans son emplacement de citation. */
+  | "CONFORME"
+  /** Affirme sur l'INSTANCE une autorité qui n'est vraie que de la SURFACE. */
+  | "P1_AUTORITE_D_INSTANCE"
+  /** Émet une identité de l'espace de nommage historique sur un artefact portable. */
+  | "P1_IDENTITE_NON_FONDEE"
+  /** N'émet rien de son propre chef : il rend ce que son appelant lui donne. */
+  | "PASSIF";
+
+export interface EntreeRegistre {
+  readonly etat: EtatPorteur;
+  readonly gele: boolean;
+  readonly note: string;
+}
+
+/**
+ * Toute surface qui IMPRIME ou NOMME une identité de dossier sur un artefact
+ * portable, et son état.
+ *
+ * Le registre est plus large que la découverte : il déclare aussi les
+ * IMPRIMEURS PASSIFS et les surfaces CONFORMES, que la découverte ne signale
+ * pas. C'est délibéré, et c'est ce qui rend le retrait d'un porteur silencieux :
+ * l'assertion va de la DÉCOUVERTE vers le REGISTRE, jamais l'inverse.
+ */
+export const REGISTRE_PORTEURS: Readonly<Record<string, EntreeRegistre>> = {
+  "src/app/api/casefile/generate/route.ts": {
+    etat: "P1_AUTORITE_D_INSTANCE",
+    gele: true,
+    note: "Nomme l'artefact depuis `case_meta.case_id` (l.101) ; la branche `body.data` (l.72) accepte une charge sans bloc canonique, et le document sort estampillé `Authority · CANONICAL`.",
+  },
+  "src/app/api/pdf/casefile/route.ts": {
+    etat: "P1_IDENTITE_NON_FONDEE",
+    gele: true,
+    note: "Alimente `off_chain.case_id` depuis `case_meta.case_id` (l.38) ; imprimé par pdfRenderer. Aucune revendication d'autorité sur le document.",
+  },
+  "src/app/api/report/v2/route.ts": {
+    etat: "P1_IDENTITE_NON_FONDEE",
+    gele: true,
+    note: "Idem (l.64), imprimé par templateV2 en pied de CHAQUE page. Découvert seulement en cherchant par capacité de produire un artefact, jamais par nom de moteur.",
+  },
+  "src/lib/casefile/pdfGenerator.ts": {
+    etat: "P1_IDENTITE_NON_FONDEE",
+    gele: false,
+    note: "Imprime le `h1` (l.312) et NOMME la clef d'archive (l.628) depuis l'identité historique, alors que la ligne 278 dispose de `canonical?.ref`. Terrain libre : aucune fenêtre requise.",
+  },
+  "src/app/api/report/casefile/route.ts": {
+    etat: "CONFORME",
+    gele: true,
+    note: "Pose `off_chain.case_id = dossier.ref` (l.71). C'est le PRÉCÉDENT du dépôt : la référence fondée occupe l'emplacement, sans changer aucun type.",
+  },
+  "src/app/api/casefile/pdf/route.ts": {
+    etat: "CONFORME",
+    gele: true,
+    note: "Transmet `canonical: { ref: dossier.ref }` (l.163) et nomme le fichier depuis `ref` (l.141/176). Fail-closed à l.189.",
+  },
+  "src/app/api/casefile/public/route.ts": {
+    etat: "CONFORME",
+    gele: true,
+    note: "Nomme le fichier depuis `ref` (l.103) ; le rendu public imprime `dossier.ref`.",
+  },
+  "src/components/pdf/pdfRenderer.ts": {
+    etat: "PASSIF",
+    gele: true,
+    note: "Imprime `off_chain.case_id` (l.162) sans le produire. Deux appelants, un conforme, un non. On ne le modifie pas parce qu'un appelant fournit la mauvaise propriété.",
+  },
+  "src/lib/pdf/v2/templateV2.ts": {
+    etat: "PASSIF",
+    gele: true,
+    note: "Imprime `off_chain.case_id` (l.427) sans le produire. Un seul appelant, non conforme.",
+  },
+};
 
 // ── Les trois capacités ─────────────────────────────────────────────────────
 
@@ -204,7 +280,7 @@ function corpusSynthetique(entrees: Record<string, string>): Map<string, string>
 }
 
 describe("univers · la garde découvre un moteur qu'elle ne connaît pas", () => {
-  it("MUTANT — un CINQUIÈME moteur, jamais nommé nulle part, est découvert", () => {
+  it("MUTANT — un CINQUIÈME moteur rougit parce qu'il est ABSENT DU REGISTRE, pas parce que le total a bougé", () => {
     const trouves = decouvrirPorteurs(
       corpusSynthetique({
         "src/lib/pdf/v3/templateV3.ts": CINQUIEME_MOTEUR_SYNTHETIQUE,
@@ -213,6 +289,8 @@ describe("univers · la garde découvre un moteur qu'elle ne connaît pas", () =
     );
     expect(trouves.map((p) => p.fichier)).toEqual(["src/app/api/report/v3/route.ts"]);
     expect(trouves[0].imprimeur).toBe("src/lib/pdf/v3/templateV3.ts");
+    // LA raison du rouge : le registre ne le connaît pas.
+    expect("src/app/api/report/v3/route.ts" in REGISTRE_PORTEURS).toBe(false);
   });
 
   it("CONTRÔLE NÉGATIF — le MÊME moteur, alimenté par la référence fondée, n'est pas un porteur", () => {
@@ -239,6 +317,25 @@ describe("univers · la garde découvre un moteur qu'elle ne connaît pas", () =
       }),
     );
     expect(avecV3.map((p) => p.fichier)).toEqual(avecExistant.map((p) => p.fichier));
+  });
+
+  /**
+   * La négation d'affectation a été FAUSSE une fois, et sa fausseté ressemblait
+   * à un succès : écrite `…case_id\s*(?!=[^=>])`, elle laissait passer
+   * l'affectation par retour arrière. On vérifie ici que c'est bien la forme
+   * CORRIGÉE qui tourne — une garde reformée sur une regex fausse serait la
+   * même faute au propre.
+   */
+  it("la négation d'affectation est bien la forme corrigée, et elle mord", () => {
+    // ÉCRITE — la ligne par laquelle une surface devient conforme : ignorée.
+    expect(IDENTITE_NON_FONDEE.test("casefile.off_chain.case_id = dossier.ref;")).toBe(false);
+    expect(IDENTITE_NON_FONDEE.test("off_chain.case_id  =  founded;")).toBe(false);
+    // LUE — les trois formes réelles des porteurs : vues.
+    expect(IDENTITE_NON_FONDEE.test("case_id: caseFile?.case_meta.case_id ?? null,")).toBe(true);
+    expect(IDENTITE_NON_FONDEE.test("`${input.case_meta.case_id}.pdf`")).toBe(true);
+    expect(IDENTITE_NON_FONDEE.test("${off_chain.case_id ?? mint.slice(0,8)}")).toBe(true);
+    // Comparaison, pas affectation : c'est une lecture.
+    expect(IDENTITE_NON_FONDEE.test("if (off_chain.case_id === ref)")).toBe(true);
   });
 
   it("un producteur qui n'imprime RIEN n'est pas un porteur — la clef de lecture n'est pas une émission", () => {
@@ -275,24 +372,55 @@ describe("univers · la propriété, sur le dépôt réel", () => {
       f,
     );
 
-  it("l'univers GELÉ découvert est EXACTEMENT les porteurs déclarés — ni plus, ni moins", () => {
-    const trouves = decouvrirPorteurs(corpus).map((p) => p.fichier).filter(estGele);
-    expect(trouves).toEqual([...PORTEURS_DECLARES].sort());
+  /** Les porteurs découverts que le registre ne connaît pas. LA propriété. */
+  const nonClasses = (c: Map<string, string>) =>
+    decouvrirPorteurs(c)
+      .map((p) => p.fichier)
+      .filter((f) => !(f in REGISTRE_PORTEURS));
+
+  it("LA PROPRIÉTÉ — tout porteur découvert porte un état. Aucun inconnu.", () => {
+    expect(nonClasses(corpus)).toEqual([]);
+  });
+
+  it("l'état déclaré de chaque porteur découvert est lisible, et son gel est exact", () => {
+    for (const p of decouvrirPorteurs(corpus)) {
+      const entree = REGISTRE_PORTEURS[p.fichier];
+      expect(entree, `${p.fichier} n'est pas classé`).toBeDefined();
+      expect(entree.etat).not.toBe("PASSIF"); // un passif n'émet rien : il ne peut pas être découvert
+      expect(entree.gele).toBe(estGele(p.fichier));
+      expect(entree.note.length).toBeGreaterThan(40);
+    }
   });
 
   /**
-   * Un porteur en terrain LIBRE ne demande aucune fenêtre — mais il ne doit pas
-   * disparaître de la carte pour autant. `pdfGenerator` en est un : il imprime
-   * le `h1` (ligne 312) et NOMME la clef d'archive (ligne 628) depuis l'identité
-   * historique. Les deux sont connus et libres ; ils sont listés ici pour que
-   * l'apparition d'un TROISIÈME porteur libre soit visible.
+   * LE COROLLAIRE — c'est lui qui distingue une classification d'un compte.
+   *
+   * On ampute le corpus d'un porteur réel. Un cliquet qui défendait « il y en a
+   * trois » rougirait : le total a changé. Un cliquet qui défend « aucun
+   * inconnu » reste vert : rien de nouveau n'est apparu.
+   *
+   * Les deux assertions sont posées ensemble, et la seconde est la preuve que
+   * la première n'est pas triviale.
    */
-  it("les porteurs en terrain LIBRE sont eux aussi énumérés, et connus", () => {
-    const libres = decouvrirPorteurs(corpus).map((p) => p.fichier).filter((f) => !estGele(f));
-    expect(libres).toEqual(["src/lib/casefile/pdfGenerator.ts"]);
+  it("COROLLAIRE — retirer un porteur du dépôt ne rougit PAS, alors qu'un compte rougirait", () => {
+    const ampute = new Map(corpus);
+    ampute.delete("src/app/api/report/v2/route.ts");
+
+    // La classification tient.
+    expect(nonClasses(ampute)).toEqual([]);
+
+    // Et le compte, lui, a bougé — un cliquet numérique aurait échoué ici.
+    expect(decouvrirPorteurs(ampute).length).toBeLessThan(decouvrirPorteurs(corpus).length);
   });
 
-  it("chaque porteur déclaré nomme le moteur qui imprime réellement son identité", () => {
+  it("le cliquet porte sur une IDENTITÉ — un chemin —, jamais sur une coordonnée ni un total", () => {
+    for (const clef of Object.keys(REGISTRE_PORTEURS)) {
+      expect(clef).toMatch(/^src\/.+\.(ts|tsx)$/);
+      expect(clef).not.toMatch(/:\d+|#\d+/); // pas de ligne, pas d'ancre
+    }
+  });
+
+  it("chaque porteur découvert nomme le moteur qui imprime réellement son identité", () => {
     const parFichier = new Map(decouvrirPorteurs(corpus).map((p) => [p.fichier, p.imprimeur]));
     expect(parFichier.get("src/app/api/pdf/casefile/route.ts")).toBe(
       "src/components/pdf/pdfRenderer.ts",
