@@ -144,7 +144,7 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
   const dossiers: DossierItem[] = []
 
   for (const [caseId, entries] of grouped) {
-    // Only include actors from published profiles
+    // Collectés pour la condition de saut UNIQUEMENT — jamais émis (voir la boucle).
     const actors: LinkedActor[] = []
     const depths: string[] = []
     const allFlags: Set<string> = new Set()
@@ -158,6 +158,42 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
       const profile = published.get(e.kolHandle)
       if (!profile) continue // skip unpublished
 
+      // ─── LA RELATION PERSONNE ↔ DOSSIER « CASE » N'A AUCUNE FONDATION ───
+      //
+      // « Publication authority of both endpoints does not establish
+      //   publication authority of the relation between them. A governed
+      //   relation requires its own foundation/admissibility. »
+      //
+      // `profile` est publié — `PUBLIC_KOL_FILTER` vient de le vérifier. Mais
+      // `KolProfile.publishStatus` fonde « cette personne peut être publiée »,
+      // JAMAIS « cette personne est liée à CE dossier ».
+      //
+      // Le porteur de la relation est la ligne `KolCase`, et elle ne porte
+      // AUCUNE colonne de décision : ni publishStatus, ni visibility, ni
+      // isPublic, ni reviewStatus. Seulement `lastReviewedAt`, un horodatage.
+      // Mesuré sur `prisma/schema.prod.prisma`, et la requête ci-dessus
+      // n'applique d'ailleurs aucun filtre. Il n'y a pas de fondation à
+      // trouver : il ne peut pas y en avoir.
+      //
+      // La relation « launch » est traitée à l'opposé, et pour la même raison :
+      // `KolTokenLink` porte `visibility`, la ligne EST la relation, et
+      // `visibility='public'` est l'une des cinq décisions du référentiel. Elle
+      // fonde donc son propre lien, et les acteurs y restent.
+      //
+      // ⚠ AUCUN SUBSTITUT. Pas d'« actors under review », pas de compteur à
+      // zéro, pas de pastille vide : tout cela révélerait l'existence de
+      // relations retenues.
+      //
+      // La collecte ci-dessous est CONSERVÉE, et elle ne sert qu'à une chose :
+      // la condition de saut plus bas. « Aucun acteur publié → le dossier n'est
+      // pas servi » est une règle de CONTAINMENT, et elle est inchangée — c'est
+      // elle qui écarte 105 groupes de tokens sur 114. La retirer aurait fait
+      // disparaître les quatre dossiers « case » en entier, ce que le ruling ne
+      // demande pas : il porte sur la RELATION, pas sur l'existence du dossier.
+      //
+      // Ce qui change est l'ÉMISSION : `linkedActors` part à vide. Et comme le
+      // filtre de recherche s'applique aux items RENDUS, il ne peut plus
+      // bissecter la relation non fondée.
       actors.push({
         handle: e.kolHandle,
         displayName: profile.displayName,
@@ -199,7 +235,9 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
         null,
       ),
       primaryDate: entries[0].createdAt.toISOString(),
-      linkedActors: actors,
+      // La relation n'a pas de fondation propre : elle n'est pas émise.
+      // Vide, sans substitut, et pour les quatre dossiers sans exception.
+      linkedActors: [],
       linkedActorsCount: actors.length,
       proceedsObservedTotal: hasProceeds ? totalProceeds : null,
       proceedsCoverage: 'partial',
