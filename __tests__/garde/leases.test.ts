@@ -70,11 +70,47 @@ function depot(leases: (base: string) => string[]): string {
   const lignes = leases(base);
   const src = readFileSync(join(d, "scripts/guard-offline.sh"), "utf8");
   const corps = lignes.map((l) => `    "${l}"`).join("\n");
-  ecrire(
-    d,
-    "scripts/guard-offline.sh",
-    src.replace("LEASES=(\n)", `LEASES=(\n${corps}${corps ? "\n" : ""})`),
-  );
+
+  // ── L'ÉTAT DU DÉPÔT JETABLE EST REMPLACÉ, JAMAIS COMPLÉTÉ ────────────────
+  //
+  // L'ancre était la chaîne LITTÉRALE `LEASES=(\n)`, donc l'état VIDE. À la
+  // première lease réelle (W9) elle a cessé de matcher : `String.replace` ne
+  // lève pas, il ne remplace RIEN — et chaque témoin se mettait alors à juger
+  // l'état de PRODUCTION au lieu du sien, en silence. Deux d'entre eux sont
+  // tombés ; les autres seraient devenus verts par accident.
+  //
+  // C'est le défaut que ce fichier existe pour interdire ailleurs : un
+  // mécanisme dont le critère ne survit pas à son premier client réel. On
+  // remplace donc le BLOC, et on vérifie que le remplacement a bien eu lieu —
+  // une ancre muette ne peut plus rendre un témoin vacant.
+  // `(?:[^\n]*\n)*?` avale des LIGNES ENTIÈRES, paresseusement, et s'arrête à
+  // la PREMIÈRE ligne qui commence par `)`. Zéro répétition couvre l'état vide
+  // `LEASES=(\n)`, qui est un cas de test à part entière.
+  //
+  // ⚠️ Pas de `(?:…)?` optionnel ici : en JS le `?` est GLOUTON, et la première
+  // écriture de ce correctif a ainsi avalé 6 800 caractères du guard — jusqu'à
+  // `GUARD_SYSTEM_FILES=(…)`. Le témoin serait resté « vert » sur un guard
+  // amputé. C'est la même famille de panne que celle qu'on corrige.
+  const BLOC_LEASES = /LEASES=\(\n(?:[^\n]*\n)*?\)/;
+  const ancien = src.match(BLOC_LEASES);
+  if (!ancien) {
+    throw new Error("leases.test: bloc LEASES introuvable — le guard a changé de forme");
+  }
+  // Le bloc ne contient QUE des lignes de lease, des commentaires ou du vide.
+  // Une ligne de code dedans signifierait que l'ancre a débordé.
+  for (const ligne of ancien[0].split("\n").slice(1, -1)) {
+    if (!/^\s*(#.*)?$/.test(ligne) && !/^\s*"[^"]*"\s*$/.test(ligne)) {
+      throw new Error(`leases.test: l'ancre a débordé du bloc LEASES — ligne inattendue : ${ligne}`);
+    }
+  }
+  const remplace = src.replace(BLOC_LEASES, `LEASES=(\n${corps}${corps ? "\n" : ""})`);
+  const posees = (remplace.match(BLOC_LEASES)![0].match(/^\s*"/gm) ?? []).length;
+  if (posees !== lignes.length) {
+    throw new Error(
+      `leases.test: ${posees} lease(s) posée(s) pour ${lignes.length} demandée(s) — l'état du dépôt jetable n'est pas le sien`,
+    );
+  }
+  ecrire(d, "scripts/guard-offline.sh", remplace);
   git(d, ["add", "-A"]);
   // `--allow-empty` : l'état VIDE ne change pas le fichier, et c'est un cas de
   // test à part entière — le refuser ici rendrait le témoin 3 inatteignable.
