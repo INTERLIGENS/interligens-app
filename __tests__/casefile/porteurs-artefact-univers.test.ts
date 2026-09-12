@@ -78,19 +78,19 @@ export interface EntreeRegistre {
  */
 export const REGISTRE_PORTEURS: Readonly<Record<string, EntreeRegistre>> = {
   "src/app/api/casefile/generate/route.ts": {
-    etat: "P1_AUTORITE_D_INSTANCE",
+    etat: "CONFORME",
     gele: true,
-    note: "Nomme l'artefact depuis `case_meta.case_id` (l.101) ; la branche `body.data` (l.72) accepte une charge sans bloc canonique, et le document sort estampillé `Authority · CANONICAL`.",
+    note: "BUILD 13 · S3 — nomme l'artefact depuis le `ref` du dossier chargé, et `casefile-ungoverned.pdf` quand `body.data` n'en charge aucun. L'estampille d'instance a été fermée en terrain libre par b051d55.",
   },
   "src/app/api/pdf/casefile/route.ts": {
-    etat: "P1_IDENTITE_NON_FONDEE",
+    etat: "CONFORME",
     gele: true,
-    note: "Alimente `off_chain.case_id` depuis `case_meta.case_id` (l.38) ; imprimé par pdfRenderer. Aucune revendication d'autorité sur le document.",
+    note: "BUILD 13 · S3 — `off_chain.case_id = dossierGouverne.ref`, et FAIL-CLOSED : sans dossier gouverné persisté, aucun artefact (404 `no_governed_casefile`, refus indiscernable par cause).",
   },
   "src/app/api/report/v2/route.ts": {
-    etat: "P1_IDENTITE_NON_FONDEE",
+    etat: "CONFORME",
     gele: true,
-    note: "Idem (l.64), imprimé par templateV2 en pied de CHAQUE page. Découvert seulement en cherchant par capacité de produire un artefact, jamais par nom de moteur.",
+    note: "BUILD 13 · S3 — cite le ref gouverné quand un dossier le fonde, `null` sinon. PAS de fail-closed : cette surface sert des mints SANS dossier par contrat (booster `no_casefile`), et le mint tronqué y reste un identifiant de SUJET.",
   },
   "src/lib/casefile/pdfGenerator.ts": {
     etat: "P1_IDENTITE_NON_FONDEE",
@@ -212,17 +212,50 @@ export interface Porteur {
   readonly imprimeur: string;
 }
 
+/**
+ * ── BUILD 13 · S3 — UNE MENTION N'EST PAS UNE ÉMISSION ─────────────────────
+ *
+ * ██  Troisième fois que ce motif mord, sous une troisième forme.       ██
+ *
+ * La découverte lisait le fichier ENTIER. Une route CORRIGÉE, qui ne fait plus
+ * que NOMMER `case_meta.case_id` dans le commentaire expliquant pourquoi elle
+ * ne l'émet plus, restait comptée porteuse. Une garde dont le signal survit à
+ * sa propre correction ne signale plus rien : elle reste verte par inertie, et
+ * le jour où un vrai porteur apparaît, il se noie dans les faux.
+ *
+ * Le dépôt a déjà rencontré ce motif deux fois :
+ *   · `caseDb.ts:124` compté IMPRIMEUR pour une ligne de JOURNAL (corrigé en
+ *     exigeant du balisage sur la ligne) ;
+ *   · `resolveCaseFileRef` compté EXPOSÉ pour une mention en prose
+ *     (`rc-resolveur-citation.test.ts`, corrigé dans ce même lot).
+ *
+ * On lit le CODE, jamais la prose. `codeSeul` est l'idiome du dépôt
+ * (`__tests__/kol-memory/e1-e2-wiring.test.ts:17`). Il s'applique aux TROIS
+ * capacités — producteur, imprimeur, identité — parce qu'un commentaire peut
+ * porter n'importe laquelle des trois.
+ */
+export function codeSeul(src: string): string {
+  return src
+    .split("\n")
+    .filter((l) => {
+      const t = l.trimStart();
+      return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+    })
+    .join("\n");
+}
+
 export function decouvrirPorteurs(corpus: Map<string, string>): Porteur[] {
   const porteurs: Porteur[] = [];
-  for (const [chemin, src] of corpus) {
+  for (const [chemin, brut] of corpus) {
     if (chemin.includes("__tests__") || /\.test\.tsx?$/.test(chemin)) continue;
+    const src = codeSeul(brut);
     if (!CAPACITE_PRODUCTEUR.test(src)) continue;
     if (!IDENTITE_NON_FONDEE.test(src)) continue;
 
     // Qui imprime ? Le producteur lui-même, ou un module de sa clôture.
     let imprimeur: string | null = null;
     for (const f of cloture(chemin, corpus)) {
-      if (CAPACITE_IMPRIMEUR.test(corpus.get(f) ?? "")) {
+      if (CAPACITE_IMPRIMEUR.test(codeSeul(corpus.get(f) ?? ""))) {
         imprimeur = f;
         break;
       }
@@ -402,9 +435,16 @@ describe("univers · la propriété, sur le dépôt réel", () => {
    * Les deux assertions sont posées ensemble, et la seconde est la preuve que
    * la première n'est pas triviale.
    */
+  // BUILD 13 · S3 — l'amputation porte sur `pdfGenerator.ts`, seul porteur
+  // encore découvert depuis que les trois routes dérivent du ref gouverné.
+  // Le corollaire ne dépend d'AUCUN porteur en particulier : il dépend qu'il
+  // y en ait un. Le jour où il n'y en aura plus, ce test devra le dire — pas
+  // se taire.
   it("COROLLAIRE — retirer un porteur du dépôt ne rougit PAS, alors qu'un compte rougirait", () => {
+    const reels = decouvrirPorteurs(corpus).map((p) => p.fichier);
+    expect(reels.length, "plus aucun porteur : le corollaire n'a rien à amputer").toBeGreaterThan(0);
     const ampute = new Map(corpus);
-    ampute.delete("src/app/api/report/v2/route.ts");
+    ampute.delete(reels[0]);
 
     // La classification tient.
     expect(nonClasses(ampute)).toEqual([]);
@@ -421,13 +461,58 @@ describe("univers · la propriété, sur le dépôt réel", () => {
   });
 
   it("chaque porteur découvert nomme le moteur qui imprime réellement son identité", () => {
-    const parFichier = new Map(decouvrirPorteurs(corpus).map((p) => [p.fichier, p.imprimeur]));
-    expect(parFichier.get("src/app/api/pdf/casefile/route.ts")).toBe(
-      "src/components/pdf/pdfRenderer.ts",
-    );
-    expect(parFichier.get("src/app/api/report/v2/route.ts")).toBe("src/lib/pdf/v2/templateV2.ts");
-    expect(parFichier.get("src/app/api/casefile/generate/route.ts")).toBe(
-      "src/lib/casefile/pdfGenerator.ts",
-    );
+    for (const p of decouvrirPorteurs(corpus)) {
+      expect(p.imprimeur, `${p.fichier} ne nomme aucun imprimeur`).toBeTruthy();
+      expect(corpus.has(p.imprimeur)).toBe(true);
+    }
+  });
+
+  /**
+   * BUILD 13 · S3 — LES TROIS ROUTES NE SONT PLUS DES PORTEUSES.
+   *
+   * ██  C'est la SEULE assertion du lot qui dit que le travail a eu lieu.  ██
+   *
+   * Elle est posée depuis la DÉCOUVERTE, pas depuis le registre : une entrée
+   * de registre qu'on aurait simplement réétiquetée « CONFORME » sans toucher
+   * au code laisserait ce test rouge. C'est voulu — le registre déclare, la
+   * découverte constate, et c'est la découverte qui a raison.
+   */
+  it("les trois routes de la fenêtre S3 ne sont PLUS découvertes comme porteuses", () => {
+    const trouves = decouvrirPorteurs(corpus).map((p) => p.fichier);
+    for (const route of [
+      "src/app/api/pdf/casefile/route.ts",
+      "src/app/api/report/v2/route.ts",
+      "src/app/api/casefile/generate/route.ts",
+    ]) {
+      expect(corpus.has(route), `${route} a disparu du dépôt`).toBe(true);
+      expect(trouves, `${route} émet encore une identité non fondée`).not.toContain(route);
+      expect(REGISTRE_PORTEURS[route].etat).toBe("CONFORME");
+    }
+  });
+
+  /**
+   * Et la garde n'est pas devenue aveugle en chemin : `codeSeul` retire les
+   * commentaires, donc une route qui NOMME `case_meta.case_id` en prose n'est
+   * plus comptée — mais une route qui l'ÉMET l'est toujours.
+   */
+  it("`codeSeul` ne rend pas la découverte aveugle — l'émission reste vue", () => {
+    const MOTEUR = `export const r = (s) => \`<div>\${s.off_chain.case_id}</div>\`;`;
+    const EMET = `
+      import { r } from "@/lib/moteur";
+      export async function GET() {
+        const scan = { off_chain: { case_id: caseFile.case_meta.case_id } };
+        return new Response(r(scan), { headers: { "Content-Disposition": "attachment" } });
+      }`;
+    const NOMME_EN_PROSE = `
+      import { r } from "@/lib/moteur";
+      export async function GET() {
+        // L'identité ne vient plus de case_meta.case_id : elle vient du ref.
+        const scan = { off_chain: { case_id: dossier.ref } };
+        return new Response(r(scan), { headers: { "Content-Disposition": "attachment" } });
+      }`;
+    const c1 = new Map([["src/lib/moteur.ts", MOTEUR], ["src/app/api/a/route.ts", EMET]]);
+    const c2 = new Map([["src/lib/moteur.ts", MOTEUR], ["src/app/api/a/route.ts", NOMME_EN_PROSE]]);
+    expect(decouvrirPorteurs(c1).map((p) => p.fichier)).toEqual(["src/app/api/a/route.ts"]);
+    expect(decouvrirPorteurs(c2)).toEqual([]);
   });
 });

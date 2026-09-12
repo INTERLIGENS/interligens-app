@@ -9,6 +9,8 @@ import { renderHtmlV2 } from "@/lib/pdf/v2/templateV2";
 import type { ScanResult } from "@/app/api/scan/solana/route";
 import { checkRateLimit, rateLimitResponse, getClientIp, detectLocale, RATE_LIMIT_PRESETS } from "@/lib/security/rateLimit";
 import { checkAuth } from "@/lib/security/auth";
+import { canonicalRefForMint } from "@/lib/casefile/publicProjection";
+import { loadCanonicalCaseFile } from "@/lib/casefile/canonicalReader";
 
 export async function GET(request: NextRequest) {
   // SEC P0 — auth is ALWAYS required. The previous ?mock=1 and
@@ -24,6 +26,40 @@ export async function GET(request: NextRequest) {
   const mint_clean = mint.trim();
   const lang = searchParams.get("lang") ?? "en";
   const debug = searchParams.get("debug") === "1";
+
+  // ─── BUILD 13 · S3 — L'IDENTITÉ DE CITATION, QUAND IL Y EN A UNE ─────────
+  //
+  // Le pied de page (`templateV2.ts:427`) imprimait :
+  //
+  //     ${off_chain.case_id ?? mint.slice(0,8)}
+  //
+  // Deux substituts, deux défauts. Pour BOTIFY, `CASE-2024-BOTIFY-001` : une
+  // identité de citation de l'espace de nommage HISTORIQUE. Pour VINE, dont
+  // aucun dossier legacy n'existe, `6AJcP7wu` — un morceau de l'ADRESSE DU
+  // SUJET dans l'emplacement d'un identifiant de dossier, alors que VINE a un
+  // dossier gouverné (`IL-SHILL-VINE-001`) que l'artefact ne citait pas.
+  //
+  // CETTE ROUTE N'EST PAS FERMÉE, ET C'EST DÉLIBÉRÉ. Elle sert des mints SANS
+  // dossier par contrat — son booster TigerScore porte un `no_casefile`
+  // explicite quelques lignes plus bas. Sa propriété n'est donc pas le
+  // fail-closed mais : quand elle publie une identité de citation, celle-ci
+  // dérive du ref gouverné ; quand il n'y en a pas, elle n'en invente pas, et
+  // le mint tronqué reste admissible comme identifiant de SUJET.
+  //
+  // La lecture échoue-t-elle ? Alors on ne PEUT pas dériver, donc on ne publie
+  // aucune identité de citation — `null`, et le pied retombe sur le sujet.
+  // C'est la propriété satisfaite, pas une dégradation : l'absence d'une
+  // citation est honnête, une citation non fondée ne l'est pas.
+  const refGouverne = canonicalRefForMint(mint_clean);
+  let dossierGouverne: { ref: string } | null = null;
+  if (refGouverne) {
+    try {
+      dossierGouverne = await loadCanonicalCaseFile(refGouverne);
+    } catch (err) {
+      console.error("[report/v2] lecture du dossier gouverné impossible", err);
+      dossierGouverne = null;
+    }
+  }
 
   // ── Build scan result (same logic as /api/pdf/casefile) ──
   const caseFile = loadCaseByMint(mint_clean);
@@ -61,7 +97,10 @@ export async function GET(request: NextRequest) {
     off_chain: {
       status: caseFile?.case_meta.status ?? "Unknown",
       source: caseFile ? "case_db" : "none",
-      case_id: caseFile?.case_meta.case_id ?? null,
+      // L'identité de citation vient de la frontière, ou n'est pas publiée.
+      // Le champ garde son nom historique : y mettre un CaseFileRef ferme la
+      // causalité d'identité de l'artefact, pas la sémantique du champ.
+      case_id: dossierGouverne?.ref ?? null,
       summary: caseFile?.case_meta.summary ?? null,
       claims: (caseFile?.claims ?? []).map((c) => ({
         id: c.claim_id,

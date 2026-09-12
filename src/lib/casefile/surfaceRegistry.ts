@@ -122,6 +122,34 @@ export const CASEFILE_SURFACES: readonly CaseFileSurface[] = [
     public: false,
     note: "PDF admin, deux gabarits ; claims canoniques pour les deux.",
   },
+  // ── BUILD 13 · S3 — deux surfaces qui TOUCHENT désormais un dossier ──────
+  //
+  // Elles produisaient déjà un artefact portable, mais n'en lisaient aucun :
+  // leur identité de citation venait de `caseDb.ts`, l'entrée de scoring
+  // héritée. En la faisant dériver du `CaseFileRef` gouverné, elles entrent
+  // dans le domaine du registre — et la garde P3 l'a signalé d'elle-même.
+  // C'est le registre qui rattrape le code, pas l'inverse.
+  {
+    file: "src/app/api/pdf/casefile/route.ts",
+    route: "/api/pdf/casefile",
+    authority: "CANONICAL",
+    public: false,
+    // Fail-closed : sans dossier gouverné persisté, aucun artefact n'est
+    // produit (404 `no_governed_casefile`, refus indiscernable par cause).
+    note: "PDF admin legacy — identité de citation dérivée du ref gouverné ; contenu encore LEGACY_SCORING_INPUT (dette nommée).",
+  },
+  {
+    file: "src/app/api/report/v2/route.ts",
+    route: "/api/report/v2",
+    // PRESET et non CANONICAL : cette surface sert par contrat des mints SANS
+    // dossier (booster TigerScore `no_casefile`). Elle ne publie une identité
+    // de citation que lorsqu'un dossier gouverné la fonde ; le reste de son
+    // matériel reste hérité. Déclarer CANONICAL une surface qui ne l'est pas
+    // ne trompe que la lecture.
+    authority: "PRESET",
+    public: false,
+    note: "Rapport de scan v2 — non-CaseFile par contrat ; cite le ref gouverné quand il existe, n'en invente aucun sinon.",
+  },
   {
     file: "src/app/api/casefile/route.ts",
     route: "/api/casefile",

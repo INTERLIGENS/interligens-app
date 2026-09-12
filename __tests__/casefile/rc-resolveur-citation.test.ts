@@ -188,10 +188,49 @@ describe("citation · la propriété, sur la primitive", () => {
     const { execSync } = await import("node:child_process");
     const path = await import("node:path");
     const racine = path.resolve(__dirname, "../..");
-    const appels = execSync(
+    // ── BUILD 13 · S3 — UNE MENTION N'EST PAS UNE EXPOSITION ───────────────
+    //
+    // ██  Le grep brut comptait un COMMENTAIRE comme un appel.            ██
+    //
+    // `src/app/api/pdf/casefile/route.ts` NOMME `resolveCaseFileRef` dans la
+    // prose qui justifie la forme de son refus (« comme resolveCaseFileRef rend
+    // la constante NOT_FOUND elle-même »). Il ne l'appelle pas, ne l'importe
+    // pas, ne l'expose pas. La propriété défendue ici est l'EXPOSITION par une
+    // surface — pas l'occurrence de sept syllabes dans un fichier.
+    //
+    // C'est exactement le faux positif déjà mesuré sur
+    // `porteurs-artefact-univers.test.ts`, où `caseDb.ts:124` était compté
+    // imprimeur pour une ligne de JOURNAL. Même correction, même raison : on
+    // lit le CODE, jamais la prose. `codeSeul` est l'idiome du dépôt
+    // (`__tests__/kol-memory/e1-e2-wiring.test.ts:17`).
+    const codeSeul = (src: string) =>
+      src
+        .split("\n")
+        .filter((l) => {
+          const t = l.trimStart();
+          return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+        })
+        .join("\n");
+
+    const { readFileSync } = await import("node:fs");
+    const candidats = execSync(
       `git -C ${racine} grep -l 'resolveCaseFileRef' -- 'src/app' || true`,
       { encoding: "utf8" },
-    ).trim();
-    expect(appels).toBe("");
+    )
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+
+    const appels = candidats.filter((f) =>
+      codeSeul(readFileSync(path.join(racine, f), "utf8")).includes("resolveCaseFileRef"),
+    );
+    expect(appels).toEqual([]);
+
+    // La sonde n'est pas aveugle : elle voit bien un appel réel.
+    expect(codeSeul(`const r = await resolveCaseFileRef(x);`)).toContain("resolveCaseFileRef");
+    // Et elle ignore bien une mention en prose.
+    expect(codeSeul(`  // comme resolveCaseFileRef rend NOT_FOUND`)).not.toContain(
+      "resolveCaseFileRef",
+    );
   });
 });

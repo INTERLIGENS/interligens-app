@@ -53,6 +53,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // ─── BUILD 13 · S3 — CE QUI NOMMERA L'ARTEFACT ───────────────────────────
+  //
+  // ██  Le nom survit au document. Il est ce qui reste quand le PDF a été  ██
+  // ██  transmis, renommé nulle part, classé dans un dossier partagé.      ██
+  //
+  // La route chargeait le dossier gouverné (plus bas), en posait le `ref` dans
+  // le document — et nommait ensuite le fichier depuis `case_meta.case_id`,
+  // c'est-à-dire depuis le PRESET. Elle DISPOSAIT de l'identité fondée au
+  // moment où elle nommait, et nommait avec l'autre : deux artefacts du même
+  // dossier, l'un nommé par la frontière et l'autre par le vestige.
+  //
+  // `null` tant qu'aucun dossier n'est chargé. La branche `body.data` n'en
+  // charge aucun, et c'est exact : elle ne produit pas un artefact CaseFile
+  // gouverné, donc elle ne porte aucune identité de citation à dériver.
+  let refGouverne: string | null = null;
+
   let input: CaseFileInput;
   if (body.source === "vine" || body.source === "botify") {
     const ref = CANONICAL_REF_BY_SOURCE[body.source];
@@ -65,6 +81,7 @@ export async function POST(req: NextRequest) {
       console.error(err.message);
       return NextResponse.json({ error: "canonical_casefile_missing" }, { status: 500 });
     }
+    refGouverne = dossier.ref;
     input = {
       ...(body.source === "vine" ? buildVineInput() : buildBotifyInput()),
       canonical: { ref: dossier.ref, claims: dossier.claims },
@@ -94,11 +111,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Le nom DÉRIVE du ref chargé — il ne coïncide pas avec lui. Un littéral en
+  // dur satisferait l'apparence sans rien dériver, et c'est exactement la
+  // coïncidence que S2 a démontée : le `ref` du dossier change, le nom suit.
+  //
+  // Sans dossier gouverné, le nom ne prétend à AUCUNE identité de citation. Il
+  // reprend le vocabulaire déjà posé sur le document lui-même par b051d55 —
+  // « Ungoverned Artifact » — plutôt que d'inventer une étiquette de plus.
+  const nomFichier = refGouverne ? `${refGouverne}.pdf` : "casefile-ungoverned.pdf";
+
   return new NextResponse(result.pdfBytes ? Buffer.from(result.pdfBytes) : null, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${input.case_meta.case_id}.pdf"`,
+      "Content-Disposition": `attachment; filename="${nomFichier}"`,
       "Cache-Control": "no-cache",
     },
   });
