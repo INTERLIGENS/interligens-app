@@ -40,6 +40,44 @@ export interface DossierItem {
   snapshotCount: number
 }
 
+/**
+ * ─── LES HUIT CHAMPS QUI NE SONT PLUS ÉMIS ─────────────────────────────
+ *
+ * Ce sont exactement les lignes de l'inventaire §4.B dont la colonne
+ * « fondation gouvernée » valait 0/14 ou 0/9, et la table des fondations en
+ * est l'unique autorité — pas cette liste, qui n'en est que la conséquence.
+ *
+ * ⚠ RIEN NE LES REMPLACE. Pas de `Under review`, pas de `N/A`, pas de
+ * `[redacted]`, pas de phrase expliquant qu'une information a été retirée. Un
+ * substitut recréerait un différentiel sur L'EXISTENCE de l'information —
+ * c'est le même geste que le `summary` qui disparaît du pack du modèle plutôt
+ * que d'y être voilé, troisième application.
+ *
+ * Les champs restent calculés EN INTERNE : `kind` sert au filtre structurel,
+ * et le tri n'en dépend pas. Ce qui change est la PROJECTION SERVIE, et elle
+ * a un seul point de passage — celui-ci.
+ */
+export const CHAMPS_NON_EMIS = [
+  'kind',
+  'evidenceDepth',
+  'documentationStatus',
+  'strongestFlags',
+  'topCoordinationSignal',
+  'sharedActorGroup',
+  'multiLaunchRecurrence',
+  'multiLaunchCount',
+  'linkedActorsCount',
+] as const
+
+export type DossierServi = Omit<DossierItem, (typeof CHAMPS_NON_EMIS)[number]>
+
+/** L'UNIQUE point où un dossier passe de l'interne au servi. */
+export function projeterDossierServi(d: DossierItem): DossierServi {
+  const servi: Record<string, unknown> = { ...d }
+  for (const champ of CHAMPS_NON_EMIS) delete servi[champ]
+  return servi as DossierServi
+}
+
 export interface ExplorerFilters {
   kind?: DossierKind
   search?: string
@@ -342,22 +380,10 @@ export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
     item.snapshotCount = snapCounts.get(item.title) ?? 0
   }
 
-  // Compute top coordination signal per dossier from available data (no extra DB calls)
-  for (const item of items) {
-    const actorCount = item.linkedActorsCount
-    const hasCoordFlag = item.strongestFlags.includes('COORDINATED_PROMOTION')
-    const hasMultiLaunch = item.multiLaunchRecurrence
-
-    if (hasCoordFlag && actorCount >= 3) {
-      item.topCoordinationSignal = { labelEn: 'Coordinated promotion', labelFr: 'Promotion coordonnee', strength: 'strong' }
-    } else if (hasMultiLaunch && actorCount >= 2) {
-      item.topCoordinationSignal = { labelEn: 'Shared actor group', labelFr: "Groupe d'acteurs commun", strength: 'strong' }
-    } else if (hasCoordFlag) {
-      item.topCoordinationSignal = { labelEn: 'Coordinated promotion', labelFr: 'Promotion coordonnee', strength: 'moderate' }
-    } else {
-      item.topCoordinationSignal = null
-    }
-  }
+  // La dérivation de `topCoordinationSignal` a été RETIRÉE avec le champ. Elle
+  // se nourrissait de `linkedActorsCount`, `strongestFlags` et
+  // `multiLaunchRecurrence` — trois champs qui ne sont plus émis. La garder
+  // aurait été du travail mort, et surtout une invitation à ré-émettre.
 
   items.sort((a, b) => new Date(b.primaryDate).getTime() - new Date(a.primaryDate).getTime())
 
@@ -371,9 +397,24 @@ export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
     )
   }
   if (filters.hasProceeds) items = items.filter(i => (i.proceedsObservedTotal ?? 0) > 0)
-  if (filters.hasFlags) items = items.filter(i => i.strongestFlags.length > 0)
 
-  return items
+  // ── `hasFlags` EST RETIRÉ, ET CE N'EST PAS UN OUBLI ────────────────────
+  //
+  // `strongestFlags` cesse d'être émis : aucune décision ne fonde une
+  // propagation de comportement d'une PERSONNE vers un DOSSIER (E8). Mais un
+  // filtre est une émission PAR BISSECTION : `?hasFlags=true` aurait continué
+  // de dire QUELS dossiers en portent, sans que le champ soit servi. Retirer
+  // le champ en gardant le filtre aurait donc créé l'oracle que le retrait
+  // ferme — exactement la cinquième vérification.
+  //
+  // Le paramètre reste accepté par la route (chemin gelé) et devient INERTE.
+  // Son retrait appartient au patch de route.
+  //
+  // Le filtre `kind` reste, lui, et c'est mesuré : il est structurel
+  // (launch / case / platform), l'appelant le NOMME, et il ne bissecte
+  // aucune assertion portant sur une personne. La page de détail en dépend.
+
+  return items.map(projeterDossierServi)
 }
 
 export async function getExplorerStats() {
