@@ -97,10 +97,12 @@ export default function CaseDossierPage() {
 
         {/* TITLE */}
         <div id="case-detail" style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <Badge label="CASE CLUSTER" color="#ef4444" />
-            {dossier?.documentationStatus && <Badge label={dossier.documentationStatus.toUpperCase()} color={dossier.documentationStatus === 'documented' ? '#10b981' : '#f59e0b'} />}
-          </div>
+          {/* ─── LES DEUX PASTILLES SONT RETIREES ─────────────────────────
+              « CASE CLUSTER » etait un LITTERAL code en dur : la page
+              l'affirmait de tout dossier, quel que soit son type, sans qu'aucune
+              decision ne le fonde (E14). Le badge de documentation dependait de
+              `documentationStatus`, qui n'est plus servi (E6).
+              Rien ne les remplace. */}
           <h1 style={{ fontSize: 'clamp(22px, 6vw, 32px)', fontWeight: 900, margin: 0, letterSpacing: '-0.02em', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{caseId}</h1>
           {dossier?.summary && <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>{dossier.summary}</p>}
         </div>
@@ -108,7 +110,7 @@ export default function CaseDossierPage() {
         {/* LINKED ACTORS */}
         {dossier?.linkedActors?.length > 0 && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 12 }}>LINKED ACTORS ({dossier.linkedActorsCount})</div>
+            <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 12 }}>LINKED ACTORS</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {dossier.linkedActors.map((a: Actor) => (
                 <a key={a.handle} href={`/en/kol/${a.handle}`} style={{ background: '#F85B0510', border: '1px solid #F85B0533', color: '#F85B05', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 5, fontFamily: 'monospace', textDecoration: 'none' }}>
@@ -119,17 +121,9 @@ export default function CaseDossierPage() {
           </div>
         )}
 
-        {/* COORDINATION SIGNALS */}
-        {dossier?.strongestFlags?.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: '#4b5563', letterSpacing: '0.2em', fontFamily: 'monospace', marginBottom: 12 }}>COORDINATION SIGNALS</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {dossier.strongestFlags.map((f: string) => (
-                <Badge key={f} label={f.replace(/_/g, ' ')} color="#f97316" />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Le bloc COORDINATION SIGNALS est retire avec `strongestFlags` (E8) :
+            une propagation de comportement d'une PERSONNE vers un DOSSIER, que
+            nulle decision ne fonde. */}
 
         {/* EVIDENCE SNAPSHOTS */}
         <div style={{ marginBottom: 28 }}>

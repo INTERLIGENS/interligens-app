@@ -9,11 +9,9 @@ type Kind = '' | 'case' | 'launch' | 'platform'
 interface Actor { handle: string; displayName: string | null; role: string; tier: string | null }
 interface Dossier {
   id: string; kind: string; title: string; summary: string | null; primaryDate: string
-  linkedActors: Actor[]; linkedActorsCount: number
+  linkedActors: Actor[]
   proceedsObservedTotal: number | null; proceedsCoverage: string
-  evidenceDepth: string; strongestFlags: string[]; documentationStatus: string; href: string
-  sharedActorGroup?: boolean; multiLaunchRecurrence?: boolean; multiLaunchCount?: number
-  topCoordinationSignal?: { labelEn: string; labelFr: string; strength: string } | null
+  href: string
   snapshotCount?: number
 }
 interface Stats {
@@ -21,25 +19,8 @@ interface Stats {
   documentedWallets: number; linkedLaunches: number; strongEvidenceCount: number
 }
 
-const KIND_BADGE: Record<string, { l: string; c: string }> = {
-  case:     { l: 'CLUSTER DE CAS',   c: '#ef4444' },
-  launch:   { l: 'LANCEMENT TOKEN',  c: '#8b5cf6' },
-  platform: { l: 'FRAUDE PLATEFORME', c: '#FF6B00' },
-}
-const DOC_BADGE: Record<string, { l: string; c: string }> = {
-  documented: { l: 'DOCUMENTE', c: '#10b981' },
-  partial:    { l: 'PARTIEL',   c: '#f59e0b' },
-}
-const DEPTH: Record<string, { l: string; c: string }> = {
-  comprehensive: { l: 'EXHAUSTIF', c: '#10b981' }, strong: { l: 'SOLIDE', c: '#3b82f6' },
-  moderate: { l: 'MODERE', c: '#f59e0b' }, weak: { l: 'FAIBLE', c: '#6b7280' },
-}
-const FLAG_L: Record<string, string> = {
-  REPEATED_CASHOUT: 'Cashout repete', MULTI_HOP_TRANSFER: 'Multi-sauts',
-  CROSS_CASE_RECURRENCE: 'Recurrence multi-cas', MULTI_LAUNCH_LINKED: 'Multi-lancements',
-  LAUNDERING_INDICATORS: 'Flux financiers complexes', KNOWN_LINKED_WALLETS: 'Wallets lies',
-  COORDINATED_PROMOTION: 'Promotion coordonnee',
-}
+// Les quatre tables de libelles ont ete RETIREES avec leurs pastilles.
+
 const KIND_TABS: { key: Kind; label: string }[] = [
   { key: '', label: 'TOUT' }, { key: 'case', label: 'CAS' }, { key: 'launch', label: 'LANCEMENTS' },
   { key: 'platform', label: 'PLATEFORME' },
@@ -64,7 +45,6 @@ export default function ExplorerFR() {
   const [kind, setKind] = useState<Kind>('')
   const [search, setSearch] = useState('')
   const [hasProceeds, setHasProceeds] = useState(false)
-  const [hasFlags, setHasFlags] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(() => {
@@ -73,7 +53,6 @@ export default function ExplorerFR() {
     if (kind) params.set('kind', kind)
     if (search) params.set('search', search)
     if (hasProceeds) params.set('hasProceeds', 'true')
-    if (hasFlags) params.set('hasFlags', 'true')
     fetch('/api/explorer?' + params)
       .then(r => r.json())
       .then(d => {
@@ -82,9 +61,9 @@ export default function ExplorerFR() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [kind, search, hasProceeds, hasFlags])
+  }, [kind, search, hasProceeds])
 
-  useEffect(() => { load() }, [kind, hasProceeds, hasFlags, load])
+  useEffect(() => { load() }, [kind, hasProceeds, load])
 
   const proceedsText = (d: Dossier) => {
     if (!d.proceedsObservedTotal || d.proceedsObservedTotal === 0) return null
@@ -141,11 +120,6 @@ export default function ExplorerFR() {
             cursor: 'pointer', border: hasProceeds ? '1px solid #10b98166' : '1px solid #1e2330',
             background: hasProceeds ? '#10b98115' : '#111', color: hasProceeds ? '#10b981' : '#4b5563',
           }}>AVEC PRODUITS</button>
-          <button onClick={() => setHasFlags(!hasFlags)} style={{
-            fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', padding: '6px 12px', borderRadius: 4,
-            cursor: 'pointer', border: hasFlags ? '1px solid #f9731666' : '1px solid #1e2330',
-            background: hasFlags ? '#f9731615' : '#111', color: hasFlags ? '#f97316' : '#4b5563',
-          }}>AVEC ALERTES</button>
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 6 }}>
             <input value={search} onChange={e => setSearch(e.target.value)}
@@ -163,32 +137,26 @@ export default function ExplorerFR() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {items.map(d => {
-              const kb = KIND_BADGE[d.kind] ?? KIND_BADGE.case
-              const doc = DOC_BADGE[d.documentationStatus] ?? DOC_BADGE.partial
-              const depth = d.evidenceDepth && d.evidenceDepth !== 'none' ? DEPTH[d.evidenceDepth] : null
+              // ─── LES HUIT CHAMPS NE SONT PLUS SERVIS ──────────────────────
+              // Les replis `??` d'ici auraient fait lire « CASE CLUSTER » aux
+              // quatorze et « PARTIAL » aux quatorze. Une absence devenue
+              // affirmation. RIEN NE LES REMPLACE : aucun substitut, sinon on
+              // recree un differentiel sur L'EXISTENCE de l'information.
               const proceeds = proceedsText(d)
               const visibleActors = d.linkedActors.slice(0, 4)
-              const moreCount = d.linkedActorsCount - visibleActors.length
 
               return (
                 <Link key={d.id} href={d.href} style={{ textDecoration: 'none' }}>
                   <div style={{ background: '#0d1117', border: '1px solid #1e2330', borderRadius: 12, padding: '24px 28px', transition: 'border-color 0.15s', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = kb.c)}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#F85B05')}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2330')}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                      <Badge label={kb.l} color={kb.c} />
-                      <Badge label={doc.l} color={doc.c} />
-                      {depth && <Badge label={'PREUVES ' + depth.l} color={depth.c} />}
                       {(d.snapshotCount ?? 0) > 0 && <Badge label={`${d.snapshotCount} preuves au dossier`} color="#3b82f6" />}
                       <span style={{ marginLeft: 'auto', color: '#374151', fontSize: 10, fontFamily: 'monospace' }}>{fmtDate(d.primaryDate)}</span>
                     </div>
 
                     <div style={{ fontSize: 22, fontWeight: 900, color: '#f9fafb', letterSpacing: '-0.01em', marginBottom: 6 }}>{d.title}</div>
-
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
-                      {d.linkedActorsCount} acteur{d.linkedActorsCount !== 1 ? 's' : ''} lie{d.linkedActorsCount !== 1 ? 's' : ''} documente{d.linkedActorsCount !== 1 ? 's' : ''}
-                    </div>
 
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                       {visibleActors.map(a => (
@@ -196,11 +164,6 @@ export default function ExplorerFR() {
                           @{a.handle}
                         </span>
                       ))}
-                      {moreCount > 0 && (
-                        <span style={{ background: '#1e2330', color: '#6b7280', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4, fontFamily: 'monospace' }}>
-                          +{moreCount} de plus
-                        </span>
-                      )}
                     </div>
 
                     {d.summary && (
@@ -212,15 +175,6 @@ export default function ExplorerFR() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       {proceeds && (
                         <span style={{ color: '#ef4444', fontFamily: 'monospace', fontWeight: 800, fontSize: 14 }}>{proceeds}</span>
-                      )}
-                      {d.strongestFlags.slice(0, 2).map(f => (
-                        <Badge key={f} label={FLAG_L[f] ?? f} color="#f97316" />
-                      ))}
-                      {d.multiLaunchRecurrence && d.multiLaunchCount && (
-                        <Badge label={`Meme groupe d'acteurs sur ${d.multiLaunchCount} dossiers`} color="#ef4444" />
-                      )}
-                      {d.topCoordinationSignal && d.topCoordinationSignal.strength === 'strong' && (
-                        <Badge label={d.topCoordinationSignal.labelFr} color="#ef4444" />
                       )}
                       <span style={{ marginLeft: 'auto', color: '#F85B05', fontSize: 10, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.1em' }}>VOIR DOSSIER {'\u2192'}</span>
                     </div>
