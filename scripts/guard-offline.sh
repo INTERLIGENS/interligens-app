@@ -206,6 +206,31 @@ FORBIDDEN_PATTERNS=(
 # Critère : __tests__/garde/leases.test.ts
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ─── LA PREMIÈRE LEASE RÉELLE, ET L'INVENTAIRE À ZÉRO ────────────────────────
+#
+# `OFFLINE_EXEMPT_PATTERNS` était la DERNIÈRE exemption statique du dépôt :
+# VIVANTE — le module `casefile-nova` existe dans `main` — mais NON BORNÉE et
+# SANS CONDITION. Elle s'appliquait à TOUTE branche, `main` comprise.
+#
+#   vivant + non borné + valable sur toute branche = AUTORISATION PERMANENTE.
+#
+# Elle ne devient pas acceptable parce qu'elle est ancienne : elle devient une
+# lease. C'est le premier client RÉEL du mécanisme, et c'est une preuve plus
+# forte qu'un cas fabriqué — un besoin qui existait déjà s'exprime désormais
+# dans la forme gouvernée, ou ne s'exprime plus.
+#
+#   STATIC PROJECT EXEMPTIONS = 0
+#
+# ⚠️ L'ancienne exemption portait deux RÉPERTOIRES. Une lease ne prend que des
+# chemins EXACTS : ils devront être énumérés fichier par fichier au moment de
+# l'ouverture, sur le SHA de base du jour. Tant qu'aucun chantier ne les touche,
+# l'état reste VIDE — et c'est la bonne valeur par défaut : zéro autorité.
+#
+# Ce que cela coûte, dit franchement : toucher `src/lib/pdf/nova/` ou
+# `src/app/api/admin/casefile-nova/` exige désormais une lease, donc une PR de
+# maintenance et une revue. C'est le prix, et c'est le même que pour tout le
+# reste du gel.
+
 LEASE_DUREE_MAX_S=2700   # 45 minutes
 
 # L'ÉTAT. Vide = ZÉRO AUTORITÉ : le vide est la lecture la plus stricte, jamais
@@ -329,19 +354,6 @@ lease_autorise() {
 
 lease_valider
 
-# Exceptions globales pour toutes les branches cc-offline-* :
-# nouveaux sous-dossiers isolés du core gelé, créés pendant l'offline mode.
-# Chaque ajout doit être explicite, scopé, et validé par revue humaine.
-# - src/lib/pdf/nova/                : générateur PDF $NOVA (synthetic demo, admin-only)
-# - src/app/api/admin/casefile-nova/ : route admin POST pour le PDF $NOVA
-OFFLINE_EXEMPT_PATTERNS=(
-    "^src/lib/pdf/nova/"
-    "^src/app/api/admin/casefile-nova/"
-)
-
-# Exceptions pour le module OSINT Vision Ingest V1 (admin-only, shadow mode).
-# Route EXTRACT (dry-run, zéro écriture DB) + route COMMIT (shadow : publishable
-#=false, KolTokenLink visibility='draft', PENDING jamais résolu). Migration
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -411,19 +423,6 @@ while IFS= read -r file; do
     if [[ "$GUARD_MAINTENANCE" == "true" ]] && is_guard_system_file "$file"; then
         continue
     fi
-
-    # Exemptions globales offline (scopées par sous-dossier, voir liste haut de fichier)
-    EXEMPT=false
-    for ex in "${OFFLINE_EXEMPT_PATTERNS[@]}"; do
-        if [[ "$file" =~ $ex ]]; then
-            EXEMPT=true
-            break
-        fi
-    done
-    [[ "$EXEMPT" == "true" ]] && continue
-
-
-
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
