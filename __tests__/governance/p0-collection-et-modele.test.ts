@@ -53,7 +53,7 @@ describe("COLLECTION AUTHORITY — l'appartenance est une assertion à part enti
     // C'est la Watchlist, exactement : figurer sous « UNDER ACTIVE
     // SURVEILLANCE » affirme quelque chose que la décision prise sur les
     // champs d'un membre ne fonde pas.
-    const watchlist = declarerCollection("Watchlist", true, null);
+    const watchlist = declarerCollection("Watchlist", "ASSERTIVE", null);
     const r = projeterCollection(watchlist, cent_sept_membres);
     expect(estRefus(r)).toBe(true);
     if (estRefus(r)) expect(r.raison).toBe("APPARTENANCE_NON_AUTORISEE");
@@ -62,7 +62,7 @@ describe("COLLECTION AUTHORITY — l'appartenance est une assertion à part enti
   it("et le refus ne regarde PAS les membres — une liste VIDE rend le même refus", () => {
     // La propriété : la décision d'appartenance est examinée avant que les
     // membres ne soient seulement lus.
-    const watchlist = declarerCollection("Watchlist", true, null);
+    const watchlist = declarerCollection("Watchlist", "ASSERTIVE", null);
     const vide = projeterCollection(watchlist, []);
     const pleine = projeterCollection(watchlist, cent_sept_membres);
     expect(vide).toEqual(pleine);
@@ -70,7 +70,7 @@ describe("COLLECTION AUTHORITY — l'appartenance est une assertion à part enti
 
   it("MUTATION DISCRIMINANTE — avec une décision d'appartenance, la même liste passe", () => {
     // Une garde qui refuserait toujours ne mesurerait rien.
-    const autorisee = declarerCollection("DossiersPublies", true, decisionValide());
+    const autorisee = declarerCollection("DossiersPublies", "ASSERTIVE", decisionValide());
     const r = projeterCollection(autorisee, cent_sept_membres);
     expect(estRefus(r)).toBe(false);
     if (!estRefus(r)) {
@@ -79,19 +79,70 @@ describe("COLLECTION AUTHORITY — l'appartenance est une assertion à part enti
     }
   });
 
-  it("une appartenance NON assertive sans décision ferme aussi — pas de fondation vide", () => {
-    const r = projeterCollection(declarerCollection("Neutre", false, null), []);
-    expect(estRefus(r)).toBe(true);
-    if (estRefus(r)) expect(r.raison).toBe("AUCUNE_FONDATION_POSSIBLE");
+  /**
+   * ─── CETTE RÈGLE A CHANGÉ, ET JE L'AVAIS ÉCRITE DANS L'AUTRE SENS ──────
+   *
+   * Ce test affirmait qu'une collection NON assertive sans décision FERMAIT.
+   * C'était un impôt : exiger une décision d'appartenance là où
+   * l'appartenance n'affirme rien taxe une forme irréprochable, et un impôt
+   * finit désarmé. Même raisonnement que la garde `return {` qu'il a fallu
+   * jeter parce qu'elle interdisait un STYLE au lieu d'un EFFET.
+   *
+   * La dispense est maintenant possible — mais elle est DÉCLARÉE, jamais
+   * déduite, et elle ne dispense QUE de la couche 1.
+   */
+  it("une appartenance NON_ASSERTIVE n'exige aucune décision d'appartenance", () => {
+    const r = projeterCollection(declarerCollection("Neutre", "NON_ASSERTIVE", null), cent_sept_membres);
+    expect(estRefus(r)).toBe(false);
+    if (!estRefus(r)) {
+      expect(r.collection).toBe("Neutre");
+      expect(r.fondeePar).toBeNull();
+      // COUCHE 2 — les unités contenues restent gouvernées, chacune par SON
+      // autorité. La dispense de couche 1 ne les rachète pas.
+      expect(r.membres).toHaveLength(107);
+      for (const m of r.membres) {
+        expect(m.handle.fondeePar.referentiel).toBe("KolProfile.publishStatus");
+      }
+    }
+  });
+
+  it("██ LE MUTANT QUE LA DISPENSE REND NÉCESSAIRE — ne RIEN déclarer est un REFUS", () => {
+    // Sans ce mutant, l'échappatoire est ouverte par OMISSION : une collection
+    // qu'on aurait oublié de qualifier tomberait dans la dispense, et l'oubli
+    // vaudrait décision. Le type l'interdit ; un `as` le contourne ; la garde
+    // de capacité l'attrape. C'est le filet SOUS le type, pas son doublon.
+    for (const muet of [undefined, null, "", "NON-ASSERTIVE", "non_assertive", true, 0]) {
+      const contrefaite = {
+        collection: "Muette",
+        semantique: muet,
+        fondeePar: null,
+      } as unknown as Parameters<typeof projeterCollection>[0];
+      const r = projeterCollection(contrefaite, cent_sept_membres);
+      expect(estRefus(r), `sémantique=${String(muet)} devait être refusée`).toBe(true);
+      if (estRefus(r)) expect(r.raison).toBe("APPARTENANCE_NON_DECLAREE");
+    }
+  });
+
+  it("LE SILENCE N'EST PAS LA NON-ASSERTIVITÉ — deux refus DISTINCTS", () => {
+    // Une collection assertive non fondée et une collection muette sont toutes
+    // deux refusées, et pour des raisons différentes. Les confondre reviendrait
+    // à dire que ne rien déclarer équivaut à déclarer quelque chose.
+    const assertive = projeterCollection(declarerCollection("A", "ASSERTIVE", null), []);
+    const muette = projeterCollection(
+      { collection: "M", fondeePar: null } as unknown as Parameters<typeof projeterCollection>[0],
+      [],
+    );
+    expect(estRefus(assertive) && assertive.raison).toBe("APPARTENANCE_NON_AUTORISEE");
+    expect(estRefus(muette) && muette.raison).toBe("APPARTENANCE_NON_DECLAREE");
   });
 
   it("LES DEUX AXES SONT INDÉPENDANTS — quatre combinaisons, quatre issues", () => {
     const d = decisionValide();
     const cas = [
-      { nom: "assertive + fondée", a: declarerCollection("C", true, d), refuse: false },
-      { nom: "assertive + non fondée", a: declarerCollection("C", true, null), refuse: true },
-      { nom: "non assertive + fondée", a: declarerCollection("C", false, d), refuse: false },
-      { nom: "non assertive + non fondée", a: declarerCollection("C", false, null), refuse: true },
+      { nom: "assertive + fondée", a: declarerCollection("C", "ASSERTIVE", d), refuse: false },
+      { nom: "assertive + non fondée", a: declarerCollection("C", "ASSERTIVE", null), refuse: true },
+      { nom: "non assertive + fondée", a: declarerCollection("C", "NON_ASSERTIVE", d), refuse: false },
+      { nom: "non assertive + non fondée", a: declarerCollection("C", "NON_ASSERTIVE", null), refuse: false },
     ] as const;
     for (const c of cas) {
       expect(estRefus(projeterCollection(c.a, cent_sept_membres)), c.nom).toBe(c.refuse);

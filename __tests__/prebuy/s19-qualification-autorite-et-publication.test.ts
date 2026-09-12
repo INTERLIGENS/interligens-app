@@ -253,7 +253,23 @@ describe("S19/ag3d — 4 · STABILITÉ : tient, mais par coïncidence de littér
     // d'identité n'est pas EXCLUE du payload — elle s'y trouve, et c'est le
     // littéral partagé qui tient, pas une garde.
     const lab = aplat(codeSeul(SRC("prisma/seed-lab.ts")));
-    expect(lab).toContain("where: { ref: REF }, create: data, update: data,");
+
+    // ─── FERMÉ, ET PAR UNE PROPRIÉTÉ — pas par un littéral qui s'aligne ───
+    //
+    // Le constat ci-dessus décrivait `create: data, update: data`, où `data`
+    // portait `ref: REF` : la colonne d'identité se trouvait dans la charge de
+    // mise à jour, et rien ne bougeait UNIQUEMENT parce que les deux littéraux
+    // étaient égaux. Changer l'un sans l'autre réécrivait l'identité du dossier.
+    //
+    // La fermeture ne compare aucune valeur, et c'est ce qui la distingue de la
+    // coïncidence : `withoutRef` RETIRE la colonne de la charge. La règle est
+    // « le ref n'est PAS dans le payload », jamais « le ref ne change pas ».
+    expect(lab, "l'ancienne forme est revenue").not.toContain(
+      "where: { ref: REF }, create: data, update: data,",
+    );
+    expect(lab).toContain("where: { ref: REF }, create: assignRef(data), update: withoutRef(data),");
+
+    // Et l'assignation reste FOURNIE, une seule fois, par le chemin `create`.
     expect(lab).toContain("ref: REF,");
   });
 });
@@ -521,14 +537,30 @@ describe("S19/ag4a — 1 · LES DEUX SONT DISPONIBLES AU MÊME MOMENT", () => {
     const g = codeSeul(SRC(PDF_INTERNE));
 
     // Les emplacements qui portent ENCORE la forme non gouvernée. Ils étaient
-    // trois ; le titre de tête est passé à la dérivation, et ils sont deux.
-    // Tous deux sont HORS DU CORPS DU DOCUMENT — un nom de fichier et une clé
-    // d'archive —, ce qui n'est pas un détail de périmètre : ce sont
-    // précisément les deux emplacements qu'aucun rendu ne montre au lecteur,
-    // donc les deux qu'une relecture d'artefact ne peut pas attraper.
+    // trois, puis deux, et il en reste UN.
+    //
+    //   titre de tête    passé à la dérivation
+    //   nom de fichier   passé à la dérivation — voir l'assertion ci-dessous
+    //   clé d'archive R2 TOUJOURS la forme non gouvernée
+    //
+    // Celui qui reste est HORS DU CORPS DU DOCUMENT, et ce n'est pas un détail
+    // de périmètre : c'est précisément l'emplacement qu'aucun rendu ne montre
+    // au lecteur, donc celui qu'une relecture d'artefact ne peut pas attraper.
     expect(g, "la CLÉ D'ARCHIVE R2").toContain("input.case_meta.case_id.replace(");
-    expect(aplat(codeSeul(SRC(ROUTE_GENERATE))), "le NOM DE FICHIER servi")
-      .toContain('filename="${input.case_meta.case_id}.pdf"');
+
+    // ── LE NOM DE FICHIER EST FERMÉ, et il l'est par DÉRIVATION ───────────
+    //
+    // L'identité non gouvernée n'atteint plus le nom de fichier DU TOUT : elle
+    // n'y est pas remplacée par une autre valeur d'entrée, elle en est absente.
+    // Le chemin sans dossier canonique rend un nom NEUTRE, qui n'affirme rien —
+    // c'est le même geste que le champ qui disparaît plutôt que d'être voilé.
+    const gen = aplat(codeSeul(SRC(ROUTE_GENERATE)));
+    expect(gen, "le NOM DE FICHIER est reparti vers la forme non gouvernée")
+      .not.toContain('filename="${input.case_meta.case_id}.pdf"');
+    expect(gen).toContain('const nomFichier = refGouverne ? `${refGouverne}.pdf` : "casefile-ungoverned.pdf";');
+    expect(gen).toContain('filename="${nomFichier}"');
+    expect(gen, "refGouverne doit venir du dossier canonique, pas des métadonnées d'entrée")
+      .toContain("refGouverne = dossier.ref;");
 
     // Le TITRE DE TÊTE, passé à la dérivation après le pied de page. Il est
     // ancré nommément parce que c'est le site corrigé : un correctif doit
@@ -743,9 +775,19 @@ describe("S19/ag3j — 8 · INDÉPENDANCE (ii) : l'identité RENDUE ne l'est PAS
     expect(codeSeul(SRC(PDF_SCAN))).not.toContain("IL-SHILL");
   });
 
-  it("FORMAT — le conteneur décide, et il décide contre l'autorité gouvernée", () => {
-    // PDF interne : nom de fichier et clé d'archive portent la forme preset.
-    expect(aplat(codeSeul(SRC(ROUTE_GENERATE)))).toContain('filename="${input.case_meta.case_id}.pdf"');
+  it("FORMAT — le conteneur ne décide plus contre l'autorité sur le NOM, et décide encore sur l'ARCHIVE", () => {
+    // ─── LA MOITIÉ QUI S'EST FERMÉE ───────────────────────────────────────
+    // Le nom de fichier servi dérivait de `input.case_meta.case_id` — une
+    // valeur d'entrée, non gouvernée. Il dérive maintenant du ref canonique,
+    // et retombe sur un nom NEUTRE quand il n'y a pas de dossier.
+    const gen = aplat(codeSeul(SRC(ROUTE_GENERATE)));
+    expect(gen).not.toContain('filename="${input.case_meta.case_id}.pdf"');
+    expect(gen).toContain('filename="${nomFichier}"');
+
+    // ─── ET CELLE QUI RESTE OUVERTE ───────────────────────────────────────
+    // La clé d'archive R2, elle, porte toujours la forme non gouvernée. Le
+    // MÊME dossier a donc deux identités selon le conteneur : le nom servi au
+    // lecteur, et la clé sous laquelle il est archivé.
     expect(codeSeul(SRC(PDF_INTERNE))).toContain("input.case_meta.case_id.replace(");
     // PDF public : nom de fichier porte le ref gouverné. Le MÊME dossier,
     // deux formats, deux noms de fichier de familles différentes.

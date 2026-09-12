@@ -10,6 +10,7 @@
 //              non nul. Le refus est une chaîne IDENTIQUE, pas une absence.
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { admettreAnonyme, repondre } from "@/lib/governance/audienceProjection";
 import {
   REFUS_WATCHLIST,
@@ -105,6 +106,90 @@ describe("WATCHLIST — retrait causal, et rien ne reconstruit la partition", ()
 
   it("le corps est GELÉ — une mutation accidentelle lève au lieu de fuir", () => {
     expect(Object.isFrozen(REFUS_WATCHLIST)).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LE TÉMOIN AUTHENTIFIÉ — ce que la charge API servait RÉELLEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Mesuré en session authentifiée sur les 107 entrées. Il comble la lacune n°4
+// de l'inventaire : le chemin jusqu'aux octets n'avait été établi que par
+// lecture de code. Il est PLUS DUR que l'inventaire.
+
+/**
+ * LES QUATRE SÉPARATEURS PARFAITS, mesurés : 11 / 0 sans exception.
+ *
+ *   riskFlag            non nul pour les 11 publiés, nul pour les 96
+ *   rugCount            11 / 0
+ *   totalProceeds        7 / 0
+ *   behaviorFlagsCount   5 / 0
+ *
+ * CHACUN SEUL partitionne. Ce n'est pas une conjonction à casser : c'est
+ * quatre oracles indépendants, et en laisser UN suffit.
+ */
+const SEPARATEURS = ["riskFlag", "rugCount", "totalProceeds", "behaviorFlagsCount"] as const;
+
+/** Le champ qui DÉCLARE la partition, au lieu de la laisser reconstruire. */
+const DECLARATION_DE_PARTITION = "isPublished";
+
+/** Les notes internes de `handlesV2`, servies telles quelles sur la Watchlist. */
+const NOTES_INTERNES = [
+  "Wallet 8deJ9xe...XhU6 reported via public Solscan label",
+  "alias of lynk0x",
+  "dual-sourced with zachxbt_leak",
+  "TOES campaign — draft KolProfile, 7 OSINT captures 2026-06-20; low until reviewed",
+];
+
+/** La propriété, sur les OCTETS : la charge permet-elle de reconstruire 11/96 ? */
+const reconstruitLaPartition = (corps: string): boolean =>
+  corps.includes(DECLARATION_DE_PARTITION) || SEPARATEURS.some((c) => corps.includes(c));
+
+describe("LA CHARGE API — c'est elle qu'il faut fermer, pas le rendu", () => {
+  it("`isPublished` était SERVI — la partition n'était pas reconstructible, elle était DÉCLARÉE", async () => {
+    // Un containment qui nettoie le rendu et laisse la charge intacte ne ferme
+    // rien : le champ dit la réponse, il ne la laisse pas déduire.
+    const corps = await corpsServi(membres(107));
+    expect(corps).not.toContain(DECLARATION_DE_PARTITION);
+  });
+
+  it("██ LES QUATRE SÉPARATEURS — la charge n'en porte aucun", async () => {
+    const corps = await corpsServi(membres(107));
+    for (const champ of SEPARATEURS) expect(corps, champ).not.toContain(champ);
+    expect(reconstruitLaPartition(corps)).toBe(false);
+  });
+
+  it("██ MUTATION DISCRIMINANTE — laisser UN SEUL séparateur suffit à rougir", () => {
+    // C'est le mutant qui compte : chacun de ces quatre champs, SEUL, partitionne
+    // les 107 en 11 et 96. Une garde qui n'attraperait que la conjonction
+    // laisserait passer trois fuites sur quatre.
+    for (const champ of SEPARATEURS) {
+      const charge = JSON.stringify({ entries: [{ handle: "x", [champ]: 1 }] });
+      expect(reconstruitLaPartition(charge), `${champ} seul doit rougir`).toBe(true);
+    }
+    // Et `isPublished` seul, évidemment.
+    expect(reconstruitLaPartition(JSON.stringify({ entries: [{ isPublished: true }] }))).toBe(true);
+
+    // CONTRE-TÉMOIN — une charge sans aucun des cinq ne rougit pas. Sans lui,
+    // la propriété rendrait `true` sur n'importe quoi et ne mesurerait rien.
+    expect(reconstruitLaPartition(JSON.stringify({ entries: [{ handle: "x" }] }))).toBe(false);
+  });
+
+  it("les notes INTERNES de handlesV2 ne sortent plus — dont un lien nominatif", () => {
+    // « alias of lynk0x » relie NOMINATIVEMENT un handle non publié à un
+    // publié. C'est du C1 sur une surface où l'inventaire ne l'avait pas
+    // cherché — les trois autres sont des notes d'ingénierie et d'OSINT.
+    const source = readFileSync("src/lib/watcher/handles.ts", "utf8");
+    for (const note of NOTES_INTERNES) {
+      expect(source, "le témoin positif a disparu de la source").toContain(note);
+    }
+  });
+
+  it("██ et aucune d'elles n'atteint la charge", async () => {
+    const corps = await corpsServi(membres(107));
+    for (const note of NOTES_INTERNES) expect(corps, note.slice(0, 30)).not.toContain(note);
+    expect(corps).not.toContain("lynk0x");
+    expect(corps).not.toContain("Solscan");
   });
 });
 

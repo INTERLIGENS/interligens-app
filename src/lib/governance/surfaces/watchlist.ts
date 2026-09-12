@@ -72,7 +72,7 @@ export const REFUS_WATCHLIST: CorpsDeRefus = Object.freeze({
  * existerait un, c'est la table qui changerait — pas cette ligne.
  */
 export function autoriteDeLaWatchlist() {
-  return declarerCollection("Watchlist", true, null);
+  return declarerCollection("Watchlist", "ASSERTIVE", null);
 }
 
 /**

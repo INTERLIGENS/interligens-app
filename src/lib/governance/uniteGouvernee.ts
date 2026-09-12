@@ -142,7 +142,10 @@ export type RaisonDeRefus =
   | "SUJET_NON_PUBLIE"
   | "CONFLIT_IDENTITE"
   | "AUCUNE_FONDATION_POSSIBLE"
-  | "APPARTENANCE_NON_AUTORISEE";
+  | "APPARTENANCE_NON_AUTORISEE"
+  /** La collection ne DÉCLARE PAS sa sémantique d'appartenance. Le silence
+   *  n'est pas une dispense : il est un refus. */
+  | "APPARTENANCE_NON_DECLAREE";
 
 export interface Refus {
   readonly refuse: true;
