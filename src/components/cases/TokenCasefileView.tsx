@@ -116,12 +116,9 @@ const T: Record<Locale, Record<string, string>> = {
     origin: "origin",
     integrity: "integrity",
     unresolvedRef: "Unresolved reference",
-    withheldPiece: "Withheld piece",
-    withheldTitle: "Withheld from publication",
-    withheldIntro: "Material attached to this case file that is not published. Each line names the field that governs the decision — never its content. Absence of provenance is not a finding of falsity.",
-    withheldReasonCol: "Reason", withheldFieldCol: "Field", withheldCountCol: "Items",
-    reasonExcluded: "Excluded from publication",
-    reasonProvenance: "Insufficient provenance",
+    // Les libellés du retrait sont retirés avec le bloc qu'ils servaient. Une
+    // chaîne de traduction laissée derrière serait la trace d'un rendu qu'on a
+    // fermé, et la prochaine main la recâblerait.
   },
   fr: {
     kicker: "DOSSIER FRAUDE TOKEN",
@@ -157,12 +154,7 @@ const T: Record<Locale, Record<string, string>> = {
     origin: "origine",
     integrity: "intégrité",
     unresolvedRef: "Référence non résolue",
-    withheldPiece: "Pièce retenue",
-    withheldTitle: "Retenu hors publication",
-    withheldIntro: "Matériel rattaché à ce dossier et non publié. Chaque ligne nomme le CHAMP qui commande la décision — jamais son contenu. Une provenance absente n'est pas une preuve de fausseté.",
-    withheldReasonCol: "Motif", withheldFieldCol: "Champ", withheldCountCol: "Éléments",
-    reasonExcluded: "Exclu de la publication",
-    reasonProvenance: "Provenance insuffisante",
+    // Idem côté français : les libellés partent avec le bloc.
   },
 };
 
@@ -257,10 +249,29 @@ function CanonicalClaims({
   t: Record<string, string>;
   locale: Locale;
 }) {
-  if (projection.claims.length === 0 && projection.withheld.length === 0) return null;
-
-  const reasonLabel = (r: string): string =>
-    r === "INSUFFICIENT_PROVENANCE" ? t.reasonProvenance : t.reasonExcluded;
+  // ─── LA CONDITION ÉTAIT L'ORACLE, PAS LE TEXTE ──────────────────────────
+  //
+  //   A conditional rendering branch whose condition is the existence of
+  //   non-publishable governed content is itself a publication oracle.
+  //
+  // Ce composant rendait un bloc SI `projection.withheld` n'était pas vide, et
+  // chaque ligne servait motif + champ + DÉCOMPTE ; plus haut, `withheldRefs`
+  // servait l'IDENTIFIANT de la pièce retenue. Un lecteur apprenait donc qu'il
+  // existe du matériel non publiable, combien, et sous quel champ — sans
+  // qu'aucune valeur retenue ne soit republiée. C'est la DIVULGATION
+  // D'EXISTENCE que le containment ferme partout ailleurs.
+  //
+  // Retirer les phrases en gardant la branche n'aurait rien fermé : la forme de
+  // la sortie restait discriminante. C'est donc le CHAMP qui sort du rendu.
+  //
+  // `PublicProjection.withheld` et `RenderedProvenance.withheldRefs` existent
+  // toujours côté données — ils sont l'état administratif, légitime, et dix
+  // consommateurs les importent. Ce qui cesse ici, c'est leur PROJECTION vers
+  // une audience qui n'a pas à savoir qu'ils sont peuplés.
+  //
+  // L'absence est une absence : claims vides → rien, et non « rien N'A PAS été
+  // trouvé ».
+  if (projection.claims.length === 0) return null;
 
   return (
     <div style={{ borderTop: "1px solid #1a1a1a", marginTop: 24, paddingTop: 24 }}>
@@ -330,11 +341,10 @@ function CanonicalClaims({
                       {t.unresolvedRef} : {r}
                     </div>
                   ))}
-                  {c.provenance.withheldRefs.map((r) => (
-                    <div key={"w-" + r} style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace", marginTop: 3 }}>
-                      {t.withheldPiece} : {r}
-                    </div>
-                  ))}
+                  {/* `withheldRefs` N'EST PLUS RENDU. Il servait l'identifiant
+                      d'une pièce connue mais non publiable — donc la preuve que
+                      cette pièce EXISTE. Une référence non résolue reste
+                      affichée : elle ne dit rien d'un contenu gouverné. */}
                 </div>
               );
             })}
@@ -342,33 +352,9 @@ function CanonicalClaims({
         </>
       )}
 
-      {/* Le retrait est SIGNALÉ. Il nomme le champ, jamais sa valeur — et il ne
-          republie rien de ce qu'il retient pour se justifier. */}
-      {projection.withheld.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, color: "#6b7280", letterSpacing: "0.2em", marginBottom: 6 }}>
-            {t.withheldTitle.toUpperCase()}
-          </div>
-          <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.7, margin: "0 0 10px", maxWidth: 760 }}>
-            {t.withheldIntro}
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ display: "flex", gap: 16, fontSize: 9, fontWeight: 900, color: "#4b5563", letterSpacing: "0.12em" }}>
-              <span style={{ flex: "1 1 220px" }}>{t.withheldReasonCol.toUpperCase()}</span>
-              <span style={{ flex: "0 0 140px" }}>{t.withheldFieldCol.toUpperCase()}</span>
-              <span style={{ flex: "0 0 70px" }}>{t.withheldCountCol.toUpperCase()}</span>
-            </div>
-            {projection.withheld.map((n) => (
-              <div key={n.reason + ":" + n.field}
-                   style={{ display: "flex", gap: 16, fontSize: 12, color: "#9ca3af", borderTop: "1px solid #161616", paddingTop: 5 }}>
-                <span style={{ flex: "1 1 220px" }}>{reasonLabel(n.reason)}</span>
-                <span style={{ flex: "0 0 140px", fontFamily: "monospace", color: "#d1d5db" }}>{n.field}</span>
-                <span style={{ flex: "0 0 70px", fontFamily: "monospace" }}>{n.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* LE BLOC « RETENU HORS PUBLICATION » EST RETIRÉ — motif, champ ET
+          décompte avec lui. Nommer le champ sans sa valeur restait une
+          divulgation : le décompte dit COMBIEN d'éléments existent. */}
     </div>
   );
 }

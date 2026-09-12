@@ -141,13 +141,13 @@ export default async function BotifyEvidencePage() {
           REFERENCED CLAIMS
         </div>
 
-        {dossier.claims.length === 0 ? (
-          <Withheld
-            titre="No claim published"
-            champ="state"
-            texte="No claim in this case file currently meets the publication requirements. The material remains attached to the file. Absence of provenance is not a finding of falsity, and no further conclusion is drawn from it."
-          />
-        ) : (
+        {/* ── AUCUN CLAIM PUBLIÉ → RIEN, PAS UNE EXPLICATION ────────────────
+            Cette branche affirmait que du matériel reste rattaché au dossier
+            sans être publiable — donc qu'il EXISTE — sur un sujet nommé, et
+            elle ne se déclenchait QUE dans ce cas : la condition était
+            elle-même l'oracle. Le libellé exact n'est pas reproduit ici, le
+            citer le remettrait dans le source. Une liste vide se rend vide. */}
+        {dossier.claims.length === 0 ? null : (
           <div style={{ display: "flex", flexDirection: "column" as const, gap: 12, marginBottom: 28 }}>
             {dossier.claims.map((c) => (
               <div key={c.claimId} style={{ background: "#0f0f0f", border: "1px solid #1a1a1a", borderRadius: 8, padding: "16px 20px" }}>
@@ -183,27 +183,12 @@ export default async function BotifyEvidencePage() {
           </div>
         )}
 
-        {/* ── LES RETRAITS, NOMMÉS PAR CHAMP ── */}
-        {dossier.withheld.length > 0 && (
-          <div style={{ marginTop: 8, marginBottom: 28 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: "#6b7280", letterSpacing: "0.2em", marginBottom: 8 }}>
-              WITHHELD FROM PUBLICATION
-            </div>
-            <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.7, margin: "0 0 10px" }}>
-              Material attached to this case file that is not published. Each line
-              names the field that governs the decision — never its content.
-            </p>
-            {dossier.withheld.map((w) => (
-              <div key={w.reason + ":" + w.field} style={{ display: "flex", gap: 16, fontSize: 12, color: "#9ca3af", borderTop: "1px solid #161616", paddingTop: 6, marginTop: 4 }}>
-                <span style={{ flex: "1 1 220px" }}>
-                  {w.reason === "INSUFFICIENT_PROVENANCE" ? "Insufficient provenance" : "Excluded from publication"}
-                </span>
-                <span style={{ flex: "0 0 160px", fontFamily: "monospace", color: "#d1d5db" }}>{w.field}</span>
-                <span style={{ flex: "0 0 60px", fontFamily: "monospace" }}>{w.count}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* ── LE BLOC DES RETRAITS EST RETIRÉ ──────────────────────────────
+            Il ne se rendait que si `dossier.withheld` était peuplé, et servait
+            motif + champ + DÉCOMPTE sur un sujet nommé. Nommer le champ sans sa
+            valeur restait une divulgation d'existence, et le décompte la
+            quantifiait. La branche part avec le texte : garder l'une sans
+            l'autre ne fermait rien. */}
 
         <div style={{ borderTop: "1px solid #111827", marginTop: 32, paddingTop: 20, fontSize: 11, color: "#374151", lineHeight: 1.7 }}>
           Rendered from the canonical case file authority. Referenced claims only —

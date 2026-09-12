@@ -161,7 +161,26 @@ describe("P3 — `/cases/botify/evidence` ne porte plus ses propres données", (
     expect(src.replace(/\s+/g, " ")).toContain("not a finding about the subject");
   });
 
-  it("l'absence de claim publié est DITE, pas masquée", () => {
-    expect(src.replace(/\s+/g, " ")).toContain("Absence of provenance is not a finding of falsity");
+  // ─── TÉMOIN RETOURNÉ — MÊME RULING QUE POUR LA FICHE NOMINATIVE ──────────
+  //
+  // Il exigeait que l'absence de claim publié soit DITE. La phrase servie —
+  // « The material remains attached to the file » — affirmait qu'un contenu
+  // EXISTE et n'est pas publiable, sur un sujet nommé, et elle ne se rendait
+  // QUE dans ce cas. La condition était l'oracle.
+  //
+  // Ce qui demeure, et qui n'est pas touché : le retrait du graphe de wallets
+  // (témoin ci-dessus) parle d'une ABSENCE RATIFIÉE — `keyWallets` est vide
+  // dans l'autorité canonique — et non d'un contenu retenu.
+  it("l'absence de claim publié est une ABSENCE, pas une explication", () => {
+    const plat = src.replace(/\s+/g, " ");
+    expect(plat, "aucune phrase n'annonce du matériel retenu").not.toContain(
+      "The material remains attached to the file",
+    );
+    expect(plat, "aucun bloc de retrait par champ ne subsiste").not.toContain(
+      "WITHHELD FROM PUBLICATION",
+    );
+    expect(code, "une liste de claims vide ne rend rien").toContain(
+      "dossier.claims.length === 0 ? null",
+    );
   });
 });
