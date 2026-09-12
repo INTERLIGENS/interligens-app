@@ -520,7 +520,22 @@ export default function KOLPageFR() {
                     { champ: "coordination", nom: "Signaux de coordination" },
                     { champ: "transparency", nom: "Wallets déclarés" },
                     { champ: "shill", nom: "Shill-to-exit" },
-          ].filter((x) => isNonConstat(sectionState[x.champ]));
+          ].filter(
+            (x) =>
+              isNonConstat(sectionState[x.champ]) &&
+              // ─── LA RÉTENTION DÉLIBÉRÉE SORT DU BLOC ──────────────────────
+              // Jumelle de locale de la page `en`. La ligne servie disait, sur
+              // une fiche qui NOMME une personne, qu'une section existe et lui
+              // est réservée, et elle n'apparaissait QUE dans ce cas — la
+              // condition était l'oracle, pas seulement la phrase. Le libellé
+              // exact n'est pas reproduit ici, le citer le remettrait dans le
+              // source.
+              //
+              // La PANNE DE COLLECTE reste dite : elle ne parle d'aucun contenu
+              // gouverné, et la taire ferait relire le vide comme « rien à
+              // signaler » — le défaut que P2 corrigeait.
+              sectionState[x.champ] !== "INTENTIONALLY_UNAVAILABLE",
+          );
           if (nonConstates.length === 0) return null;
           return (
             <div style={{ border: "1px solid #6b728055", background: "#0A0A0A", borderRadius: 10, padding: 16, margin: "16px 0" }}>
@@ -531,9 +546,7 @@ export default function KOLPageFR() {
                 <div key={x.champ} style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.7, marginTop: 6 }}>
                   <span style={{ fontFamily: "monospace", color: "#d1d5db" }}>{x.nom}</span>
                   {" — "}
-                  {sectionState[x.champ] === "INTENTIONALLY_UNAVAILABLE"
-                    ? "Cette section exige un accès nominatif authentifié. Elle est retenue par conception, non parce que rien n&apos;a été trouvé."
-                    : "Cette section n&apos;a pas pu être collectée. C&apos;est un échec de collecte, pas un constat sur cette personne — aucune conclusion ne doit être tirée de son absence."}
+                  {"Cette section n&apos;a pas pu être collectée. C&apos;est un échec de collecte, pas un constat sur cette personne — aucune conclusion ne doit être tirée de son absence."}
                 </div>
               ))}
             </div>

@@ -189,10 +189,46 @@ describe("P2 — les cinq appels muets ont disparu des deux fiches", () => {
     }
   });
 
-  it("le rendu DISTINGUE la rétention de la panne", () => {
+  // ─── CE TÉMOIN A ÉTÉ RETOURNÉ, ET VOICI POURQUOI ─────────────────────────
+  //
+  // Il exigeait l'INVERSE : que le rendu distingue la rétention délibérée de la
+  // panne de collecte. C'était la doctrine P2, et elle visait juste — un blanc
+  // sur une fiche qui nomme quelqu'un se lit « rien à signaler ».
+  //
+  // Le ruling P0 la borne :
+  //
+  //   A conditional rendering branch whose condition is the existence of
+  //   non-publishable governed content is itself a publication oracle.
+  //
+  // Dire « retenue par conception, non parce que rien n'a été trouvé » sur une
+  // fiche nominative révèle qu'une section EXISTE et est réservée — et la ligne
+  // n'apparaissait QUE dans ce cas. P2 reste vrai pour la PANNE, qui ne parle
+  // d'aucun contenu gouverné ; il cesse pour la RÉTENTION.
+  //
+  // Les deux formes, parce qu'une seule ne prouverait rien : l'exclusion doit
+  // être ÉCRITE, et la discrimination doit être ABSENTE. Sans la première, un
+  // fichier qui aurait perdu tout le bloc passerait pour conforme.
+  it("le rendu NE DISTINGUE PLUS la rétention de la panne", () => {
     for (const p of PAGES_KOL) {
       const src = readFileSync(p, "utf8");
-      expect(src, p).toContain('sectionState[x.champ] === "INTENTIONALLY_UNAVAILABLE"');
+      expect(src, `${p} — l'exclusion doit être écrite`).toContain(
+        'sectionState[x.champ] !== "INTENTIONALLY_UNAVAILABLE"',
+      );
+      expect(src, `${p} — aucune branche discriminante ne subsiste`).not.toContain(
+        'sectionState[x.champ] === "INTENTIONALLY_UNAVAILABLE"',
+      );
+    }
+  });
+
+  it("MUTANT — aucune formulation n'annonce une rétention sur la fiche", () => {
+    // Retirer la condition en gardant la phrase laisserait l'oracle : le texte
+    // seul annonce encore l'existence d'un contenu retenu.
+    for (const p of PAGES_KOL) {
+      const src = readFileSync(p, "utf8").replace(/\s+/g, " ");
+      expect(src, p).not.toMatch(/withheld by design|retenue par conception/i);
+      expect(src, p).not.toMatch(
+        /requires authenticated nominative access|exige un acc[èe]s nominatif authentifi[ée]/i,
+      );
     }
   });
 

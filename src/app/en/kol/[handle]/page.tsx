@@ -514,7 +514,24 @@ export default function KOLPage() {
                     { champ: "coordination", nom: "Coordination signals" },
                     { champ: "transparency", nom: "Declared wallets" },
                     { champ: "shill", nom: "Shill-to-exit" },
-          ].filter((x) => isNonConstat(sectionState[x.champ]));
+          ].filter(
+            (x) =>
+              isNonConstat(sectionState[x.champ]) &&
+              // ─── LA RÉTENTION DÉLIBÉRÉE SORT DU BLOC ──────────────────────
+              // La ligne servie disait, sur une fiche qui NOMME une personne,
+              // qu'une section existe et lui est réservée — et elle
+              // n'apparaissait QUE dans ce cas : la condition était l'oracle,
+              // pas seulement la phrase. Le libellé exact n'est pas reproduit
+              // ici, le citer le remettrait dans le source.
+              //
+              // Une PANNE DE COLLECTE reste dite : elle ne parle d'aucun contenu
+              // gouverné, et taire un échec technique ferait lire le vide comme
+              // « rien à signaler » — le défaut que ce bloc corrigeait en P2.
+              //
+              // Ce qui disparaît, c'est la DISTINCTION entre « rien trouvé » et
+              // « trouvé mais retenu ».
+              sectionState[x.champ] !== "INTENTIONALLY_UNAVAILABLE",
+          );
           if (nonConstates.length === 0) return null;
           return (
             <div style={{ border: "1px solid #6b728055", background: "#0A0A0A", borderRadius: 10, padding: 16, margin: "16px 0" }}>
@@ -525,9 +542,7 @@ export default function KOLPage() {
                 <div key={x.champ} style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.7, marginTop: 6 }}>
                   <span style={{ fontFamily: "monospace", color: "#d1d5db" }}>{x.nom}</span>
                   {" — "}
-                  {sectionState[x.champ] === "INTENTIONALLY_UNAVAILABLE"
-                    ? "This section requires authenticated nominative access. It is withheld by design, not because nothing was found."
-                    : "This section could not be collected. That is a collection failure, not a finding about this person — no conclusion should be drawn from its absence."}
+                  {"This section could not be collected. That is a collection failure, not a finding about this person — no conclusion should be drawn from its absence."}
                 </div>
               ))}
             </div>
