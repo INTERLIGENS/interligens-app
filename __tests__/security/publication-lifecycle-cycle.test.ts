@@ -412,33 +412,44 @@ describe("P0-2 — cycle draft -> public -> archived", () => {
   });
 });
 
-describe("P0-2 — consommateur /api/watchlist", () => {
-  async function watchlistTickers(handle: string): Promise<string[]> {
+// P0 · collection authority — /api/watchlist A CESSÉ D'ÊTRE UN CONSOMMATEUR.
+//
+// Ce bloc attestait que le cycle approbation → archivage était OBSERVABLE sur
+// la Watchlist servie. Il l'était parce que la Watchlist servait des entrées,
+// donc une appartenance qu'aucune décision ne fonde.
+//
+// Le refus est monté au niveau de la collection. Le cycle reste attesté sur
+// les autres consommateurs (blocs voisins) et dans le journal ; ce qui est
+// attesté ICI est la propriété nouvelle : le cycle n'est PLUS observable par
+// cette surface, à aucun de ses trois états. Une régression qui rebrancherait
+// la route fait rougir ce témoin.
+describe("P0-2 — /api/watchlist n'est plus un consommateur", () => {
+  async function corpsWatchlist(): Promise<string> {
     const { GET } = await import("@/app/api/watchlist/route");
     const res = await GET();
-    const body = (await res.json()) as { entries: Array<{ handle: string; tickers: string[] }> };
-    const entry = body.entries.find((e) => e.handle.toLowerCase() === handle.toLowerCase());
-    return entry?.tickers ?? [];
+    return JSON.stringify(await res.json());
   }
 
-  it("le ticker apparait a l'approbation et disparait a l'archivage", async () => {
+  it("les trois etats du cycle rendent la MEME suite d'octets", async () => {
     const { approveDraftLink } = await import("@/lib/watcher-bridge/reviewDraftLink");
     const { archiveLinkPublication } = await import("@/lib/watcher-bridge/archiveLinkPublication");
 
-    // draft -> aucun ticker cure pour alpha
-    expect(await watchlistTickers("alpha")).toEqual([]);
+    const enDraft = await corpsWatchlist();
 
     await approveDraftLink(db, ALPHA_LINK_ID, "david");
-    expect(await watchlistTickers("alpha")).toContain("TESTTOK");
+    const apresApprobation = await corpsWatchlist();
 
     await archiveLinkPublication(db, ALPHA_LINK_ID, {
       actorId: "david",
       reason: "contestation honoree",
       reasonCode: "contested",
     });
-    expect(await watchlistTickers("alpha")).toEqual([]);
-    // Temoin : beta garde le sien.
-    expect(await watchlistTickers("beta")).toContain("TESTTOK");
+    const apresArchivage = await corpsWatchlist();
+
+    expect(new Set([enDraft, apresApprobation, apresArchivage]).size).toBe(1);
+    // Et le ticker du cycle ne transparait dans aucun des trois.
+    expect(enDraft).not.toContain("TESTTOK");
+    expect(enDraft).toContain('"refus":true');
   });
 });
 
