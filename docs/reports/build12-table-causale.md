@@ -1,5 +1,24 @@
 # BUILD 12 — TABLE CAUSALE DES SURFACES DE PUBLICATION
 
+> ## L'INSTANT DE LA MESURE
+>
+> Cette table classe l'état du dépôt au commit **`ba254d8`**, arbre propre.
+> Une mesure sans son instant est une mesure qui se périme en silence.
+>
+> Trois fichiers sont sous fenêtre gelée T1 au moment où ils sont lus. Leur
+> empreinte exacte, pour que la péremption soit constatable et non devinée :
+>
+> | fichier | blob `git` à `ba254d8` |
+> |---|---|
+> | `src/app/api/pdf/casefile/route.ts` | `a28a76a9397794692c7adcb66dba1e1b2fa507f5` |
+> | `src/app/api/report/v2/route.ts` | `ec1641c980a6d169ae6b310cfd85cba0f443e485` |
+> | `src/app/api/casefile/generate/route.ts` | `f6a84fc67923d0b1e71f32967a7ecc1ceea9bd22` |
+>
+> T1 ouvre une fenêtre sur ces fichiers et va changer l'identité qu'ils
+> émettent. La classification ci-dessous est vraie de l'état AVANT la fenêtre
+> et fausse après. Vérifier : `git rev-parse ba254d8:<fichier>`. Si l'empreinte
+> a changé, la ligne est à relire — pas à croire.
+
 Découverte en DEUX ÉTAGES. L'appartenance à un répertoire n'entre nulle part dans le calcul.
 
     A · CANDIDAT               surface observable qui PEUT ATTEINDRE l'autorité
@@ -165,102 +184,98 @@ Balayage : `src/lib/governance/racinesSqlParCapacite.ts`. Garde :
 | 140 | `src/app/api/osint/submit/route.ts` | kolProfile | contenu | 6 | AUCUNE dans le handler | JSON | oui | oui | export |
 | 141 | `src/app/api/partner/v1/transaction-check/route.ts` | magasin-herite | contenu | 9 | AUCUNE dans le handler | JSON | oui | oui | export |
 | 142 | `src/app/api/pdf/[handle]/route.ts` | kolProfile | contenu + existence | 8 | porte dans le handler | JSON | oui | oui | export |
-| 143 | `src/app/api/pdf/kol/route.ts` | kolProfile | contenu + existence | 5 | porte dans le handler | JSON | oui | oui | export |
-| 144 | `src/app/api/reflex/[id]/route.ts` | investigatorAccess | contenu + existence | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 145 | `src/app/api/reflex/route.ts` | kolCase | contenu | 6 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 146 | `src/app/api/report/casefile/route.ts` | tokenCaseFile | contenu | 4 | porte dans le handler | ARTEFACT | oui | oui | export |
-| 147 | `src/app/api/scan/grounding/route.ts` | kolWallet | contenu | 7 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 148 | `src/app/api/scan/resolve/route.ts` | sql-brut | existence | 2 | AUCUNE dans le handler | JSON | oui (lecture humaine) | oui | export |
-| 149 | `src/app/api/scan/solana/route.ts` | magasin-herite | contenu | 2 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 150 | `src/app/api/stripe/webhook/route.ts` | investigatorAccess | existence | 5 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 151 | `src/app/api/token/[chain]/[address]/kol-alert/route.ts` | kolTokenInvolvement | contenu | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 152 | `src/app/api/v1/feedback/route.ts` | investigatorAccess | existence | 4 | porte dans le handler | JSON | oui | oui | export |
-| 153 | `src/app/api/v1/kol/[handle]/route.ts` | kolProfile | contenu + existence | 2 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 154 | `src/app/api/v1/kol/route.ts` | kolProfile | contenu | 1 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 155 | `src/app/api/v1/scan-context/route.ts` | magasin-herite | contenu | 9 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 156 | `src/app/api/v1/score/route.ts` | magasin-herite | contenu | 7 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 157 | `src/app/api/v1/shill-to-exit/route.ts` | sql-brut | contenu | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 158 | `src/app/api/watch/[id]/route.ts` | investigatorAccess | existence | 4 | porte dans le handler | JSON | oui | oui | export |
-| 159 | `src/app/api/watch/route.ts` | investigatorAccess | existence | 9 | porte dans le handler | JSON | oui | oui | export |
-| 160 | `src/app/api/watchlist/signals/[id]/route.ts` | kolProfile | contenu | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
-| 161 | `src/app/en/cases/botify/evidence/page.tsx` | tokenCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 162 | `src/app/en/cases/cbex/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 163 | `src/app/en/cases/lab/page.tsx` | tokenCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 164 | `src/app/en/cases/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 165 | `src/app/fr/cases/cbex/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 166 | `src/app/fr/cases/lab/page.tsx` | tokenCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 167 | `src/app/fr/cases/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 168 | `src/app/investigators/box/graph/demo/[slug]/page.tsx` | vaultProfile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
-| 169 | `src/components/pdf/pdfRenderer.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | oui | production d'artefact |
-| 170 | `src/lib/casefile/pdfGenerator.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
-| 171 | `src/lib/casefile/pdfGeneratorPublic.ts` | tokenCaseFile | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
-| 172 | `src/lib/digest/emailTemplate.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
-| 173 | `src/lib/email/unifiedDigest.ts` | kolProfile | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
-| 174 | `src/lib/pdf/engine.ts` | kolProfile | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | oui | production d'artefact |
-| 175 | `src/lib/surveillance/reports/generateCaseFile.ts` | sql-brut | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
-| 176 | `src/lib/vault/iocExportPdf.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
-| 177 | `src/scripts/seed/buildBotifyDossier.ts` | evidenceSnapshot | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
-| 178 | `src/app/api/admin/casefiles/[id]/route.ts` | sql-brut | — | 2 | porte dans le handler | — | oui | oui | export |
-| 179 | `src/app/api/admin/kol/watch-scan/route.ts` | kolEvidence | — | 3 | porte dans le handler | — | oui | oui | export |
-| 180 | `src/app/api/beta/auth/logout/route.ts` | investigatorAccess | — | 1 | AUCUNE dans le handler | — | oui | oui | export |
-| 181 | `src/app/api/cron/helius-scan/route.ts` | kolProfile | — | 2 | porte dans le handler | — | oui | oui | export |
-| 182 | `src/app/api/cron/intake-watch/route.ts` | kolProfile | — | 2 | porte dans le handler | — | oui | oui | export |
-| 183 | `src/app/api/cron/process-events/route.ts` | kolProfile | — | 3 | porte dans le handler | — | oui | oui | export |
-| 184 | `src/app/api/cron/watcher-v2/route.ts` | kolProfile | — | 5 | porte dans le handler | — | oui | oui | export |
-| 185 | `src/app/api/investigator/auth/logout/route.ts` | investigatorAccess | — | 1 | AUCUNE dans le handler | — | oui | oui | export |
-| 186 | `src/app/api/investigator/cases/route.ts` | investigatorAccess | — | 1 | porte dans le handler | — | oui | oui | export |
-| 187 | `src/app/api/investigator/kols/route.ts` | investigatorAccess | — | 3 | porte dans le handler | — | oui | oui | export |
-| 188 | `src/app/api/investigator/metrics/route.ts` | investigatorAccess | — | 1 | porte dans le handler | — | oui (lecture humaine) | oui | export |
-| 189 | `src/app/api/investigator/pdfs/download/route.ts` | investigatorAccess | — | 4 | porte dans le handler | — | oui | oui | export |
-| 190 | `src/app/api/investigator/pdfs/route.ts` | investigatorAccess | — | 1 | porte dans le handler | — | oui | oui | export |
-| 191 | `src/app/api/investigators/network-graph/route.ts` | investigatorProfile | — | 1 | AUCUNE dans le handler | — | oui | oui | export |
-| 192 | `src/app/api/partner/v1/batch-score/route.ts` | magasin-herite | — | 8 | AUCUNE dans le handler | — | oui | oui | export |
-| 193 | `src/app/api/partner/v1/score-lite/route.ts` | magasin-herite | — | 6 | AUCUNE dans le handler | — | oui | oui | export |
-| 194 | `src/app/api/scan/ask/route.ts` | kolWallet | — | 4 | AUCUNE dans le handler | — | oui | oui | export |
-| 195 | `src/app/api/scan/cluster/route.ts` | kolWallet | — | 6 | AUCUNE dans le handler | — | oui | oui | export |
-| 196 | `src/app/api/scan/evm/route.ts` | kolProfile | — | 2 | AUCUNE dans le handler | — | oui (lecture humaine) | oui | export |
-| 197 | `src/app/api/telegram/webhook/route.ts` | kolProfile | — | 5 | AUCUNE dans le handler | — | oui (lecture humaine) | oui | export |
-| 198 | `src/app/api/watchlist/route.ts` | kolTokenLink | — | 2 | AUCUNE dans le handler | — | oui | oui | export |
-| 199 | `src/app/en/demo/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 200 | `src/app/en/investigator/reflex/[id]/page.tsx` | kolProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 201 | `src/app/en/kol/[handle]/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 202 | `src/app/en/news/page.tsx` | kolProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 203 | `src/app/fr/demo/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 204 | `src/app/fr/investigator/reflex/[id]/page.tsx` | kolProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 205 | `src/app/fr/kol/[handle]/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 206 | `src/app/investigators/box/layout.tsx` | vaultProfile | — | 0 | porte dans le handler | — | oui | non | corps (rendu) |
-| 207 | `src/app/investigators/onboarding/pending/page.tsx` | investigatorProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 208 | `src/app/investigators/onboarding/welcome/page.tsx` | investigatorProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 209 | `src/app/scan/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
-| 210 | `src/app/api/pdf/casefile/route.ts` | magasin-herite | — | 4 | porte dans le handler | — | INDÉCIDABLE | oui | export |
-| 211 | `src/app/api/report/v2/route.ts` | magasin-herite | — | 2 | porte dans le handler | — | INDÉCIDABLE | oui | export |
+| 143 | `src/app/api/pdf/casefile/route.ts` | magasin-herite | artefact | 4 | porte dans le handler | ARTEFACT | oui (lecture humaine) | oui | export |
+| 144 | `src/app/api/pdf/kol/route.ts` | kolProfile | contenu + existence | 5 | porte dans le handler | JSON | oui | oui | export |
+| 145 | `src/app/api/reflex/[id]/route.ts` | investigatorAccess | contenu + existence | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 146 | `src/app/api/reflex/route.ts` | kolCase | contenu | 6 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 147 | `src/app/api/report/casefile/route.ts` | tokenCaseFile | contenu | 4 | porte dans le handler | ARTEFACT | oui | oui | export |
+| 148 | `src/app/api/report/v2/route.ts` | magasin-herite | artefact | 2 | porte dans le handler | ARTEFACT | oui (lecture humaine) | oui | export |
+| 149 | `src/app/api/scan/grounding/route.ts` | kolWallet | contenu | 7 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 150 | `src/app/api/scan/resolve/route.ts` | sql-brut | existence | 2 | AUCUNE dans le handler | JSON | oui (lecture humaine) | oui | export |
+| 151 | `src/app/api/scan/solana/route.ts` | magasin-herite | contenu | 2 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 152 | `src/app/api/stripe/webhook/route.ts` | investigatorAccess | existence | 5 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 153 | `src/app/api/token/[chain]/[address]/kol-alert/route.ts` | kolTokenInvolvement | contenu | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 154 | `src/app/api/v1/feedback/route.ts` | investigatorAccess | existence | 4 | porte dans le handler | JSON | oui | oui | export |
+| 155 | `src/app/api/v1/kol/[handle]/route.ts` | kolProfile | contenu + existence | 2 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 156 | `src/app/api/v1/kol/route.ts` | kolProfile | contenu | 1 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 157 | `src/app/api/v1/scan-context/route.ts` | magasin-herite | contenu | 9 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 158 | `src/app/api/v1/score/route.ts` | magasin-herite | contenu | 7 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 159 | `src/app/api/v1/shill-to-exit/route.ts` | sql-brut | contenu | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 160 | `src/app/api/watch/[id]/route.ts` | investigatorAccess | existence | 4 | porte dans le handler | JSON | oui | oui | export |
+| 161 | `src/app/api/watch/route.ts` | investigatorAccess | existence | 9 | porte dans le handler | JSON | oui | oui | export |
+| 162 | `src/app/api/watchlist/signals/[id]/route.ts` | kolProfile | contenu | 3 | AUCUNE dans le handler | JSON | oui | oui | export |
+| 163 | `src/app/en/cases/botify/evidence/page.tsx` | tokenCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 164 | `src/app/en/cases/cbex/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 165 | `src/app/en/cases/lab/page.tsx` | tokenCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 166 | `src/app/en/cases/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 167 | `src/app/fr/cases/cbex/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 168 | `src/app/fr/cases/lab/page.tsx` | tokenCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 169 | `src/app/fr/cases/page.tsx` | platformCaseFile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 170 | `src/app/investigators/box/graph/demo/[slug]/page.tsx` | vaultProfile | rendu HTML | 0 | AUCUNE dans le handler | HTML | oui | non | corps (rendu) |
+| 171 | `src/components/pdf/pdfRenderer.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | oui | production d'artefact |
+| 172 | `src/lib/casefile/pdfGenerator.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
+| 173 | `src/lib/casefile/pdfGeneratorPublic.ts` | tokenCaseFile | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
+| 174 | `src/lib/digest/emailTemplate.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
+| 175 | `src/lib/email/unifiedDigest.ts` | kolProfile | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
+| 176 | `src/lib/pdf/engine.ts` | kolProfile | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | oui | production d'artefact |
+| 177 | `src/lib/surveillance/reports/generateCaseFile.ts` | sql-brut | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
+| 178 | `src/lib/vault/iocExportPdf.ts` | consommation (type) | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
+| 179 | `src/scripts/seed/buildBotifyDossier.ts` | evidenceSnapshot | artefact | 0 | AUCUNE dans le handler | ARTEFACT | oui | non | production d'artefact |
+| 180 | `src/app/api/admin/casefiles/[id]/route.ts` | sql-brut | — | 2 | porte dans le handler | — | oui | oui | export |
+| 181 | `src/app/api/admin/kol/watch-scan/route.ts` | kolEvidence | — | 3 | porte dans le handler | — | oui | oui | export |
+| 182 | `src/app/api/beta/auth/logout/route.ts` | investigatorAccess | — | 1 | AUCUNE dans le handler | — | oui | oui | export |
+| 183 | `src/app/api/cron/helius-scan/route.ts` | kolProfile | — | 2 | porte dans le handler | — | oui | oui | export |
+| 184 | `src/app/api/cron/intake-watch/route.ts` | kolProfile | — | 2 | porte dans le handler | — | oui | oui | export |
+| 185 | `src/app/api/cron/process-events/route.ts` | kolProfile | — | 3 | porte dans le handler | — | oui | oui | export |
+| 186 | `src/app/api/cron/watcher-v2/route.ts` | kolProfile | — | 5 | porte dans le handler | — | oui | oui | export |
+| 187 | `src/app/api/investigator/auth/logout/route.ts` | investigatorAccess | — | 1 | AUCUNE dans le handler | — | oui | oui | export |
+| 188 | `src/app/api/investigator/cases/route.ts` | investigatorAccess | — | 1 | porte dans le handler | — | oui | oui | export |
+| 189 | `src/app/api/investigator/kols/route.ts` | investigatorAccess | — | 3 | porte dans le handler | — | oui | oui | export |
+| 190 | `src/app/api/investigator/metrics/route.ts` | investigatorAccess | — | 1 | porte dans le handler | — | oui (lecture humaine) | oui | export |
+| 191 | `src/app/api/investigator/pdfs/download/route.ts` | investigatorAccess | — | 4 | porte dans le handler | — | oui | oui | export |
+| 192 | `src/app/api/investigator/pdfs/route.ts` | investigatorAccess | — | 1 | porte dans le handler | — | oui | oui | export |
+| 193 | `src/app/api/investigators/network-graph/route.ts` | investigatorProfile | — | 1 | AUCUNE dans le handler | — | oui | oui | export |
+| 194 | `src/app/api/partner/v1/batch-score/route.ts` | magasin-herite | — | 8 | AUCUNE dans le handler | — | oui | oui | export |
+| 195 | `src/app/api/partner/v1/score-lite/route.ts` | magasin-herite | — | 6 | AUCUNE dans le handler | — | oui | oui | export |
+| 196 | `src/app/api/scan/ask/route.ts` | kolWallet | — | 4 | AUCUNE dans le handler | — | oui | oui | export |
+| 197 | `src/app/api/scan/cluster/route.ts` | kolWallet | — | 6 | AUCUNE dans le handler | — | oui | oui | export |
+| 198 | `src/app/api/scan/evm/route.ts` | kolProfile | — | 2 | AUCUNE dans le handler | — | oui (lecture humaine) | oui | export |
+| 199 | `src/app/api/telegram/webhook/route.ts` | kolProfile | — | 5 | AUCUNE dans le handler | — | oui (lecture humaine) | oui | export |
+| 200 | `src/app/api/watchlist/route.ts` | kolTokenLink | — | 2 | AUCUNE dans le handler | — | oui | oui | export |
+| 201 | `src/app/en/demo/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 202 | `src/app/en/investigator/reflex/[id]/page.tsx` | kolProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 203 | `src/app/en/kol/[handle]/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 204 | `src/app/en/news/page.tsx` | kolProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 205 | `src/app/fr/demo/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 206 | `src/app/fr/investigator/reflex/[id]/page.tsx` | kolProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 207 | `src/app/fr/kol/[handle]/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 208 | `src/app/investigators/box/layout.tsx` | vaultProfile | — | 0 | porte dans le handler | — | oui | non | corps (rendu) |
+| 209 | `src/app/investigators/onboarding/pending/page.tsx` | investigatorProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 210 | `src/app/investigators/onboarding/welcome/page.tsx` | investigatorProfile | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
+| 211 | `src/app/scan/page.tsx` | consommation (type) | — | 0 | AUCUNE dans le handler | — | oui | non | corps (rendu) |
 
 ## Décompte
 
 | | | delta vs build12 |
 |---|---|---|
 | candidats étage A | **211** | +21 |
-| **N_CONFIRMED** | **177** | **+31** (146 → 177) |
-| N_INDECIDABLE (RED/HOLD) | **2** | −14 (16 → 2) |
+| **N_CONFIRMED** (avec `wallet_sync_state`) | **179** | **+33** (146 → 179) |
+| **N_CONFIRMED** (sans — table absente de la prod) | **175** | **+29** |
+| N_INDECIDABLE (RED/HOLD) | **0** | **−16** (16 → 0) |
 | N_NO_GOVERNED_EMISSION | 32 | +4 (28 → 32) |
 
-N par nature : ARTEFACT 14 · HTML 11 · JSON 152
+N par nature : ARTEFACT 16 · HTML 11 · JSON 152
 
-N gelés : 159 / 177
+N gelés : 161 / 179
 
-## Les deux indécidables qui restent
+## N_INDECIDABLE = 0
 
-Elles ne sont pas indécidables par mesure : elles sont **NON LUES**. La consigne
-de session excluait explicitement `pdf/casefile`, `casefile/generate` et
-`report/v2`. Aucune n'a été ouverte, aucune n'a été tranchée. C'est une borne
-de périmètre, pas une limite de méthode — et elles restent RED/HOLD.
+Aucune surface de l'étage A ne reste non tranchée. Les deux dernières —
+`pdf/casefile` et `report/v2` — étaient une borne de périmètre, pas une limite
+de méthode ; la borne a été levée et elles ont été lues à `ba254d8`, en lecture
+seule stricte, sans qu'aucun des trois fichiers de la fenêtre soit modifié.
 
-| surface | statut |
-|---|---|
-| `src/app/api/pdf/casefile/route.ts` | HORS PÉRIMÈTRE de cette session (consigne explicite) — non lue, non tranchée |
-| `src/app/api/report/v2/route.ts` | HORS PÉRIMÈTRE de cette session (consigne explicite) — non lue, non tranchée |
-
-## Les 15 indécidables tranchées par lecture humaine
+## Les 17 indécidables tranchées par lecture humaine
 
 Aucune n'était un cas difficile. Les blocages étaient cinq lacunes de LIAISON
 dans la sonde — un identifiant lié par `catch (e)`, par déstructuration
@@ -268,6 +283,13 @@ dans la sonde — un identifiant lié par `catch (e)`, par déstructuration
 un mot de TypeScript en position de type (`as`, `unknown`, `BodyInit`), ou un
 import. La sonde ne savait pas que ces identifiants étaient liés, donc elle
 refusait de conclure. Aucune ne relevait d'une ambiguïté réelle du code.
+
+Les deux dernières ajoutent une SIXIÈME cause, d'une autre nature : dans
+`pdf/casefile` et `report/v2`, la teinte MEURT au navigateur sans tête.
+`page.setContent(html)` est une mutation d'un objet opaque, et `page.pdf()`
+rend un tampon qu'aucune chaîne d'affectations ne relie au HTML gouverné. Ce
+n'est pas une lacune de liaison : c'est une frontière que la teinte ne traverse
+pas. Douze autres surfaces de N sont dans ce cas.
 
 | surface | issue | propriété | chemin de la valeur jusqu'à la sortie |
 |---|---|---|---|
@@ -282,10 +304,108 @@ refusait de conclure. Aucune ne relevait d'une ambiguïté réelle du code.
 | `api/kol/[handle]/proceeds/route.ts` | **ÉMET** | contenu + existence | $queryRaw KolProceedsSummary → s → json{totalProceedsUsd, proceedsByYear, topWalletLabel, largestEventUsd, rolling*} |
 | `api/mobile/v1/ask/route.ts` | **ÉMET** | contenu | kolWallet{address} → kolHandle → buildGroundingContext → kolContext (handle, proceedsSummary, evidenceDepth, laundryTrail) → buildSystemPrompt → messages.create → text → stripMarkdown → json. CONDITIONNEMENT DE MODÈLE, pas recopie. |
 | `api/osint/submission/[id]/route.ts` | **ÉMET** | existence | getBatchStatusRows(OsintSubmission) → 404 vs 200 divulgue l'existence du lot ; images[].status (dont DUPLICATE) divulgue l'état du corpus de pièces |
+| `api/pdf/casefile/route.ts` | **ÉMET** | artefact | loadCaseByMint (magasin hérité) → caseFile.case_meta.summary + claims[].title/description/severity + sources[].filename/caption → scanResult.off_chain → renderCaseFilePDF → html → page.setContent → page.pdf() → pdfBuf. DEUX sorties : l'artefact en clair (Content-Type application/pdf) et, si R2 est actif, uploadPdf() puis json{signedUrl, key, sha256}. TEINTE ROMPUE au navigateur sans tête. |
+| `api/report/v2/route.ts` | **ÉMET** | artefact | loadCaseByMint (magasin hérité) → caseFile.claims + sources + detective_trade → scanResult → renderHtmlV2 → html → page.setContent → page.pdf() → new NextResponse(pdfBuffer, Content-Type application/pdf). Aucune voie R2 : flux direct. TEINTE ROMPUE au navigateur sans tête. |
 | `api/scan/resolve/route.ts` | **ÉMET** | existence | $queryRawUnsafe KolTokenLink(visibility='public') + KolPromotionMention → rows[].kolHandle → g.handles:Set → kolCount=size → serialize() → candidates[] |
 | `api/investigator/metrics/route.ts` | N'ÉMET PAS | — | cinq scalaires — 4 cardinalités et une somme sur 4 entrées ; aucune propriété attribuable à un sujet identifié |
 | `api/scan/evm/route.ts` | N'ÉMET PAS | — | seul lien à une racine : emitScanCompleted(address,chain,score), écriture dont la valeur de retour est jetée ; la charge vient du moteur TigerScore, de la liste KNOWN_BAD en code et de IntelligenceResult (slugs/poids/drapeaux, aucun sujet nommé) |
 | `api/telegram/webhook/route.ts` | N'ÉMET PAS | — | toute réponse HTTP vaut {ok:true} ; le matériel gouverné part par l'API Bot Telegram — canal sortant que le modèle d'émission de build12 ne mesure pas |
+
+## La quatrième forme d'émission — MESURÉE
+
+Le modèle d'émission de build12 ne reconnaissait que TROIS formes : réponse
+HTTP, HTML rendu, objet écrit en R2. Une surface peut publier du matériel
+gouverné en l'**ENVOYANT** au lieu de le **RENDRE**. Découverte par capacité de
+REMISE — non pas « qui parle à Telegram », mais « qui remet une charge à un
+destinataire qui la lit ».
+
+**3 natures de canal · 15 sites de transmission · 13 fichiers.**
+
+| canal | destinataire | sites | fichiers |
+|---|---|---|---|
+| e-mail (Resend) | adresse e-mail | 12 | 12 |
+| Telegram Bot API | abonné d'un chat | 2 | 2 |
+| webhook sortant | point de terminaison tiers, fourni par l'abonné | 1 | 1 |
+
+**ÉTAGE A — 9 des 13 fichiers atteignent une racine gouvernée.**
+**ÉTAGE B — les 9 placent effectivement la valeur gouvernée dans la charge remise.**
+
+| fichier de remise | canal | racine | ce qui part |
+|---|---|---|---|
+| `lib/telegram/bot.ts` | Telegram | kolProfile | `handle, displayName, tier, riskFlag, rugCount` — profil KOL entier, **aucun filtre de publication dans le `where`** |
+| `lib/ops/alerting.ts` | Telegram + e-mail | kolProfile | `Handle : ${handle}` + erreur |
+| `lib/alerts/kolAlert.ts` | e-mail | kolProfile | `@${handle} shill detected` + corps HTML + URL du profil |
+| `lib/alerts/watcherDigest.ts` | e-mail | kolProfile | `kolHandles[]`, liens par handle |
+| `lib/email/unifiedDigest.ts` | e-mail | kolProfile | `handle, tier, rugCount`, proceeds agrégés |
+| `lib/email/weeklyDigest.ts` | e-mail | kolProfile | `handle[]`, `proceedsUsd`, `proceedsEvents` |
+| `lib/email/accessCodeDelivery.ts` | e-mail | investigatorAccess | **le code d'accès en clair**, `name`, `label` de créneau |
+| `app/api/v1/feedback/route.ts` | e-mail | investigatorAccess | `session.label` |
+| `app/api/investigators/feedback/route.ts` | e-mail | investigatorSession | `handle`, `caseId` |
+
+### Le cas qui prouve la forme
+
+`telegram/webhook` est classée **N'ÉMET PAS** dans la table : toute réponse HTTP
+vaut `{ok:true}`. Et pourtant `/kol <handle>` remet un profil KOL complet à un
+abonné Telegram. **La surface publie, et la mesure la voyait muette.** N ne
+sous-comptait pas d'une unité : il sous-comptait d'une CLASSE.
+
+### Quatre canaux sans racine gouvernée — dont un qui mérite d'être remonté
+
+`lib/security/email/digest.ts`, `lib/watch/engine.ts` (jeton, pas personne) et
+`lib/email/betaWelcome.ts` (code masqué) ne touchent aucune racine. Vérifié en
+lisant, pas en supposant.
+
+Le quatrième est différent. `lib/surveillance/alerts/deliverAlerts.ts` remet
+`signal.influencer.handle` à un **point de terminaison tiers fourni par
+l'abonné** (`sub.webhookUrl`). Il ne touche que `alertSubscription`, `signal`
+et `alert_deliveries` — **aucun n'appartient aux quatre classes gouvernées de
+build12**. Ce n'est pas une lacune de sonde : c'est une **borne de la définition
+du gouverné**. Un handle d'influenceur part vers une adresse arbitraire et
+tombe hors du périmètre PAR DÉFINITION. Constat remonté, non tranché.
+
+### La question posée, non tranchée
+
+**Un canal sortant a-t-il une AUDIENCE au sens des deux axes ?** Un destinataire
+Telegram n'est pas un appelant HTTP : il n'a pas de porte d'authentification, il
+a un ABONNEMENT. Le webhook sortant est pire — l'abonné choisit lui-même l'URL
+de destination. Et `accessCodeDelivery` remet la donnée AU SUJET LUI-MÊME, ce
+qui n'est ni « anonyme » ni « nominatif » au sens de l'axe 1.
+
+C'est peut-être une TROISIÈME NATURE D'AUDIENCE. Ce n'est pas à moi de le
+décider, et je ne le décide pas.
+
+## Les émissions dont la preuve est STRUCTURELLE et non tracée
+
+Dans `mobile/v1/ask`, `pdf/casefile` et `report/v2`, la valeur gouvernée entre
+dans un appel opaque et la valeur émise SORT DE L'APPEL, pas de la variable
+teintée. La teinte ne s'y suit pas mécaniquement : la preuve tient à la
+structure du code, pas à une chaîne d'affectations. C'est une classe, et voici
+son cardinal.
+
+**13 des 179 surfaces de N.** 10 par un navigateur sans tête
+(`page.setContent(html)` puis `page.pdf()` — la teinte meurt au passage), 3 par
+un modèle de langage (le matériel gouverné est posé dans l'invite système, la
+réponse est servie). Par nature : ARTEFACT 9, JSON 4.
+
+```
+app/api/admin/plainte/generate/route.ts            ARTEFACT  navigateur sans tête
+app/api/investigators/cases/[caseId]/ai-summary    JSON      modèle de langage
+app/api/investigators/cases/[caseId]/assistant     JSON      modèle de langage
+app/api/mobile/v1/ask/route.ts                     JSON      modèle de langage
+app/api/pdf/casefile/route.ts                      ARTEFACT  navigateur sans tête
+app/api/pdf/kol/route.ts                           JSON      navigateur sans tête
+app/api/report/casefile/route.ts                   ARTEFACT  navigateur sans tête
+app/api/report/v2/route.ts                         ARTEFACT  navigateur sans tête
+lib/casefile/pdfGenerator.ts                       ARTEFACT  navigateur sans tête
+lib/casefile/pdfGeneratorPublic.ts                 ARTEFACT  navigateur sans tête
+lib/pdf/engine.ts                                  ARTEFACT  navigateur sans tête
+lib/vault/iocExportPdf.ts                          ARTEFACT  navigateur sans tête
+scripts/seed/buildBotifyDossier.ts                 ARTEFACT  navigateur sans tête
+```
+
+Ces 13 restent dans N — la définition d'étage B est possibiliste, « PEUT
+couler », et elle est satisfaite. Mais leur preuve n'est pas de même nature que
+celle des 166 autres, et GPT doit le savoir pour dimensionner la frontière.
 
 ## Réserves de méthode
 
@@ -294,7 +414,7 @@ refusait de conclure. Aucune ne relevait d'une ambiguïté réelle du code.
   `src/proxy.ts` n'y apparaît pas. T1 a qualifié les huit routes kol et montré
   qu'aucune n'est atteignable en anonyme — sept fermées par le proxy
   (401 NOMINATIVE_ACCESS_REQUIRED), une par sa propre garde. Le chiffre agrégé
-  serait donc faux dans un sens connu ; il sera relu sur N = 177 quand T1
+  serait donc faux dans un sens connu ; il sera relu sur N = 179 quand T1
   aura qualifié le matcher, pas avant.
 - `kol/[handle]/pedigree` figure comme émission gouvernée à audience
   nominative, pas comme candidat : c'est la seule des sept à lire la table SANS
@@ -346,9 +466,8 @@ Une découverte partant du schéma ne voit aucune de ces lignes.
 
 Point aveugle plus profond que le précédent : la découverte suivait la FORME DE
 L'ACCESSEUR (`prisma.<modèle>.`). Un fichier qui ne parle que SQL n'était pas
-une racine, même sur un modèle parfaitement déclaré. Une seule de ces 19 était
-à l'inventaire des racines brutes — `token_casefiles`. Les dix-huit autres n'y
-figuraient pas.
+une racine, même sur un modèle parfaitement déclaré. Aucune de ces 19 n'était à
+l'inventaire des racines brutes.
 
 | table | modèle ORM | classe | lectures |
 |---|---|---|---|
