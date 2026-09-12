@@ -118,15 +118,92 @@ et il se tranche une fois pour les deux.
 
 ---
 
-## 3. `src/app/api/explorer/route.ts` — LE POINT QUI ATTEND UN ARBITRAGE
+## 3. `src/app/api/explorer/route.ts` — LE TERMINAL, ET LE RETRAIT DES HUIT
 
-Le containment est **déjà fait et testé** chez le producteur
-(`src/lib/explorer/explorerItems.ts`, hors gel, mergé) : les treize `summary`
-non gouvernés sont remplacés par une chaîne identique, le quatorzième — le seul
-gouverné, CBEX — passe intact.
+Le containment des `summary` est déjà mergé hors fenêtre. Ce qui suit est le
+reste, et il se déploie en **trois parties dont une seule est gelée**.
 
-Ce qui reste à trancher est **la forme du terminal**, pas le containment.
-Voir la note d'arbitrage envoyée avec ce lot.
+### 3.a — `src/lib/explorer/explorerItems.ts` — HORS GEL
+
+Les huit champs sans fondation possible cessent d'être produits. `DossierItem`
+perd : `kind`, `evidenceDepth`, `documentationStatus`, `strongestFlags`,
+`topCoordinationSignal`, `sharedActorGroup`, `multiLaunchRecurrence`,
+`linkedActorsCount`.
+
+Les quatre fondés restent, chacun enveloppé dans l'unité que sa décision
+fonde :
+
+```ts
+const membre = {
+  id:            gouverner("STATE", d.id, decisionDeSurface),
+  title:         gouverner("OBSERVATION", d.title, decisionDeSurface),
+  summary:       gouverner("ASSERTION", d.summary, decisionDeSurface),
+  href:          gouverner("STATE", d.href, decisionDeSurface),
+  primaryDate:   gouverner("OBSERVATION", d.primaryDate, decisionDeSurface),
+  linkedActors:  gouverner("ASSERTION", d.linkedActors, decisionActeurs),
+  proceedsObservedTotal: gouverner("OBSERVATION", d.proceedsObservedTotal, decisionProceeds),
+  proceedsCoverage:      gouverner("OBSERVATION", d.proceedsCoverage, decisionProceeds),
+  snapshotCount:         gouverner("OBSERVATION", d.snapshotCount, decisionPreuves),
+}
+```
+
+### 3.b — les pages — HORS GEL, ET ELLES NE SONT PAS OPTIONNELLES
+
+**C'est la partie que la mesure a rendue obligatoire.** Retirer les champs sans
+toucher les pages crée DEUX assertions fausses, par des replis `??` de la même
+famille que le `?? 0` qui faisait lire `SIGNAL` à RAVE-DUMP :
+
+| page | ligne | ce que le repli invente |
+|---|---|---|
+| `en/explorer/page.tsx` | 170 | `KIND_BADGE[d.kind] ?? KIND_BADGE.case` → **les quatorze lisent « CASE CLUSTER »**, dont neuf lancements de token et une fraude de plateforme. **Dix assertions fausses.** |
+| `en/explorer/page.tsx` | 171 | `DOC_BADGE[d.documentationStatus] ?? DOC_BADGE.partial` → **les quatorze lisent « PARTIAL »**, dont neuf qui étaient `DOCUMENTED`. **Neuf niveaux rabaissés.** |
+
+Les deux replis deviennent : **valeur absente → aucun badge**, jamais un badge
+par défaut. `evidenceDepth` (l. 172) est déjà sûr — il rend `null` sans valeur.
+Idem `fr/` et `[caseId]/page.tsx:102`, qui porte le même badge de documentation.
+
+Prouvé par `__tests__/governance/p0-explorer-retrait-des-huit.test.ts`, mergé
+hors fenêtre.
+
+### 3.c — `src/app/api/explorer/route.ts` — LE SEUL FICHIER GELÉ
+
+```ts
+import { admettreOperateur, repondre } from '@/lib/governance/audienceProjection'
+import { declarerCollection, projeterCollectionAdmissible } from '@/lib/governance/appartenance'
+
+// La collection Explorer est NON_ASSERTIVE, et c'est DÉCLARÉ, jamais déduit :
+// les quatorze dossiers sont des lancements de tokens, des cases et une
+// plateforme — pas des personnes. Figurer dans cette liste n'affirme rien sur
+// un sujet, contrairement à la Watchlist. La dispense porte sur
+// l'APPARTENANCE seule : chaque champ de chaque membre présente toujours sa
+// décision, et le type l'exige.
+const admission = admettreOperateur('investigator_session')
+const collection = declarerCollection('ExplorerDossiers', 'NON_ASSERTIVE', null)
+return repondre(projeterCollectionAdmissible(admission, collection, membres))
+```
+
+**Aucune re-vérification dans la route.** Le terminal délègue à
+`projeterCollection` ; une route qui referait le test pourrait le refaire
+autrement.
+
+### Ce que le lecteur voit disparaître de l'écran
+
+| # | ce qui n'apparaît plus |
+|---|---|
+| 1 | le badge de type en tête de carte — **TOKEN LAUNCH**, **CASE CLUSTER**, **PLATFORM FRAUD** |
+| 2 | le badge de force de preuve — **STRONG EVIDENCE**, **COMPREHENSIVE EVIDENCE** |
+| 3 | le badge de documentation — **DOCUMENTED** en vert, **PARTIAL** en orange, sur la carte ET en tête du dossier détaillé |
+| 4 | les deux pastilles de comportement héritées des acteurs — « Repeated cashout », « Complex fund movement » |
+| 5 | la pastille rouge de coordination — **« Coordinated promotion »**, **« Shared actor group »** |
+| 6 | *rien* : `sharedActorGroup` est déclaré dans le type du client et **jamais peint**. Il ne part que sur le fil. |
+| 7 | la pastille rouge **« Same actor group across N dossiers »** |
+| 8 | la ligne **« N linked actors documented »** sous les pastilles d'acteurs — et le « +N » qui comptait les acteurs non affichés |
+
+Restent à l'écran : le titre, la date, les pastilles d'acteurs nommés, le
+montant observé (un seul dossier sur quatorze en porte un), le compte de
+preuves (**zéro sur les quatorze**), et un résumé identique pour treize.
+
+
 
 ---
 
