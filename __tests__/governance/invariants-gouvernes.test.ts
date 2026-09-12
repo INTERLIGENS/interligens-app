@@ -237,11 +237,18 @@ describe("CANONICAL_SUBJECT_HANDLE — clé déterministe, et aucune élection",
 // LE REGISTRE — le lien tient dans les deux sens
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("LE REGISTRE — deux entrées, pas une plateforme", () => {
-  it("exactement DEUX invariants", () => {
+describe("LE REGISTRE — ensemble fermé, pas une plateforme", () => {
+  it("l'ensemble EXACT des identifiants admis — closed set ≠ fixed count", () => {
+    // E-RC · D6. Ce qui ferme ce registre est l'admission par identifiant
+    // EXPLICITE, pas un cardinal : un plafond n'empêche pas un mauvais
+    // invariant d'entrer, et il empêche un invariant NÉCESSAIRE d'entrer dès
+    // qu'il y en a déjà deux. Ajouter une entrée rend ce test rouge — donc
+    // exige une modification versionnée et revue. C'est le point.
     expect(INVARIANTS_GOUVERNES.map((i) => i.id).sort()).toEqual([
       "CANONICAL_SUBJECT_HANDLE",
+      "DERIVED_PUBLICATION_ELIGIBILITY",
       "EVIDENCE_DEPTH_DOMAIN",
+      "GOVERNED_OBJECT_REGISTRATION",
     ]);
   });
 
@@ -252,8 +259,19 @@ describe("LE REGISTRE — deux entrées, pas une plateforme", () => {
       // La raison est une MESURE : elle porte des chiffres.
       expect(i.raison, i.id).toMatch(/[0-9]/);
       expect(i.testsDApplication.length, i.id).toBeGreaterThan(0);
-      // Et le test nommé est CE fichier — le lien va dans les deux sens.
-      expect(i.testsDApplication).toContain("__tests__/governance/invariants-gouvernes.test.ts");
+    }
+  });
+
+  it("chaque test d'application nommé EXISTE — le lien va dans les deux sens", () => {
+    // Auparavant ce test exigeait que CE fichier soit nommé par chaque
+    // invariant, ce qui liait la vérification au domicile plutôt qu'au lien.
+    // Un invariant dont la primitive vit ailleurs a ses tests ailleurs ; ce
+    // qui doit tenir, c'est qu'AUCUN test nommé ne soit imaginaire — un
+    // invariant qui s'adosse à un fichier de test inexistant ne vaut rien.
+    for (const i of INVARIANTS_GOUVERNES) {
+      for (const t of i.testsDApplication) {
+        expect(() => readFileSync(t, "utf8"), `${i.id} → ${t}`).not.toThrow();
+      }
     }
   });
 

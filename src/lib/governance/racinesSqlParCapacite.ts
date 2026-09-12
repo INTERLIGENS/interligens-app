@@ -420,6 +420,21 @@ export const INVENTAIRE_RACINES_SQL: Readonly<Record<string, EntreeInventaire>> 
     raison: "absente de la production au 2026-09-12 ; retenue par sur-inclusion",
   },
 
+  // ── E-RC — le registre d'autorité des objets gouvernés.
+  //    Atteinte UNIQUEMENT en SQL brut, et à dessein : `prisma/` est un chemin
+  //    GELÉ, donc le modèle ORM exigerait une lease que ce module n'a pas
+  //    besoin d'obtenir pour fonctionner. Le DDL vit dans
+  //    docs/prep/MIGRATION_REGISTRE_OBJETS_GOUVERNES_2026-09-12.sql et se pose
+  //    dans l'éditeur SQL Neon — non appliqué à ce jour.
+  //    Classe `piece` : la ligne porte l'autorité d'un ARTEFACT (sha256,
+  //    taille, provenance, invalidation), pas un fait nominatif ni un dossier.
+  governed_objects: {
+    statut: "RACINE_GOUVERNEE",
+    classe: "piece",
+    horsSchema: true,
+    raison: "registre E-RC ; DDL non appliqué au 2026-09-12, SQL brut par gel de prisma/",
+  },
+
   // ── Écartées, AVEC leur raison.
   _livre: {
     statut: "HORS_GOUVERNANCE",
