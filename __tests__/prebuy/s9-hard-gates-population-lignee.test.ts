@@ -29,7 +29,7 @@
 // Aucun chemin gelé touché. Aucune écriture prod. Aucune sémantique changée.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, type Dirent } from "node:fs";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
 const codeSeul = (s: string): string =>
@@ -233,12 +233,10 @@ const PARTENAIRES: readonly string[] = ["transaction-check", "score-lite", "batc
  * lui être ÉGALE.
  */
 const PARTENAIRES_DECOUVERTS: readonly string[] = (() => {
-  const fs = require("node:fs");
-  return fs
-    .readdirSync("src/app/api/partner/v1", { withFileTypes: true })
-    .filter((e: any) => e.isDirectory() && e.name !== "__tests__")
-    .map((e: any) => e.name)
-    .filter((n: string) => fs.existsSync(`src/app/api/partner/v1/${n}/route.ts`))
+  return (readdirSync("src/app/api/partner/v1", { withFileTypes: true }) as Dirent[])
+    .filter((e) => e.isDirectory() && e.name !== "__tests__")
+    .map((e) => e.name)
+    .filter((n) => existsSync(`src/app/api/partner/v1/${n}/route.ts`))
     .sort();
 })();
 const ROUTE_PARTENAIRE = (p: string) => codeSeul(SRC(`src/app/api/partner/v1/${p}/route.ts`));

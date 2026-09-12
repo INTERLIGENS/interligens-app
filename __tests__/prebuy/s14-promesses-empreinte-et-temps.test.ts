@@ -58,6 +58,8 @@
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import type { ScanResult } from "@/app/api/scan/solana/route";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import { buildCaseFileHtml } from "@/lib/casefile/pdfGenerator";
 import { buildBotifyInput } from "@/lib/casefile/presets";
@@ -81,12 +83,12 @@ const ROUTE_GRAPHE_PDF = "src/app/api/admin/graph/cases/[id]/pdf/route.ts";
 const GABARIT_GRAPHE = "src/lib/pdf/graph/templateGraph.ts";
 const GENERATEURS = [CANON_INTERNE, CANON_PUBLIC, NON_AUTORITAIRE] as const;
 
-const scanMinimal = (quand: string): any => ({
-  mint: "MINT-A", scanned_at: quand,
-  off_chain: { claims: [], source: "t", status: "Referenced", summary: "s", case_id: "CASE-A" },
+const scanMinimal = (quand: string): ScanResult => ({
+  mint: "MINT-A", chain: "solana", scanned_at: quand,
+  off_chain: { claims: [], sources: [], source: "case_db", status: "Referenced", summary: "s", case_id: "CASE-A" },
   on_chain: { markets: { source: null, primary_pool: null, dex: null, url: null, price: null,
     liquidity_usd: null, volume_24h_usd: null, fdv_usd: null, fetched_at: quand, cache_hit: false } },
-  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { claim_penalty: 0, severity_multiplier: 1 } },
+  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { base_score: 50, claim_penalty: 0, severity_multiplier: 1 } },
 });
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -223,7 +225,6 @@ describe("S14/ac1 — CONSTAT : l'empreinte du PDF de graphe est muette ET insta
   it("CONSÉQUENCE — deux exécutions sur le MÊME cas donnent deux empreintes", () => {
     // Reproduction annoncée de l'expression du site (ancrée ci-dessus) : ce
     // qui est démontré est la propriété du payload, pas la route.
-    const { createHash } = require("node:crypto");
     const nodes = [{ id: "n1" }], edges = [{ id: "e1" }];
     const empreinte = () =>
       createHash("sha256")

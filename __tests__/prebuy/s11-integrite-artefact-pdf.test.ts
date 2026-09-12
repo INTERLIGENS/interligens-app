@@ -91,7 +91,8 @@
 // Aucun chemin gelé touché. Aucune écriture prod. Aucune sémantique changée.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, type Dirent } from "node:fs";
+import type { ScanResult } from "@/app/api/scan/solana/route";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
@@ -111,10 +112,10 @@ const ENGINE = "src/lib/solanaGraph/engine.ts";
 const JOBS = "src/app/api/scan/solana/graph/jobs/route.ts";
 
 /** Le scan minimal, repris de src/lib/solanaGraph/__tests__/graph.test.ts. */
-const scanMinimal = (): any => ({
-  mint: "So11111111111111111111111111111111111111112",
+const scanMinimal = (): ScanResult => ({
+  mint: "So11111111111111111111111111111111111111112", chain: "solana",
   scanned_at: new Date().toISOString(),
-  off_chain: { claims: [], source: "test", status: "Referenced", summary: "test", case_id: "TEST" },
+  off_chain: { claims: [], sources: [], source: "case_db", status: "Referenced", summary: "test", case_id: "TEST" },
   on_chain: {
     markets: {
       source: null, primary_pool: null, dex: null, url: null, price: null,
@@ -122,7 +123,7 @@ const scanMinimal = (): any => ({
       fetched_at: new Date().toISOString(), cache_hit: false,
     },
   },
-  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { claim_penalty: 0, severity_multiplier: 1 } },
+  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { base_score: 50, claim_penalty: 0, severity_multiplier: 1 } },
 });
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -153,7 +154,7 @@ describe("S11/c1 — COMPORTEMENTAL : le gabarit, sur la vraie fonction", () => 
     const avec = renderCaseFilePDF(scanMinimal(), "en", {
       version: "1.0", overall_status: "CORROBORATED", clusters: [], related_projects: [],
       limits: {}, query: {}, provider: { name: "Helius" }, cache_hit: false,
-    } as any);
+    });
     expect(avec).toContain("Scam Family Graph");
     expect(renderCaseFilePDF(scanMinimal(), "en", null)).toContain("Scam Family Graph");
   });
@@ -209,7 +210,7 @@ describe("S11/c2 — LEXICAL : la garde ne peut être satisfaite par aucun jeton
 const FICHIERS_SRC: string[] = (() => {
   const out: string[] = [];
   const walk = (d: string) => {
-    for (const e of require("node:fs").readdirSync(d, { withFileTypes: true })) {
+    for (const e of readdirSync(d, { withFileTypes: true }) as Dirent[]) {
       const p = `${d}/${e.name}`;
       if (e.isDirectory()) { if (e.name !== "node_modules") walk(p); }
       else if (p.endsWith(".ts") || p.endsWith(".tsx")) out.push(p);

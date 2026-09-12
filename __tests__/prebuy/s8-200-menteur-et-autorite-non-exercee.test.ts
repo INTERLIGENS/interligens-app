@@ -12,7 +12,7 @@
 // Aucun chemin gelé touché. Aucune écriture prod. Aucune sémantique changée.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, type Dirent } from "node:fs";
 import {
   canonicalPreBuyDecision,
   estDegrade,
@@ -59,10 +59,9 @@ const GRAPHE = "src/app/api/scan/solana/graph/route.ts";
  * doit lui être ÉGALE. Énumérer n'est pas couvrir.
  */
 const FICHIERS_APP: string[] = (() => {
-  const fs = require("node:fs");
   const out: string[] = [];
   const walk = (d: string) => {
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    for (const e of readdirSync(d, { withFileTypes: true }) as Dirent[]) {
       const p = `${d}/${e.name}`;
       if (e.isDirectory()) { if (e.name !== "node_modules") walk(p); }
       else if (p.endsWith(".ts") || p.endsWith(".tsx")) out.push(p);
