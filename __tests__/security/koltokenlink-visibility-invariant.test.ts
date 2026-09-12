@@ -125,7 +125,18 @@ describe("invariant KolTokenLink — le garde-fou du test lui-même", () => {
     for (const expected of [
       "src/lib/explorer/explorerItems.ts",     // Explorer / Launch Dossiers
       "src/lib/cluster/clusterRisk.ts",        // ClusterRiskBadge
-      "src/app/api/watchlist/route.ts",        // watchlist
+      // `src/app/api/watchlist/route.ts` N'EST PLUS DANS CETTE LISTE, et ce
+      // n'est pas un relâchement du cliquet : la route a cessé de LIRE la
+      // table. P0 · collection authority a monté le refus au niveau de la
+      // collection — elle ne sert plus d'entrées, donc plus de tickers, donc
+      // elle n'interroge plus KolTokenLink du tout.
+      //
+      // L'invariant de visibilité porte sur les lectures PUBLIQUES. Une
+      // lecture qui n'existe plus ne peut pas manquer son filtre ; exiger
+      // qu'elle reste scannée exigerait de la RECRÉER. Le témoin du retrait
+      // est ailleurs et il est positif :
+      // __tests__/api/security/watchlist.publish-gate.test.ts
+      // (« le retrait est CAUSAL — la route ne lit plus aucune source »).
       "src/lib/coordination/coordinationSignals.ts",
       "src/lib/kol/kolLeaderboard.ts",
       "src/lib/reflex/casefileMatch.ts",       // casefileMatch / PRE-BUY GUARD

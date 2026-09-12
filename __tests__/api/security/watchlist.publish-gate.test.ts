@@ -77,52 +77,73 @@ beforeEach(() => {
   mockBatch.mockResolvedValue([profile("pubguy", true), profile("draftguy", false)]);
 });
 
-async function getEntries() {
+async function corpsServi(): Promise<Record<string, unknown>> {
   const res = await GET();
   expect(res.status).toBe(200);
-  const body = await res.json();
-  return body.entries as any[];
+  return (await res.json()) as Record<string, unknown>;
 }
 
-describe("GET /api/watchlist — non-published redaction", () => {
-  it("keeps EVERY tracked handle (published + non-published) — no row dropped", async () => {
-    const entries = await getEntries();
-    const handles = entries.map(e => e.handle).sort();
-    expect(handles).toEqual(["draftguy", "pubguy"]);
+// ═══════════════════════════════════════════════════════════════════════════
+// CE TÉMOIN A CHANGÉ D'OBJET, ET IL N'A PAS ÉTÉ SUPPRIMÉ
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Il attestait d'une RÉDACTION par entrée : la ligne reste, les analytics
+// tombent pour le non-publié. Cette propriété supposait qu'il y ait des
+// entrées — donc que l'APPARTENANCE à la Watchlist soit elle-même servie.
+//
+// Or l'appartenance est une assertion publiée qu'aucune décision ne fonde
+// (P0 · collection authority). Le refus est donc monté au niveau de la
+// COLLECTION, et la rédaction par entrée n'a plus d'objet : il n'y a plus
+// d'entrée à rédiger.
+//
+// Supprimer le fichier aurait ABSORBÉ le défaut — le retrait serait devenu
+// invisible aux témoins. Il atteste désormais de la propriété PLUS FORTE qui
+// remplace l'ancienne : les mêmes fixtures, publié ET brouillon, rendent la
+// MÊME suite d'octets. Un lecteur ne peut plus distinguer les deux, ni
+// compter, ni ordonner.
+describe("GET /api/watchlist — le retrait est au niveau de la COLLECTION", () => {
+  it("ne sert plus aucune entrée — ni publiée, ni brouillon", async () => {
+    const corps = await corpsServi();
+    expect(corps.entries).toBeUndefined();
+    expect(corps.refus).toBe(true);
+    expect(corps.surface).toBe("watchlist");
   });
 
-  it("nulls sensitive analytics on the NON-published entry but keeps the row + tickers", async () => {
-    const entries = await getEntries();
-    const draft = entries.find(e => e.handle === "draftguy")!;
-    expect(draft.isPublished).toBe(false);
-    // masked
-    expect(draft.totalProceeds).toBeNull();
-    expect(draft.totalScammed).toBeNull();
-    expect(draft.behaviorFlags).toEqual([]);
-    expect(draft.behaviorFlagsCount).toBe(0);
-    expect(draft.riskFlag).toBeNull();
-    expect(draft.rugCount).toBeNull();
-    // cashout ("Money taken") zeroed — shape kept valid so the UI can't crash
-    expect(draft.cashout).toEqual({ d1: 0, d7: 0, d30: 0, ytd: 0, total: 0 });
-    // kept
-    expect(draft.handle).toBe("draftguy");
-    expect(draft.priority).toBe("medium");
-    expect(draft.followerCount).toBe(500);
-    expect(draft.tickers).toContain("SCAM");
+  it("le corps ne porte NI compte, NI longueur, NI clé par membre", async () => {
+    const corps = await corpsServi();
+    // Trois champs, et le type `CorpsDeRefus` interdit d'y glisser un compte.
+    expect(Object.keys(corps).sort()).toEqual(["code", "refus", "surface"]);
+    // Aucun chiffre dans la charge : ni 2 entrées, ni 108, ni 0.
+    expect(JSON.stringify(corps)).not.toMatch(/\d/);
+    // Et aucun handle des fixtures n'y transparaît.
+    expect(JSON.stringify(corps)).not.toMatch(/pubguy|draftguy|SCAM|REAL/);
   });
 
-  it("leaves the PUBLISHED entry fully intact", async () => {
-    const entries = await getEntries();
-    const pub = entries.find(e => e.handle === "pubguy")!;
-    expect(pub.isPublished).toBe(true);
-    expect(pub.totalProceeds).toBe(12345);
-    expect(pub.totalScammed).toBe(67890);
-    expect(pub.behaviorFlags).toEqual(["REPEATED_CASHOUT"]);
-    expect(pub.behaviorFlagsCount).toBe(1);
-    expect(pub.riskFlag).toBe("high");
-    expect(pub.rugCount).toBe(4);
-    expect(pub.tickers).toContain("REAL");
-    // cashout untouched for published — real proceeds still surface
-    expect(pub.cashout.total).toBe(50000);
+  it("MUTATION DISCRIMINANTE — publié seul, brouillon seul, ou aucun : MÊMES octets", async () => {
+    const deux = JSON.stringify(await corpsServi());
+
+    mockBatch.mockResolvedValue([profile("pubguy", true)]);
+    const publieSeul = JSON.stringify(await corpsServi());
+
+    mockBatch.mockResolvedValue([profile("draftguy", false)]);
+    const brouillonSeul = JSON.stringify(await corpsServi());
+
+    mockBatch.mockResolvedValue([]);
+    const aucun = JSON.stringify(await corpsServi());
+
+    // Si l'une de ces quatre différait d'un seul octet, la composition de la
+    // Watchlist serait reconstructible — c'est exactement le différentiel que
+    // le retrait ferme.
+    expect(new Set([deux, publieSeul, brouillonSeul, aucun]).size).toBe(1);
+  });
+
+  it("le retrait est CAUSAL — la route ne lit plus aucune source", async () => {
+    await corpsServi();
+    // Rebrancher la route ne suffirait pas : plus rien n'est interrogé, et
+    // `projeterWatchlist` lève si la table des fondations venait à déclarer
+    // une décision d'appartenance.
+    expect(mockBatch).not.toHaveBeenCalled();
+    expect(prisma.kolTokenLink.findMany).not.toHaveBeenCalled();
+    expect(prisma.kolTokenInvolvement.findMany).not.toHaveBeenCalled();
   });
 });
