@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { derivePhantomWarning } from "@/lib/publicScore/schema";
+import { codeSeul, emisParLeCode } from "../casefile/codeSeul";
 
 vi.mock("@/lib/publicScore/computeVerdict", () => ({
   computeVerdictMeasured: vi.fn(),
@@ -34,15 +35,6 @@ const SRC_SCHEMA = readFileSync(
   join(RACINE, "src/lib/publicScore/schema.ts"),
   "utf8"
 );
-
-/** La partie exécutable, commentaires retirés — le contrat n'est pas la prose. */
-function codeSeul(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((l) => !l.trimStart().startsWith("//"))
-    .join("\n");
-}
 
 const CODE_PRESWAP = codeSeul(SRC_PRESWAP);
 
@@ -294,11 +286,16 @@ describe("le contrat partenaire v1 ne bouge pas", () => {
   ];
 
   it("aucune route partenaire ne consomme la surface modifiée", () => {
+    // « Ne consomme pas » est une propriété EXÉCUTABLE. Ce bloc lisait la source
+    // brute alors que `codeSeul` était déjà là, deux propriétés plus haut, et
+    // dans le même commit (83266b0) : rien ne distingue ces trois routes des
+    // deux fichiers dépouillés, et aucune prose ne revendiquait l'écart. Ce
+    // n'était pas un choix, c'était l'idiome d'avant l'exemplaire.
     for (const r of ROUTES) {
       const src = readFileSync(join(RACINE, r), "utf8");
-      expect(src, r).not.toContain("derivePhantomWarning");
-      expect(src, r).not.toContain("preSwapScan");
-      expect(src, r).not.toContain("PreSwapScanResult");
+      for (const symbole of ["derivePhantomWarning", "preSwapScan", "PreSwapScanResult"]) {
+        expect(emisParLeCode(src, symbole), `${r} :: ${symbole}`).toBe(false);
+      }
     }
   });
 

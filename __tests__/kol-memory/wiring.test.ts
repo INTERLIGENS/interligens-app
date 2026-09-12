@@ -9,6 +9,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { emisParLeCode } from "../casefile/codeSeul";
+
 const lire = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 
 const IDENTITY = lire("src/lib/kol/identity.ts");
@@ -25,11 +27,12 @@ describe("BUILD 8 — identity.ts délègue, il ne décide plus", () => {
   it("MUTANT — le `exact`/`manual` en dur a DISPARU du fichier", () => {
     // C'était littéralement `confidence: "exact", source: "manual"` rendu pour
     // toute ligne existante. Il ne doit plus exister nulle part ici.
-    const code = IDENTITY.split("\n")
-      .filter((l) => !l.trimStart().startsWith("*") && !l.trimStart().startsWith("//"))
-      .join("\n");
-    expect(code).not.toMatch(/confidence:\s*["']exact["']/);
-    expect(code).not.toMatch(/source:\s*["']manual["']/);
+    //
+    // `identity.ts:10` CITE les deux littéraux pour expliquer le défaut : c'est
+    // une mention, pas une émission. Le dépouillement n'est donc pas une
+    // précaution théorique ici, il est la condition du vert.
+    expect(emisParLeCode(IDENTITY, /confidence:\s*["']exact["']/)).toBe(false);
+    expect(emisParLeCode(IDENTITY, /source:\s*["']manual["']/)).toBe(false);
   });
 
   it("l'ancienne table de correspondance fictive n'existe plus", () => {
@@ -63,12 +66,9 @@ describe("BUILD 8 — la route filtre ses wallets", () => {
 
   it("MUTANT — la lecture non filtrée `kolWallets: true` a disparu", () => {
     // C'est elle qui servait 229 wallets dont 65 non publiables.
-    // On retire les commentaires avant d'assertir : l'en-tête du correctif CITE
-    // la ligne fautive pour l'expliquer, et une recherche naïve la retrouverait.
-    const code = ROUTE.split("\n")
-      .filter((l) => !l.trimStart().startsWith("//") && !l.trimStart().startsWith("*"))
-      .join("\n");
-    expect(code).not.toMatch(/kolWallets:\s*true/);
+    // On interroge le code seul : l'en-tête du correctif (`route.ts:33`) CITE la
+    // ligne fautive pour l'expliquer, et une recherche naïve la retrouverait.
+    expect(emisParLeCode(ROUTE, /kolWallets:\s*true/)).toBe(false);
   });
 
   it("refiltre aussi en mémoire — deux gardes valent mieux qu'un WHERE oublié", () => {
@@ -80,10 +80,8 @@ describe("BUILD 8 — canonical.ts : la condition morte est fermée", () => {
   it("MUTANT — `attributionSource === \"manual\"` n'est plus une condition", () => {
     // Mesuré : 0 ligne sur 482 porte ce vocabulaire. La condition ne pouvait
     // jamais être vraie, donc `exact` était inatteignable pour 412 profils.
-    const code = CANONICAL.split("\n")
-      .filter((l) => !l.trimStart().startsWith("*") && !l.trimStart().startsWith("//"))
-      .join("\n");
-    expect(code).not.toMatch(/attributionSource\s*===\s*["']manual["']/);
+    // Deux en-têtes (`canonical.ts:122` et `:150`) la citent en prose.
+    expect(emisParLeCode(CANONICAL, /attributionSource\s*===\s*["']manual["']/)).toBe(false);
   });
 
   it("la dérivation vient du module d'autorité", () => {
