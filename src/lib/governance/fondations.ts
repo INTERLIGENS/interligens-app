@@ -108,7 +108,23 @@ const FONDATION: Record<CheminDeDonnee, ReferentielDeDecision | null> = {
   "DossierItem.linkedActorsCount": null,       // E4  — et le compte est FAUX (veracite, P1)
   "DossierItem.linkedActors": "KolProfile.publishStatus",
   "DossierItem.proceedsObservedTotal": "KolProfile.proceedsPublication",
-  "DossierItem.proceedsCoverage": "KolProfile.proceedsPublication",
+  // ─── `proceedsCoverage` PASSE À `null`, ET C'EST UNE CORRECTION ────────
+  //
+  // Cette ligne déclarait `KolProfile.proceedsPublication`. Le producteur ne
+  // l'a JAMAIS consultée : `proceedsCoverage` est un LITTÉRAL, trois valeurs
+  // codées en dur selon le type de dossier — 'partial' pour les case, 'none'
+  // pour les launch, 'documented' pour les platform. Aucune lecture, aucune
+  // décision consommée.
+  //
+  // C'est le défaut que le portail de type a mis au jour : la table était
+  // prise pour une autorité alors que rien ne la consommait. Une fondation
+  // DÉCLARÉE mais non consommée est pire qu'une fondation absente — elle
+  // rend vert un audit qui lit la table.
+  //
+  // Et le littéral n'est pas neutre : « documented », « partial », « none »
+  // décrivent l'état PROBATOIRE d'un dossier. Tant qu'aucune décision
+  // gouvernée réellement consommée ne le fonde, il n'est pas émis.
+  "DossierItem.proceedsCoverage": null,
   "DossierItem.snapshotCount": "EvidenceSnapshot.isPublic+reviewStatus",
 };
 

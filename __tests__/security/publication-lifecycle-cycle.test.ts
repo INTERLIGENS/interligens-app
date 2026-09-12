@@ -249,6 +249,9 @@ async function explorerLaunchActors(): Promise<string[]> {
         // P0 containment — le gate proceeds exige l'etat de publication ; sans
         // lui, redactProceeds fail-close (voir src/lib/kol/proceedsGate.ts).
         proceedsPublication: (p.proceedsPublication as string | undefined) ?? "published",
+        // La decision de publication est desormais LUE, pas deduite du filtre :
+        // `constaterDecision` exige la valeur reellement en main.
+        publishStatus: (p.publishStatus as string | undefined) ?? "published",
       },
     ]),
   );

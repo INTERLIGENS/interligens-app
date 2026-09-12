@@ -16,8 +16,19 @@
 import { describe, it, expect } from "vitest";
 import { CHAMPS_DU_DOSSIER, fondationPossiblePour } from "@/lib/governance/fondations";
 
-/** Les huit, dans l'ordre de la table — l'unique autorité. */
-const HUIT = CHAMPS_DU_DOSSIER.filter((c) => fondationPossiblePour(c) === null);
+/**
+ * Les champs sans fondation, dans l'ordre de la table — l'unique autorité.
+ *
+ * ⚠ LA TABLE EN REND NEUF DEPUIS QUE `proceedsCoverage` Y EST PASSÉ À `null`.
+ * Ce fichier démontre une propriété sur LES HUIT du corpus mesuré le
+ * 2026-09-12 ; le neuvième est arrivé après, par une autre mesure (un littéral
+ * déclaré fondé que le producteur ne consommait pas), et il a son propre
+ * témoin. On le retire donc ICI explicitement plutôt que de laisser le
+ * cardinal dériver en silence — c'est ce que le test de cardinal ci-dessous
+ * protège.
+ */
+const SANS_FONDATION = CHAMPS_DU_DOSSIER.filter((c) => fondationPossiblePour(c) === null);
+const HUIT = SANS_FONDATION.filter((c) => c !== "DossierItem.proceedsCoverage");
 
 /**
  * Les quatorze dossiers RÉELLEMENT servis, réduits aux huit champs, mesurés
@@ -45,6 +56,10 @@ describe("① LE RETRAIT EST UNIFORME — il FERME des différentiels, il n'en c
   it("les huit sont bien les huit, et ils viennent de la table", () => {
     expect(HUIT).toHaveLength(8);
     expect(HUIT.every((c) => fondationPossiblePour(c) === null)).toBe(true);
+    // Le neuvième est NOMMÉ, pas absorbé : si un dixième apparaissait sans
+    // témoin, ce cardinal tomberait au lieu de glisser.
+    expect(SANS_FONDATION).toHaveLength(9);
+    expect(SANS_FONDATION).toContain("DossierItem.proceedsCoverage");
   });
 
   it("██ TÉMOIN — chacun des huit PARTITIONNE les quatorze AUJOURD'HUI", () => {

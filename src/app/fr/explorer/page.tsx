@@ -10,7 +10,7 @@ interface Actor { handle: string; displayName: string | null; role: string; tier
 interface Dossier {
   id: string; kind: string; title: string; primaryDate: string
   linkedActors: Actor[]
-  proceedsObservedTotal: number | null; proceedsCoverage: string
+  proceedsObservedTotal?: number | null
   href: string
   snapshotCount?: number
 }
@@ -66,10 +66,10 @@ export default function ExplorerFR() {
   useEffect(() => { load() }, [kind, hasProceeds, load])
 
   const proceedsText = (d: Dossier) => {
+    // Voir en/explorer/page.tsx : le qualificatif de couverture n'est plus
+    // servi, et on ne se replie pas sur la branche « documente ».
     if (!d.proceedsObservedTotal || d.proceedsObservedTotal === 0) return null
-    if (d.proceedsCoverage === 'partial' || d.proceedsCoverage === 'estimated')
-      return 'Min. ' + fmtUsd(d.proceedsObservedTotal) + ' observe \u2014 couverture partielle'
-    return fmtUsd(d.proceedsObservedTotal) + ' documente'
+    return 'Min. ' + fmtUsd(d.proceedsObservedTotal) + ' observe'
   }
 
   return (
