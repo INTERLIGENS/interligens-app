@@ -10,6 +10,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
 import { assertNoContainedClaim, isAddressWithheld } from "./containment";
+import { SURFACE_AUTHORITIES } from "./surfaceRegistry";
 import type { PublicClaim } from "./canonicalReader";
 
 const CHROMIUM_URL =
@@ -279,6 +280,33 @@ function buildHtml(input: CaseFileInput): string {
   const refSource = input.canonical?.ref ? "canonical record" : "case metadata";
   const digest = caseFileSourceDigest(input);
 
+  // ── BUILD 13 · S3 — L'AUTORITÉ DE L'INSTANCE, PAS CELLE DE LA SURFACE ────
+  //
+  // ██  Une constante ne peut pas être fausse. Une assertion sur         ██
+  // ██  l'instance, si.                                                  ██
+  //
+  // `CASEFILE_AUTHORITY` dit vrai sur ce qu'elle EST : l'état de la SURFACE
+  // dans le vocabulaire de `surfaceRegistry.ts`, c'est-à-dire ce que ce module
+  // SAIT LIRE. Elle était imprimée telle quelle sur le document, où elle se lit
+  // comme une assertion sur CE DOCUMENT-CI — et ce n'est pas la même
+  // proposition.
+  //
+  // `/api/casefile/generate` accepte `body.data` : une charge arbitraire
+  // fournie par l'appelant, SANS bloc canonique. Le document sortait estampillé
+  // `CANONICAL` en affirmant une autorité que cette instance-là n'a pas — et il
+  // se contredisait dans la même page, puisque `refSource` bascule déjà sur
+  // « case metadata » (ci-dessus) et que la ligne 406 imprime « Ce document
+  // n'est adossé à AUCUN dossier canonique ».
+  //
+  // La correction porte sur l'INSTANCE : ce document n'HÉRITE de la déclaration
+  // de surface que s'il porte effectivement un dossier gouverné. La constante
+  // n'est ni retirée ni affaiblie — elle reste la source de l'héritage, et
+  // `surfaceRegistry` continue de la confronter au registre.
+  const estAdosseAuDossier = Boolean(input.canonical?.ref);
+  const autoriteInstance: (typeof SURFACE_AUTHORITIES)[number] = estAdosseAuDossier
+    ? CASEFILE_AUTHORITY
+    : "PRESET";
+
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Helvetica Neue',Arial,sans-serif;background:#000;color:#fff;font-size:11px;line-height:1.5}
@@ -308,7 +336,9 @@ tr:nth-child(even) td{background:#0a0a0a}
   // HEADER
   html += `<div class="header">
     <div class="header-left">
-      <div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">INTERLIGENS CaseFile · Canonical Artifact</div>
+      <div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">INTERLIGENS CaseFile · ${
+        estAdosseAuDossier ? "Canonical Artifact" : "Ungoverned Artifact"
+      }</div>
       <h1>${esc(m.case_id)}</h1>
       <div class="sub">${esc(m.ticker || m.token_name || "")} ${m.chain ? `· ${esc(m.chain.toUpperCase())}` : ""} ${m.severity ? `· <span class="badge" style="background:${severityColor(m.severity)}">${esc(m.severity)}</span>` : ""}</div>
     </div>
@@ -326,7 +356,7 @@ tr:nth-child(even) td{background:#0a0a0a}
   html += `<div class="callout" style="border-left-color:${ACCENT};margin-bottom:18px">
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px 18px;font-size:9px;color:#aaa">
       <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Reference</span> · <span class="mono" style="color:#fff">${esc(ref)}</span> <span style="color:#666">(${refSource})</span></div>
-      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Authority</span> · <span style="color:#fff;font-weight:700">${CASEFILE_AUTHORITY}</span></div>
+      <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Authority</span> · <span style="color:#fff;font-weight:700">${autoriteInstance}</span></div>
       <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Generated at</span> · <span class="mono" style="color:#fff">${generatedAt}</span></div>
       <div><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Document format</span> · <span class="mono" style="color:#fff">${CASEFILE_DOC_FORMAT}</span></div>
       <div style="grid-column:1/-1"><span style="color:#666;text-transform:uppercase;letter-spacing:1px">Data snapshot</span> · <span class="mono" style="color:#fff">${
@@ -555,7 +585,7 @@ tr:nth-child(even) td{background:#0a0a0a}
   // Le pied porte l'identité une seconde fois : une page détachée du reste
   // doit rester attribuable.
   html += `<div class="footer">
-    <span>INTERLIGENS CaseFile · ${CASEFILE_AUTHORITY} · ${CASEFILE_DOC_FORMAT} · ${generatedAt}</span>
+    <span>INTERLIGENS CaseFile · ${autoriteInstance} · ${CASEFILE_DOC_FORMAT} · ${generatedAt}</span>
     <span>${esc(ref)} — CONFIDENTIEL</span>
   </div></div></body></html>`;
 

@@ -26,7 +26,7 @@ import {
   CASEFILE_DOC_FORMAT,
   type CaseFileInput,
 } from "@/lib/casefile/pdfGenerator";
-import { CASEFILE_SURFACES } from "@/lib/casefile/surfaceRegistry";
+import { CASEFILE_SURFACES, SURFACE_AUTHORITIES } from "@/lib/casefile/surfaceRegistry";
 
 const BASE: CaseFileInput = {
   case_meta: {
@@ -71,9 +71,33 @@ describe("S1B/a — le document porte son identité, pas seulement son contenu",
     }
   });
 
+  // ─── BUILD 13 · S3 — CE TEST ASSERTAIT LE DÉFAUT ─────────────────────────
+  //
+  // ██  Il exigeait `>CANONICAL<` sur `BASE` — une instance SANS bloc      ██
+  // ██  canonique. C'est la confusion surface/instance, ratifiée.          ██
+  //
+  // La propriété que S1B voulait tenir est juste et elle SURVIT : le document
+  // porte un état d'autorité, dans le vocabulaire du registre. Ce qui change
+  // est LEQUEL — il dépend de l'instance, pas de la surface. `CASEFILE_AUTHORITY`
+  // reste la déclaration de surface, et `BASE` n'en hérite pas : elle n'est
+  // adossée à aucun dossier.
   it("un ÉTAT D'AUTORITÉ, dans le vocabulaire du registre des surfaces", () => {
     expect(CASEFILE_AUTHORITY).toBe("CANONICAL");
-    expect(html).toContain(">CANONICAL<");
+    // L'état imprimé appartient au vocabulaire du registre…
+    const imprimes = [...html.matchAll(/\b(CANONICAL|PRESET|NONE)\b/g)].map((m) => m[1]);
+    expect(imprimes.length, "le document ne dit RIEN de son autorité").toBeGreaterThan(0);
+    for (const e of imprimes) expect(SURFACE_AUTHORITIES as readonly string[]).toContain(e);
+
+    // …et il dit la vérité sur CETTE instance-ci, qui n'a pas de dossier.
+    expect(html).toContain(">PRESET<");
+    expect(html).not.toContain(">CANONICAL<");
+
+    // Adossée à un dossier, la MÊME entrée hérite de la déclaration de surface.
+    const avecDossier = buildCaseFileHtml({
+      ...BASE,
+      canonical: { ref: "IL-PND-CANON-042", claims: [] },
+    });
+    expect(avecDossier).toContain(`>${CASEFILE_AUTHORITY}<`);
   });
 
   it("une VERSION DE FORMAT, dans un espace de noms distinct de GraphReport", () => {
@@ -92,7 +116,13 @@ describe("S1B/a — le document porte son identité, pas seulement son contenu",
   });
 
   it("et le PIED reporte l'identité — une page détachée reste attribuable", () => {
-    expect(html).toContain(`INTERLIGENS CaseFile · ${CASEFILE_AUTHORITY} · ${CASEFILE_DOC_FORMAT}`);
+    // Le pied reporte l'autorité de L'INSTANCE, pas celle de la surface : une
+    // page détachée d'un document non adossé ne doit pas se présenter, seule,
+    // comme canonique.
+    expect(html).toContain(`INTERLIGENS CaseFile · PRESET · ${CASEFILE_DOC_FORMAT}`);
+    expect(
+      buildCaseFileHtml({ ...BASE, canonical: { ref: "IL-PND-CANON-042", claims: [] } }),
+    ).toContain(`INTERLIGENS CaseFile · ${CASEFILE_AUTHORITY} · ${CASEFILE_DOC_FORMAT}`);
   });
 });
 
