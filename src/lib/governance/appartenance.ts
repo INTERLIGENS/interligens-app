@@ -31,12 +31,25 @@
 // même » : sans elle, ce module serait une décoration et la Watchlist
 // repartirait au premier refactor.
 
+// ⚠ IMPORTS RELATIFS — contrainte de PREUVE, pas de style. Les mutants de
+// type se compilent avec `tsc` SANS tsconfig, donc sans les alias `@/`. Un
+// import aliasé casserait la résolution de TOUT le corpus, mutants compris,
+// et la garde rendrait vert en n'ayant rien compilé.
 import {
+  devoilerEnregistrement,
   refuser,
   type DecisionDePublication,
+  type DevoileDe,
   type EnregistrementGouverne,
   type Refus,
-} from "@/lib/governance/uniteGouvernee";
+} from "./uniteGouvernee";
+import {
+  projeterRefus,
+  type Admissible,
+  type Admission,
+  type Audience,
+  type CorpsDeRefus,
+} from "./audienceProjection";
 
 declare const APPARTENANCE: unique symbol;
 
@@ -145,3 +158,77 @@ export function projeterCollection<C extends string, M extends EnregistrementGou
   // champ nu et ce paramètre.
   return { collection: autorite.collection, membres, fondeePar: autorite.fondeePar };
 }
+
+// ─── LE TERMINAL DE COLLECTION ───────────────────────────────────────────
+//
+// `projeterCollection` rend une `CollectionGouvernee`, qui n'est PAS une
+// charge que la frontière accepte. Sans ce terminal, une surface qui aurait
+// fait tout le travail d'appartenance devrait quand même sortir par un
+// `NextResponse.json` nu — et la marque cesserait d'être portante au dernier
+// mètre, exactement là où elle compte.
+//
+// ─── CE QU'IL NE ROUVRE PAS ─────────────────────────────────────────────
+//
+// Il délègue à `projeterCollection` et n'ajoute AUCUNE branche de décision.
+// C'est délibéré : un terminal qui referait le test pourrait le refaire
+// autrement, et deux expressions de la même règle est la faute qu'on ferme
+// partout. Une collection qui n'a rien déclaré est donc refusée ICI AUSSI,
+// parce qu'elle l'est LÀ-BAS — pas parce qu'on l'a revérifié.
+
+/** La charge d'une collection émise : soit ses membres dévoilés, soit un refus. */
+export type ChargeDeCollection<C extends string, V> =
+  | { readonly collection: C; readonly membres: readonly V[] }
+  | CorpsDeRefus;
+
+/**
+ * PROJETER UNE COLLECTION JUSQU'À LA FRONTIÈRE.
+ *
+ * ── COUCHE 2, TENUE PAR LA SIGNATURE ────────────────────────────────────
+ *
+ * `M extends EnregistrementGouverne` : chaque membre est un enregistrement
+ * dont CHAQUE valeur a présenté sa décision. Une collection dispensée de
+ * décision d'appartenance ne peut donc toujours pas transporter un champ nu —
+ * il n'existe aucun chemin de type entre un objet brut et ce paramètre.
+ *
+ * C'est l'invariant ratifié, porté par le TYPE et non par une convention :
+ * « non-assertive membership cannot waive governance of contained semantic
+ *   units ».
+ *
+ * Le dévoilement n'a lieu qu'APRÈS le passage : ce qui part sur le fil est du
+ * JSON ordinaire, et les symboles ne voyagent pas. La marque a fait son
+ * travail avant, pas pendant.
+ */
+export function projeterCollectionAdmissible<
+  A extends Audience,
+  C extends string,
+  M extends EnregistrementGouverne,
+>(
+  admission: Admission<A>,
+  autorite: AutoriteDAppartenance<C>,
+  membres: readonly M[],
+): Admissible<A, { forme: "json"; valeur: ChargeDeCollection<C, DevoileDe<M>> }> {
+  const projection = projeterCollection(autorite, membres);
+
+  if (estRefusDeCollection(projection)) {
+    // Le REFUS traverse la même porte que le reste. Son corps ne porte que
+    // trois champs, et le type `CorpsDeRefus` interdit d'y glisser un compte.
+    // Le MOTIF reste au journal : il ne voyage pas dans la charge, sans quoi
+    // la garde livrerait l'oracle avec elle.
+    return projeterRefus(admission, {
+      refus: true,
+      code: projection.raison,
+      surface: autorite.collection,
+    }) as unknown as Admissible<A, { forme: "json"; valeur: ChargeDeCollection<C, DevoileDe<M>> }>;
+  }
+
+  return {
+    forme: "json",
+    valeur: {
+      collection: projection.collection,
+      membres: projection.membres.map((m) => devoilerEnregistrement(m)),
+    },
+  } as unknown as Admissible<A, { forme: "json"; valeur: ChargeDeCollection<C, DevoileDe<M>> }>;
+}
+
+const estRefusDeCollection = (v: unknown): v is Refus =>
+  typeof v === "object" && v !== null && (v as { refuse?: unknown }).refuse === true;
