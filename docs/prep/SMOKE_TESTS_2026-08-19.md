@@ -52,6 +52,58 @@ convention du dépôt est bien de déclarer la colonne dans le schéma.
 > que l'arbre déployé soit celui-ci. Vérifier `git status` propre et la branche
 > avant de déployer fait partie du test.
 
+### 0 bis. AVANT D'EXÉCUTER LE MOINDRE BLOC — le fichier SE PARSE-T-IL ?
+
+**Le contrôle qui manquait à toute la méthode.** Le 2026-08-19, le BLOC 3 a été
+relu ligne à ligne, ses colonnes comparées caractère par caractère, ses
+garde-fous vérifiés, ses 32 lignes comptées, ses empreintes dédupliquées — et
+il ne se parsait pas :
+
+```
+ERROR: syntax error at or near "ON" (SQLSTATE 42601)
+```
+
+Une virgule orpheline, résidu du retrait de deux lignes `VALUES` dont l'une
+était la dernière du lot. **Aucune de nos vérifications ne pouvait l'attraper :
+toutes portaient sur le SENS du fichier, aucune sur sa GRAMMAIRE.**
+
+```bash
+npx vitest run __tests__/security/sql-execution-file-lint.test.ts
+```
+
+Contrôle **hors connexion**, sur tous les `.sql` de `docs/prep/`. Ce qu'il
+vérifie :
+
+| | |
+|---|---|
+| virgule orpheline avant `ON CONFLICT`, `FROM`, `COMMIT`, `;`… | la faute du jour |
+| `BEGIN` / `COMMIT` équilibrés | une transaction non refermée |
+| `$$` en nombre pair | un `DO $$` non refermé avale tout le reste |
+| parenthèses équilibrées | — |
+| aucun `DELETE FROM`, `TRUNCATE`, `DROP TABLE` hors commentaire | — |
+| lignes `VALUES` = nombre attendu par le garde-fou | **le second défaut du jour : 34 dans le texte, 32 dans le garde** |
+| aucune empreinte `sha256` en double | `EvidenceItem.sha256` est `@unique` : un doublon fait échouer la transaction ENTIÈRE |
+
+**Vérifié dans les deux sens** : le test tombe sur la version fautive en nommant
+`ligne 593 → suivie de « ON CONFLICT (id) DO NOTHING; » (ligne 594)`, et passe
+sur la version corrigée.
+
+> **Ce n'est PAS un parseur SQL, et il ne faut pas le lire comme tel.** Mesuré
+> le 2026-08-19 : **aucun parseur Postgres hors ligne n'est disponible sur cette
+> machine** — ni `psql`, ni `postgres`, ni `pgsanity`, ni Docker, ni
+> `libpg_query` / `pgsql-parser` dans `node_modules`, ni `sqlparse` / `pglast`
+> côté Python. `sqlite3` est présent mais c'est un **faux ami** : il rejetterait
+> `DO $$`, `::text`, `TIMESTAMP(3)` et `gen_random_uuid()`, qui sont du
+> Postgres parfaitement valide — il crierait au loup sur du bon SQL.
+>
+> **Le vrai parseur existe et s'appelle `@libpg-query/parser`** : le parseur de
+> Postgres lui-même, compilé en WASM, qui tourne hors connexion une fois
+> installé. L'installer touche `package.json`, **chemin gelé** — c'est une
+> fenêtre d'exemption et une décision, pas une retouche. **Tant qu'elle n'est
+> pas prise, le contrôle ci-dessus est une parade, pas une garantie :** il
+> attrape la famille de fautes que produit notre façon de travailler — générer
+> par script, retirer des lignes à la main — et rien d'autre.
+
 ### 1. La brique de base — 30 secondes
 
 | # | Quoi | Attendu |
