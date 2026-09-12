@@ -109,18 +109,225 @@ FORBIDDEN_PATTERNS=(
     "^src/lib/osint/retail/ipHash\.ts$"         # pseudonymisation IP (RGPD)
 )
 
-# Exceptions sur la branche setup uniquement
-if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
-    # Cette branche pose les garde-fous, elle a le droit de créer .github/, scripts/, CLAUDE.offline.md, etc.
-    # On exempte les chemins de setup légitimes.
-    EXEMPT_SETUP_PATTERNS=(
-        "^\.github/workflows/guard-offline\.yml$"
-        "^CLAUDE\.offline\.md$"
-        "^\.cc-allowed-paths$"
-        "^\.cc-forbidden-paths$"
-        "^docs/RUNBOOK_URGENCE_LOMBOK\.md$"
-    )
-fi
+# ══════════════════════════════════════════════════════════════════════════════
+# LEASES — l'autorisation cesse d'être un nom de branche éternel
+# ══════════════════════════════════════════════════════════════════════════════
+#
+#   Static exemptions converge to zero. Legitimate openings become explicit,
+#   bounded, versioned leases.
+#
+#   Branch naming may select a workflow; it must never itself grant authority.
+#
+# Une lease AUTORISE. Le nom de branche ne fait que SÉLECTIONNER laquelle : il ne
+# suffit pas, et il ne dure pas. Pour qu'un chemin gelé passe, il faut SIX
+# conditions simultanées — chemin EXACT, sujet, SHA de base, état OPEN, forme
+# valide, et NON EXPIRÉE. Une seule manque, c'est rouge.
+#
+# ─── L'ASYMÉTRIE, ET ELLE EST LA CLEF ────────────────────────────────────────
+#
+#   Authority is required to widen, never to narrow. A change that only removes
+#   an authorization needs no authorization.
+#
+#   ajouter · élargir · PROLONGER une lease  →  soumis à autorité
+#   retirer · réduire  une lease             →  TOUJOURS autorisé
+#   lease EXPIRÉE                            →  n'autorise plus rien, MÊME SI
+#                                               SON BLOC EST ENCORE DANS L'ARBRE
+#
+# La troisième ligne est celle qu'on oublie : un bloc PRÉSENT mais périmé n'est
+# pas un bloc ABSENT. Les deux refusent, pour des raisons DISTINCTES au journal —
+# « aucune lease » et « lease EXPIRÉE le … » — parce qu'on ne répare pas les deux
+# de la même façon.
+#
+# « Prolonger » est soumis à autorité non par une comparaison d'états — le
+# verifier ne voit que celui de `main` — mais STRUCTURELLEMENT : toute écriture
+# de l'état passe par le guard, donc par `hotfix/guard-*` et sa revue. Il n'y a
+# pas de prolongation silencieuse parce qu'il n'y a pas d'écriture silencieuse.
+#
+# ─── LE THÉORÈME QUI REND L'HORLOGE INOFFENSIVE ──────────────────────────────
+#
+# La voie de
+# maintenance `continue` AVANT toute évaluation de lease : un diff qui ne touche
+# que le système de garde — donc toute fermeture de lease — n'interroge jamais
+# l'horloge. Une lease expirée ne peut donc PAS bloquer sa propre fermeture, et
+# l'expiration ne peut pas fabriquer une fenêtre qu'on ne peut pas refermer.
+#
+# ─── L'HORLOGE ───────────────────────────────────────────────────────────────
+#
+#   effectiveNow := max( runnerNow , trustedBaseLowerBound )
+#
+# ⚠️ LES DEUX TERMES NE SONT PAS DE MÊME NATURE, et les confondre serait une
+# prose qui décrit autre chose que le code.
+#
+#   runnerNow              LA SOURCE NORMATIVE. L'horloge UTC du runner, et elle
+#                          seule, dit quelle heure il est.
+#   trustedBaseLowerBound  PAS une horloge. Un horodatage Git n'est pas une
+#                          source de temps fiable. Sa SEULE utilité est de
+#                          fournir un PLANCHER de fraîcheur, qui ne peut que
+#                          RACCOURCIR la fenêtre — jamais l'allonger, jamais la
+#                          définir.
+#
+# L'ordre est donc `max(normatif, plancher)`, JAMAIS l'inverse : un plancher ne
+# devient jamais l'autorité. Et AUCUN horodatage contrôlé par l'auteur de la PR
+# n'entre dans le calcul — la date de commit de la PR est écartée, `git commit
+# --date` acceptant n'importe quoi. Une entrée hostile ne peut produire qu'un
+# refus d'élargir.
+#
+# Le verdict de fraîcheur n'est PAS rejouable : rejoué demain, il change. Il est
+# donc EXPLICABLE plutôt que reproductible — le `now` évalué est imprimé dans la
+# preuve, à chaque exécution, pour l'audit.
+#
+#   When the governed property is elapsed exposure time, wall-clock time is
+#   authority-relevant input, not nondeterminism to be abstracted away.
+#
+# GUARD_NOW_UTC injecte l'instant pour les tests. En CI la variable n'est pas
+# posée ; et quiconque peut poser une variable d'environnement sur le runner
+# contrôle déjà le runner — ce n'est donc pas une surface nouvelle.
+#
+# ─── FORMAT D'UNE LEASE ──────────────────────────────────────────────────────
+#
+#   windowId|propriété|chemins|baseSha|sujet|openedAt|expiresAt|état
+#
+#   chemins   chemins EXACTS séparés par une virgule. AUCUN motif, aucun
+#             joker, aucun préfixe de répertoire : l'égalité de chaîne, et
+#             rien d'autre. Un `^src/app/api/osint/` est impossible à écrire ici.
+#   baseSha   le SHA de `main` sur lequel la lease a été ouverte. Il doit être
+#             un ancêtre de HEAD.
+#   sujet     la branche à qui elle est accordée — SÉLECTEUR, pas autorité.
+#   *At       ISO-8601 UTC strict, `Z` obligatoire. Aucune heure locale.
+#   état      OPEN | CLOSED.
+#
+# Durée maximale : 45 minutes. Mesurée, pas choisie — sur 64 fenêtres réelles,
+# 60 tiennent en ≤30 mn et les 4 autres sont à ≥127 mn : il n'y a RIEN entre les
+# deux. La borne est ICI, dans le mécanisme, et pas seulement dans une consigne.
+#
+# AUCUNE PROLONGATION IMPLICITE. Renouveler, c'est une nouvelle lease, avec un
+# nouveau windowId — jamais la modification silencieuse d'une expiration active.
+#
+# Critère : __tests__/garde/leases.test.ts
+# ══════════════════════════════════════════════════════════════════════════════
+
+LEASE_DUREE_MAX_S=2700   # 45 minutes
+
+# L'ÉTAT. Vide = ZÉRO AUTORITÉ : le vide est la lecture la plus stricte, jamais
+# « rien à vérifier ». Une lease n'existe qu'une fois MERGÉE dans main — c'est la
+# même propriété que le guard lui-même : on ne se juge pas avec ses propres règles.
+LEASES=(
+)
+
+lease_rouge() {
+    echo "🛑 GUARD/LEASE: $1"
+    exit 1
+}
+
+# ISO-8601 UTC strict → epoch. BSD et GNU.
+lease_epoch() {
+    local iso="$1" out
+    [[ "$iso" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 1
+    out=$(date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso" +%s 2>/dev/null) \
+        || out=$(date -u -d "$iso" +%s 2>/dev/null) || return 1
+    echo "$out"
+}
+
+# effectiveNow := max(runnerNow, trustedBaseLowerBound). Injectable pour les tests.
+LEASE_NOW=""
+lease_maintenant() {
+    if [[ -n "$LEASE_NOW" ]]; then echo "$LEASE_NOW"; return 0; fi
+    local runner_now plancher_fiable=0 b
+
+    # LA SOURCE NORMATIVE — l'horloge UTC du runner.
+    runner_now=$(date -u +%s)
+    if [[ -n "${GUARD_NOW_UTC:-}" ]]; then
+        runner_now=$(lease_epoch "${GUARD_NOW_UTC}") \
+            || lease_rouge "GUARD_NOW_UTC illisible — un instant douteux ne devient pas un instant permissif."
+    fi
+
+    # LE PLANCHER — un horodatage Git, qui n'est PAS une horloge. Il ne sert
+    # qu'à borner la fraîcheur par le bas, donc à raccourcir. Il ne définit
+    # jamais l'heure : c'est pourquoi il n'intervient que par un `max`, et
+    # jamais comme valeur de repli.
+    for b in "${LEASE_BASES[@]+"${LEASE_BASES[@]}"}"; do
+        local d
+        d=$(git log -1 --format=%ct "$b" 2>/dev/null || echo 0)
+        [[ "$d" =~ ^[0-9]+$ ]] && (( d > plancher_fiable )) && plancher_fiable=$d
+    done
+
+    (( plancher_fiable > runner_now )) && runner_now=$plancher_fiable
+    LEASE_NOW="$runner_now"
+    echo "$runner_now"
+}
+
+# Forme + NON-VACUITÉ. Toute lease illisible est ROUGE, jamais ignorée : sans
+# cette borne, un état que l'analyseur ne comprend plus rendrait « 0 lease
+# extraite = rien à autoriser », vert par vacuité — la panne exacte que ce
+# mécanisme existe pour interdire.
+LEASE_BASES=()
+LEASE_IDS=()
+lease_valider() {
+    local brutes=${#LEASES[@]} lues=0 l
+    for l in "${LEASES[@]+"${LEASES[@]}"}"; do
+        [[ -z "${l// }" ]] && lease_rouge "lease vide dans l'état — l'état ne se lit pas."
+        IFS='|' read -r w prop chemins base sujet ouvert expire etat <<< "$l"
+        [[ -n "$w" && -n "$prop" && -n "$chemins" && -n "$base" && -n "$sujet" \
+           && -n "$ouvert" && -n "$expire" && -n "$etat" ]] \
+            || lease_rouge "lease « ${w:-?} » : champ manquant — 8 champs exigés."
+        [[ "$etat" == "OPEN" || "$etat" == "CLOSED" ]] \
+            || lease_rouge "lease « $w » : état « $etat » inconnu."
+        local eo ee
+        eo=$(lease_epoch "$ouvert") || lease_rouge "lease « $w » : openedAt non ISO-8601 UTC strict."
+        ee=$(lease_epoch "$expire") || lease_rouge "lease « $w » : expiresAt non ISO-8601 UTC strict."
+        (( ee > eo )) || lease_rouge "lease « $w » : expiresAt n'est pas postérieur à openedAt."
+        (( ee - eo <= LEASE_DUREE_MAX_S )) \
+            || lease_rouge "lease « $w » : durée $(( (ee-eo)/60 )) mn > 45 mn — la borne est dans le mécanisme."
+        # Aucun motif : la comparaison est une ÉGALITÉ DE CHAÎNE, jamais une
+        # regex. `[handle]` est donc un nom de répertoire Next.js parfaitement
+        # légitime — ce qu'on interdit, c'est le joker et l'ancre, c'est-à-dire
+        # tout ce qui ferait d'un chemin une FAMILLE de chemins.
+        case "$chemins" in
+            *'*'*|*'^'*|*'$'*|*'?'*) lease_rouge "lease « $w » : joker ou ancre interdit — chemins EXACTS uniquement." ;;
+        esac
+        # AUCUNE PROLONGATION IMPLICITE : renouveler, c'est un NOUVEAU windowId.
+        # Deux enregistrements sous la même identité, c'est une réécriture
+        # silencieuse d'une expiration active — refusée.
+        case " ${LEASE_IDS[*]+${LEASE_IDS[*]}} " in
+            *" $w "*) lease_rouge "windowId « $w » en double — une expiration active ne se réécrit pas, elle se remplace par une NOUVELLE lease." ;;
+        esac
+        LEASE_IDS+=("$w")
+        LEASE_BASES+=("$base")
+        lues=$((lues + 1))
+    done
+    (( lues == brutes )) \
+        || lease_rouge "$lues lease(s) lue(s) pour $brutes enregistrée(s) — l'analyseur n'a pas compris l'état."
+}
+
+# Ce fichier est-il autorisé ? SIX conditions, toutes obligatoires.
+LEASE_MOTIF=""
+lease_autorise() {
+    local fichier="$1" l maintenant
+    LEASE_MOTIF=""
+    (( ${#LEASES[@]} == 0 )) && return 1
+    maintenant=$(lease_maintenant)
+    for l in "${LEASES[@]}"; do
+        IFS='|' read -r w prop chemins base sujet ouvert expire etat <<< "$l"
+        [[ "$etat" == "OPEN" ]]      || continue
+        [[ "$sujet" == "$BRANCH" ]]  || continue
+        local trouve=false c
+        IFS=',' read -ra _cs <<< "$chemins"
+        for c in "${_cs[@]}"; do [[ "$c" == "$fichier" ]] && trouve=true && break; done
+        [[ "$trouve" == "true" ]]    || continue
+        git merge-base --is-ancestor "$base" HEAD 2>/dev/null \
+            || { LEASE_MOTIF="lease « $w » : baseSha $base n'est pas un ancêtre de HEAD"; continue; }
+        local ee; ee=$(lease_epoch "$expire") || continue
+        if (( maintenant >= ee )); then
+            LEASE_MOTIF="lease « $w » EXPIRÉE le $expire — une lease expirée ne s'annule pas, elle CESSE D'AUTORISER"
+            continue
+        fi
+        LEASE_MOTIF="$w"
+        return 0
+    done
+    return 1
+}
+
+lease_valider
 
 # Exceptions globales pour toutes les branches cc-offline-* :
 # nouveaux sous-dossiers isolés du core gelé, créés pendant l'offline mode.
@@ -132,349 +339,9 @@ OFFLINE_EXEMPT_PATTERNS=(
     "^src/app/api/admin/casefile-nova/"
 )
 
-# Exceptions pour le module Casefile Engine V1 (admin-only, feature-flagged,
-# synthetic-only). Autorisation humaine explicite — voir PR description.
-# Ne couvre PAS l'ensemble de prisma/ ni src/components/ : exemptions ciblées
-# uniquement sur les paths scaffoldés du module.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-engine$ ]]; then
-    EXEMPT_CASEFILE_ENGINE_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-        "^src/components/admin/casefile-engine/"
-        "^MIGRATION_casefile_engine_v1\.sql$"
-        "^MIGRATION_PLAN_casefile_engine_v1\.md$"
-    )
-fi
-
-# Exceptions pour le module Shill Correlation Engine (admin-only, shadow mode,
-# internal investigation — pas de surface publique, pas de couplage TigerScore/PDF).
-# Autorisation humaine explicite (David, PHASE 8 handoff) — voir PR description.
-# Ne couvre PAS l'ensemble de prisma/ ni src/app/api/ : exemptions ciblées
-# uniquement sur les paths scaffoldés / touchés par le module.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
-    EXEMPT_SHILL_CORRELATION_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-        "^src/lib/kol/proceeds\.ts$"
-        "^src/app/api/admin/shill-correlation/"
-    )
-fi
-
-# Exceptions pour la watchlist expansion (ajout de KOL reviewés au watcher).
-# Autorisation humaine explicite (David, WAVES 1-3 approuvées) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur handles.ts (la source de vérité du watcher) ;
-# ne couvre PAS le reste de src/lib/watcher/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
-    EXEMPT_WATCHLIST_EXPANSION_PATTERNS=(
-        "^src/lib/watcher/handles\.ts$"
-    )
-fi
-
-# Exceptions pour le module PRE-BUY GUARD V1 (admin-only, shadow mode — couche
-# de convergence REFLEX + shill correlation + KOL referral, pas de surface
-# publique, additif uniquement, zéro modification de REFLEX).
-# Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route admin du module ;
-# ne couvre PAS l'ensemble de src/app/api/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-prebuy-guard$ ]]; then
-    EXEMPT_PREBUY_GUARD_PATTERNS=(
-        "^src/app/api/admin/prebuy/"
-    )
-fi
-
-# Exceptions pour le tracking conso X API dans le cron watcher-v2.
-# Ajout purement additif : 1 compteur userLookups + 1 upsert XApiUsage
-# (SQL brut ON CONFLICT, table + index déjà en prod via Neon). Aucune
-# autre logique du cron modifiée, aucun appel X API supplémentaire.
-# Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 ;
-# ne couvre PAS le reste de src/app/api/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-xapi-usage-cron$ ]]; then
-    EXEMPT_XAPI_USAGE_PATTERNS=(
-        "^src/app/api/cron/watcher-v2/route\.ts$"
-    )
-fi
-
-# Exceptions pour le fix fenêtre du watcher (mode reprise start_time +
-# pagination). Additif : le cron passe une fenêtre temporelle + un cap
-# posts/handle au client X API. Aucune écriture DB, aucune migration.
-# Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 ;
-# le client src/lib/xapi/ n'est pas un chemin protégé (hors exemption).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
-    EXEMPT_WATCHER_WINDOW_PATTERNS=(
-        "^src/app/api/cron/watcher-v2/route\.ts$"
-    )
-fi
-
-# Exceptions pour le cleanup sweep (dette technique post-merge — additif uniquement).
-# Autorisation humaine explicite (David, FULL CLEANUP SWEEP) — voir PR description.
-# Périmètre ciblé : sync du schema sur la prod DB (colonnes lifecycle KolProfile
-# déjà live), retrait d'un handle mort du watcher, et le short-circuit spend-cap
-# de la route cron watcher-v2. Aucune logique core / scoring / auth touchée.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cleanup-sweep$ ]]; then
-    EXEMPT_CLEANUP_SWEEP_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-        "^src/lib/watcher/handles\.ts$"
-        "^src/app/api/cron/watcher-v2/route\.ts$"
-    )
-fi
-
-# Exceptions pour le sync schema Evidence (file-only — additif uniquement).
-# La table EvidenceNegative + les colonnes forensic EvidenceSnapshot existent
-# DÉJÀ en DB ep-square-band (ajoutées par les sessions seeder OSINT en SQL brut) ;
-# ce sync ne fait que refléter cette réalité dans schema.prod.prisma. AUCUNE
-# migration DB. Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur le schema.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
-    EXEMPT_EVIDENCE_SCHEMA_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
-# Exceptions pour le scan ticker resolver (DexScreener fallback — additif au
-# résolveur ticker→token du scan /demo). Le résolveur retombe sur DexScreener
-# search puis CoinGecko quand l'interne manque, avec matching tolérant scoré et
-# désambiguïsation par déroulant. Read-only, aucune écriture DB. Aucun couplage
-# scoring/TigerScore/PDF. Autorisation humaine explicite (David) — voir PR.
-# Exemption ciblée UNIQUEMENT sur la route resolve + le composant TokenPicker +
-# Les fichiers non gelés (src/lib/marketProviders.ts,
-# src/app/{fr,en}/demo/page.tsx) passent sans exemption (hors paths interdits).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
-    EXEMPT_SCAN_RESOLVER_PATTERNS=(
-        "^src/app/api/scan/resolve/route\.ts$"
-        "^src/components/scan/TokenPicker\.tsx$"
-    )
-fi
-
-# Exceptions pour l'ajout du handle moonbag au watcher (TOES campaign).
-# moonbag a un KolProfile (draft) + un KolTokenLink TOES curated déjà en DB
-# (ep-square-band) ; l'ajout à handlesV2 le fait remonter sur la Watchlist
-# comme GordonGekko/DonWedge. Additif : 1 entrée WatchHandle, priority low.
-# Aucune écriture DB, aucune migration, aucun autre handle modifié.
-# Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur handles.ts (source de vérité du watcher) ; ne couvre PAS le reste de src/lib/watcher/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-moonbag-watchlist$ ]]; then
-    EXEMPT_MOONBAG_WATCHLIST_PATTERNS=(
-        "^src/lib/watcher/handles\.ts$"
-    )
-fi
-
-# Exceptions pour le fix budget + cadence du watcher (P3 observabilité XApiUsage,
-# P2 cadence quotidienne). Additif : remontée de l'erreur d'écriture XApiUsage
-# dans les stats du run, lookback 26h→30h, et schedule cron 72h→quotidien dans
-# vercel.json. Aucune écriture DB, aucune migration (l'index unique monthStart
-# existe déjà). Aucune logique de détection / KolTokenLink touchée.
-# Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur la route cron watcher-v2 + vercel.json (où vit
-# le schedule) ; ne couvre PAS le reste de src/app/api/.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-budget-cadence$ ]]; then
-    EXEMPT_WATCHER_BUDGET_CADENCE_PATTERNS=(
-        "^src/app/api/cron/watcher-v2/route\.ts$"
-        "^vercel\.json$"
-    )
-fi
-
-# Exceptions pour l'Evidence Intake Bridge — Sprint 1 (schema ADDITIF seul).
-# La migration SQL (ALTER ADD COLUMN IF NOT EXISTS + CREATE TABLE SignalIntake +
-# backfill) est appliquée sur ep-square-band via connexion brute (jamais
-# prisma db push) ; ce commit ne fait que refléter ces colonnes/table dans
-# schema.prod.prisma (anti-drift) + le fichier MIGRATION racine. Aucune
-# suppression, aucun filtre de lecture touché (la gate visibility arrive au
-# Sprint 8). Autorisation humaine explicite (David) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur le schema ; le fichier
-# MIGRATION_intake_bridge_sprint1.sql (racine) n'est pas un chemin gelé.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint1-schema$ ]]; then
-    EXEMPT_INTAKE_BRIDGE_S1_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
-# Exceptions pour l'Evidence Intake Bridge — Sprint 4 (promotion draft).
-# Le bridge crée des KolTokenLink visibility='draft' (jamais public) + des
-# SignalIntake. Pour garantir « draft = jamais public », on AVANCE la part
-# minimale du filtre Sprint 8 : les lectures publiques resolve + watchlist
-# filtrent strictement sur visibility='public'. Behavior-preserving (les 187
-# lignes legacy sont toutes 'public'), prouvé par curl AVANT/APRÈS identique.
-# Aucune autre logique de scan/watchlist modifiée. Autorisation humaine
-# explicite (David) — voir PR description. Exemption ciblée UNIQUEMENT sur ces
-# deux routes ; les fichiers du module (src/lib/watcher-bridge/,
-# src/scripts/) ne sont pas des chemins gelés.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint4-draft-bridge$ ]]; then
-    EXEMPT_INTAKE_BRIDGE_S4_PATTERNS=(
-        "^src/app/api/scan/resolve/route\.ts$"
-        "^src/app/api/watchlist/route\.ts$"
-    )
-fi
-
-# Exceptions pour l'Evidence Intake Bridge — Sprint 5 (state machine).
-# Table d'audit CandidateStatusLog créée additivement via SQL Neon brut (jamais
-# prisma db push) ; ce commit ne fait que refléter le modèle dans
-# schema.prod.prisma (anti-drift). La logique (candidateStateMachine.ts) +
-# son câblage (promoteWatcherSignalsToDraft.ts) vivent dans src/lib/watcher-bridge/
-# qui n'est pas gelé. Aucun filtre de lecture touché, aucune surface publique.
-# Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
-# UNIQUEMENT sur le schema ; MIGRATION_candidate_status_log.sql (racine)
-# n'est pas un chemin gelé.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint5-state-machine$ ]]; then
-    EXEMPT_INTAKE_BRIDGE_S5_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
-# Exceptions pour l'Evidence Intake Bridge — Sprint 7 (approve/reject 1-clic).
-# Endpoints admin POST approve/reject (auth verifyAdminSession, même cookie que
-# la page Sprint 6) + colonne WatcherCampaign.reviewStatus ajoutée additivement
-# via SQL Neon brut (jamais prisma db push) reflétée dans le schema (anti-drift).
-# La logique (reviewDraftLink.ts) + les boutons (src/app/admin/watcher-drafts/)
-# vivent hors chemins gelés. Autorisation humaine explicite (David) — voir PR.
-# Exemption ciblée UNIQUEMENT sur les routes du module + le schema ;
-# MIGRATION_watchercampaign_reviewstatus.sql (racine) n'est pas gelé.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$ ]]; then
-    EXEMPT_INTAKE_BRIDGE_S7_PATTERNS=(
-        "^src/app/api/admin/watcher-drafts/"
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
-# Exceptions pour l'Evidence Intake Bridge — Sprint 8 (filtre visibility public).
-# Ajoute `visibility: 'public'` au where KolTokenLink de 6 surfaces de lecture
-# publiques (explorer, cluster, coordination, reflex×2, leaderboard) pour que les
-# drafts/rejected du bridge n'apparaissent JAMAIS côté public. Behavior-preserving
-# (les liens légitimes sont tous 'public'). Aucune écriture DB, read-only.
-# Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
-# UNIQUEMENT sur kolLeaderboard.ts (le seul des 6 sous un chemin gelé, src/lib/kol/)
-# ; les 5 autres (cluster/, coordination/, explorer/, reflex/) ne sont
-# pas gelés.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint8-visibility-filter$ ]]; then
-    EXEMPT_INTAKE_BRIDGE_S8_PATTERNS=(
-        "^src/lib/kol/kolLeaderboard\.ts$"
-    )
-fi
-
-# Exceptions pour le Bridge cron safety layer (PAS de cron — juste la couche de
-# contrôle). Refactor de promoteWatcherSignalsToDraft (options + métriques),
-# télémétrie optionnelle dans resolveCanonicalToken, wrapper runBridgeJob
-# (kill switch env + JobRunLog), table JobRunLog additive (SQL Neon brut, jamais
-# prisma db push) reflétée dans le schema (anti-drift). Aucun câblage cron.
-# Autorisation humaine explicite (David) — voir PR description. Exemption ciblée
-# UNIQUEMENT sur le schema ; src/lib/watcher-bridge/,
-# src/lib/token-resolution/ et src/scripts/ ne sont pas gelés.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-bridge-cron-safety$ ]]; then
-    EXEMPT_BRIDGE_CRON_SAFETY_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-    )
-fi
-
 # Exceptions pour le module OSINT Vision Ingest V1 (admin-only, shadow mode).
 # Route EXTRACT (dry-run, zéro écriture DB) + route COMMIT (shadow : publishable
 #=false, KolTokenLink visibility='draft', PENDING jamais résolu). Migration
-# additive MIGRATION_osint_vision_ingest_v1.sql (ADD COLUMN IF NOT EXISTS sur
-# EvidenceSnapshot.extractionMethod/extractionConfidence) NON appliquée — lancée
-# manuellement par David dans le Neon SQL Editor ; le schema.prod.prisma ne fait
-# que refléter ces 2 colonnes (anti-drift). Aucune surface publique, aucun
-# couplage scoring/TigerScore/PDF. Autorisation humaine explicite (David, diff
-# validé) — voir PR description. Exemption ciblée UNIQUEMENT sur le schema, le
-# fichier migration, les routes admin du module ;
-# src/lib/osint/vision/ n'est pas un chemin gelé (passe sans exemption).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-osint-vision-ingest$ ]]; then
-    EXEMPT_OSINT_VISION_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-        "^migrations/MIGRATION_osint_vision_ingest_v1\.sql$"
-        "^src/app/api/admin/osint/"
-    )
-fi
-
-# Exceptions pour la PORTE RETAIL OSINT (Sprint C1, gated beta — construite mais
-# FERMÉE par défaut, kill switch OFF). Autorisation humaine explicite (David, GPT
-# validé) — voir PR description. Exemption CIBLÉE sur la 1re surface publique :
-# - src/app/api/osint/               : routes publiques submit + status (derrière kill switch)
-# - src/app/api/admin/osint/retail/  : processeur async admin (double kill switch)
-# Ne couvre PAS tout src/app/api/ ni src/components/. Les pages (src/app/submit/,
-# src/app/admin/osint/dashboard/) et le lib (src/lib/osint/) ne sont pas gelés.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-retail-gate$ ]]; then
-    EXEMPT_RETAIL_GATE_PATTERNS=(
-        "^src/app/api/osint/"
-        "^src/app/api/admin/osint/retail/"
-    )
-fi
-
-# Exceptions pour le fix fuite handle (sécurité — gate PUBLIC_KOL_FILTER sur 4
-# routes détail par-handle qui exposaient des données non-public sans auth).
-# Fix défensif : ajout d'un filtre publish + scrub de champs internes, aucune
-# nouvelle surface, aucune logique core/scoring touchée. Autorisation humaine
-# explicite (David, voie 1) — voir PR description.
-# Exemption STRICTEMENT limitée aux 4 fichiers de routes concernés ;
-# ne couvre PAS le reste de src/app/api/ (aucun wildcard).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
-    EXEMPT_FIX_HANDLE_LEAK_PATTERNS=(
-        "^src/app/api/v1/kol/\[handle\]/route\.ts$"
-        "^src/app/api/laundry/\[handle\]/route\.ts$"
-        "^src/app/api/kol/\[handle\]/class-action/route\.ts$"
-        "^src/app/api/kol/\[handle\]/cashout/route\.ts$"
-        "^src/app/api/watchlist/route\.ts$"
-        "^src/app/api/kol/\[handle\]/wallet-history/route\.ts$"
-    )
-fi
-
-# Exceptions pour le retrait des 5 crons morts de vercel.json (401 no-op —
-# handlers en x-cron-secret/?secret= alors que Vercel envoie Bearer ; pipelines
-# legacy supplantés par helius-scan + watcher-v2). Aucune logique code touchée :
-# on retire uniquement les déclencheurs cron, les handlers restent inertes.
-# Autorisation humaine explicite (David, voie 1) — voir PR description.
-# Exemption STRICTEMENT limitée à vercel.json.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-remove-dead-crons$ ]]; then
-    EXEMPT_REMOVE_DEAD_CRONS_PATTERNS=(
-        "^vercel\.json$"
-    )
-fi
-
-# Exceptions pour l'ajout de rate-limit sur 3 POSTs publics non-authentifiés à
-# coût/write (graph/jobs = Helius $, reflex watch + mm challenge = writes DB).
-# Le proxy exempte /api/*, aucune couverture globale. Ajout défensif : un gate
-# rate-limit en tête de handler (429 au dépassement), aucune logique métier/scoring
-# touchée. Autorisation humaine explicite (David, voie 1) — voir PR description.
-# Exemption STRICTEMENT limitée aux 3 routes concernées.
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
-    EXEMPT_RATELIMIT_POSTS_PATTERNS=(
-        "^src/app/api/scan/solana/graph/jobs/route\.ts$"
-        "^src/app/api/reflex/\[id\]/watch/route\.ts$"
-        "^src/app/api/v1/mm/challenge/route\.ts$"
-    )
-fi
-
-# Exceptions pour le hotfix garde-fou X API AUTORITATIF — bascule de la DÉCISION
-# de blocage du watcher de l'estimation $ maison (fenêtre calendaire) vers
-# l'usage X réel en POSTS sur le cycle 21-21 (GET /2/usage/tweets), fail-closed
-# avec retries. Additif : nouveau helper getProjectUsage (src/lib/xapi/, non
-# gelé, passe hors exemption) + décision posts dans la route cron + tests
-# unitaires. Aucune écriture DB, aucune migration, aucun couplage
-# scoring/TigerScore/PDF. Autorisation humaine explicite (David, voie 1) —
-# voir PR description. Exemption STRICTEMENT limitée aux 2 fichiers src/app/api/
-# concernés ; AUCUN wildcard sur src/app/api/ (toute autre
-# route src/app/api/ reste bloquée).
-if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
-    EXEMPT_XAPI_AUTHORITATIVE_PATTERNS=(
-        "^src/app/api/cron/watcher-v2/route\.ts$"
-        "^src/app/api/cron/watcher-v2/__tests__/budgetCapPosts\.test\.ts$"
-    )
-fi
-
-# Exceptions pour le câblage evidence-chain sur les flux de capture live
-# (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
-# commit opérateur, watcher bridge). Autorisation humaine explicite (David,
-# GO Phase 2 + exemption validée sur le plan d'audit) — voir PR description.
-# Exemption ciblée UNIQUEMENT sur : le schema prod (3 colonnes additives,
-# MIGRATION_evidence_provenance_v1.sql déjà appliquée par David dans Neon),
-# et les 2 routes câblées. Ne couvre PAS l'ensemble de
-# src/app/api/ ni prisma/. La logique vit hors chemins gelés
-# (src/lib/evidence-chain/, src/lib/osint/, src/lib/watcher-bridge/, src/scripts/).
-if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
-    EXEMPT_EVIDENCE_LIVE_PATTERNS=(
-        "^prisma/schema\.prod\.prisma$"
-        "^src/app/api/osint/submit/route\.ts$"
-        "^src/app/api/admin/osint/commit/route\.ts$"
-    )
-fi
-
 # ── VOIE DE MAINTENANCE DU GUARD ────────────────────────────────────────────
 # Le guard se gèle lui-même via "^scripts/guard-offline\.sh$". C'est le point :
 # sans ça, n'importe quel commit peut vider FORBIDDEN_PATTERNS noyé au milieu
@@ -530,6 +397,7 @@ fi
 
 VIOLATIONS=0
 VIOLATING_FILES=()
+LEASED_FILES=()
 
 if [[ -z "$DIFF_FILES" ]]; then
     echo "✅ GUARD: aucun fichier modifié à vérifier."
@@ -544,18 +412,6 @@ while IFS= read -r file; do
         continue
     fi
 
-    # Sur branche setup, exempter les fichiers de setup
-    if [[ "$BRANCH" == "feat/offline-mode-setup" ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SETUP_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
     # Exemptions globales offline (scopées par sous-dossier, voir liste haut de fichier)
     EXEMPT=false
     for ex in "${OFFLINE_EXEMPT_PATTERNS[@]}"; do
@@ -566,302 +422,23 @@ while IFS= read -r file; do
     done
     [[ "$EXEMPT" == "true" ]] && continue
 
-    # Sur la branche casefile-engine, exempter les paths du module.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-casefile-engine$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_CASEFILE_ENGINE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche shill-correlation, exempter les paths du module.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-shill-correlation$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SHILL_CORRELATION_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche watchlist-expansion, exempter handles.ts (source watcher).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watchlist-expansion$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_WATCHLIST_EXPANSION_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche prebuy-guard, exempter les paths du module.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-prebuy-guard$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_PREBUY_GUARD_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche xapi-usage-cron, exempter la route cron watcher-v2.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-xapi-usage-cron$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_XAPI_USAGE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche watcher-window-fix, exempter la route cron watcher-v2.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-window-fix$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_WATCHER_WINDOW_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche moonbag-watchlist, exempter handles.ts (source watcher).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-moonbag-watchlist$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_MOONBAG_WATCHLIST_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche cleanup-sweep, exempter les paths de la dette technique.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-cleanup-sweep$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_CLEANUP_SWEEP_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche evidence-schema-sync, exempter le schema (sync file-only).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-schema-sync$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_EVIDENCE_SCHEMA_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche evidence-live-ingest, exempter le schema + les 2 routes câblées.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-evidence-live-ingest$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_EVIDENCE_LIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche scan-resolver-dexscreener, exempter la route resolve + TokenPicker.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-scan-resolver-dexscreener$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_SCAN_RESOLVER_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche watcher-budget-cadence, exempter la route cron watcher-v2 + vercel.json.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-watcher-budget-cadence$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_WATCHER_BUDGET_CADENCE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche intake-bridge-sprint1-schema, exempter le schema prod (sync anti-drift).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint1-schema$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_INTAKE_BRIDGE_S1_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche intake-bridge-sprint4-draft-bridge, exempter resolve + watchlist (filtre visibility).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint4-draft-bridge$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_INTAKE_BRIDGE_S4_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche intake-bridge-sprint5-state-machine, exempter le schema prod (sync anti-drift).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint5-state-machine$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_INTAKE_BRIDGE_S5_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche intake-bridge-sprint7-approve-action, exempter les routes approve/reject + schema.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint7-approve-action$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_INTAKE_BRIDGE_S7_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche bridge-cron-safety, exempter le schema prod (sync JobRunLog).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-bridge-cron-safety$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_BRIDGE_CRON_SAFETY_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche intake-bridge-sprint8-visibility-filter, exempter kolLeaderboard.ts (gelé).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-intake-bridge-sprint8-visibility-filter$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_INTAKE_BRIDGE_S8_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche osint-vision-ingest, exempter le schema + migration + routes admin du module.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-osint-vision-ingest$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_OSINT_VISION_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche retail-gate, exempter les routes publiques submit/status + le processeur retail.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-retail-gate$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_RETAIL_GATE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche fix-handle-leak, exempter STRICTEMENT les 4 routes détail patchées.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-fix-handle-leak$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_FIX_HANDLE_LEAK_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche remove-dead-crons, exempter STRICTEMENT vercel.json (retrait des crons morts).
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-remove-dead-crons$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_REMOVE_DEAD_CRONS_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche ratelimit-public-posts, exempter STRICTEMENT les 3 routes patchées.
-    if [[ "$BRANCH" =~ ^feat/cc-offline-[0-9]+-ratelimit-public-posts$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_RATELIMIT_POSTS_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
-    # Sur la branche hotfix/xapi-usage-authoritative, exempter STRICTEMENT les 2
-    # fichiers src/app/api/ du hotfix (aucun wildcard src/app/api/).
-    if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
-        EXEMPT=false
-        for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
-            if [[ "$file" =~ $ex ]]; then
-                EXEMPT=true
-                break
-            fi
-        done
-        [[ "$EXEMPT" == "true" ]] && continue
-    fi
-
 
 
 
     for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
         if [[ "$file" =~ $pattern ]]; then
+            # Une lease OUVERTE, NON EXPIRÉE, nommant EXACTEMENT ce fichier,
+            # accordée à cette branche, sur ce SHA de base. Sinon : violation.
+            if lease_autorise "$file"; then
+                LEASED_FILES+=("$file — lease $LEASE_MOTIF")
+                break
+            fi
             VIOLATIONS=$((VIOLATIONS + 1))
-            VIOLATING_FILES+=("$file (matched $pattern)")
+            if [[ -n "$LEASE_MOTIF" ]]; then
+                VIOLATING_FILES+=("$file (matched $pattern) — $LEASE_MOTIF")
+            else
+                VIOLATING_FILES+=("$file (matched $pattern)")
+            fi
             break
         fi
     done
@@ -870,6 +447,10 @@ done <<< "$DIFF_FILES"
 FILE_COUNT=$(echo "$DIFF_FILES" | grep -c . || echo 0)
 
 echo "📋 GUARD: branche=$BRANCH, mode=$MODE, fichiers=$FILE_COUNT"
+echo "🔑 GUARD/LEASE: ${#LEASES[@]} lease(s) dans l'état · now évalué = $(date -u -r "$(lease_maintenant)" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$(lease_maintenant)" +%Y-%m-%dT%H:%M:%SZ)"
+if (( ${#LEASED_FILES[@]} > 0 )); then
+    for lf in "${LEASED_FILES[@]}"; do echo "   🔓 $lf"; done
+fi
 
 if [[ $VIOLATIONS -gt 0 ]]; then
     echo ""
