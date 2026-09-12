@@ -20,8 +20,11 @@
 # production
 /build
 
-# misc
+# macOS
 .DS_Store
+**/.DS_Store
+
+# misc
 *.pem
 
 # debug
