@@ -22,6 +22,10 @@
 
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
+import { admettreAnonyme, emettre, projeterTexte } from "@/lib/governance/audienceProjection";
+import { magasinPrisma, resoudreSujetAdmissible } from "@/lib/governance/autoriteSujet";
+import { cleDeSujet } from "@/lib/governance/invariants/canonicalSubjectHandle";
+import { estRefus } from "@/lib/governance/uniteGouvernee";
 
 export interface TelegramMessage {
   message_id: number;
@@ -37,10 +41,57 @@ export interface TelegramUpdate {
   edited_message?: TelegramMessage;
 }
 
+declare const EMIS_PAR_LA_FRONTIERE: unique symbol;
+
+/**
+ * ─── LA CHARGE DU CANAL, ET ELLE NE SE CONSTRUIT PLUS À LA MAIN ─────────
+ *
+ * Le symbole unique rend cette forme inconstructible hors de ce module :
+ * `{ text: "…" }` n'est plus assignable à `TelegramReply`. `composer()` est
+ * le SEUL producteur, et il passe par `projeterTexte` puis `emettre`.
+ *
+ * C'est ce qui rend la marque PORTANTE sur un canal : sans ça, la déclaration
+ * serait posée à côté d'un `sendMessage` qui émet ce qu'il veut — exactement
+ * le défaut que le module de projection existe pour fermer.
+ */
 export interface TelegramReply {
   text: string;
   parse_mode?: "Markdown" | "HTML";
   disable_web_page_preview?: boolean;
+  readonly [EMIS_PAR_LA_FRONTIERE]: true;
+}
+
+/**
+ * ⚠ L'AUDIENCE DE CE CANAL N'EST PAS RATIFIÉE — et on ne l'invente pas.
+ *
+ * Mesuré : le destinataire est un `chat_id` venu de la requête entrante, que
+ * l'application n'émet ni ne valide ; `TELEGRAM_WEBHOOK_SECRET` authentifie
+ * Telegram, pas l'abonné ; `msg.from` (l. 29) et `msg.chat.type` (l. 27) sont
+ * déclarés et jamais lus, donc le destinataire peut être un groupe de N
+ * membres, N inconnu et non borné. L'audience est AUTO-DÉSIGNÉE.
+ *
+ * On applique le PLANCHER en attendant le ruling : la moins privilégiée des
+ * trois, donc le containment le plus strict. Le motif porte la question
+ * ouverte plutôt que de la refermer.
+ */
+const AUDIENCE_DU_CANAL = admettreAnonyme(
+  "canal Telegram — audience ABONNE auto-designee (chat_id entrant, from/chat.type jamais lus). " +
+    "Nature d'audience NON RATIFIEE : plancher ANONYMOUS applique par prudence, pas par decision.",
+);
+
+/** L'UNIQUE producteur de charge du canal. Tout passe par la frontière. */
+function composer(
+  texte: string,
+  parse_mode?: "Markdown" | "HTML",
+): TelegramReply {
+  const { texte: emis } = emettre(
+    projeterTexte(AUDIENCE_DU_CANAL, texte, (t) => t, "text/markdown"),
+  );
+  return {
+    text: emis,
+    parse_mode,
+    disable_web_page_preview: true,
+  } as TelegramReply;
 }
 
 const HELP_TEXT = [
@@ -134,25 +185,21 @@ function formatScoreReply(
   lines.push("");
   lines.push("Full report: https://app.interligens.com");
 
-  return {
-    text: lines.join("\n"),
-    parse_mode: "Markdown",
-    disable_web_page_preview: true,
-  };
+  return composer(lines.join("\n"), "Markdown");
 }
 
 export async function handleScanCommand(arg: string): Promise<TelegramReply> {
   const address = arg.trim();
   if (!address) {
-    return {
-      text: "Usage: `/scan <address>`\nExample: `/scan 0xa5B0eDF6B55128E0DdaE8e51aC538c3188401D41`",
-      parse_mode: "Markdown",
-    };
+    return composer(
+      "Usage: `/scan <address>`\nExample: `/scan 0xa5B0eDF6B55128E0DdaE8e51aC538c3188401D41`",
+      "Markdown",
+    );
   }
   if (!isValidAddress(address)) {
-    return {
-      text: "That doesn't look like a valid crypto address. Send an EVM (0x…) or Solana base58 address.",
-    };
+    return composer(
+      "That doesn't look like a valid crypto address. Send an EVM (0x…) or Solana base58 address.",
+    );
   }
 
   try {
@@ -185,59 +232,121 @@ export async function handleScanCommand(arg: string): Promise<TelegramReply> {
     });
   } catch (err) {
     console.error("[telegram-bot] scan compute failed", err);
-    return {
-      text: "Scoring service unreachable. Please try again in a minute.",
-    };
+    return composer("Scoring service unreachable. Please try again in a minute.");
   }
 }
 
+/**
+ * ─── LE REFUS DU CANAL — UNE SEULE SUITE D'OCTETS, TROIS RAISONS ────────
+ *
+ * `SUJET_ABSENT`, `SUJET_NON_PUBLIE` et `CONFLIT_IDENTITE` rendent LA MÊME
+ * chaîne, et c'est elle qui rend le containment uniforme possible sur ce
+ * canal.
+ *
+ * Pourquoi ça marche ici alors que ça ne marche pas sur la Watchlist : `/kol`
+ * est une requête PONCTUELLE. Il n'y a pas de forme de collection à préserver,
+ * pas de 11 lignes riches contre 96 pauvres. L'unité de containment peut être
+ * la réponse elle-même.
+ *
+ * L'écho du handle ne porte aucune information de retour : c'est l'ENTRÉE DE
+ * L'ABONNÉ, normalisée par une clé déterministe. Sous cette condition, les 261
+ * sujets non publiés se confondent avec les 140 lignes inatteignables ET avec
+ * l'ensemble non borné des handles qui n'existent pas. Trois populations, une
+ * réponse.
+ *
+ * ⚠ BORNE DÉCLARÉE, NON COMBLÉE : un corps identique n'est pas une réponse
+ * identique sur un canal où la LATENCE est observable. Les trois chemins
+ * interrogent Postgres, donc l'écart est petit — petit n'est pas nul, et je ne
+ * l'ai pas mesuré.
+ */
+export function messageDeRefusKol(cle: string): string {
+  return `No KOL profile found for \`@${escapeMarkdown(cle)}\`.`;
+}
+
+const refusIdentique = (cle: string): TelegramReply =>
+  composer(messageDeRefusKol(cle), "Markdown");
+
 export async function handleKolCommand(arg: string): Promise<TelegramReply> {
-  const handle = arg.replace(/^@/, "").toLowerCase().trim();
-  if (!handle) {
-    return {
-      text: "Usage: `/kol <twitter_handle>`\nExample: `/kol zachxbt`",
-      parse_mode: "Markdown",
-    };
+  // CANONICAL_SUBJECT_HANDLE — la clé se calcule AVANT tout lookup.
+  const cle = cleDeSujet(arg);
+  if (!cle) {
+    return composer(
+      "Usage: `/kol <twitter_handle>`\nExample: `/kol zachxbt`",
+      "Markdown",
+    );
   }
   try {
     const { PrismaClient } = await import("@prisma/client");
     const prisma = new PrismaClient();
     try {
-      const kol = await prisma.kolProfile.findUnique({
-        where: { handle },
-        select: { handle: true, displayName: true, rugCount: true, tier: true, riskFlag: true },
-      });
-      if (!kol) {
-        return { text: `No KOL profile found for \`@${escapeMarkdown(handle)}\`.`, parse_mode: "Markdown" };
+      // ██ L'AUTORITÉ DE PUBLICATION DU SUJET, CONSOMMÉE PAR IMPORT ██
+      //
+      // `magasinPrisma` compose `FILTRE_SUJET_ADMISSIBLE`, qui EST
+      // `PUBLIC_KOL_FILTER` — le même objet que toutes les autres surfaces
+      // nominatives, pas une copie. C'est la règle de fermeture ratifiée :
+      // « Telegram /kol must consume the same governed subject-publication
+      //   authority as every other nominative projection. »
+      //
+      // Avant ce lot, la ligne d'ici était
+      //     findUnique({ where: { handle } })
+      // sans aucun filtre de publication : 261 sujets sans décision de
+      // publication répondaient, tous avec un `riskFlag`, 202 avec un `tier`.
+      const sujet = await resoudreSujetAdmissible<{
+        handle: string;
+        publishStatus: string;
+        displayName: string | null;
+        tier: string | null;
+        riskFlag: string;
+        rugCount: number | null;
+      }>(
+        magasinPrisma(prisma, {
+          displayName: true,
+          tier: true,
+          riskFlag: true,
+          rugCount: true,
+        }),
+        cle,
+      );
+
+      if (estRefus(sujet)) {
+        // Le motif part au JOURNAL, jamais dans la charge. Un motif qui
+        // voyagerait dans le message serait l'oracle livré avec la garde.
+        console.info("[telegram-bot] /kol refus", { cle, raison: sujet.raison });
+        return refusIdentique(cle);
       }
-      const rugLine = (kol.rugCount ?? 0) > 0
-        ? `\n⚠️ Rug count: *${kol.rugCount}*`
-        : "";
-      return {
-        text: [
+
+      const kol = sujet.ligne;
+      const rugLine = (kol.rugCount ?? 0) > 0 ? `\n⚠️ Rug count: *${kol.rugCount}*` : "";
+      return composer(
+        [
           `🕵️ *KOL PROFILE*`,
           `Handle: \`@${escapeMarkdown(kol.handle)}\``,
           `Name: ${escapeMarkdown(kol.displayName ?? "—")}`,
           `Tier: *${escapeMarkdown(kol.tier ?? "UNKNOWN")}*`,
           `Risk flag: ${escapeMarkdown(kol.riskFlag)}${rugLine}`,
         ].join("\n"),
-        parse_mode: "Markdown",
-      };
+        "Markdown",
+      );
     } finally {
       await prisma.$disconnect();
     }
   } catch (err) {
+    // TROISIÈME CLASSE DE RÉPONSE, et elle est DÉCLARÉE : une panne
+    // d'infrastructure rend un message distinct. Elle ne corrèle avec aucune
+    // propriété du sujet — elle ne dépend que de la joignabilité de la base —
+    // donc elle n'est pas un oracle. Si un jour elle se mettait à dépendre du
+    // sujet, elle en deviendrait un.
     console.error("[telegram-bot] kol lookup failed", err);
-    return { text: "KOL lookup failed. Try again later." };
+    return composer("KOL lookup failed. Try again later.");
   }
 }
 
 export function handleHelpCommand(): TelegramReply {
-  return { text: HELP_TEXT, parse_mode: "Markdown", disable_web_page_preview: true };
+  return composer(HELP_TEXT, "Markdown");
 }
 
 export function handleUnknown(): TelegramReply {
-  return { text: UNKNOWN_TEXT, parse_mode: "Markdown", disable_web_page_preview: true };
+  return composer(UNKNOWN_TEXT, "Markdown");
 }
 
 /**

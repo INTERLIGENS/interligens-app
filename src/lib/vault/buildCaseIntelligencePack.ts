@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redactProceeds } from "@/lib/kol/proceedsGate";
+import { entreeAdmissiblePourModele } from "@/lib/governance/admissibiliteModele";
 
 export type EnrichedEntity = {
   id: string;
@@ -524,10 +525,35 @@ export async function buildCaseIntelligencePack(
       eventCountRow.length > 0 ? Number(eventCountRow[0].count) : 0;
   }
 
-  // Intel vault refs from KolCase
+  // ─── LLM INPUT ADMISSIBILITY — le pack est construit d'unités admissibles
+  //
+  // « Un modèle n'est pas une frontière d'admissibilité. » Ce qui entre ici
+  // part ENTIER dans le system prompt (assistant/route.ts:27,
+  // `JSON.stringify(pack, null, 2)`), et rien en aval n'est démontrable par
+  // liaison statique.
+  //
+  // `KolCase.evidence` n'a AUCUNE fondation possible : la table ne porte ni
+  // `publishStatus`, ni `visibility`, ni `isPublic`, et aucune des cinq
+  // décisions du référentiel ne s'y applique. `entreeAdmissiblePourModele`
+  // rend donc `undefined` — le champ DISPARAÎT du pack, il n'est pas remplacé.
+  //
+  // Une chaîne de remplacement (« [redacted] ») aurait été un différentiel :
+  // elle dirait qu'il y avait quelque chose. Le refus est identique, donc
+  // silencieux, donc sans oracle.
+  //
+  // Le `title` reste : `KOL Case <caseId> (<role>)` est une RÉFÉRENCE de
+  // dossier, pas une assertion narrative sur une personne. C'est la part que
+  // ce lot ne contient pas, et elle est déclarée comme telle.
   const intelVaultRefs = intelCases.slice(0, 5).map((c) => ({
     title: `KOL Case ${c.caseId} (${c.role})`,
-    summary: c.evidence ?? undefined,
+    summary: entreeAdmissiblePourModele(
+      "KolCase.evidence",
+      c.caseId,
+      c.evidence,
+      // Aucune valeur de publication à lire : il n'existe pas de colonne de
+      // décision sur `KolCase`. On passe `null` parce que c'est le fait.
+      null,
+    )?.valeur,
   }));
 
   // Twin state — gap detection (lifted from CaseTwin rules)

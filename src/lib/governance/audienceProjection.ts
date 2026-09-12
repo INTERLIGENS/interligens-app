@@ -68,11 +68,43 @@
 // garde de capacité est le FILET SOUS LE TYPE, pas son doublon — c'est elle
 // qui attrape ce que le type ne peut structurellement pas voir.
 
+// ⚠ IMPORT RELATIF, ET C'EST UNE CONTRAINTE DE PREUVE, PAS UN STYLE.
+//
+// S23 démontre la frontière en compilant un corpus synthétique avec `tsc`
+// SANS tsconfig — donc sans les alias `@/`. Un import aliasé ici casserait la
+// résolution de TOUS les cas du corpus, y compris les mutants, et la garde
+// rendrait vert en n'ayant rien compilé. Le chemin relatif garde le module
+// compilable isolément, ce qui est exactement ce que la preuve exige.
+import {
+  devoilerEnregistrement,
+  type DevoileDe,
+  type EnregistrementGouverne,
+} from "./uniteGouvernee";
+
 /**
  * Les audiences gouvernées.
  *
  * `OPERATOR` est la seule à droits maximaux, et c'est ce qui lui permet
  * d'émettre intégralement — voir `projeterIntegralement`.
+ *
+ * ⚠ TROIS VALEURS, ET UNE QUATRIÈME N'EST PAS CRÉÉE ICI.
+ *
+ * Le canal Telegram a une audience qui n'entre dans aucune des trois :
+ * le destinataire est un `chat_id` venu de la requête entrante, que
+ * l'application n'émet ni ne valide ; le seul secret vérifié authentifie
+ * TELEGRAM, pas l'abonné ; `msg.from` et `msg.chat.type` sont déclarés et
+ * jamais lus, donc le destinataire peut être un groupe de N membres, N
+ * inconnu. L'audience est AUTO-DÉSIGNÉE.
+ *
+ * La ranger en `ANONYMOUS` serait faux au sens strict, et le module le dit
+ * lui-même plus bas : `admettreAnonyme` exige un motif écrit précisément pour
+ * que « l'absence de porte ne prouve jamais une publication intentionnelle ».
+ *
+ * Ce qu'on fait en attendant le ruling : on applique le PLANCHER. Traiter une
+ * audience non ratifiée comme la moins privilégiée est fail-closed — le
+ * containment y est le plus strict, et le motif écrit porte la question
+ * ouverte au lieu de la refermer par commodité. Inventer une quatrième valeur
+ * aurait tranché à la place de ceux qui doivent trancher.
  */
 export type Audience = "ANONYMOUS" | "PARTNER" | "OPERATOR";
 
@@ -190,20 +222,42 @@ export function admettreAnonyme(motif: string): Admission<"ANONYMOUS"> {
 }
 
 /**
- * LA PROJECTION JSON — garantie RESTREINTE.
+ * LA PROJECTION JSON — garantie RESTREINTE, et désormais GOUVERNÉE.
  *
  * Elle prend l'admission, l'entrée, et la fonction qui restreint. La valeur
  * rendue n'existe que parce que la projection a tourné : c'est en cela que la
  * déclaration est PORTANTE et non décorative.
+ *
+ * ─── L'AXE 3 EST ENTRÉ DANS CETTE SIGNATURE, ET ÇA CHANGE LE CONTRAT ────
+ *
+ * `Out` n'est plus un `object` quelconque : c'est un `EnregistrementGouverne`,
+ * donc un enregistrement dont CHAQUE valeur a présenté une
+ * `DecisionDePublication`. Écrire `(e) => ({ ref: e.ref })` NE COMPILE PLUS —
+ * il n'existe aucun chemin de type entre un champ nu et cette forme.
+ *
+ * Pourquoi ici et pas dans un troisième module : les deux premiers axes
+ * répondent à « qui est admis » et « que reçoit cette audience ». Le maillon
+ * manquant est EN AMONT des deux — une unité peut être inadmissible pour
+ * TOUTE audience, y compris OPERATOR. Le poser à côté en aurait fait une
+ * déclaration qu'on peut oublier de consommer ; le poser DANS la signature en
+ * fait une condition de compilation.
+ *
+ * ⚠ CE RESSERREMENT A CASSÉ LE CORPUS CONFORME DE S23, ET C'ÉTAIT INÉVITABLE.
+ * Un contrat de frontière qui change doit casser les surfaces qui s'y
+ * appuient, sinon il n'a pas changé. Les mutants de S23 sont tous conservés,
+ * avec leurs verdicts : seuls les cas CONFORMES ont été réécrits pour
+ * présenter une décision. Un mutant retiré aurait été un affaiblissement ;
+ * un cas conforme mis à jour est le contrat qui se propage.
  */
-export function projeter<A extends Audience, In, Out extends object>(
+export function projeter<A extends Audience, In, Out extends EnregistrementGouverne>(
   admission: Admission<A>,
   entree: In,
   projection: (entree: In) => PasUneReponse<Out>,
-): Admissible<A, { forme: "json"; valeur: Out }> {
+): Admissible<A, { forme: "json"; valeur: DevoileDe<Out> }> {
   void admission;
-  return { forme: "json", valeur: projection(entree) } as unknown as Admissible<
-    A, { forme: "json"; valeur: Out }
+  const gouvernee = projection(entree) as Out;
+  return { forme: "json", valeur: devoilerEnregistrement(gouvernee) } as unknown as Admissible<
+    A, { forme: "json"; valeur: DevoileDe<Out> }
   >;
 }
 
@@ -331,4 +385,41 @@ export function repondre<A extends Audience, C extends Charge>(
         headers: { "content-type": charge.typeMime, ...enTetes },
       });
   }
+}
+
+/**
+ * LE SECOND TERMINAL — pour un CANAL SORTANT, et il fallait le mesurer pour
+ * savoir qu'il manquait.
+ *
+ * ─── POURQUOI `repondre()` N'A AUCUNE PRISE ICI ─────────────────────────
+ *
+ * `repondre` construit une `Response`. Le canal Telegram n'émet JAMAIS par une
+ * `Response` : la réponse HTTP de `POST /api/telegram/webhook` vaut
+ * `{"ok":true}` (route.ts:66) et ne transporte rien. La charge part par un
+ * appel SORTANT, `fetch` vers `api.telegram.org`.
+ *
+ * C'est la raison mécanique — et la seule — pour laquelle il faut DEUX points
+ * d'application. Pas deux boundaries : le module, les axes et les garanties
+ * sont les mêmes. Un terminal de plus, parce qu'il y a une forme de sortie de
+ * plus.
+ *
+ * ─── CE QUE LA GARANTIE VAUT SUR CE CHEMIN ──────────────────────────────
+ *
+ * `GarantieDe<{forme:"texte"}>` vaut **ATTESTEE**, et c'est structurel : les
+ * champs sont interpolés dans une chaîne avant l'émission, donc la projection
+ * ne peut plus démontrer ce qu'elle a retenu. Même faiblesse que le PDF, même
+ * faiblesse que le prompt du modèle, et pour la même raison.
+ *
+ * ─── ET UNE PROPRIÉTÉ QUE NI RESTREINTE NI ATTESTEE NE NOMME ────────────
+ *
+ * Un message remis est archivé chez le destinataire. Aucun type, aucune garde,
+ * aucun déploiement ne le retire. L'émission est IRRÉVOCABLE ET RÉPLIQUÉE.
+ * Cette propriété est nommée ici et n'est pas rangée : lui donner un nom de
+ * garantie laisserait croire qu'on la maîtrise.
+ */
+export function emettre<A extends Audience>(
+  valeur: Admissible<A, { forme: "texte"; typeMime: string; texte: string }>,
+): { readonly texte: string; readonly typeMime: string } {
+  const charge = valeur as unknown as { texte: string; typeMime: string };
+  return { texte: charge.texte, typeMime: charge.typeMime };
 }
