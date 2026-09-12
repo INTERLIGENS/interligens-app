@@ -388,6 +388,45 @@ export function repondre<A extends Audience, C extends Charge>(
 }
 
 /**
+ * LE CORPS DE REFUS — trois champs, et AUCUN ne peut porter de donnée sujet.
+ *
+ * C'est le type qui fait le travail : `refus`, `code` et `surface` suffisent à
+ * dire « cette surface n'est pas publiée », et il n'y a aucun champ où glisser
+ * un compte, une longueur, un identifiant ou une liste. Un mutant qui voudrait
+ * ajouter `total: 107` ne compile pas.
+ *
+ * Pourquoi ça compte ici plus qu'ailleurs : sur la Watchlist, le test d'oracle
+ * rend NON. La partition 11 / 96 est reconstructible par six différentiels
+ * indépendants, dont le moins cher est la présence d'une balise `<a>`. Un refus
+ * qui laisserait passer un seul compte rouvrirait un septième différentiel.
+ */
+export interface CorpsDeRefus {
+  readonly refus: true;
+  readonly code: string;
+  readonly surface: string;
+}
+
+/**
+ * PROJETER UN REFUS — il traverse la frontière comme le reste.
+ *
+ * Un refus est du contenu émis : il doit passer par la même porte, sinon la
+ * surface aurait un second chemin de sortie que rien ne gouverne — et c'est
+ * exactement par ce genre de porte dérobée que le contenu revient.
+ *
+ * Il ne présente PAS de `DecisionDePublication`, et c'est correct : il ne parle
+ * d'aucun sujet. Le type `CorpsDeRefus` est ce qui le garantit.
+ */
+export function projeterRefus<A extends Audience>(
+  admission: Admission<A>,
+  corps: CorpsDeRefus,
+): Admissible<A, { forme: "json"; valeur: CorpsDeRefus }> {
+  void admission;
+  return { forme: "json", valeur: corps } as unknown as Admissible<
+    A, { forme: "json"; valeur: CorpsDeRefus }
+  >;
+}
+
+/**
  * LE SECOND TERMINAL — pour un CANAL SORTANT, et il fallait le mesurer pour
  * savoir qu'il manquait.
  *

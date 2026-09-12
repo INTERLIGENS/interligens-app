@@ -8,6 +8,7 @@ import {
   profondeurLaPlusForte,
   rangDeProfondeur,
 } from '@/lib/governance/invariants/evidenceDepth'
+import { resumeGouverne } from '@/lib/governance/surfaces/explorer'
 
 export type DossierKind = 'case' | 'launch' | 'platform'
 
@@ -150,9 +151,15 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
       id: `case-${caseId}`,
       kind: 'case',
       title: caseId,
-      summary: evidenceSnippets.length > 0
-        ? evidenceSnippets.slice(0, 2).join(' | ')
-        : null,
+      // `KolCase.evidence` n'a aucune fondation possible : la table ne porte ni
+      // publishStatus, ni visibility, ni isPublic. Les quatre dossiers servis
+      // portent « Under investigation », « cross-ref @lynk0x ongoing »,
+      // « Source: mariaqueennft » et « Master controller qiwu.eth ».
+      summary: resumeGouverne(
+        'KolCase.evidence',
+        evidenceSnippets.length > 0 ? evidenceSnippets.slice(0, 2).join(' | ') : null,
+        null,
+      ),
       primaryDate: entries[0].createdAt.toISOString(),
       linkedActors: actors,
       linkedActorsCount: actors.length,
@@ -223,7 +230,15 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       id: `launch-${tokenKey}`,
       kind: 'launch',
       title: `${tokenKey} (${chain})`,
-      summary: notes.length > 0 ? notes.slice(0, 2).join(' | ') : null,
+      // `KolTokenLink.visibility='public'` autorise le LIEN, jamais la prose de
+      // la note. Neuf dossiers « launch » sur neuf portent du contenu interne,
+      // zéro propre — dont « Dad wallet received full supply allocation and
+      // dumped », qui est servi PAR ICI et pas par KolCase.evidence.
+      summary: resumeGouverne(
+        'KolTokenLink.note',
+        notes.length > 0 ? notes.slice(0, 2).join(' | ') : null,
+        null,
+      ),
       primaryDate: entries[0].createdAt.toISOString(),
       linkedActors: actors,
       linkedActorsCount: actors.length,
@@ -256,7 +271,10 @@ export async function getPlatformCaseDossiers(): Promise<DossierItem[]> {
     id: `platform-${r.ref}`,
     kind: 'platform',
     title: r.codename,
-    summary: r.summary ?? r.title,
+    // Le SEUL résumé gouverné du corpus : `PlatformCaseFile.publishStatus`
+    // vaut 'published' (le `where` ci-dessus), et cette décision porte bien sur
+    // le dossier dont on rend le résumé.
+    summary: resumeGouverne('PlatformCaseFile.summary', r.summary ?? r.title, r.publishStatus),
     primaryDate: (r.publishedDate ?? r.createdAt).toISOString(),
     linkedActors: [],
     linkedActorsCount: 0,

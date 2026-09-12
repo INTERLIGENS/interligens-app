@@ -38,37 +38,14 @@
 // OBSERVATION factuelle et du JSON de seed. Une liste noire de noms se serait
 // trompée trois fois sur quatre.
 
-import {
-  constaterDecision,
-  type DecisionDePublication,
-  type ReferentielDeDecision,
-} from "@/lib/governance/uniteGouvernee";
+import { constaterDecision, type DecisionDePublication } from "./uniteGouvernee";
+import { fondationPossiblePour, type CheminDeDonnee } from "./fondations";
 
-/** Un chemin de donnée, nommé par (table, colonne). */
-export type CheminDeDonnee =
-  | "KolCase.evidence"
-  | "KolProfile.displayName"
-  | "KolProfile.tier"
-  | "PlatformCaseFile.summary";
-
-/**
- * Quelle décision de publication PEUT fonder ce chemin. `null` signifie qu'il
- * n'en existe AUCUNE — pas qu'on a oublié de la chercher.
- *
- * `KolCase` n'a aucune colonne de publication : ni `publishStatus`, ni
- * `visibility`, ni `isPublic`. Aucune des cinq décisions du référentiel ne
- * porte sur elle. Ce `null` est donc une mesure, pas une politique.
- */
-const FONDATION_POSSIBLE: Record<CheminDeDonnee, ReferentielDeDecision | null> = {
-  "KolCase.evidence": null,
-  "KolProfile.displayName": "KolProfile.publishStatus",
-  "KolProfile.tier": "KolProfile.publishStatus",
-  "PlatformCaseFile.summary": "PlatformCaseFile.publishStatus",
-};
-
-export function fondationPossiblePour(chemin: CheminDeDonnee): ReferentielDeDecision | null {
-  return FONDATION_POSSIBLE[chemin];
-}
+// La table vit dans `fondations.ts` et elle est PARTAGÉE. Un second
+// exemplaire ici serait l'Invariant Propagation Failure appliqué à la
+// gouvernance elle-même : le modèle et l'Explorer répondraient à deux
+// versions de la même question.
+export { fondationPossiblePour, type CheminDeDonnee } from "./fondations";
 
 /**
  * CE QUI ENTRE DANS LE PROMPT — et il faut présenter la décision.

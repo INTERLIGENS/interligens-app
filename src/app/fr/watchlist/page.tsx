@@ -104,6 +104,10 @@ function timeAgo(d: string | null) {
 export default function WatchlistPage() {
   const [entries, setEntries] = useState<WatchEntry[]>([])
   const [loading, setLoading] = useState(true)
+  // COLLECTION AUTHORITY — la route rend un refus constant, sans aucun champ
+  // par sujet. La page doit le RECONNAÎTRE : rendre une liste vide sous le
+  // bandeau « UNDER ACTIVE SURVEILLANCE » affirmerait encore quelque chose.
+  const [retiree, setRetiree] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const [search, setSearch] = useState('')
@@ -111,7 +115,10 @@ export default function WatchlistPage() {
   useEffect(() => {
     fetch('/api/watchlist')
       .then(r => r.json())
-      .then(d => setEntries(d.entries ?? []))
+      .then(d => {
+        if (d && d.refus === true) { setRetiree(true); return }
+        setEntries(d.entries ?? [])
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -128,6 +135,24 @@ export default function WatchlistPage() {
     }
     return true
   })
+
+  if (retiree) {
+    return (
+      <div className="min-h-screen bg-black text-zinc-100 font-sans antialiased pb-20">
+        <BetaNav />
+        <main className="max-w-3xl mx-auto px-6 py-24">
+          <h1 className="text-3xl font-black uppercase tracking-widest">WATCHLIST</h1>
+          <div className="mt-6 h-px w-16" style={{ backgroundColor: '#FF6B00' }} />
+          <p className="mt-8 text-base text-zinc-100">Cette surface n&apos;est plus servie.</p>
+          <p className="mt-4 text-sm leading-relaxed text-zinc-400">Nommer une personne sur une liste de surveillance est en soi une assertion publiée, indépendamment des champs affichés pour chaque entrée. Aucune décision de publication ne couvre cette assertion : la projection est retirée.</p>
+          <p className="mt-4 text-sm leading-relaxed text-zinc-400">Aucune donnée n&apos;a été supprimée. La watchlist reste disponible comme outil interne d&apos;enquête.</p>
+          <p className="mt-10 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+            COLLECTION_AUTHORITY_REQUIRED
+          </p>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans antialiased pb-20">
