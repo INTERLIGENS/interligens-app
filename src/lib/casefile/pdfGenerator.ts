@@ -6,10 +6,10 @@
 // Sections are included only when the corresponding input data is present.
 
 import { createHash } from "node:crypto";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import chromium from "@sparticuz/chromium-min";
 import puppeteer from "puppeteer-core";
 import { assertNoContainedClaim, isAddressWithheld } from "./containment";
+import { uploadPdf, isStorageEnabled } from "@/lib/storage/pdfStorage";
 import { SURFACE_AUTHORITIES } from "./surfaceRegistry";
 import type { PublicClaim } from "./canonicalReader";
 
@@ -208,6 +208,12 @@ export type CaseFilePdfResult = {
   success: boolean;
   pdfBytes?: Uint8Array;
   r2Key?: string;
+  /**
+   * L'identifiant de registre de l'artefact archivé. Présent seulement quand
+   * l'archivage a été demandé ET que l'opération gouvernée s'est CLOSE —
+   * c'est lui qui relie le fichier remis à la ligne d'autorité qui le fonde.
+   */
+  registreId?: string;
   error?: string;
 };
 
@@ -648,34 +654,48 @@ export async function generateCaseFilePdf(
       await browser.close();
     }
 
+    // ── E-RC — LE RÉSIDUEL DE LA LIGNE 664, REFERMÉ ──────────────────────
+    //
+    // ██  "Storage identity is part of governed object authority when it    ██
+    // ██   encodes semantic identity, even if that identity is never        ██
+    // ██   rendered to an end user."                                        ██
+    //
+    // Ce bloc fabriquait sa clé sur place : `casefiles/{case_id}/{case_id}_{ts}.pdf`
+    // — le `case_id` en clair, DEUX FOIS, dans un nom qui voyage avec le
+    // fichier. Il ouvrait en plus son PROPRE S3Client, donc un second chemin
+    // d'écriture vers le même compartiment, hors de toute primitive commune :
+    // un gate posé ailleurs ne l'aurait jamais vu passer.
+    //
+    // Il passe désormais par l'allocateur. L'identité sémantique part au
+    // REGISTRE (`subject`), la clé devient opaque, et l'objet entre sous une
+    // autorité déjà enregistrée — INTENDED → PUT → REGISTERED.
+    //
+    // Le refus quand le stockage gouverné est indisponible est DÉLIBÉRÉ et il
+    // est bruyant : l'ancien code testait quatre variables d'environnement et,
+    // si l'une manquait, n'écrivait rien EN SILENCE tout en rendant
+    // `success: true`. L'appelant croyait avoir archivé. On préfère l'échec
+    // nommé — « No registry authority → no governed artifact production ».
     let r2Key: string | undefined;
+    let registreId: string | undefined;
     if (options?.uploadToR2) {
-      const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env;
-      if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME) {
-        const r2 = new S3Client({
-          region: "auto",
-          endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-          credentials: {
-            accessKeyId: R2_ACCESS_KEY_ID,
-            secretAccessKey: R2_SECRET_ACCESS_KEY,
-          },
-        });
-        const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        const slug = input.case_meta.case_id.replace(/[^a-zA-Z0-9-]/g, "_");
-        r2Key = `casefiles/${slug}/${slug}_${ts}.pdf`;
-        await r2.send(
-          new PutObjectCommand({
-            Bucket: R2_BUCKET_NAME,
-            Key: r2Key,
-            Body: pdfBytes,
-            ContentType: "application/pdf",
-            CacheControl: "no-cache",
-          })
+      if (!isStorageEnabled()) {
+        throw new Error(
+          "[casefile] archivage demandé alors que le stockage gouverné est " +
+            "indisponible (PDF_STORAGE_ENABLED / credentials R2). Aucun objet " +
+            "n'est écrit hors registre : no registry authority → no governed " +
+            "artifact production.",
         );
       }
+      const upload = await uploadPdf({
+        buffer: Buffer.from(pdfBytes),
+        subject: input.case_meta.case_id,
+        batchId: "casefile-generator",
+      });
+      r2Key = upload.key;
+      registreId = upload.registreId;
     }
 
-    return { success: true, pdfBytes, r2Key };
+    return { success: true, pdfBytes, r2Key, registreId };
   } catch (err) {
     return {
       success: false,

@@ -533,20 +533,38 @@ describe("S19/ag4a — 1 · LES DEUX SONT DISPONIBLES AU MÊME MOMENT", () => {
   // pour MESURER LE PARTAGE au lieu de l'affirmer en bloc : c'est cette
   // répartition-là qui est le sujet de RC-5, et une formulation en bloc
   // aurait perdu l'information au moment précis où elle devient actionnable.
-  it("LA RÈGLE QUI TRANCHE — il n'y en a toujours pas, et le gabarit décide en ordre dispersé", () => {
+  it("LES EMPLACEMENTS D'ADRESSAGE — plus aucun ne porte la forme non gouvernée", () => {
     const g = codeSeul(SRC(PDF_INTERNE));
 
-    // Les emplacements qui portent ENCORE la forme non gouvernée. Ils étaient
-    // trois, puis deux, et il en reste UN.
+    // Les emplacements qui portaient la forme non gouvernée. Ils étaient
+    // trois, puis deux, puis un — il n'en reste AUCUN.
     //
     //   titre de tête    passé à la dérivation
-    //   nom de fichier   passé à la dérivation — voir l'assertion ci-dessous
-    //   clé d'archive R2 TOUJOURS la forme non gouvernée
+    //   nom de fichier   passé à la dérivation
+    //   clé d'archive R2 FERMÉE PAR E-RC — la clé n'est plus composée par
+    //                    l'écrivain, elle est ALLOUÉE par le registre, et elle
+    //                    est opaque.
     //
-    // Celui qui reste est HORS DU CORPS DU DOCUMENT, et ce n'est pas un détail
-    // de périmètre : c'est précisément l'emplacement qu'aucun rendu ne montre
-    // au lecteur, donc celui qu'une relecture d'artefact ne peut pas attraper.
-    expect(g, "la CLÉ D'ARCHIVE R2").toContain("input.case_meta.case_id.replace(");
+    // Le dernier était HORS DU CORPS DU DOCUMENT, et ce n'était pas un détail
+    // de périmètre : c'était précisément l'emplacement qu'aucun rendu ne
+    // montre au lecteur, donc celui qu'une relecture d'artefact ne peut pas
+    // attraper. Il se referme par un gate, pas par une relecture.
+    expect(g, "la CLÉ D'ARCHIVE R2 ne compose plus rien")
+      .not.toContain("input.case_meta.case_id.replace(");
+    expect(g, "l'écriture passe par la primitive gouvernée").toContain("uploadPdf");
+
+    // ⚠️ CE QUI N'EST PAS RÉGLÉ, ET QU'IL NE FAUT PAS LIRE DANS CE VERT.
+    //
+    // La valeur non gouvernée n'a pas DISPARU : elle a changé de NATURE. Elle
+    // n'est plus une ADRESSE (une clé qui voyage dans une URL signée remise à
+    // un tiers) ; elle est un ENREGISTREMENT — la colonne `subject` du
+    // registre, qui consigne ce que le producteur a DÉCLARÉ être le sujet.
+    //
+    // Consigner une identité déclarée est le travail d'un registre. La faire
+    // DÉRIVER du ref gouverné reste la question de RC-5, et elle reste
+    // ouverte. Les deux ne se confondent pas, et ce test ne prétend pas la
+    // fermer.
+    expect(g, "le sujet est CONSIGNÉ, pas adressé").toContain("subject: input.case_meta.case_id");
 
     // ── LE NOM DE FICHIER EST FERMÉ, et il l'est par DÉRIVATION ───────────
     //
@@ -775,7 +793,7 @@ describe("S19/ag3j — 8 · INDÉPENDANCE (ii) : l'identité RENDUE ne l'est PAS
     expect(codeSeul(SRC(PDF_SCAN))).not.toContain("IL-SHILL");
   });
 
-  it("FORMAT — le conteneur ne décide plus contre l'autorité sur le NOM, et décide encore sur l'ARCHIVE", () => {
+  it("FORMAT — le conteneur ne décide plus contre l'autorité, ni sur le NOM ni sur l'ARCHIVE", () => {
     // ─── LA MOITIÉ QUI S'EST FERMÉE ───────────────────────────────────────
     // Le nom de fichier servi dérivait de `input.case_meta.case_id` — une
     // valeur d'entrée, non gouvernée. Il dérive maintenant du ref canonique,
@@ -784,11 +802,13 @@ describe("S19/ag3j — 8 · INDÉPENDANCE (ii) : l'identité RENDUE ne l'est PAS
     expect(gen).not.toContain('filename="${input.case_meta.case_id}.pdf"');
     expect(gen).toContain('filename="${nomFichier}"');
 
-    // ─── ET CELLE QUI RESTE OUVERTE ───────────────────────────────────────
-    // La clé d'archive R2, elle, porte toujours la forme non gouvernée. Le
-    // MÊME dossier a donc deux identités selon le conteneur : le nom servi au
-    // lecteur, et la clé sous laquelle il est archivé.
-    expect(codeSeul(SRC(PDF_INTERNE))).toContain("input.case_meta.case_id.replace(");
+    // ─── ET CELLE QUI S'EST FERMÉE DEPUIS (E-RC) ──────────────────────────
+    // La clé d'archive R2 portait la forme non gouvernée : le MÊME dossier
+    // avait deux identités selon le conteneur — le nom servi au lecteur, et
+    // la clé sous laquelle il était archivé. La clé est désormais ALLOUÉE par
+    // le registre et opaque : elle n'affirme plus rien sur le dossier, donc
+    // elle ne peut plus le contredire.
+    expect(codeSeul(SRC(PDF_INTERNE))).not.toContain("input.case_meta.case_id.replace(");
     // PDF public : nom de fichier porte le ref gouverné. Le MÊME dossier,
     // deux formats, deux noms de fichier de familles différentes.
     expect(aplat(codeSeul(SRC("src/app/api/casefile/public/route.ts"))))

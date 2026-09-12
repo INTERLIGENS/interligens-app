@@ -331,7 +331,7 @@ describe("S21/b — RC-7 : aucun consommateur ne LIT le contenu d'un ref", () =>
     ).toEqual([]);
   });
 
-  it("CLIQUET — les transformations sans lecture sont inventoriées, et il y en a UNE", () => {
+  it("CLIQUET — les transformations sans lecture sont inventoriées, et il n'y en a PLUS", () => {
     // Un cliquet, pas un zéro : une réécriture de caractères ne déduit rien
     // et n'est donc pas interdite par RC-7. Mais elle n'est pas libre pour
     // autant — chaque nouvelle occurrence doit être justifiée ici, et
@@ -362,25 +362,29 @@ describe("S21/b — RC-7 : aucun consommateur ne LIT le contenu d'un ref", () =>
     expect(
       transforms.map(site),
       `inventaire des transformations modifié :\n${transforms.map((t) => `      ${t}`).join("\n")}`,
-    ).toEqual([
-      'src/lib/casefile/pdfGenerator.ts :: const slug = input.case_meta.case_id.replace(/[^a-zA-Z0-9-]/g, "_");',
-    ]);
+    ).toEqual([]);
 
-    // ── LA SEULE, ET CE QU'ELLE EST EXACTEMENT ──────────────────────────
+    // ── CELLE QUI Y ÉTAIT, ET POURQUOI ELLE N'Y EST PLUS (E-RC) ─────────
     //
     //   const slug = input.case_meta.case_id.replace(/[^a-zA-Z0-9-]/g, "_")
     //
-    // Elle compose la clé d'archive à partir de l'identifiant, en
-    // remplaçant les caractères hors alphabet de stockage. Elle ne déduit
-    // rien : aucune famille, aucune méthodologie, aucun statut. RC-7 n'est
-    // pas en cause.
+    // Elle composait la clé d'archive `casefiles/{slug}/{slug}_{ts}.pdf` à
+    // partir de l'identifiant de dossier. Le constat posé ici disait DEUX
+    // choses vraies en même temps : conforme à RC-7 (elle ne déduisait ni
+    // famille ni méthodologie), et l'un des emplacements que RC-5 devait
+    // faire dériver du ref gouverné.
     //
-    // DEUX CHOSES SONT VRAIES EN MÊME TEMPS, et les tenir séparées est le
-    // point : cette ligne est conforme à RC-7, et elle est l'un des
-    // emplacements que RC-5 doit faire dériver du ref gouverné, puisqu'elle
-    // porte aujourd'hui l'espace hérité. Une garde d'opacité n'a pas à
-    // trancher une question de cardinalité, et ne le fait pas ici.
-    expect(transforms).toHaveLength(1);
+    // E-RC l'a refermée par l'autre bout. La clé n'est plus COMPOSÉE par
+    // l'écrivain : elle est ALLOUÉE par le registre, et elle est opaque.
+    // L'identité sémantique du dossier part au registre (colonne `subject`)
+    // au lieu de voyager dans un nom de fichier — une clé est le chemin d'une
+    // URL signée remise à un tiers, donc ce qu'elle encode est rendu.
+    //
+    // ⚠️ UN INVENTAIRE VIDE EST INDISCERNABLE D'UN BALAYAGE CASSÉ, et c'est
+    // précisément ce que le §C empêche : les mutants prouvent que le balayage
+    // attrape encore chaque forme interdite. Sans eux, ce zéro ne serait pas
+    // une mesure, seulement un silence.
+    expect(transforms).toHaveLength(0);
   });
 });
 
