@@ -307,16 +307,59 @@ describe("GATE 5 — l'index rend ce qu'il a, jamais la date du jour", () => {
     expect(page(html(), 1)).toContain("1 allégation");
   });
 
-  it("un dossier sans claim publiable le DIT, sans conclure au faux", () => {
+  // ─── TÉMOIN RETOURNÉ — L'ARTEFACT EST PORTABLE, ET C'EST LE POINT ────────
+  //
+  //   The same governed-content oracle does not become admissible when
+  //   transferred from an interactive projection into a portable artifact.
+  //   Portability STRENGTHENS the need for artifact-local admissibility; it
+  //   does not weaken it.
+  //
+  // Il exigeait l'inverse : que le retrait soit SIGNALÉ et qu'il NOMME le
+  // champ. Une fois généré, le PDF quitte l'audience et le contexte de la
+  // route qui l'a produit — l'admission du producteur ne répare donc rien du
+  // contenu de l'artefact.
+  //
+  // ⚠️ Et surtout : l'absence de bloc ne doit pas être remplacée par une
+  // mention de vacuité. Un « 0 retenu » resterait une assertion sur la
+  // population retenue.
+  it("un dossier sans claim publiable rend une ABSENCE, pas un avis de retrait", () => {
     const vide = buildPublicReportHtml(
       "fr",
       projectForPublication(dossier({ claims: [claim({ state: "ATTACHED" })] }), "test"),
     );
     const idx = page(vide, 2);
-    expect(idx).toContain("n'est pas une preuve de fausseté");
-    // Le retrait est SIGNALÉ, et il nomme le champ.
-    expect(idx).toContain("Retenu hors publication");
-    expect(idx).toContain("state");
+
+    // Forme positive : la page d'index existe et se rend normalement. Sans
+    // elle, un générateur qui aurait cessé de produire la page entière
+    // passerait pour conforme — l'absence de bloc ne prouve rien seule.
+    expect(idx, "l'index des preuves reste rendu").toContain("Index des preuves");
+
+    // Aucun avis de retrait : ni titre, ni motif, ni champ, ni cardinalité.
+    expect(idx, "aucun titre de retrait").not.toContain("Retenu hors publication");
+    expect(idx, "aucun motif").not.toContain("Provenance insuffisante");
+    expect(idx, "aucun motif").not.toContain("Exclu de la publication");
+    expect(idx, "aucune colonne de retrait").not.toContain("Éléments");
+    expect(idx, "aucun identifiant de pièce retenue").not.toContain("Pièce retenue");
+
+    // Et aucune mention de vacuité qui vaudrait assertion sur le retenu.
+    expect(idx, "aucune assertion de population retenue").not.toMatch(
+      /0\s*(él[ée]ments?|pi[èe]ces?|retenu)/i,
+    );
+  });
+
+  it("MUTANT — le générateur n'a plus de site d'émission du retenu", () => {
+    // Retirer l'appel en gardant la fonction, ou l'inverse, laisserait la
+    // prochaine main la recâbler. Les deux formes : l'assembleur ne connaît
+    // plus le champ, ET la condition de repli ne le compte plus — sans quoi
+    // l'artefact distinguerait encore « rien trouvé » de « trouvé mais
+    // retenu » par la seule absence de ligne.
+    const code = codeSeul("src/lib/casefile/pdfGeneratorPublic.ts");
+    expect(code, "aucun assembleur de bloc de retrait").not.toContain("buildWithheldBlock");
+    expect(code, "aucune émission de référence retenue").not.toContain("p.withheldRefs");
+    expect(code, "aucun libellé de pièce retenue").not.toContain("Withheld piece");
+    expect(code, "la condition de repli ignore le retenu").toContain(
+      "p.sources.length === 0 && p.unresolvedRefs.length === 0",
+    );
   });
 });
 
