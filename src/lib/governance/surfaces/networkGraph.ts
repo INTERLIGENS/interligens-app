@@ -74,9 +74,13 @@ export const PORTEURS_DU_GRAPHE = [
   "NetworkNode.totalScammedUsd",
 ] as const satisfies readonly CheminDeDonnee[];
 
-/** Constante servie à la place de la métadonnée d'ingénierie. Identique pour tous. */
-export const SOURCE_NON_GOUVERNEE =
-  "Source metadata withheld — no publication decision covers this content.";
+// `SOURCE_NON_GOUVERNEE` est RETIRÉE, et ce n'est pas un nettoyage.
+//
+// Elle servait « Source metadata withheld — no publication decision covers
+// this content. » à la place de la métadonnée. Un texte qui AFFIRME qu'une
+// information existe et a été retenue est un substitut, donc un différentiel
+// sur L'EXISTENCE — exactement ce que ce containment ferme partout ailleurs.
+// La clé part ; rien ne prend sa place.
 
 export function estNominatif(n: Pick<NetworkNode, "group">): boolean {
   return (GROUPES_NOMINATIFS as readonly string[]).includes(n.group);
@@ -233,18 +237,29 @@ export function contenirGraphe(
   //   sourceOfTruth « INTERLIGENS prod DB (5 profiles, 29 evidences, 47
   //                 wallets…) » — métadonnée d'ingénierie, classe C1.
   //
-  // `timeline` et `metrics` sont OPTIONNELS dans le type : on les retire.
-  // `sourceOfTruth` est REQUIS : le retirer casserait le contrat de forme, donc
-  // il est remplacé à l'identique — même règle que l'Explorer, et pour la même
-  // raison : la forme de la surface décide de la forme du refus.
-  const { timeline: _timeline, metrics: _metrics, ...racine } = graphe;
+  // LES TROIS PARTENT DE LA MÊME FAÇON : LA CLÉ, PAS SA VALEUR.
+  //
+  // `timeline` et `metrics` étaient déjà optionnels. `sourceOfTruth` était
+  // REQUIS, et c'est cette exigence de FORME qui avait fait choisir un
+  // remplacement — un texte annonçant le retrait. Le type a été corrigé
+  // (`sourceOfTruth?`), donc la clé peut partir comme les deux autres.
+  //
+  // Aucune clé, aucune présence à comparer, aucune assertion sur l'existence
+  // de quoi que ce soit. L'entrée, elle, reste stricte : `parseNetworkGraph`
+  // refuse toujours une source brute sans `sourceOfTruth`.
+  const {
+    timeline: _timeline,
+    metrics: _metrics,
+    sourceOfTruth: _sourceOfTruth,
+    ...racine
+  } = graphe;
   void _timeline;
   void _metrics;
+  void _sourceOfTruth;
 
   return {
     graphe: {
       ...racine,
-      sourceOfTruth: SOURCE_NON_GOUVERNEE,
       nodes: noeuds,
       edges: aretes,
     },

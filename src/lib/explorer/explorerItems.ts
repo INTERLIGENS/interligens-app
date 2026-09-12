@@ -8,7 +8,6 @@ import {
   profondeurLaPlusForte,
   rangDeProfondeur,
 } from '@/lib/governance/invariants/evidenceDepth'
-import { resumeGouverne } from '@/lib/governance/surfaces/explorer'
 
 export type DossierKind = 'case' | 'launch' | 'platform'
 
@@ -41,17 +40,36 @@ export interface DossierItem {
 }
 
 /**
- * ─── LES HUIT CHAMPS QUI NE SONT PLUS ÉMIS ─────────────────────────────
+ * ─── LES NEUF CHAMPS QUI NE SONT PLUS ÉMIS ─────────────────────────────
  *
- * Ce sont exactement les lignes de l'inventaire §4.B dont la colonne
- * « fondation gouvernée » valait 0/14 ou 0/9, et la table des fondations en
- * est l'unique autorité — pas cette liste, qui n'en est que la conséquence.
+ * Les huit premiers sont exactement les lignes de l'inventaire §4.B dont la
+ * colonne « fondation gouvernée » valait 0/14 ou 0/9, et la table des
+ * fondations en est l'unique autorité — pas cette liste, qui n'en est que la
+ * conséquence.
  *
  * ⚠ RIEN NE LES REMPLACE. Pas de `Under review`, pas de `N/A`, pas de
  * `[redacted]`, pas de phrase expliquant qu'une information a été retirée. Un
  * substitut recréerait un différentiel sur L'EXISTENCE de l'information —
  * c'est le même geste que le `summary` qui disparaît du pack du modèle plutôt
  * que d'y être voilé, troisième application.
+ *
+ * ─── `summary` REJOINT LA LISTE, ET C'EST UNE CORRECTION ───────────────
+ *
+ * Il en était l'EXCEPTION RATIFIÉE : les quatorze dossiers en portaient un,
+ * donc retirer la clé pour treize et la garder pour un créait un différentiel
+ * de PRÉSENCE. La prémisse était juste. La sortie choisie ne l'était pas —
+ * une chaîne unique servie à la place des treize.
+ *
+ * Mesuré sur la charge : treize dossiers ANNONCENT un retrait, un porte un
+ * vrai résumé. La partition 13/1 devient EXPLICITE au lieu d'être effacée, et
+ * le texte affirme qu'un contenu existe et a été retenu. Voile négatif
+ * concluant.
+ *
+ * La sortie du différentiel de présence n'est pas un texte de remplacement :
+ * c'est de retirer la clé POUR LES QUATORZE. Aucune clé, aucune présence à
+ * comparer. Le quatorzième — `PlatformCaseFile.summary`, le SEUL résumé
+ * réellement gouverné du corpus — part avec les treize autres : garder le seul
+ * fondé, c'est publier que les treize ne le sont pas.
  *
  * Les champs restent calculés EN INTERNE : `kind` sert au filtre structurel,
  * et le tri n'en dépend pas. Ce qui change est la PROJECTION SERVIE, et elle
@@ -67,6 +85,7 @@ export const CHAMPS_NON_EMIS = [
   'multiLaunchRecurrence',
   'multiLaunchCount',
   'linkedActorsCount',
+  'summary',
 ] as const
 
 export type DossierServi = Omit<DossierItem, (typeof CHAMPS_NON_EMIS)[number]>
@@ -229,11 +248,12 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
       // publishStatus, ni visibility, ni isPublic. Les quatre dossiers servis
       // portent « Under investigation », « cross-ref @lynk0x ongoing »,
       // « Source: mariaqueennft » et « Master controller qiwu.eth ».
-      summary: resumeGouverne(
-        'KolCase.evidence',
-        evidenceSnippets.length > 0 ? evidenceSnippets.slice(0, 2).join(' | ') : null,
-        null,
-      ),
+      // NON ÉMIS (CHAMPS_NON_EMIS). La valeur reste interne et brute : aucune
+      // forme de refus n'est choisie ici, parce qu'un champ qui ne sort pas
+      // n'en a pas. `KolCase.evidence` n'a de toute façon aucune fondation
+      // possible — la table ne porte ni publishStatus, ni visibility, ni
+      // isPublic.
+      summary: evidenceSnippets.length > 0 ? evidenceSnippets.slice(0, 2).join(' | ') : null,
       primaryDate: entries[0].createdAt.toISOString(),
       // La relation n'a pas de fondation propre : elle n'est pas émise.
       // Vide, sans substitut, et pour les quatre dossiers sans exception.
@@ -310,11 +330,10 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       // la note. Neuf dossiers « launch » sur neuf portent du contenu interne,
       // zéro propre — dont « Dad wallet received full supply allocation and
       // dumped », qui est servi PAR ICI et pas par KolCase.evidence.
-      summary: resumeGouverne(
-        'KolTokenLink.note',
-        notes.length > 0 ? notes.slice(0, 2).join(' | ') : null,
-        null,
-      ),
+      // NON ÉMIS (CHAMPS_NON_EMIS). `KolTokenLink.visibility='public'`
+      // autorise le LIEN, jamais la prose de la note — et la note ne quitte
+      // plus ce chemin du tout.
+      summary: notes.length > 0 ? notes.slice(0, 2).join(' | ') : null,
       primaryDate: entries[0].createdAt.toISOString(),
       linkedActors: actors,
       linkedActorsCount: actors.length,
@@ -350,7 +369,10 @@ export async function getPlatformCaseDossiers(): Promise<DossierItem[]> {
     // Le SEUL résumé gouverné du corpus : `PlatformCaseFile.publishStatus`
     // vaut 'published' (le `where` ci-dessus), et cette décision porte bien sur
     // le dossier dont on rend le résumé.
-    summary: resumeGouverne('PlatformCaseFile.summary', r.summary ?? r.title, r.publishStatus),
+    // NON ÉMIS (CHAMPS_NON_EMIS). C'était le SEUL résumé gouverné du corpus —
+    // et c'est précisément pourquoi il part avec les treize autres : le garder
+    // seul, c'est publier que les treize ne le sont pas.
+    summary: r.summary ?? r.title,
     primaryDate: (r.publishedDate ?? r.createdAt).toISOString(),
     linkedActors: [],
     linkedActorsCount: 0,

@@ -18,10 +18,6 @@ import {
   projeterWatchlist,
 } from "@/lib/governance/surfaces/watchlist";
 import {
-  RESUME_NON_GOUVERNE,
-  resumeGouverne,
-} from "@/lib/governance/surfaces/explorer";
-import {
   constaterDecision,
   gouverner,
   type EnregistrementGouverne,
@@ -194,7 +190,7 @@ describe("LA CHARGE API — c'est elle qu'il faut fermer, pas le rendu", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// EXPLORER — le refus est une chaîne identique
+// EXPLORER — LE REFUS EST UNE ABSENCE DE CLÉ, PAS UNE CHAÎNE
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Les verbatim RÉELLEMENT servis, mesurés en base ep-square-band. */
@@ -206,8 +202,11 @@ const NOTES_SERVIES: ReadonlyArray<[string, string]> = [
   ["BULLISH", '{"firstPromotionAt":"2026-02-11T00:00:00.000Z","mentionCount":11,"seededFrom":"bullish_seed_2026-05-14"}'],
 ];
 
-describe("EXPLORER — identique, pas équivalent, comparé sur le JSON sérialisé", () => {
+import { CHAMPS_NON_EMIS, projeterDossierServi } from "@/lib/explorer/explorerItems";
+
+describe("EXPLORER — la clé `summary` ne survit pour AUCUN des quatorze", () => {
   it("TÉMOIN POSITIF — les notes brutes portent bien le contenu interne", () => {
+    // Sans lui, « rien ne fuit » serait indiscernable de « il n'y avait rien ».
     // « Dad wallet » est servi par KolTokenLink.note, PAS par KolCase.evidence.
     const botify = NOTES_SERVIES.find(([t]) => t === "BOTIFY")![1];
     expect(botify).toContain("Dad wallet");
@@ -217,52 +216,74 @@ describe("EXPLORER — identique, pas équivalent, comparé sur le JSON sériali
     expect(NOTES_SERVIES.find(([t]) => t === "BULLISH")![1]).toContain("seededFrom");
   });
 
-  it("██ MUTANT DE BYPASS BRUT — les cinq notes sont refusées, à l'identique", () => {
-    const sorties = NOTES_SERVIES.map(([, brut]) =>
-      resumeGouverne("KolTokenLink.note", brut, null),
-    );
-    for (const s of sorties) expect(s).toBe(RESUME_NON_GOUVERNE);
-    // IDENTIQUE, comparé sur le JSON sérialisé — pas « équivalent ».
-    expect(new Set(sorties.map((s) => JSON.stringify({ summary: s }))).size).toBe(1);
-    // Et rien du brut ne survit.
-    const serialise = JSON.stringify(sorties);
-    for (const motif of ["Dad wallet", "Parth Kapadia", "mariaqueennft", "seededFrom", "not public"]) {
-      expect(serialise).not.toContain(motif);
+  /**
+   * ── CE BLOC A CHANGÉ DE PROPRIÉTÉ, ET C'EST UNE CORRECTION ──────────────
+   *
+   * Il attestait que le refus était une CHAÎNE IDENTIQUE servie à la place des
+   * treize résumés sans fondation, et que la CLÉ RESTAIT — au motif que la
+   * retirer pour treize et la garder pour un créerait un différentiel de
+   * PRÉSENCE.
+   *
+   * La prémisse était juste. La sortie ne l'était pas. Mesuré sur la charge :
+   * treize dossiers ANNONÇAIENT un retrait, un portait un vrai résumé. La
+   * partition 13/1 devenait EXPLICITE au lieu d'être effacée, et le texte
+   * affirmait qu'un contenu existait et avait été retenu.
+   *
+   * La sortie du différentiel de présence est de retirer la clé POUR LES
+   * QUATORZE — y compris le seul réellement gouverné.
+   */
+  const dossierInterne = (titre: string, resume: string | null) =>
+    ({
+      id: `launch-${titre}`, kind: "launch", title: titre, summary: resume,
+      primaryDate: "2026-05-01", linkedActors: [], linkedActorsCount: 0,
+      proceedsObservedTotal: null, proceedsCoverage: "none", evidenceDepth: "none",
+      strongestFlags: [], documentationStatus: "partial", href: `/h/${titre}`,
+      sharedActorGroup: false, multiLaunchRecurrence: false, snapshotCount: 0,
+    }) as never;
+
+  it("`summary` est dans CHAMPS_NON_EMIS — la liste est l'unique autorité", () => {
+    expect(CHAMPS_NON_EMIS).toContain("summary");
+  });
+
+  it("██ LES CINQ NOTES INTERNES — la clé ne survit à la projection pour aucune", () => {
+    for (const [titre, brut] of NOTES_SERVIES) {
+      const servi = projeterDossierServi(dossierInterne(titre, brut)) as Record<string, unknown>;
+      expect("summary" in servi, `${titre} garde la clé`).toBe(false);
+      const serialise = JSON.stringify(servi);
+      expect(serialise).not.toContain('"summary"');
+      for (const motif of ["Dad wallet", "Parth Kapadia", "mariaqueennft", "seededFrom", "not public"]) {
+        expect(serialise, `${titre} laisse passer « ${motif} »`).not.toContain(motif);
+      }
     }
   });
 
-  it("██ LE BYPASS LE PLUS SUBTIL — présenter une décision d'un AUTRE référentiel ne suffit pas", () => {
-    // Un appelant qui aurait lu `visibility='public'` sur le LIEN pourrait
-    // croire qu'il tient une fondation pour la NOTE. La table dit non : le
-    // chemin `KolTokenLink.note` n'a aucune fondation possible, et aucune
-    // valeur passée en troisième argument ne la lui donne.
-    for (const valeur of ["public", "published", "approved", ""]) {
-      expect(resumeGouverne("KolTokenLink.note", "Dad wallet …", valeur)).toBe(RESUME_NON_GOUVERNE);
-    }
-  });
-
-  it("`KolCase.evidence` est refusé par le même chemin", () => {
-    const evidence = "GHOST overlap with BK/SAM cluster. Under investigation. | cross-ref @lynk0x ongoing.";
-    expect(resumeGouverne("KolCase.evidence", evidence, null)).toBe(RESUME_NON_GOUVERNE);
-    expect(resumeGouverne("KolCase.evidence", evidence, "published")).toBe(RESUME_NON_GOUVERNE);
-  });
-
-  it("MUTATION DISCRIMINANTE — le SEUL résumé gouverné du corpus passe intact", () => {
-    // CBEX, `PlatformCaseFile.publishStatus = 'published'`. Une garde qui
-    // refuserait tout serait désarmée.
+  it("██ LE SEUL RÉSUMÉ GOUVERNÉ DU CORPUS PART AVEC LES AUTRES", () => {
+    // CBEX, `PlatformCaseFile.publishStatus = 'published'`. C'est LUI le
+    // quatorzième, et c'est lui qui rendait la partition 13/1 lisible. Le
+    // garder, c'était publier que les treize ne sont pas fondés.
     const cbex = "The $12M Ponzi That Never Stopped";
-    expect(resumeGouverne("PlatformCaseFile.summary", cbex, "published")).toBe(cbex);
-    // Et la même donnée SANS décision lue retombe sur le refus.
-    expect(resumeGouverne("PlatformCaseFile.summary", cbex, null)).toBe(RESUME_NON_GOUVERNE);
+    const servi = projeterDossierServi(dossierInterne("CBEX", cbex)) as Record<string, unknown>;
+    expect("summary" in servi).toBe(false);
+    expect(JSON.stringify(servi)).not.toContain("Ponzi");
   });
 
-  it("LA CLÉ RESTE PRÉSENTE — c'est ce qui distingue ce refus de celui du modèle", () => {
-    // Sur l'Explorer, quatorze dossiers sont servis côte à côte et les
-    // quatorze portent un `summary`. Supprimer la clé pour treize créerait un
-    // différentiel de PRÉSENCE. Dans le pack du modèle, où il n'y a pas
-    // d'ensemble de comparaison, c'est l'inverse qui est juste.
-    const dossier = { title: "BOTIFY", summary: resumeGouverne("KolTokenLink.note", "…", null) };
-    expect(Object.keys(dossier)).toContain("summary");
-    expect(JSON.stringify(dossier)).toContain('"summary"');
+  it("██ AUCUNE PRÉSENCE À COMPARER — les quatorze rendent le MÊME jeu de clés", () => {
+    // C'est la propriété qui remplace « chaîne identique ». Un dossier fondé et
+    // un dossier non fondé ne se distinguent plus par la forme de leur objet.
+    const clefs = [
+      ...NOTES_SERVIES.map(([t, b]) => dossierInterne(t, b)),
+      dossierInterne("CBEX", "The $12M Ponzi That Never Stopped"),
+      dossierInterne("VIDE", null),
+    ].map((d) => JSON.stringify(Object.keys(projeterDossierServi(d)).sort()));
+    expect(new Set(clefs).size).toBe(1);
+  });
+
+  it("██ AUCUN SUBSTITUT N'A PRIS LA PLACE — ni chaîne, ni clé vide", () => {
+    const servi = JSON.stringify(
+      NOTES_SERVIES.map(([t, b]) => projeterDossierServi(dossierInterne(t, b))),
+    );
+    for (const substitut of ["withheld", "no publication decision", "redacted", "N/A", "Under review"]) {
+      expect(servi, `substitut « ${substitut} » réintroduit`).not.toContain(substitut);
+    }
   });
 });

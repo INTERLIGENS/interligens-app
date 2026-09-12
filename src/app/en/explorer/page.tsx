@@ -7,7 +7,7 @@ type Kind = '' | 'case' | 'launch' | 'platform'
 
 interface Actor { handle: string; displayName: string | null; role: string; tier: string | null }
 interface Dossier {
-  id: string; title: string; summary: string | null; primaryDate: string
+  id: string; title: string; primaryDate: string
   linkedActors: Actor[]
   proceedsObservedTotal: number | null; proceedsCoverage: string
   href: string
@@ -184,12 +184,15 @@ export default function ExplorerEN() {
                       ))}
                     </div>
 
-                    {/* Summary */}
-                    {d.summary && (
-                      <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6, marginBottom: 14, borderLeft: '2px solid #1e2330', paddingLeft: 12 }}>
-                        {d.summary}
-                      </div>
-                    )}
+                    {/* ─── LE RESUME EST RETIRE, ET RIEN NE LE REMPLACE ──────────
+                        `summary` n'est plus servi POUR LES QUATORZE. Il l'etait
+                        encore, sous la forme d'une chaine unique annoncant le
+                        retrait — et treize dossiers l'affichaient contre un qui
+                        portait un vrai resume. La partition 13/1 devenait
+                        EXPLICITE, et le texte affirmait qu'un contenu existait
+                        et avait ete retenu.
+                        Aucune cle, aucune presence a comparer. Pas de bloc
+                        vide, pas de tiret, pas de « — ». */}
 
                     {/* Bottom row: proceeds + flags + CTA */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

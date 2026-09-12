@@ -13,7 +13,6 @@ import rawData from "@/data/scamUniverse.json";
 import { parseNetworkGraph } from "@/lib/network/schema";
 import {
   GROUPES_NOMINATIFS,
-  SOURCE_NON_GOUVERNEE,
   contenirGraphe,
   estNominatif,
   type DecisionDeSujet,
@@ -183,11 +182,32 @@ describe("LE CONTAINMENT — nœuds, arêtes, labels, notes, et les trois autres
     expect(SERIALISE).not.toContain("GHOST cashout");
   });
 
-  it("`sourceOfTruth` est REMPLACÉ, pas retiré — le type l'exige", () => {
-    // Même règle que l'Explorer : la clé est requise par le contrat de forme,
-    // donc le refus est une chaîne identique et non une absence.
-    expect(CONTENU.graphe.sourceOfTruth).toBe(SOURCE_NON_GOUVERNEE);
+  it("██ `sourceOfTruth` est RETIRÉ — la CLÉ part, elle n'est pas remplacée", () => {
+    // CE TÉMOIN A ÉTÉ INVERSÉ, ET C'EST UNE CORRECTION.
+    //
+    // Il exigeait le contraire : « REMPLACÉ, pas retiré — le type l'exige ».
+    // La chaîne servie était « Source metadata withheld — no publication
+    // decision covers this content. » Un texte qui AFFIRME qu'une information
+    // existe et a été retenue est un substitut, donc un différentiel sur
+    // L'EXISTENCE — la chose même que ce containment ferme partout ailleurs.
+    //
+    // « Le type l'exige » n'était pas une raison, c'était une contrainte de
+    // forme qu'il fallait corriger : `sourceOfTruth` est devenu optionnel EN
+    // SORTIE. L'entrée, elle, reste stricte.
+    expect("sourceOfTruth" in CONTENU.graphe).toBe(false);
+    expect(CONTENU.graphe.sourceOfTruth).toBeUndefined();
     expect(SERIALISE).not.toContain("INTERLIGENS prod DB");
+    // Et aucun substitut n'a pris sa place, sous aucune forme.
+    expect(SERIALISE).not.toContain("withheld");
+    expect(SERIALISE).not.toContain("no publication decision");
+  });
+
+  it("l'ENTRÉE reste stricte — une source brute sans `sourceOfTruth` est refusée", () => {
+    // Sans ce contre-témoin, « optionnel en sortie » serait indiscernable de
+    // « le schéma s'est relâché ».
+    const brutSansSource = { ...(rawData as Record<string, unknown>) };
+    delete brutSansSource.sourceOfTruth;
+    expect(() => parseNetworkGraph(brutSansSource)).toThrow(/sourceOfTruth/);
   });
 
   it("██ BALAYAGE FINAL — aucun des motifs protégés ne survit dans la charge", () => {
@@ -295,8 +315,8 @@ describe("LE CONTAINMENT — nœuds, arêtes, labels, notes, et les trois autres
     // performed 2026-04-17 », et je le retire. Si c'était le seul porteur de
     // la portée, le containment aurait TRANSFORMÉ un instantané daté en
     // assertion sans date — donc aggravé le défaut qu'il prétend fermer.
-    expect(SERVI.sourceOfTruth).toContain("on-chain reads performed 2026-04-17");
-    expect(CONTENU.graphe.sourceOfTruth).not.toContain("2026-04-17");
+    expect(SERVI.sourceOfTruth!).toContain("on-chain reads performed 2026-04-17");
+    expect(CONTENU.graphe.sourceOfTruth).toBeUndefined();
     // Il reste, et il survit.
     expect(CONTENU.graphe.generatedAt).toBe("2026-04-17");
   });
@@ -306,7 +326,7 @@ describe("LE CONTAINMENT — nœuds, arêtes, labels, notes, et les trois autres
     // brute dit que les lectures on-chain ont eu lieu ce jour-là. Ce n'est donc
     // pas une date de build posée à côté d'observations plus anciennes.
     const dateDeLObservation = /on-chain reads performed (\d{4}-\d{2}-\d{2})/.exec(
-      SERVI.sourceOfTruth,
+      SERVI.sourceOfTruth!,
     );
     expect(dateDeLObservation, "la métadonnée ne porte plus de date d'observation").not.toBeNull();
     expect(dateDeLObservation![1]).toBe(SERVI.generatedAt);

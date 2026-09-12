@@ -1,75 +1,64 @@
-// ─── SURFACE EXPLORER — LE RÉSUMÉ NON GOUVERNÉ, REMPLACÉ À L'IDENTIQUE ───
+// ─── SURFACE EXPLORER — LE RÉSUMÉ NE SE REMPLACE PAS, IL DISPARAÎT ───────
 //
-// ██  IDENTIQUE, PAS ÉQUIVALENT — comparé sur le JSON sérialisé.           ██
+// ██  LA CLÉ PART POUR LES QUATORZE. AUCUNE PRÉSENCE À COMPARER.          ██
 //
-// ─── POURQUOI ICI ON REMPLACE, ALORS QUE POUR LE MODÈLE ON SUPPRIME ─────
+// ─── CE QUE CE FICHIER A CRU, ET POURQUOI C'ÉTAIT FAUX ──────────────────
 //
-// Ce n'est pas une incohérence, c'est la même règle appliquée à deux formes.
+// Il portait `RESUME_NON_GOUVERNE`, une chaîne unique servie à la place des
+// treize résumés sans fondation :
 //
-//   Le pack du modèle n'a pas d'ensemble de comparaison : un `summary` absent
-//   ne se compare à rien, donc le faire DISPARAÎTRE est la sortie la plus
-//   pauvre. Une chaîne « [redacted] » y aurait dit qu'il y avait quelque chose.
+//   « Summary withheld — no publication decision covers this content. »
 //
-//   L'Explorer sert QUATORZE dossiers côte à côte, et les quatorze portent
-//   aujourd'hui un `summary` non nul. Supprimer la clé pour treize et la garder
-//   pour un seul créerait un différentiel de PRÉSENCE que rien n'avait avant.
-//   Remplacer par une chaîne identique n'en crée aucun : même clé, même
-//   position, et les treize deviennent indistinguables entre eux.
+// Le raisonnement était celui-ci, et il paraissait solide : les quatorze
+// dossiers portent un `summary`, donc supprimer la CLÉ pour treize et la
+// garder pour un créerait un différentiel de PRÉSENCE que rien n'avait avant.
+// Une chaîne identique n'en crée aucun — même clé, même position, treize
+// indistinguables entre eux.
 //
-// La forme du refus suit donc la forme de la surface. C'est le test d'oracle
-// qui tranche, pas une préférence.
+// LA PRÉMISSE ÉTAIT BONNE. LA CONCLUSION NE L'ÉTAIT PAS.
 //
-// ─── CE QUI EST CONTENU, MESURÉ ─────────────────────────────────────────
+// Mesuré sur la charge servie : treize dossiers annoncent un retrait, un porte
+// un vrai résumé. La partition 13/1 n'est pas effacée, elle est rendue
+// EXPLICITE — et le texte AFFIRME qu'un contenu existe et a été retenu. C'est
+// un voile négatif concluant, déjà fermé en P0 sous une autre forme (S3-1).
 //
-// Les neuf `summary` de type « launch » viennent de `KolTokenLink.note`, lu à
-// UN SEUL endroit du dépôt (`explorerItems.ts:150`) — donc la note ne quitte
-// jamais ce chemin, et le fermer ici le ferme partout. Les neuf portent du
-// contenu interne, zéro propre :
+//   « Ne créez aucun substitut UX. Pas de badge Under review, pas de N/A, pas
+//     de [redacted], pas de texte expliquant qu'une information a été retirée.
+//     Sinon nous recréons potentiellement un différentiel sur L'EXISTENCE de
+//     l'information. »
+//
+// La sortie du différentiel de présence n'est pas un texte de remplacement.
+// C'est de retirer la clé POUR LES QUATORZE — exactement le geste appliqué
+// aux huit. Aucune clé, aucune présence à comparer, aucune assertion sur
+// l'existence de quoi que ce soit.
+//
+// ─── CE QUI CESSE D'ÊTRE SERVI, ET CE QUI NE L'ÉTAIT DÉJÀ PLUS ──────────
+//
+// Les neuf `summary` de type « launch » venaient de `KolTokenLink.note`, lu à
+// UN SEUL endroit du dépôt — donc fermer ce chemin le fermait partout. Ce
+// qu'ils portaient, mesuré :
 //
 //   TOESCOIN  « Auto-draft from Watcher V2 bridge. Internal review pending —
-//               not public, not legal-reviewed. »   ← la ligne dit d'elle-même
-//                                                      qu'elle n'est pas publique
+//               not public, not legal-reviewed. »
 //   BOTIFY    « Dad wallet received full supply allocation and dumped. »
-//               ← identification relationnelle d'un parent, plus conduite
 //   SERIAL    « … aucune CA attestée en base, reste non résolu (ne pas
 //               deviner). »                         ← instruction au développeur
 //   OVPP      « CEO = Parth Kapadia … conflict-of-interest flag »
 //   BULLISH   `{"firstPromotionAt":"…","seededFrom":"bullish_seed_2026-05-14"}`
-//               ← JSON de seed rendu comme prose de dossier
 //
-// ⚠ « Dad wallet » est servi par `KolTokenLink.note`, PAS par
-// `KolCase.evidence`. Le grep menait à la seconde ; en reconstituant
-// `slice(0,2)` sur l'ordre réel de la base, cette ligne est le 5ᵉ snippet du
-// dossier case et n'est pas servie par là. Autre champ, autre table, autre
-// chemin. Se tromper de champ, c'était corriger le mauvais et laisser le vrai.
+// Rien de tout cela n'était servi après le containment : la chaîne de refus
+// avait bien pris leur place. Ce lot ne ferme donc pas une fuite de CONTENU —
+// il ferme l'assertion d'EXISTENCE que la chaîne de refus portait elle-même.
+//
+// ─── POURQUOI CE MODULE N'EXPORTE PLUS RIEN ─────────────────────────────
+//
+// `RESUME_NON_GOUVERNE` et `resumeGouverne` sont retirés. Il ne reste aucune
+// décision de surface à prendre sur le résumé : un champ qui n'est pas émis
+// n'a pas de forme de refus, et une fonction qui choisirait laquelle serait
+// une invitation à le réémettre.
+//
+// Le fichier subsiste pour porter CE raisonnement — pas pour porter du code.
+// La garde exécutable est ailleurs et elle est positive :
+// __tests__/governance/p0-explorer-pas-de-substitut.test.ts
 
-import { fondationPossiblePour, type CheminDeDonnee } from "../fondations";
-
-/**
- * LA CHAÎNE UNIQUE — la même pour les treize, octet pour octet.
- *
- * Elle ne dit RIEN du dossier : ni sa nature, ni sa taille, ni pourquoi. Un
- * message qui varierait selon la raison du refus serait un oracle livré avec
- * la garde.
- */
-export const RESUME_NON_GOUVERNE =
-  "Summary withheld — no publication decision covers this content.";
-
-/**
- * LE RÉSUMÉ SERVI — il présente sa décision, ou il est remplacé.
- *
- * `valeurDePublication` est ce qu'on a LU dans le magasin pour ce dossier.
- * `null` signifie qu'il n'y avait rien à lire, et une décision qu'on n'a pas
- * lue n'est pas une décision.
- */
-export function resumeGouverne(
-  chemin: CheminDeDonnee,
-  brut: string | null | undefined,
-  valeurDePublication: string | null,
-): string {
-  const referentiel = fondationPossiblePour(chemin);
-  if (referentiel === null) return RESUME_NON_GOUVERNE;
-  if (valeurDePublication === null) return RESUME_NON_GOUVERNE;
-  if (brut === null || brut === undefined || brut.length === 0) return RESUME_NON_GOUVERNE;
-  return brut;
-}
+export {};
