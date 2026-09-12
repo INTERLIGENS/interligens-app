@@ -36,6 +36,12 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { codeSeul, codeSeulLigneALigne } from "./codeSeul";
+
+const RACINE = path.resolve(__dirname, "../..");
 
 // ── Le magasin de fixture ───────────────────────────────────────────────────
 
@@ -184,53 +190,126 @@ describe("citation · la propriété, sur la primitive", () => {
     expect(await criteresExactitude(resolveCaseFileRef as unknown as Resolveur)).toEqual([]);
   });
 
-  it("n'est exposée par AUCUNE route dans ce lot — la surface est une projection, et elle vient après", async () => {
-    const { execSync } = await import("node:child_process");
-    const path = await import("node:path");
-    const racine = path.resolve(__dirname, "../..");
-    // ── BUILD 13 · S3 — UNE MENTION N'EST PAS UNE EXPOSITION ───────────────
-    //
-    // ██  Le grep brut comptait un COMMENTAIRE comme un appel.            ██
-    //
-    // `src/app/api/pdf/casefile/route.ts` NOMME `resolveCaseFileRef` dans la
-    // prose qui justifie la forme de son refus (« comme resolveCaseFileRef rend
-    // la constante NOT_FOUND elle-même »). Il ne l'appelle pas, ne l'importe
-    // pas, ne l'expose pas. La propriété défendue ici est l'EXPOSITION par une
-    // surface — pas l'occurrence de sept syllabes dans un fichier.
-    //
-    // C'est exactement le faux positif déjà mesuré sur
-    // `porteurs-artefact-univers.test.ts`, où `caseDb.ts:124` était compté
-    // imprimeur pour une ligne de JOURNAL. Même correction, même raison : on
-    // lit le CODE, jamais la prose. `codeSeul` est l'idiome du dépôt
-    // (`__tests__/kol-memory/e1-e2-wiring.test.ts:17`).
-    const codeSeul = (src: string) =>
-      src
-        .split("\n")
-        .filter((l) => {
-          const t = l.trimStart();
-          return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
-        })
-        .join("\n");
+  /**
+   * ── BUILD 13 · S3 — UNE MENTION N'EST PAS UNE EXPOSITION ─────────────────
+   *
+   * ██  Le critère brut comptait un COMMENTAIRE comme un appel.          ██
+   *
+   * CAUSE MESURÉE (88ff7f8 → 6f0ec29) : le critère était
+   * `git grep -l 'resolveCaseFileRef' -- 'src/app'`, et l'on assertait que la
+   * sortie soit vide. Il n'opérait pas « en aval d'un dépouillement mal
+   * réglé » : il opérait sur les OCTETS BRUTS, et aucun dépouillement
+   * n'existait sur ce chemin. `src/app/api/pdf/casefile/route.ts` NOMME
+   * `resolveCaseFileRef` en prose (l.43) pour justifier la forme de son refus.
+   * Il ne l'appelle pas, ne l'importe pas, ne l'expose pas.
+   *
+   * C'est exactement le faux positif déjà mesuré sur
+   * `porteurs-artefact-univers.test.ts`, où `caseDb.ts:124` était compté
+   * imprimeur pour une ligne de JOURNAL. Même correction, même raison : on lit
+   * le CODE, jamais la prose.
+   *
+   * ─── LE CRITÈRE EST UNE FONCTION, LE DÉPÔT N'EST QU'UN DE SES CORPUS ─────
+   *
+   * `exposantsDe` est PURE. On l'applique au dépôt réel — qui doit rendre une
+   * liste vide — puis à des corpus SYNTHÉTIQUES qui prouvent qu'elle mord
+   * encore. Aucune violation n'est jamais écrite dans le dépôt pour le
+   * démontrer, et aucun fichier gelé n'est touché.
+   */
+  const SYMBOLE = "resolveCaseFileRef";
 
-    const { readFileSync } = await import("node:fs");
-    const candidats = execSync(
-      `git -C ${racine} grep -l 'resolveCaseFileRef' -- 'src/app' || true`,
-      { encoding: "utf8" },
-    )
+  /** Les surfaces dont le CODE — jamais la prose — nomme la primitive. */
+  function exposantsDe(corpus: Map<string, string>): string[] {
+    return [...corpus.entries()]
+      .filter(([, src]) => codeSeul(src).includes(SYMBOLE))
+      .map(([f]) => f)
+      .sort();
+  }
+
+  /** Le dépôt réel : toutes les surfaces, lues entières. Pas de `git grep`. */
+  function corpusDesSurfaces(): Map<string, string> {
+    const fichiers = execSync(`git -C ${RACINE} ls-files 'src/app/**/*.ts' 'src/app/**/*.tsx'`, {
+      encoding: "utf8",
+    })
       .trim()
       .split("\n")
       .filter(Boolean);
+    return new Map(fichiers.map((f) => [f, readFileSync(path.join(RACINE, f), "utf8")]));
+  }
 
-    const appels = candidats.filter((f) =>
-      codeSeul(readFileSync(path.join(racine, f), "utf8")).includes("resolveCaseFileRef"),
-    );
-    expect(appels).toEqual([]);
+  it("LA PROPRIÉTÉ — aucune surface n'expose la primitive. La projection vient après.", () => {
+    const corpus = corpusDesSurfaces();
+    expect(corpus.size).toBeGreaterThan(50); // le corpus n'est pas vide par accident
+    expect(exposantsDe(corpus)).toEqual([]);
+  });
 
-    // La sonde n'est pas aveugle : elle voit bien un appel réel.
-    expect(codeSeul(`const r = await resolveCaseFileRef(x);`)).toContain("resolveCaseFileRef");
-    // Et elle ignore bien une mention en prose.
-    expect(codeSeul(`  // comme resolveCaseFileRef rend NOT_FOUND`)).not.toContain(
-      "resolveCaseFileRef",
-    );
+  it("le dépôt porte bien une MENTION en prose — sinon la propriété serait vraie pour rien", () => {
+    const corpus = corpusDesSurfaces();
+    const mentions = [...corpus.entries()]
+      .filter(([, src]) => src.includes(SYMBOLE))
+      .map(([f]) => f);
+    expect(mentions).toContain("src/app/api/pdf/casefile/route.ts");
+  });
+
+  // ── LE CONTRÔLE QUI COMPTE — LES DEUX SENS ───────────────────────────────
+
+  const ROUTE_QUI_EXPOSE = `
+    import { resolveCaseFileRef } from "@/lib/casefile/ref";
+    export async function GET(req: Request) {
+      const issue = await resolveCaseFileRef(new URL(req.url).searchParams.get("ref"));
+      return Response.json(issue);
+    }`;
+
+  const PROSES: ReadonlyArray<readonly [string, string]> = [
+    ["commentaire de ligne", `    // comme resolveCaseFileRef, on rend NOT_FOUND tel quel`],
+    ["bloc JSDoc", `    /**\n     * comme resolveCaseFileRef rend la constante NOT_FOUND\n     */`],
+    ["commentaire de FIN DE LIGNE", `    const refus = NOT_FOUND; // cf. resolveCaseFileRef`],
+    ["INTÉRIEUR de bloc sans \`*\` en tête", `    /* voir\n       resolveCaseFileRef\n    */`],
+    ["bloc refermé en MILIEU de ligne", `    const refus = /* resolveCaseFileRef */ NOT_FOUND;`],
+  ];
+
+  const routeQuiNomme = (prose: string) => `
+    const NOT_FOUND = { outcome: "NOT_FOUND" } as const;
+    export async function GET() {
+${prose}
+      return Response.json(NOT_FOUND);
+    }`;
+
+  it("SENS 1 — une EXPOSITION réelle est vue. La garde mord.", () => {
+    expect(exposantsDe(new Map([["src/app/api/x/route.ts", ROUTE_QUI_EXPOSE]]))).toEqual([
+      "src/app/api/x/route.ts",
+    ]);
+  });
+
+  for (const [nom, prose] of PROSES) {
+    it(`SENS 2 — ${nom} : la route NOMME sans exposer, elle reste VERTE`, () => {
+      expect(exposantsDe(new Map([["src/app/api/x/route.ts", routeQuiNomme(prose)]]))).toEqual([]);
+    });
+  }
+
+  it("le critère BRUT — celui d'avant — comptait les CINQ proses. C'est la mesure du correctif.", () => {
+    const brut = (corpus: Map<string, string>) =>
+      [...corpus.entries()].filter(([, src]) => src.includes(SYMBOLE)).map(([f]) => f);
+    for (const [nom, prose] of PROSES) {
+      const corpus = new Map([["src/app/api/x/route.ts", routeQuiNomme(prose)]]);
+      expect(brut(corpus), `${nom} : le critère brut ne la comptait pas`).toEqual([
+        "src/app/api/x/route.ts",
+      ]);
+    }
+  });
+
+  it("le dépouillement ligne à ligne ne suffisait PAS — trois formes lui échappent", () => {
+    const echappent = PROSES.filter(([, prose]) =>
+      codeSeulLigneALigne(routeQuiNomme(prose)).includes(SYMBOLE),
+    ).map(([nom]) => nom);
+    expect(echappent).toEqual(PROSES.slice(2).map(([nom]) => nom));
+  });
+
+  it("une CHAÎNE n'est JAMAIS dépouillée — en cas de doute la garde GARDE le texte, elle ne l'efface pas", () => {
+    const PAR_CHAINE = `
+      const nom = "resolveCaseFileRef";
+      export async function GET() { return Response.json({ nom }); }`;
+    expect(exposantsDe(new Map([["src/app/api/x/route.ts", PAR_CHAINE]]))).toEqual([
+      "src/app/api/x/route.ts",
+    ]);
   });
 });

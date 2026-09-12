@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { codeSeul, emisParLeCode } from "../casefile/codeSeul";
+
 import {
   DN_C1_CALCULATION_IS_NOT_CLAIM,
   DN_C2_MONETARY_SEMANTIC_IDENTITY,
@@ -63,8 +65,11 @@ describe("W2 · la surface publique ne dit plus « les particuliers ont perdu 48
   );
 
   it("le label « Estimated retail harm » a disparu du composant", () => {
-    expect(view).not.toContain("Estimated retail harm");
-    expect(view).not.toContain("Préjudice retail estimé");
+    // Ce qui doit disparaître, c'est le LABEL RENDU. Le jour où un en-tête
+    // expliquera « on ne dit plus “Estimated retail harm” », la prose ne devra
+    // pas rallumer la garde : c'est le code seul qui est interrogé.
+    expect(emisParLeCode(view, "Estimated retail harm")).toBe(false);
+    expect(emisParLeCode(view, "Préjudice retail estimé")).toBe(false);
   });
 
   it("le nouveau label nomme la grandeur réelle", () => {
@@ -80,8 +85,15 @@ describe("W2 · la surface publique ne dit plus « les particuliers ont perdu 48
     expect(view).toContain("circulating market capitalization");
     // Le FDV reste une métrique de marché, mais il n'est jamais le
     // dénominateur qui donnerait au 482 M$ l'air modeste.
-    const scaleLine = view.split("\n").find((l) => l.includes("144%")) ?? "";
-    expect(scaleLine).not.toMatch(/fdv/i);
+    //
+    // La ligne d'échelle est LOCALISÉE dans la source brute — son existence est
+    // le fait à établir, et la chercher dans le code dépouillé rendrait la garde
+    // verte par disparition. Elle est ensuite LUE dans le code seul, à l'index
+    // correspondant : `codeSeul` préserve le compte de lignes (propriété tenue
+    // par `mention-vs-emission.test.ts`), donc les deux index coïncident.
+    const iEchelle = view.split("\n").findIndex((l) => l.includes("144%"));
+    expect(iEchelle).toBeGreaterThan(-1);
+    expect(codeSeul(view).split("\n")[iEchelle]).not.toMatch(/fdv/i);
   });
 
   it("la valeur notionnelle est explicitement dite non réalisée et non retail", () => {

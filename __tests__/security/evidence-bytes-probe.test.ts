@@ -40,6 +40,7 @@ import {
   DEFAULT_CANARY_KEY,
   type RawHead,
 } from "@/lib/evidence-chain/bytesProbe";
+import { emisParLeCode } from "../casefile/codeSeul";
 
 // ── Doubles ───────────────────────────────────────────────────────────────
 
@@ -364,7 +365,9 @@ describe("le runner sort en échec sur UNABLE, pas seulement sur INCIDENT", () =
       path.join(process.cwd(), "src/lib/evidence-chain/bytesProbe.ts"),
       "utf8"
     );
-    expect(pure).not.toContain("redact");
+    // Le critère porte sur ce que le module FAIT, pas sur ce qu'il dit : le jour
+    // où un en-tête expliquera « rien à caviarder ici », il devra rester vert.
+    expect(emisParLeCode(pure, "redact")).toBe(false);
   });
 
   it("le runner ne parle jamais d'une valeur de secret, seulement de noms de variables", () => {

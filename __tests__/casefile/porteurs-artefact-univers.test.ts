@@ -34,6 +34,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
+import { codeSeul, codeSeulLigneALigne } from "./codeSeul";
 
 const RACINE = path.resolve(__dirname, "../..");
 
@@ -217,11 +218,14 @@ export interface Porteur {
  *
  * ██  Troisième fois que ce motif mord, sous une troisième forme.       ██
  *
- * La découverte lisait le fichier ENTIER. Une route CORRIGÉE, qui ne fait plus
- * que NOMMER `case_meta.case_id` dans le commentaire expliquant pourquoi elle
- * ne l'émet plus, restait comptée porteuse. Une garde dont le signal survit à
- * sa propre correction ne signale plus rien : elle reste verte par inertie, et
- * le jour où un vrai porteur apparaît, il se noie dans les faux.
+ * CAUSE MESURÉE (4917bf2 → 6f0ec29) : la découverte testait ses trois motifs
+ * sur le texte BRUT du corpus. Ce n'est pas « le dépouillement ne retire pas
+ * les commentaires » ni « il n'est pas appelé ici » — AUCUN dépouillement
+ * n'existait sur ce chemin. Une route CORRIGÉE, qui ne fait plus que NOMMER
+ * `case_meta.case_id` dans le commentaire expliquant pourquoi elle ne l'émet
+ * plus, restait comptée porteuse. Une garde dont le signal survit à sa propre
+ * correction ne signale plus rien : elle reste verte par inertie, et le jour
+ * où un vrai porteur apparaît, il se noie dans les faux.
  *
  * Le dépôt a déjà rencontré ce motif deux fois :
  *   · `caseDb.ts:124` compté IMPRIMEUR pour une ligne de JOURNAL (corrigé en
@@ -229,20 +233,13 @@ export interface Porteur {
  *   · `resolveCaseFileRef` compté EXPOSÉ pour une mention en prose
  *     (`rc-resolveur-citation.test.ts`, corrigé dans ce même lot).
  *
- * On lit le CODE, jamais la prose. `codeSeul` est l'idiome du dépôt
- * (`__tests__/kol-memory/e1-e2-wiring.test.ts:17`). Il s'applique aux TROIS
- * capacités — producteur, imprimeur, identité — parce qu'un commentaire peut
- * porter n'importe laquelle des trois.
+ * On lit le CODE, jamais la prose. Le dépouillement vit dans
+ * `./codeSeul` — un seul exemplaire pour les deux gardes, avec son propre
+ * critère dans les deux sens (`mention-vs-emission.test.ts`). Il s'applique
+ * aux TROIS capacités — producteur, imprimeur, identité — parce qu'un
+ * commentaire peut porter n'importe laquelle des trois.
  */
-export function codeSeul(src: string): string {
-  return src
-    .split("\n")
-    .filter((l) => {
-      const t = l.trimStart();
-      return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
-    })
-    .join("\n");
-}
+export { codeSeul };
 
 export function decouvrirPorteurs(corpus: Map<string, string>): Porteur[] {
   const porteurs: Porteur[] = [];
@@ -495,24 +492,88 @@ describe("univers · la propriété, sur le dépôt réel", () => {
    * commentaires, donc une route qui NOMME `case_meta.case_id` en prose n'est
    * plus comptée — mais une route qui l'ÉMET l'est toujours.
    */
-  it("`codeSeul` ne rend pas la découverte aveugle — l'émission reste vue", () => {
-    const MOTEUR = `export const r = (s) => \`<div>\${s.off_chain.case_id}</div>\`;`;
-    const EMET = `
+  // ── LE CONTRÔLE QUI COMPTE — LES DEUX SENS, QUATRE FORMES DE PROSE ───────
+  //
+  // ██  Une garde corrigée pour ne plus crier au faux positif, et qui ne  ██
+  // ██  crie plus du tout, est PIRE que celle qu'on remplace.             ██
+  //
+  // Le corpus est SYNTHÉTIQUE : démontrer qu'une garde attrape une violation
+  // ne doit jamais exiger d'introduire la violation dans le dépôt.
+
+  const MOTEUR = `export const r = (s) => \`<div>\${s.off_chain.case_id}</div>\`;`;
+
+  /** Une ÉMISSION réelle : la route donne au moteur l'identité historique. */
+  const EMET = `
       import { r } from "@/lib/moteur";
       export async function GET() {
         const scan = { off_chain: { case_id: caseFile.case_meta.case_id } };
         return new Response(r(scan), { headers: { "Content-Disposition": "attachment" } });
       }`;
-    const NOMME_EN_PROSE = `
+
+  /** Les quatre façons de NOMMER `case_meta.case_id` sans l'émettre. */
+  const PROSES: ReadonlyArray<readonly [string, string]> = [
+    [
+      "commentaire de ligne",
+      `        // L'identité ne vient plus de case_meta.case_id : elle vient du ref.`,
+    ],
+    ["commentaire de FIN DE LIGNE", `        const _ = 1; // ancien : case_meta.case_id`],
+    ["INTÉRIEUR de bloc sans \`*\` en tête", `        /* on n'émettait\n           case_meta.case_id\n        */`],
+    ["bloc refermé en MILIEU de ligne", `        const _ = /* case_meta.case_id */ 1;`],
+  ];
+
+  const routeQuiNomme = (prose: string) => `
       import { r } from "@/lib/moteur";
       export async function GET() {
-        // L'identité ne vient plus de case_meta.case_id : elle vient du ref.
+${prose}
         const scan = { off_chain: { case_id: dossier.ref } };
         return new Response(r(scan), { headers: { "Content-Disposition": "attachment" } });
       }`;
-    const c1 = new Map([["src/lib/moteur.ts", MOTEUR], ["src/app/api/a/route.ts", EMET]]);
-    const c2 = new Map([["src/lib/moteur.ts", MOTEUR], ["src/app/api/a/route.ts", NOMME_EN_PROSE]]);
-    expect(decouvrirPorteurs(c1).map((p) => p.fichier)).toEqual(["src/app/api/a/route.ts"]);
-    expect(decouvrirPorteurs(c2)).toEqual([]);
+
+  const corpusAvec = (route: string) =>
+    new Map([
+      ["src/lib/moteur.ts", MOTEUR],
+      ["src/app/api/a/route.ts", route],
+    ]);
+
+  it("SENS 1 — une ÉMISSION réelle est DÉCOUVERTE. La garde mord.", () => {
+    expect(decouvrirPorteurs(corpusAvec(EMET)).map((p) => p.fichier)).toEqual([
+      "src/app/api/a/route.ts",
+    ]);
+  });
+
+  for (const [nom, prose] of PROSES) {
+    it(`SENS 2 — ${nom} : la route NOMME sans émettre, elle reste VERTE`, () => {
+      expect(decouvrirPorteurs(corpusAvec(routeQuiNomme(prose)))).toEqual([]);
+    });
+  }
+
+  /**
+   * Et la correction n'est pas cosmétique : le dépouillement LIGNE À LIGNE,
+   * l'idiome historique, laisse passer trois de ces quatre formes. Cette
+   * assertion mesure le gain — et rougira si le dépouillement régresse vers
+   * lui.
+   */
+  it("le dépouillement ligne à ligne laisse passer trois des quatre formes — la mesure du gain", () => {
+    const echappent = PROSES.filter(([, prose]) =>
+      IDENTITE_NON_FONDEE.test(codeSeulLigneALigne(routeQuiNomme(prose))),
+    ).map(([nom]) => nom);
+    expect(echappent).toEqual(PROSES.slice(1).map(([nom]) => nom));
+  });
+
+  /**
+   * Le contrôle du contrôle : une émission qui, elle, ne doit JAMAIS être
+   * dépouillée — l'identité est dans une CHAÎNE, pas dans un commentaire.
+   */
+  it("SENS 1 bis — une émission portée par une CHAÎNE reste découverte", () => {
+    const PAR_CHAINE = `
+      import { r } from "@/lib/moteur";
+      export async function GET() {
+        const scan = JSON.parse('{"x":1}');
+        scan.off_chain = { case_id: caseFile.case_meta.case_id };
+        return new Response(r(scan), { headers: { "Content-Disposition": "attachment" } });
+      }`;
+    expect(decouvrirPorteurs(corpusAvec(PAR_CHAINE)).map((p) => p.fichier)).toEqual([
+      "src/app/api/a/route.ts",
+    ]);
   });
 });

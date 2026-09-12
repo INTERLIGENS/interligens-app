@@ -12,16 +12,9 @@ import {
   BOTIFY_SYNTHETIC_ROUTE_KEY,
 } from "@/lib/kol-memory/tokenIdentity";
 
+import { emisParLeCode } from "../casefile/codeSeul";
+
 const lire = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
-/** Le code seul — les en-têtes CITENT l'alias pour l'expliquer. */
-const codeSeul = (src: string) =>
-  src
-    .split("\n")
-    .filter((l) => {
-      const t = l.trimStart();
-      return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
-    })
-    .join("\n");
 
 const CASEFILE = lire("src/app/api/casefile/route.ts");
 const PUBLIC = lire("src/app/api/casefile/public/route.ts");
@@ -32,8 +25,8 @@ describe("BUILD 8 / E2 — /api/casefile : le KO signalé par T1", () => {
   it("la constante 43 caractères déclarée en ligne a DISPARU", () => {
     // C'est elle qui faisait porter le verdict public à une clé qui n'existe
     // dans aucune ligne de la base.
-    expect(codeSeul(CASEFILE)).not.toContain(BOTIFY_SYNTHETIC_ROUTE_KEY);
-    expect(CASEFILE).not.toMatch(/^const BOTIFY_MINT = "/m);
+    expect(emisParLeCode(CASEFILE, BOTIFY_SYNTHETIC_ROUTE_KEY)).toBe(false);
+    expect(emisParLeCode(CASEFILE, /^const BOTIFY_MINT = "/m)).toBe(false);
   });
 
   // ── BUILD 9 / ÉTAPE 7 — les propriétés survivent, la CASE_DB non ────────
@@ -48,7 +41,7 @@ describe("BUILD 8 / E2 — /api/casefile : le KO signalé par T1", () => {
   // se fait sur l'identité RÉSOLUE, jamais sur l'entrée brute.
 
   it("la route ne porte plus aucune carte locale de dossiers", () => {
-    expect(codeSeul(CASEFILE)).not.toContain("CASE_DB");
+    expect(emisParLeCode(CASEFILE, "CASE_DB")).toBe(false);
     expect(CASEFILE).toContain("@/lib/kol-memory/tokenIdentity");
     expect(CASEFILE).toContain("loadCanonicalCaseFile");
   });
@@ -56,14 +49,14 @@ describe("BUILD 8 / E2 — /api/casefile : le KO signalé par T1", () => {
   it("MUTANT — la résolution du dossier part de la clé RÉSOLUE", () => {
     // Sans le contrat d'alias, ?mint=<canonique> ratait la carte → GREEN/0.
     // La cible a changé de nature ; la règle, non.
-    expect(codeSeul(CASEFILE)).not.toContain("canonicalRefForMint(sanitizeMint)");
+    expect(emisParLeCode(CASEFILE, "canonicalRefForMint(sanitizeMint)")).toBe(false);
     expect(CASEFILE).toContain("casefileLookupKey(sanitizeMint)");
     expect(CASEFILE).toContain("canonicalRefForMint(lookupKey)");
   });
 
   it("le garde-fou de scoring compare sur la clé résolue, pas sur l'entrée brute", () => {
     expect(CASEFILE).toContain("lookupKey === BOTIFY_MINT");
-    expect(codeSeul(CASEFILE)).not.toContain("sanitizeMint === BOTIFY_MINT");
+    expect(emisParLeCode(CASEFILE, "sanitizeMint === BOTIFY_MINT")).toBe(false);
   });
 });
 
@@ -82,7 +75,7 @@ describe("BUILD 8 / E2 — les deux routes de dossier publiées", () => {
   // ne réintroduit l'alias en dur, et les deux résolvent le même sujet.
   it("aucune des deux routes ne porte l'alias synthétique en dur", () => {
     for (const [nom, src] of Object.entries({ PUBLIC, PDF })) {
-      expect(codeSeul(src), nom).not.toContain(BOTIFY_SYNTHETIC_ROUTE_KEY);
+      expect(emisParLeCode(src, BOTIFY_SYNTHETIC_ROUTE_KEY), nom).toBe(false);
       expect(src, nom).toContain("canonicalRefForMint");
     }
   });
@@ -124,7 +117,7 @@ describe("BUILD 8 / E2 — invariants de régression du dossier BOTIFY", () => {
 
 describe("BUILD 8 / E1 — canonical.ts résout avant d'interroger", () => {
   it("le findUnique strict sur l'entrée brute a disparu", () => {
-    expect(codeSeul(CANONICAL)).not.toContain("where: { handle },");
+    expect(emisParLeCode(CANONICAL, "where: { handle },")).toBe(false);
     expect(CANONICAL).toContain("resolveCanonicalHandle");
     expect(CANONICAL).toContain("where: { handle: resolved.handle }");
   });
