@@ -199,6 +199,67 @@ describe("LE CONTAINMENT — nœuds, arêtes, labels, notes, et les trois autres
     for (const motif of interdits) expect(SERIALISE, motif).not.toContain(motif);
   });
 
+  /**
+   * ─── LA PROPRIÉTÉ N'EST PAS L'APPARTENANCE AU GROUPE ───────────────────
+   *
+   * Mon critère de containment trie les NŒUDS par `group` déclaré — 13 sur 41.
+   * Mais la prose, elle, ne suit pas le groupe : **30 nœuds sur 41 portent des
+   * `notes`**, répartis sur HUIT groupes. Les 17 qui portent du contenu sans
+   * être du groupe protégé passeraient si la propriété était l'appartenance.
+   *
+   * Elle ne l'est pas. `NetworkNode.notes` n'a aucune fondation possible, donc
+   * les notes tombent sur les 41 — uniformément, ce qui rend le retrait
+   * invisible : une note présente ici et absente là dirait laquelle portait
+   * quelque chose.
+   */
+  it("██ TÉMOIN — 30 nœuds sur 41 portent de la prose, sur HUIT groupes", () => {
+    const avecNotes = SERVI.nodes.filter((n) => typeof n.notes === "string" && n.notes.length > 0);
+    expect(avecNotes).toHaveLength(30);
+    expect(new Set(avecNotes.map((n) => n.group)).size).toBe(8);
+    // Et l'écrasante majorité N'EST PAS du groupe nominatif : 23 sur 30.
+    // Les 6 nœuds `wallet_family` ne portent AUCUNE note — leur contenu
+    // protégé est dans leur LABEL. Seuls 7 des 13 nominatifs ont de la prose.
+    // Si la propriété était l'appartenance au groupe, 23 porteurs de prose
+    // passeraient, et les 6 les plus lourds ne seraient même pas concernés.
+    expect(avecNotes.filter((n) => !estNominatif(n))).toHaveLength(23);
+    expect(avecNotes.filter((n) => estNominatif(n))).toHaveLength(7);
+    expect(SERVI.nodes.filter((n) => n.group === "wallet_family" && n.notes)).toHaveLength(0);
+  });
+
+  it("██ LES FORMES QUE NI LE GROUPE NI UN GREP N'AURAIENT ATTRAPÉES", () => {
+    const brut = JSON.stringify(SERVI);
+
+    // ① UNE CORRECTION INTERNE, servie verbatim sur une personne nommée.
+    //    C'est une note de rédaction d'enquête — « reframe from prior repo
+    //    narrative » s'adresse à nous, pas au lecteur.
+    expect(brut).toContain("NOT the serial operator — reframe from prior repo narrative.");
+
+    // ② DU VOCABULAIRE DE STRATÉGIE JUDICIAIRE, deux fois — et sur des nœuds
+    //    `infra_cex`, donc HORS du groupe nominatif. C'est la démonstration que
+    //    le groupe ne suffit pas.
+    expect((brut.match(/MLAT-subpoenable/g) ?? [])).toHaveLength(2);
+    for (const id of ["cex_kucoin", "cex_gate"]) {
+      const n = SERVI.nodes.find((x) => x.id === id)!;
+      expect(estNominatif(n), `${id} n'est pas du groupe nominatif`).toBe(false);
+      expect(n.notes).toContain("MLAT-subpoenable");
+    }
+
+    // ③ LA MÉTADONNÉE D'INGÉNIERIE, avec les cardinaux de la base de prod.
+    expect(brut).toContain("INTERLIGENS prod DB (5 profiles, 29 evidences, 47 wallets");
+    expect(brut).toContain("INVESTIGATION_DIONE_REPORT.md");
+
+    // ── ET LES TROIS DISPARAISSENT ────────────────────────────────────────
+    for (const forme of [
+      "NOT the serial operator",
+      "reframe from prior repo narrative",
+      "MLAT-subpoenable",
+      "INTERLIGENS prod DB",
+      "INVESTIGATION_DIONE_REPORT.md",
+    ]) {
+      expect(SERIALISE, forme).not.toContain(forme);
+    }
+  });
+
   it("les motifs de retrait ne VOYAGENT PAS dans la charge", () => {
     // Ils partent au journal. Un motif dans la charge serait l'oracle livré
     // avec la garde.
@@ -207,6 +268,67 @@ describe("LE CONTAINMENT — nœuds, arêtes, labels, notes, et les trois autres
     }
     // Et ils existent bien, eux, pour le journal.
     expect(CONTENU.retraits.length).toBeGreaterThan(10);
+  });
+
+  /**
+   * ─── LA PORTÉE TEMPORELLE — VÉRIFIÉE, PAS AJOUTÉE ──────────────────────
+   *
+   * Le critère ratifié :
+   *
+   *   « Temporal scope is part of the authority of a governed assertion
+   *     whenever changing or omitting that scope can change the assertion's
+   *     meaning. »
+   *
+   * L'âge seul ne suffit donc pas. Le défaut est : observation historique +
+   * contexte temporel retiré → assertion qui a l'air courante. Sur une
+   * assertion nominative, ce n'est plus la même assertion.
+   *
+   * ⚠ ET LE FAUX REMÈDE QU'ON N'A PAS APPLIQUÉ : ajouter mécaniquement un
+   * `generatedAt` partout. `generatedAt` peut être la date de GÉNÉRATION DU
+   * FICHIER et non l'`asOf` de l'OBSERVATION — la distinction déjà ratifiée
+   * pour CaseFile. Il faut la date de l'ASSERTION, pas une date décorative.
+   *
+   * Ce que je fais ici : je VÉRIFIE ce que la charge porte naturellement.
+   */
+  it("la portée temporelle SURVIT au containment — elle n'est pas retirée avec sourceOfTruth", () => {
+    // Le risque réel de ce lot : `sourceOfTruth` portait « on-chain reads
+    // performed 2026-04-17 », et je le retire. Si c'était le seul porteur de
+    // la portée, le containment aurait TRANSFORMÉ un instantané daté en
+    // assertion sans date — donc aggravé le défaut qu'il prétend fermer.
+    expect(SERVI.sourceOfTruth).toContain("on-chain reads performed 2026-04-17");
+    expect(CONTENU.graphe.sourceOfTruth).not.toContain("2026-04-17");
+    // Il reste, et il survit.
+    expect(CONTENU.graphe.generatedAt).toBe("2026-04-17");
+  });
+
+  it("sur CETTE charge, `generatedAt` EST l'asOf — vérifié, pas supposé", () => {
+    // Les deux dates coïncident, et la coïncidence est ADOSSÉE : la métadonnée
+    // brute dit que les lectures on-chain ont eu lieu ce jour-là. Ce n'est donc
+    // pas une date de build posée à côté d'observations plus anciennes.
+    const dateDeLObservation = /on-chain reads performed (\d{4}-\d{2}-\d{2})/.exec(
+      SERVI.sourceOfTruth,
+    );
+    expect(dateDeLObservation, "la métadonnée ne porte plus de date d'observation").not.toBeNull();
+    expect(dateDeLObservation![1]).toBe(SERVI.generatedAt);
+  });
+
+  it("LA LACUNE RESTANTE EST DÉCLARÉE — aucune assertion ne porte SA propre portée", () => {
+    // Ce qui reste servi porte des assertions nominatives sans date propre :
+    // `risk: "confirmed_scammer"`, `rugCount: 12`. La portée n'existe qu'au
+    // niveau du GRAPHE, à cinq mois de distance. Un lecteur voit une
+    // qualification qui a l'air courante.
+    //
+    // Je ne l'invente pas : aucun champ de `NetworkNode` ne porte d'`asOf`, et
+    // en fabriquer un à partir de `generatedAt` reviendrait à affirmer que
+    // chaque observation date du jour du build — exactement le faux remède.
+    // DÉCLARÉ, NON COMBLÉ.
+    for (const n of CONTENU.graphe.nodes) {
+      expect(n, `${n.id} porterait un asOf`).not.toHaveProperty("asOf");
+      expect(n, `${n.id} porterait un observedAt`).not.toHaveProperty("observedAt");
+    }
+    const survivant = CONTENU.graphe.nodes.find((n) => n.id === "bkokoski");
+    expect(survivant?.risk).toBe("confirmed_scammer");
+    expect(survivant).not.toHaveProperty("asOf");
   });
 
   it("le critère porte sur le GROUPE DÉCLARÉ, pas sur le texte du label", () => {

@@ -314,9 +314,18 @@ describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE
     expect(GOUVERNEES.filter((f) => /\/(health|cron|webhook|revalidate)\//.test(f))).toEqual([]);
   });
 
-  it("CONSTAT — TREIZE surfaces gouvernées échappent au registre, et les voici", () => {
-    // Elles sont NOMMÉES. Une quatorzième fait rougir ce test le jour où elle
+  it("CONSTAT — ONZE surfaces gouvernées échappent au registre, et les voici", () => {
+    // Elles sont NOMMÉES. Une douzième fait rougir ce test le jour où elle
     // apparaît — c'est tout ce qu'on demande à un témoin d'univers.
+    //
+    // ─── TREIZE → ONZE, ET C'EST UNE FERMETURE, PAS UN DÉPLACEMENT ───────
+    //
+    // Deux surfaces sont sorties de cette liste : `api/pdf/casefile/route.ts`
+    // et `api/report/v2/route.ts`. Le test suivant le PROUVE au lieu de le
+    // supposer, et la distinction n'est pas rhétorique : un critère de
+    // découverte peut se vider par la forme, et la liste maigrirait alors
+    // sans qu'aucune surface ne soit fermée. On a passé la journée à démonter
+    // des gardes qui rougissaient moins parce qu'elles voyaient moins.
     expect(NON_DECLAREES).toEqual([
       "src/app/api/admin/graph/cases/[id]/pdf/route.ts",
       "src/app/api/admin/plainte/generate/route.ts",
@@ -324,9 +333,7 @@ describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE
       "src/app/api/partner/v1/batch-score/route.ts",
       "src/app/api/partner/v1/score-lite/route.ts",
       "src/app/api/partner/v1/transaction-check/route.ts",
-      "src/app/api/pdf/casefile/route.ts",
       "src/app/api/pdf/kol/route.ts",
-      "src/app/api/report/v2/route.ts",
       "src/app/api/scan/solana/route.ts",
       "src/app/api/scan/timeline/[address]/route.ts",
       "src/app/api/v1/scan-context/route.ts",
@@ -334,13 +341,33 @@ describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE
     ]);
   });
 
-  it("les TROIS qui publient un dossier COMPLET hors registre sont dedans", () => {
-    for (const f of [
-      "src/app/api/scan/solana/route.ts",
-      "src/app/api/report/v2/route.ts",
-      "src/app/api/pdf/casefile/route.ts",
-    ]) {
-      expect(NON_DECLAREES, `${f} devrait être signalée`).toContain(f);
+  it("██ FERMETURE, PAS DÉPLACEMENT — les deux sorties sont TOUJOURS VUES, et DÉCLARÉES", () => {
+    // La propriété qui sépare les deux causes possibles d'une liste qui maigrit :
+    //
+    //   FERMETURE    le critère la voit encore, et le registre la déclare
+    //   DÉPLACEMENT  le critère ne la voit plus — elle publie toujours, en
+    //                silence, et la garde est devenue aveugle
+    //
+    // L'univers gouverné DÉCOUVERT n'a pas bougé : il vaut toujours 25. C'est
+    // le registre qui a grandi.
+    for (const f of ["src/app/api/pdf/casefile/route.ts", "src/app/api/report/v2/route.ts"]) {
+      expect(GOUVERNEES, `${f} : le critère ne la voit plus — DÉPLACEMENT`).toContain(f);
+      expect(DECLAREES.has(f), `${f} : elle n'est pas au registre`).toBe(true);
+    }
+    expect(GOUVERNEES.length, "l'univers découvert a bougé").toBe(25);
+  });
+
+  it("celle qui publie un dossier COMPLET hors registre est dedans — il en reste UNE", () => {
+    // Elles étaient trois. `report/v2` et `pdf/casefile` sont entrées au
+    // registre ; `scan/solana` n'y est pas.
+    expect(NON_DECLAREES, "scan/solana devrait être signalée")
+      .toContain("src/app/api/scan/solana/route.ts");
+
+    // Et le CONTRÔLE qui empêche cette mise à jour d'être une capitulation :
+    // les deux sorties doivent être déclarées, pas seulement absentes.
+    for (const f of ["src/app/api/report/v2/route.ts", "src/app/api/pdf/casefile/route.ts"]) {
+      expect(NON_DECLAREES, `${f} est ressortie du registre`).not.toContain(f);
+      expect(DECLAREES.has(f), `${f} a quitté la liste SANS être déclarée`).toBe(true);
     }
   });
 

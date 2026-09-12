@@ -437,17 +437,52 @@ describe("univers · la propriété, sur le dépôt réel", () => {
   // Le corollaire ne dépend d'AUCUN porteur en particulier : il dépend qu'il
   // y en ait un. Le jour où il n'y en aura plus, ce test devra le dire — pas
   // se taire.
-  it("COROLLAIRE — retirer un porteur du dépôt ne rougit PAS, alors qu'un compte rougirait", () => {
-    const reels = decouvrirPorteurs(corpus).map((p) => p.fichier);
-    expect(reels.length, "plus aucun porteur : le corollaire n'a rien à amputer").toBeGreaterThan(0);
-    const ampute = new Map(corpus);
-    ampute.delete(reels[0]);
+  /**
+   * ─── LE COROLLAIRE A PERDU SON TÉMOIN, ET CE N'ÉTAIT PAS UN DÉTAIL ──────
+   *
+   * Ce test amputait un porteur RÉEL du dépôt. Le dépôt n'en porte plus aucun :
+   * `decouvrirPorteurs(corpus)` rend zéro. L'ancienne écriture serait donc
+   * devenue VACUEMENT VRAIE — elle passerait au vert en ne mesurant rien, et
+   * elle certifierait le contraire de ce qu'elle annonce le jour où un porteur
+   * réapparaîtrait.
+   *
+   * La règle ratifiée s'applique mot pour mot :
+   *
+   *   « An absence guard is probative only if it independently proves that the
+   *     prohibited phenomenon exists in its controlled positive witness. »
+   *
+   * Le témoin est donc SYNTHÉTIQUE, et c'est mieux qu'un témoin réel : il ne
+   * dépend pas de l'état du dépôt, donc il ne peut plus disparaître sous le
+   * test. Le corpus de fabrication existe déjà dans ce fichier et sert les
+   * mutants voisins — on n'invente rien, on rebranche.
+   */
+  it("COROLLAIRE — retirer un porteur ne rougit PAS, alors qu'un compte rougirait", () => {
+    // ① LE PRÉALABLE — le dépôt réel n'a plus de porteur. Sans cette ligne,
+    //    on ne saurait pas POURQUOI on passe au synthétique.
+    expect(decouvrirPorteurs(corpus)).toEqual([]);
 
-    // La classification tient.
+    // ② LE TÉMOIN POSITIF — un porteur fabriqué, hors dépôt, et il est bien
+    //    découvert. Si cette assertion tombait, tout ce qui suit serait vide.
+    const temoin = corpusSynthetique({
+      "src/lib/pdf/v3/templateV3.ts": CINQUIEME_MOTEUR_SYNTHETIQUE,
+      "src/app/api/report/v3/route.ts": ROUTE_MUTANTE,
+      "src/app/api/report/v4/route.ts": ROUTE_CONFORME,
+    });
+    const reels = decouvrirPorteurs(temoin).map((x) => x.fichier);
+    expect(reels, "le témoin positif ne porte aucun porteur").toEqual([
+      "src/app/api/report/v3/route.ts",
+    ]);
+
+    // ③ L'AMPUTATION — et la classification tient, parce qu'elle porte sur ce
+    //    qui EST là, jamais sur un compte attendu.
+    const ampute = new Map(temoin);
+    ampute.delete(reels[0]);
     expect(nonClasses(ampute)).toEqual([]);
 
-    // Et le compte, lui, a bougé — un cliquet numérique aurait échoué ici.
-    expect(decouvrirPorteurs(ampute).length).toBeLessThan(decouvrirPorteurs(corpus).length);
+    // ④ LA MUTATION DISCRIMINANTE — le compte, lui, a bougé. Un cliquet
+    //    numérique aurait échoué ici, et c'est tout le sujet du corollaire.
+    expect(decouvrirPorteurs(ampute).length).toBeLessThan(decouvrirPorteurs(temoin).length);
+    expect(decouvrirPorteurs(ampute)).toEqual([]);
   });
 
   it("le cliquet porte sur une IDENTITÉ — un chemin —, jamais sur une coordonnée ni un total", () => {
