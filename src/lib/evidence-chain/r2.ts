@@ -41,6 +41,34 @@ export function evidenceR2ConfigFromEnv(): EvidenceR2Config | null {
   return { accountId, accessKeyId, secretAccessKey, bucket, endpoint };
 }
 
+/**
+ * Vrai si la config résoudra sur le bucket DÉDIÉ aux preuves, faux si elle
+ * retombera sur les variables génériques.
+ *
+ * `evidenceR2ConfigFromEnv()` est volontairement tolérante : elle retombe sur
+ * R2_BUCKET_NAME / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY pour qu'un
+ * déploiement sans bucket dédié continue d'archiver plutôt que de perdre des
+ * octets. C'est le bon défaut pour le RUNTIME.
+ *
+ * Ce n'est pas le bon défaut pour un script d'INGESTION lancé à la main : là,
+ * le repli silencieux signifie « j'écris des preuves avec le token
+ * tous-compartiments, dans le bucket partagé », c'est-à-dire exactement ce
+ * qu'on cherche à ne plus faire — sans qu'aucune ligne ne le signale. Un
+ * appelant qui exige le bucket dédié teste donc ce prédicat et s'arrête.
+ *
+ * Les trois variables sont exigées ENSEMBLE : poser le bucket sans les
+ * credentials donnerait le bucket dédié écrit avec le token global, ce qui est
+ * le pire des deux mondes (droits larges, et on croit le contraire).
+ */
+export function usesDedicatedEvidenceBucket(): boolean {
+  const set = (v: string | undefined) => v !== undefined && v.trim() !== "";
+  return (
+    set(process.env.R2_EVIDENCE_BUCKET_NAME) &&
+    set(process.env.R2_EVIDENCE_ACCESS_KEY_ID) &&
+    set(process.env.R2_EVIDENCE_SECRET_ACCESS_KEY)
+  );
+}
+
 export function buildEvidenceR2(cfg: EvidenceR2Config): S3Client {
   return new S3Client({
     region: "auto",

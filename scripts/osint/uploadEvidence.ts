@@ -4,29 +4,82 @@ import path from 'path'
 const envLocal = fs.readFileSync('.env.local', 'utf8')
 const dbUrl = envLocal.match(/DATABASE_URL="([^"]+)"/)?.[1]
 if (dbUrl) process.env.DATABASE_URL = dbUrl
-// Also load R2 creds
+// Charge les variables R2. Guillemets OPTIONNELS : l'ancienne regex exigeait
+// `R2_X="..."` et ignorait silencieusement une ligne non guillemetée. Sur les
+// variables evidence, cet oubli aurait fait passer le script en repli
+// générique — donc sur le token tous-compartiments — sans le dire.
 for (const line of envLocal.split('\n')) {
-  const m = line.match(/^(R2_[A-Z_]+)="([^"]+)"/)
-  if (m) process.env[m[1]] = m[2]
+  const m = line.match(/^(R2_[A-Z_]+)=(.*)$/)
+  if (m) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '')
 }
 process.env.PDF_STORAGE_ENABLED = 'true'
 
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { PrismaClient } from '@prisma/client'
+import { evidenceR2ConfigFromEnv, buildEvidenceR2, usesDedicatedEvidenceBucket } from '../../src/lib/evidence-chain/r2'
 
 const prisma = new PrismaClient()
 
-const BUCKET = process.env.R2_BUCKET_NAME ?? 'interligens-rawdocs'
-const R2_PUBLIC_BASE = process.env.R2_PUBLIC_URL ?? `https://pub-interligens.r2.dev`
+// ── Cible R2 : bucket DÉDIÉ aux preuves, credentials dédiés ────────────────
+//
+// Avant, ce script construisait son propre S3Client sur R2_ACCESS_KEY_ID /
+// R2_SECRET_ACCESS_KEY — le token « tous compartiments » — et écrivait dans
+// R2_BUCKET_NAME. Il produisait donc des preuves avec des droits de
+// lecture/écriture sur l'intégralité du compte R2, dans le bucket partagé avec
+// les rapports et les rawdocs. Il passe désormais par la même résolution que
+// le reste de l'evidence-chain, seul endroit qui connaisse cette config.
+//
+// ARRÊT PLUTÔT QUE REPLI. evidenceR2ConfigFromEnv() retombe volontairement sur
+// les variables génériques — bon défaut au runtime, mauvais ici : le repli
+// silencieux, c'est précisément le comportement qu'on retire. On exige donc le
+// bucket dédié et on s'arrête sinon.
+function resolveEvidenceTarget(): { s3: S3Client; bucket: string; publicBase: string } {
+  console.log('\n=== OSINT EVIDENCE UPLOAD ===\n')
+  const cfg = evidenceR2ConfigFromEnv()
+  if (!cfg) {
+    console.error(
+      '\n✖ R2 indisponible : evidenceR2ConfigFromEnv() a renvoyé null.\n' +
+      '  Vérifier R2_ACCOUNT_ID et les credentials dans .env.local.\n'
+    )
+    process.exit(1)
+  }
+  if (!usesDedicatedEvidenceBucket()) {
+    console.error(
+      '\n✖ ARRÊT — bucket dédié aux preuves non configuré.\n' +
+      '  Ce script refuse d\'écrire des preuves avec le token tous-compartiments\n' +
+      '  dans le bucket partagé. Poser les TROIS dans .env.local :\n' +
+      '    R2_EVIDENCE_BUCKET_NAME\n' +
+      '    R2_EVIDENCE_ACCESS_KEY_ID\n' +
+      '    R2_EVIDENCE_SECRET_ACCESS_KEY\n' +
+      '  Les trois ensemble : le bucket seul serait écrit avec le token global.\n'
+    )
+    process.exit(1)
+  }
+  // L'URL publique est LIÉE au bucket. La conserver en dur alors qu'on écrit
+  // ailleurs enregistrerait un imageUrl qui pointe vers un bucket où l'objet
+  // n'existe pas — une preuve référencée par un lien mort, ce qui est pire
+  // qu'une preuve sans lien. On exige donc une base explicite pour ce bucket.
+  const publicBase = process.env.R2_EVIDENCE_PUBLIC_URL
+  if (!publicBase || publicBase.trim() === '') {
+    console.error(
+      `\n✖ ARRÊT — R2_EVIDENCE_PUBLIC_URL absente.\n` +
+      `  Le bucket « ${cfg.bucket} » est la cible, mais aucune base d'URL publique\n` +
+      `  ne lui est associée. Écrire l'ancienne base (pub-interligens.r2.dev)\n` +
+      `  produirait des imageUrl morts : l'objet est dans l'autre bucket.\n` +
+      `  Poser R2_EVIDENCE_PUBLIC_URL, ou servir les preuves par URL signée.\n`
+    )
+    process.exit(1)
+  }
+  console.log(`  bucket   : ${cfg.bucket}`)
+  console.log(`  endpoint : ${cfg.endpoint}`)
+  console.log(`  base URL : ${publicBase.replace(/\/+$/, '')}`)
+  return { s3: buildEvidenceR2(cfg), bucket: cfg.bucket, publicBase: publicBase.replace(/\/+$/, '') }
+}
 
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-})
+const target = resolveEvidenceTarget()
+const r2: S3Client = target.s3
+const BUCKET = target.bucket
+const R2_PUBLIC_BASE = target.publicBase
 
 async function r2Exists(key: string): Promise<boolean> {
   try {
@@ -173,8 +226,6 @@ const UPLOAD_MAP: UploadMapping[] = [
 ]
 
 async function main() {
-  console.log('\n=== OSINT EVIDENCE UPLOAD ===\n')
-
   const manifest: Array<{ dossier: string; r2Key: string; publicUrl: string | null; status: string }> = []
 
   for (const m of UPLOAD_MAP) {
