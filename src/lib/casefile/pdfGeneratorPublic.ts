@@ -44,7 +44,6 @@ import {
   BOTIFY_CASEFILE_REF,
   type PublicProjection,
   type RenderedClaim,
-  type WithheldNotice,
 } from "./publicProjection";
 import type { ExclusionReason } from "./publicationState";
 
@@ -170,9 +169,7 @@ type Copy = {
   evIdxEmpty: string;
   evCol: { id: string; type: string; source: string; ts: string; url: string; claim: string };
   unresolvedLabel: string;
-  withheldLabel: string;
   withheldTitle: string;
-  withheldIntro: string;
   withheldCol: { reason: string; field: string; count: string };
   withheldReason: Record<ExclusionReason, string>;
   timelineTitle: string;
@@ -227,10 +224,7 @@ const COPY: Record<PublicReportLang, Copy> = {
       "No claim in this file currently meets the publication requirements. The material remains attached to the file. Absence of provenance is not a finding of falsity, and no further conclusion is drawn from it.",
     evCol: { id: "ID", type: "Type", source: "Source", ts: "Timestamp", url: "URL", claim: "Claim ref" },
     unresolvedLabel: "Unresolved reference",
-    withheldLabel: "Withheld piece",
     withheldTitle: "Withheld from publication",
-    withheldIntro:
-      "Material attached to this file that is not published. Each line names the field that governs the decision — never its content. Absence of provenance is not a finding of falsity.",
     withheldCol: { reason: "Reason", field: "Field", count: "Items" },
     withheldReason: {
       EXCLUDED_FROM_PUBLICATION: "Excluded from publication",
@@ -299,10 +293,7 @@ const COPY: Record<PublicReportLang, Copy> = {
       "Aucune allégation de ce dossier ne satisfait à ce jour les conditions de publication. Le matériel reste rattaché au dossier. Une provenance absente n'est pas une preuve de fausseté, et aucune conclusion supplémentaire n'en est tirée.",
     evCol: { id: "ID", type: "Type", source: "Source", ts: "Horodatage", url: "URL", claim: "Réf. allégation" },
     unresolvedLabel: "Référence non résolue",
-    withheldLabel: "Pièce retenue",
     withheldTitle: "Retenu hors publication",
-    withheldIntro:
-      "Matériel rattaché à ce dossier et non publié. Chaque ligne nomme le CHAMP qui commande la décision — jamais son contenu. Une provenance absente n'est pas une preuve de fausseté.",
     withheldCol: { reason: "Motif", field: "Champ", count: "Éléments" },
     withheldReason: {
       EXCLUDED_FROM_PUBLICATION: "Exclu de la publication",
@@ -495,34 +486,27 @@ function withheldSection(copy: Copy, titre: string, champ: string): string {
 }
 
 /**
- * Les avis de retrait. Ils vivent SUR la page d'index, pas ailleurs :
- * un retrait qu'il faut aller chercher trois pages plus loin est un retrait
- * silencieux avec des étapes en plus.
+ * ─── LE TABLEAU DES AVIS DE RETRAIT EST SUPPRIMÉ ────────────────────────────
+ *
+ *   The same governed-content oracle does not become admissible when
+ *   transferred from an interactive projection into a portable artifact.
+ *   Portability STRENGTHENS the need for artifact-local admissibility; it
+ *   does not weaken it.
+ *
+ * Il rendait, pour chaque avis, un motif, un NOM DE CHAMP et une CARDINALITÉ
+ * — donc l'existence, la nature et le volume d'un contenu gouverné non
+ * publiable, sur un dossier nominatif. Sa condition d'émission était la
+ * non-vacuité de `dossier.withheld` : la branche elle-même était l'oracle.
+ *
+ * Et il n'est pas remplacé par un « 0 » ni par une mention de vacuité — ce
+ * serait encore une assertion sur la population retenue. L'artefact ne porte
+ * rien : ni bloc, ni motif, ni champ, ni nombre, ni marque-place.
+ *
+ * Ce que l'admission du PRODUCTEUR ne réparait pas : une fois généré,
+ * l'artefact quitte l'audience et le contexte de la route qui l'a produit.
+ * L'admissibilité doit donc être LOCALE À L'ARTEFACT, et c'est ici qu'elle
+ * s'exerce — au seul assembleur du document.
  */
-function buildWithheldBlock(copy: Copy, withheld: readonly WithheldNotice[]): string {
-  if (withheld.length === 0) return "";
-  const rows = withheld
-    .map(
-      (n) => `<tr>
-      <td>${esc(copy.withheldReason[n.reason])}</td>
-      <td class="mono">${esc(n.field)}</td>
-      <td class="mono">${esc(String(n.count))}</td>
-    </tr>`,
-    )
-    .join("");
-  return `
-    <div class="h2 withheld-title">${esc(copy.withheldTitle)}</div>
-    <p class="body">${esc(copy.withheldIntro)}</p>
-    <table class="data">
-      <thead><tr>
-        <th>${esc(copy.withheldCol.reason)}</th>
-        <th>${esc(copy.withheldCol.field)}</th>
-        <th>${esc(copy.withheldCol.count)}</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
-}
 
 function buildEvidenceIndexInner(
   copy: Copy,
@@ -584,10 +568,21 @@ function buildEvidenceIndexInner(
     for (const r of p.unresolvedRefs) {
       rows.push(ligne(copy.unresolvedLabel, r, "—", "—", c.claimId));
     }
-    for (const r of p.withheldRefs) {
-      rows.push(ligne(copy.withheldLabel, r, "—", "—", c.claimId));
-    }
-    if (p.sources.length === 0 && p.unresolvedRefs.length === 0 && p.withheldRefs.length === 0) {
+    // ─── LES RÉFÉRENCES RETENUES NE SONT PLUS DES LIGNES ────────────────────
+    //
+    // Chaque `withheldRef` produisait une ligne portant l'IDENTIFIANT d'une
+    // pièce connue mais non publiable : le plus direct des oracles, puisqu'il
+    // nomme la pièce. Les références NON RÉSOLUES restent listées — elles
+    // disent que le registre ne connaît pas une référence, ce qui ne parle
+    // d'aucun contenu gouverné.
+    //
+    // ⚠️ ET LA CONDITION DE REPLI CESSE DE LES COMPTER — c'est le point fin.
+    // Tant qu'elle les comptait, un claim dont les seules pièces étaient
+    // retenues ne produisait AUCUNE ligne, alors qu'un claim sans rien du tout
+    // produisait sa ligne de fil. L'artefact distinguait donc encore « rien
+    // trouvé » de « trouvé mais retenu » — par l'absence, sans un mot. Les deux
+    // rendent désormais la même chose.
+    if (p.sources.length === 0 && p.unresolvedRefs.length === 0) {
       // Un claim publié sur son seul `thread_url` : le fil EST le fondement.
       const titre = lang === "fr" && c.titleFr ? c.titleFr : c.title;
       rows.push(ligne("thread", titre, c.claimDate ?? "—", threadLabel, c.claimId));
@@ -613,7 +608,6 @@ function buildEvidenceIndexInner(
     <div class="h1">${esc(copy.evIdxTitle)}</div>
     <p class="body">${esc(copy.evIdxIntro)}</p>
     ${table}
-    ${buildWithheldBlock(copy, dossier.withheld)}
   `;
 }
 
@@ -780,7 +774,6 @@ function renderCss(): string {
        là où la seule information est « pas calculé ». */
     .score-ring-value.score-unset { color: ${MUTED}; font-weight: 400; }
     .score-ring-value.score-unset + .score-ring-band { color: ${MUTED}; }
-    .withheld-title { margin-top: 18px; }
     .score-meta-label { color: ${MUTED}; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
     .score-meta-desc { font-size: 13px; color: ${INK}; font-weight: 600; }
 
