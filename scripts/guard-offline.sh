@@ -237,23 +237,6 @@ LEASE_DUREE_MAX_S=2700   # 45 minutes
 # « rien à vérifier ». Une lease n'existe qu'une fois MERGÉE dans main — c'est la
 # même propriété que le guard lui-même : on ne se juge pas avec ses propres règles.
 LEASES=(
-    # W10 — P0 « autorité de contenu publié », volet ORACLES.
-    #
-    # Quatre branches de rendu conditionnées à l'EXISTENCE d'un contenu non
-    # publiable. Le ruling qui les qualifie :
-    #
-    #   A conditional rendering branch whose condition is the existence of
-    #   non-publishable governed content is itself a publication oracle.
-    #
-    # UN SEUL chemin ici, et ce n'est pas une précaution : GPT ordonne de
-    # corriger la PRIMITIVE GÉNÉRIQUE plutôt que les deux pages qui la
-    # consomment, et cette primitive tombe sous `^src/components/`. La lease
-    # est la conséquence mécanique du ruling, pas une fenêtre d'aisance.
-    # Les trois autres corrections sont sur chemins libres et n'y entrent pas.
-    #
-    # 40 mn, cinq sous la borne mécanique. Les corrections sont ÉCRITES et la
-    # suite est verte avant ouverture : la fenêtre ne couvre que push+CI+merge.
-    "W10|oracles withheld de publication|src/components/cases/TokenCasefileView.tsx|227bdcb915973eaec4ca69f7dfd72ac6809e4ade|hotfix/oracles-withheld-fermeture|2026-09-12T17:55:29Z|2026-09-12T18:35:29Z|OPEN"
 )
 
 lease_rouge() {
