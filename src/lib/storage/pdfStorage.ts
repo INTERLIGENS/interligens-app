@@ -83,7 +83,13 @@ export function pointerLatestKey(handle: string): string {
 /** L'échec d'une écriture d'objet, distinct de l'échec du registre. */
 export class ErreurStockageGouverne extends Error {
   constructor(
-    readonly code: "PUT_ECHOUE" | "STOCKAGE_DESACTIVE",
+    /**
+     * LE STADE, et il compte. Un échec AVANT le PUT ne laisse aucun objet ;
+     * un échec APRÈS en laisse un, dont la clé est connue. Les confondre
+     * ferait chercher un orphelin qui n'existe pas, ou n'en chercher aucun
+     * alors qu'il y en a un.
+     */
+    readonly code: "PUT_ECHOUE" | "STOCKAGE_DESACTIVE" | "CONFIRMATION_ECHOUEE",
     message: string,
     readonly cle: string | null,
     readonly cause?: unknown,
@@ -197,7 +203,23 @@ export async function uploadPdf(input: PdfUploadInput): Promise<PdfUploadResult>
   }
 
   // ── 3/3 — LA CONFIRMATION ───────────────────────────────────────────
-  await confirmerEnregistrement(ligne.id);
+  //
+  // L'échec ici est NOMMÉ à part : l'objet EXISTE, et sa clé est celle qui a
+  // été allouée. La ligne reste INTENDED, donc réconciliable — le
+  // réconciliateur la classera PROMOTION_POSSIBLE dès qu'il vérifiera les
+  // octets. C'est le seul chemin par lequel une opération gouvernée
+  // interrompue se CLÔT plus tard au lieu de se perdre.
+  try {
+    await confirmerEnregistrement(ligne.id);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error("[pdfStorage] confirmation échouée — objet écrit, ligne INTENDED conservée", {
+      cle: ligne.cle,
+      registreId: ligne.id,
+      reason,
+    });
+    throw new ErreurStockageGouverne("CONFIRMATION_ECHOUEE", reason, ligne.cle, err);
+  }
 
   const signedUrl = await getSignedUrl(
     r2Client,

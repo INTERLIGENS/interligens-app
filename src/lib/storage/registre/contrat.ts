@@ -258,4 +258,44 @@ export const DOCTRINE = {
     "Retention is a process property, not a storage guarantee: this bucket is " +
     "not WORM and no object lock is in force. Absence of a lifecycle policy is " +
     "not a retention policy.",
+
+  /**
+   * LA SÉPARATION DES DEUX ÉTATS — ratifiée au recensement.
+   *
+   * `sha256` + `size_bytes` décrivent des OCTETS OBSERVÉS ; `authority_state`
+   * + `invalidation_state` décrivent ce qui peut être UTILISÉ ou PUBLIÉ. Les
+   * deux se rencontrent à la réconciliation et n'y fusionnent jamais :
+   *
+   *   · une intégrité vérifiée N'ACCORDE PAS l'autorité — un orphelin dont
+   *     l'empreinte concorde reste un orphelin ;
+   *   · une autorité enregistrée N'ÉTABLIT PAS l'intégrité — c'est
+   *     exactement `LIGNE_SANS_OBJET`, l'incident le plus grave du
+   *     réconciliateur : le registre affirme ce que le stockage ne porte pas.
+   *
+   * C'est pourquoi `PRESENT_NON_VERIFIABLE` existe comme verdict distinct :
+   * « présent » n'est pas « vérifié », et aucun des deux n'est « publiable ».
+   */
+  INTEGRITE_ET_GOUVERNANCE_NE_SE_FABRIQUENT_PAS:
+    "Integrity state describes independently observed persisted bytes. " +
+    "Governance state describes what may be used or published. Neither state " +
+    "may manufacture the other.",
+
+  /**
+   * NULL = NON ÉTABLI. Ni « inconnu donc mauvais », ni « probablement
+   * identique ». C'est la seule valeur qui ne ment pas sur une empreinte
+   * qu'on n'a pas pu vérifier sans lire les octets.
+   */
+  NULL_EST_NON_ETABLI:
+    "A null integrity field means NOT ESTABLISHED. It does not mean unknown-" +
+    "therefore-bad, and it does not mean probably-identical.",
+
+  /**
+   * L'ÉLARGISSEMENT DE D5 — la production ET la délivrance.
+   *
+   * Une variable d'environnement peut configurer l'INFRASTRUCTURE ; elle ne
+   * peut pas transformer un artefact gouverné en artefact hors registre.
+   * `PDF_STORAGE_ENABLED` ne décide donc pas si l'autorité existe.
+   */
+  AUTORITE_OU_RIEN:
+    "No registry authority → no governed artifact production OR DELIVERY.",
 } as const;
