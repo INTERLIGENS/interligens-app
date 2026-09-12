@@ -458,6 +458,52 @@ if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
     )
 fi
 
+# Exceptions pour BUILD 13 · S3 — L'IDENTITÉ DE CITATION DE L'ARTEFACT PORTABLE.
+#
+# LA PROPRIÉTÉ, et elle est unique :
+#
+#   Any portable CaseFile artifact that carries a CaseFile citation identity
+#   must derive that identity from the governed persisted CaseFileRef.
+#
+# `src/lib/caseDb.ts` déclare en tête, depuis BUILD 9, ce que `loadCaseByMint`
+# n'a PAS le droit d'alimenter : « ✗ le PDF ou l'export CaseFile ». Les trois
+# routes ci-dessous l'alimentent. LA FENÊTRE EXÉCUTE UNE INTERDICTION QUI ÉTAIT
+# DÉJÀ ÉCRITE — c'est une prose normative qu'aucun mécanisme ne faisait
+# respecter, pas une règle nouvelle.
+#
+# Le geste, par fichier :
+#   pdf/casefile      l'identité imprimée dérive du ref gouverné, ET la route
+#                     REFUSE de produire quand aucun dossier gouverné ne se
+#                     résout (404 `no_governed_casefile`, refus INDISCERNABLE
+#                     quelle que soit la cause — protéger l'existence d'un
+#                     dossier NON PUBLIÉ, jamais le mint, qui est public).
+#   casefile/generate le NOM DE FICHIER dérive du ref gouverné.
+#   report/v2         idem, sur le pied de CHAQUE page.
+#
+# CE QUI N'EST PAS FAIT, ET C'EST DÉLIBÉRÉ :
+#   · aucun fail-closed sur report/v2 — l'arbitrage le limite à pdf/casefile ;
+#   · aucun retrait du mint tronqué de report/v2 pour un mint SANS dossier ;
+#   · aucun renommage du champ `case_id` (dette P1 SERVED / SCHEMA SEMANTICS) ;
+#   · aucune dégradation de repli : on REFUSE, on ne produit pas d'artefact
+#     allégé, et on ne transforme pas implicitement pdf/casefile en « PDF de
+#     scan générique » pour éviter le fail-closed.
+#
+# `src/components/pdf/pdfRenderer.ts` et `src/lib/pdf/v2/templateV2.ts` restent
+# PASSIFS et HORS fenêtre : ils impriment ce que l'appelant fournit. On ne
+# modifie pas un imprimeur parce qu'un appelant lui donne la mauvaise propriété.
+#
+# Autorisation humaine explicite (David, GPT — GO fenêtre artefact) — voir PR
+# description. Exemption STRICTEMENT limitée aux 3 fichiers src/app/api/
+# concernés ; AUCUN wildcard sur src/app/api/ (toute autre route reste bloquée
+# sur cette branche comme ailleurs).
+if [[ "$BRANCH" =~ ^hotfix/s3-artefact-identite-gouvernee$ ]]; then
+    EXEMPT_S3_ARTEFACT_PATTERNS=(
+        "^src/app/api/pdf/casefile/route\.ts$"
+        "^src/app/api/casefile/generate/route\.ts$"
+        "^src/app/api/report/v2/route\.ts$"
+    )
+fi
+
 # Exceptions pour le câblage evidence-chain sur les flux de capture live
 # (CC-OFFLINE-56 : provenance + EvidenceItem à la réception sur retail submit,
 # commit opérateur, watcher bridge). Autorisation humaine explicite (David,
@@ -847,6 +893,19 @@ while IFS= read -r file; do
     if [[ "$BRANCH" =~ ^hotfix/xapi-usage-authoritative$ ]]; then
         EXEMPT=false
         for ex in "${EXEMPT_XAPI_AUTHORITATIVE_PATTERNS[@]}"; do
+            if [[ "$file" =~ $ex ]]; then
+                EXEMPT=true
+                break
+            fi
+        done
+        [[ "$EXEMPT" == "true" ]] && continue
+    fi
+
+    # Sur la branche hotfix/s3-artefact-identite-gouvernee, exempter STRICTEMENT
+    # les 3 routes porteuses d'identité de citation (aucun wildcard src/app/api/).
+    if [[ "$BRANCH" =~ ^hotfix/s3-artefact-identite-gouvernee$ ]]; then
+        EXEMPT=false
+        for ex in "${EXEMPT_S3_ARTEFACT_PATTERNS[@]}"; do
             if [[ "$file" =~ $ex ]]; then
                 EXEMPT=true
                 break
