@@ -237,6 +237,11 @@ LEASE_DUREE_MAX_S=2700   # 45 minutes
 # « rien à vérifier ». Une lease n'existe qu'une fois MERGÉE dans main — c'est la
 # même propriété que le guard lui-même : on ne se juge pas avec ses propres règles.
 LEASES=(
+    # W9 — P0 « autorité de contenu publié ». La PREMIÈRE lease réelle du dépôt.
+    # Trois terminaux servis, énumérés fichier par fichier, aucun joker. Ouverte
+    # 40 mn, cinq sous la borne mécanique de 45 : la marge est dans la lease,
+    # pas seulement dans la consigne. Fermeture par la même voie de maintenance.
+    "W9|autorite de contenu publie|src/app/api/watchlist/route.ts,src/app/api/explorer/route.ts,src/app/api/investigators/network-graph/route.ts|f4a5d23655b579c32d9987aa6dd574cfbc6141ad|feat/cc-offline-174-p0-collection-authority|2026-09-12T16:25:46Z|2026-09-12T17:05:46Z|OPEN"
 )
 
 lease_rouge() {
