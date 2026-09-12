@@ -416,9 +416,10 @@ posé sur le précédent.
 
 ## 8. CE QUE CETTE CONCEPTION NE RÈGLE PAS
 
-1. **Elle constate, elle n'empêche pas.** Le WORM reste indisponible sur ce
-   compte (`r2.ts:1-12` : object lock → `NotImplemented`/`AccessDenied`,
-   `immutableStored = false`). **Aucun étage n'est un verrou.**
+1. **Elle constate, elle n'empêche pas.** Le compte n'offre aucun verrou
+   d'écriture — mesuré par appel réel et inscrit dans `r2.ts:1-12` :
+   `CreateBucket ObjectLockEnabled` → `NotImplemented`, `GetObjectLock` /
+   `Versioning` → `AccessDenied`. **Aucun étage n'est un verrou.**
 2. **La période 2026-03-09 → 2026-07-20 reste `NOT_MEASURABLE`**, et le rester
    **est la conclusion**, pas une étape. Un artefact détruit sans ligne
    `EvidenceItem` est invisible à toute empreinte, par construction.

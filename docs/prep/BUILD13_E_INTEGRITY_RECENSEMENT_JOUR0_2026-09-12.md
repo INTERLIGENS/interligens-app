@@ -241,9 +241,77 @@ vérifier plus tard, où qu'il soit conservé, que c'est bien ce rapport-là.
 *(Une attestation qui prétend fonder l'intégrité et qu'on ne peut pas
 elle-même vérifier serait la même faute, d'un étage plus haut.)*
 
-**Son horodatage TSA n'a pas été demandé.** Il ferait de cette attestation une
-pièce ancrée, et c'est la bonne suite — mais horodater est une écriture vers un
-tiers, hors de la fenêtre d'aujourd'hui.
+### L'ANCRAGE — obtenu le 2026-09-12, après GO
+
+**Une seule requête vers le tiers, sur le DIGEST seul. Le fichier n'a jamais
+été transmis.**
+
+```
+autorité      freetsa.org          ← la MÊME que les 1 070 pièces du corpus
+                                     (mesuré : 1 070/1 070 stampées freetsa.org
+                                      le 2026-07-30). Pas une autorité nouvelle.
+genTime       2026-09-12T19:13:56Z
+token         4 645 octets   ·  chaîne PEM  7 939 octets
+digest ancré  5aaa3230a71162e34b78bdaf6a79cbe0a3494e3c7af61fd33b84ad30da03f8a7
+```
+
+**Le digest a été RECALCULÉ sur les octets du fichier, jamais recopié depuis le
+§ ci-dessus.** Ancrer un digest repris d'une note ancrerait la note, pas le
+fichier — ce serait la faute de tout ce chantier, d'un étage plus haut. Les
+deux valeurs coïncident, et c'est une confirmation indépendante, pas une
+tautologie.
+
+**L'ancrage mord.** Le token a été vérifié hors ligne contre le digest ancré
+(`Verification: OK`) **et** contre un digest voisin d'UN SEUL caractère
+hexadécimal (`message imprint mismatch` — rejeté). Un token qui attesterait les
+deux ne prouverait rien ; le script sort en échec sans rien écrire
+d'exploitable dans ce cas.
+
+**Vérification par un tiers, sans aucun accès au système** — rejouée depuis le
+lot seul :
+
+```
+shasum -a 256 census-jour0-complet.json
+    → 5aaa3230a71162e34b78bdaf6a79cbe0a3494e3c7af61fd33b84ad30da03f8a7
+openssl ts -verify -digest <ce digest> \
+    -in census-jour0-complet.tsr -CAfile census-jour0-complet.chain.pem
+    → Verification: OK
+openssl ts -reply -in census-jour0-complet.tsr -text
+    → Status: Granted. · Hash Algorithm: sha256 · Time stamp: Sep 12 19:13:56 2026 GMT
+```
+
+### Où le lot est conservé — et la question que je ne tranche pas
+
+| | |
+|---|---|
+| **lot complet** (attestation 846 758 o + `.tsr` + `.chain.pem` + `.anchor.json`) | `~/interligens-attestations/census-jour0-2026-09-12/` — **un seul exemplaire, sur une seule machine** |
+| **ancre inscrite au dépôt** | `docs/attestations/census-jour0-2026-09-12/` — `.tsr` + `.anchor.json` (~13 Ko). **Pas les 846 Ko** : le dépôt porte l'ancre, pas l'archive. |
+
+**La chaîne de certificats est EMBARQUÉE dans `.anchor.json`, pas posée à
+côté.** `.gitignore:25` écarte `*.pem` — une règle faite pour les clés privées,
+et celle-ci est une chaîne publique. Plutôt que de forcer l'ajout d'un fichier
+que git réignorera au prochain geste, elle est inscrite en clair dans le
+procès-verbal, **exactement comme `EvidenceItem.tsaCertChain` le fait déjà en
+base**. L'ancre du dépôt est donc AUTO-PORTANTE — vérifié en extrayant la
+chaîne du seul `.anchor.json` : `Verification: OK` sur le digest ancré,
+`Verification: FAILED` sur un digest voisin.
+
+⚠️ **L'ancrage ne sauvegarde pas l'attestation.** Il établit qu'elle existait au
+plus tard le 2026-09-12 19:13:56 UTC ; il ne la duplique pas. En l'état, le
+fichier n'existe **qu'en un exemplaire local**, et le token inscrit au dépôt
+serait alors une ancre sans navire. **Où cette baseline doit être archivée est
+une décision d'archivage, pas une décision de mesure — je la pose, je ne la
+prends pas.**
+
+### Ce que l'ancrage NE prouve PAS
+
+1. Il établit que **ce fichier-là** existait **au plus tard** au `genTime`. Il
+   n'établit **ni** que le recensement a été exécuté à cette date, **ni** que
+   ses constats sont exacts. Un horodateur atteste une existence, pas une
+   vérité.
+2. Il n'ancre **que l'attestation**. Les 1 101 objets du corpus n'ont été ni
+   modifiés, ni re-horodatés, ni touchés.
+3. **Il ne change rien au stockage.** Un recensement constate ; il n'empêche pas.
 
 ---
 
@@ -258,8 +326,10 @@ tiers, hors de la fenêtre d'aujourd'hui.
 3. **La période 2026-03-09 → 2026-07-20 reste `NOT_MEASURABLE`**, et le rester
    **est la conclusion**. Un artefact détruit sans ligne `EvidenceItem` est
    invisible à toute empreinte.
-4. **Le WORM reste indisponible** (`r2.ts` : object lock → `NotImplemented` /
-   `AccessDenied`). **Un recensement constate ; il n'empêche pas.**
+4. **Le compartiment n'offre aucun verrou d'écriture.** Mesuré par appel réel
+   le 2026-07-30 et inscrit dans `r2.ts` : `CreateBucket ObjectLockEnabled` →
+   `NotImplemented`, `GetObjectLock` / `Versioning` → `AccessDenied`. **Un
+   recensement constate ; il n'empêche pas.**
 5. **`VERIFIED_UNANCHORED` n'est pas `VERIFIED_ANCHORED`.** 31 pièces reposent
    sur la seule affirmation du registre. Intégrité attestée, **ancrage tiers
    indisponible** — affaibli, jamais invalide, et dit plutôt que tu.
@@ -274,7 +344,9 @@ tiers, hors de la fenêtre d'aujourd'hui.
 | **O3** | recensement glissant, T = 30 j | idem |
 | **O4a** | **relecture après ingestion** — clôt L-c | touche `ingest.ts`, hors de la fenêtre « aucune mutation du chemin d'écriture » |
 | **O4b** | `verifyManifest` **par clé contre R2** — clôt L-b | le correctif change la sémantique d'un vérificateur déjà émis ; il demande son propre arbitrage |
-| — | horodatage TSA de l'attestation | écriture vers un tiers |
+| — | **archivage du lot d'attestation** | décision d'archivage, pas de mesure — posée au §8, non prise |
+| — | rattrapage TSA des 31 `reports/` non ancrés | **retenu pour le Product Spine, PAS un chantier maintenant.** Remonte SI un report showcase RC (BOTIFY, VINE) se trouve parmi les 31 — non mesuré ce soir, délibérément |
+| ~~—~~ | ~~horodatage TSA de l'attestation~~ | **FAIT** — voir §8, ancré chez freetsa.org le 2026-09-12T19:13:56Z |
 
 ---
 
