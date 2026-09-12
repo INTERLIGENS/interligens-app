@@ -3,6 +3,11 @@ import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 import { PUBLISHED_PROCEEDS_FILTER, redactProceeds } from '@/lib/kol/proceedsGate'
 import { parseBehaviorFlags, type BehaviorFlagKey } from '@/lib/kol/behaviorFlags'
 import { getSnapshotCountByDossier } from '@/lib/evidence/evidenceSnapshots'
+import {
+  PROFONDEUR_INDECIDABLE,
+  profondeurLaPlusForte,
+  rangDeProfondeur,
+} from '@/lib/governance/invariants/evidenceDepth'
 
 export type DossierKind = 'case' | 'launch' | 'platform'
 
@@ -50,13 +55,37 @@ async function getPublishedHandles(): Promise<Map<string, { displayName: string 
   return new Map(profiles.map(p => [p.handle, p]))
 }
 
-const DEPTH_ORDER: Record<string, number> = { none: 0, weak: 1, moderate: 2, strong: 3, comprehensive: 4 }
-const DEPTH_REVERSE: string[] = ['none', 'weak', 'moderate', 'strong', 'comprehensive']
+// ─── EVIDENCE_DEPTH_DOMAIN — l'ordre semantique ne vit plus ici ─────────
+//
+// Avant ce lot, ce fichier portait sa PROPRE table de rangs et
+// snapshotSelectors.ts portait la sienne. Deux exemplaires de la meme
+// semantique, tous deux avec un repli `?? 0` — et c'est ce repli qui fait
+// retomber evidenceDepth = 'deep' sur 'none', donc RAVE-DUMP-APR2026
+// (enquete ZachXBT, 17,8 M$ de pertes retail) sur un verdict public SIGNAL.
+//
+// La primitive metier est unique et vit dans src/lib/governance/invariants/.
+// Prisma stocke la colonne ; il n'en invente pas la semantique.
 
-function strongestDepth(depths: string[]): string {
-  let best = 0
-  for (const d of depths) best = Math.max(best, DEPTH_ORDER[d] ?? 0)
-  return DEPTH_REVERSE[best] ?? 'none'
+/**
+ * Fail-closed : une seule valeur hors domaine rend le marqueur
+ * d'indecidabilite, qui n'a lui-meme AUCUN rang. Rien ne se replie sur 'none'.
+ */
+function profondeurDuDossier(depths: string[]): string {
+  const agregee = profondeurLaPlusForte(depths)
+  if (agregee.ok) return agregee.valeur
+  console.warn('[explorer] evidenceDepth hors domaine gouverne', { horsDomaine: agregee.horsDomaine })
+  return PROFONDEUR_INDECIDABLE
+}
+
+/**
+ * Le statut de documentation derive du RANG, donc il ferme aussi. Un dossier
+ * dont la profondeur est illisible n'est ni documented ni partial : on ne le
+ * sait pas, et 'partial' serait une affirmation.
+ */
+function statutDeDocumentation(profondeur: string): string {
+  const rang = rangDeProfondeur(profondeur)
+  if (rang === null) return PROFONDEUR_INDECIDABLE
+  return rang >= 3 ? 'documented' : 'partial'
 }
 
 export async function getCaseDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null; proceedsPublication: string }>): Promise<DossierItem[]> {
@@ -114,8 +143,8 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
     // Skip dossiers with zero published actors
     if (actors.length === 0) continue
 
-    const bestDepth = strongestDepth(depths)
-    const docStatus = (DEPTH_ORDER[bestDepth] ?? 0) >= 3 ? 'documented' : 'partial'
+    const bestDepth = profondeurDuDossier(depths)
+    const docStatus = statutDeDocumentation(bestDepth)
 
     dossiers.push({
       id: `case-${caseId}`,
@@ -187,7 +216,7 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
     if (actors.length === 0) continue
 
     const chain = entries[0].chain
-    const bestDepth = strongestDepth(depths)
+    const bestDepth = profondeurDuDossier(depths)
     const caseId = entries.find(e => e.caseId)?.caseId ?? null
 
     dossiers.push({

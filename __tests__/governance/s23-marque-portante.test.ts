@@ -51,6 +51,15 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const MECANISME = resolve("src/lib/governance/audienceProjection");
+// ─── L'AXE 3 EST ENTRÉ DANS LA SIGNATURE DE `projeter()` ────────────────
+//
+// Les cas CONFORMES de ce corpus ont été réécrits : ils présentent désormais
+// une `DecisionDePublication`. Les MUTANTS n'ont pas bougé — ni leur source,
+// ni leur verdict attendu. C'est la règle : un contrat de frontière qui change
+// doit casser les surfaces qui s'y appuient, sinon il n'a pas changé ; mais
+// retirer un mutant pour faire passer un changement serait l'affaiblissement
+// que ce fichier existe pour empêcher.
+const UNITE = resolve("src/lib/governance/uniteGouvernee");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NIVEAU 1 — LE TYPE : la non-conformité NE COMPILE PAS
@@ -61,11 +70,59 @@ const CORPUS_TYPE: ReadonlyArray<{ nom: string; compile: boolean; source: string
     nom: "conforme",
     compile: true,
     source: `import { admettreAnonyme, projeter, repondre } from "${MECANISME}";
+import { constaterDecision, gouverner } from "${UNITE}";
+const dossier = { ref: "R", interne: "ne sort pas" };
+export async function GET() {
+  const a = admettreAnonyme("index public des dossiers");
+  const d = constaterDecision("PlatformCaseFile.publishStatus", "R", "published", true)!;
+  return repondre(projeter(a, dossier, (e) => ({ ref: gouverner("OBSERVATION", e.ref, d) })));
+}`,
+  },
+
+  // ─── L'AXE 3 — LE MUTANT DE BYPASS BRUT ────────────────────────────────
+  //
+  // ██ C'EST LE MUTANT QUI COMPTE. ██
+  //
+  // Avant ce lot, `(e) => ({ ref: e.ref })` compilait : la projection était
+  // portante quant à l'AUDIENCE, et muette quant à l'AUTORITÉ. Une surface
+  // pouvait déclarer son audience, traverser la frontière, et émettre un champ
+  // qu'aucune décision de publication ne fondait. C'est exactement la forme des
+  // 22 unités non fondées du tableau.
+  //
+  // Interpoler le contenu brut en contournant la décision doit être une ERREUR
+  // DE COMPILATION, pas une règle de relecture.
+  {
+    nom: "champ-nu-dans-la-projection",
+    compile: false,
+    source: `import { admettreAnonyme, projeter, repondre } from "${MECANISME}";
 const dossier = { ref: "R", interne: "ne sort pas" };
 export async function GET() {
   const a = admettreAnonyme("index public des dossiers");
   return repondre(projeter(a, dossier, (e) => ({ ref: e.ref })));
 }`,
+  },
+  {
+    // Et la variante qui ment sur la nature sans présenter de décision : la
+    // marque ne s'obtient pas en écrivant un objet qui lui ressemble.
+    nom: "unite-contrefaite",
+    compile: false,
+    source: `import { admettreAnonyme, projeter, repondre } from "${MECANISME}";
+const dossier = { ref: "R" };
+export async function GET() {
+  const a = admettreAnonyme("m");
+  return repondre(projeter(a, dossier, (e) => ({
+    ref: { nature: "OBSERVATION" as const, valeur: e.ref, fondeePar: { referentiel: "KolProfile.publishStatus" } },
+  })));
+}`,
+  },
+  {
+    // `gouverner` EXIGE une décision. `constaterDecision(..., false)` rend
+    // `null`, et `null` n'est pas une décision. Le fail-closed est dans le type.
+    nom: "decision-nulle-presentee",
+    compile: false,
+    source: `import { constaterDecision, gouverner } from "${UNITE}";
+const d = constaterDecision("KolProfile.publishStatus", "s", "draft", false);
+export const u = gouverner("ASSERTION", "x", d);`,
   },
   {
     nom: "emission-brute",
@@ -150,12 +207,16 @@ export const x = exigerRestreinte(
     nom: "restreinte-exigee-et-fournie",
     compile: true,
     source: `import { admettreAnonyme, projeter, exigerRestreinte } from "${MECANISME}";
+import { constaterDecision, gouverner } from "${UNITE}";
 const a = admettreAnonyme("m");
-export const x = exigerRestreinte(projeter(a, { ref: "R", i: 1 }, (e) => ({ ref: e.ref })));`,
+const d = constaterDecision("PlatformCaseFile.publishStatus", "R", "published", true)!;
+export const x = exigerRestreinte(
+  projeter(a, { ref: "R", i: 1 }, (e) => ({ ref: gouverner("OBSERVATION", e.ref, d) })),
+);`,
   },
 ];
 
-let erreursParFichier = new Map<string, string>();
+const erreursParFichier = new Map<string, string>();
 
 beforeAll(() => {
   const dir = mkdtempSync(join(tmpdir(), "s23-"));
@@ -202,7 +263,15 @@ describe("S23/t — LA FORME : la frontière refuse ce qui n'a pas traversé", (
         expect(err, `${nom} devait être REFUSÉ par le type, et il passe`).toBeDefined();
         // Refusé pour la BONNE raison : un argument inassignable à la
         // frontière, pas un import cassé ou une faute de frappe.
-        expect(err).toMatch(/TS2345|TS2322/);
+        //
+        // TS2739 a rejoint la liste avec l'axe 3, et il porte une information
+        // que les deux autres n'ont pas : « missing the following properties …
+        // sujet, valeurConstatee, [DECIDE] ». C'est le symbole unique qui parle.
+        // Une unité contrefaite n'échoue pas parce qu'elle a la mauvaise forme —
+        // elle échoue parce qu'il MANQUE ce qu'on ne peut pas écrire soi-même.
+        // La liste reste fermée : elle n'accepte que des refus d'assignabilité,
+        // jamais un import cassé (TS2307) ni une faute de frappe (TS2304).
+        expect(err).toMatch(/TS2345|TS2322|TS2739/);
       }
     },
   );

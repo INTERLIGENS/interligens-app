@@ -16,6 +16,8 @@ import {
 
 // ── Input shapes (subset of DossierItem and Snapshot) ──────────────────────
 
+import { rangDeProfondeur } from "@/lib/governance/invariants/evidenceDepth"
+
 export interface SnapshotLinkedActor {
   handle: string
   displayName: string | null
@@ -52,18 +54,32 @@ export interface SnapshotEvidenceItem {
 
 // ── Solidity tier ──────────────────────────────────────────────────────────
 
-export type SolidityTier = "CONFIRMED" | "PROBABLE" | "SIGNAL"
+/**
+ * ─── QUATRE ÉTATS, ET LE QUATRIÈME EST UN REFUS ────────────────────────
+ *
+ * `INDECIDABLE` n'est pas un niveau bas : c'est l'absence de niveau. Il existe
+ * parce que l'invariant EVIDENCE_DEPTH_DOMAIN ferme au lieu de replier, et
+ * qu'un verdict public ne doit pas être calculé sur une profondeur qu'on ne
+ * sait pas lire.
+ */
+export type SolidityTier = "CONFIRMED" | "PROBABLE" | "SIGNAL" | "INDECIDABLE"
 
-const DEPTH_RANK: Record<string, number> = {
-  none: 0,
-  weak: 1,
-  moderate: 2,
-  strong: 3,
-  comprehensive: 4,
-}
-
+/**
+ * ⚠ LA TAUTOLOGIE DE CETTE FONCTION N'EST PAS CORRIGÉE ICI, ET C'EST VOULU.
+ *
+ * `documented` vaut déjà `depth >= 3` en amont (explorerItems), donc
+ * `documented && depth >= 3` teste deux fois la même chose, et « multi-source »
+ * n'est jamais vérifié nulle part. C'est un défaut de VÉRITÉ — ASSERTION
+ * CORRECTNESS — et il appartient au P1. Le toucher ici mélangerait le moteur
+ * de publication et le moteur de vérité, ce que ce lot existe pour séparer.
+ *
+ * Ce qui change : le RANG ne se replie plus sur 0. `evidenceDepth = 'deep'`
+ * rendait `SIGNAL — Early signal, partial evidence` sur RAVE-DUMP-APR2026 ;
+ * il rend désormais `INDECIDABLE`, ce qui est faux d'aucune manière.
+ */
 export function deriveSolidity(d: SnapshotDossier): SolidityTier {
-  const depth = DEPTH_RANK[d.evidenceDepth] ?? 0
+  const depth = rangDeProfondeur(d.evidenceDepth)
+  if (depth === null) return "INDECIDABLE"
   const documented = d.documentationStatus === "documented"
 
   if (documented && depth >= 3) return "CONFIRMED"
@@ -72,6 +88,13 @@ export function deriveSolidity(d: SnapshotDossier): SolidityTier {
 }
 
 export function solidityCopy(tier: SolidityTier, locale: "en" | "fr" = "en") {
+  if (tier === "INDECIDABLE") {
+    // Aucune qualification n'est émise : la phrase DIT qu'on ne sait pas lire
+    // la profondeur, elle n'en invente pas une basse.
+    return locale === "fr"
+      ? { label: "INDÉCIDABLE", line: "Profondeur de preuve hors domaine — verdict non calculé" }
+      : { label: "UNDECIDABLE", line: "Evidence depth out of domain — verdict not computed" }
+  }
   if (locale === "fr") {
     if (tier === "CONFIRMED")
       return { label: "CONFIRMÉ", line: "Affaire confirmée — preuves multi-sources" }
@@ -237,7 +260,13 @@ export function coreEvidenceFallback(
 ): string {
   const fr = locale === "fr"
   const documented = d.documentationStatus === "documented"
-  const depth = DEPTH_RANK[d.evidenceDepth] ?? 0
+  // EVIDENCE_DEPTH_DOMAIN — hors domaine, on ne descend PAS d'un cran : on
+  // retire la profondeur du raisonnement. Les branches ci-dessous qui
+  // n'exigent que `documented`, des drapeaux ou des acteurs restent
+  // atteignables ; celles qui exigent un rang ne le sont plus. C'est la
+  // différence entre « la preuve est faible » et « je ne sais pas la lire ».
+  const rang = rangDeProfondeur(d.evidenceDepth)
+  const depth = rang ?? -1
   const hasFlags = Array.isArray(d.strongestFlags) && d.strongestFlags.length > 0
   const hasCoord = d.topCoordinationSignal != null
   const hasActors = d.linkedActorsCount > 0
@@ -309,6 +338,13 @@ export function deriveNextAction(
   locale: "en" | "fr" = "en",
 ): NextAction {
   const fr = locale === "fr"
+  if (tier === "INDECIDABLE") {
+    // Pas de conseil d'action sur un dossier dont le verdict n'est pas calculé.
+    // Une ADVICE dérivée d'un VERDICT absent serait une assertion sur du vide.
+    return fr
+      ? { label: "PROFONDEUR DE PREUVE À TRANCHER", hint: "Valeur hors du domaine gouverné — aucune action déduite" }
+      : { label: "EVIDENCE DEPTH NEEDS RULING", hint: "Value outside the governed domain — no action derived" }
+  }
   if (tier === "CONFIRMED") {
     return fr
       ? {
