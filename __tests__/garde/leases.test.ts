@@ -299,17 +299,35 @@ describe("lease · l'inventaire des exemptions statiques, déclaré", () => {
    */
   const src = readFileSync(GUARD, "utf8");
 
-  it("STATIC PROJECT EXEMPTIONS = 1 — et c'est OFFLINE_EXEMPT_PATTERNS", () => {
+  it("AUCUNE exemption conditionnée à un nom de chantier — le nom n'autorise plus", () => {
     const conditionnelles = src.match(/if \[\[ "\$BRANCH" =~ \^(?:feat\/cc-offline|hotfix\/)[^]]*\]\]; then\n\s*EXEMPT_/g) ?? [];
     expect(conditionnelles).toHaveLength(0);
     expect(src).not.toContain("EXEMPT_SETUP_PATTERNS");
-    expect(src).toContain("OFFLINE_EXEMPT_PATTERNS");
   });
 
-  it("la seule restante est JUSTIFIÉE mais NON BORNÉE — 2 chemins, aucune condition", () => {
-    const bloc = src.slice(src.indexOf("OFFLINE_EXEMPT_PATTERNS=("));
-    const chemins = bloc.slice(0, bloc.indexOf(")")).match(/"[^"]+"/g) ?? [];
-    expect(chemins).toHaveLength(2);
+  /**
+   * UN CLIQUET, PAS UN CHIFFRE — et c'est la même asymétrie que partout ailleurs :
+   * l'inventaire peut DESCENDRE sans rien demander, il ne peut pas MONTER.
+   *
+   * Une borne codée en dur (`toHaveLength(2)`) aurait deux défauts opposés : elle
+   * échoue quand on RETIRE une exemption — un resserrement n'a rien à demander à
+   * personne — et elle fige l'état courant comme s'il était la cible. La cible est
+   * ZÉRO ; le plafond ne fait que garantir qu'on n'en reprend pas.
+   */
+  const PLAFOND_EXEMPTIONS_INCONDITIONNELLES = 1;
+
+  it(`au plus ${PLAFOND_EXEMPTIONS_INCONDITIONNELLES} exemption inconditionnelle — et jamais une de plus`, () => {
+    const i = src.indexOf("OFFLINE_EXEMPT_PATTERNS=(");
+    const restantes = i === -1 ? 0 : 1;
+    expect(restantes).toBeLessThanOrEqual(PLAFOND_EXEMPTIONS_INCONDITIONNELLES);
+  });
+
+  it("si une exemption inconditionnelle subsiste, elle reste ÉTROITE", () => {
+    // Elle est tolérée, pas approuvée : tant qu'elle existe, elle ne doit pas
+    // s'élargir en douce. Zéro chemin est le cas où elle a disparu.
+    const i = src.indexOf("OFFLINE_EXEMPT_PATTERNS=(");
+    const chemins = i === -1 ? [] : (src.slice(i).slice(0, src.slice(i).indexOf(")")).match(/"[^"]+"/g) ?? []);
+    expect(chemins.length).toBeLessThanOrEqual(2);
   });
 
   it("la borne de 45 minutes vit DANS le mécanisme, pas dans une consigne", () => {
