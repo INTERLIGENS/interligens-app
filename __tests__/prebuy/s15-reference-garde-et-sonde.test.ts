@@ -110,6 +110,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
+import type { ScanResult } from "@/app/api/scan/solana/route";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
 const codeSeul = (s: string): string =>
@@ -121,13 +122,13 @@ const codeSeul = (s: string): string =>
     })
     .join("\n");
 
-const scanDe = (caseId: string): any => ({
-  mint: "MINT-A", scanned_at: "2026-09-10T11:22:33.000Z",
-  off_chain: { claims: [], source: "CaseDB", status: "Referenced", summary: "s", case_id: caseId },
+const scanDe = (caseId: string): ScanResult => ({
+  mint: "MINT-A", chain: "solana", scanned_at: "2026-09-10T11:22:33.000Z",
+  off_chain: { claims: [], sources: [], source: "case_db", status: "Referenced", summary: "s", case_id: caseId },
   on_chain: { markets: { source: null, primary_pool: null, dex: null, url: null, price: null,
     liquidity_usd: null, volume_24h_usd: null, fdv_usd: null,
     fetched_at: "2026-09-10T11:22:33.000Z", cache_hit: false } },
-  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { claim_penalty: 0, severity_multiplier: 1 } },
+  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { base_score: 50, claim_penalty: 0, severity_multiplier: 1 } },
 });
 
 // ═════════════════════════════════════════════════════════════════════════

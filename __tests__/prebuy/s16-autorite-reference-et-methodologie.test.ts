@@ -44,6 +44,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
+import type { ScanResult } from "@/app/api/scan/solana/route";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
 const codeSeul = (s: string): string =>
@@ -55,13 +56,13 @@ const codeSeul = (s: string): string =>
     })
     .join("\n");
 
-const scanDe = (caseId: string): any => ({
-  mint: "MINT-A", scanned_at: "2026-09-10T11:22:33.000Z",
-  off_chain: { claims: [], source: "CaseDB", status: "Referenced", summary: "s", case_id: caseId },
+const scanDe = (caseId: string): ScanResult => ({
+  mint: "MINT-A", chain: "solana", scanned_at: "2026-09-10T11:22:33.000Z",
+  off_chain: { claims: [], sources: [], source: "case_db", status: "Referenced", summary: "s", case_id: caseId },
   on_chain: { markets: { source: null, primary_pool: null, dex: null, url: null, price: null,
     liquidity_usd: null, volume_24h_usd: null, fdv_usd: null,
     fetched_at: "2026-09-10T11:22:33.000Z", cache_hit: false } },
-  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { claim_penalty: 0, severity_multiplier: 1 } },
+  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { base_score: 50, claim_penalty: 0, severity_multiplier: 1 } },
 });
 /** Le texte VU par un lecteur : balises retirées, espaces normalisés. */
 const texteRendu = (caseId = "CASE-A"): string =>
@@ -359,7 +360,13 @@ describe("S16/aj1 — CONSTAT : la table déclare une entrée qu'elle ne publie 
     // À la décharge : mint, horodatage, moteur versionné et source off-chain
     // sont là. Le défaut est localisé sur UNE ligne.
     const t = texteRendu();
-    for (const champ of ["Mint MINT-A", "TigerScore Engine v2 — CaseDB v1", "Offchain Source CaseDB"]) {
+    // « case_db » et non « CaseDB » : le fixture disait une valeur que le type
+    // de production INTERDIT (`off_chain.source: "case_db" | "none"`). Le
+    // renderer l'imprime verbatim (pdfRenderer.ts:226), donc le PDF réel n'a
+    // jamais pu afficher « CaseDB » — ce test affirmait le rendu d'une valeur
+    // qui n'existe pas. La propriété vérifiée ne bouge pas : la source offchain
+    // est rendue dans le bloc citable. Seule la valeur rejoint le domaine.
+    for (const champ of ["Mint MINT-A", "TigerScore Engine v2 — CaseDB v1", "Offchain Source case_db"]) {
       expect(t, champ).toContain(champ);
     }
   });

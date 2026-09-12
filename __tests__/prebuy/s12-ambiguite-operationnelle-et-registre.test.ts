@@ -30,6 +30,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import { CASEFILE_SURFACES } from "@/lib/casefile/surfaceRegistry";
+import type { ScanResult } from "@/app/api/scan/solana/route";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
 /** ⚠ Les sondes lisent le CODE SEUL — une citation en commentaire ne compte pas. */
@@ -49,10 +50,10 @@ const NON_AUTORITAIRES = [
   "src/app/api/report/casefile/route.ts",
 ] as const;
 
-const scanMinimal = (): any => ({
-  mint: "So11111111111111111111111111111111111111112",
+const scanMinimal = (): ScanResult => ({
+  mint: "So11111111111111111111111111111111111111112", chain: "solana",
   scanned_at: new Date().toISOString(),
-  off_chain: { claims: [], source: "test", status: "Referenced", summary: "test", case_id: "TEST" },
+  off_chain: { claims: [], sources: [], source: "case_db", status: "Referenced", summary: "test", case_id: "TEST" },
   on_chain: {
     markets: {
       source: null, primary_pool: null, dex: null, url: null, price: null,
@@ -60,7 +61,7 @@ const scanMinimal = (): any => ({
       fetched_at: new Date().toISOString(), cache_hit: false,
     },
   },
-  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { claim_penalty: 0, severity_multiplier: 1 } },
+  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { base_score: 50, claim_penalty: 0, severity_multiplier: 1 } },
 });
 
 // ═════════════════════════════════════════════════════════════════════════

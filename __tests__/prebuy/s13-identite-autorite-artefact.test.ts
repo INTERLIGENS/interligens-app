@@ -60,6 +60,7 @@ import { buildPublicReportHtml } from "@/lib/casefile/pdfGeneratorPublic";
 import { buildBotifyInput } from "@/lib/casefile/presets";
 import { projectForPublication, BOTIFY_CASEFILE_REF } from "@/lib/casefile/publicProjection";
 import type { CanonicalCaseFile } from "@/lib/casefile/canonicalReader";
+import type { ScanResult } from "@/app/api/scan/solana/route";
 
 const SRC = (p: string) => readFileSync(p, "utf8");
 /** ⚠ Les sondes lisent le CODE SEUL — une citation en commentaire ne compte pas. */
@@ -76,10 +77,10 @@ const CANON_INTERNE = "src/lib/casefile/pdfGenerator.ts";
 const CANON_PUBLIC = "src/lib/casefile/pdfGeneratorPublic.ts";
 const NON_AUTORITAIRE = "src/components/pdf/pdfRenderer.ts";
 
-const scanDe = (caseId: string, mint: string, quand: string): any => ({
-  mint,
+const scanDe = (caseId: string, mint: string, quand: string): ScanResult => ({
+  mint, chain: "solana",
   scanned_at: quand,
-  off_chain: { claims: [], source: "test", status: "Referenced", summary: "s", case_id: caseId },
+  off_chain: { claims: [], sources: [], source: "case_db", status: "Referenced", summary: "s", case_id: caseId },
   on_chain: {
     markets: {
       source: null, primary_pool: null, dex: null, url: null, price: null,
@@ -87,7 +88,7 @@ const scanDe = (caseId: string, mint: string, quand: string): any => ({
       fetched_at: quand, cache_hit: false,
     },
   },
-  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { claim_penalty: 0, severity_multiplier: 1 } },
+  risk: { score: 50, tier: "ORANGE", flags: [], breakdown: { base_score: 50, claim_penalty: 0, severity_multiplier: 1 } },
 });
 
 // ═════════════════════════════════════════════════════════════════════════
