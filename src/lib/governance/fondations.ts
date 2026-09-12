@@ -63,7 +63,27 @@ export type CheminDeDonnee =
   // ── Fondation possible ─────────────────────────────────────────────────
   | "KolProfile.displayName"
   | "KolProfile.tier"
-  | "PlatformCaseFile.summary";
+  | "PlatformCaseFile.summary"
+  // ── Les champs du dossier Explorer, un par un ───────────────────────────
+  //
+  // Le terminal de collection exige que CHAQUE champ d'un membre presente sa
+  // decision. Ces entrees sont donc l'inventaire §4.B rendu EXECUTABLE : ce
+  // n'est plus une table dans un rapport, c'est ce que le code consulte.
+  //
+  // Les `null` ne sont pas des choix : ce sont les lignes du tableau dont la
+  // colonne « fondation gouvernee » valait 0/14 ou 0/9.
+  | "DossierItem.kind"
+  | "DossierItem.evidenceDepth"
+  | "DossierItem.documentationStatus"
+  | "DossierItem.strongestFlags"
+  | "DossierItem.topCoordinationSignal"
+  | "DossierItem.sharedActorGroup"
+  | "DossierItem.multiLaunchRecurrence"
+  | "DossierItem.linkedActorsCount"
+  | "DossierItem.linkedActors"
+  | "DossierItem.proceedsObservedTotal"
+  | "DossierItem.proceedsCoverage"
+  | "DossierItem.snapshotCount";
 
 const FONDATION: Record<CheminDeDonnee, ReferentielDeDecision | null> = {
   "KolCase.evidence": null,
@@ -78,7 +98,35 @@ const FONDATION: Record<CheminDeDonnee, ReferentielDeDecision | null> = {
   "KolProfile.displayName": "KolProfile.publishStatus",
   "KolProfile.tier": "KolProfile.publishStatus",
   "PlatformCaseFile.summary": "PlatformCaseFile.publishStatus",
+  "DossierItem.kind": null,                    // E14 — « PLATFORM FRAUD », « CASE CLUSTER »
+  "DossierItem.evidenceDepth": null,           // E6  — derive, et la derivation est tautologique
+  "DossierItem.documentationStatus": null,     // E6
+  "DossierItem.strongestFlags": null,          // E8  — PROPAGATION personne -> dossier
+  "DossierItem.topCoordinationSignal": null,   // E9  — « Coordinated promotion »
+  "DossierItem.sharedActorGroup": null,        // E10 — « Same actor group across N dossiers »
+  "DossierItem.multiLaunchRecurrence": null,   // E10
+  "DossierItem.linkedActorsCount": null,       // E4  — et le compte est FAUX (veracite, P1)
+  "DossierItem.linkedActors": "KolProfile.publishStatus",
+  "DossierItem.proceedsObservedTotal": "KolProfile.proceedsPublication",
+  "DossierItem.proceedsCoverage": "KolProfile.proceedsPublication",
+  "DossierItem.snapshotCount": "EvidenceSnapshot.isPublic+reviewStatus",
 };
+
+/** Les champs d'un dossier Explorer qui portent de la semantique. */
+export const CHAMPS_DU_DOSSIER = [
+  "DossierItem.kind",
+  "DossierItem.evidenceDepth",
+  "DossierItem.documentationStatus",
+  "DossierItem.strongestFlags",
+  "DossierItem.topCoordinationSignal",
+  "DossierItem.sharedActorGroup",
+  "DossierItem.multiLaunchRecurrence",
+  "DossierItem.linkedActorsCount",
+  "DossierItem.linkedActors",
+  "DossierItem.proceedsObservedTotal",
+  "DossierItem.proceedsCoverage",
+  "DossierItem.snapshotCount",
+] as const satisfies readonly CheminDeDonnee[];
 
 export function fondationPossiblePour(chemin: CheminDeDonnee): ReferentielDeDecision | null {
   return FONDATION[chemin];
