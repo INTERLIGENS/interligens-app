@@ -9,7 +9,7 @@ interface Actor { handle: string; displayName: string | null; role: string; tier
 interface Dossier {
   id: string; title: string; primaryDate: string
   linkedActors: Actor[]
-  proceedsObservedTotal: number | null; proceedsCoverage: string
+  proceedsObservedTotal?: number | null
   href: string
   snapshotCount?: number
 }
@@ -65,10 +65,17 @@ export default function ExplorerEN() {
   useEffect(() => { load() }, [kind, hasProceeds, load])
 
   const proceedsText = (d: Dossier) => {
+    // ─── LE QUALIFICATIF DE COUVERTURE EST RETIRE ────────────────────────
+    // Le champ de couverture n'est plus servi : c'etait un LITTERAL code en
+    // dur ('partial' / 'none' / 'documented') decrivant l'etat PROBATOIRE du
+    // dossier sans qu'aucune decision gouvernee ne le fonde.
+    //
+    // On ne se replie PAS sur la branche « documented » : ce serait affirmer
+    // PLUS que ce qui etait servi. Il ne reste que le montant, qui porte sa
+    // decision (KolProfile.proceedsPublication), et la mention « Min. …
+    // observed » qui etait deja la.
     if (!d.proceedsObservedTotal || d.proceedsObservedTotal === 0) return null
-    if (d.proceedsCoverage === 'partial' || d.proceedsCoverage === 'estimated')
-      return 'Min. ' + fmtUsd(d.proceedsObservedTotal) + ' observed \u2014 partial coverage'
-    return fmtUsd(d.proceedsObservedTotal) + ' documented'
+    return 'Min. ' + fmtUsd(d.proceedsObservedTotal) + ' observed'
   }
 
   return (

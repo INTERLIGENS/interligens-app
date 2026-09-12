@@ -8,6 +8,33 @@ import {
   profondeurLaPlusForte,
   rangDeProfondeur,
 } from '@/lib/governance/invariants/evidenceDepth'
+import {
+  constaterDecision,
+  devoilerEnregistrement,
+  estRefus,
+  gouverner,
+  type DecisionDePublication,
+  type EnregistrementGouverne,
+} from '@/lib/governance/uniteGouvernee'
+import { declarerCollection, projeterCollection } from '@/lib/governance/appartenance'
+
+/**
+ * ⚠ `publishStatus` EST DÉSORMAIS SÉLECTIONNÉ, ET CE N'EST PAS DÉCORATIF.
+ *
+ * `PUBLIC_KOL_FILTER` garantissait la publication sans jamais la LIRE. Or
+ * `constaterDecision` exige « la valeur RÉELLEMENT lue dans le magasin » — un
+ * filtre appliqué par Postgres n'est pas une valeur qu'on a en main. On la
+ * sélectionne donc, et la décision constatée porte ce qu'on a vraiment lu.
+ */
+type ProfilPublie = {
+  displayName: string | null
+  tier: string | null
+  evidenceDepth: string
+  behaviorFlags: string
+  totalDocumented: number | null
+  proceedsPublication: string
+  publishStatus: string
+}
 
 export type DossierKind = 'case' | 'launch' | 'platform'
 
@@ -26,6 +53,11 @@ export interface DossierItem {
   primaryDate: string
   linkedActors: LinkedActor[]
   linkedActorsCount: number
+  /**
+   * ⚠ `null` NE SIGNIFIE PLUS « zéro observé » — il signifie « la valeur est
+   * là mais sa décision décidera de son émission ». C'est `constats.proceeds`
+   * qui tranche, et lui seul.
+   */
   proceedsObservedTotal: number | null
   proceedsCoverage: string
   evidenceDepth: string
@@ -36,7 +68,34 @@ export interface DossierItem {
   multiLaunchRecurrence: boolean
   multiLaunchCount?: number
   topCoordinationSignal?: { labelEn: string; labelFr: string; strength: string } | null
-  snapshotCount: number
+  /**
+   * ⚠ OPTIONNEL, ET C'EST LA CORRECTION. Il valait `number` avec un `?? 0` à
+   * l'enrichissement : un dossier absent de la map recevait `0`, INDISCERNABLE
+   * d'un zéro mesuré. `undefined` dit « pas dans la map », et la clé ne sera
+   * pas émise.
+   */
+  snapshotCount?: number
+  /**
+   * ─── LES CONSTATS — CE QUE LE PRODUCTEUR A RÉELLEMENT LU ────────────────
+   *
+   * Le portail de type exige qu'un champ PRÉSENTE sa décision. Les décisions
+   * ne se devinent pas au moment de la projection : elles se constatent là où
+   * le magasin est lu, c'est-à-dire ici. `null` n'est pas une lacune, c'est
+   * un refus : aucune décision n'a pu être constatée, donc le champ n'est pas
+   * émis.
+   */
+  constats: ConstatsDuDossier
+}
+
+export interface ConstatsDuDossier {
+  /** Ce qui fonde l'EXISTENCE du dossier et ses champs structurels. */
+  readonly surface: DecisionDePublication
+  /** `KolProfile.publishStatus` — fonde l'émission de `linkedActors`. */
+  readonly acteurs: DecisionDePublication
+  /** `KolProfile.proceedsPublication` — `null` si aucun montant n'a de décision lue. */
+  readonly proceeds: DecisionDePublication | null
+  /** `EvidenceSnapshot.isPublic+reviewStatus` — `null` hors de la map mesurée. */
+  preuves: DecisionDePublication | null
 }
 
 /**
@@ -86,6 +145,20 @@ export const CHAMPS_NON_EMIS = [
   'multiLaunchCount',
   'linkedActorsCount',
   'summary',
+  // ─── `proceedsCoverage` — LITTÉRAL, JAMAIS CONSOMMÉ ───────────────────
+  //
+  // Trois valeurs codées en dur selon le type : 'partial' (case), 'none'
+  // (launch), 'documented' (platform). Aucune lecture, aucune décision. La
+  // table des fondations le déclarait pourtant fondé — une fondation DÉCLARÉE
+  // mais NON CONSOMMÉE, que le portail de type a mise au jour.
+  //
+  // Et le littéral n'est pas une présentation neutre : il décrit l'état
+  // PROBATOIRE du dossier. « documented » sur les platform et « partial » sur
+  // les case affirment une qualité de preuve que rien ne fonde.
+  'proceedsCoverage',
+  // `constats` est un porteur de décisions, pas une donnée de dossier. Il ne
+  // sort jamais.
+  'constats',
 ] as const
 
 export type DossierServi = Omit<DossierItem, (typeof CHAMPS_NON_EMIS)[number]>
@@ -105,10 +178,10 @@ export interface ExplorerFilters {
 }
 
 // Published handle set — used to filter actors
-async function getPublishedHandles(): Promise<Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null; proceedsPublication: string }>> {
+async function getPublishedHandles(): Promise<Map<string, ProfilPublie>> {
   const profiles = await prisma.kolProfile.findMany({
     where: PUBLIC_KOL_FILTER,
-    select: { handle: true, displayName: true, tier: true, evidenceDepth: true, behaviorFlags: true, totalDocumented: true, proceedsPublication: true },
+    select: { handle: true, displayName: true, tier: true, evidenceDepth: true, behaviorFlags: true, totalDocumented: true, proceedsPublication: true, publishStatus: true },
   })
   return new Map(profiles.map(p => [p.handle, p]))
 }
@@ -146,7 +219,36 @@ function statutDeDocumentation(profondeur: string): string {
   return rang >= 3 ? 'documented' : 'partial'
 }
 
-export async function getCaseDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null; proceedsPublication: string }>): Promise<DossierItem[]> {
+/**
+ * La valeur constatée quand plusieurs lignes ont été lues. On ne choisit PAS
+ * une valeur « représentative » : on rend ce qui a été lu, joint. Deux valeurs
+ * distinctes restent donc visibles dans la décision au lieu d'être écrasées.
+ */
+const valeurLue = (lues: ReadonlySet<string>): string => [...lues].sort().join('+')
+
+/**
+ * `constaterDecision` peut rendre `null` — c'est le fail-closed, et il est
+ * correct. Mais sur les chemins où le producteur VIENT de vérifier
+ * l'admissibilité (le dossier n'existerait pas sinon), un `null` signifierait
+ * que la lecture elle-même a échoué. On refuse d'émettre plutôt que de
+ * continuer avec une décision manquante.
+ */
+function exigerDecision(
+  referentiel: Parameters<typeof constaterDecision>[0],
+  sujet: string,
+  valeur: string,
+  admissible: boolean,
+): DecisionDePublication {
+  const d = constaterDecision(referentiel, sujet, valeur, admissible)
+  if (d === null) {
+    throw new Error(
+      `explorer: decision introuvable pour ${sujet} (${referentiel}) — le dossier ne peut pas etre construit`,
+    )
+  }
+  return d
+}
+
+export async function getCaseDossiers(published: Map<string, ProfilPublie>): Promise<DossierItem[]> {
   const cases = await prisma.kolCase.findMany({
     select: { id: true, caseId: true, kolHandle: true, role: true, paidUsd: true, evidence: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
@@ -170,6 +272,9 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
     const evidenceSnippets: string[] = []
     // Use on-chain totalDocumented from profiles, not analytical paidUsd
     const seenHandles = new Set<string>()
+    // Les valeurs de décision réellement lues sur les profils de ce dossier.
+    const publishStatusLus = new Set<string>()
+    const proceedsLues = new Set<string>()
     let totalProceeds = 0
     let hasProceeds = false
 
@@ -231,7 +336,12 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
         totalProceeds += publishedProceeds
         hasProceeds = true
         seenHandles.add(e.kolHandle)
+        // La valeur RÉELLEMENT LUE sur le profil qui a contribué au montant.
+        // C'est elle que la décision constatera — pas un « published » écrit
+        // ici de mémoire.
+        proceedsLues.add(profile.proceedsPublication)
       }
+      publishStatusLus.add(profile.publishStatus)
     }
 
     // Skip dossiers with zero published actors
@@ -267,19 +377,38 @@ export async function getCaseDossiers(published: Map<string, { displayName: stri
       href: `/en/explorer/${caseId}`,
       sharedActorGroup: false,
       multiLaunchRecurrence: false,
-      snapshotCount: 0,
+      constats: {
+        // Le dossier existe parce qu'au moins un profil PUBLIÉ le compose —
+        // `actors.length === 0` vient de l'écarter sinon. La valeur est lue,
+        // pas déduite du filtre.
+        surface: exigerDecision(
+          'KolProfile.publishStatus', `case-${caseId}`, valeurLue(publishStatusLus), true,
+        ),
+        acteurs: exigerDecision(
+          'KolProfile.publishStatus', `case-${caseId}`, valeurLue(publishStatusLus), true,
+        ),
+        // `hasProceeds` est faux quand AUCUN profil n'a passé `redactProceeds`.
+        // Il n'y a alors aucune décision de montant à présenter — et `null`
+        // se lirait « zéro observé ». La clé ne sera pas émise.
+        proceeds: hasProceeds
+          ? constaterDecision(
+              'KolProfile.proceedsPublication', `case-${caseId}`, valeurLue(proceedsLues), true,
+            )
+          : null,
+        preuves: null,
+      },
     })
   }
 
   return dossiers
 }
 
-export async function getLaunchDossiers(published: Map<string, { displayName: string | null; tier: string | null; evidenceDepth: string; behaviorFlags: string; totalDocumented: number | null; proceedsPublication: string }>): Promise<DossierItem[]> {
+export async function getLaunchDossiers(published: Map<string, ProfilPublie>): Promise<DossierItem[]> {
   const tokens = await prisma.kolTokenLink.findMany({
     // Evidence Intake Bridge (S8): only public curated links surface publicly —
     // never bridge drafts (visibility='draft') or rejected ones.
     where: { visibility: 'public' },
-    select: { id: true, tokenSymbol: true, contractAddress: true, chain: true, kolHandle: true, role: true, note: true, caseId: true, documentationStatus: true, createdAt: true },
+    select: { id: true, tokenSymbol: true, contractAddress: true, chain: true, kolHandle: true, role: true, note: true, caseId: true, documentationStatus: true, createdAt: true, visibility: true },
     orderBy: { createdAt: 'asc' },
   })
 
@@ -299,6 +428,8 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
     const depths: string[] = []
     const allFlags: Set<string> = new Set()
     const notes: string[] = []
+    // La valeur de publication réellement lue sur les profils retenus.
+    const publishStatusLus = new Set<string>()
     let bestDocStatus = 'partial'
     const DOC_ORDER: Record<string, number> = { partial: 0, documented: 1, confirmed: 2 }
 
@@ -307,6 +438,7 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       if (e.documentationStatus === 'review') continue
       const profile = published.get(e.kolHandle)
       if (!profile) continue
+      publishStatusLus.add(profile.publishStatus)
       actors.push({ handle: e.kolHandle, displayName: profile.displayName, role: e.role, tier: profile.tier })
       depths.push(profile.evidenceDepth)
       for (const f of parseBehaviorFlags(profile.behaviorFlags)) allFlags.add(f)
@@ -337,6 +469,11 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       primaryDate: entries[0].createdAt.toISOString(),
       linkedActors: actors,
       linkedActorsCount: actors.length,
+      // ⚠ LES PROCEEDS NE SONT JAMAIS INTERROGÉS SUR CE CHEMIN. Ce `null`
+      // n'était pas « aucun montant observé », c'était « on n'a pas regardé ».
+      // La décision est donc `null` et la clé ne sera pas émise :
+      //   « Not measured must be absence, never null/zero/none when those
+      //     values can be read as measured outcomes. »
       proceedsObservedTotal: null,
       proceedsCoverage: 'none',
       evidenceDepth: bestDepth,
@@ -345,7 +482,21 @@ export async function getLaunchDossiers(published: Map<string, { displayName: st
       href: `/en/kol/${actors[0].handle}`,
       sharedActorGroup: false,
       multiLaunchRecurrence: false,
-      snapshotCount: 0,
+      constats: {
+        // Le LIEN porte sa propre décision : `KolTokenLink.visibility='public'`
+        // est l'une des cinq du référentiel, et le `where` ci-dessus la lit.
+        surface: exigerDecision(
+          'KolTokenLink.visibility', `launch-${tokenKey}`,
+          valeurLue(new Set(entries.map(e => e.visibility))), true,
+        ),
+        // Les acteurs, eux, sont fondés par la publication des PERSONNES.
+        acteurs: exigerDecision(
+          'KolProfile.publishStatus', `launch-${tokenKey}`,
+          valeurLue(publishStatusLus), actors.length > 0,
+        ),
+        proceeds: null,
+        preuves: null,
+      },
     })
   }
 
@@ -385,7 +536,29 @@ export async function getPlatformCaseDossiers(): Promise<DossierItem[]> {
     sharedActorGroup: false,
     multiLaunchRecurrence: false,
     topCoordinationSignal: null,
-    snapshotCount: 0,
+    constats: {
+      surface: exigerDecision(
+        'PlatformCaseFile.publishStatus', `platform-${r.ref}`, r.publishStatus, true,
+      ),
+      // La liste est VIDE et le restera : aucune personne n'est jointe à ces
+      // dossiers. Son émission est fondée par la publication du dossier
+      // lui-même, qui n'affirme rien sur personne.
+      acteurs: exigerDecision(
+        'PlatformCaseFile.publishStatus', `platform-${r.ref}`, r.publishStatus, true,
+      ),
+      // ⚠ `confirmedLossUsd` N'EST PAS FONDÉ, et c'est une mesure sur le schéma.
+      //
+      // `PlatformCaseFile` porte `publishStatus` et `confirmedLossUsd`, et RIEN
+      // entre les deux : aucune colonne ne décide de la publication du MONTANT.
+      // Or le dépôt tient déjà que publier un sujet ne publie pas ses montants
+      // — c'est pourquoi `KolProfile` porte un `proceedsPublication` DISTINCT
+      // de `publishStatus`, et c'est le motif déjà ratifié pour
+      // `NetworkNode.totalScammedUsd`. La même règle s'applique ici.
+      //
+      // Le montant reste EN BASE et reste interne. Il cesse d'être émis.
+      proceeds: null,
+      preuves: null,
+    },
   }))
 }
 
@@ -433,11 +606,34 @@ export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
     }
   }
 
-  // Enrich with snapshot counts
+  // ─── LE COMPTE DE PREUVES — ET LA FIN DU `?? 0` ────────────────────────
+  //
+  // `getSnapshotCountByDossier` interroge `EvidenceSnapshot` avec
+  // `isPublic: true, reviewStatus: 'approved'` — exactement le référentiel.
+  // Elle rend une map des clés QUI ONT un résultat.
+  //
+  // L'ancien `?? 0` donnait `0` à tout dossier absent de cette map. Ce zéro
+  // était INDISCERNABLE d'un zéro mesuré, et il se lisait « aucune preuve
+  // publique au dossier » — une assertion, pas une absence de mesure :
+  //
+  //   « Zéro n'est publiable que si le système a effectivement mesuré la
+  //     population admissible et obtenu zéro. Absence de map → clé absente. »
+  //
+  // Absent de la map, le dossier n'a donc ni valeur ni décision : la clé ne
+  // sera pas émise.
   const allRelationKeys = items.map(i => i.title)
   const snapCounts = await getSnapshotCountByDossier(allRelationKeys)
   for (const item of items) {
-    item.snapshotCount = snapCounts.get(item.title) ?? 0
+    const compte = snapCounts.get(item.title)
+    if (compte === undefined) {
+      item.snapshotCount = undefined
+      item.constats.preuves = null
+      continue
+    }
+    item.snapshotCount = compte
+    item.constats.preuves = constaterDecision(
+      'EvidenceSnapshot.isPublic+reviewStatus', item.title, 'isPublic+approved', true,
+    )
   }
 
   // La dérivation de `topCoordinationSignal` a été RETIRÉE avec le champ. Elle
@@ -474,7 +670,64 @@ export async function getExplorerTimeline(filters: ExplorerFilters = {}) {
   // (launch / case / platform), l'appelant le NOMME, et il ne bissecte
   // aucune assertion portant sur une personne. La page de détail en dépend.
 
-  return items.map(projeterDossierServi)
+  // ─── LE PORTAIL DE TYPE — UN CHAMP NU NE PASSE PAS ─────────────────────
+  //
+  // `projeterCollection` exige `M extends EnregistrementGouverne` : chaque
+  // valeur de chaque membre a PRÉSENTÉ sa décision. Il n'existe aucun chemin
+  // de type entre un objet nu et ce paramètre, donc aucun changement futur du
+  // producteur ne peut réintroduire silencieusement un champ non fondé.
+  //
+  // ⚠ POURQUOI `projeterCollection` ET NON `projeterCollectionAdmissible` :
+  // la variante `Admissible` construit la RÉPONSE de la frontière, donc exige
+  // une `Admission` — qui n'est connue qu'au terminal, dans la route. Or la
+  // route est un chemin GELÉ. La CONTRAINTE DE TYPE est identique dans les
+  // deux (`M extends EnregistrementGouverne`) : c'est elle qui tient la
+  // propriété, pas l'enveloppe de réponse. Ce qui reste au terminal est
+  // l'ADMISSION, et elle est déclarée ouverte.
+  const projection = projeterCollection(
+    // NON_ASSERTIVE, et c'est DÉCLARÉ, jamais déduit : les quatorze dossiers
+    // sont des lancements de tokens, des cases et une plateforme — pas des
+    // personnes. Y figurer n'affirme rien sur un sujet, contrairement à la
+    // Watchlist. La dispense porte sur l'APPARTENANCE seule.
+    declarerCollection('ExplorerDossiers', 'NON_ASSERTIVE', null),
+    items.map(gouvernerDossier),
+  )
+  if (estRefus(projection)) {
+    // Inatteignable tant que la collection déclare sa sémantique — et si elle
+    // cessait de la déclarer, ce chemin doit être ÉCRIT, pas deviné.
+    throw new Error(`explorer: la collection est refusee (${projection.raison})`)
+  }
+  return projection.membres.map(devoilerEnregistrement)
+}
+
+/**
+ * ─── UN DOSSIER DEVIENT UN ENREGISTREMENT GOUVERNÉ ───────────────────────
+ *
+ * `projeterDossierServi` reste l'UNIQUE autorité sur les champs non émis : on
+ * part de sa sortie, on ne redécide rien ici. Ce que cette fonction ajoute est
+ * l'autre moitié — chaque champ restant présente la décision qui le fonde, et
+ * un champ dont la décision est `null` n'est PAS ÉMIS.
+ */
+function gouvernerDossier(d: DossierItem): EnregistrementGouverne {
+  const servi = projeterDossierServi(d)
+  const membre: EnregistrementGouverne = {
+    id: gouverner('STATE', servi.id, d.constats.surface),
+    title: gouverner('OBSERVATION', servi.title, d.constats.surface),
+    href: gouverner('STATE', servi.href, d.constats.surface),
+    primaryDate: gouverner('OBSERVATION', servi.primaryDate, d.constats.surface),
+    linkedActors: gouverner('ASSERTION', servi.linkedActors, d.constats.acteurs),
+  }
+  // LES DEUX CONDITIONNELS. Pas de valeur par défaut, pas de repli : la
+  // décision existe et le champ sort, ou elle n'existe pas et il n'existe pas.
+  if (d.constats.proceeds !== null && servi.proceedsObservedTotal !== null) {
+    membre.proceedsObservedTotal = gouverner(
+      'OBSERVATION', servi.proceedsObservedTotal, d.constats.proceeds,
+    )
+  }
+  if (d.constats.preuves !== null && servi.snapshotCount !== undefined) {
+    membre.snapshotCount = gouverner('OBSERVATION', servi.snapshotCount, d.constats.preuves)
+  }
+  return membre
 }
 
 export async function getExplorerStats() {

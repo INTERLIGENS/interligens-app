@@ -19,24 +19,35 @@ import { CHAMPS_DU_DOSSIER, fondationPossiblePour } from "@/lib/governance/fonda
 const SANS = CHAMPS_DU_DOSSIER.filter((c) => fondationPossiblePour(c) === null);
 const AVEC = CHAMPS_DU_DOSSIER.filter((c) => fondationPossiblePour(c) !== null);
 
-describe("LE COÛT DU CÂBLAGE — douze champs, quatre fondés, huit qui tombent", () => {
+describe("LE COÛT DU CÂBLAGE — douze champs, TROIS fondés, neuf qui tombent", () => {
   it("la table est l'unique autorité — aucun champ n'est classé ailleurs", () => {
     expect(CHAMPS_DU_DOSSIER).toHaveLength(12);
     expect(AVEC.length + SANS.length).toBe(12);
   });
 
-  it("LES QUATRE FONDÉS — et chacun nomme la décision qui le fonde", () => {
+  it("LES TROIS FONDÉS — et chacun nomme la décision qui le fonde", () => {
+    // ⚠ ILS ÉTAIENT QUATRE. `proceedsCoverage` est SORTI, et ce n'est pas un
+    // durcissement de politique : c'est une CORRECTION DE LA TABLE.
+    //
+    // Elle déclarait `KolProfile.proceedsPublication` pour un champ que le
+    // producteur n'a jamais consulté — un LITTÉRAL, trois valeurs codées en
+    // dur ('partial' / 'none' / 'documented') selon le type de dossier. Une
+    // fondation DÉCLARÉE mais non consommée est pire qu'une fondation
+    // absente : elle rend vert l'audit qui lit la table.
+    //
+    // C'est le portail de type qui l'a mise au jour, et c'est précisément son
+    // rôle — empêcher que la table soit prise pour une autorité alors que le
+    // producteur ne la consomme pas.
     expect(Object.fromEntries(AVEC.map((c) => [c, fondationPossiblePour(c)]))).toEqual({
       "DossierItem.linkedActors": "KolProfile.publishStatus",
       "DossierItem.proceedsObservedTotal": "KolProfile.proceedsPublication",
-      "DossierItem.proceedsCoverage": "KolProfile.proceedsPublication",
       "DossierItem.snapshotCount": "EvidenceSnapshot.isPublic+reviewStatus",
     });
   });
 
-  it("██ LES HUIT QUI CESSERAIENT D'ÊTRE SERVIS — la liste, nommée", () => {
-    // Une neuvième fait rougir ce test le jour où elle apparaît, et une
-    // huitième qui disparaîtrait sans décision aussi. C'est tout ce qu'on
+  it("██ LES NEUF QUI NE SONT PAS SERVIS — la liste, nommée", () => {
+    // Une dixième fait rougir ce test le jour où elle apparaît, et une
+    // neuvième qui disparaîtrait sans décision aussi. C'est tout ce qu'on
     // demande à un témoin de coût.
     expect(SANS).toEqual([
       "DossierItem.kind",                  // E14 — le badge « PLATFORM FRAUD » / « CASE CLUSTER »
@@ -47,6 +58,7 @@ describe("LE COÛT DU CÂBLAGE — douze champs, quatre fondés, huit qui tomben
       "DossierItem.sharedActorGroup",      // E10
       "DossierItem.multiLaunchRecurrence", // E10
       "DossierItem.linkedActorsCount",     // E4
+      "DossierItem.proceedsCoverage",      // littéral non consommé — voir ci-dessus
     ]);
   });
 

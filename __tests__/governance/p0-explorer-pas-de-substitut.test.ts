@@ -179,15 +179,25 @@ describe("③ LA PROJECTION SERVIE — un seul point de passage", () => {
     // CONTRE-TÉMOIN — les fondés survivent. Une projection qui viderait tout
     // passerait le test précédent sans rien prouver.
     for (const garde of ["id", "title", "href", "primaryDate",
-                         "linkedActors", "proceedsObservedTotal", "proceedsCoverage", "snapshotCount"]) {
+                         "linkedActors", "proceedsObservedTotal", "snapshotCount"]) {
       expect(garde in servi, `${garde} a disparu`).toBe(true);
     }
   });
 
-  it("le retrait est UNIFORME — aucune clé conditionnelle", () => {
-    // Deux dossiers de contenus différents rendent le MÊME jeu de clés. Une
-    // clé qui n'apparaîtrait que pour certains serait le différentiel qu'on
-    // vient de fermer.
+  it("le retrait des NON ÉMIS est UNIFORME — aucune clé conditionnelle ICI", () => {
+    // Deux dossiers de contenus différents rendent le MÊME jeu de clés à CE
+    // point de passage. Un champ retiré l'est pour les quatorze, jamais pour
+    // certains.
+    //
+    // ⚠ CE N'EST PLUS VRAI DU PAYLOAD FINAL, ET C'EST DÉLIBÉRÉ. Le portail de
+    // gouvernance en aval n'émet `proceedsObservedTotal` et `snapshotCount`
+    // que là où une décision a été CONSTATÉE. Une différence de présence de
+    // clé n'est pas automatiquement un oracle : elle le devient quand elle
+    // révèle un contenu gouverné RETENU. Ici elle révèle l'inverse — qu'il
+    // n'y a rien eu à mesurer :
+    //
+    //   « Uniform payload shape must never be purchased by manufacturing
+    //     semantic values for unmeasured or unauthorized properties. »
     const a = projeterDossierServi({ id: "a", kind: "case", strongestFlags: [], linkedActorsCount: 0 } as never);
     const b = projeterDossierServi({ id: "b", kind: "launch", strongestFlags: ["X"], linkedActorsCount: 9 } as never);
     expect(Object.keys(a).sort()).toEqual(Object.keys(b).sort());
