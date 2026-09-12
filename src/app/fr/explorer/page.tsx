@@ -8,7 +8,7 @@ type Kind = '' | 'case' | 'launch' | 'platform'
 
 interface Actor { handle: string; displayName: string | null; role: string; tier: string | null }
 interface Dossier {
-  id: string; kind: string; title: string; summary: string | null; primaryDate: string
+  id: string; kind: string; title: string; primaryDate: string
   linkedActors: Actor[]
   proceedsObservedTotal: number | null; proceedsCoverage: string
   href: string
@@ -166,11 +166,9 @@ export default function ExplorerFR() {
                       ))}
                     </div>
 
-                    {d.summary && (
-                      <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6, marginBottom: 14, borderLeft: '2px solid #1e2330', paddingLeft: 12 }}>
-                        {d.summary}
-                      </div>
-                    )}
+                    {/* ─── LE RESUME EST RETIRE, ET RIEN NE LE REMPLACE ──────────
+                        Voir en/explorer/page.tsx : la cle part pour les
+                        quatorze, sans substitut. */}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       {proceeds && (

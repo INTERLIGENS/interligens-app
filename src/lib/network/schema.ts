@@ -69,7 +69,22 @@ export type NetworkTimelineEvent = {
 
 export type NetworkGraph = {
   generatedAt: string;
-  sourceOfTruth: string;
+  /**
+   * OPTIONNEL À LA SORTIE, EXIGÉ À L'ENTRÉE.
+   *
+   * `parseNetworkGraph` continue de REFUSER une source brute qui n'en porte
+   * pas : la forme du fichier de données ne se relâche pas. Ce qui change est
+   * qu'une projection SERVIE a le droit de ne pas en porter — parce que c'est
+   * une métadonnée d'ingénierie (« INTERLIGENS prod DB (5 profiles, 29
+   * evidences, 47 wallets…) ») qu'aucune décision de publication ne couvre.
+   *
+   * Le champ était REQUIS, et c'est cette exigence qui a fait choisir un
+   * REMPLACEMENT plutôt qu'un retrait — donc un texte annonçant qu'une
+   * information avait été retenue. La forme du type ne doit pas pouvoir
+   * imposer un substitut : c'est ici que ça se corrige, pas dans le
+   * containment.
+   */
+  sourceOfTruth?: string;
   evidenceTiers: Record<string, string>;
   nodes: NetworkNode[];
   edges: NetworkEdge[];

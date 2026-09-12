@@ -104,7 +104,10 @@ export default function CaseDossierPage() {
               `documentationStatus`, qui n'est plus servi (E6).
               Rien ne les remplace. */}
           <h1 style={{ fontSize: 'clamp(22px, 6vw, 32px)', fontWeight: 900, margin: 0, letterSpacing: '-0.02em', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{caseId}</h1>
-          {dossier?.summary && <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>{dossier.summary}</p>}
+          {/* ─── LE RESUME EST RETIRE, ET RIEN NE LE REMPLACE ─────────────
+              `summary` n'est plus servi. Il l'etait encore sous la forme d'une
+              chaine annoncant le retrait — un texte qui AFFIRME qu'un contenu
+              existe et a ete retenu. La cle part, sans substitut. */}
         </div>
 
         {/* LINKED ACTORS */}
