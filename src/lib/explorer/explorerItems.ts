@@ -3,6 +3,7 @@ import { PUBLIC_KOL_FILTER } from '@/lib/kol/publishGate'
 import { PUBLISHED_PROCEEDS_FILTER, redactProceeds } from '@/lib/kol/proceedsGate'
 import { parseBehaviorFlags, type BehaviorFlagKey } from '@/lib/kol/behaviorFlags'
 import { getSnapshotCountByDossier } from '@/lib/evidence/evidenceSnapshots'
+import { keepPublishable, PUBLISHED_ONLY_WHERE } from '@/lib/casefile/publicationAuthority'
 import {
   PROFONDEUR_INDECIDABLE,
   profondeurLaPlusForte,
@@ -508,10 +509,12 @@ export async function getLaunchDossiers(published: Map<string, ProfilPublie>): P
 // entirely — they are read straight from the dedicated platform_casefiles
 // table and mapped onto the shared DossierItem shape with kind 'platform'.
 export async function getPlatformCaseDossiers(): Promise<DossierItem[]> {
-  const rows = await prisma.platformCaseFile.findMany({
-    where: { publishStatus: 'published' },
+  // S1 — le filtre est DÉRIVÉ de l'autorité de publication, et l'autorité
+  // repasse derrière : la règle n'est écrite qu'à un seul endroit.
+  const rows = keepPublishable(await prisma.platformCaseFile.findMany({
+    where: PUBLISHED_ONLY_WHERE,
     orderBy: { publishedDate: 'desc' },
-  })
+  }))
 
   return rows.map((r): DossierItem => ({
     id: `platform-${r.ref}`,

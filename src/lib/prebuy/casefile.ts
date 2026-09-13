@@ -19,6 +19,7 @@ import {
   mintToCasefilePreset,
   kolHandleToCasefilePreset,
 } from "@/lib/casefile/presets";
+import { keepPublishable } from "@/lib/casefile/publicationAuthority";
 
 export interface CasefilePresenceSource {
   kind: "preset" | "token_casefile";
@@ -36,16 +37,21 @@ async function findPublishedTokenCasefiles(
   mint: string,
 ): Promise<{ ref: string; ticker: string }[]> {
   try {
-    return await prisma.$queryRawUnsafe<{ ref: string; ticker: string }[]>(
-      `SELECT ref, ticker FROM token_casefiles
-       WHERE "publishStatus" = 'published'
-         AND EXISTS (
+    // S1 — la ligne est lue AVEC son statut ; la publication se décide chez
+    // l'autorité, pas dans le WHERE. Dix lignes au plus : le filtre mémoire
+    // ne coûte rien, et la règle n'est écrite qu'à un seul endroit.
+    const rows = await prisma.$queryRawUnsafe<
+      { ref: string; ticker: string; publishStatus: string | null }[]
+    >(
+      `SELECT ref, ticker, "publishStatus" FROM token_casefiles
+       WHERE EXISTS (
            SELECT 1 FROM jsonb_each_text(("contractAddresses")::jsonb) AS e(k, v)
            WHERE lower(v) = lower($1)
          )
        LIMIT 10`,
       mint,
     );
+    return keepPublishable(rows).map((r) => ({ ref: r.ref, ticker: r.ticker }));
   } catch {
     return [];
   }

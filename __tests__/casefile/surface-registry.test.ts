@@ -144,8 +144,12 @@ describe("P3 — `/cases/botify/evidence` ne porte plus ses propres données", (
     expect(code).not.toContain("rug_pull");
   });
 
-  it("elle lit la projection canonique", () => {
-    expect(code).toContain("loadPublicProjection(BOTIFY_CASEFILE_REF");
+  it("elle lit la projection canonique, PAR l'autorité de publication (S1)", () => {
+    // S1 · phase A — la page projetait le dossier sans consulter l'autorité
+    // de publication et servait un dossier `draft`. Elle passe désormais par
+    // la forme qui décide AVANT de projeter.
+    expect(code).toContain("loadPublicProjectionIfPublished(BOTIFY_CASEFILE_REF");
+    expect(code).not.toMatch(/\bloadPublicProjection\(/);
   });
 
   it("`tigerScore` NULL ne devient ni 0 ni « /100 »", () => {

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { decidePublication } from "@/lib/casefile/publicationAuthority";
 import PlatformCasefileView, {
   type PlatformCasefileData,
 } from "@/components/cases/PlatformCasefileView";
@@ -28,8 +29,12 @@ function asStringArray(v: unknown): string[] {
 
 async function getCbex(): Promise<PlatformCasefileData | null> {
   try {
-    const r = await prisma.platformCaseFile.findUnique({ where: { ref: REF } });
-    if (!r || r.publishStatus !== "published") return null;
+    // S1 — la publication se DÉCIDE chez l'autorité, sur la ligne lue.
+    const decision = decidePublication(
+      await prisma.platformCaseFile.findUnique({ where: { ref: REF } }),
+    );
+    if (decision.decision !== "PUBLISHABLE") return null;
+    const r = decision.dossier;
     return {
       ref: r.ref,
       codename: r.codename,
