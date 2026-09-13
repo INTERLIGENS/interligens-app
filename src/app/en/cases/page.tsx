@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Casefiles · INTERLIGENS",
   description:
-    "Documented fraud casefiles — token rug-pulls and platform-level fraud networks, each grounded in on-chain evidence.",
+    "Documented fraud casefiles — token fraud and platform-level fraud networks, each grounded in on-chain evidence.",
   openGraph: {
     title: "Casefiles · INTERLIGENS",
     description:
-      "Documented fraud casefiles — token rug-pulls and platform-level fraud networks.",
+      "Documented fraud casefiles — token fraud and platform-level fraud networks.",
   },
 };
 
@@ -25,7 +25,7 @@ const LOCALE = "en";
 const TOKEN_CASEFILES: CasefileCard[] = [
   {
     codename: "BOTIFY",
-    title: "Coordinated 28-KOL rug-pull on Solana — $604K cashouts traced.",
+    title: "Coordinated KOL shill campaign on Solana.",
     family: "token_casefile",
     score: null,
     severityTier: "CRITICAL",
