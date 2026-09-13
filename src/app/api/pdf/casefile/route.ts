@@ -9,7 +9,7 @@ import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
 import { renderCaseFilePDF } from "@/components/pdf/pdfRenderer";
 import type { ScanResult } from "@/app/api/scan/solana/route";
-import { uploadPdf, isStorageEnabled } from "@/lib/storage/pdfStorage";
+import { produireArtefactGouverne } from "@/lib/storage/registre/production";
 import { envInt } from "@/lib/config/envNumber";
 import { canonicalRefForMint } from "@/lib/casefile/publicProjection";
 import { loadCanonicalCaseFile } from "@/lib/casefile/canonicalReader";
@@ -146,40 +146,66 @@ export async function GET(request: NextRequest) {
     await browser.close();
 
     const pdfBuf = Buffer.from(pdfBuffer);
-    // Le NOM porte lui aussi l'identité — c'est ce qui reste quand le fichier
-    // a été transmis et classé ailleurs. Il portait `mint_clean.slice(0, 8)` :
-    // un morceau de l'ADRESSE DU SUJET, dans le nom d'un artefact annoncé
-    // « casefile- ». L'horodatage reste : il distingue deux tirages du même
-    // dossier, ce que le ref seul ne fait pas.
-    const filename = `casefile-${dossierGouverne.ref}-${Date.now()}.pdf`;
 
-    // ── Storage R2 (non-bloquant) ────────────────────────────────
-    if (isStorageEnabled()) {
-      const upload = await uploadPdf({ buffer: pdfBuf, subject: mint_clean, batchId: "casefile" });
-      if (upload) {
-        return NextResponse.json({
-          status: "stored",
-          signedUrl: upload.signedUrl,
-          key: upload.key,
-          sha256: upload.sha256,
-          sizeBytes: upload.sizeBytes,
-          // Non fini -> 900. Doit rester ALIGNÉ sur pdfStorage.signedUrlTtl(),
-          // qui applique le même défaut : une divergence annoncerait au client
-          // une expiration que l'URL signée ne respecte pas.
-          expiresInSeconds: envInt("PDF_SIGNED_URL_TTL_SECONDS", 900),
-        });
-      }
-      // upload === null : R2 down → fallback stream direct
-      console.warn("[pdf/casefile] R2 upload failed, falling back to stream", { mint: mint_clean });
+    // ── E-RC · LEASE A — LA PRODUCTION GOUVERNÉE, FAIL-CLOSED ────────────
+    //
+    // ██  "No registry authority → no governed artifact production        ██
+    // ██   OR DELIVERY."                                                  ██
+    //
+    // Ce bloc s'intitulait « Storage R2 (non-bloquant) », et c'était vrai au
+    // mauvais sens. TROIS chemins menaient au même résultat — le PDF servi en
+    // flux direct, HORS REGISTRE :
+    //
+    //   1. `PDF_STORAGE_ENABLED` absent → le bloc entier était sauté ;
+    //   2. `upload === null`            → « R2 down → fallback stream direct » ;
+    //   3. « comportement original »    → le repli commun des deux.
+    //
+    // Une variable d'environnement peut configurer l'INFRASTRUCTURE ; elle ne
+    // peut pas transformer un artefact gouverné en artefact hors registre.
+    // `isStorageEnabled()` n'est plus lu ici : la primitive le lit, et son
+    // absence y est un REFUS, pas un contournement.
+    //
+    // Le nom de fichier a disparu AVEC le flux : il ne nommait que le corps
+    // servi directement. Un artefact enregistré est nommé par son registre —
+    // `registreId` ci-dessous est ce qui le relie à la ligne qui le fonde, et
+    // c'est lui qui permet de dire à un cabinet « l'artefact que vous ouvrez
+    // est celui qui a été enregistré ».
+    const production = await produireArtefactGouverne({
+      buffer: pdfBuf,
+      subject: mint_clean,
+      batchId: "casefile",
+    });
+
+    if (!production.produit) {
+      // 503, et non 500 : le PDF a été RENDU, c'est l'autorité qui manque.
+      // Annoncer « PDF generation failed » enverrait chercher au mauvais
+      // endroit. Le motif est NOMMÉ — un refus anonyme est indiscernable
+      // d'une panne.
+      console.error("[pdf/casefile] production refusée", {
+        mint: mint_clean,
+        raison: production.raison,
+      });
+      return NextResponse.json(
+        {
+          error: "governed_production_unavailable",
+          raison: production.raison,
+          detail: production.explication,
+        },
+        { status: production.statutHttp },
+      );
     }
 
-    // Fallback / storage OFF : stream direct (comportement original)
-    return new NextResponse(pdfBuf, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-store",
-      },
+    return NextResponse.json({
+      status: "stored",
+      signedUrl: production.signedUrl,
+      key: production.key,
+      sha256: production.sha256,
+      sizeBytes: production.sizeBytes,
+      registreId: production.registreId,
+      // Non fini -> 900. Doit rester ALIGNÉ sur pdfStorage.signedUrlTtl(),
+      // qui applique le même défaut : une divergence annoncerait au client
+      // une expiration que l'URL signée ne respecte pas.
+      expiresInSeconds: envInt("PDF_SIGNED_URL_TTL_SECONDS", 900),
     });
   } catch (err) {
     console.error("[pdf/casefile] Puppeteer error:", err);

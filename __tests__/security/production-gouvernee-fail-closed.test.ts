@@ -6,15 +6,16 @@
 //
 // ██  RÉINTRODUIRE LE FLUX DIRECT DOIT FAIRE MOURIR UN TEST.               ██
 //
-// Le correctif n'est PAS appliqué : `src/app/api/pdf/casefile/route.ts` est un
-// chemin GELÉ, et la lease A n'est pas ouverte. Ce fichier tient donc DEUX
-// choses à la fois, et les tient séparées :
+// Le correctif a été qualifié HORS FENÊTRE, puis appliqué DEDANS :
+// `src/app/api/pdf/casefile/route.ts` est un chemin GELÉ, et il a fallu la
+// lease `E-RC-A` pour l'écrire. Ce fichier tenait DEUX choses séparées :
 //
-//   · la CIBLE (docs/prep/patches/E-RC-lease-A/route.ts.cible) est PROPRE ;
-//   · la route SERVIE porte encore le trou, et le CLIQUET le compte.
+//   · la CIBLE (docs/prep/patches/E-RC-lease-A/route.ts.cible), PROPRE ;
+//   · la route SERVIE, qui portait encore le trou, et le CLIQUET le comptait.
 //
-// Le jour où la lease s'ouvre, appliquer le patch fait basculer le cliquet de
-// 4 à 0 — et ce basculement est ce qui prouve que le correctif a mordu.
+// Le cliquet a basculé de 4 à 0 sous la lease, et ce basculement EST la preuve
+// que le correctif a mordu. Le §B l'épingle désormais à l'envers, et exige en
+// plus que servi et cible ne puissent plus diverger — octet pour octet.
 //
 // ⚠️ UNE GARDE VERTE QUI N'A JAMAIS RIEN ATTRAPÉ EST INDISCERNABLE D'UNE
 // GARDE QUI NE PEUT RIEN ATTRAPER. Les mutants du §C sont la seule raison
@@ -103,22 +104,36 @@ describe("A — la cible du correctif ne porte AUCUN chemin hors registre", () =
 
 // ─── B · LE CLIQUET SUR LA ROUTE SERVIE ──────────────────────────────────
 
-describe("B — CLIQUET : le trou de la route servie est COMPTÉ, pas oublié", () => {
-  it("les quatre formes y sont ENCORE — la lease A n'est pas ouverte", () => {
-    // Ce test est VOLONTAIREMENT rouge-en-puissance : il devient faux le jour
-    // où le patch est appliqué, et c'est exactement ce qu'on veut lire ce
-    // jour-là. Un cliquet qui ne bouge pas quand le défaut se referme
-    // n'aurait mesuré rien.
-    expect(formesTrouvees(lire(ROUTE_SERVIE))).toEqual([
-      "corps PDF servi directement",
-      "en-tête de téléchargement d'artefact",
-      "repli explicite sur échec de stockage",
-      "l'environnement décide de l'autorité",
-    ]);
+// ── LE CLIQUET A BASCULÉ, ET C'EST LA BASCULE QUI EST LA PREUVE ──────────
+//
+// Ce bloc comptait les QUATRE formes hors registre ENCORE présentes dans la
+// route servie, parce que la lease A n'était pas ouverte. Il était
+// VOLONTAIREMENT rouge-en-puissance — « il devient faux le jour où le patch
+// est appliqué, et c'est exactement ce qu'on veut lire ce jour-là ». Ce jour
+// est arrivé : sous lease `E-RC-A`, le patch a été appliqué et le compte est
+// passé de 4 à 0. Un cliquet qui n'aurait pas bougé quand le défaut se referme
+// n'aurait rien mesuré.
+//
+// Son rôle SURVIT, retourné : il n'épingle plus la présence du défaut, il
+// épingle sa DISPARITION — et sur le fichier RÉELLEMENT SERVI, pas sur la
+// cible. Les deux ne peuvent plus diverger : la dernière assertion l'exige
+// octet pour octet.
+describe("B — CLIQUET BASCULÉ : le trou de la route servie est REFERMÉ", () => {
+  it("les quatre formes ont disparu de la route SERVIE", () => {
+    expect(formesTrouvees(lire(ROUTE_SERVIE))).toEqual([]);
   });
 
-  it("et la dépendance à la variable d'environnement y est encore lisible", () => {
-    expect(lire(ROUTE_SERVIE)).toContain("isStorageEnabled()");
+  it("la variable d'environnement ne décide plus de l'autorité dans la route", () => {
+    // Elle est toujours lue — mais DANS LA PRIMITIVE, où son absence est un
+    // refus et non un contournement. Ce qui a disparu, c'est la décision.
+    expect(lire(ROUTE_SERVIE)).not.toContain("isStorageEnabled()");
+  });
+
+  it("et la route servie est OCTET POUR OCTET la cible prouvée hors fenêtre", () => {
+    // La preuve la plus forte disponible ici : ce qui a été appliqué sous
+    // lease est EXACTEMENT ce qui avait été qualifié avant elle. Sans cette
+    // assertion, la fenêtre pourrait avoir livré autre chose que le prouvé.
+    expect(lireBrut(ROUTE_SERVIE)).toBe(lireBrut(CIBLE));
   });
 });
 
