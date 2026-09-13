@@ -43,7 +43,7 @@ function fichiersSource(racine: string): string[] {
  */
 const MARQUEURS: Array<{ motif: RegExp; quoi: string }> = [
   { motif: /IL-(?:PND|PON|SHILL|CONC)-[A-Z0-9]+-\d+/, quoi: "ref de dossier canonique" },
-  { motif: /loadPublicProjection|loadCanonicalCaseFile|toInternalCaseView/, quoi: "lecteur canonique" },
+  { motif: /loadPublicProjection|loadCanonicalCaseFile|toInternalCaseView|resolvePublicCasefile/, quoi: "lecteur canonique" },
   { motif: /data\/cases\/botify\.json|buildBotifyInput|buildVineInput/, quoi: "autorité legacy" },
   { motif: /tokenCaseFile\.|platformCaseFile\./, quoi: "table de dossier" },
 ];
@@ -98,8 +98,10 @@ describe("P3 — les surfaces PUBLIQUES lisent l'autorité canonique", () => {
     // personne. On vérifie la lecture, pas l'intention.
     for (const s of publicSurfaces()) {
       const code = readFileSync(s.file, "utf8");
+      // S1 · phase B — `resolvePublicCasefile` est la forme publique du
+      // lecteur canonique : autorité de publication, puis projection.
       expect(code, `${s.file} — déclarée CANONICAL sans lecteur canonique`).toMatch(
-        /loadPublicProjection|loadCanonicalCaseFile|tokenCaseFile\.|platformCaseFile\./,
+        /loadPublicProjection|loadCanonicalCaseFile|resolvePublicCasefile|tokenCaseFile\.|platformCaseFile\./,
       );
     }
   });

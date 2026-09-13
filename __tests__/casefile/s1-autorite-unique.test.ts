@@ -52,7 +52,7 @@ const MARQUEURS_DOSSIER = [
   /platformCaseFile\./,
   /token_casefiles/,
   /platform_casefiles/,
-  /loadCanonicalCaseFile|loadPublicProjection/,
+  /loadCanonicalCaseFile|loadPublicProjection|resolvePublicCasefile/,
 ];
 
 /** Les formes d'une règle réécrite. Chacune a son témoin positif plus bas. */
@@ -135,7 +135,10 @@ describe("S1 — témoin positif : les détecteurs voient chaque forme de rééc
 // serait câblée dans une fenêtre doit être retirée de la liste, sinon le
 // témoin rougit aussi (il exige que chaque entrée soit encore fautive).
 
-const DETTE_GELEE_SANS_AUTORITE = ["src/app/api/casefile/public/route.ts"] as const;
+// S1 · phase B — la route publique est câblée (`resolvePublicCasefile`) : la
+// liste est VIDE. Une surface publique qui appellerait `loadPublicProjection`
+// sans autorité rougit ici.
+const DETTE_GELEE_SANS_AUTORITE: readonly string[] = [];
 
 describe("S1 — les surfaces publiques consomment l'autorité, sauf la dette gelée nommée", () => {
   const APPEL_SANS_AUTORITE = /\bloadPublicProjection\(/;

@@ -209,8 +209,13 @@ describe("POINT 5 — les deux routes voisines résolvent le même sujet", () =>
   });
 
   it("les deux routes passent par le résolveur partagé, pas par une carte locale", () => {
+    // S1 · phase B — la route PUBLIQUE ne résout plus elle-même : elle passe
+    // par `resolvePublicCasefile`, qui appelle `canonicalRefForMint` (prouvé
+    // par s1-refus-public-byte-identique : l'alias ouvre le même dossier).
+    expect(PUBLIC).toContain("resolvePublicCasefile(");
+    expect(PUBLIC).not.toContain("canonicalRefForMint");
+    expect(PDF).toContain("canonicalRefForMint");
     for (const [nom, src] of Object.entries({ PUBLIC, PDF })) {
-      expect(src, nom).toContain("canonicalRefForMint");
       // Une carte locale par route, c'était deux vérités à tenir d'accord.
       expect(src, nom).not.toContain("MINT_TO_PRESET");
     }
