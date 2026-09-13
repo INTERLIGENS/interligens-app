@@ -105,9 +105,13 @@ describe("GATE 1 — l'autorité canonique est la seule lue", () => {
     expect(code).not.toContain("botifyCase");
   });
 
-  it("la route retail charge la projection, et ne résout plus de preset", () => {
+  it("la route retail charge la projection PAR l'autorité de publication, et ne résout plus de preset", () => {
+    // S1 · phase B — la projection est chargée par `resolvePublicCasefile`,
+    // qui consulte l'autorité de publication AVANT de projeter. La forme
+    // sans autorité (`loadPublicProjection` direct) est interdite ici.
     const code = codeSeul("src/app/api/casefile/public/route.ts");
-    expect(code).toContain("loadPublicProjection");
+    expect(code).toContain("resolvePublicCasefile(");
+    expect(code).not.toMatch(/\bloadPublicProjection\(/);
     expect(code).not.toContain("kolHandleToCasefilePreset");
     expect(code).not.toContain("MINT_TO_PRESET");
   });
@@ -138,14 +142,19 @@ describe("GATE 2 — aucun repli silencieux vers une autorité concurrente", () 
   });
 
   it("les deux routes traitent l'absence de dossier canonique EXPLICITEMENT", () => {
-    for (const f of [
-      "src/app/api/casefile/public/route.ts",
-      "src/app/api/casefile/pdf/route.ts",
-    ]) {
-      const code = codeSeul(f);
-      expect(code, f).toContain("CanonicalCaseFileMissingError");
-      expect(code, f).toContain("canonical_casefile_missing");
-    }
+    // Route admin : l'absence reste BRUYANTE (500 nommé) — un opérateur doit
+    // savoir qu'un ref en carte n'a pas de ligne.
+    const pdf = codeSeul("src/app/api/casefile/pdf/route.ts");
+    expect(pdf).toContain("CanonicalCaseFileMissingError");
+    expect(pdf).toContain("canonical_casefile_missing");
+    // Route PUBLIQUE (S1 · phase B) : l'absence est traitée par un REFUS typé,
+    // et ce refus est le MÊME que pour un mint inconnu ou un dossier draft.
+    // Un 500 distinct serait un oracle d'existence — il est interdit ici.
+    const pub = codeSeul("src/app/api/casefile/public/route.ts");
+    expect(pub).toContain('resolution.kind === "REFUSE"');
+    expect(pub).not.toContain("CanonicalCaseFileMissingError");
+    expect(pub).not.toContain("canonical_casefile_missing");
+    expect(pub).not.toContain("no linked public case file");
   });
 
   it("le rapport interne annonce quand ses claims sortent d'un preset", () => {

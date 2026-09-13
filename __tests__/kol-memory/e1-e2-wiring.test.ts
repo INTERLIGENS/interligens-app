@@ -76,8 +76,12 @@ describe("BUILD 8 / E2 — les deux routes de dossier publiées", () => {
   it("aucune des deux routes ne porte l'alias synthétique en dur", () => {
     for (const [nom, src] of Object.entries({ PUBLIC, PDF })) {
       expect(emisParLeCode(src, BOTIFY_SYNTHETIC_ROUTE_KEY), nom).toBe(false);
-      expect(src, nom).toContain("canonicalRefForMint");
     }
+    // S1 · phase B — la route publique résout PAR `resolvePublicCasefile`
+    // (qui appelle le résolveur partagé) ; la route PDF admin l'appelle encore
+    // directement. Les deux convergent vers `CANONICAL_REF_BY_MINT`.
+    expect(PUBLIC).toContain("resolvePublicCasefile(");
+    expect(PDF).toContain("canonicalRefForMint");
   });
 
   it("une seule carte — l'alias et le canonique ouvrent le même dossier", async () => {

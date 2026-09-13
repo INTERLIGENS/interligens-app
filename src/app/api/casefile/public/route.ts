@@ -41,11 +41,7 @@ import {
   StaticSectionsMismatchError,
   type PublicReportLang,
 } from "@/lib/casefile/pdfGeneratorPublic";
-import {
-  canonicalRefForMint,
-  loadPublicProjection,
-  CanonicalCaseFileMissingError,
-} from "@/lib/casefile/publicProjection";
+import { resolvePublicCasefile } from "@/lib/casefile/publicRefusal";
 import { kolHandleToCanonicalMint } from "@/lib/kol-memory/tokenIdentity";
 
 export const runtime = "nodejs";
@@ -72,24 +68,24 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // ── Identité, et rien d'autre ──────────────────────────────────────────
-  // Le handle passe par le mint CANONIQUE, pas par un preset : le preset est
-  // une autorité de contenu, et on ne veut plus en dépendre, même pour du
-  // routage. `canonicalRefForMint` résout l'alias BOTIFY synthétique.
-  const ref = mint
-    ? canonicalRefForMint(mint)
-    : canonicalRefForMint(kolHandleToCanonicalMint(handle));
-
-  if (!ref) {
-    return NextResponse.json(
-      { error: "no linked public case file" },
-      { status: 404 },
-    );
-  }
+  // ── S1 · Identité → autorité de publication → projection, ou REFUS ─────
+  //
+  // Le handle passe par le mint CANONIQUE, pas par un preset. La résolution,
+  // la décision de publication et le refus vivent dans `resolvePublicCasefile`
+  // — la route ne résout rien elle-même et ne compare aucun statut.
+  //
+  // Un mint hors carte, une ligne absente et un dossier non publié rendent
+  // la MÊME réponse, octet pour octet : distinguer les trois serait un oracle
+  // d'existence sur un dossier que l'autorité n'a pas publié.
+  const resolution = await resolvePublicCasefile(
+    mint || (kolHandleToCanonicalMint(handle) ?? ""),
+    "api/casefile/public",
+  );
+  if (resolution.kind === "REFUSE") return resolution.response;
+  const { ref, projection } = resolution;
 
   try {
-    const dossier = await loadPublicProjection(ref, "api/casefile/public");
-    const result = await generateCaseFilePdfPublic(lang, dossier);
+    const result = await generateCaseFilePdfPublic(lang, projection);
     if (!result.success || !result.pdfBytes) {
       return NextResponse.json(
         { error: result.error ?? "pdf_render_failed" },
@@ -112,14 +108,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         { error: "public template not available for this case file" },
         { status: 404 },
-      );
-    }
-    // L'identité désigne un dossier que l'autorité ne porte pas. On le dit —
-    // on ne sert pas un preset à la place.
-    if (err instanceof CanonicalCaseFileMissingError) {
-      return NextResponse.json(
-        { error: "canonical_casefile_missing" },
-        { status: 500 },
       );
     }
     throw err;
