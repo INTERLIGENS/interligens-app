@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { loadPublicProjection } from "@/lib/casefile/publicProjection";
+import { loadPublicProjectionIfPublished } from "@/lib/casefile/publicProjection";
+import { decidePublication } from "@/lib/casefile/publicationAuthority";
 import TokenCasefileView, {
   type TokenCasefileData,
   type TokenCasefileFounder,
@@ -89,8 +90,12 @@ function decToNum(v: unknown): number | null {
 
 async function getLab(): Promise<TokenCasefileData | null> {
   try {
-    const r = await prisma.tokenCaseFile.findUnique({ where: { ref: REF } });
-    if (!r || r.publishStatus !== "published") return null;
+    // S1 — la publication se DÉCIDE chez l'autorité, sur la ligne lue.
+    const decision = decidePublication(
+      await prisma.tokenCaseFile.findUnique({ where: { ref: REF } }),
+    );
+    if (decision.decision !== "PUBLISHABLE") return null;
+    const r = decision.dossier;
     return {
       ref: r.ref,
       codename: r.codename,
@@ -145,6 +150,7 @@ export default async function LabCasePageFR() {
   // une provenance qui ne survit pas doit faire échouer la page, pas la
   // transformer en 404. Un dossier introuvable et un dossier dont un claim
   // publié a perdu son fondement ne sont pas la même panne.
-  const projection = await loadPublicProjection(REF, "cases/lab");
-  return <TokenCasefileView data={data} locale="fr" projection={projection} />;
+  const result = await loadPublicProjectionIfPublished(REF, "cases/lab");
+  if (result.decision !== "PUBLISHABLE") notFound();
+  return <TokenCasefileView data={data} locale="fr" projection={result.projection} />;
 }

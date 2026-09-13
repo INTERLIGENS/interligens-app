@@ -57,6 +57,7 @@ import {
 } from "./publicationState";
 import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
 import { ungovernedScoreField } from "./governedMetrics";
+import { decidePublication } from "./publicationAuthority";
 
 // ─── Identité : quel dossier canonique, pour quelle entrée ────────────────
 //
@@ -315,6 +316,45 @@ export async function loadPublicProjection(
   const dossier = await loadCanonicalCaseFile(ref);
   if (!dossier) throw new CanonicalCaseFileMissingError(ref, where);
   return projectForPublication(dossier, where);
+}
+
+// ─── S1 · PHASE A — LA FRONTIÈRE PUBLIQUE CONSOMME L'AUTORITÉ ─────────────
+//
+// `loadPublicProjection` répond « que peut-on publier de ce dossier ? » et
+// reste l'entrée des surfaces ADMIN, qui prévisualisent des dossiers `draft`.
+// Une surface PUBLIQUE ne pose pas cette question avant d'avoir posé l'autre :
+// « ce dossier est-il publié ? ». C'est `publicationAuthority.decidePublication`
+// qui y répond, sur la ligne lue par le lecteur canonique — pas ici, pas
+// dans la page, pas dans la route.
+//
+// Le refus ne porte AUCUNE cause : un dossier inconnu et un dossier `draft`
+// rendent la même décision. Distinguer les deux serait un oracle d'existence,
+// et c'est précisément ce que la route publique ne doit pas servir.
+
+export type PublicProjectionResult =
+  | { readonly decision: "PUBLISHABLE"; readonly projection: PublicProjection }
+  | { readonly decision: "REFUSED" };
+
+/**
+ * Charge un dossier, consulte l'autorité de publication, projette. Pour les
+ * surfaces PUBLIQUES uniquement.
+ *
+ * Un dossier introuvable n'est pas distingué d'un dossier non publié : les
+ * deux rendent `REFUSED`. L'absence est journalisée côté serveur — elle reste
+ * bruyante pour l'opérateur, muette pour le lecteur.
+ */
+export async function loadPublicProjectionIfPublished(
+  ref: string,
+  where: string,
+): Promise<PublicProjectionResult> {
+  const dossier = await loadCanonicalCaseFile(ref);
+  if (!dossier) {
+    console.error(new CanonicalCaseFileMissingError(ref, where).message);
+    return { decision: "REFUSED" };
+  }
+  const decision = decidePublication(dossier);
+  if (decision.decision !== "PUBLISHABLE") return { decision: "REFUSED" };
+  return { decision: "PUBLISHABLE", projection: projectForPublication(decision.dossier, where) };
 }
 
 /**

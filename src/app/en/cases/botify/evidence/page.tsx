@@ -40,8 +40,9 @@
 
 import BetaNav from "@/components/beta/BetaNav";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import {
-  loadPublicProjection,
+  loadPublicProjectionIfPublished,
   BOTIFY_CASEFILE_REF,
 } from "@/lib/casefile/publicProjection";
 
@@ -76,7 +77,12 @@ function Withheld({ titre, champ, texte }: { titre: string; champ: string; texte
 }
 
 export default async function BotifyEvidencePage() {
-  const dossier = await loadPublicProjection(BOTIFY_CASEFILE_REF, "cases/botify/evidence");
+  // S1 — cette page projetait le dossier SANS consulter l'autorité de
+  // publication : un dossier `draft` y était servi. Un dossier non publié
+  // est absent, comme sur toute autre surface publique — même réponse.
+  const result = await loadPublicProjectionIfPublished(BOTIFY_CASEFILE_REF, "cases/botify/evidence");
+  if (result.decision !== "PUBLISHABLE") notFound();
+  const dossier = result.projection;
 
   return (
     <div style={{ minHeight: "100vh", background: "#000000", color: "#f9fafb", fontFamily: "Inter, sans-serif", paddingBottom: 80 }}>

@@ -94,6 +94,14 @@ export interface CanonicalCaseFile {
   /** `null` = score non établi. Jamais 0 par défaut. */
   readonly tigerScore: number | null;
   readonly verdict: string;
+  /**
+   * S1 · phase A — `token_casefiles.publishStatus`, lu avec le dossier pour
+   * que l'autorité de publication (`publicationAuthority.ts`) décide sur la
+   * LIGNE LUE, sans second accès base. Optionnel dans le type parce que les
+   * fixtures de test construisent des dossiers sans lui — et un dossier sans
+   * lui est REFUSÉ, jamais publié par défaut.
+   */
+  readonly publishStatus?: string;
   readonly claims: readonly PublicClaim[];
   readonly sources: readonly PublicSource[];
   readonly keyWallets: readonly CanonicalKeyWallet[];
@@ -181,6 +189,7 @@ export async function loadCanonicalCaseFile(
     select: {
       ref: true, codename: true, ticker: true, title: true,
       tigerScore: true, verdict: true, keyWallets: true,
+      publishStatus: true,
     },
   });
   if (!dossier) return null;
@@ -242,6 +251,7 @@ export async function loadCanonicalCaseFile(
     title: dossier.title,
     tigerScore: dossier.tigerScore,
     verdict: dossier.verdict,
+    publishStatus: dossier.publishStatus,
     claims,
     sources,
     keyWallets: asKeyWallets(dossier.keyWallets),

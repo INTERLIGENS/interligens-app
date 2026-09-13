@@ -45,6 +45,7 @@
 // Cf. __tests__/security/koltokenlink-visibility-invariant.test.ts
 
 import { mintToCasefilePreset } from "@/lib/casefile/presets";
+import { keepPublishable } from "@/lib/casefile/publicationAuthority";
 import { inferAddressShape, isPlaceholderAddress, normalizeAddress } from "../address";
 import { normalizeChain, type CanonicalChain } from "../chain";
 import { cleanTicker, normalizeSymbol } from "../symbol";
@@ -348,17 +349,20 @@ interface CasefileRow {
   addr: string | null;
   tokenName: string | null;
   tgeDate: string | Date | null;
+  publishStatus: string | null;
 }
 
-const CASEFILE_SELECT = `SELECT c."ref", c."ticker", c."tokenName", c."tgeDate", e.k AS chain_label, e.v AS addr
+// S1 — `publishStatus` est LU, pas filtré en SQL : la décision de publication
+// appartient à `publicationAuthority`, seule à porter la règle. Le corpus
+// tient en une poignée de lignes ; le filtre mémoire ne coûte rien.
+const CASEFILE_SELECT = `SELECT c."ref", c."ticker", c."tokenName", c."tgeDate", c."publishStatus", e.k AS chain_label, e.v AS addr
        FROM token_casefiles c,
             LATERAL jsonb_each_text((c."contractAddresses")::jsonb) AS e(k, v)
-      WHERE c."publishStatus" = 'published'
-        AND e.v IS NOT NULL`;
+      WHERE e.v IS NOT NULL`;
 
 function casefileRowsToCandidates(rows: CasefileRow[]): RawCandidate[] {
   const out: RawCandidate[] = [];
-  for (const r of rows) {
+  for (const r of keepPublishable(rows)) {
     if (!r.addr) continue;
     const cand = toRawCandidate({
       rawAddress: r.addr,

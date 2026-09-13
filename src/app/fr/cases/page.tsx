@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import CasefilesIndexView, {
   type CasefileCard,
 } from "@/components/cases/CasefilesIndexView";
+import { keepPublishable, PUBLISHED_ONLY_WHERE } from "@/lib/casefile/publicationAuthority";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,11 @@ function asStringArray(v: unknown): string[] {
 async function getCasefiles(): Promise<CasefileCard[]> {
   let platform: CasefileCard[] = [];
   try {
-    const rows = await prisma.platformCaseFile.findMany({
-      where: { publishStatus: "published" },
+    // S1 — le filtre est DÉRIVÉ de l'autorité, et l'autorité repasse derrière.
+    const rows = keepPublishable(await prisma.platformCaseFile.findMany({
+      where: PUBLISHED_ONLY_WHERE,
       orderBy: { platformRiskScore: "desc" },
-    });
+    }));
     platform = rows.map((r) => ({
       codename: r.codename,
       title: r.title,
@@ -65,13 +67,13 @@ async function getCasefiles(): Promise<CasefileCard[]> {
 
   let token: CasefileCard[] = [];
   try {
-    const rows = await prisma.tokenCaseFile.findMany({
-      where: { publishStatus: "published" },
+    const rows = keepPublishable(await prisma.tokenCaseFile.findMany({
+      where: PUBLISHED_ONLY_WHERE,
       // BUILD 9 — NULLS LAST explicite. Postgres place les NULL en PREMIER en
       // DESC : un dossier non scoré aurait ouvert la liste comme s'il était le
       // plus sévère. Un score absent ne se classe pas, il se range après.
       orderBy: { tigerScore: { sort: "desc", nulls: "last" } },
-    });
+    }));
     token = rows.map((r) => ({
       codename: r.codename,
       title: r.title,
