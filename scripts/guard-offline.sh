@@ -237,22 +237,6 @@ LEASE_DUREE_MAX_S=2700   # 45 minutes
 # « rien à vérifier ». Une lease n'existe qu'une fois MERGÉE dans main — c'est la
 # même propriété que le guard lui-même : on ne se juge pas avec ses propres règles.
 LEASES=(
-    # S1 · FENÊTRE B — l'autorité de publication unique atteint la route publique.
-    #
-    #   Un dossier draft est absent/refusé publiquement SANS oracle d'existence.
-    #   Pas deux implémentations indépendantes de publishStatus === published.
-    #
-    # La primitive `decidePublication`, la frontière `loadPublicProjectionIfPublished`
-    # et le refus gelé `resolvePublicCasefile` sont DÉJÀ mergés (9df3704) et
-    # prouvés : refus mint-inconnu / mint-draft byte-identiques, 7 surfaces
-    # libres câblées. Reste le seul appelant sur chemin gelé — la route publique,
-    # qui résout encore localement et sert trois refus distincts (404, 500, PDF).
-    #
-    # UN SEUL CHEMIN. Le diff est spécifié à la ligne près (rapport S1 phase A
-    # §5) : la fenêtre ne cherche rien, elle pose. 30 mn, quinze sous la borne :
-    # deux cycles CI à ~5 mn et une suite locale. Le compteur brûle depuis
-    # l'écriture de cette ligne, pas depuis le merge.
-    "S1-B|autorité de publication unique sur la route publique — refus sans oracle, aucune résolution locale|src/app/api/casefile/public/route.ts|9df3704bdfc9b8d203eb0a72797f1c8986c93eb1|feat/cc-offline-184-s1-fenetre-route-publique|2026-09-13T14:53:28Z|2026-09-13T15:23:28Z|OPEN"
 )
 
 lease_rouge() {
