@@ -58,6 +58,9 @@ const claim = (o: Partial<PublicClaim> = {}): PublicClaim => ({
   ...o,
 });
 
+// SPINE-00 · C — le registre du dossier porte la pièce SRC-001 par défaut :
+// le contrat canonique résout les références CONTRE LE REGISTRE DE L'AUTORITÉ,
+// pas contre une provenance pré-résolue posée sur le claim.
 const dossier = (o: Partial<CanonicalCaseFile> = {}): CanonicalCaseFile => ({
   ref: BOTIFY_CASEFILE_REF,
   codename: "BOTIFY",
@@ -66,20 +69,27 @@ const dossier = (o: Partial<CanonicalCaseFile> = {}): CanonicalCaseFile => ({
   tigerScore: null,
   verdict: "AVOID",
   claims: [],
-  sources: [],
+  sources: [source()],
   keyWallets: [],
   ...o,
 });
 
-/** Un claim publié, avec une pièce qui satisfait les trois exigences. */
-const claimPublieComplet = (): PublicClaim =>
+/**
+ * Un claim publié qui satisfait le CONTRAT CANONIQUE : nature classifiée, une
+ * référence citée, et la pièce SRC-001 au registre satisfait les trois
+ * exigences. `threadUrl` est présent — et il n'est pas ce qui le rend publiable.
+ */
+const claimPublieComplet = (o: Partial<PublicClaim> = {}): PublicClaim =>
   claim({
     state: "PUBLIC",
+    rowNature: "PRIMARY_OBSERVATION",
+    evidenceRefs: ["SRC-001"],
     provenance: {
       threadUrl: "https://x.com/exemple/status/9",
       sources: [source()],
       unresolvedRefs: [],
     },
+    ...o,
   });
 
 const codeSeul = (chemin: string): string =>
@@ -184,14 +194,10 @@ describe("GATE 3 — publier exige un fondement, résolu", () => {
     // Les données sont cohérentes ; c'est la publication qui ne l'est pas.
     // C'est exactement la pathologie des 20 captures publiées sans hash.
     const d = dossier({
+      sources: [source({ sha256: null })],
       claims: [
-        claim({
-          state: "PUBLIC",
-          provenance: {
-            threadUrl: null,
-            sources: [source({ sha256: null })],
-            unresolvedRefs: [],
-          },
+        claimPublieComplet({
+          provenance: { threadUrl: null, sources: [source({ sha256: null })], unresolvedRefs: [] },
         }),
       ],
     });
@@ -204,9 +210,9 @@ describe("GATE 3 — publier exige un fondement, résolu", () => {
 
   it("une pièce sans origine est retenue en nommant `sourceUrl`", () => {
     const d = dossier({
+      sources: [source({ sourceUrl: null })],
       claims: [
-        claim({
-          state: "PUBLIC",
+        claimPublieComplet({
           provenance: { threadUrl: null, sources: [source({ sourceUrl: null })], unresolvedRefs: [] },
         }),
       ],
@@ -231,42 +237,55 @@ describe("GATE 3 — publier exige un fondement, résolu", () => {
   });
 });
 
-// ═══ GATE 4 · les références non résolues restent visibles ════════════════
+// ═══ GATE 4 · une absence ne devient jamais un fondement ══════════════════
+//
+// SPINE-00 · C — avant, un claim dont UNE référence résolvait était rendu, ses
+// références non résolues affichées « telles quelles ». Le contrat canonique
+// exige que CHAQUE référence résolve vers une pièce publiable : un claim qui
+// cite une absence n'est plus rendu du tout. L'absence ne devient pas un
+// fondement — et elle ne voyage plus non plus à côté d'un fondement partiel.
 
 describe("GATE 4 — une absence ne devient jamais un fondement", () => {
-  const projete = (): PublicProjection =>
+  const projete = (refs: readonly string[], registre: readonly PublicSource[]): PublicProjection =>
     projectForPublication(
       dossier({
-        claims: [
-          claim({
-            state: "PUBLIC",
-            provenance: {
-              threadUrl: "https://x.com/exemple/status/9",
-              sources: [source(), source({ sourceId: "SRC-002", sha256: null })],
-              unresolvedRefs: ["captures TBC", "voir fil"],
-            },
-          }),
-        ],
+        sources: registre,
+        claims: [claimPublieComplet({ evidenceRefs: refs })],
       }),
       "test",
     );
 
-  it("les non résolues survivent au rendu, telles quelles", () => {
-    expect(projete().claims[0].provenance.unresolvedRefs).toEqual(["captures TBC", "voir fil"]);
+  it("une référence que le registre ignore RETIENT le claim, champ `evidenceRefs`", () => {
+    const p = projete(["SRC-001", "captures TBC"], [source()]);
+    expect(p.claims).toHaveLength(0);
+    expect(p.withheld).toEqual([
+      { excluded: true, reason: "INSUFFICIENT_PROVENANCE", field: "evidenceRefs", count: 1 },
+    ]);
   });
 
-  it("MUTANT — elles ne sont PAS reversées dans les sources", () => {
-    const p = projete().claims[0].provenance;
-    expect(p.sources.map((s) => s.sourceId)).toEqual(["SRC-001"]);
-    expect(p.sources).toHaveLength(1);
-  });
-
-  it("une pièce retenue n'est pas déguisée en référence non résolue", () => {
+  it("une pièce retenue RETIENT le claim en nommant le champ, pas la pièce", () => {
     // Deux absences différentes : le registre ignore l'une, l'autre existe
-    // mais n'est pas publiable. Les fondre effacerait l'information.
-    const p = projete().claims[0].provenance;
-    expect(p.withheldRefs).toEqual(["SRC-002"]);
-    expect(p.unresolvedRefs).not.toContain("SRC-002");
+    // mais n'est pas publiable. Chacune nomme SON champ ; aucune ne rend la
+    // clef citée.
+    const p = projete(["SRC-001", "SRC-002"], [source(), source({ sourceId: "SRC-002", sha256: null })]);
+    expect(p.claims).toHaveLength(0);
+    expect(p.withheld).toEqual([
+      { excluded: true, reason: "INSUFFICIENT_PROVENANCE", field: "sha256", count: 1 },
+    ]);
+    expect(JSON.stringify(p.withheld)).not.toContain("SRC-002");
+  });
+
+  it("MUTANT — une référence partielle ne reverse RIEN dans les sources publiées", () => {
+    const p = projete(["SRC-001", "captures TBC"], [source()]);
+    expect(p.sources).toEqual([]);
+  });
+
+  it("sur un claim rendu, unresolvedRefs et withheldRefs sont vides PAR CONSTRUCTION", () => {
+    const p = projete(["SRC-001"], [source()]);
+    expect(p.claims).toHaveLength(1);
+    expect(p.claims[0].provenance.unresolvedRefs).toEqual([]);
+    expect(p.claims[0].provenance.withheldRefs).toEqual([]);
+    expect(p.claims[0].provenance.sources.map((s) => s.sourceId)).toEqual(["SRC-001"]);
   });
 });
 
@@ -488,12 +507,13 @@ describe("DOCTRINE — un retrait nomme le champ, jamais sa valeur", () => {
       dossier({
         claims: [
           claim({ state: "ATTACHED" }),
-          claim({
+          claimPublieComplet({
             claimId: "C2",
-            state: "PUBLIC",
-            provenance: { threadUrl: null, sources: [source({ sha256: null })], unresolvedRefs: [] },
+            evidenceRefs: ["SRC-NUE"],
+            provenance: { threadUrl: null, sources: [source({ sourceId: "SRC-NUE", sha256: null })], unresolvedRefs: [] },
           }),
         ],
+        sources: [source(), source({ sourceId: "SRC-NUE", sha256: null })],
       }),
       "test",
     );
@@ -545,11 +565,7 @@ describe("DOCTRINE — un retrait nomme le champ, jamais sa valeur", () => {
 
 describe("RÈGLE DURABLE — aucun score éditorial ne ressemble à un score système", () => {
   const claimAvecScore = (champ: "title" | "description", texte: string): PublicClaim =>
-    claim({
-      state: "PUBLIC",
-      [champ]: texte,
-      provenance: { threadUrl: "https://x.com/e/1", sources: [source()], unresolvedRefs: [] },
-    } as Partial<PublicClaim>);
+    claimPublieComplet({ [champ]: texte } as Partial<PublicClaim>);
 
   it("MUTANT — un claim portant « 100/100 » n'est PAS publié", () => {
     // Le cas réel : VINE C11 porte « The full INTERLIGENS coordination score

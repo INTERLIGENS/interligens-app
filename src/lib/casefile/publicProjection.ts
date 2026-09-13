@@ -24,17 +24,44 @@
 //
 // ─── Deux défaillances distinctes, deux traitements distincts ─────────────
 //
-//   (1) Un claim PUBLIC dont AUCUNE référence ne résout, et sans thread_url.
-//       L'état contredit les données. On LÈVE — `assertProvenanceSurvives`.
+//   (1) Un claim PUBLIC qui ne porte AUCUNE provenance — ni référence citée,
+//       ni fil. L'état contredit les données (le CHECK en base interdit un
+//       PUBLIC sans référence). On LÈVE — `assertProvenanceSurvives`.
 //       Bruyant, parce qu'un silence ici se répéterait.
 //
-//   (2) Un claim PUBLIC dont les références résolvent vers des pièces NON
-//       vérifiables (pas d'empreinte, pas d'origine, pas d'horodatage).
-//       Les données sont cohérentes ; c'est la publication qui ne l'est pas.
-//       On RETIENT, et on le DIT — un avis structuré qui nomme le champ.
+//   (2) Un claim PUBLIC qui ne satisfait pas le CONTRAT CANONIQUE du claim
+//       public : nature non classifiée, aucune référence, une référence qui
+//       ne résout pas, une pièce sans empreinte, sans origine ou sans
+//       horodatage. Les données sont cohérentes ; c'est la publication qui ne
+//       l'est pas. On RETIENT, et on le DIT — un avis qui nomme le champ.
 //
 // Le fail-closed est le même dans les deux cas : rien ne sort sans fondement.
 // Ce qui change, c'est qui doit être réveillé — un développeur, ou un relecteur.
+//
+// ─── SPINE-00 · C — le contrat est CONSOMMÉ, pas réécrit ──────────────────
+//
+// Le critère d'émission d'un claim est `decidePublicClaimContract`, la
+// primitive de `governedWriter.ts` — la même que l'écrivain applique au
+// fondement et à la libération. Une seule écriture de la règle : ce module ne
+// compare aucun `sha256`, ne compte aucune référence, ne juge aucune nature.
+//
+// `threadUrl` est LU, RENDU et CITÉ comme provenance complémentaire. Il n'est
+// JAMAIS la raison pour laquelle un claim devient projetable : un claim PUBLIC
+// portant un fil et zéro référence est RETENU (cas 2, champ `evidenceRefs`),
+// pas rendu. Mesuré le 2026-09-13 : 0 claim PUBLIC en base — les 8 claims
+// VINE (8 fils, 0 référence) deviendraient non projetables s'ils étaient
+// promus, et c'est précisément le comportement voulu.
+//
+// Conséquence sur la forme rendue : un claim projeté a TOUTES ses références
+// résolues vers des pièces publiables. `unresolvedRefs` et `withheldRefs`
+// sont donc vides par construction sur un claim rendu ; ils restent dans le
+// type parce que les gabarits les lisent, et parce qu'un champ qui disparaît
+// se recâble plus discrètement qu'un champ qui reste vide.
+//
+// Résiduel DÉCLARÉ : le déclencheur (1) n'est pas un critère d'émission et n'a
+// pas été touché. Il distingue encore « aucune provenance du tout » (lève) de
+// « un fil sans référence » (retient). Le second cas est celui que le CHECK
+// laisse exister ; le premier ne devrait pas exister en base.
 //
 // ─── Ce qu'un retrait a le droit de dire ──────────────────────────────────
 //
@@ -58,6 +85,16 @@ import {
 import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
 import { ungovernedScoreField } from "./governedMetrics";
 import { decidePublication } from "./publicationAuthority";
+import {
+  decidePublicClaimContract,
+  SOURCE_PROVENANCE_FIELDS,
+  type PublicClaimContractCause,
+} from "./governedWriter";
+
+// Le prédicat de provenance d'une pièce vit désormais dans `governedWriter`
+// (SPINE-00 · C). Ré-exporté ici pour ses consommateurs historiques ; ce
+// module ne l'APPELLE plus lui-même — le contrat le fait pour lui.
+export { isPubliableSource } from "./governedWriter";
 
 // ─── Identité : quel dossier canonique, pour quelle entrée ────────────────
 //
@@ -125,7 +162,12 @@ export interface RenderedProvenance {
   readonly withheldRefs: readonly string[];
 }
 
-export interface RenderedClaim extends Omit<PublicClaim, "provenance"> {
+/**
+ * `rowNature` et `evidenceRefs` sont des ENTRÉES du contrat, pas des champs
+ * rendus : la projection ne change pas de forme servie dans cette passe. Les
+ * pièces citées sortent par `provenance.sources`.
+ */
+export interface RenderedClaim extends Omit<PublicClaim, "provenance" | "rowNature" | "evidenceRefs"> {
   readonly provenance: RenderedProvenance;
 }
 
@@ -166,22 +208,25 @@ export class CanonicalCaseFileMissingError extends Error {
 }
 
 /**
- * Une pièce est PUBLIABLE si elle porte intégrité, origine ET horodatage.
+ * Le NOM du champ qu'un refus du contrat désigne. Aucune valeur, aucun
+ * identifiant de pièce : un refus sur `SRC-001.sha256` nomme `sha256`, et
+ * une référence non résolue nomme `evidenceRefs` — la clef citée n'en sort
+ * pas, ce serait rendre ce qu'on retient.
  *
- * Les trois, pas deux : une empreinte sans origine ne dit pas d'où vient la
- * pièce, une origine sans empreinte ne dit pas que c'est toujours la même, et
- * sans horodatage on ne sait pas de QUAND elle témoigne — c'est précisément le
- * trou que l'index de preuves comblait avec la date du jour.
+ * Le vocabulaire de sortie est le même qu'avant cette passe (`state`,
+ * `evidenceRefs`, `sha256`, `sourceUrl`, `capturedAt`), plus `rowNature`.
+ * Aucun motif nouveau : « non fondé » reste INSUFFICIENT_PROVENANCE.
  */
-export function isPubliableSource(s: PublicSource): boolean {
-  return !!s.sha256 && !!s.sourceUrl && !!s.capturedAt;
-}
-
-/** Le premier champ qui manque à une pièce. Un nom, jamais un contenu. */
-function champManquant(s: PublicSource): string {
-  if (!s.sha256) return "sha256";
-  if (!s.sourceUrl) return "sourceUrl";
-  return "capturedAt";
+function champRetenu(cause: PublicClaimContractCause, at: string): string {
+  switch (cause) {
+    case "CLAIM_UNCLASSIFIED":
+      return "rowNature";
+    case "EVIDENCE_REFS_EMPTY":
+    case "EVIDENCE_REF_UNRESOLVED":
+      return "evidenceRefs";
+    case "SOURCE_PROVENANCE_INCOMPLETE":
+      return SOURCE_PROVENANCE_FIELDS.find((f) => at.endsWith(`.${f}`)) ?? "evidenceRefs";
+  }
 }
 
 function ajouter(
@@ -218,6 +263,9 @@ export function projectForPublication(
   const avis = new Map<string, WithheldNotice>();
   const publies: RenderedClaim[] = [];
   const citees = new Map<string, PublicSource>();
+  // Le registre du dossier, TEL QUE L'AUTORITÉ LE DONNE. C'est contre lui que
+  // le contrat résout — les mêmes entrées que l'écrivain.
+  const registre = new Map<string, PublicSource>(dossier.sources.map((s) => [s.sourceId, s]));
 
   for (const c of dossier.claims) {
     if (c.state !== "PUBLIC") {
@@ -242,22 +290,21 @@ export function projectForPublication(
       continue;
     }
 
-    const p = c.provenance;
-    const resolues = p?.sources ?? [];
-    const publiables = resolues.filter(isPubliableSource);
-    const retenues = resolues.filter((s) => !isPubliableSource(s));
-
-    if (publiables.length === 0 && !p?.threadUrl) {
-      // Cas (2) : les données sont cohérentes, la publication ne l'est pas.
-      // On nomme le champ qui manque à la première pièce citée ; à défaut de
-      // pièce citée du tout, c'est la référence elle-même qui manque.
-      const champ = retenues.length > 0 ? champManquant(retenues[0]) : "evidenceRefs";
-      ajouter(avis, "INSUFFICIENT_PROVENANCE", champ);
+    // ── Le critère d'émission : LE contrat canonique, consommé ──────────
+    //
+    // `threadUrl` n'y entre pas. Un claim n'est rendu que si sa nature est
+    // classifiée, s'il cite au moins une référence, et si CHAQUE référence
+    // résout vers une pièce publiable. Sinon, cas (2) : retenu, champ nommé.
+    const contrat = decidePublicClaimContract(
+      { rowNature: c.rowNature, evidenceRefs: c.evidenceRefs },
+      registre,
+    );
+    if (contrat.verdict === "UNMET") {
+      ajouter(avis, "INSUFFICIENT_PROVENANCE", champRetenu(contrat.refusal.cause, contrat.refusal.at));
       continue;
     }
 
-    for (const s of retenues) ajouter(avis, "INSUFFICIENT_PROVENANCE", champManquant(s));
-    for (const s of publiables) citees.set(s.sourceId, s);
+    for (const s of contrat.cited) citees.set(s.sourceId, s);
 
     publies.push({
       claimId: c.claimId,
@@ -271,13 +318,13 @@ export function projectForPublication(
       claimDate: c.claimDate,
       state: c.state,
       provenance: {
-        threadUrl: p?.threadUrl ?? null,
-        sources: publiables,
-        // Gate 4 — les non résolues restent non résolues. On ne les promeut
-        // pas, on ne les déguise pas en pièces retenues : ce sont deux
-        // absences différentes.
-        unresolvedRefs: p?.unresolvedRefs ?? [],
-        withheldRefs: retenues.map((s) => s.sourceId),
+        // Provenance COMPLÉMENTAIRE : rendue et citée, jamais critère.
+        threadUrl: c.provenance?.threadUrl ?? null,
+        sources: contrat.cited,
+        // Vides par construction : le contrat MET signifie que toutes les
+        // références résolvent vers des pièces publiables.
+        unresolvedRefs: [],
+        withheldRefs: [],
       },
     });
   }

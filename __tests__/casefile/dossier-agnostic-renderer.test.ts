@@ -147,38 +147,45 @@ describe("GATE — un dossier sans faits statiques les RETIRE, il ne les invente
 // ═══ La provenance survit, sur les deux dossiers ═════════════════════════
 
 describe("GATE — claims et provenance corrects sur les deux fixtures", () => {
-  const claimPublie = (id: string): PublicClaim => ({
+  const SRC_001 = {
+    sourceId: "SRC-001", sourceType: "screenshot", caption: "Fil 1/8",
+    capturedAt: "2025-12-07", sourceUrl: "https://x.com/exemple",
+    sha256: "c".repeat(64),
+  } as const;
+
+  // SPINE-00 · C — le claim porte le CONTRAT : nature classifiée et références
+  // citées ; la pièce vit au registre du dossier.
+  const claimPublie = (id: string, evidenceRefs: readonly string[]): PublicClaim => ({
     claimId: id, title: "Assertion démontrée", titleFr: null,
     description: null, descriptionFr: null, category: "onchain",
     severity: "HIGH", status: "CONFIRMED", claimDate: "2025-11-04",
     state: "PUBLIC",
+    rowNature: "PRIMARY_OBSERVATION",
+    evidenceRefs,
     provenance: {
       threadUrl: "https://x.com/exemple/status/1",
-      sources: [{
-        sourceId: "SRC-001", sourceType: "screenshot", caption: "Fil 1/8",
-        capturedAt: "2025-12-07", sourceUrl: "https://x.com/exemple",
-        sha256: "c".repeat(64),
-      }],
-      unresolvedRefs: ["captures TBC"],
+      sources: [SRC_001],
+      unresolvedRefs: evidenceRefs.filter((r) => r !== "SRC-001"),
     },
   });
 
   for (const [nom, base] of [["BOTIFY", BOTIFY], ["VINE", VINE]] as const) {
     it(`${nom} — la pièce, sa capture et son empreinte sont rendues`, () => {
-      const html = rendu(dossier({ ...base, claims: [claimPublie("C1")] }));
+      const html = rendu(dossier({ ...base, sources: [SRC_001], claims: [claimPublie("C1", ["SRC-001"])] }));
       expect(html, nom).toContain("2025-12-07");
       expect(html, nom).toContain("c".repeat(16));
       expect(html, nom).toContain("SRC-001");
     });
 
-    it(`${nom} — FIXTURE : une référence non résolue est rendue NON RÉSOLUE`, () => {
-      // Preuve déterministe du comportement `unresolvedRefs` sur le rendu réel,
-      // par une fixture — jamais en rendant un dossier public incomplet.
-      const html = rendu(dossier({ ...base, claims: [claimPublie("C1")] }));
-      expect(html, nom).toContain("Unresolved reference");
-      expect(html, nom).toContain("captures TBC");
-      // Et elle n'est PAS comptée comme une pièce.
-      expect(html, nom).not.toMatch(/captures TBC[^<]*<\/td>\s*<td class="mono">2025/);
+    it(`${nom} — FIXTURE : un claim citant une référence non résolue N'EST PAS rendu`, () => {
+      // SPINE-00 · C — avant, la référence non résolue était rendue « telle
+      // quelle » à côté de la pièce résolue. Le contrat canonique exige que
+      // CHAQUE référence résolve : le claim est retenu, et rien de lui ne sort —
+      // ni la pièce, ni la référence qui manque.
+      const html = rendu(dossier({ ...base, sources: [SRC_001], claims: [claimPublie("C1", ["SRC-001", "captures TBC"])] }));
+      expect(html, nom).not.toContain("captures TBC");
+      expect(html, nom).not.toContain("Unresolved reference");
+      expect(html, nom).not.toContain("c".repeat(16));
     });
   }
 });

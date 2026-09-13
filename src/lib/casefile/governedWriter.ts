@@ -41,9 +41,12 @@
 // par le fondement et par la libération. La base reste défense en profondeur.
 // `threadUrl` n'y entre pas : provenance complémentaire, jamais substitut.
 //
-// La provenance d'une pièce se juge par `isPubliableSource`, la primitive que
-// la projection publique emploie déjà. Un même prédicat, deux consommateurs :
-// retirer la pièce d'un claim mord au fondement, à la libération ET au rendu.
+// La provenance d'une pièce se juge par `isPubliableSource`, qui vit ICI
+// (SPINE-00 · C : elle vivait dans la projection, et l'orientation des
+// imports interdisait à la projection de consommer le contrat sans cycle —
+// le prédicat a été déplacé, pas dupliqué ; la projection le ré-exporte).
+// Un même contrat, trois consommateurs : retirer la pièce d'un claim mord au
+// fondement, à la libération ET au rendu.
 //
 // ─── Le sceau : une seule normalisation, MESURÉE ─────────────────────────
 //
@@ -99,7 +102,6 @@
 import { isAdmissible } from "./publicationState";
 import { claimContentHash, latestVersions } from "./versioning";
 import { isSealIntact } from "./sealGuard";
-import { isPubliableSource } from "./publicProjection";
 import type { PublicSource } from "./canonicalReader";
 import { isDataNature, type DataNature } from "@/lib/data-nature/nature";
 
@@ -145,8 +147,24 @@ export type PublicClaimContractVerdict =
 const estCleAcceptable = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && v.trim() === v;
 
+/** Les trois champs qui font une pièce publiable. L'ORDRE est celui du refus. */
+export const SOURCE_PROVENANCE_FIELDS = ["sha256", "sourceUrl", "capturedAt"] as const;
+export type SourceProvenanceField = (typeof SOURCE_PROVENANCE_FIELDS)[number];
+
+/**
+ * Une pièce est PUBLIABLE si elle porte intégrité, origine ET horodatage.
+ *
+ * Les trois, pas deux : une empreinte sans origine ne dit pas d'où vient la
+ * pièce, une origine sans empreinte ne dit pas que c'est toujours la même, et
+ * sans horodatage on ne sait pas de QUAND elle témoigne — c'est précisément le
+ * trou que l'index de preuves comblait avec la date du jour.
+ */
+export function isPubliableSource(s: PublicSource): boolean {
+  return !!s.sha256 && !!s.sourceUrl && !!s.capturedAt;
+}
+
 /** Le premier champ qui manque à une pièce. Un nom, jamais un contenu. */
-function champManquant(s: PublicSource): string {
+export function champManquant(s: PublicSource): SourceProvenanceField {
   if (!s.sha256) return "sha256";
   if (!s.sourceUrl) return "sourceUrl";
   return "capturedAt";

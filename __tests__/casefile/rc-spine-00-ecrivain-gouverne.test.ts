@@ -370,6 +370,7 @@ describe("RC-SPINE-00 — retirer les evidenceRefs empêche le fondement, la lib
       claims: [{
         claimId: c.claimId, title: c.title, titleFr: c.titleFr, description: c.description, descriptionFr: c.descriptionFr,
         category: c.category, severity: c.severity, status: c.status, claimDate: c.claimDate, state,
+        rowNature: c.rowNature, evidenceRefs,
         provenance: resolveProvenance(c.threadUrl, evidenceRefs, registre),
       }],
       sources, keyWallets: [],

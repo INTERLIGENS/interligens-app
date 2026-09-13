@@ -66,6 +66,16 @@ export interface PublicClaim {
   readonly claimDate: string | null;
   readonly state: ArtifactState;
   /**
+   * SPINE-00 · C — la nature de l'assertion et les références CITÉES, lues
+   * avec le claim pour que la projection consomme le contrat canonique du
+   * claim public (`governedWriter.decidePublicClaimContract`) sur les MÊMES
+   * entrées que l'écrivain. Optionnels dans le type parce que les fixtures
+   * construisent des claims sans eux — et un claim sans eux n'est pas
+   * projetable : absent vaut non classifié, absent vaut zéro référence.
+   */
+  readonly rowNature?: string | null;
+  readonly evidenceRefs?: readonly string[];
+  /**
    * `null` signifie « ce claim ne porte aucun fondement » — et c'est une
    * information, pas une omission. Un champ absent laisserait le renderer
    * décider ; un `null` explicite l'oblige à le dire.
@@ -120,7 +130,7 @@ interface ClaimRow {
   description: string | null; descriptionFr: string | null;
   category: string | null; severity: string | null; status: string | null;
   claimDate: Date | null; threadUrl: string | null;
-  evidenceRefs: unknown; state: string; version: number;
+  evidenceRefs: unknown; rowNature: string | null; state: string; version: number;
 }
 
 function toPublicSource(r: SourceRow): PublicSource {
@@ -209,8 +219,8 @@ export async function loadCanonicalCaseFile(
         FROM "CaseFileSource" WHERE "casefileRef" = ${ref} ORDER BY "sourceId" ASC`,
     prisma.$queryRaw<ClaimRow[]>`
       SELECT "claimId", title, "titleFr", description, "descriptionFr", category,
-             severity, status, "claimDate", "threadUrl", "evidenceRefs", state,
-             version
+             severity, status, "claimDate", "threadUrl", "evidenceRefs",
+             "rowNature"::text AS "rowNature", state, version
         FROM "CaseFileClaim" WHERE "casefileRef" = ${ref} ORDER BY "claimId" ASC`,
   ]);
 
@@ -241,6 +251,8 @@ export async function loadCanonicalCaseFile(
       status: c.status,
       claimDate: iso(c.claimDate),
       state: c.state as ArtifactState,
+      rowNature: c.rowNature,
+      evidenceRefs: asRefs(c.evidenceRefs),
       provenance: resolveProvenance(c.threadUrl, asRefs(c.evidenceRefs), registre),
     }));
 
