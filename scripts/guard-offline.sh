@@ -237,6 +237,27 @@ LEASE_DUREE_MAX_S=2700   # 45 minutes
 # « rien à vérifier ». Une lease n'existe qu'une fois MERGÉE dans main — c'est la
 # même propriété que le guard lui-même : on ne se juge pas avec ses propres règles.
 LEASES=(
+    # E-RC · FENÊTRE A — la production gouvernée, fail-closed, sur la route.
+    #
+    #   No registry authority → no governed artifact production OR DELIVERY.
+    #
+    # La primitive `produireArtefactGouverne` est DÉJÀ mergée et prouvée : son
+    # type de retour ne porte aucune variante « voici le PDF, mais hors
+    # registre ». Ce qui reste, c'est le seul appelant du chemin gelé — la
+    # route, qui lit encore `isStorageEnabled()` et sert en flux direct par
+    # trois chemins distincts. Un seul fichier, et c'est le fichier gelé.
+    #
+    # UN SEUL CHEMIN, et il est mécanique, pas confortable : les 28 fichiers
+    # déjà commités sur le sujet passent le guard À ZÉRO LEASE — mesuré. La
+    # lease ne couvre donc RIEN d'autre que ce que le gel impose réellement.
+    #
+    # 40 mn, cinq sous la borne. W10 — la seule fenêtre réelle mesurée — a
+    # consommé 10 mn 46 s d'ouverture à merge, pour un check le plus long à
+    # 3 mn 40 s. Celle-ci ajoute la preuve par mutation des deux sondes qui
+    # pilotent la route (s3-c1, s3-c5) : elles mockent `pdfStorage`, que la
+    # route cesse d'importer directement — un vert qui ne mesure plus rien est
+    # un NO-GO de fenêtre, et le vérifier se fait AVANT le merge, donc DEDANS.
+    "E-RC-A|production gouvernée fail-closed de l'artefact CaseFile — aucune autorité de registre, aucune production ni délivrance|src/app/api/pdf/casefile/route.ts|9cfa03ac4986ecc89773c582eda3d744c4fbf81c|feat/cc-offline-181-registre-objets-gouvernes|2026-09-13T11:28:07Z|2026-09-13T12:08:07Z|OPEN"
 )
 
 lease_rouge() {
