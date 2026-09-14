@@ -49,6 +49,10 @@ const COLONNES_ATTENDUES: ReadonlyArray<readonly [string, string, "NO" | "YES", 
   ["decided_by", "text", "NO", null],
   ["decided_at", "timestamp with time zone", "NO", null], // PAS de défaut, à dessein
   ["recorded_at", "timestamp with time zone", "NO", /^now\(\)$/],
+  // T1-CAUSE-ET-REVOKE-REEL — posée à la main le 2026-09-14 (décision GPT 1) :
+  // nullable, SANS défaut. Le vocabulaire et la cohérence GRANT/REVOKE sont
+  // deux CHECK ci-dessous. Pas de `basis` libre : décision GPT 2, NO-GO.
+  ["cause", "text", "YES", null],
 ];
 
 /**
@@ -62,6 +66,10 @@ const CONTRAINTES_ATTENDUES: ReadonlyArray<readonly [string, "p" | "c" | "f", Re
   [`${TABLE}_audience_check`, "c", /^CHECK \(\(audience = 'PUBLIC'::text\)\)$/],
   [`${TABLE}_decision_check`, "c", /^CHECK \(\(decision = ANY \(ARRAY\['GRANT'::text, 'REVOKE'::text\]\)\)\)$/],
   [`${TABLE}_decided_by_check`, "c", /^CHECK \(\(\(decided_by <> ''::text\) AND \(btrim\(decided_by\) = decided_by\)\)\)$/],
+  // Le vocabulaire des causes : UN littéral aujourd'hui. `IN ('A')` est rendu `= 'A'::text`.
+  [`${TABLE}_cause_vocabulaire`, "c", /^CHECK \(\(cause = 'INSUFFICIENT_SOURCE_PROVENANCE'::text\)\)$/],
+  // La cohérence : un GRANT n'a pas de cause, un REVOKE en a toujours une.
+  [`${TABLE}_cause_coherence`, "c", /^CHECK \(\(\(\(decision = 'GRANT'::text\) AND \(cause IS NULL\)\) OR \(\(decision = 'REVOKE'::text\) AND \(cause IS NOT NULL\)\)\)\)$/],
   [
     `${TABLE}_target_fkey`, "f",
     /^FOREIGN KEY \(casefile_ref, claim_id, claim_version\) REFERENCES "CaseFileClaim"\("casefileRef", "claimId", version\) ON UPDATE RESTRICT ON DELETE RESTRICT$/,
@@ -86,7 +94,8 @@ const TRIGGERS_ATTENDUS: ReadonlyArray<readonly [string, RegExp]> = [
 interface Colonne { column_name: string; data_type: string; is_nullable: string; column_default: string | null; identity_generation: string | null }
 interface Contrainte { conname: string; contype: string; def: string }
 interface Index { indexname: string; indexdef: string }
-interface Trigger { tgname: string; def: string }
+interface Trigger { tgname: string; tgenabled: string; def: string }
+interface Ligne { id: string; decision: string; cause: string | null; decided_by: string }
 
 async function main(): Promise<number> {
   if (!process.env.DATABASE_URL) {
@@ -138,7 +147,7 @@ async function main(): Promise<number> {
   const index = await prisma.$queryRaw<Index[]>`
     SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = ${TABLE} ORDER BY indexname`;
   const triggers = await prisma.$queryRaw<Trigger[]>`
-    SELECT t.tgname, pg_get_triggerdef(t.oid) AS def
+    SELECT t.tgname, t.tgenabled::text AS tgenabled, pg_get_triggerdef(t.oid) AS def
       FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = 'public' AND c.relname = ${TABLE} AND NOT t.tgisinternal
      ORDER BY t.tgname`;
@@ -182,11 +191,14 @@ async function main(): Promise<number> {
   for (const nom of idx.keys()) ecarts.push(`index INATTENDU : ${nom}`);
 
   // ── Triggers append-only : le DDL SUPPLÉMENTAIRE ────────────────────────
-  const trg = new Map(triggers.map((t) => [t.tgname, t.def]));
+  const trg = new Map(triggers.map((t) => [t.tgname, t]));
   for (const [nom, forme] of TRIGGERS_ATTENDUS) {
-    const d = trg.get(nom);
-    if (!d) { ecarts.push(`APPEND-ONLY non exécutable : trigger ABSENT ${nom} (DDL supplémentaire, section marquée du fichier)`); continue; }
-    if (!forme.test(d)) ecarts.push(`trigger ${nom} : forme divergente — réel ${d}`);
+    const t = trg.get(nom);
+    if (!t) { ecarts.push(`APPEND-ONLY non exécutable : trigger ABSENT ${nom} (DDL supplémentaire, section marquée du fichier)`); continue; }
+    if (!forme.test(t.def)) ecarts.push(`trigger ${nom} : forme divergente — réel ${t.def}`);
+    // Un trigger présent mais DÉSACTIVÉ (ALTER TABLE … DISABLE TRIGGER) ne protège rien :
+    // tgenabled 'O' = origin/local (actif), 'D' = disabled, 'R'/'A' = replica/always.
+    if (t.tgenabled !== "O") ecarts.push(`trigger ${nom} : présent mais tgenabled = ${t.tgenabled} (attendu O = actif)`);
     trg.delete(nom);
   }
   for (const nom of trg.keys()) ecarts.push(`trigger INATTENDU : ${nom}`);
@@ -197,19 +209,39 @@ async function main(): Promise<number> {
   const [{ n }] = await prisma.$queryRaw<{ n: bigint }[]>`
     SELECT count(*)::bigint AS n FROM casefile_claim_publication_decisions`;
 
+  // ── Les lignes qui EXISTENT : la pose de la colonne n'a rien réécrit ──────
+  // Les trois GRANT du 2026-09-14 (ids 16/17/18) doivent être là, GRANT, cause
+  // NULL, decided_by intact. Toute ligne postérieure doit respecter la cohérence
+  // (le CHECK le garantit ; on le MESURE quand même, ligne par ligne).
+  const lignes = await prisma.$queryRaw<Ligne[]>`
+    SELECT id::text AS id, decision, cause, decided_by FROM casefile_claim_publication_decisions ORDER BY id`;
+  for (const id of ["16", "17", "18"]) {
+    const l = lignes.find((x) => x.id === id);
+    if (!l) { ecarts.push(`ligne ABSENTE : décision #${id} (GRANT du 2026-09-14)`); continue; }
+    if (l.decision !== "GRANT") ecarts.push(`ligne #${id} : attendu GRANT, réel ${l.decision}`);
+    if (l.cause !== null) ecarts.push(`ligne #${id} : cause attendue NULL, réelle ${l.cause}`);
+    if (l.decided_by !== "David Douville") ecarts.push(`ligne #${id} : decided_by divergent — réel ${l.decided_by}`);
+  }
+  for (const l of lignes) {
+    if (l.decision === "GRANT" && l.cause !== null) ecarts.push(`ligne #${l.id} : GRANT avec une cause (${l.cause})`);
+    if (l.decision === "REVOKE" && l.cause !== "INSUFFICIENT_SOURCE_PROVENANCE") ecarts.push(`ligne #${l.id} : REVOKE sans cause du vocabulaire (${l.cause})`);
+  }
+
   if (AS_JSON) {
     console.log(JSON.stringify({
       table: TABLE, colonnes: colonnes.length,
       contraintes: contraintes.map((c) => c.conname), index: [...index.map((i) => i.indexname)],
-      triggers: triggers.map((t) => t.tgname), lignes: Number(n), prerequisUnique: !!uniqueCible, ecarts,
+      triggers: triggers.map((t) => `${t.tgname}:${t.tgenabled}`), lignes: Number(n),
+      decisions: lignes.map((l) => `${l.id}:${l.decision}:${l.cause ?? "∅"}`), prerequisUnique: !!uniqueCible, ecarts,
     }, null, 2));
   } else {
     console.log(`\nTABLE ${TABLE} — ${colonnes.length} colonnes, ${Number(n)} ligne(s)`);
     console.log(`contraintes : ${contraintes.map((c) => c.conname).join(", ")}`);
     console.log(`index       : ${index.map((i) => i.indexname).join(", ")}`);
-    console.log(`triggers    : ${triggers.map((t) => t.tgname).join(", ") || "aucun"}`);
+    console.log(`triggers    : ${triggers.map((t) => `${t.tgname} (${t.tgenabled === "O" ? "actif" : t.tgenabled})`).join(", ") || "aucun"}`);
+    console.log(`décisions   : ${lignes.map((l) => `#${l.id} ${l.decision}${l.cause ? "/" + l.cause : ""}`).join(", ") || "aucune"}`);
     if (ecarts.length === 0) {
-      console.log("\n✅ CONFORME au DDL livré — colonnes, types, nullabilité, défauts, PK, CHECK, FK, index, triggers.");
+      console.log("\n✅ CONFORME — colonnes (dont cause), types, nullabilité, défauts, PK, CHECK (dont vocabulaire et cohérence de la cause), FK, index, triggers actifs, lignes 16/17/18.");
     } else {
       console.log(`\n❌ ${ecarts.length} ÉCART(S) :`);
       for (const e of ecarts) console.log(`  · ${e}`);

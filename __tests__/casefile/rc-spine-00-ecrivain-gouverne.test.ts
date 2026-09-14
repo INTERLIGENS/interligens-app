@@ -95,7 +95,7 @@ const intentOf = (f: Foundation, o: Partial<ReleaseIntent> = {}): ReleaseIntent 
 const decisionRow = (f: Foundation, o: Partial<PersistedDecisionRow> = {}): PersistedDecisionRow => ({
   id: ID_INSERE, casefileRef: f.claimToInsert.casefileRef, claimId: f.claimToInsert.claimId,
   claimVersion: f.claimToInsert.version, audience: "PUBLIC", decision: "GRANT",
-  decidedBy: "david", decidedAt: "2026-09-13T12:00:00Z", ...o,
+  decidedBy: "david", decidedAt: "2026-09-13T12:00:00Z", cause: null, ...o,
 });
 const relue = (f: Foundation, o: Partial<PersistedDecisionRow> = {}): PersistedPublicationDecision =>
   attestPersistedDecision(decisionRow(f, o));
@@ -351,6 +351,7 @@ describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décisi
     ["décision relue pour une autre audience", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { audience: "INVESTIGATORS" }), ID_INSERE], "DECISION_TARGET_MISMATCH", "decision.audience"],
     ["condition 3 · la dernière décision est un REVOKE", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { decision: "REVOKE" }), ID_INSERE], "DECISION_NOT_GRANT", "decision.decision"],
     ["condition 3 · decision approchante « grant »", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { decision: "grant" }), ID_INSERE], "DECISION_NOT_GRANT", "decision.decision"],
+    ["un GRANT relu qui porte une cause (impossible par CHECK, refusé quand même)", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { cause: "INSUFFICIENT_SOURCE_PROVENANCE" }), ID_INSERE], "DECISION_NOT_GRANT", "decision.cause"],
   ];
 
   for (const [nom, args, cause, at] of REFUSES_LIBERATION) {
@@ -372,7 +373,8 @@ describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décisi
     ["sha256 de la pièce citée effacé", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, sha256: null }); return [row, r]; }, "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sha256"],
     // T1-REVOKE-ELIGIBILITY : la pièce est FONDABLE (OPERATOR_DECLARED) et pourtant la libération refuse, par son nom.
     ["qualification de la pièce citée = OPERATOR_DECLARED", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "OPERATOR_DECLARED" }); return [row, r]; }, "SOURCE_PROVENANCE_NOT_VERIFIED", "SRC-001.provenanceKind"],
-    ["qualification de la pièce citée = UNKNOWN", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "UNKNOWN" }); return [row, r]; }, "SOURCE_PROVENANCE_NOT_VERIFIED", "SRC-001.provenanceKind"],
+    // Décision GPT 3 (2026-09-14) : UNKNOWN est une ABSENCE de qualification — refus commun, pas « non vérifié ».
+    ["qualification de la pièce citée = UNKNOWN", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "UNKNOWN" }); return [row, r]; }, "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.provenanceKind"],
   ];
   for (const [nom, alterer, cause, at] of ALTERES) {
     it(`${nom}, GRANT valide → REFUSED / ${cause} @ ${at}`, () => {
