@@ -33,6 +33,25 @@
 --       Divergence journal ↔ CaseFileSource = FAIL CLOSED. Aucun backfill ne
 --       transforme les anciennes valeurs en autorité.
 --
+-- Ruling GPT du 14/09 (troisième série, T1-DDL-PHASE-A-PRET-A-POSER) :
+--   · VINE devient le dossier témoin du RC ; BOTIFY sort du chemin critique et
+--     n'est PAS reconstruit. Les 8 sources BOTIFY restent UNKNOWN dérivé :
+--     « historical persisted ATTACHED ≠ currently foundation-eligible under a
+--     strengthened contract ». Aucune réécriture rétroactive.
+--   · AUCUN repli sha256 : snapshotId NULL → UNKNOWN ; snapshotId présent sans
+--     ligne → UNKNOWN ; snapshotId présent + journal → dernière qualification.
+--     « A byte digest may corroborate identity; it must not elect observation
+--     identity. » Le journal reste clé par "EvidenceSnapshot".id.
+--   · source_url NOT NULL et reference_kind NOT NULL : VALIDÉS. La forme de
+--     source_url est CONDITIONNÉE par reference_kind, sans CHECK global
+--     ^https?:// (voir le CHECK source_url_form_by_kind ci-dessous).
+--   · source_url est sémantiquement un SOURCE LOCATOR (il peut porter une clé
+--     R2). GPT ne veut PAS de renommage maintenant ; renommage en
+--     source_locator envisageable APRÈS le RC. La sémantique est documentée
+--     sur la colonne, pas renommée.
+--   · FK "CaseFileSource"."snapshotId" durcie en RESTRICT/RESTRICT : troisième
+--     DDL, fichier séparé docs/prep/MIGRATION_FK_SNAPSHOTID_RESTRICT_2026-09-14.sql.
+--
 -- Le constat qui commande (mesuré le 2026-09-14 sur "EvidenceSnapshot") :
 --   1171 pièces · 753 portent une URL de RECHERCHE (/search?) · 213 une URL de
 --   statut (/status/) · 144 une autre forme · 61 aucune. 927 portent un sha256.
@@ -88,10 +107,12 @@
 --   4. une ligne porte TOUJOURS une référence et sa
 --      nature (une qualification apportée qualifie
 --      quelque chose)                                     → NOT NULL
---   5. un contexte de découverte n'est JAMAIS vérifié
+--   5. la FORME du localisateur suit la NATURE de la
+--      référence (URL HTTP(S) · objet R2 · URI)           → CHECK conditionnel
+--   6. un contexte de découverte n'est JAMAIS vérifié
 --      comme source                                       → CHECK
---   6. le dernier état connu est NON AMBIGU               → id IDENTITY, ordre total
---   7. on n'écrase jamais une ligne                       → triggers (section marquée)
+--   7. le dernier état connu est NON AMBIGU               → id IDENTITY, ordre total
+--   8. on n'écrase jamais une ligne                       → triggers (section marquée)
 --
 -- ─── COLONNES : la forme minimale de GPT, sans ajout ────────────────────────
 --   id · evidence_snapshot_id · sha256 · provenance_kind · reference_kind ·
@@ -163,14 +184,21 @@ CREATE TABLE IF NOT EXISTS evidence_provenance_journal (
                         CONSTRAINT evidence_provenance_journal_reference_kind_check
                         CHECK (reference_kind IN ('QUERY_CONTEXT', 'PUBLICATION', 'PROFILE', 'DOCUMENT', 'OTHER')),
 
-  -- NOT NULL — même décision, même motif. source_url est le LOCALISATEUR de
-  -- la référence : une URL pour une PUBLICATION, un PROFILE, un QUERY_CONTEXT ;
-  -- pour un DOCUMENT sans URL publique, l'emplacement gouverné où il se lit
-  -- (clé R2, chemin d'archive) — non vide, sans blanc de bord, jamais une
-  -- valeur inventée. Une qualification qui ne peut pas dire OÙ se lit sa
-  -- référence n'a pas de référence, et n'a donc pas de ligne. Nullable, la
-  -- colonne aurait laissé passer une déclaration sans objet que plus aucun
-  -- CHECK ne refusait.
+  -- NOT NULL — même décision, même motif. Une qualification qui ne peut pas
+  -- dire OÙ se lit sa référence n'a pas de référence, et n'a donc pas de
+  -- ligne. Nullable, la colonne aurait laissé passer une déclaration sans
+  -- objet que plus aucun CHECK ne refusait.
+  --
+  -- SÉMANTIQUE : SOURCE LOCATOR (ruling GPT, T1-DDL-PHASE-A). Le nom
+  -- `source_url` est conservé tel quel — pas de renommage avant le RC — mais
+  -- la colonne porte le LOCALISATEUR de la référence, dont la forme dépend
+  -- de reference_kind (CHECK source_url_form_by_kind, plus bas) :
+  --   PUBLICATION · PROFILE · QUERY_CONTEXT → URL HTTP(S)
+  --   DOCUMENT                              → objet R2 gouverné, r2://<bucket>/<clé>
+  --   OTHER                                 → URI à schéma (RFC 3986), jamais de prose
+  -- Non vide, sans blanc de bord, jamais une valeur inventée. Un renommage en
+  -- `source_locator` est envisageable APRÈS le RC ; d'ici là, tout lecteur
+  -- doit lire cette colonne comme un localisateur, pas comme « une URL ».
   source_url            TEXT NOT NULL
                         CONSTRAINT evidence_provenance_journal_source_url_check
                         CHECK (source_url <> '' AND btrim(source_url) = source_url),
@@ -219,6 +247,71 @@ CREATE TABLE IF NOT EXISTS evidence_provenance_journal (
   -- n'existe plus dans la table, et le NOT NULL de reference_kind et
   -- source_url porte désormais l'invariant « une ligne a une référence ».)
 
+  -- ── COHÉRENCE 1bis : la FORME du localisateur suit la NATURE de la référence.
+  -- Ruling Q4 : « Ne faites pas un CHECK global ^https?:// ». Un CASE par
+  -- reference_kind ; ELSE false ferme le CASE (toute valeur hors domaine est
+  -- déjà refusée par reference_kind_check, mais le CASE ne suppose rien).
+  --
+  --   PUBLICATION · PROFILE · QUERY_CONTEXT — URL HTTP(S) :
+  --     ^https?://<hôte avec au moins un point, sans / ni blanc>(/<reste sans blanc>)?$
+  --     · schéma en minuscules, à dessein : la valeur déclarée est CANONIQUE,
+  --       pas ce qu'un opérateur a tapé. « HTTPS://… » est refusé.
+  --     · aucun blanc nulle part : une « URL » avec une espace n'est pas une
+  --       URL (RFC 3986). FAIT MESURÉ : la valeur réelle de "sourceUrl" des
+  --       deux pièces VINE, `https://x.com/search?q=from:0xSweep VINE`, porte
+  --       une espace et ÉCHOUE cette forme. Une ligne de journal pour VINE
+  --       devra porter l'URL encodée (`%20`). Ce n'est pas un backfill : rien
+  --       n'est réécrit, et "CaseFileSource"."sourceUrl" n'est plus une preuve.
+  --     · hôte avec un point : refuse `localhost`, un nom nu, une IP tronquée.
+  --
+  --   CE QUE CE CHECK NE DIT PAS, ET QU'ON REFUSE DE FAIRE SEMBLANT DE DIRE :
+  --     « INDIVIDUELLE » pour PUBLICATION n'est PAS exprimable structurellement.
+  --     Une URL de post individuel n'a pas de forme universelle : x.com/<u>/status/<id>,
+  --     t.me/<c>/<id>, un permalien Discord, un article… Un motif qui
+  --     accepterait `/status/\d+` et refuserait le reste serait FAUX (il
+  --     exclurait les autres plateformes) ou VIDE (il accepterait tout). Un
+  --     motif négatif (« pas /search? ») ferait semblant : une page de fil
+  --     filtré n'a pas `/search?` et n'est pas un post. L'individualité
+  --     d'une PUBLICATION est établie par la VÉRIFICATION — c'est exactement
+  --     ce que verification_method = URL_MATCHES_CAPTURED_POST atteste : l'URL
+  --     ouverte affiche LE post de la pièce. Avant vérification, c'est une
+  --     déclaration (OPERATOR_DECLARED / EXTRACTED) dont le reference_kind
+  --     engage son auteur. Cette règle vit dans le code gouverné du vertical
+  --     slice, prouvée par test — pas ici en prose.
+  --     De même, QUERY_CONTEXT n'exige pas `?q=` : un fil filtré, une page de
+  --     hashtag, un flux « from: » sans paramètre sont des contextes de
+  --     découverte sans query string. Le motif est le même que PUBLICATION ;
+  --     ce qui les sépare est la NATURE déclarée, et 4b (jamais VERIFIED).
+  --
+  --   DOCUMENT — UNE forme, et une seule : r2://<bucket>/<storage_key>
+  --     ^r2://[a-z0-9][a-z0-9-]{1,61}[a-z0-9]/<clé sans blanc>$
+  --     · c'est le couple (bucket, storage_key) du registre governed_objects
+  --       (index unique sur ces deux colonnes), rendu en URI. Un DOCUMENT
+  --       journalisable est un objet GOUVERNÉ ; un fichier qui n'est pas dans
+  --       R2 n'est pas journalisable comme DOCUMENT tant qu'il n'y est pas.
+  --     · bucket : règles de nommage R2/S3 (3 à 63 caractères, minuscules,
+  --       chiffres, tirets, ni au début ni à la fin).
+  --     · refusés, à dessein : un chemin local (/Users/…, propre à une machine),
+  --       une URL publique pub-….r2.dev (c'est une PUBLICATION du bucket, pas
+  --       son identité gouvernée), un URN nu, une prose.
+  --
+  --   OTHER — un URI à schéma (RFC 3986) : ^<schéma>:<reste sans blanc>$
+  --     · OTHER nomme une nature qui ne tient dans aucun domaine ; son
+  --       localisateur est au moins un URI. Refuse « voir le dossier ».
+  --     · c'est un sur-ensemble des autres formes, à dessein : OTHER ne
+  --       renseigne pas la forme, il renseigne l'aveu que la nature est autre.
+  CONSTRAINT evidence_provenance_journal_source_url_form_by_kind_check
+    CHECK (
+      CASE reference_kind
+        WHEN 'PUBLICATION'   THEN source_url ~ '^https?://[^/[:space:]]+\.[^/[:space:]]+(/[^[:space:]]*)?$'
+        WHEN 'PROFILE'       THEN source_url ~ '^https?://[^/[:space:]]+\.[^/[:space:]]+(/[^[:space:]]*)?$'
+        WHEN 'QUERY_CONTEXT' THEN source_url ~ '^https?://[^/[:space:]]+\.[^/[:space:]]+(/[^[:space:]]*)?$'
+        WHEN 'DOCUMENT'      THEN source_url ~ '^r2://[a-z0-9][a-z0-9-]{1,61}[a-z0-9]/[^[:space:]]+$'
+        WHEN 'OTHER'         THEN source_url ~ '^[a-z][a-z0-9+.-]*:[^[:space:]]+$'
+        ELSE false
+      END
+    ),
+
   -- ── COHÉRENCE 2 (4b, conservée) : « Discovery context is not source
   -- provenance. » Un contexte de découverte peut être déclaré ou extrait —
   -- jamais VÉRIFIÉ comme source : ce qu'on vérifierait, c'est que la
@@ -245,8 +338,9 @@ COMMENT ON TABLE evidence_provenance_journal IS
   'provenance d''une piece ("EvidenceSnapshot") et AUTORITE sur cette provenance. Le dernier etat '
   'connu = max(id) par evidence_snapshot_id ; une requalification est une NOUVELLE ligne, jamais un '
   'UPDATE. UNKNOWN n''est PAS une valeur de la table : l''absence de ligne VAUT UNKNOWN, derive a la '
-  'lecture. Aucun backfill. Toute ligne porte une reference et sa nature. Un QUERY_CONTEXT n''est '
-  'jamais une provenance VERIFIED. sha256 est un attribut, jamais une cle.';
+  'lecture. Aucun backfill. Toute ligne porte une reference et sa nature ; source_url est un SOURCE '
+  'LOCATOR dont la forme suit reference_kind (URL HTTP(S) / objet r2:// / URI). Un QUERY_CONTEXT '
+  'n''est jamais une provenance VERIFIED. sha256 est un attribut, jamais une cle.';
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ⚠️ DDL SUPPLÉMENTAIRE — APPEND-ONLY PAR TRIGGER. HORS DU « MINIMUM » DE GPT.
@@ -331,7 +425,7 @@ COMMIT;
 -- Une ligne par point vérifié, colonne ok = true partout ou la pose n'est pas
 -- conforme. Lecture seule. Le harnais PGlite le rejoue et prouve qu'il sait
 -- rougir (une ligne ok = false par sabotage).
--- Attendu : 12 colonnes · 1 PK · 9 CHECK · 1 FK · 1 index cible · 2 triggers
+-- Attendu : 12 colonnes · 1 PK · 10 CHECK · 1 FK · 1 index cible · 2 triggers
 -- activés (tgenabled = 'O') · 0 ligne. Le filtre contype <> 'n' est
 -- INDISPENSABLE : PG18 expose les NOT NULL dans pg_constraint, PG 17.11 (la
 -- production) non — sans lui, le compte de contraintes dépendrait de la version.

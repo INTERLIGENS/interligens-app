@@ -1,5 +1,6 @@
 // ─── T2-PROVENANCE-JOURNAL — LE HARNAIS QUI SAIT ÉCHOUER ───────────────────
 // ─── amendé T1-JOURNAL-AMENDE-ET-MESURE (2026-09-14, décisions 4a/4b/5) ────
+// ─── amendé T1-DDL-PHASE-A-PRET-A-POSER (2026-09-14, Q1 FK RESTRICT, Q4 forme) ─
 //
 // ██  « Un harnais qui ne sait pas échouer ne mesure pas. »                  ██
 // ██  Ici, RIEN ne touche la production : Postgres JETABLE en WASM (PGlite). ██
@@ -11,7 +12,7 @@
 // installation locale (mesuré avec 0.3.15, PostgreSQL 17.5 en WASM ; la
 // production est en 17.11 — même majeure, mêmes catalogues).
 //
-// TROIS SÉRIES :
+// QUATRE SÉRIES :
 //   (A) le VÉRIFICATEUR sait échouer. Le DDL est rejoué, puis SABOTÉ d'une
 //       seule manière par scénario, et le vérificateur doit rendre le code et
 //       NOMMER l'écart. Un vérificateur qui resterait vert sur un schéma faux
@@ -23,6 +24,10 @@
 //   (C) le POST-CHECK SQL (second bloc à coller dans Neon) sait rougir : tout
 //       `ok = true` sur le DDL rejoué tel quel, au moins une ligne `ok = false`
 //       par sabotage.
+//   (D) le BLOC 3 (FK CaseFileSource.snapshotId → RESTRICT/RESTRICT) : la
+//       dégradation silencieuse AVANT, le refus 23503 APRÈS, les deux gardes
+//       qui LÈVENT sur un état réel différent de l'état mesuré, et son
+//       post-check intégré qui sait rougir.
 //
 // Sortie : 0 si chaque scénario a fait ce qu'on attendait de lui, 1 sinon.
 
@@ -34,6 +39,12 @@ import { verifier, TABLE, type Runner } from "./verifier-provenance-journal-sche
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DDL = readFileSync(path.join(REPO, "docs/prep/MIGRATION_PROVENANCE_JOURNAL_2026-09-14.sql"), "utf8");
 const POSTCHECK = readFileSync(path.join(REPO, "docs/prep/POSTCHECK_PROVENANCE_JOURNAL_2026-09-14.sql"), "utf8");
+const BLOC3 = readFileSync(path.join(REPO, "docs/prep/MIGRATION_FK_SNAPSHOTID_RESTRICT_2026-09-14.sql"), "utf8");
+// Le bloc 3 se coupe en deux : le DDL gardé (BEGIN … COMMIT) et son post-check intégré (WITH reel AS …).
+const BLOC3_POST_IDX = BLOC3.indexOf("WITH reel AS");
+if (BLOC3_POST_IDX < 0) { console.error("UNABLE : post-check intégré introuvable dans le bloc 3"); process.exit(1); }
+const BLOC3_DDL = BLOC3.slice(0, BLOC3_POST_IDX);
+const BLOC3_POST = BLOC3.slice(BLOC3_POST_IDX);
 
 const modPath = process.env.PGLITE_PATH;
 if (!modPath) {
@@ -75,6 +86,10 @@ const SABOTAGES: readonly Sabotage[] = [
   { nom: "4b · verified_not_query_context RETIRÉE", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_verified_not_query_context_check`, code: 3, ecartAttendu: /^contrainte ABSENTE : evidence_provenance_journal_verified_not_query_context_check$/ },
   { nom: "4a · nullabilité relâchée · reference_kind DROP NOT NULL", sql: `ALTER TABLE ${TABLE} ALTER COLUMN reference_kind DROP NOT NULL`, code: 3, ecartAttendu: /^nullabilité divergente : reference_kind — attendu NO, réel YES$/ },
   { nom: "4a · nullabilité relâchée · source_url DROP NOT NULL", sql: `ALTER TABLE ${TABLE} ALTER COLUMN source_url DROP NOT NULL`, code: 3, ecartAttendu: /^nullabilité divergente : source_url — attendu NO, réel YES$/ },
+  // ── Les sabotages commandés par Q4 (forme de source_url par reference_kind) ──
+  { nom: "Q4 · CHECK conditionnel source_url_form_by_kind RETIRÉ", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_source_url_form_by_kind_check`, code: 3, ecartAttendu: /^contrainte ABSENTE : evidence_provenance_journal_source_url_form_by_kind_check$/ },
+  { nom: "Q4 · CHECK conditionnel REMPLACÉ par un ^https?:// global (ce que GPT refuse)", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_source_url_form_by_kind_check, ADD CONSTRAINT ${TABLE}_source_url_form_by_kind_check CHECK (source_url ~ '^https?://')`, code: 3, ecartAttendu: /^contrainte evidence_provenance_journal_source_url_form_by_kind_check : forme divergente — réel CHECK \(\(source_url ~ '\^https\?:\/\/'::text\)\)$/ },
+  { nom: "Q4 · forme DOCUMENT élargie au texte libre (r2:// devient facultatif)", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_source_url_form_by_kind_check, ADD CONSTRAINT ${TABLE}_source_url_form_by_kind_check CHECK (CASE reference_kind WHEN 'PUBLICATION' THEN source_url ~ '^https?://[^/[:space:]]+\\.[^/[:space:]]+(/[^[:space:]]*)?$' WHEN 'PROFILE' THEN source_url ~ '^https?://[^/[:space:]]+\\.[^/[:space:]]+(/[^[:space:]]*)?$' WHEN 'QUERY_CONTEXT' THEN source_url ~ '^https?://[^/[:space:]]+\\.[^/[:space:]]+(/[^[:space:]]*)?$' WHEN 'DOCUMENT' THEN true WHEN 'OTHER' THEN source_url ~ '^[a-z][a-z0-9+.-]*:[^[:space:]]+$' ELSE false END)`, code: 3, ecartAttendu: /^contrainte evidence_provenance_journal_source_url_form_by_kind_check : forme divergente — réel .*'DOCUMENT'::text THEN true/ },
   // ── Les sabotages de la première livraison, conservés ──
   { nom: "colonne MANQUANTE · sha256 supprimée", sql: `ALTER TABLE ${TABLE} DROP COLUMN sha256`, code: 3, ecartAttendu: /^colonne ABSENTE : sha256$/ },
   { nom: "colonne MANQUANTE · verification_method supprimée (CASCADE emporte 2 CHECK)", sql: `ALTER TABLE ${TABLE} DROP COLUMN verification_method CASCADE`, code: 3, ecartAttendu: /^colonne ABSENTE : verification_method$/ },
@@ -144,7 +159,23 @@ lignes.push("── (B) le DDL tient ses règles (écritures réelles, SQLSTATE 
   check("TÉMOIN POSITIF · OPERATOR_DECLARED + PUBLICATION + URL → accepté", (await ins({ sha: SHA })) === "OK");
   check("TÉMOIN POSITIF · EXTRACTED + QUERY_CONTEXT (la table DIT que c'est un contexte de découverte) → accepté", (await ins({ kind: "EXTRACTED", ref: "QUERY_CONTEXT", url: "https://x.com/search?q=botify", by: "tool:inbox_manifest.py" })) === "OK");
   check("TÉMOIN POSITIF · VERIFIED avec (qui, quand, méthode admise) → accepté", (await ins({ kind: "VERIFIED", vby: "operator:david", vat: T0, vm: "URL_MATCHES_CAPTURED_POST" })) === "OK");
-  check("TÉMOIN POSITIF · DOCUMENT avec un localisateur gouverné (clé R2) en source_url → accepté", (await ins({ ref: "DOCUMENT", url: "r2://interligens-evidence/botify-main/leaked-deck.pdf" })) === "OK");
+  check("TÉMOIN POSITIF · DOCUMENT avec un localisateur gouverné r2://<bucket>/<clé> → accepté", (await ins({ ref: "DOCUMENT", url: "r2://interligens-evidence/botify-main/leaked-deck.pdf" })) === "OK");
+  check("TÉMOIN POSITIF · QUERY_CONTEXT avec l'URL VINE ENCODÉE (%20) → accepté", (await ins({ kind: "EXTRACTED", ref: "QUERY_CONTEXT", url: "https://x.com/search?q=from:0xSweep%20VINE", by: "tool:inbox_manifest.py" })) === "OK");
+  check("TÉMOIN POSITIF · OTHER avec un URI à schéma (urn:) → accepté", (await ins({ ref: "OTHER", url: "urn:isbn:9780000000000" })) === "OK");
+
+  // ── Q4 : la forme du localisateur suit la nature de la référence.
+  check("Q4 REFUSÉ 23514 · PUBLICATION avec une valeur non-HTTP (hôte nu)", (await ins({ url: "x.com/0xSweep/status/1" })) === "23514");
+  check("Q4 REFUSÉ 23514 · PUBLICATION avec un schéma en MAJUSCULES (valeur non canonique)", (await ins({ url: "HTTPS://x.com/0xSweep/status/1" })) === "23514");
+  check("Q4 REFUSÉ 23514 · PUBLICATION avec un r2:// (un objet R2 n'est pas une publication)", (await ins({ url: "r2://interligens-evidence/x.png" })) === "23514");
+  check("Q4 REFUSÉ 23514 · PROFILE avec une valeur non-HTTP", (await ins({ ref: "PROFILE", url: "@0xSweep" })) === "23514");
+  check("Q4 REFUSÉ 23514 · QUERY_CONTEXT avec une valeur non-HTTP (ftp://)", (await ins({ kind: "EXTRACTED", ref: "QUERY_CONTEXT", url: "ftp://x.com/search" })) === "23514");
+  check("Q4 REFUSÉ 23514 · QUERY_CONTEXT avec la valeur RÉELLE de prod des pièces VINE (espace non encodée : pas une URL)", (await ins({ kind: "EXTRACTED", ref: "QUERY_CONTEXT", url: "https://x.com/search?q=from:0xSweep VINE" })) === "23514");
+  check("Q4 REFUSÉ 23514 · DOCUMENT avec un chemin local (propre à une machine, hors vocabulaire)", (await ins({ ref: "DOCUMENT", url: "/Users/dood/Desktop/OSINT/capture.png" })) === "23514");
+  check("Q4 REFUSÉ 23514 · DOCUMENT avec une URL publique pub-….r2.dev (hors vocabulaire)", (await ins({ ref: "DOCUMENT", url: "https://pub-interligens.r2.dev/evidence/a.pdf" })) === "23514");
+  check("Q4 REFUSÉ 23514 · DOCUMENT avec un bucket hors règles de nommage (majuscule)", (await ins({ ref: "DOCUMENT", url: "r2://Bucket/a.pdf" })) === "23514");
+  check("Q4 REFUSÉ 23514 · DOCUMENT r2:// sans clé", (await ins({ ref: "DOCUMENT", url: "r2://interligens-evidence/" })) === "23514");
+  check("Q4 REFUSÉ 23514 · OTHER en prose (« voir le dossier »)", (await ins({ ref: "OTHER", url: "voir le dossier" })) === "23514");
+  check("Q4 REFUSÉ 23514 · source_url avec une espace intérieure sous PUBLICATION", (await ins({ url: "https://x.com/0xSweep/status/1 2" })) === "23514");
 
   // ── 4a : le cas nouveau, il compte double. Deux formes, deux refus.
   check("4a REFUSÉ 23514 · provenance_kind = 'UNKNOWN' avec une référence complète (le DOMAINE refuse)", (await ins({ kind: "UNKNOWN" })) === "23514");
@@ -174,13 +205,13 @@ lignes.push("── (B) le DDL tient ses règles (écritures réelles, SQLSTATE 
   check("RESTRICT 23503 · supprimer une pièce qui porte un journal est refusé", (await sqlstate(`DELETE FROM "EvidenceSnapshot" WHERE id = 'snap-1'`)) === "23503");
   check("RESTRICT 23503 · renuméroter une pièce qui porte un journal est refusé", (await sqlstate(`UPDATE "EvidenceSnapshot" SET id = 'snap-1b' WHERE id = 'snap-1'`)) === "23503");
 
-  // La lecture canonique : snap-1 porte 4 lignes (OPERATOR_DECLARED, EXTRACTED, VERIFIED, OPERATOR_DECLARED/DOCUMENT).
-  // Le dernier état connu est le 4e INSERT — une requalification vers une qualification MOINS forte,
-  // qui reste une qualification apportée : on ne « redescend » jamais à UNKNOWN.
+  // La lecture canonique : snap-1 porte 6 lignes (OPERATOR_DECLARED, EXTRACTED, VERIFIED, OPERATOR_DECLARED/DOCUMENT,
+  // EXTRACTED/QUERY_CONTEXT, OPERATOR_DECLARED/OTHER). Le dernier état connu est le 6e INSERT — une requalification
+  // vers une qualification MOINS forte, qui reste une qualification apportée : on ne « redescend » jamais à UNKNOWN.
   const dernier = await pg.run.query<{ provenance_kind: string; reference_kind: string; id: number }>(
     `SELECT id, provenance_kind, reference_kind FROM ${TABLE} WHERE evidence_snapshot_id = $1 ORDER BY id DESC LIMIT 1`, ["snap-1"]);
-  check("LECTURE CANONIQUE · dernier état connu de snap-1 = la 4e ligne (OPERATOR_DECLARED/DOCUMENT, id max), l'historique reste lisible",
-    dernier[0]?.provenance_kind === "OPERATOR_DECLARED" && dernier[0]?.reference_kind === "DOCUMENT" && Number((await pg.run.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${TABLE} WHERE evidence_snapshot_id = 'snap-1'`))[0].n) === 4,
+  check("LECTURE CANONIQUE · dernier état connu de snap-1 = la 6e ligne (OPERATOR_DECLARED/OTHER, id max), l'historique reste lisible",
+    dernier[0]?.provenance_kind === "OPERATOR_DECLARED" && dernier[0]?.reference_kind === "OTHER" && Number((await pg.run.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${TABLE} WHERE evidence_snapshot_id = 'snap-1'`))[0].n) === 6,
     JSON.stringify(dernier));
   const tous = await pg.run.query<{ evidence_snapshot_id: string; provenance_kind: string }>(
     `SELECT s.id AS evidence_snapshot_id, COALESCE(j.provenance_kind, 'UNKNOWN') AS provenance_kind
@@ -198,16 +229,101 @@ lignes.push("── (B) le DDL tient ses règles (écritures réelles, SQLSTATE 
   check("INDEX · la lecture canonique est servie par evidence_provenance_journal_snapshot_idx, sans tri", plan.includes("evidence_provenance_journal_snapshot_idx") && !/\bSort\b/.test(plan), plan);
 
   const v = await verifier(pg.run);
-  check("le vérificateur reste CONFORME après ces écritures (4 lignes = information, pas écart)", v.code === 0 && v.introspection.lignes === 4, `exit ${v.code}, ${v.introspection.lignes} ligne(s)`);
-  // Le post-check, lui, exige une table VIDE : après 4 lignes, exactement UNE ligne false, « table VIDE ».
+  check("le vérificateur reste CONFORME après ces écritures (6 lignes = information, pas écart)", v.code === 0 && v.introspection.lignes === 6, `exit ${v.code}, ${v.introspection.lignes} ligne(s)`);
+  // Le post-check, lui, exige une table VIDE : après 6 lignes, exactement UNE ligne false, « table VIDE ».
   const pc = await postCheck(pg);
   const pcFaux = pc.filter((r) => !r.ok).map((r) => r.point);
-  check("POST-CHECK · après 4 lignes, exactement une ligne ok = false : « table VIDE » (le post-check est pour la POSE, pas pour la vie de la table)", pcFaux.length === 1 && pcFaux[0] === "table VIDE", pcFaux.join(" | "));
+  check("POST-CHECK · après 6 lignes, exactement une ligne ok = false : « table VIDE » (le post-check est pour la POSE, pas pour la vie de la table)", pcFaux.length === 1 && pcFaux[0] === "table VIDE", pcFaux.join(" | "));
   await pg.close();
 }
 
 lignes.push("── (C) le post-check SQL (second bloc Neon) sait rougir");
 lignes.push(...resultatsC);
+
+// ═══ (D) LE BLOC 3 — FK CaseFileSource.snapshotId → RESTRICT/RESTRICT ═══════
+lignes.push("── (D) le bloc 3 (FK snapshotId RESTRICT/RESTRICT) : dégradation avant, refus après, gardes, post-check");
+{
+  interface Bloc3Ligne { point: string; ok: boolean; attendu: string; reel: string }
+  /** "CaseFileSource" telle que MESURÉE en prod : FK snapshotId ON DELETE SET NULL, 2 sources liées, 8 à NULL. */
+  async function postgresCaseFileSource(fkInitiale = `FOREIGN KEY ("snapshotId") REFERENCES "EvidenceSnapshot"(id) ON DELETE SET NULL`, avecFk = true) {
+    const db = new PGlite();
+    await db.exec(`CREATE TABLE "EvidenceSnapshot" (id text PRIMARY KEY, sha256 text, "sourceUrl" text);
+      INSERT INTO "EvidenceSnapshot" VALUES ('34f4068a', '${"8".repeat(64)}', 'https://x.com/search?q=from:0xSweep VINE'), ('f24e3252', '${"c".repeat(64)}', 'https://x.com/search?q=from:0xSweep VINE');
+      CREATE TABLE token_casefiles (ref text PRIMARY KEY);
+      INSERT INTO token_casefiles VALUES ('IL-SHILL-VINE-001'), ('IL-SHILL-BOTIFY-001');
+      CREATE TABLE "CaseFileSource" (
+        id text PRIMARY KEY, "casefileRef" text NOT NULL, "sourceId" text NOT NULL, "snapshotId" text,
+        CONSTRAINT "CaseFileSource_casefileRef_fkey" FOREIGN KEY ("casefileRef") REFERENCES token_casefiles(ref) ON DELETE RESTRICT,
+        CONSTRAINT "CaseFileSource_ref_sourceid_key" UNIQUE ("casefileRef", "sourceId")
+        ${avecFk ? `, CONSTRAINT "CaseFileSource_snapshotId_fkey" ${fkInitiale}` : ""}
+      );
+      INSERT INTO "CaseFileSource" VALUES ('s09', 'IL-SHILL-VINE-001', 'SRC-0xS-09', '34f4068a'), ('s18', 'IL-SHILL-VINE-001', 'SRC-0xS-18', 'f24e3252');
+      INSERT INTO "CaseFileSource" SELECT 'b' || g, 'IL-SHILL-BOTIFY-001', 'SRC-00' || g, NULL FROM generate_series(1, 8) g;`);
+    // Après un échec DANS le BEGIN du bloc 3 (une garde qui lève), la session
+    // reste en transaction avortée (25P02) et la requête suivante planterait :
+    // c'est exactement ce que le premier passage de cette série a rougi. On
+    // ROLLBACK après tout échec (WARNING inoffensif hors transaction).
+    const sqlstate = async (sql: string): Promise<string> => {
+      try { await db.exec(sql); return "OK"; }
+      catch (e) { await db.exec("ROLLBACK").catch(() => undefined); return String((e as { code?: string }).code ?? (e as Error).message); }
+    };
+    const post = async () => (await db.query(BLOC3_POST)).rows as Bloc3Ligne[];
+    return { db, sqlstate, post, close: () => db.close() };
+  }
+
+  // AVANT le bloc 3 : la dégradation SILENCIEUSE que Q1 refuse — mesurée, pas racontée.
+  {
+    const pg = await postgresCaseFileSource();
+    check("D · AVANT · supprimer un EvidenceSnapshot référencé PASSE (ON DELETE SET NULL)", (await pg.sqlstate(`DELETE FROM "EvidenceSnapshot" WHERE id = '34f4068a'`)) === "OK");
+    const s09 = ((await pg.db.query(`SELECT "snapshotId" FROM "CaseFileSource" WHERE id = 's09'`)).rows as Array<{ snapshotId: string | null }>)[0];
+    check("D · AVANT · SRC-0xS-09 a perdu son observation EN SILENCE (snapshotId = NULL, aucune ligne ne l'écrit)", s09?.snapshotId === null, JSON.stringify(s09));
+    const faux = (await pg.post()).filter((r: Bloc3Ligne) => !r.ok).map((r: Bloc3Ligne) => r.point);
+    check("D · AVANT · le post-check du bloc 3 ROUGIT sur l'état actuel (SET NULL)", faux.length >= 3 && faux.some((f) => f.startsWith("FK snapshotId : définition rendue")), faux.join(" | "));
+    await pg.close();
+  }
+
+  // LE BLOC 3 tel qu'il sera collé : le fichier ENTIER, d'un coup, DDL gardé + post-check.
+  {
+    const pg = await postgresCaseFileSource();
+    const results = (await pg.db.exec(BLOC3)) as Array<{ rows: Bloc3Ligne[] }>;
+    const rows = results[results.length - 1]?.rows ?? [];
+    const faux = rows.filter((r) => !r.ok);
+    check("D · BLOC 3 collé d'un coup → PASSE, post-check intégré : tout ok = true", rows.length === 8 && faux.length === 0, `${rows.length} ligne(s), ${faux.length} false${faux.length ? " : " + faux.map((f) => f.point + " (réel " + f.reel + ")").join(" | ") : ""}`);
+    const def = ((await pg.db.query(`SELECT pg_get_constraintdef(oid) AS def, confdeltype::text AS d, confupdtype::text AS u FROM pg_constraint WHERE conname = 'CaseFileSource_snapshotId_fkey'`)).rows as Array<{ def: string; d: string; u: string }>)[0];
+    check("D · APRÈS · pg_get_constraintdef = ON UPDATE RESTRICT ON DELETE RESTRICT, confdeltype = r, confupdtype = r",
+      def?.def === `FOREIGN KEY ("snapshotId") REFERENCES "EvidenceSnapshot"(id) ON UPDATE RESTRICT ON DELETE RESTRICT` && def?.d === "r" && def?.u === "r", JSON.stringify(def));
+    check("D · APRÈS · supprimer un EvidenceSnapshot référencé → 23503", (await pg.sqlstate(`DELETE FROM "EvidenceSnapshot" WHERE id = '34f4068a'`)) === "23503");
+    check("D · APRÈS · renuméroter un EvidenceSnapshot référencé → 23503", (await pg.sqlstate(`UPDATE "EvidenceSnapshot" SET id = 'autre' WHERE id = 'f24e3252'`)) === "23503");
+    check("D · APRÈS · les 2 sources gardent leur snapshotId (rien n'a été mis à NULL)", Number(((await pg.db.query(`SELECT count(*)::int AS n FROM "CaseFileSource" WHERE "snapshotId" IS NOT NULL`)).rows as Array<{ n: number }>)[0].n) === 2);
+    check("D · APRÈS · une source à NULL reste hors contrainte (INSERT snapshotId NULL passe)", (await pg.sqlstate(`INSERT INTO "CaseFileSource" VALUES ('b9', 'IL-SHILL-BOTIFY-001', 'SRC-009', NULL)`)) === "OK");
+    check("D · APRÈS · rejouer le bloc 3 est REFUSÉ par la garde 1 (déjà en RESTRICT/RESTRICT) → 55000", (await pg.sqlstate(BLOC3_DDL)) === "55000");
+    await pg.close();
+  }
+
+  // LES GARDES : un état réel différent de l'état mesuré → rien n'est modifié.
+  {
+    const pg = await postgresCaseFileSource();
+    // Une orpheline ne peut pas entrer par la FK : on la fabrique en suspendant les triggers de FK (session_replication_role), comme le ferait une restauration partielle.
+    await pg.db.exec(`SET session_replication_role = replica; INSERT INTO "CaseFileSource" VALUES ('orph', 'IL-SHILL-VINE-001', 'SRC-ORPH', 'n-existe-pas'); SET session_replication_role = origin;`);
+    const code = await pg.sqlstate(BLOC3_DDL);
+    const encore = ((await pg.db.query(`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'CaseFileSource_snapshotId_fkey'`)).rows as Array<{ def: string }>)[0]?.def;
+    check("D · GARDE 2 · une source orpheline (snapshotId sans EvidenceSnapshot) → le bloc LÈVE 23503 et ne pose rien", code === "23503" && encore === `FOREIGN KEY ("snapshotId") REFERENCES "EvidenceSnapshot"(id) ON DELETE SET NULL`, `code ${code} · contrainte encore : ${encore}`);
+    await pg.close();
+  }
+  {
+    const pg = await postgresCaseFileSource(`FOREIGN KEY ("snapshotId") REFERENCES "EvidenceSnapshot"(id) ON DELETE CASCADE`);
+    const code = await pg.sqlstate(BLOC3_DDL);
+    check("D · GARDE 1 · forme réelle inattendue (ON DELETE CASCADE) → 55000, rien posé", code === "55000" && ((await pg.db.query(`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'CaseFileSource_snapshotId_fkey'`)).rows as Array<{ def: string }>)[0]?.def.endsWith("ON DELETE CASCADE"), `code ${code}`);
+    await pg.close();
+  }
+  {
+    const pg = await postgresCaseFileSource(undefined, false);
+    const code = await pg.sqlstate(BLOC3_DDL);
+    check("D · GARDE 1 · contrainte ABSENTE → 55000, rien posé", code === "55000", `code ${code}`);
+    await pg.close();
+  }
+}
+
 
 console.log(lignes.join("\n"));
 const total = lignes.filter((l) => /^(OK|KO) /.test(l)).length;
