@@ -435,6 +435,22 @@ export const INVENTAIRE_RACINES_SQL: Readonly<Record<string, EntreeInventaire>> 
     raison: "registre E-RC ; DDL non appliqué au 2026-09-12, SQL brut par gel de prisma/",
   },
 
+  // ── SPINE-00 · A — le journal APPEND-ONLY des décisions de publication
+  //    d'une VERSION de CaseFileClaim (GRANT | REVOKE, audience PUBLIC).
+  //    Même situation que governed_objects : atteinte UNIQUEMENT en SQL brut,
+  //    `prisma/` étant gelé. Le DDL vit dans
+  //    docs/prep/MIGRATION_DECISIONS_PUBLICATION_CLAIM_2026-09-14.sql et se
+  //    pose dans l'éditeur SQL Neon — non appliqué à ce jour ; le seul lecteur
+  //    est scripts/casefile/verifier-decisions-publication-schema.ts.
+  //    Classe `dossier` : la ligne porte l'AUTORITÉ de publier une assertion
+  //    d'un dossier — pas le contenu, mais ce qui décide de sa visibilité.
+  casefile_claim_publication_decisions: {
+    statut: "RACINE_GOUVERNEE",
+    classe: "dossier",
+    horsSchema: true,
+    raison: "autorité de publication SPINE-00 A ; DDL non appliqué au 2026-09-14, SQL brut par gel de prisma/",
+  },
+
   // ── Écartées, AVEC leur raison.
   _livre: {
     statut: "HORS_GOUVERNANCE",
