@@ -381,6 +381,9 @@ const autoriteMalformee = (authority: ReleaseAuthorityInput): string | null => {
   return null;
 };
 
+/** L'emplacement d'un refus : `claimId@vN`. Un nom, jamais un contenu. */
+const emplacement = (c: { readonly claimId: string; readonly version: number }): string => [c.claimId, "v" + String(c.version)].join("@");
+
 /** La cible d'une décision : les quatre colonnes qui l'identifient. */
 interface CibleDecision {
   readonly casefileRef: string;
@@ -403,9 +406,9 @@ async function verrouillerCible<C extends string>(db: SqlRunner, cible: CibleDec
       FOR UPDATE`,
     [cible.casefileRef, cible.claimId, cible.version],
   );
-  if (cibles.length === 0) throw new GovernedAbort<C>("TARGET_MISSING" as C, `${cible.claimId}@v${cible.version}`);
+  if (cibles.length === 0) throw new GovernedAbort<C>("TARGET_MISSING" as C, emplacement(cible));
   const row = cibles[0];
-  if (row.contentHash && !isSealIntact(row)) throw new GovernedAbort<C>("SEAL_BROKEN" as C, `${row.claimId}@v${row.version}`);
+  if (row.contentHash && !isSealIntact(row)) throw new GovernedAbort<C>("SEAL_BROKEN" as C, emplacement(row));
   return row;
 }
 
