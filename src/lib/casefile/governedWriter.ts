@@ -31,22 +31,35 @@
 //       existante. Le sceau de la version supplantée est ÉPINGLÉ dans les
 //       préconditions : l'exécuteur le revérifie avant d'écrire.
 //
-// ─── Le contrat du claim PUBLIC, dérivé et non copié ──────────────────────
+// ─── Le contrat du claim, dérivé et non copié — en DEUX éligibilités ──────
 //
 // Le CHECK `CaseFileClaim_public_requires_provenance` exige, en base :
 // `rowNature` classifiée ET `evidenceRefs` ≥ 1. Il ne peut pas exiger que les
-// références RÉSOLVENT vers une pièce vérifiable. `decidePublicClaimContract`
-// porte la règle complète — nature, références, résolution, provenance
-// (`sha256` ∧ `sourceUrl` ∧ `capturedAt`) — et elle est consommée DEUX fois :
-// par le fondement et par la libération. La base reste défense en profondeur.
+// références RÉSOLVENT vers une pièce vérifiable. Le contrat porte la règle
+// complète — nature, références, résolution, éligibilité de chaque pièce.
 // `threadUrl` n'y entre pas : provenance complémentaire, jamais substitut.
 //
-// La provenance d'une pièce se juge par `isPubliableSource`, qui vit ICI
-// (SPINE-00 · C : elle vivait dans la projection, et l'orientation des
-// imports interdisait à la projection de consommer le contrat sans cycle —
-// le prédicat a été déplacé, pas dupliqué ; la projection le ré-exporte).
-// Un même contrat, trois consommateurs : retirer la pièce d'un claim mord au
-// fondement, à la libération ET au rendu.
+// T1-REVOKE-ELIGIBILITY (ruling du 2026-09-14) : « Foundation may tolerate
+// incomplete provenance; publication may not. » Il y a donc DEUX éligibilités
+// d'une pièce, et elles ne se substituent pas l'une à l'autre :
+//
+//   isFoundationEligibleSource   identité stable, empreinte, origine,
+//                                horodatage, lien vers le snapshot, et une
+//                                qualification de provenance LISIBLE — même
+//                                incomplète : UNKNOWN et OPERATOR_DECLARED
+//                                passent. Consommée par `decideFoundation`.
+//   isPublicationEligibleSource  tout ce qui précède, ET provenance VERIFIED,
+//                                strictement. Consommée par
+//                                `decidePublicRelease` et par la projection.
+//
+// Chaque prédicat rend une pièce MARQUÉE (`FoundationEligibleSource`,
+// `PublicationEligibleSource`) : un consommateur qui exige l'une ne compile
+// pas avec l'autre. Deux contrats les portent, `decideFoundationContract` et
+// `decidePublicationContract`, sur une seule ossature (`decideClaimContract`)
+// — la règle de forme n'est écrite qu'une fois, seul le juge de pièce change.
+//
+// `isPubliableSource` (SPINE-00 · C) n'existe plus : un prédicat unique ne
+// peut pas porter deux seuils. Un témoin prouve qu'il n'a plus d'appelant.
 //
 // ─── Le sceau : une seule normalisation, MESURÉE, et CONSOMMÉE ───────────
 //
@@ -114,23 +127,132 @@ import { isAdmissible } from "./publicationState";
 import { canonicalSealMaterial, claimContentHash, latestVersions } from "./versioning";
 import { isSealIntact } from "./sealGuard";
 import type { PublicSource } from "./canonicalReader";
+import { isSourceProvenanceKind, type SourceProvenanceKind } from "./provenanceKind";
 import { isDataNature, type DataNature } from "@/lib/data-nature/nature";
 
-// ═══ LE CONTRAT DU CLAIM PUBLIC — la primitive partagée ═════════════════════
+// ═══ L'ÉLIGIBILITÉ D'UNE PIÈCE — deux prédicats, deux marques ═══════════════
 
-export const PUBLIC_CLAIM_CONTRACT_CAUSES = [
+/** Les champs qui font une pièce éligible. L'ORDRE est celui du refus. */
+export const SOURCE_PROVENANCE_FIELDS = ["sourceId", "sha256", "sourceUrl", "capturedAt", "evidenceLinked", "provenanceKind"] as const;
+export type SourceProvenanceField = (typeof SOURCE_PROVENANCE_FIELDS)[number];
+
+export const SOURCE_ELIGIBILITY_CAUSES = [
+  /** `sourceId` vide ou bordé de blancs : pas d'identité stable. */
+  "SOURCE_IDENTITY_UNSTABLE",
+  /** `sha256` absent ou mal formé : pas d'empreinte des octets. */
+  "SOURCE_DIGEST_MISSING",
+  /** `sourceUrl` absente : pas d'origine déclarée. */
+  "SOURCE_ORIGIN_MISSING",
+  /** `capturedAt` absent : on ne sait pas de QUAND la pièce témoigne. */
+  "SOURCE_CAPTURE_MISSING",
+  /** `evidenceLinked` faux ou absent : la pièce ne pointe vers aucun EvidenceSnapshot (l'identifiant lui-même ne traverse pas la frontière publique). */
+  "SOURCE_EVIDENCE_UNLINKED",
+  /** `provenanceKind` présent mais HORS du vocabulaire fermé. L'absence vaut UNKNOWN, pas un refus. */
+  "SOURCE_PROVENANCE_UNQUALIFIED",
+  /** PUBLICATION seulement : la qualification n'est pas VERIFIED. */
+  "SOURCE_PROVENANCE_NOT_VERIFIED",
+] as const;
+export type SourceEligibilityCause = (typeof SOURCE_ELIGIBILITY_CAUSES)[number];
+
+/** Ce qu'un refus d'éligibilité nomme : la cause, et le CHAMP — jamais une valeur. */
+export interface SourceEligibilityRefusal {
+  readonly cause: SourceEligibilityCause;
+  readonly field: SourceProvenanceField;
+}
+
+declare const FONDATION_ELIGIBLE: unique symbol;
+declare const PUBLICATION_ELIGIBLE: unique symbol;
+
+/** Une pièce jugée éligible au FONDEMENT. Nominale : `isFoundationEligibleSource` seule la produit. */
+export interface FoundationEligibleSource extends PublicSource {
+  readonly [FONDATION_ELIGIBLE]: true;
+  readonly provenanceKind: SourceProvenanceKind;
+}
+/** Une pièce jugée éligible à la PUBLICATION. Nominale : `isPublicationEligibleSource` seule la produit. */
+export interface PublicationEligibleSource extends PublicSource {
+  readonly [PUBLICATION_ELIGIBLE]: true;
+  readonly provenanceKind: "VERIFIED";
+}
+
+export type FoundationEligibility =
+  | { readonly eligible: true; readonly source: FoundationEligibleSource }
+  | { readonly eligible: false; readonly refusal: SourceEligibilityRefusal };
+export type PublicationEligibility =
+  | { readonly eligible: true; readonly source: PublicationEligibleSource }
+  | { readonly eligible: false; readonly refusal: SourceEligibilityRefusal };
+
+const estCleAcceptable = (v: unknown): v is string =>
+  typeof v === "string" && v.length > 0 && v.trim() === v;
+const estSha256 = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+
+/** Les qualifications que le FONDEMENT tolère. Fermé. VERIFIED y est, évidemment. */
+export const FOUNDATION_TOLERATED_PROVENANCE: readonly SourceProvenanceKind[] =
+  ["UNKNOWN", "OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const;
+
+/**
+ * ÉLIGIBILITÉ AU FONDEMENT. Identité stable, empreinte, origine, horodatage,
+ * lien explicite vers le snapshot, et une qualification LISIBLE — même
+ * incomplète. Une qualification ABSENTE vaut UNKNOWN et passe : « Foundation
+ * may tolerate incomplete provenance. » Une qualification présente mais hors
+ * vocabulaire ne passe pas : on ne devine pas ce que « verified » en minuscules
+ * voulait dire.
+ */
+export function isFoundationEligibleSource(s: PublicSource): FoundationEligibility {
+  const refuse = (cause: SourceEligibilityCause, field: SourceProvenanceField): FoundationEligibility =>
+    ({ eligible: false, refusal: { cause, field } });
+  if (!estCleAcceptable(s.sourceId)) return refuse("SOURCE_IDENTITY_UNSTABLE", "sourceId");
+  if (!estSha256(s.sha256)) return refuse("SOURCE_DIGEST_MISSING", "sha256");
+  if (!estCleAcceptable(s.sourceUrl)) return refuse("SOURCE_ORIGIN_MISSING", "sourceUrl");
+  if (!estCleAcceptable(s.capturedAt)) return refuse("SOURCE_CAPTURE_MISSING", "capturedAt");
+  if (s.evidenceLinked !== true) return refuse("SOURCE_EVIDENCE_UNLINKED", "evidenceLinked");
+  const kind: unknown = s.provenanceKind === undefined ? "UNKNOWN" : s.provenanceKind;
+  if (!isSourceProvenanceKind(kind) || !FOUNDATION_TOLERATED_PROVENANCE.includes(kind)) {
+    return refuse("SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind");
+  }
+  const source = Object.freeze({ ...s, provenanceKind: kind }) as unknown as FoundationEligibleSource;
+  return { eligible: true, source };
+}
+
+/**
+ * ÉLIGIBILITÉ À LA PUBLICATION. Tout ce que le fondement exige, ET une
+ * qualification VERIFIED — strictement. UNKNOWN, OPERATOR_DECLARED et
+ * EXTRACTED sont refusés par leur nom. « Publication may not. »
+ */
+export function isPublicationEligibleSource(s: PublicSource): PublicationEligibility {
+  const fondation = isFoundationEligibleSource(s);
+  if (!fondation.eligible) return fondation;
+  if (fondation.source.provenanceKind !== "VERIFIED") {
+    return { eligible: false, refusal: { cause: "SOURCE_PROVENANCE_NOT_VERIFIED", field: "provenanceKind" } };
+  }
+  const source = Object.freeze({ ...s, provenanceKind: "VERIFIED" }) as unknown as PublicationEligibleSource;
+  return { eligible: true, source };
+}
+
+// ═══ LE CONTRAT DU CLAIM — une ossature, deux juges ═════════════════════════
+
+/** Les causes de forme, communes aux deux contrats. */
+export const CLAIM_CONTRACT_CAUSES = [
   /** `rowNature` absente, `UNCLASSIFIED`, ou hors du vocabulaire fermé. */
   "CLAIM_UNCLASSIFIED",
   /** `evidenceRefs` vide, absent, ou pas un tableau. */
   "EVIDENCE_REFS_EMPTY",
   /** Une référence citée que le registre fourni ne connaît pas. */
   "EVIDENCE_REF_UNRESOLVED",
-  /** La pièce résolue ne porte pas `sha256` ∧ `sourceUrl` ∧ `capturedAt`. */
+  /** La pièce résolue manque d'un champ du fondement. `at` = `ref.champ`. */
   "SOURCE_PROVENANCE_INCOMPLETE",
 ] as const;
-export type PublicClaimContractCause = (typeof PUBLIC_CLAIM_CONTRACT_CAUSES)[number];
+/** Le contrat du FONDEMENT : les causes de forme, et rien de plus. */
+export const FOUNDATION_CONTRACT_CAUSES = CLAIM_CONTRACT_CAUSES;
+export type FoundationContractCause = (typeof FOUNDATION_CONTRACT_CAUSES)[number];
+/** Le contrat de PUBLICATION : les mêmes, plus la qualification VERIFIED. */
+export const PUBLICATION_CONTRACT_CAUSES = [
+  ...CLAIM_CONTRACT_CAUSES,
+  /** La pièce est fondable mais sa provenance n'est pas VERIFIED. `at` = `ref.provenanceKind`. */
+  "SOURCE_PROVENANCE_NOT_VERIFIED",
+] as const;
+export type PublicationContractCause = (typeof PUBLICATION_CONTRACT_CAUSES)[number];
 
-export interface PublicClaimContractInput {
+export interface ClaimContractInput {
   readonly rowNature?: unknown;
   readonly evidenceRefs?: unknown;
 }
@@ -145,78 +267,74 @@ export interface Refusal<C extends string> {
   readonly at: string;
 }
 
-export type PublicClaimContractVerdict =
+type ClaimContractVerdict<C extends string, S extends PublicSource> =
   | {
       readonly verdict: "MET";
       readonly nature: DataNature;
       readonly refs: readonly string[];
-      /** Les pièces citées, résolues et publiables. Dans l'ordre des refs. */
-      readonly cited: readonly PublicSource[];
+      /** Les pièces citées, résolues et jugées. Dans l'ordre des refs. */
+      readonly cited: readonly S[];
     }
-  | { readonly verdict: "UNMET"; readonly refusal: Refusal<PublicClaimContractCause> };
+  | { readonly verdict: "UNMET"; readonly refusal: Refusal<C> };
 
-const estCleAcceptable = (v: unknown): v is string =>
-  typeof v === "string" && v.length > 0 && v.trim() === v;
+export type FoundationContractVerdict = ClaimContractVerdict<FoundationContractCause, FoundationEligibleSource>;
+export type PublicationContractVerdict = ClaimContractVerdict<PublicationContractCause, PublicationEligibleSource>;
 
-/** Les trois champs qui font une pièce publiable. L'ORDRE est celui du refus. */
-export const SOURCE_PROVENANCE_FIELDS = ["sha256", "sourceUrl", "capturedAt"] as const;
-export type SourceProvenanceField = (typeof SOURCE_PROVENANCE_FIELDS)[number];
-
-/**
- * Une pièce est PUBLIABLE si elle porte intégrité, origine ET horodatage.
- *
- * Les trois, pas deux : une empreinte sans origine ne dit pas d'où vient la
- * pièce, une origine sans empreinte ne dit pas que c'est toujours la même, et
- * sans horodatage on ne sait pas de QUAND elle témoigne — c'est précisément le
- * trou que l'index de preuves comblait avec la date du jour.
- */
-export function isPubliableSource(s: PublicSource): boolean {
-  return !!s.sha256 && !!s.sourceUrl && !!s.capturedAt;
-}
-
-/** Le premier champ qui manque à une pièce. Un nom, jamais un contenu. */
-export function champManquant(s: PublicSource): SourceProvenanceField {
-  if (!s.sha256) return "sha256";
-  if (!s.sourceUrl) return "sourceUrl";
-  return "capturedAt";
-}
+/** La cause de CONTRAT que porte un refus d'éligibilité. Une seule est propre à la publication. */
+const causeDeContrat = (r: SourceEligibilityRefusal): PublicationContractCause =>
+  r.cause === "SOURCE_PROVENANCE_NOT_VERIFIED" ? "SOURCE_PROVENANCE_NOT_VERIFIED" : "SOURCE_PROVENANCE_INCOMPLETE";
 
 /**
- * LA règle du claim publiable. Pure. Consommée par le fondement ET par la
- * libération — deux fois la même règle, jamais deux règles.
+ * L'OSSATURE du contrat. Pure. Non exportée : on ne la consomme qu'à travers
+ * l'un des deux contrats nommés, qui fixent le juge de pièce.
  *
  * L'ordre des refus est stable : nature, puis références, puis chaque
- * référence dans l'ordre où elle est citée — résolution avant provenance.
+ * référence dans l'ordre où elle est citée — résolution avant éligibilité.
  */
-export function decidePublicClaimContract(
-  claim: PublicClaimContractInput,
+function decideClaimContract<C extends PublicationContractCause, S extends PublicSource>(
+  claim: ClaimContractInput,
   registre: ReadonlyMap<string, PublicSource>,
-): PublicClaimContractVerdict {
-  const unmet = (cause: PublicClaimContractCause, at: string): PublicClaimContractVerdict => ({
-    verdict: "UNMET",
-    refusal: { cause, at },
-  });
+  juge: (s: PublicSource) => { eligible: true; source: S } | { eligible: false; refusal: SourceEligibilityRefusal },
+): ClaimContractVerdict<C, S> {
+  const unmet = (cause: C, at: string): ClaimContractVerdict<C, S> => ({ verdict: "UNMET", refusal: { cause, at } });
 
   // UNCLASSIFIED n'est pas dans DATA_NATURES : il tombe ici avec null,
   // undefined, une casse approchante ou une valeur inconnue. Aucun défaut.
-  if (!isDataNature(claim.rowNature)) return unmet("CLAIM_UNCLASSIFIED", "rowNature");
+  if (!isDataNature(claim.rowNature)) return unmet("CLAIM_UNCLASSIFIED" as C, "rowNature");
 
   const refs = claim.evidenceRefs;
-  if (!Array.isArray(refs) || refs.length === 0) return unmet("EVIDENCE_REFS_EMPTY", "evidenceRefs");
+  if (!Array.isArray(refs) || refs.length === 0) return unmet("EVIDENCE_REFS_EMPTY" as C, "evidenceRefs");
 
-  const cited: PublicSource[] = [];
+  const cited: S[] = [];
   const clefs: string[] = [];
   for (let i = 0; i < refs.length; i++) {
     const r: unknown = refs[i];
     // Une référence qui n'est pas une clef ne résout vers rien.
-    if (!estCleAcceptable(r)) return unmet("EVIDENCE_REF_UNRESOLVED", `evidenceRefs[${i}]`);
+    if (!estCleAcceptable(r)) return unmet("EVIDENCE_REF_UNRESOLVED" as C, `evidenceRefs[${i}]`);
     const s = registre.get(r);
-    if (!s) return unmet("EVIDENCE_REF_UNRESOLVED", r);
-    if (!isPubliableSource(s)) return unmet("SOURCE_PROVENANCE_INCOMPLETE", `${r}.${champManquant(s)}`);
-    cited.push(s);
+    if (!s) return unmet("EVIDENCE_REF_UNRESOLVED" as C, r);
+    const jugee = juge(s);
+    if (!jugee.eligible) return unmet(causeDeContrat(jugee.refusal) as C, `${r}.${jugee.refusal.field}`);
+    cited.push(jugee.source);
     clefs.push(r);
   }
   return { verdict: "MET", nature: claim.rowNature, refs: clefs, cited };
+}
+
+/** Le contrat du FONDEMENT : chaque pièce citée est éligible au fondement. */
+export function decideFoundationContract(
+  claim: ClaimContractInput,
+  registre: ReadonlyMap<string, PublicSource>,
+): FoundationContractVerdict {
+  return decideClaimContract<FoundationContractCause, FoundationEligibleSource>(claim, registre, isFoundationEligibleSource);
+}
+
+/** Le contrat de PUBLICATION : chaque pièce citée est éligible à la publication. */
+export function decidePublicationContract(
+  claim: ClaimContractInput,
+  registre: ReadonlyMap<string, PublicSource>,
+): PublicationContractVerdict {
+  return decideClaimContract<PublicationContractCause, PublicationEligibleSource>(claim, registre, isPublicationEligibleSource);
 }
 
 // ═══ LE FONDEMENT — décision 1 ══════════════════════════════════════════════
@@ -230,7 +348,7 @@ export const FOUNDATION_REFUSAL_CAUSES = [
   "SNAPSHOT_MISSING",
   /** Le snapshot existe et n'est pas ADMISSIBLE (publicationState). */
   "SNAPSHOT_NOT_ADMISSIBLE",
-  ...PUBLIC_CLAIM_CONTRACT_CAUSES,
+  ...FOUNDATION_CONTRACT_CAUSES,
   /** Une ESTIMATE sans `methodRef` ni `natureBasis` — CHECK estimate_auditable. */
   "ESTIMATE_NOT_AUDITABLE",
   /** La charge du claim porte un champ de PUBLICATION. Propriété 1. */
@@ -263,6 +381,8 @@ export interface SnapshotRowInput {
   readonly sha256: string | null;
   readonly sourceUrl: string | null;
   readonly observedAt: Date | string | null;
+  /** La qualification de provenance des OCTETS, lue par `readProvenanceKind`. Absente = UNKNOWN. */
+  readonly provenanceKind?: unknown;
 }
 
 /**
@@ -289,6 +409,9 @@ export interface ExistingSourceInput {
   readonly capturedAt: string | null;
   readonly sourceUrl: string | null;
   readonly sha256: string | null;
+  readonly snapshotId?: string | null;
+  /** Lue par `readProvenanceKind` dans l'exécuteur. Absente = UNKNOWN. */
+  readonly provenanceKind?: unknown;
 }
 
 export type SourceInput = SourceFromSnapshotInput | ExistingSourceInput;
@@ -410,8 +533,8 @@ export interface Foundation {
   readonly casefileRef: string;
   readonly sourcesToInsert: readonly GovernedSourceRow[];
   readonly claimToInsert: GovernedClaimRow;
-  /** Les pièces que le claim cite, résolues. Le registre de la libération. */
-  readonly citedSources: readonly PublicSource[];
+  /** Les pièces que le claim cite, résolues et jugées FONDABLES — pas publiables. */
+  readonly citedSources: readonly FoundationEligibleSource[];
   readonly preconditions: FoundationPreconditions;
 }
 
@@ -523,18 +646,25 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
       };
       sourcesToInsert.push(ligne);
       snapshotsEpingles.push({ id: snap.id, sha256: ligne.sha256 });
+      // La qualification vient du SNAPSHOT (l'identité des octets), telle que
+      // lue : absente, elle vaut UNKNOWN et le fondement la tolère.
       registre.set(ligne.sourceId, {
         sourceId: ligne.sourceId, sourceType: ligne.sourceType, caption: ligne.caption,
         capturedAt: ligne.capturedAt, sourceUrl: ligne.sourceUrl, sha256: ligne.sha256,
+        evidenceLinked: true,
+        ...(snap.provenanceKind === undefined ? {} : { provenanceKind: snap.provenanceKind as SourceProvenanceKind }),
       });
     } else if (src.kind === "EXISTING") {
       if (src.casefileRef !== dossier.ref) return refuse("DOSSIER_MIX", `${where}.casefileRef`);
       if (!estTexteOuAbsent(src.sha256) || !estTexteOuAbsent(src.sourceUrl) || !estTexteOuAbsent(src.capturedAt)) {
         return refuse("MALFORMED_INPUT", `${where}.provenance`);
       }
+      if (!estTexteOuAbsent(src.snapshotId)) return refuse("MALFORMED_INPUT", `${where}.snapshotId`);
       registre.set(src.sourceId, {
         sourceId: src.sourceId, sourceType: src.sourceType, caption: src.caption ?? null,
         capturedAt: src.capturedAt ?? null, sourceUrl: src.sourceUrl ?? null, sha256: src.sha256 ?? null,
+        evidenceLinked: estCleAcceptable(src.snapshotId),
+        ...(src.provenanceKind === undefined ? {} : { provenanceKind: src.provenanceKind as SourceProvenanceKind }),
       });
     } else {
       return refuse("MALFORMED_INPUT", `${where}.kind`);
@@ -569,8 +699,8 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
     return refuse("MALFORMED_INPUT", "claim.supersedesVersion");
   }
 
-  // ── Le contrat public — la primitive partagée, première consommation ──
-  const contrat = decidePublicClaimContract(claim, registre);
+  // ── Le contrat du FONDEMENT : chaque pièce citée est fondable ────────
+  const contrat = decideFoundationContract(claim, registre);
   if (contrat.verdict === "UNMET") return refuse(contrat.refusal.cause, contrat.refusal.at);
 
   // Même règle que le CHECK estimate_auditable : une ESTIMATE reste auditable.
@@ -748,7 +878,7 @@ export const RELEASE_REFUSAL_CAUSES = [
   "DECISION_TARGET_MISMATCH",
   /** La dernière décision n'est pas un GRANT. */
   "DECISION_NOT_GRANT",
-  ...PUBLIC_CLAIM_CONTRACT_CAUSES,
+  ...PUBLICATION_CONTRACT_CAUSES,
 ] as const;
 export type ReleaseRefusalCause = (typeof RELEASE_REFUSAL_CAUSES)[number];
 
@@ -800,7 +930,8 @@ export function decidePublicRelease(
   if (persisted.audience !== intent.audience) return refuse("DECISION_TARGET_MISMATCH", "decision.audience");
   if (persisted.decision !== "GRANT") return refuse("DECISION_NOT_GRANT", "decision.decision");
 
-  const contrat = decidePublicClaimContract(row, registre);
+  // Le contrat de PUBLICATION, pas celui du fondement : VERIFIED, strictement.
+  const contrat = decidePublicationContract(row, registre);
   if (contrat.verdict === "UNMET") return refuse(contrat.refusal.cause, contrat.refusal.at);
 
   return {
@@ -813,6 +944,124 @@ export function decidePublicRelease(
         expectedContentHash: row.contentHash,
       },
       decision: persisted,
+    },
+  };
+}
+
+// ═══ LA RÉVOCATION — décision 3 ═════════════════════════════════════════════
+//
+// T1-REVOKE-ELIGIBILITY. Symétrique de la libération : une décision REVOKE
+// est PERSISTÉE, RELUE, ATTESTÉE, puis la version visée repasse de PUBLIC à
+// ATTACHED. Rien n'est supprimé, aucune version n'est modifiée, aucun sceau
+// n'est touché : `state` n'est pas scellé (versioning.ts), et le GRANT
+// antérieur reste dans le journal — le REVOKE l'emporte par son id, sans
+// l'effacer.
+//
+// La révocation ne rejoue PAS le contrat : on ne conditionne pas le retrait
+// d'une assertion à la qualité de ses pièces — c'est précisément quand elles
+// sont insuffisantes qu'on révoque. La CAUSE est portée par l'intention, dans
+// un vocabulaire fermé, et rendue dans le résultat. Elle N'EST PAS persistée :
+// la table n'a pas de colonne pour elle (manque déclaré, pas comblé — pas de
+// DDL dans cette fenêtre).
+
+export const REVOCATION_CAUSES = [
+  /** La provenance d'une pièce citée ne suffit pas à la publication (ruling du 2026-09-14). */
+  "INSUFFICIENT_SOURCE_PROVENANCE",
+] as const;
+export type RevocationCause = (typeof REVOCATION_CAUSES)[number];
+
+export function isRevocationCause(v: unknown): v is RevocationCause {
+  return typeof v === "string" && (REVOCATION_CAUSES as readonly string[]).includes(v);
+}
+
+/** Ce que l'appelant DEMANDE : une version exacte, le sceau qu'il croit révoquer, et POURQUOI. */
+export interface RevokeIntent {
+  readonly casefileRef: string;
+  readonly claimId: string;
+  readonly version: number;
+  readonly expectedContentHash: string;
+  readonly audience: PublicationAudience;
+  readonly cause: RevocationCause;
+}
+
+export const REVOKE_REFUSAL_CAUSES = [
+  /** La ligne visée n'est pas PUBLIC : il n'y a rien à révoquer. */
+  "TARGET_NOT_PUBLIC",
+  /** Le sceau de la ligne n'est pas celui que l'appelant croit révoquer. */
+  "SEAL_MISMATCH",
+  /** La cause fournie n'est pas dans le vocabulaire fermé. */
+  "CAUSE_UNKNOWN",
+  /** La relecture n'a rendu AUCUNE décision pour la cible. */
+  "NO_PERSISTED_DECISION",
+  /** La décision fournie n'a pas été attestée relue par l'exécuteur. */
+  "DECISION_NOT_ATTESTED",
+  /** La dernière décision relue n'est pas celle qui vient d'être insérée. */
+  "DECISION_NOT_LATEST",
+  /** La décision relue vise un autre dossier, claim, version ou audience. */
+  "DECISION_TARGET_MISMATCH",
+  /** La dernière décision n'est pas un REVOKE. */
+  "DECISION_NOT_REVOKE",
+] as const;
+export type RevokeRefusalCause = (typeof REVOKE_REFUSAL_CAUSES)[number];
+
+/** Le plan de retrait : une cible EXACTE, la décision PERSISTÉE, et la cause portée. */
+export interface PublicRevocation {
+  readonly target: {
+    readonly casefileRef: string;
+    readonly claimId: string;
+    readonly version: number;
+    readonly expectedContentHash: string;
+  };
+  readonly decision: PersistedPublicationDecision;
+  readonly cause: RevocationCause;
+}
+
+export type RevokeDecision =
+  | { readonly decision: "REVOCABLE"; readonly revocation: PublicRevocation }
+  | { readonly decision: "REFUSED"; readonly refusal: Refusal<RevokeRefusalCause> };
+
+/**
+ * DÉCISION 3 — la révocation. Pure, synchrone, sans base.
+ *
+ * Les mêmes trois conditions que la libération, dans l'ordre : une décision
+ * relue existe · son id est celui qui vient d'être inséré · sa décision vaut
+ * REVOKE. Aucun contrat : le retrait n'exige pas que les pièces soient bonnes.
+ */
+export function decideRevoke(
+  intent: RevokeIntent,
+  row: ReleaseTargetRow,
+  persisted: PersistedPublicationDecision | null,
+  insertedDecisionId: string,
+): RevokeDecision {
+  const refuse = (cause: RevokeRefusalCause, at: string): RevokeDecision => ({
+    decision: "REFUSED",
+    refusal: { cause, at },
+  });
+
+  if (!isRevocationCause(intent.cause)) return refuse("CAUSE_UNKNOWN", "cause");
+  if (row.state !== "PUBLIC") return refuse("TARGET_NOT_PUBLIC", "state");
+  if (!row.contentHash || row.contentHash !== intent.expectedContentHash) return refuse("SEAL_MISMATCH", "contentHash");
+
+  if (persisted === null || persisted === undefined) return refuse("NO_PERSISTED_DECISION", "decision");
+  if (!isPersistedDecision(persisted)) return refuse("DECISION_NOT_ATTESTED", "decision");
+  if (persisted.id !== insertedDecisionId) return refuse("DECISION_NOT_LATEST", "decision.id");
+  if (persisted.casefileRef !== intent.casefileRef) return refuse("DECISION_TARGET_MISMATCH", "decision.casefileRef");
+  if (persisted.claimId !== intent.claimId) return refuse("DECISION_TARGET_MISMATCH", "decision.claimId");
+  if (persisted.claimVersion !== intent.version) return refuse("DECISION_TARGET_MISMATCH", "decision.claimVersion");
+  if (persisted.audience !== intent.audience) return refuse("DECISION_TARGET_MISMATCH", "decision.audience");
+  if (persisted.decision !== "REVOKE") return refuse("DECISION_NOT_REVOKE", "decision.decision");
+
+  return {
+    decision: "REVOCABLE",
+    revocation: {
+      target: {
+        casefileRef: row.casefileRef,
+        claimId: row.claimId,
+        version: row.version,
+        expectedContentHash: row.contentHash,
+      },
+      decision: persisted,
+      cause: intent.cause,
     },
   };
 }

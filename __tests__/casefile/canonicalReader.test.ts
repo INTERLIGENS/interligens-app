@@ -109,9 +109,13 @@ describe("ÉTAPE 5 — aucune donnée interne ne franchit la frontière", () => 
     const listes = [...code.matchAll(/SELECT\s+([\s\S]*?)\s+FROM/gi)].map((m) => m[1]);
     expect(listes.length).toBeGreaterThan(0);
     for (const liste of listes) {
-      for (const f of ["localFilePath", "sessionId", "notes", "snapshotId"]) {
+      for (const f of ["localFilePath", "sessionId", "notes"]) {
         expect(liste, f).not.toContain(f);
       }
+      // T1-REVOKE-ELIGIBILITY : l'identifiant du snapshot ne traverse pas, mais
+      // le FAIT qu'il existe, oui — sous la seule forme d'un booléen nommé.
+      const restant = liste.replace('("snapshotId" IS NOT NULL) AS "evidenceLinked"', "");
+      expect(restant, "snapshotId").not.toContain("snapshotId");
     }
     expect(INTERNAL_ONLY_FIELDS).toContain("localFilePath");
   });

@@ -38,6 +38,8 @@ const piece = (o: Partial<PublicSource> = {}): PublicSource => ({
   capturedAt: "2025-12-07",
   sourceUrl: "https://x.com/exemple/status/1",
   sha256: SHA,
+  evidenceLinked: true,
+  provenanceKind: "VERIFIED",
   ...o,
 });
 
@@ -206,9 +208,10 @@ describe("SPINE-00 · C — une seule écriture de la règle", () => {
   const projection = codeSeul("src/lib/casefile/publicProjection.ts");
   const writer = codeSeul("src/lib/casefile/governedWriter.ts");
 
-  it("la projection appelle decidePublicClaimContract, importé de governedWriter", () => {
-    expect(projection).toMatch(/import \{[\s\S]*?decidePublicClaimContract[\s\S]*?\} from "\.\/governedWriter"/);
-    expect(projection.match(/decidePublicClaimContract\(/g)?.length).toBe(1);
+  it("la projection appelle decidePublicationContract, importé de governedWriter — jamais le contrat du fondement", () => {
+    expect(projection).toMatch(/import \{[\s\S]*?decidePublicationContract[\s\S]*?\} from "\.\/governedWriter"/);
+    expect(projection.match(/decidePublicationContract\(/g)?.length).toBe(1);
+    expect(projection).not.toMatch(/decideFoundationContract|isFoundationEligibleSource/);
   });
 
   it("MUTANT — la projection ne réimplémente aucun terme du contrat", () => {
@@ -233,9 +236,11 @@ describe("SPINE-00 · C — une seule écriture de la règle", () => {
     expect(conditions, conditions.join("\n")).toEqual([]);
   });
 
-  it("le prédicat de pièce vit dans governedWriter, une fois, et la projection le ré-exporte sans l'appeler", () => {
-    expect(writer.match(/export function isPubliableSource\(/g)?.length).toBe(1);
-    expect(projection).toContain('export { isPubliableSource } from "./governedWriter"');
+  it("les prédicats de pièce vivent dans governedWriter, une fois chacun ; isPubliableSource n'existe plus", () => {
+    expect(writer.match(/export function isFoundationEligibleSource\(/g)?.length).toBe(1);
+    expect(writer.match(/export function isPublicationEligibleSource\(/g)?.length).toBe(1);
+    expect(writer).not.toContain("isPubliableSource");
+    expect(projection).not.toContain("isPubliableSource");
     expect(writer).not.toContain('from "./publicProjection"');
   });
 

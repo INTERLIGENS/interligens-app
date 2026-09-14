@@ -150,7 +150,7 @@ describe("GATE — claims et provenance corrects sur les deux fixtures", () => {
   const SRC_001 = {
     sourceId: "SRC-001", sourceType: "screenshot", caption: "Fil 1/8",
     capturedAt: "2025-12-07", sourceUrl: "https://x.com/exemple",
-    sha256: "c".repeat(64),
+    sha256: "c".repeat(64), evidenceLinked: true, provenanceKind: "VERIFIED",
   } as const;
 
   // SPINE-00 · C — le claim porte le CONTRAT : nature classifiée et références

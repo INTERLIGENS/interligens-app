@@ -9,8 +9,13 @@
 //        et un CaseFileClaim versionné, en ATTACHED. Rien de PUBLIC, jamais :
 //        l'INSERT porte le littéral 'ATTACHED', et l'entrée ne connaît aucun
 //        champ de publication (decideFoundation refuse PUBLICATION_IN_FOUNDATION).
-//   (II) executeRelease — persiste la décision, la relit, la juge, puis
-//        promeut. Il n'existe dans ce module AUCUNE autre écriture de `state`.
+//   (II) executeRelease — persiste la décision GRANT, la relit, la juge, puis
+//        promeut. La SEULE écriture de `state = 'PUBLIC'` de src/.
+//   (III) executeRevoke — persiste la décision REVOKE, la relit, la juge, puis
+//        RAMÈNE la version de PUBLIC à ATTACHED. La SEULE écriture de
+//        `state = 'ATTACHED'` de src/ (le fondement INSÈRE 'ATTACHED' ; il ne
+//        transite pas). Ne supprime rien, ne modifie aucune version, ne touche
+//        à aucun sceau. (T1-REVOKE-ELIGIBILITY)
 //
 // ─── Pourquoi la décision et l'écriture partagent la transaction ──────────
 //
@@ -43,6 +48,10 @@ import {
   attestPersistedDecision,
   decideFoundation,
   decidePublicRelease,
+  decideRevoke,
+  isRevocationCause,
+  type RevokeIntent,
+  type RevokeRefusalCause,
   type ClaimAssertionInput,
   type DossierIdentity,
   type ExistingClaimInput,
@@ -61,6 +70,7 @@ import {
 } from "./governedWriter";
 import { canonicalSealMaterial, claimContentHash } from "./versioning";
 import { isSealIntact } from "./sealGuard";
+import { readProvenanceKind } from "./provenanceKind";
 import type { PublicSource } from "./canonicalReader";
 
 // ═══ LA CONNEXION, INJECTÉE ═════════════════════════════════════════════════
@@ -156,7 +166,8 @@ const estObjet = (v: unknown): v is Record<string, unknown> =>
 /** Les pièces déjà au registre, sous la forme que la décision et le contrat lisent. */
 const toExisting = (casefileRef: string, s: SourceRow): ExistingSourceInput => ({
   kind: "EXISTING", casefileRef, sourceId: s.sourceId, sourceType: s.sourceType, caption: s.caption,
-  capturedAt: s.capturedAt, sourceUrl: s.sourceUrl, sha256: s.sha256,
+  capturedAt: s.capturedAt, sourceUrl: s.sourceUrl, sha256: s.sha256, snapshotId: s.snapshotId,
+  provenanceKind: readProvenanceKind({ sourceId: s.sourceId, sha256: s.sha256 }),
 });
 
 const memeInstant = (a: string | null, b: string | null): boolean => {
@@ -231,8 +242,10 @@ export async function executeFoundation(tx: SqlTransactor, intent: FoundationInt
       const existingClaims: ExistingClaimInput[] = versions.map((v) => ({ casefileRef: dossier.ref, ...v }));
 
       // ── LA DÉCISION, sur ces lignes-là.
+      // La qualification des octets du snapshot, lue d'UNE source. UNKNOWN par défaut.
       const snapshotInputs: SnapshotRowInput[] = snapshots.map((s) => ({
         id: s.id, canonicalMint: s.canonicalMint, sha256: s.sha256, sourceUrl: s.sourceUrl, observedAt: s.observedAt,
+        provenanceKind: readProvenanceKind({ sourceId: s.id, sha256: s.sha256 }),
       }));
       const decision = decideFoundation({
         dossier,
@@ -359,6 +372,61 @@ interface DecisionRow extends Record<string, unknown> {
 
 const ISO_UTC_STRICT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 
+/** L'autorité est-elle bien formée ? Le même test pour libérer et pour révoquer. */
+const autoriteMalformee = (authority: ReleaseAuthorityInput): string | null => {
+  if (!estObjet(authority) || typeof authority.decidedBy !== "string" || authority.decidedBy.trim() === "" || authority.decidedBy.trim() !== authority.decidedBy) {
+    return "authority.decidedBy";
+  }
+  if (typeof authority.decidedAt !== "string" || !ISO_UTC_STRICT.test(authority.decidedAt)) return "authority.decidedAt";
+  return null;
+};
+
+/** La cible d'une décision : les quatre colonnes qui l'identifient. */
+interface CibleDecision {
+  readonly casefileRef: string;
+  readonly claimId: string;
+  readonly version: number;
+  readonly audience: string;
+}
+
+/**
+ * a) LE VERROU — la ligne exacte, et elle seule. Partagé par la libération et
+ * la révocation ; l'une exige ensuite ATTACHED, l'autre PUBLIC.
+ */
+async function verrouillerCible<C extends string>(db: SqlRunner, cible: CibleDecision): Promise<TargetRow> {
+  const cibles = await db.query<TargetRow>(
+    `SELECT "casefileRef", "claimId", version, state::text AS state, "contentHash", "rowNature"::text AS "rowNature",
+            "evidenceRefs", title, "titleFr", description, "descriptionFr", category, severity, status,
+            "claimDate"::text AS "claimDate", actors, "threadUrl"
+       FROM "CaseFileClaim"
+      WHERE "casefileRef" = $1 AND "claimId" = $2 AND version = $3
+      FOR UPDATE`,
+    [cible.casefileRef, cible.claimId, cible.version],
+  );
+  if (cibles.length === 0) throw new GovernedAbort<C>("TARGET_MISSING" as C, `${cible.claimId}@v${cible.version}`);
+  const row = cibles[0];
+  if (row.contentHash && !isSealIntact(row)) throw new GovernedAbort<C>("SEAL_BROKEN" as C, `${row.claimId}@v${row.version}`);
+  return row;
+}
+
+/**
+ * c) LA RELECTURE — la dernière décision de la cible, depuis la base, puis
+ * son ATTESTATION. Le SEUL appel d'`attestPersistedDecision` de src/ : la
+ * libération et la révocation relisent ici, toutes deux, juste après leur
+ * INSERT respectif.
+ */
+async function relireDerniereDecision(db: SqlRunner, cible: CibleDecision) {
+  const relues = await db.query<DecisionRow>(
+    `SELECT id::text AS id, casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at::text AS decided_at
+       FROM casefile_claim_publication_decisions
+      WHERE casefile_ref = $1 AND claim_id = $2 AND claim_version = $3 AND audience = $4
+      ORDER BY id DESC LIMIT 1`,
+    [cible.casefileRef, cible.claimId, cible.version, cible.audience],
+  );
+  const relue = relues[0];
+  return relue ? attestPersistedDecision(toPersistedRow(relue)) : null;
+}
+
 /**
  * (II) Libérer : la séquence du ruling, dans UNE transaction.
  *
@@ -374,29 +442,15 @@ export async function executeRelease(
   intent: ReleaseIntent,
   authority: ReleaseAuthorityInput,
 ): Promise<ReleaseOutcome> {
-  if (!estObjet(authority) || typeof authority.decidedBy !== "string" || authority.decidedBy.trim() === "" || authority.decidedBy.trim() !== authority.decidedBy) {
-    return { outcome: "REFUSED", refusal: { cause: "NO_PERSISTED_DECISION", at: "authority.decidedBy" } };
-  }
-  if (typeof authority.decidedAt !== "string" || !ISO_UTC_STRICT.test(authority.decidedAt)) {
-    return { outcome: "REFUSED", refusal: { cause: "NO_PERSISTED_DECISION", at: "authority.decidedAt" } };
-  }
+  const malformee = autoriteMalformee(authority);
+  if (malformee) return { outcome: "REFUSED", refusal: { cause: "NO_PERSISTED_DECISION", at: malformee } };
   try {
     return await tx.transaction(async (db) => {
       // a) LE VERROU — la ligne exacte, et elle seule.
-      const cibles = await db.query<TargetRow>(
-        `SELECT "casefileRef", "claimId", version, state::text AS state, "contentHash", "rowNature"::text AS "rowNature",
-                "evidenceRefs", title, "titleFr", description, "descriptionFr", category, severity, status,
-                "claimDate"::text AS "claimDate", actors, "threadUrl"
-           FROM "CaseFileClaim"
-          WHERE "casefileRef" = $1 AND "claimId" = $2 AND version = $3
-          FOR UPDATE`,
-        [intent.casefileRef, intent.claimId, intent.version],
-      );
-      if (cibles.length === 0) throw new GovernedAbort<ReleaseExecutionCause>("TARGET_MISSING", `${intent.claimId}@v${intent.version}`);
-      const row = cibles[0];
-      if (row.contentHash && !isSealIntact(row)) throw new GovernedAbort<ReleaseExecutionCause>("SEAL_BROKEN", `${row.claimId}@v${row.version}`);
+      const row = await verrouillerCible<ReleaseExecutionCause>(db, intent);
 
       // b) LA DÉCISION, PERSISTÉE. `id` est l'ordre total, rendu en texte.
+      //    'GRANT' est un LITTÉRAL : ce chemin ne peut écrire que lui.
       const inserees = await db.query<{ id: string }>(
         `INSERT INTO casefile_claim_publication_decisions
            (casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at)
@@ -408,17 +462,7 @@ export async function executeRelease(
       if (typeof insertedId !== "string" || insertedId === "") throw new GovernedAbort<ReleaseExecutionCause>("DECISION_NOT_RECORDED", "decision.id");
 
       // c) LA RELECTURE — la dernière décision de la cible, depuis la base.
-      const relues = await db.query<DecisionRow>(
-        `SELECT id::text AS id, casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at::text AS decided_at
-           FROM casefile_claim_publication_decisions
-          WHERE casefile_ref = $1 AND claim_id = $2 AND claim_version = $3 AND audience = $4
-          ORDER BY id DESC LIMIT 1`,
-        [intent.casefileRef, intent.claimId, intent.version, intent.audience],
-      );
-      const relue = relues[0];
-      const persisted = relue
-        ? attestPersistedDecision(toPersistedRow(relue))
-        : null;
+      const persisted = await relireDerniereDecision(db, intent);
 
       // d) LES TROIS CONDITIONS, puis le contrat sur la ligne À L'INSTANT.
       const registre = await lireRegistre(db, intent.casefileRef);
@@ -459,6 +503,109 @@ class RefusedRelease extends Error {
   }
 }
 
+// ═══ (III) LA RÉVOCATION ════════════════════════════════════════════════════
+
+export const REVOKE_EXECUTION_CAUSES = [
+  /** Aucune ligne `(casefileRef, claimId, version)`. */
+  "TARGET_MISSING",
+  /** Le sceau de la ligne ne tient plus : modifiée en place. On ne révoque pas par-dessus une altération — on la signale. */
+  "SEAL_BROKEN",
+  /** L'INSERT de la décision n'a pas rendu d'id. */
+  "DECISION_NOT_RECORDED",
+  /** L'UPDATE gardé n'a touché aucune ligne : l'état a bougé sous le verrou. */
+  "DEMOTION_NOT_APPLIED",
+] as const;
+export type RevokeExecutionCause = (typeof REVOKE_EXECUTION_CAUSES)[number];
+
+export type RevokeOutcome =
+  | {
+      readonly outcome: "REVOKED";
+      readonly target: { casefileRef: string; claimId: string; version: number; contentHash: string };
+      readonly decisionId: string;
+      /** Portée par l'intention, rendue ici. NON persistée : la table n'a pas de colonne (manque déclaré). */
+      readonly cause: RevokeIntent["cause"];
+    }
+  | { readonly outcome: "REFUSED"; readonly refusal: Refusal<RevokeRefusalCause> }
+  | { readonly outcome: "ABORTED"; readonly refusal: Refusal<RevokeExecutionCause> };
+
+/** Un refus de la décision 3, porté hors de la transaction pour qu'elle s'annule. */
+class RefusedRevoke extends Error {
+  constructor(readonly refusal: Refusal<RevokeRefusalCause>) {
+    super(`[casefile/executor] REFUSED ${refusal.cause} @ ${refusal.at}`);
+    this.name = "RefusedRevoke";
+  }
+}
+
+/**
+ * (III) Révoquer : la séquence symétrique de la libération, dans UNE transaction.
+ *
+ *   a) verrouiller la ligne visée · b) insérer la décision REVOKE, prendre son id
+ *   c) relire la dernière décision de la cible · d) trois conditions, sinon ABORT
+ *   e) alors seulement, UPDATE gardé par state = 'PUBLIC' ET contentHash.
+ *
+ * L'UPDATE ne touche que `state` et `updatedAt`. Le `contentHash`, le contenu,
+ * la version, la chaîne `supersedes` : rien n'est modifié, rien n'est supprimé.
+ * Le GRANT antérieur reste dans le journal, sous un id inférieur.
+ */
+export async function executeRevoke(
+  tx: SqlTransactor,
+  intent: RevokeIntent,
+  authority: ReleaseAuthorityInput,
+): Promise<RevokeOutcome> {
+  const malformee = autoriteMalformee(authority);
+  if (malformee) return { outcome: "REFUSED", refusal: { cause: "NO_PERSISTED_DECISION", at: malformee } };
+  // La cause est jugée AVANT toute transaction : une cause hors vocabulaire
+  // n'ouvre rien, n'insère rien.
+  if (!estObjet(intent) || !isRevocationCause(intent.cause)) return { outcome: "REFUSED", refusal: { cause: "CAUSE_UNKNOWN", at: "cause" } };
+  try {
+    return await tx.transaction(async (db) => {
+      // a) LE VERROU — la ligne exacte, et elle seule.
+      const row = await verrouillerCible<RevokeExecutionCause>(db, intent);
+
+      // b) LA DÉCISION, PERSISTÉE. 'REVOKE' est un LITTÉRAL : ce chemin ne peut écrire que lui.
+      const inserees = await db.query<{ id: string }>(
+        `INSERT INTO casefile_claim_publication_decisions
+           (casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at)
+         VALUES ($1, $2, $3, $4, 'REVOKE', $5, $6::timestamptz)
+         RETURNING id::text AS id`,
+        [intent.casefileRef, intent.claimId, intent.version, intent.audience, authority.decidedBy, authority.decidedAt],
+      );
+      const insertedId = inserees[0]?.id;
+      if (typeof insertedId !== "string" || insertedId === "") throw new GovernedAbort<RevokeExecutionCause>("DECISION_NOT_RECORDED", "decision.id");
+
+      // c) LA RELECTURE — la dernière décision de la cible, depuis la base.
+      const persisted = await relireDerniereDecision(db, intent);
+
+      // d) LES TROIS CONDITIONS. Aucun contrat : on révoque PARCE QUE les pièces ne suffisent pas.
+      const verdict = decideRevoke(intent, row, persisted, insertedId);
+      if (verdict.decision === "REFUSED") throw new RefusedRevoke(verdict.refusal);
+
+      // e) LE RETRAIT — gardé par state = 'PUBLIC' ET contentHash. Seuls `state`
+      //    et `updatedAt` bougent. Zéro ligne = l'état a bougé sous nous : ABORT.
+      const retirees = await db.query<{ version: number }>(
+        `UPDATE "CaseFileClaim"
+            SET state = 'ATTACHED'::"ArtifactState", "updatedAt" = now()
+          WHERE "casefileRef" = $1 AND "claimId" = $2 AND version = $3
+            AND state = 'PUBLIC'::"ArtifactState" AND "contentHash" = $4
+          RETURNING version`,
+        [intent.casefileRef, intent.claimId, intent.version, verdict.revocation.target.expectedContentHash],
+      );
+      if (retirees.length !== 1) throw new GovernedAbort<RevokeExecutionCause>("DEMOTION_NOT_APPLIED", `${intent.claimId}@v${intent.version}`);
+
+      return {
+        outcome: "REVOKED",
+        target: { ...verdict.revocation.target, contentHash: verdict.revocation.target.expectedContentHash },
+        decisionId: verdict.revocation.decision.id,
+        cause: verdict.revocation.cause,
+      };
+    });
+  } catch (e) {
+    if (e instanceof RefusedRevoke) return { outcome: "REFUSED", refusal: e.refusal };
+    if (e instanceof GovernedAbort) return { outcome: "ABORTED", refusal: { cause: e.cause as RevokeExecutionCause, at: e.at } };
+    throw e;
+  }
+}
+
 const toPersistedRow = (r: DecisionRow): PersistedDecisionRow => ({
   id: String(r.id),
   casefileRef: r.casefile_ref,
@@ -478,6 +625,7 @@ async function lireRegistre(db: SqlRunner, casefileRef: string): Promise<Map<str
   );
   return new Map(rows.map((s) => [s.sourceId, {
     sourceId: s.sourceId, sourceType: s.sourceType, caption: s.caption,
-    capturedAt: s.capturedAt, sourceUrl: s.sourceUrl, sha256: s.sha256,
+    capturedAt: s.capturedAt, sourceUrl: s.sourceUrl, sha256: s.sha256, evidenceLinked: typeof s.snapshotId === "string" && s.snapshotId !== "",
+    provenanceKind: readProvenanceKind({ sourceId: s.sourceId, sha256: s.sha256 }),
   }]));
 }

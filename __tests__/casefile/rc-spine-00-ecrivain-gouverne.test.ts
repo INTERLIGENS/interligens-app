@@ -8,12 +8,14 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import {
-  decidePublicClaimContract,
+  decideFoundationContract,
+  decidePublicationContract,
   decideFoundation,
   decidePublicRelease,
   isDecidedFoundation,
   attestPersistedDecision,
-  PUBLIC_CLAIM_CONTRACT_CAUSES,
+  FOUNDATION_CONTRACT_CAUSES,
+  PUBLICATION_CONTRACT_CAUSES,
   FOUNDATION_REFUSAL_CAUSES,
   RELEASE_REFUSAL_CAUSES,
   type FoundationRequest,
@@ -36,12 +38,16 @@ import { ProvenanceLostError, resolveProvenance, type CanonicalCaseFile, type Pu
 const SHA = "a".repeat(64);
 const DOSSIER = { ref: VINE_CASEFILE_REF, canonicalMint: VINE_MINT } as const;
 
+// T1-REVOKE-ELIGIBILITY : la pièce de référence est VERIFIED, pour que le
+// fondement ET la libération passent. Les cas OPERATOR_DECLARED / UNKNOWN sont
+// dans spine-00-revoke-eligibility.test.ts.
 const snapshot = (o: Partial<FoundationRequest["snapshots"][number]> = {}) => ({
   id: "snap-1",
   canonicalMint: VINE_MINT,
   sha256: SHA,
   sourceUrl: "https://x.com/exemple/status/1",
   observedAt: "2025-12-07T10:00:00.000Z",
+  provenanceKind: "VERIFIED",
   ...o,
 });
 
@@ -153,7 +159,7 @@ describe("RC-SPINE-00 — témoin positif : le fondement complet est FONDÉ, en 
 
   it("une source EXISTANTE complète résout aussi, et n'est jamais réinsérée", () => {
     const f = founded(request({
-      sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-EXT", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x.com/e/2", sha256: SHA }],
+      sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-EXT", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x.com/e/2", sha256: SHA, snapshotId: "snap-ext", provenanceKind: "VERIFIED" }],
       claim: claim({ evidenceRefs: ["SRC-EXT"] }),
     }));
     expect(f.sourcesToInsert).toEqual([]);
@@ -235,9 +241,11 @@ const REFUSES_FONDEMENT: readonly Cas[] = [
   ["snapshot sans observedAt", request({ snapshots: [snapshot({ observedAt: null })] }), "SNAPSHOT_NOT_ADMISSIBLE", "snapshots[snap-1].observedAt"],
   ["snapshot observedAt illisible", request({ snapshots: [snapshot({ observedAt: "hier" })] }), "SNAPSHOT_NOT_ADMISSIBLE", "snapshots[snap-1].observedAt"],
   // ── source sans sha256 / sourceUrl / capturedAt ──
-  ["source existante sans sha256", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: null }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sha256"],
-  ["source existante sans sourceUrl", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "", sha256: SHA }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sourceUrl"],
-  ["source existante sans capturedAt", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: null, sourceUrl: "https://x", sha256: SHA }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.capturedAt"],
+  ["source existante sans sha256", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: null, snapshotId: "snap-1" }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sha256"],
+  ["source existante sans sourceUrl", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "", sha256: SHA, snapshotId: "snap-1" }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sourceUrl"],
+  ["source existante sans capturedAt", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: null, sourceUrl: "https://x", sha256: SHA, snapshotId: "snap-1" }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.capturedAt"],
+  ["source existante sans snapshotId", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.evidenceLinked"],
+  ["source existante à la qualification hors vocabulaire", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA, snapshotId: "snap-1", provenanceKind: "verified" }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.provenanceKind"],
   // ── claim UNCLASSIFIED ──
   ["rowNature UNCLASSIFIED", request({ claim: claim({ rowNature: "UNCLASSIFIED" }) }), "CLAIM_UNCLASSIFIED", "rowNature"],
   ["rowNature null", request({ claim: claim({ rowNature: null }) }), "CLAIM_UNCLASSIFIED", "rowNature"],
@@ -362,6 +370,9 @@ describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décisi
     ["evidenceRefs vidées en base", (row, r) => [{ ...row, evidenceRefs: [] }, r], "EVIDENCE_REFS_EMPTY", "evidenceRefs"],
     ["pièce citée retirée du registre", (row, r) => { r.clear(); return [row, r]; }, "EVIDENCE_REF_UNRESOLVED", "SRC-001"],
     ["sha256 de la pièce citée effacé", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, sha256: null }); return [row, r]; }, "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sha256"],
+    // T1-REVOKE-ELIGIBILITY : la pièce est FONDABLE (OPERATOR_DECLARED) et pourtant la libération refuse, par son nom.
+    ["qualification de la pièce citée = OPERATOR_DECLARED", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "OPERATOR_DECLARED" }); return [row, r]; }, "SOURCE_PROVENANCE_NOT_VERIFIED", "SRC-001.provenanceKind"],
+    ["qualification de la pièce citée = UNKNOWN", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "UNKNOWN" }); return [row, r]; }, "SOURCE_PROVENANCE_NOT_VERIFIED", "SRC-001.provenanceKind"],
   ];
   for (const [nom, alterer, cause, at] of ALTERES) {
     it(`${nom}, GRANT valide → REFUSED / ${cause} @ ${at}`, () => {
@@ -385,9 +396,12 @@ describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décisi
 describe("RC-SPINE-00 — retirer les evidenceRefs empêche le fondement, la libération ET la projection", () => {
   /** Le dossier canonique tel que le producteur le lirait après exécution du plan. */
   const dossierApresPlan = (f: Foundation, state: "ATTACHED" | "PUBLIC", evidenceRefs: readonly string[]): CanonicalCaseFile => {
+    // Telle que le LECTEUR la décorerait : lien au snapshot, et la qualification
+    // lue par readProvenanceKind — VERIFIED ici, comme la fixture du snapshot.
     const sources: PublicSource[] = f.sourcesToInsert.map((s) => ({
       sourceId: s.sourceId, sourceType: s.sourceType, caption: s.caption,
       capturedAt: s.capturedAt.slice(0, 10), sourceUrl: s.sourceUrl, sha256: s.sha256,
+      evidenceLinked: true, provenanceKind: "VERIFIED",
     }));
     const registre = new Map(sources.map((s) => [s.sourceId, s]));
     const c = f.claimToInsert;
@@ -437,34 +451,38 @@ describe("RC-SPINE-00 — retirer les evidenceRefs empêche le fondement, la lib
 
 describe("RC-SPINE-00 — le contrat public est une primitive à part, consommée deux fois", () => {
   const registre = new Map<string, PublicSource>([
-    ["SRC-001", { sourceId: "SRC-001", sourceType: "screenshot", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA }],
+    ["SRC-001", { sourceId: "SRC-001", sourceType: "screenshot", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA, evidenceLinked: true, provenanceKind: "VERIFIED" }],
     ["SRC-NUE", { sourceId: "SRC-NUE", sourceType: "screenshot", caption: null, capturedAt: null, sourceUrl: null, sha256: null }],
   ]);
 
-  it("MET : nature classifiée, ≥ 1 ref, chaque ref résolue vers une pièce complète", () => {
-    const v = decidePublicClaimContract({ rowNature: "INFERENCE", evidenceRefs: ["SRC-001"] }, registre);
-    expect(v.verdict).toBe("MET");
-    if (v.verdict !== "MET") throw new Error("inatteignable");
-    expect(v.cited.map((s) => s.sourceId)).toEqual(["SRC-001"]);
+  it("MET : nature classifiée, ≥ 1 ref, chaque ref résolue vers une pièce complète — pour les DEUX contrats", () => {
+    for (const contrat of [decideFoundationContract, decidePublicationContract]) {
+      const v = contrat({ rowNature: "INFERENCE", evidenceRefs: ["SRC-001"] }, registre);
+      expect(v.verdict).toBe("MET");
+      if (v.verdict !== "MET") throw new Error("inatteignable");
+      expect(v.cited.map((s) => s.sourceId)).toEqual(["SRC-001"]);
+    }
   });
 
   it("threadUrl n'est PAS un substitut : sans ref, UNMET même avec un fil cité", () => {
-    const v = decidePublicClaimContract({ rowNature: "INFERENCE", evidenceRefs: [], threadUrl: "https://x/9" } as never, registre);
+    const v = decideFoundationContract({ rowNature: "INFERENCE", evidenceRefs: [], threadUrl: "https://x/9" } as never, registre);
     expect(v).toEqual({ verdict: "UNMET", refusal: { cause: "EVIDENCE_REFS_EMPTY", at: "evidenceRefs" } });
   });
 
   it("une pièce nue mord sur le PREMIER champ manquant, par nom", () => {
-    const v = decidePublicClaimContract({ rowNature: "INFERENCE", evidenceRefs: ["SRC-NUE"] }, registre);
+    const v = decideFoundationContract({ rowNature: "INFERENCE", evidenceRefs: ["SRC-NUE"] }, registre);
     expect(v).toEqual({ verdict: "UNMET", refusal: { cause: "SOURCE_PROVENANCE_INCOMPLETE", at: "SRC-NUE.sha256" } });
   });
 
-  it("les deux décisions consomment la primitive, dans le code", () => {
+  it("les deux décisions consomment CHACUNE leur contrat, dans le code — fondement ≠ publication", () => {
     const code = readFileSync("src/lib/casefile/governedWriter.ts", "utf8")
       .split("\n").filter((l) => !l.trimStart().startsWith("//")).join("\n");
-    expect(code.match(/decidePublicClaimContract\(/g)?.length).toBe(3); // 1 définition + 2 consommations
-    expect(code).toContain("isPubliableSource(");
-    expect(PUBLIC_CLAIM_CONTRACT_CAUSES.every((c) => (FOUNDATION_REFUSAL_CAUSES as readonly string[]).includes(c))).toBe(true);
-    expect(PUBLIC_CLAIM_CONTRACT_CAUSES.every((c) => (RELEASE_REFUSAL_CAUSES as readonly string[]).includes(c))).toBe(true);
+    expect(code.match(/decideFoundationContract\(/g)?.length).toBe(2); // 1 définition + decideFoundation
+    expect(code.match(/decidePublicationContract\(/g)?.length).toBe(2); // 1 définition + decidePublicRelease
+    expect(code).not.toContain("isPubliableSource");
+    expect(FOUNDATION_CONTRACT_CAUSES.every((c) => (FOUNDATION_REFUSAL_CAUSES as readonly string[]).includes(c))).toBe(true);
+    expect(PUBLICATION_CONTRACT_CAUSES.every((c) => (RELEASE_REFUSAL_CAUSES as readonly string[]).includes(c))).toBe(true);
+    expect(FOUNDATION_REFUSAL_CAUSES as readonly string[]).not.toContain("SOURCE_PROVENANCE_NOT_VERIFIED");
   });
 
   it("la décision est pure : aucun accès base dans le module", () => {

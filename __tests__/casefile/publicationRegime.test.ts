@@ -12,7 +12,6 @@ import { readFileSync } from "node:fs";
 import {
   projectForPublication,
   canonicalRefForMint,
-  isPubliableSource,
   renderedScore,
   BOTIFY_CASEFILE_REF,
   VINE_CASEFILE_REF,
@@ -21,6 +20,7 @@ import {
 } from "@/lib/casefile/publicProjection";
 import { buildPublicReportHtml } from "@/lib/casefile/pdfGeneratorPublic";
 import { ProvenanceLostError } from "@/lib/casefile/canonicalReader";
+import { isPublicationEligibleSource } from "@/lib/casefile/governedWriter";
 import type {
   CanonicalCaseFile,
   PublicClaim,
@@ -40,6 +40,8 @@ const source = (o: Partial<PublicSource> = {}): PublicSource => ({
   capturedAt: CAPTURE_REELLE,
   sourceUrl: "https://x.com/exemple/status/1",
   sha256: SHA,
+  evidenceLinked: true,
+  provenanceKind: "VERIFIED",
   ...o,
 });
 
@@ -229,11 +231,12 @@ describe("GATE 3 — publier exige un fondement, résolu", () => {
     ]);
   });
 
-  it("les trois exigences d'une pièce publiable sont cumulatives", () => {
-    expect(isPubliableSource(source())).toBe(true);
-    expect(isPubliableSource(source({ sha256: null }))).toBe(false);
-    expect(isPubliableSource(source({ sourceUrl: null }))).toBe(false);
-    expect(isPubliableSource(source({ capturedAt: null }))).toBe(false);
+  it("les exigences d'une pièce publiable sont cumulatives — et VERIFIED en fait partie", () => {
+    expect(isPublicationEligibleSource(source()).eligible).toBe(true);
+    expect(isPublicationEligibleSource(source({ sha256: null })).eligible).toBe(false);
+    expect(isPublicationEligibleSource(source({ sourceUrl: null })).eligible).toBe(false);
+    expect(isPublicationEligibleSource(source({ capturedAt: null })).eligible).toBe(false);
+    expect(isPublicationEligibleSource(source({ provenanceKind: "OPERATOR_DECLARED" })).eligible).toBe(false);
   });
 });
 

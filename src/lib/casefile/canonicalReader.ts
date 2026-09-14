@@ -31,6 +31,7 @@
 import { prisma } from "@/lib/prisma";
 import type { ArtifactState } from "./publicationState";
 import { latestVersions } from "./versioning";
+import { readProvenanceKind, type SourceProvenanceKind } from "./provenanceKind";
 
 /** Une source du registre, telle qu'elle peut être rendue publiquement. */
 export interface PublicSource {
@@ -42,6 +43,16 @@ export interface PublicSource {
   readonly sourceUrl: string | null;
   /** Empreinte de la pièce, quand elle existe. Preuve d'intégrité. */
   readonly sha256: string | null;
+  /**
+   * T1-REVOKE-ELIGIBILITY — le lien explicite vers l'EvidenceSnapshot (un
+   * BOOLÉEN : l'identifiant du snapshot est interne et ne traverse pas), et la
+   * qualification de provenance des octets, lue par `readProvenanceKind`
+   * (une seule fonction, une seule source). Optionnels dans le type parce que
+   * les fixtures construisent des pièces sans eux ; ABSENTS, ils valent
+   * « non lié » et UNKNOWN — jamais un défaut optimiste.
+   */
+  readonly evidenceLinked?: boolean;
+  readonly provenanceKind?: SourceProvenanceKind;
 }
 
 /** Le fondement probatoire d'un claim, ou son absence DÉCLARÉE. */
@@ -123,7 +134,7 @@ const iso = (d: Date | null | undefined): string | null =>
 /** Les formes de ligne lues en SQL brut. Colonnes énumérées, jamais `*`. */
 interface SourceRow {
   sourceId: string; sourceType: string; caption: string | null;
-  capturedAt: Date | null; sourceUrl: string | null; sha256: string | null;
+  capturedAt: Date | null; sourceUrl: string | null; sha256: string | null; evidenceLinked: boolean;
 }
 interface ClaimRow {
   claimId: string; title: string; titleFr: string | null;
@@ -141,6 +152,9 @@ function toPublicSource(r: SourceRow): PublicSource {
     capturedAt: iso(r.capturedAt),
     sourceUrl: r.sourceUrl,
     sha256: r.sha256,
+    evidenceLinked: r.evidenceLinked === true,
+    // La qualification des octets, lue d'UNE source. Absente = UNKNOWN.
+    provenanceKind: readProvenanceKind({ sourceId: r.sourceId, sha256: r.sha256 }),
   };
 }
 
@@ -215,7 +229,8 @@ export async function loadCanonicalCaseFile(
   // ÉNUMÉRÉES, jamais `SELECT *` : ce qui n'est pas lu ne peut pas fuir.
   const [sourceRows, claimRows] = await Promise.all([
     prisma.$queryRaw<SourceRow[]>`
-      SELECT "sourceId", "sourceType", caption, "capturedAt", "sourceUrl", sha256
+      SELECT "sourceId", "sourceType", caption, "capturedAt", "sourceUrl", sha256,
+             ("snapshotId" IS NOT NULL) AS "evidenceLinked"
         FROM "CaseFileSource" WHERE "casefileRef" = ${ref} ORDER BY "sourceId" ASC`,
     prisma.$queryRaw<ClaimRow[]>`
       SELECT "claimId", title, "titleFr", description, "descriptionFr", category,
