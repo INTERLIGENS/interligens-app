@@ -9,9 +9,12 @@
  *     npx tsx scripts/casefile/verifier-provenance-journal-schema.ts [--json]
  *
  * SORTIE
- *     0  CONFORME au DDL livré — colonnes, types, nullabilité, défauts (et
- *        ABSENCE de défaut sur declared_at / verified_at), PK, CHECK, FK,
- *        index, triggers append-only
+ *     0  CONFORME au DDL livré (amendé 4a/4b/5 le 2026-09-14) — colonnes,
+ *        types, nullabilité (reference_kind et source_url NOT NULL), défauts
+ *        (et ABSENCE de défaut sur declared_at / verified_at), PK, CHECK
+ *        (domaine SANS UNKNOWN, PAS de unknown_has_no_reference,
+ *        verified_not_query_context présente), FK RESTRICT/RESTRICT, index,
+ *        triggers append-only présents ET activés
  *     2  ABSENTE — la table n'existe pas (à lancer AVANT la pose : c'est la
  *        réponse attendue)
  *     3  ÉCARTS nommés
@@ -49,8 +52,10 @@ const COLONNES_ATTENDUES: ReadonlyArray<readonly [string, string, "NO" | "YES", 
   ["evidence_snapshot_id", "text", "NO", null],
   ["sha256", "text", "YES", null],
   ["provenance_kind", "text", "NO", null],
-  ["reference_kind", "text", "YES", null],
-  ["source_url", "text", "YES", null],
+  // NOT NULL depuis l'amendement 4a (T1 2026-09-14) : une ligne est une
+  // qualification APPORTÉE, elle porte toujours une référence et sa nature.
+  ["reference_kind", "text", "NO", null],
+  ["source_url", "text", "NO", null],
   ["declared_by", "text", "NO", null],
   ["declared_at", "timestamp with time zone", "NO", null], // PAS de défaut, à dessein
   ["verified_by", "text", "YES", null],
@@ -69,7 +74,8 @@ const COLONNES_ATTENDUES: ReadonlyArray<readonly [string, string, "NO" | "YES", 
 const CONTRAINTES_ATTENDUES: ReadonlyArray<readonly [string, "p" | "c" | "f", RegExp]> = [
   [`${TABLE}_pkey`, "p", /^PRIMARY KEY \(id\)$/],
   [`${TABLE}_sha256_check`, "c", /^CHECK \(\(sha256 ~ '\^\[0-9a-f\]\{64\}\$'::text\)\)$/],
-  [`${TABLE}_provenance_kind_check`, "c", /^CHECK \(\(provenance_kind = ANY \(ARRAY\['UNKNOWN'::text, 'OPERATOR_DECLARED'::text, 'EXTRACTED'::text, 'VERIFIED'::text\]\)\)\)$/],
+  // 4a : UNKNOWN n'est PAS dans le domaine. Sa réintroduction est un écart nommé.
+  [`${TABLE}_provenance_kind_check`, "c", /^CHECK \(\(provenance_kind = ANY \(ARRAY\['OPERATOR_DECLARED'::text, 'EXTRACTED'::text, 'VERIFIED'::text\]\)\)\)$/],
   [`${TABLE}_reference_kind_check`, "c", /^CHECK \(\(reference_kind = ANY \(ARRAY\['QUERY_CONTEXT'::text, 'PUBLICATION'::text, 'PROFILE'::text, 'DOCUMENT'::text, 'OTHER'::text\]\)\)\)$/],
   [`${TABLE}_source_url_check`, "c", /^CHECK \(\(\(source_url <> ''::text\) AND \(btrim\(source_url\) = source_url\)\)\)$/],
   [`${TABLE}_declared_by_check`, "c", /^CHECK \(\(\(declared_by <> ''::text\) AND \(btrim\(declared_by\) = declared_by\)\)\)$/],
@@ -79,10 +85,8 @@ const CONTRAINTES_ATTENDUES: ReadonlyArray<readonly [string, "p" | "c" | "f", Re
     `${TABLE}_verified_iff_verification_check`, "c",
     /^CHECK \(\(\(\(provenance_kind = 'VERIFIED'::text\) = \(verified_by IS NOT NULL\)\) AND \(\(provenance_kind = 'VERIFIED'::text\) = \(verified_at IS NOT NULL\)\) AND \(\(provenance_kind = 'VERIFIED'::text\) = \(verification_method IS NOT NULL\)\)\)\)$/,
   ],
-  [
-    `${TABLE}_unknown_has_no_reference_check`, "c",
-    /^CHECK \(\(\(\(provenance_kind = 'UNKNOWN'::text\) = \(source_url IS NULL\)\) AND \(\(provenance_kind = 'UNKNOWN'::text\) = \(reference_kind IS NULL\)\)\)\)$/,
-  ],
+  // unknown_has_no_reference : SUPPRIMÉE par 4a. Si elle réapparaît, c'est une
+  // « contrainte INATTENDUE » — le vérificateur la nomme (boucle sur parNom).
   [
     `${TABLE}_verified_not_query_context_check`, "c",
     /^CHECK \(\(NOT \(\(provenance_kind = 'VERIFIED'::text\) AND \(reference_kind = 'QUERY_CONTEXT'::text\)\)\)\)$/,
@@ -101,7 +105,8 @@ const INDEX_ATTENDUS: ReadonlyArray<readonly [string, RegExp]> = [
 /**
  * Le DDL SUPPLÉMENTAIRE (append-only). Son absence est un écart NOMMÉ comme tel.
  * Postgres réécrit `UPDATE OR DELETE` en `DELETE OR UPDATE` dans pg_get_triggerdef :
- * on compare à la forme RENDUE, pas à la forme écrite.
+ * on compare à la forme RENDUE, pas à la forme écrite. Un trigger présent mais
+ * DÉSACTIVÉ (tgenabled <> 'O') est aussi un écart : il ne protège plus rien.
  */
 const TRIGGERS_ATTENDUS: ReadonlyArray<readonly [string, RegExp]> = [
   [`${TABLE}_no_rewrite`, /BEFORE DELETE OR UPDATE ON public\.evidence_provenance_journal FOR EACH ROW EXECUTE FUNCTION evidence_provenance_journal_append_only\(\)$/],
@@ -111,7 +116,7 @@ const TRIGGERS_ATTENDUS: ReadonlyArray<readonly [string, RegExp]> = [
 export interface Colonne { column_name: string; data_type: string; is_nullable: string; column_default: string | null; identity_generation: string | null }
 export interface Contrainte { conname: string; contype: string; def: string }
 export interface Index { indexname: string; indexdef: string }
-export interface Trigger { tgname: string; def: string }
+export interface Trigger { tgname: string; def: string; tgenabled: string }
 
 export interface Introspection {
   readonly prerequisPk: boolean;
@@ -166,7 +171,7 @@ export async function introspecter(run: Runner): Promise<Introspection> {
     [TABLE],
   );
   const triggers = await run.query<Trigger>(
-    `SELECT t.tgname, pg_get_triggerdef(t.oid) AS def
+    `SELECT t.tgname, pg_get_triggerdef(t.oid) AS def, t.tgenabled::text AS tgenabled
        FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relname = $1 AND NOT t.tgisinternal
       ORDER BY t.tgname`,
@@ -233,11 +238,13 @@ export function comparer(intro: Introspection): Verdict {
   for (const nom of idx.keys()) ecarts.push(`index INATTENDU : ${nom}`);
 
   // ── Triggers append-only : le DDL SUPPLÉMENTAIRE ────────────────────────
-  const trg = new Map(intro.triggers.map((t) => [t.tgname, t.def]));
+  const trg = new Map(intro.triggers.map((t) => [t.tgname, t]));
   for (const [nom, forme] of TRIGGERS_ATTENDUS) {
-    const d = trg.get(nom);
-    if (!d) { ecarts.push(`APPEND-ONLY non exécutable : trigger ABSENT ${nom} (DDL supplémentaire, section marquée du fichier)`); continue; }
-    if (!forme.test(d)) ecarts.push(`trigger ${nom} : forme divergente — réel ${d}`);
+    const t = trg.get(nom);
+    if (!t) { ecarts.push(`APPEND-ONLY non exécutable : trigger ABSENT ${nom} (DDL supplémentaire, section marquée du fichier)`); continue; }
+    if (!forme.test(t.def)) ecarts.push(`trigger ${nom} : forme divergente — réel ${t.def}`);
+    // tgenabled : 'O' = origin (actif). 'D' = DISABLE TRIGGER ; 'R'/'A' = replica/always.
+    if (t.tgenabled !== "O") ecarts.push(`APPEND-ONLY non exécutable : trigger ${nom} DÉSACTIVÉ (tgenabled = ${t.tgenabled}, attendu O)`);
     trg.delete(nom);
   }
   for (const nom of trg.keys()) ecarts.push(`trigger INATTENDU : ${nom}`);
@@ -296,9 +303,9 @@ async function main(): Promise<number> {
       console.log(`\nTABLE ${TABLE} — ${i.colonnes.length} colonnes, ${i.lignes} ligne(s)`);
       console.log(`contraintes : ${i.contraintes.map((c) => c.conname).join(", ")}`);
       console.log(`index       : ${i.index.map((x) => x.indexname).join(", ")}`);
-      console.log(`triggers    : ${i.triggers.map((t) => t.tgname).join(", ") || "aucun"}`);
+      console.log(`triggers    : ${i.triggers.map((t) => `${t.tgname} (tgenabled=${t.tgenabled})`).join(", ") || "aucun"}`);
       if (v.code === 0) {
-        console.log("\n✅ CONFORME au DDL livré — colonnes, types, nullabilité, défauts (aucun sur declared_at/verified_at), PK, CHECK, FK, index, triggers.");
+        console.log("\n✅ CONFORME au DDL livré (amendé 4a/4b/5) — colonnes, types, nullabilité, défauts (aucun sur declared_at/verified_at), PK, CHECK (sans UNKNOWN), FK, index, triggers activés.");
       } else {
         console.log(`\n❌ ${v.ecarts.length} ÉCART(S) :`);
         for (const e of v.ecarts) console.log(`  · ${e}`);
