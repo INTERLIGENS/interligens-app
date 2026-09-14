@@ -48,7 +48,7 @@
 // Un même contrat, trois consommateurs : retirer la pièce d'un claim mord au
 // fondement, à la libération ET au rendu.
 //
-// ─── Le sceau : une seule normalisation, MESURÉE ─────────────────────────
+// ─── Le sceau : une seule normalisation, MESURÉE, et CONSOMMÉE ───────────
 //
 // Mesuré le 2026-09-13 sur les 16 claims scellés de la base : 16/16 vérifient
 // sous la normalisation de `integrityAudit.ts` (`actors` et `evidenceRefs`
@@ -56,6 +56,12 @@
 // une normalisation qui laisse `actors` absent. L'écrivain scelle donc EXACTEMENT
 // comme l'audit vérifie — sinon chaque ligne écrite ici crierait
 // CONTENT_MUTATED au premier audit.
+//
+// SPINE-00 · B : cette normalisation n'est plus écrite ici. Elle est
+// `versioning.canonicalSealMaterial`, et `claimContentHash` n'accepte que ce
+// qu'elle rend. L'écrivain ne peut donc pas recomposer la matière scellée —
+// remettre `actors` à la main dans le sceau ne compile pas, et rougit à
+// l'audit sur le premier fondement.
 //
 // ─── EXÉCUTION — CONÇUE, NON LIVRÉE ───────────────────────────────────────
 //
@@ -100,7 +106,7 @@
 // tout exécuteur de libération. Elle n'est pas prise dans ce module.
 
 import { isAdmissible } from "./publicationState";
-import { claimContentHash, latestVersions } from "./versioning";
+import { canonicalSealMaterial, claimContentHash, latestVersions } from "./versioning";
 import { isSealIntact } from "./sealGuard";
 import type { PublicSource } from "./canonicalReader";
 import { isDataNature, type DataNature } from "@/lib/data-nature/nature";
@@ -430,37 +436,12 @@ const estDateJour = (v: unknown): v is string =>
   typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const estEntierPositif = (v: unknown): v is number =>
   typeof v === "number" && Number.isInteger(v) && v >= 1;
-const asStrings = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
 /** L'instant d'observation, en ISO. `null` si illisible — donc non admissible. */
 function isoInstant(v: Date | string | null | undefined): string | null {
   if (v === null || v === undefined) return null;
   const d = v instanceof Date ? v : new Date(v);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-/** La forme SCELLABLE, sous la normalisation MESURÉE de l'audit. */
-function formeScellable(c: {
-  claimId: string; title: string; titleFr?: string | null; description?: string | null;
-  descriptionFr?: string | null; category?: string | null; severity?: string | null;
-  status?: string | null; claimDate?: string | null; actors?: unknown;
-  threadUrl?: string | null; evidenceRefs?: unknown;
-}) {
-  return {
-    claimId: c.claimId,
-    title: c.title,
-    titleFr: c.titleFr ?? null,
-    description: c.description ?? null,
-    descriptionFr: c.descriptionFr ?? null,
-    category: c.category ?? null,
-    severity: c.severity ?? null,
-    status: c.status ?? null,
-    claimDate: c.claimDate ?? null,
-    actors: asStrings(c.actors),
-    threadUrl: c.threadUrl ?? null,
-    evidenceRefs: asStrings(c.evidenceRefs),
-  };
 }
 
 /**
@@ -604,7 +585,9 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
   }
   const derniere = latestVersions(existingClaims).find((e) => e.claimId === claim.claimId) ?? null;
 
-  const scellable = formeScellable({ ...claim, evidenceRefs: contrat.refs });
+  // La matière scellée vient de la primitive, et d'elle seule : les refs sont
+  // celles que le contrat a résolues, le reste est la charge telle que validée.
+  const scellable = canonicalSealMaterial({ ...claim, evidenceRefs: contrat.refs });
   const contentHash = claimContentHash(scellable);
 
   let version = 1;
@@ -612,12 +595,11 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
   if (derniere) {
     if (claim.supersedesVersion === undefined) return refuse("SILENT_REWRITE", claim.claimId);
     if (claim.supersedesVersion !== derniere.version) return refuse("STALE_SUPERSEDE", claim.claimId);
-    const derniereScellable = { ...formeScellable(derniere), version: derniere.version, contentHash: derniere.contentHash };
     // Un sceau posé qui ne tient plus : la ligne a déjà été modifiée en
     // place. Écrire par-dessus effacerait la trace. `null` = jamais scellé,
     // qui n'est pas une altération — on versionne quand même.
-    if (derniere.contentHash && !isSealIntact(derniereScellable)) return refuse("SEAL_BROKEN", claim.claimId);
-    if (claimContentHash(derniereScellable) === contentHash) return refuse("CONTENT_UNCHANGED", claim.claimId);
+    if (derniere.contentHash && !isSealIntact(derniere)) return refuse("SEAL_BROKEN", claim.claimId);
+    if (claimContentHash(canonicalSealMaterial(derniere)) === contentHash) return refuse("CONTENT_UNCHANGED", claim.claimId);
     version = derniere.version + 1;
     supersedes = { claimId: derniere.claimId, version: derniere.version };
   } else if (claim.supersedesVersion !== undefined) {

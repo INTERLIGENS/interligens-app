@@ -20,9 +20,19 @@
 // version supplantée modifiée après coup. Le passé est ce qui doit être
 // immuable ; le présent, lui, a le droit de changer — en créant une version.
 
+//
+// ─── La matière scellée n'est pas composée ici ────────────────────────────
+//
+// SPINE-00 · B : la normalisation ligne → matière scellée que ce module
+// appliquait (et que les 16 sceaux persistés vérifient, 16/16) vit désormais
+// dans `versioning.canonicalSealMaterial`. L'audit la CONSOMME, il ne la
+// redéfinit pas — sinon il pourrait dériver de l'écrivain, et crier à
+// l'altération sur des lignes que personne n'a touchées.
+
 import { prisma } from "@/lib/prisma";
 import {
   auditClaims,
+  canonicalSealMaterial,
   summarizeFindings,
   type AuditableClaim,
   type IntegrityFinding,
@@ -46,11 +56,6 @@ interface AuditRow {
   threadUrl: string | null;
   evidenceRefs: unknown;
 }
-
-const iso = (d: Date | null): string | null => (d ? d.toISOString().slice(0, 10) : null);
-
-const asStrings = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
 export interface IntegrityReport {
   readonly ref: string;
@@ -87,20 +92,9 @@ export async function auditCaseFileIntegrity(ref: string): Promise<IntegrityRepo
 
   const registre = new Set(sourceRows.map((s) => s.sourceId));
   const claims: AuditableClaim[] = claimRows.map((r) => ({
-    claimId: r.claimId,
+    ...canonicalSealMaterial(r),
     version: r.version,
     contentHash: r.contentHash,
-    title: r.title,
-    titleFr: r.titleFr,
-    description: r.description,
-    descriptionFr: r.descriptionFr,
-    category: r.category,
-    severity: r.severity,
-    status: r.status,
-    claimDate: iso(r.claimDate),
-    actors: asStrings(r.actors),
-    threadUrl: r.threadUrl,
-    evidenceRefs: asStrings(r.evidenceRefs),
   }));
 
   const constats = auditClaims(claims, registre);
