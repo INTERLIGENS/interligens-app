@@ -13,7 +13,8 @@
  *        types, nullabilité (reference_kind et source_url NOT NULL), défauts
  *        (et ABSENCE de défaut sur declared_at / verified_at), PK, CHECK
  *        (domaine SANS UNKNOWN, PAS de unknown_has_no_reference,
- *        verified_not_query_context présente), FK RESTRICT/RESTRICT, index,
+ *        verified_not_query_context présente, forme de source_url
+ *        conditionnée par reference_kind), FK RESTRICT/RESTRICT, index,
  *        triggers append-only présents ET activés
  *     2  ABSENTE — la table n'existe pas (à lancer AVANT la pose : c'est la
  *        réponse attendue)
@@ -71,6 +72,25 @@ const COLONNES_ATTENDUES: ReadonlyArray<readonly [string, string, "NO" | "YES", 
  * mesurée en rejeu PGlite (PG 17), et on exige les LITTÉRAUX du domaine — ni
  * un de plus, ni un de moins.
  */
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const HTTP_FORM = "^https?://[^/[:space:]]+\\.[^/[:space:]]+(/[^[:space:]]*)?$";
+const R2_FORM = "^r2://[a-z0-9][a-z0-9-]{1,61}[a-z0-9]/[^[:space:]]+$";
+const URI_FORM = "^[a-z][a-z0-9+.-]*:[^[:space:]]+$";
+/**
+ * Le CHECK conditionnel (ruling Q4, T1-DDL-PHASE-A) : la forme de source_url
+ * suit reference_kind. Postgres rend le CASE sur plusieurs lignes ; les blancs
+ * sont normalisés à l'introspection, et la forme attendue est comparée en
+ * ÉGALITÉ STRICTE (regex échappée) — un motif affaibli ou élargi est un écart.
+ */
+const SOURCE_URL_FORM_BY_KIND_RENDU =
+  "CHECK ( CASE reference_kind" +
+  ` WHEN 'PUBLICATION'::text THEN (source_url ~ '${HTTP_FORM}'::text)` +
+  ` WHEN 'PROFILE'::text THEN (source_url ~ '${HTTP_FORM}'::text)` +
+  ` WHEN 'QUERY_CONTEXT'::text THEN (source_url ~ '${HTTP_FORM}'::text)` +
+  ` WHEN 'DOCUMENT'::text THEN (source_url ~ '${R2_FORM}'::text)` +
+  ` WHEN 'OTHER'::text THEN (source_url ~ '${URI_FORM}'::text)` +
+  " ELSE false END)";
+
 const CONTRAINTES_ATTENDUES: ReadonlyArray<readonly [string, "p" | "c" | "f", RegExp]> = [
   [`${TABLE}_pkey`, "p", /^PRIMARY KEY \(id\)$/],
   [`${TABLE}_sha256_check`, "c", /^CHECK \(\(sha256 ~ '\^\[0-9a-f\]\{64\}\$'::text\)\)$/],
@@ -87,6 +107,7 @@ const CONTRAINTES_ATTENDUES: ReadonlyArray<readonly [string, "p" | "c" | "f", Re
   ],
   // unknown_has_no_reference : SUPPRIMÉE par 4a. Si elle réapparaît, c'est une
   // « contrainte INATTENDUE » — le vérificateur la nomme (boucle sur parNom).
+  [`${TABLE}_source_url_form_by_kind_check`, "c", new RegExp("^" + escapeRegExp(SOURCE_URL_FORM_BY_KIND_RENDU) + "$")],
   [
     `${TABLE}_verified_not_query_context_check`, "c",
     /^CHECK \(\(NOT \(\(provenance_kind = 'VERIFIED'::text\) AND \(reference_kind = 'QUERY_CONTEXT'::text\)\)\)\)$/,
@@ -159,8 +180,10 @@ export async function introspecter(run: Runner): Promise<Introspection> {
   // `contype <> 'n'` : PostgreSQL 18 expose les NOT NULL comme contraintes dans
   // pg_constraint, 17 (la prod, 17.11) ne le fait pas. La nullabilité est
   // vérifiée par information_schema.columns ; ici on ne compte que PK, CHECK, FK.
+  // Blancs normalisés (`\s+` → ' ') : le CHECK conditionnel est rendu sur
+  // plusieurs lignes ; les autres formes attendues n'en contiennent pas.
   const contraintes = await run.query<Contrainte>(
-    `SELECT c.conname, c.contype::text AS contype, pg_get_constraintdef(c.oid) AS def
+    `SELECT c.conname, c.contype::text AS contype, regexp_replace(pg_get_constraintdef(c.oid), '\\s+', ' ', 'g') AS def
        FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
       WHERE n.nspname = 'public' AND t.relname = $1 AND c.contype <> 'n'
       ORDER BY c.conname`,

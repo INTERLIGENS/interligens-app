@@ -10,7 +10,7 @@
 -- remonte les `false` en tête). Une seule ligne `false` = pose non conforme.
 --
 -- Attendu : 12 colonnes et leurs types · id GENERATED ALWAYS · AUCUN DEFAULT
--- sur declared_at et verified_at · 11 contraintes (1 PK + 9 CHECK + 1 FK)
+-- sur declared_at et verified_at · 12 contraintes (1 PK + 10 CHECK + 1 FK)
 -- chacune comparée à sa pg_get_constraintdef, FK ON UPDATE RESTRICT ON DELETE
 -- RESTRICT · index (evidence_snapshot_id, id DESC) · 2 triggers, tgenabled = 'O'
 -- · table VIDE.
@@ -47,6 +47,7 @@ attendu_contraintes(nom, type_attendu, def_attendue) AS (VALUES
   ('evidence_provenance_journal_verified_by_check',                'c', 'CHECK (((verified_by <> ''''::text) AND (btrim(verified_by) = verified_by)))'),
   ('evidence_provenance_journal_verification_method_check',        'c', 'CHECK ((verification_method = ANY (ARRAY[''URL_MATCHES_CAPTURED_POST''::text, ''ARCHIVE_SNAPSHOT_MATCHES''::text, ''PLATFORM_API_RECORD_MATCHES''::text])))'),
   ('evidence_provenance_journal_verified_iff_verification_check',  'c', 'CHECK ((((provenance_kind = ''VERIFIED''::text) = (verified_by IS NOT NULL)) AND ((provenance_kind = ''VERIFIED''::text) = (verified_at IS NOT NULL)) AND ((provenance_kind = ''VERIFIED''::text) = (verification_method IS NOT NULL))))'),
+  ('evidence_provenance_journal_source_url_form_by_kind_check',    'c', 'CHECK ( CASE reference_kind WHEN ''PUBLICATION''::text THEN (source_url ~ ''^https?://[^/[:space:]]+\.[^/[:space:]]+(/[^[:space:]]*)?$''::text) WHEN ''PROFILE''::text THEN (source_url ~ ''^https?://[^/[:space:]]+\.[^/[:space:]]+(/[^[:space:]]*)?$''::text) WHEN ''QUERY_CONTEXT''::text THEN (source_url ~ ''^https?://[^/[:space:]]+\.[^/[:space:]]+(/[^[:space:]]*)?$''::text) WHEN ''DOCUMENT''::text THEN (source_url ~ ''^r2://[a-z0-9][a-z0-9-]{1,61}[a-z0-9]/[^[:space:]]+$''::text) WHEN ''OTHER''::text THEN (source_url ~ ''^[a-z][a-z0-9+.-]*:[^[:space:]]+$''::text) ELSE false END)'),
   ('evidence_provenance_journal_verified_not_query_context_check', 'c', 'CHECK ((NOT ((provenance_kind = ''VERIFIED''::text) AND (reference_kind = ''QUERY_CONTEXT''::text))))'),
   ('evidence_provenance_journal_snapshot_fkey',                    'f', 'FOREIGN KEY (evidence_snapshot_id) REFERENCES "EvidenceSnapshot"(id) ON UPDATE RESTRICT ON DELETE RESTRICT')
 ),
@@ -59,7 +60,8 @@ reel_colonnes AS (
     FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'evidence_provenance_journal'
 ),
 reel_contraintes AS (
-  SELECT c.conname, c.contype::text AS contype, pg_get_constraintdef(c.oid) AS def
+  -- Blancs normalisés : pg_get_constraintdef rend un CASE sur plusieurs lignes.
+  SELECT c.conname, c.contype::text AS contype, regexp_replace(pg_get_constraintdef(c.oid), '\s+', ' ', 'g') AS def
     FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
    WHERE n.nspname = 'public' AND t.relname = 'evidence_provenance_journal' AND c.contype <> 'n'
 ),
@@ -92,9 +94,9 @@ lignes AS (
   SELECT 'contrainte INATTENDUE ' || r.conname, 'AUCUNE', r.contype || ' ' || r.def, false
     FROM reel_contraintes r WHERE r.conname NOT IN (SELECT nom FROM attendu_contraintes)
   UNION ALL
-  SELECT 'contraintes : compte (PK + CHECK + FK, contype <> n)', '11 (1 p + 9 c + 1 f)',
+  SELECT 'contraintes : compte (PK + CHECK + FK, contype <> n)', '12 (1 p + 10 c + 1 f)',
          count(*)::text || ' (' || count(*) FILTER (WHERE contype = 'p') || ' p + ' || count(*) FILTER (WHERE contype = 'c') || ' c + ' || count(*) FILTER (WHERE contype = 'f') || ' f)',
-         count(*) = 11 AND count(*) FILTER (WHERE contype = 'p') = 1 AND count(*) FILTER (WHERE contype = 'c') = 9 AND count(*) FILTER (WHERE contype = 'f') = 1
+         count(*) = 12 AND count(*) FILTER (WHERE contype = 'p') = 1 AND count(*) FILTER (WHERE contype = 'c') = 10 AND count(*) FILTER (WHERE contype = 'f') = 1
     FROM reel_contraintes
   UNION ALL
   SELECT 'index evidence_provenance_journal_snapshot_idx', '(evidence_snapshot_id, id DESC)', COALESCE(indexdef, 'ABSENT'),
