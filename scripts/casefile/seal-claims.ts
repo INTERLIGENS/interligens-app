@@ -27,13 +27,14 @@
 // modification en place se verra.
 
 import { prisma } from "@/lib/prisma";
-import { claimContentHash } from "@/lib/casefile/versioning";
+import { canonicalSealMaterial, claimContentHash } from "@/lib/casefile/versioning";
 
 /**
- * La ligne telle que Postgres la rend. Elle n'étend PAS `SealableClaim` :
- * `claimDate` y est une `Date`, `actors` et `evidenceRefs` du jsonb brut. La
- * conversion vers la forme scellable est explicite, au moment du calcul —
- * c'est là qu'elle doit être visible, pas cachée dans un type.
+ * La ligne telle que Postgres la rend : `claimDate` en `Date`, `actors` et
+ * `evidenceRefs` en jsonb brut. La conversion vers la matière scellée n'est
+ * PAS faite ici (SPINE-00 · B) : elle est `canonicalSealMaterial`, la même
+ * que l'audit consomme — ce script en est le premier producteur historique,
+ * et les 16 sceaux qu'il a rendus sont la baseline de cette primitive.
  */
 interface Row {
   claimId: string;
@@ -51,9 +52,6 @@ interface Row {
   threadUrl: string | null;
   evidenceRefs: unknown;
 }
-
-const asStrings = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
 const q = (s: string): string => "'" + s.replace(/'/g, "''") + "'";
 
@@ -93,20 +91,7 @@ async function main(): Promise<void> {
 
   p("BEGIN;");
   for (const r of aSceller) {
-    const h = claimContentHash({
-      claimId: r.claimId,
-      title: r.title,
-      titleFr: r.titleFr,
-      description: r.description,
-      descriptionFr: r.descriptionFr,
-      category: r.category,
-      severity: r.severity,
-      status: r.status,
-      claimDate: r.claimDate ? r.claimDate.toISOString().slice(0, 10) : null,
-      actors: asStrings(r.actors),
-      threadUrl: r.threadUrl,
-      evidenceRefs: asStrings(r.evidenceRefs),
-    });
+    const h = claimContentHash(canonicalSealMaterial(r));
     p(`UPDATE "CaseFileClaim" SET "contentHash" = ${q(h)}, "updatedAt" = now()`);
     p(` WHERE "casefileRef" = ${q(ref)} AND "claimId" = ${q(r.claimId)}`);
     p(`   AND version = ${r.version} AND "contentHash" IS NULL;`);

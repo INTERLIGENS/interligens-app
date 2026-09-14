@@ -37,10 +37,42 @@
 // Les 16 claims migrés au bloc 4 ont été insérés sans sceau. NULL veut dire
 // « jamais scellé », pas « modifié ». Confondre les deux transformerait une
 // absence en accusation — exactement ce que la doctrine interdit ailleurs.
+//
+// ─── SPINE-00 · B — UNE SEULE NORMALISATION CANONIQUE ─────────────────────
+//
+//   « A seal format has one canonical normalization. A renderer, writer or
+//     audit tool may consume it; none may redefine it. »
+//
+// La matière scellée n'est pas la ligne brute : `actors` et `evidenceRefs`
+// sont du jsonb qui peut être NULL, `claimDate` une colonne `date`. Entre la
+// ligne et l'empreinte il y a donc une NORMALISATION, et c'est elle qui fait
+// le format — deux normalisations, c'est deux sceaux qui portent le même nom.
+//
+// MESURÉ le 2026-09-14 sur les 16 sceaux persistés en production : 16/16
+// vérifient sous la forme que `integrityAudit.ts` appliquait (tableaux jamais
+// nuls, `null → []`, `claimDate → YYYY-MM-DD`) ; 0/16 sous une forme qui
+// laisse `actors` absent. Cette forme est donc LA forme, et elle vit ici,
+// une fois : `canonicalSealMaterial`. Elle a été DÉPLACÉE, pas réécrite — les
+// 16 sceaux sont la baseline, et c'est elle qui a raison.
+//
+// `claimContentHash` n'accepte que la matière canonique (type nominal). Il
+// n'existe donc aucun chemin qui hache une composition locale : pour produire
+// une empreinte, il faut passer par la primitive.
+//
+// ⚠️ MESURÉ AUSSI : une colonne `date` rendue par Prisma est un `Date` à
+// minuit UTC, et `toISOString().slice(0, 10)` rend le jour exact. Un pilote
+// qui rendrait minuit LOCAL décalerait le jour d'un cran (8/16 au lieu de
+// 16/16 sous UTC+8, ici même). La forme canonique suppose donc le rendu
+// Prisma ; un autre lecteur doit fournir `YYYY-MM-DD` en chaîne.
 
 import { createHash } from "node:crypto";
 
-/** Ce qu'il faut d'un claim pour le sceller. Volontairement structurel. */
+/**
+ * Ce qu'une ligne apporte à la matière scellée — TELLE QUE LUE ou telle que
+ * saisie. Volontairement large : `actors` et `evidenceRefs` sont le jsonb
+ * brut, `claimDate` la colonne `date` ou déjà `YYYY-MM-DD`. La primitive
+ * normalise ; l'appelant ne le fait pas.
+ */
 export interface SealableClaim {
   readonly claimId: string;
   readonly title: string;
@@ -50,10 +82,70 @@ export interface SealableClaim {
   readonly category?: string | null;
   readonly severity?: string | null;
   readonly status?: string | null;
-  readonly claimDate?: string | null;
-  readonly actors?: readonly string[] | null;
+  /** `Date` telle que Prisma rend une colonne `date` (minuit UTC), ou `YYYY-MM-DD`. */
+  readonly claimDate?: Date | string | null;
+  /** jsonb brut : tableau, NULL, ou absent. */
+  readonly actors?: unknown;
   readonly threadUrl?: string | null;
-  readonly evidenceRefs?: readonly string[] | null;
+  /** jsonb brut : tableau, NULL, ou absent. */
+  readonly evidenceRefs?: unknown;
+}
+
+declare const MATIERE_CANONIQUE: unique symbol;
+
+/**
+ * La matière scellée sous sa forme CANONIQUE. Nominale : la marque ne
+ * s'obtient que de `canonicalSealMaterial`. Chaque champ est présent — jamais
+ * `undefined` — les textes absents valent `null`, les listes ne sont jamais
+ * nulles, la date est `YYYY-MM-DD` ou `null`.
+ */
+export interface CanonicalSealMaterial {
+  readonly [MATIERE_CANONIQUE]: true;
+  readonly claimId: string;
+  readonly title: string;
+  readonly titleFr: string | null;
+  readonly description: string | null;
+  readonly descriptionFr: string | null;
+  readonly category: string | null;
+  readonly severity: string | null;
+  readonly status: string | null;
+  readonly claimDate: string | null;
+  readonly actors: readonly string[];
+  readonly threadUrl: string | null;
+  readonly evidenceRefs: readonly string[];
+}
+
+const asStrings = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
+const jour = (d: Date | string | null | undefined): string | null =>
+  d === null || d === undefined ? null : d instanceof Date ? d.toISOString().slice(0, 10) : d;
+
+/**
+ * LA normalisation. Le seul site du dépôt qui compose la matière scellée.
+ *
+ * Idempotente : la matière canonique est son propre point fixe. Un tableau
+ * non textuel ou NULL devient `[]` ; un texte `undefined` devient `null` ;
+ * une `Date` devient son jour UTC. Rien d'autre n'est touché — en particulier
+ * la chaîne vide reste une chaîne vide, distincte de `null` dans l'empreinte.
+ */
+export function canonicalSealMaterial(c: SealableClaim): CanonicalSealMaterial {
+  return {
+    claimId: c.claimId,
+    title: c.title,
+    titleFr: c.titleFr ?? null,
+    description: c.description ?? null,
+    descriptionFr: c.descriptionFr ?? null,
+    category: c.category ?? null,
+    severity: c.severity ?? null,
+    status: c.status ?? null,
+    claimDate: jour(c.claimDate),
+    actors: asStrings(c.actors),
+    threadUrl: c.threadUrl ?? null,
+    evidenceRefs: asStrings(c.evidenceRefs),
+    // La marque nominale n'existe qu'au type : c'est ICI, et nulle part
+    // ailleurs dans le dépôt, qu'un objet la reçoit.
+  } as unknown as CanonicalSealMaterial;
 }
 
 /**
@@ -92,8 +184,11 @@ const norm = (v: unknown): string => (v === null || v === undefined ? SEP_ABSENT
  *
  * Les listes sont TRIÉES : réordonner des références ne change pas ce que le
  * claim affirme, donc ne doit pas casser le sceau.
+ *
+ * N'accepte que la matière CANONIQUE : la sérialisation ne normalise rien,
+ * elle n'a pas à le faire — `canonicalSealMaterial` l'a déjà fait, une fois.
  */
-export function claimContentHash(c: SealableClaim): string {
+export function claimContentHash(c: CanonicalSealMaterial): string {
   const parts = SEALED_FIELDS.map((f) => {
     const v = (c as unknown as Record<string, unknown>)[f];
     if (Array.isArray(v)) return `${f}=[${[...v].map(String).sort().join(SEP_LISTE)}]`;
@@ -213,13 +308,16 @@ export function auditClaims(
     vues.push(c.version);
     versionsVues.set(c.claimId, vues);
 
+    // La révision telle que lue passe par la primitive : l'audit compare le
+    // sceau à la matière CANONIQUE, jamais à la ligne brute.
+    const matiere = canonicalSealMaterial(c);
     if (c.contentHash == null || c.contentHash === "") {
       constats.push({ kind: "UNSEALED", claimId: c.claimId, version: c.version, field: "contentHash" });
-    } else if (claimContentHash(c) !== c.contentHash) {
+    } else if (claimContentHash(matiere) !== c.contentHash) {
       constats.push({ kind: "CONTENT_MUTATED", claimId: c.claimId, version: c.version, field: "contentHash" });
     }
 
-    for (const r of c.evidenceRefs ?? []) {
+    for (const r of matiere.evidenceRefs) {
       if (classifyReference(r, registre) === "BROKEN") {
         constats.push({ kind: "BROKEN_REFERENCE", claimId: c.claimId, version: c.version, field: r });
       }

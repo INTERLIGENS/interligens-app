@@ -24,7 +24,19 @@
 // se remarque d'autant moins qu'elle est ancienne. Un refus à l'écriture ne
 // dépend de personne.
 
-import { claimContentHash, type SealableClaim } from "./versioning";
+//
+// ─── SPINE-00 · B — ce module VÉRIFIE, il ne compose pas ─────────────────
+//
+// Les deux vérificateurs ci-dessous reçoivent une révision TELLE QUE LUE et
+// la font passer par `canonicalSealMaterial` avant de hacher : la matière
+// scellée a une seule normalisation, et elle ne vit pas ici. Le rendu SQL de
+// supplantation (`renderSupersedeSql`) qui vivait dans ce fichier a été RETIRÉ :
+// il hachait la charge brute sans normaliser — 0/16 sceaux persistés lui
+// correspondaient, et aucune ligne de la base n'est en version ≥ 2, la seule
+// qu'il pouvait produire. L'écrivain gouverné (`governedWriter.decideFoundation`
+// avec `supersedesVersion`) est l'unique chemin de supplantation.
+
+import { canonicalSealMaterial, claimContentHash, type SealableClaim } from "./versioning";
 
 /** L'état d'une révision de claim, tel qu'on peut le comparer. */
 export interface SealedRevision extends SealableClaim {
@@ -32,6 +44,9 @@ export interface SealedRevision extends SealableClaim {
   /** `null` = jamais scellé. Une absence, jamais une accusation. */
   readonly contentHash?: string | null;
 }
+
+/** L'empreinte d'une révision, par la primitive — jamais par la ligne brute. */
+const sceauDe = (r: SealableClaim): string => claimContentHash(canonicalSealMaterial(r));
 
 export class SilentRewriteError extends Error {
   constructor(claimId: string, version: number) {
@@ -63,7 +78,7 @@ export class BrokenSealError extends Error {
  * « altéré », et confondre les deux transformerait une absence en accusation.
  */
 export function isSealIntact(r: SealedRevision): boolean {
-  return !!r.contentHash && claimContentHash(r) === r.contentHash;
+  return !!r.contentHash && sceauDe(r) === r.contentHash;
 }
 
 /**
@@ -90,71 +105,10 @@ export function assertNoSilentRewrite(
     throw new BrokenSealError(avant.claimId, avant.version);
   }
 
-  const contenuChange = claimContentHash(avant) !== claimContentHash(apres);
+  const contenuChange = sceauDe(avant) !== sceauDe(apres);
   if (!contenuChange) return;
 
   if (apres.version <= avant.version) {
     throw new SilentRewriteError(avant.claimId, avant.version);
   }
-}
-
-/**
- * Le SQL d'une supplantation. RENDU, jamais exécuté.
- *
- * `INSERT` d'une version N+1 qui référence l'ancienne par `supersedes`. Aucun
- * `UPDATE` sur la ligne scellée : c'est tout le point.
- *
- * Le sceau de la nouvelle version est calculé ICI, par la même implémentation
- * que partout ailleurs. Deux implémentations d'un même sceau devraient
- * s'accorder à l'octet près, et la première divergence ferait crier à
- * l'altération sur des lignes que personne n'a touchées.
- */
-export function renderSupersedeSql(
-  casefileRef: string,
-  avant: SealedRevision,
-  apres: SealableClaim,
-): string {
-  const q = (s: string): string => "'" + s.replace(/'/g, "''") + "'";
-  const nul = (s: string | null | undefined): string => (s == null ? "NULL" : q(s));
-  const v = avant.version + 1;
-  const h = claimContentHash({ ...apres, claimId: avant.claimId });
-
-  return [
-    `-- Supplantation du claim ${avant.claimId} : v${avant.version} → v${v}`,
-    "-- RÉDIGÉ, NON EXÉCUTÉ. Cible ep-square-band, éditeur SQL Neon.",
-    "--",
-    "-- AUCUN UPDATE sur la version scellée. Elle reste, avec son sceau intact.",
-    "-- L'état de publication de la nouvelle version est ATTACHED : une",
-    "-- reformulation ne se publie pas d'elle-même, elle se re-décide.",
-    "BEGIN;",
-    `INSERT INTO "CaseFileClaim"`,
-    `  ("casefileRef", "claimId", title, "titleFr", description, "descriptionFr",`,
-    `   category, severity, status, "claimDate", "threadUrl", "evidenceRefs",`,
-    `   version, supersedes, "contentHash", "rowNature", state)`,
-    `SELECT ${q(casefileRef)}, ${q(avant.claimId)}, ${q(apres.title)}, ${nul(apres.titleFr)},`,
-    `       ${nul(apres.description)}, ${nul(apres.descriptionFr)}, ${nul(apres.category)},`,
-    `       ${nul(apres.severity)}, ${nul(apres.status)}, ${apres.claimDate ? q(apres.claimDate) + "::date" : "NULL"},`,
-    `       ${nul(apres.threadUrl)}, ${q(JSON.stringify(apres.evidenceRefs ?? []))}::jsonb,`,
-    `       ${v}, c.id, ${q(h)}, NULL, 'ATTACHED'`,
-    `  FROM "CaseFileClaim" c`,
-    ` WHERE c."casefileRef" = ${q(casefileRef)} AND c."claimId" = ${q(avant.claimId)}`,
-    `   AND c.version = ${avant.version}`,
-    `ON CONFLICT ("casefileRef", "claimId", version) DO NOTHING;`,
-    "COMMIT;",
-    "",
-    "-- ─── POST-CHECKS ──────────────────────────────────────────────────────",
-    `-- 1 · la version ${avant.version} est INTACTE. ATTENDU : 1 ligne, sceau inchangé`,
-    `SELECT version, "contentHash" FROM "CaseFileClaim"`,
-    ` WHERE "casefileRef" = ${q(casefileRef)} AND "claimId" = ${q(avant.claimId)}`,
-    ` ORDER BY version;`,
-    "",
-    `-- 2 · la nouvelle version référence bien l'ancienne. ATTENDU : 1`,
-    `SELECT count(*) AS chainee FROM "CaseFileClaim" n`,
-    `  JOIN "CaseFileClaim" a ON a.id = n.supersedes`,
-    ` WHERE n."casefileRef" = ${q(casefileRef)} AND n."claimId" = ${q(avant.claimId)}`,
-    `   AND n.version = ${v} AND a.version = ${avant.version};`,
-    "",
-    "-- 3 · relancer l'audit : CONTENT_MUTATED et VERSION_GAP doivent valoir 0.",
-    "--     auditCaseFileIntegrity(ref) — src/lib/casefile/integrityAudit.ts",
-  ].join("\n");
 }

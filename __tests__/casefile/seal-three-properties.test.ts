@@ -11,6 +11,7 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  canonicalSealMaterial,
   claimContentHash,
   auditClaims,
   summarizeFindings,
@@ -20,11 +21,12 @@ import {
 import {
   assertNoSilentRewrite,
   isSealIntact,
-  renderSupersedeSql,
   SilentRewriteError,
   BrokenSealError,
   type SealedRevision,
 } from "@/lib/casefile/sealGuard";
+
+const sceau = (c: SealableClaim): string => claimContentHash(canonicalSealMaterial(c));
 
 const CONTENU: SealableClaim = {
   claimId: "C11",
@@ -44,7 +46,7 @@ const CONTENU: SealableClaim = {
 const scelle = (o: Partial<SealedRevision> = {}): SealedRevision => ({
   ...CONTENU,
   version: 1,
-  contentHash: claimContentHash(CONTENU),
+  contentHash: sceau(CONTENU),
   ...o,
 });
 
@@ -132,26 +134,18 @@ describe("PROPRIÉTÉ 3 — une correction supplante, elle ne réécrit pas", ()
     ).toThrow(BrokenSealError);
   });
 
-  it("le SQL de supplantation n'émet AUCUN UPDATE sur la ligne scellée", () => {
-    const sql = renderSupersedeSql("IL-SHILL-VINE-001", scelle(), corrige);
-    expect(sql).not.toMatch(/UPDATE\s+"CaseFileClaim"/i);
-    expect(sql).toContain('INSERT INTO "CaseFileClaim"');
-    expect(sql).toContain("version = 1");
-    expect(sql).toContain("c.id");           // supersedes → l'ancienne ligne
-    expect(sql).toContain("'ATTACHED'");     // une reformulation ne se publie pas seule
-  });
-
-  it("le sceau de la nouvelle version est calculé par la MÊME implémentation", () => {
-    const sql = renderSupersedeSql("IL-SHILL-VINE-001", scelle(), corrige);
-    expect(sql).toContain(claimContentHash({ ...corrige, claimId: "C11" }));
-  });
+  // Le rendu SQL de supplantation (`renderSupersedeSql`) a été retiré en
+  // SPINE-00 · B : il hachait la charge brute sans normaliser, 0/16 sceaux
+  // persistés lui correspondaient. La supplantation passe par l'écrivain
+  // gouverné — témoin : rc-spine-00-ecrivain-gouverne.test.ts, propriété 2 ;
+  // contrôle d'absence : spine-00-b-sceau-canonique.test.ts.
 
   it("après supplantation, l'audit ne voit ni mutation ni trou", () => {
     const v1 = scelle() as AuditableClaim;
     const v2 = {
       ...corrige,
       version: 2,
-      contentHash: claimContentHash(corrige),
+      contentHash: sceau(corrige),
     } as AuditableClaim;
     const r = summarizeFindings(auditClaims([v1, v2], REGISTRE));
     expect(r.CONTENT_MUTATED).toBe(0);

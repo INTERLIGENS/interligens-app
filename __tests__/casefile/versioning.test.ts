@@ -12,6 +12,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import {
+  canonicalSealMaterial,
   claimContentHash,
   latestVersions,
   classifyReference,
@@ -21,6 +22,9 @@ import {
   type AuditableClaim,
   type SealableClaim,
 } from "@/lib/casefile/versioning";
+
+/** L'empreinte d'une charge, par la primitive — `claimContentHash` n'accepte que la matière canonique. */
+const sceau = (c: SealableClaim): string => claimContentHash(canonicalSealMaterial(c));
 
 const base: SealableClaim = {
   claimId: "C1",
@@ -40,7 +44,7 @@ const base: SealableClaim = {
 const auditable = (o: Partial<AuditableClaim> = {}): AuditableClaim => ({
   ...base,
   version: 1,
-  contentHash: claimContentHash(base),
+  contentHash: sceau(base),
   ...o,
 });
 
@@ -59,33 +63,33 @@ const codeSeul = (chemin: string): string =>
 
 describe("ÉTAPE 6 — le sceau scelle le contenu, et seulement lui", () => {
   it("le même contenu rend la même empreinte", () => {
-    expect(claimContentHash(base)).toBe(claimContentHash({ ...base }));
+    expect(sceau(base)).toBe(sceau({ ...base }));
   });
 
   it("MUTANT — changer un mot du titre casse le sceau", () => {
-    expect(claimContentHash({ ...base, title: "Coordinated postings" })).not.toBe(
-      claimContentHash(base),
+    expect(sceau({ ...base, title: "Coordinated postings" })).not.toBe(
+      sceau(base),
     );
   });
 
   it("chaîne vide et absence ne rendent PAS la même empreinte", () => {
     // Sans le séparateur, remplacer `""` par `null` passerait inaperçu — et
     // c'est exactement le genre de substitution qu'un sceau doit voir.
-    expect(claimContentHash({ ...base, titleFr: "" })).not.toBe(
-      claimContentHash({ ...base, titleFr: null }),
+    expect(sceau({ ...base, titleFr: "" })).not.toBe(
+      sceau({ ...base, titleFr: null }),
     );
   });
 
   it("réordonner des références ne casse PAS le sceau", () => {
     // L'ordre des refs ne change pas ce que le claim affirme.
-    expect(claimContentHash({ ...base, evidenceRefs: ["SRC-002", "SRC-001"] })).toBe(
-      claimContentHash(base),
+    expect(sceau({ ...base, evidenceRefs: ["SRC-002", "SRC-001"] })).toBe(
+      sceau(base),
     );
   });
 
   it("RETIRER une référence casse le sceau", () => {
-    expect(claimContentHash({ ...base, evidenceRefs: ["SRC-001"] })).not.toBe(
-      claimContentHash(base),
+    expect(sceau({ ...base, evidenceRefs: ["SRC-001"] })).not.toBe(
+      sceau(base),
     );
   });
 
@@ -106,7 +110,7 @@ describe("ÉTAPE 6 — le sceau scelle le contenu, et seulement lui", () => {
       title: base.title,
       claimId: base.claimId,
     };
-    expect(claimContentHash(inverse)).toBe(claimContentHash(base));
+    expect(sceau(inverse)).toBe(sceau(base));
   });
 
   it("MUTANT — l'ÉTAT n'entre pas dans le sceau", () => {

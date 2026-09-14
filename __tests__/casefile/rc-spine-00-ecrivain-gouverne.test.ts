@@ -24,7 +24,7 @@ import {
   type ClaimAssertionInput,
   type ExistingClaimInput,
 } from "@/lib/casefile/governedWriter";
-import { claimContentHash } from "@/lib/casefile/versioning";
+import { canonicalSealMaterial, claimContentHash } from "@/lib/casefile/versioning";
 import { projectForPublication, VINE_CASEFILE_REF, VINE_MINT } from "@/lib/casefile/publicProjection";
 import { ProvenanceLostError, resolveProvenance, type CanonicalCaseFile, type PublicSource } from "@/lib/casefile/canonicalReader";
 
@@ -87,8 +87,7 @@ const existing = (o: Partial<ExistingClaimInput> = {}): ExistingClaimInput => {
     actors: [], threadUrl: null, evidenceRefs: ["SRC-001"],
     ...o,
   };
-  const scellable = { ...base, actors: base.actors as string[], evidenceRefs: base.evidenceRefs as string[] };
-  return { ...base, contentHash: o.contentHash === undefined ? claimContentHash(scellable) : o.contentHash };
+  return { ...base, contentHash: o.contentHash === undefined ? claimContentHash(canonicalSealMaterial(base)) : o.contentHash };
 };
 
 // ═══ TÉMOIN POSITIF — un fondement complet PASSE ════════════════════════════
@@ -118,14 +117,20 @@ describe("RC-SPINE-00 — témoin positif : le fondement complet est FONDÉ, en 
 
   it("le sceau est calculé sous la normalisation MESURÉE de l'audit (tableaux, jamais null)", () => {
     const f = founded();
-    const attendu = claimContentHash({
+    const attendu = claimContentHash(canonicalSealMaterial({
       claimId: "C1", title: "Coordinated posting", titleFr: "Publication coordonnée",
       description: null, descriptionFr: null, category: null, severity: null, status: null,
       claimDate: "2025-11-04", actors: [], threadUrl: null, evidenceRefs: ["SRC-001"],
-    });
+    }));
     expect(f.claimToInsert.contentHash).toBe(attendu);
     // Et PAS la forme « actors absent » — 0/16 sceaux réels y correspondent.
-    const absent = claimContentHash({ claimId: "C1", title: "Coordinated posting", titleFr: "Publication coordonnée", claimDate: "2025-11-04", evidenceRefs: ["SRC-001"] });
+    // Cette forme n'est plus EXPRIMABLE par la primitive (undefined → []) : pour
+    // la produire il faut contourner le type, ce que seul un test se permet.
+    const absent = claimContentHash({
+      claimId: "C1", title: "Coordinated posting", titleFr: "Publication coordonnée",
+      description: null, descriptionFr: null, category: null, severity: null, status: null,
+      claimDate: "2025-11-04", actors: undefined, threadUrl: null, evidenceRefs: ["SRC-001"],
+    } as unknown as ReturnType<typeof canonicalSealMaterial>);
     expect(f.claimToInsert.contentHash).not.toBe(absent);
   });
 
