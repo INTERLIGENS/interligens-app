@@ -367,7 +367,7 @@ interface TargetRow extends ReleaseTargetRow, Record<string, unknown> {
 }
 interface DecisionRow extends Record<string, unknown> {
   id: string; casefile_ref: string; claim_id: string; claim_version: number; audience: string;
-  decision: string; decided_by: string; decided_at: string;
+  decision: string; decided_by: string; decided_at: string; cause: string | null;
 }
 
 const ISO_UTC_STRICT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
@@ -420,7 +420,7 @@ async function verrouillerCible<C extends string>(db: SqlRunner, cible: CibleDec
  */
 async function relireDerniereDecision(db: SqlRunner, cible: CibleDecision) {
   const relues = await db.query<DecisionRow>(
-    `SELECT id::text AS id, casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at::text AS decided_at
+    `SELECT id::text AS id, casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at::text AS decided_at, cause
        FROM casefile_claim_publication_decisions
       WHERE casefile_ref = $1 AND claim_id = $2 AND claim_version = $3 AND audience = $4
       ORDER BY id DESC LIMIT 1`,
@@ -525,7 +525,7 @@ export type RevokeOutcome =
       readonly outcome: "REVOKED";
       readonly target: { casefileRef: string; claimId: string; version: number; contentHash: string };
       readonly decisionId: string;
-      /** Portée par l'intention, rendue ici. NON persistée : la table n'a pas de colonne (manque déclaré). */
+      /** La cause telle que RELUE en base après l'INSERT — égale à celle de l'intention, sinon REFUSED. */
       readonly cause: RevokeIntent["cause"];
     }
   | { readonly outcome: "REFUSED"; readonly refusal: Refusal<RevokeRefusalCause> }
@@ -565,13 +565,15 @@ export async function executeRevoke(
       // a) LE VERROU — la ligne exacte, et elle seule.
       const row = await verrouillerCible<RevokeExecutionCause>(db, intent);
 
-      // b) LA DÉCISION, PERSISTÉE. 'REVOKE' est un LITTÉRAL : ce chemin ne peut écrire que lui.
+      // b) LA DÉCISION, PERSISTÉE, AVEC SA CAUSE. 'REVOKE' est un LITTÉRAL : ce
+      //    chemin ne peut écrire que lui. La cause vient de l'intention (vocabulaire
+      //    fermé, jugé avant la transaction) et la base la re-vérifie par CHECK.
       const inserees = await db.query<{ id: string }>(
         `INSERT INTO casefile_claim_publication_decisions
-           (casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at)
-         VALUES ($1, $2, $3, $4, 'REVOKE', $5, $6::timestamptz)
+           (casefile_ref, claim_id, claim_version, audience, decision, decided_by, decided_at, cause)
+         VALUES ($1, $2, $3, $4, 'REVOKE', $5, $6::timestamptz, $7)
          RETURNING id::text AS id`,
-        [intent.casefileRef, intent.claimId, intent.version, intent.audience, authority.decidedBy, authority.decidedAt],
+        [intent.casefileRef, intent.claimId, intent.version, intent.audience, authority.decidedBy, authority.decidedAt, intent.cause],
       );
       const insertedId = inserees[0]?.id;
       if (typeof insertedId !== "string" || insertedId === "") throw new GovernedAbort<RevokeExecutionCause>("DECISION_NOT_RECORDED", "decision.id");
@@ -618,6 +620,7 @@ const toPersistedRow = (r: DecisionRow): PersistedDecisionRow => ({
   decision: r.decision,
   decidedBy: r.decided_by,
   decidedAt: r.decided_at,
+  cause: r.cause === undefined ? null : r.cause,
 });
 
 async function lireRegistre(db: SqlRunner, casefileRef: string): Promise<Map<string, PublicSource>> {

@@ -181,7 +181,7 @@ describe("SPINE-00 · B — le sceau de l'écrivain est celui que l'audit recalc
   const SHA = "a".repeat(64);
   const request: FoundationRequest = {
     dossier: { ref: VINE_CASEFILE_REF, canonicalMint: VINE_MINT },
-    snapshots: [{ id: "snap-1", canonicalMint: VINE_MINT, sha256: SHA, sourceUrl: "https://x.com/e/1", observedAt: "2025-12-07T10:00:00.000Z" }],
+    snapshots: [{ id: "snap-1", canonicalMint: VINE_MINT, sha256: SHA, sourceUrl: "https://x.com/e/1", observedAt: "2025-12-07T10:00:00.000Z", provenanceKind: "VERIFIED" }],
     sources: [{ kind: "FROM_SNAPSHOT", sourceId: "SRC-001", snapshotId: "snap-1", sourceType: "screenshot", caption: null }],
     existingClaims: [],
     claim: { casefileRef: VINE_CASEFILE_REF, claimId: "C1", rowNature: "PRIMARY_OBSERVATION", title: "Coordinated posting", claimDate: "2025-11-04", evidenceRefs: ["SRC-001"] },

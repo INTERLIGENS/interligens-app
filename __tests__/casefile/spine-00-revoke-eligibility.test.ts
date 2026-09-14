@@ -10,10 +10,11 @@
 //
 //   a) OPERATOR_DECLARED → FONDABLE
 //   b) OPERATOR_DECLARED → PAS libérable, cause NOMMÉE
-//   c) UNKNOWN → PAS publiable. (Fondable : la spec du prédicat et le ruling
-//      tolèrent UNKNOWN au fondement — l'absence de donnée est la valeur par
-//      défaut, elle bloque la publication, pas le fondement. Voir l'en-tête
-//      de provenanceKind.ts.)
+//   c) UNKNOWN → NI fondable NI publiable, cause SOURCE_PROVENANCE_UNQUALIFIED.
+//      (Ruling resserré du 2026-09-14, décision 3 : « Foundation may tolerate
+//      incomplete QUALIFIED provenance; it may not tolerate absence of
+//      provenance qualification. » Le vocabulaire des causes ne bouge pas :
+//      UNKNOWN change de côté.)
 //   d) VERIFIED → fondable ET publiable
 //   e) executeRevoke sur ATTACHED → refus, zéro ligne écrite
 //   f) executeRevoke ne touche ni contentHash ni sceau
@@ -96,7 +97,7 @@ const ligne = (f: Foundation, o: Partial<ReleaseTargetRow> = {}): ReleaseTargetR
   rowNature: f.claimToInsert.rowNature, evidenceRefs: f.claimToInsert.evidenceRefs, ...o,
 });
 const intention = (f: Foundation) => ({ casefileRef: f.casefileRef, claimId: "C1", version: 1, expectedContentHash: f.claimToInsert.contentHash, audience: "PUBLIC" as const });
-const grant = (f: Foundation) => attestPersistedDecision({ id: ID, casefileRef: f.casefileRef, claimId: "C1", claimVersion: 1, audience: "PUBLIC", decision: "GRANT", decidedBy: "david", decidedAt: "2026-09-14T12:00:00Z" });
+const grant = (f: Foundation) => attestPersistedDecision({ id: ID, casefileRef: f.casefileRef, claimId: "C1", claimVersion: 1, audience: "PUBLIC", decision: "GRANT", decidedBy: "david", decidedAt: "2026-09-14T12:00:00Z", cause: null });
 const registreDe = (f: Foundation) => new Map<string, PublicSource>(f.citedSources.map((s) => [s.sourceId, s]));
 
 /** Le dossier tel que le LECTEUR le rendrait : la pièce décorée par readProvenanceKind. */
@@ -129,6 +130,9 @@ describe("T1 · les deux prédicats — chaque cause, un cas nommé", () => {
     ["lien au snapshot faux", piece({ evidenceLinked: false }), "SOURCE_EVIDENCE_UNLINKED", "evidenceLinked"],
     ["lien au snapshot non fourni", piece({ evidenceLinked: undefined }), "SOURCE_EVIDENCE_UNLINKED", "evidenceLinked"],
     ["provenanceKind hors vocabulaire (« verified »)", piece({ provenanceKind: "verified" as never }), "SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind"],
+    // (c) — décision GPT 3 : UNKNOWN est une ABSENCE de qualification, pas une qualification incomplète.
+    ["provenanceKind UNKNOWN (explicite)", piece({ provenanceKind: "UNKNOWN" }), "SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind"],
+    ["provenanceKind absent (= UNKNOWN)", piece({ provenanceKind: undefined }), "SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind"],
   ];
   for (const [nom, s, cause, field] of CAS) {
     it(`${nom} → refusé au FONDEMENT et à la PUBLICATION : ${cause} @ ${field}`, () => {
@@ -137,24 +141,26 @@ describe("T1 · les deux prédicats — chaque cause, un cas nommé", () => {
     });
   }
 
-  it("(a)(d) le FONDEMENT tolère UNKNOWN, OPERATOR_DECLARED, EXTRACTED, VERIFIED — et l'absence vaut UNKNOWN", () => {
-    for (const kind of SOURCE_PROVENANCE_KINDS) {
+  it("(a)(d) le FONDEMENT tolère OPERATOR_DECLARED, EXTRACTED, VERIFIED — jamais UNKNOWN, et l'absence vaut UNKNOWN", () => {
+    for (const kind of ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const) {
       const e = isFoundationEligibleSource(piece({ provenanceKind: kind }));
       expect(e.eligible, kind).toBe(true);
       if (e.eligible) expect(e.source.provenanceKind).toBe(kind);
     }
-    const absente = isFoundationEligibleSource(piece({ provenanceKind: undefined }));
-    expect(absente.eligible).toBe(true);
-    if (absente.eligible) expect(absente.source.provenanceKind).toBe("UNKNOWN");
-    expect([...FOUNDATION_TOLERATED_PROVENANCE].sort()).toEqual([...SOURCE_PROVENANCE_KINDS].sort());
+    const attendu = { eligible: false, refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", field: "provenanceKind" } };
+    expect(isFoundationEligibleSource(piece({ provenanceKind: "UNKNOWN" }))).toEqual(attendu);
+    expect(isFoundationEligibleSource(piece({ provenanceKind: undefined }))).toEqual(attendu);
+    expect([...FOUNDATION_TOLERATED_PROVENANCE].sort()).toEqual(["EXTRACTED", "OPERATOR_DECLARED", "VERIFIED"]);
+    expect(SOURCE_PROVENANCE_KINDS).toContain("UNKNOWN"); // le vocabulaire garde UNKNOWN : c'est la valeur par DÉFAUT, pas une qualification
   });
 
-  it("(b)(c)(d) la PUBLICATION n'accepte que VERIFIED : UNKNOWN, OPERATOR_DECLARED, EXTRACTED sont refusés PAR LEUR NOM", () => {
-    for (const kind of ["UNKNOWN", "OPERATOR_DECLARED", "EXTRACTED"] as const) {
+  it("(b)(c)(d) la PUBLICATION n'accepte que VERIFIED : OPERATOR_DECLARED et EXTRACTED → NOT_VERIFIED ; UNKNOWN → UNQUALIFIED", () => {
+    for (const kind of ["OPERATOR_DECLARED", "EXTRACTED"] as const) {
       expect(isPublicationEligibleSource(piece({ provenanceKind: kind })), kind).toEqual({
         eligible: false, refusal: { cause: "SOURCE_PROVENANCE_NOT_VERIFIED", field: "provenanceKind" },
       });
     }
+    expect(isPublicationEligibleSource(piece({ provenanceKind: "UNKNOWN" }))).toEqual({ eligible: false, refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", field: "provenanceKind" } });
     expect(isPublicationEligibleSource(piece({ provenanceKind: undefined })).eligible, "absente = UNKNOWN").toBe(false);
     const ok = isPublicationEligibleSource(piece({ provenanceKind: "VERIFIED" }));
     expect(ok.eligible).toBe(true);
@@ -202,14 +208,22 @@ describe("T1 · fondement ≠ publication, sur les trois consommateurs", () => {
     expect(p.withheld).toEqual([{ excluded: true, reason: "INSUFFICIENT_PROVENANCE", field: "provenanceKind", count: 1 }]);
   });
 
-  it("(c) UNKNOWN (qualification absente) → fondable, PAS libérable, PAS projetable", () => {
-    const f = fonder(undefined, "c".repeat(64));
-    expect(f.citedSources[0].provenanceKind).toBe("UNKNOWN");
-    const d = decidePublicRelease(intention(f), ligne(f), registreDe(f), grant(f), ID);
-    expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_NOT_VERIFIED", at: "SRC-001.provenanceKind" } });
-    const p = projectForPublication(dossierLu(f, "PUBLIC"), "test");
+  it("(c) UNKNOWN (qualification absente, sha inconnu du registre) → NI fondable NI publiable : SOURCE_PROVENANCE_UNQUALIFIED nommée", () => {
+    // 1 · fondement : refus NOMMÉ, à l'emplacement de la pièce (cause de contrat INCOMPLETE, champ provenanceKind)
+    const d = decideFoundation(requete(undefined, "c".repeat(64)));
+    expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_INCOMPLETE", at: "SRC-001.provenanceKind" } });
+    // 2 · le prédicat lui-même, par sa cause propre — sur ce que readProvenanceKind rend RÉELLEMENT pour un sha inconnu
+    expect(isFoundationEligibleSource(piece({ sha256: "c".repeat(64), provenanceKind: readProvenanceKind({ sourceId: "SRC-001", sha256: "c".repeat(64) }) })))
+      .toEqual({ eligible: false, refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", field: "provenanceKind" } });
+    // 3 · libération d'une ligne fondée AVANT le resserrement, pièce relue UNKNOWN : refusée par la MÊME cause, pas NOT_VERIFIED
+    const f = fonder("VERIFIED");
+    const registre = new Map<string, PublicSource>([["SRC-001", { ...f.citedSources[0], provenanceKind: "UNKNOWN" }]]);
+    expect(decidePublicRelease(intention(f), ligne(f), registre, grant(f), ID)).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_INCOMPLETE", at: "SRC-001.provenanceKind" } });
+    // 4 · projection : retenue, champ provenanceKind
+    const dossier = dossierLu(f, "PUBLIC");
+    const p = projectForPublication({ ...dossier, sources: dossier.sources.map((s) => ({ ...s, provenanceKind: "UNKNOWN" as const })) }, "test");
     expect(p.claims).toEqual([]);
-    expect(p.withheld[0].field).toBe("provenanceKind");
+    expect(p.withheld).toEqual([{ excluded: true, reason: "INSUFFICIENT_PROVENANCE", field: "provenanceKind", count: 1 }]);
   });
 
   it("(c') une qualification HORS vocabulaire n'est pas UNKNOWN : elle refuse le fondement lui-même", () => {
@@ -271,7 +285,7 @@ const REF = VINE_CASEFILE_REF;
 const CONTENU = { claimId: "VINE-0xS-01", title: "Post du 8 octobre", titleFr: null, description: null, descriptionFr: null, category: null, severity: null, status: null, claimDate: "2025-10-08", actors: [], threadUrl: null, evidenceRefs: ["SRC-0xS-09"] };
 const H = claimContentHash(canonicalSealMaterial(CONTENU));
 const cible = (o: Record<string, unknown> = {}) => ({ casefileRef: REF, ...CONTENU, version: 2, state: "PUBLIC", contentHash: H, rowNature: "PRIMARY_OBSERVATION", ...o });
-const relue = (o: Record<string, unknown> = {}) => ({ id: "19", casefile_ref: REF, claim_id: "VINE-0xS-01", claim_version: 2, audience: "PUBLIC", decision: "REVOKE", decided_by: "David Douville", decided_at: "2026-09-14 15:00:00+00", ...o });
+const relue = (o: Record<string, unknown> = {}) => ({ id: "19", casefile_ref: REF, claim_id: "VINE-0xS-01", claim_version: 2, audience: "PUBLIC", decision: "REVOKE", decided_by: "David Douville", decided_at: "2026-09-14 15:00:00+00", cause: "INSUFFICIENT_SOURCE_PROVENANCE", ...o });
 const INTENT: RevokeIntent = { casefileRef: REF, claimId: "VINE-0xS-01", version: 2, expectedContentHash: H, audience: "PUBLIC", cause: "INSUFFICIENT_SOURCE_PROVENANCE" };
 const AUTH = { decidedBy: "David Douville", decidedAt: "2026-09-14T15:00:00Z" };
 
@@ -294,7 +308,10 @@ describe("T1 · executeRevoke — la séquence symétrique, dans une transaction
     expect(demote).toBeGreaterThan(reread);
     expect(db.committed).toBe(1);
     expect(db.journal[ins]).toContain("'REVOKE'");
-    expect(db.params[ins - 1]).toEqual([REF, "VINE-0xS-01", 2, "PUBLIC", "David Douville", "2026-09-14T15:00:00Z"]);
+    // La cause est ÉCRITE (8e paramètre, colonne `cause`) et RELUE (SELECT … cause).
+    expect(db.journal[ins]).toMatch(/decided_at, cause\) VALUES \(\$1, \$2, \$3, \$4, 'REVOKE', \$5, \$6::timestamptz, \$7\)/);
+    expect(db.params[ins - 1]).toEqual([REF, "VINE-0xS-01", 2, "PUBLIC", "David Douville", "2026-09-14T15:00:00Z", "INSUFFICIENT_SOURCE_PROVENANCE"]);
+    expect(db.journal[reread]).toMatch(/decided_at, cause FROM casefile_claim_publication_decisions/);
     expect(db.journal[ins]).not.toMatch(/David|Douville/);
   });
 
@@ -325,6 +342,8 @@ describe("T1 · executeRevoke — la séquence symétrique, dans une transaction
     ["la relecture rend un GRANT sous l'id inséré", () => [relue({ decision: "GRANT" })], "DECISION_NOT_REVOKE", "decision.decision"],
     ["la relecture rend une décision sur une autre version", () => [relue({ claim_version: 1 })], "DECISION_TARGET_MISMATCH", "decision.claimVersion"],
     ["la relecture rend une décision sur un autre claim", () => [relue({ claim_id: "VINE-0xS-02" })], "DECISION_TARGET_MISMATCH", "decision.claimId"],
+    ["la relecture rend un REVOKE sans cause (impossible par CHECK, refusé quand même)", () => [relue({ cause: null })], "DECISION_NOT_REVOKE", "decision.cause"],
+    ["la relecture rend un REVOKE sous une autre cause", () => [relue({ cause: "BECAUSE" })], "DECISION_NOT_REVOKE", "decision.cause"],
   ];
   for (const [nom, reread, cause, at] of FALSIFS) {
     it(`relecture falsifiée · ${nom} → REFUSED/${cause}, aucun UPDATE, ROLLBACK`, async () => {
@@ -394,7 +413,7 @@ describe("T1 · executeRevoke — la séquence symétrique, dans une transaction
   });
 
   it("decideRevoke refuse une décision NON attestée (construite à la main)", () => {
-    const main = { id: ID, casefileRef: REF, claimId: "VINE-0xS-01", claimVersion: 2, audience: "PUBLIC", decision: "REVOKE", decidedBy: "x", decidedAt: "2026-09-14T15:00:00Z" };
+    const main = { id: ID, casefileRef: REF, claimId: "VINE-0xS-01", claimVersion: 2, audience: "PUBLIC", decision: "REVOKE", decidedBy: "x", decidedAt: "2026-09-14T15:00:00Z", cause: "INSUFFICIENT_SOURCE_PROVENANCE" };
     // @ts-expect-error — PersistedPublicationDecision est nominale.
     const d = decideRevoke(INTENT, cible() as ReleaseTargetRow, main, ID);
     expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "DECISION_NOT_ATTESTED", at: "decision" } });

@@ -76,7 +76,7 @@ async function empreinte(c: Client) {
   return {
     claims: (await c.query(`SELECT count(*)::int AS n, md5(string_agg(t::text, '|' ORDER BY id)) AS md5 FROM "CaseFileClaim" t`)).rows[0],
     sources: (await c.query(`SELECT count(*)::int AS n, md5(string_agg(t::text, '|' ORDER BY id)) AS md5 FROM "CaseFileSource" t`)).rows[0],
-    decisions: (await c.query(`SELECT count(*)::int AS n, string_agg(id::text || ':' || decision, ',' ORDER BY id) AS ids FROM casefile_claim_publication_decisions`)).rows[0],
+    decisions: (await c.query(`SELECT count(*)::int AS n, string_agg(id::text || ':' || decision, ',' ORDER BY id) AS ids, string_agg(coalesce(cause, '∅'), ',' ORDER BY id) AS causes FROM casefile_claim_publication_decisions`)).rows[0],
     seq: (await c.query(`SELECT last_value::text AS v FROM casefile_claim_publication_decisions_id_seq`)).rows[0].v,
   };
 }
@@ -110,7 +110,7 @@ async function main(): Promise<number> {
     for (const id of CLAIMS) {
       const v2 = depart.find((r) => r.claimId === id && r.version === 2)!;
       const row: ReleaseTargetRow = { casefileRef: REF, claimId: id, version: 2, state: "ATTACHED", contentHash: v2.contentHash, rowNature: "PRIMARY_OBSERVATION", evidenceRefs: (v2 as unknown as { evidenceRefs: unknown }).evidenceRefs };
-      const grantFictif = attestPersistedDecision({ id: "0", casefileRef: REF, claimId: id, claimVersion: 2, audience: "PUBLIC", decision: "GRANT", decidedBy: "x", decidedAt: "2026-09-14T00:00:00Z" });
+      const grantFictif = attestPersistedDecision({ id: "0", casefileRef: REF, claimId: id, claimVersion: 2, audience: "PUBLIC", decision: "GRANT", decidedBy: "x", decidedAt: "2026-09-14T00:00:00Z", cause: null });
       const d = decidePublicRelease({ casefileRef: REF, claimId: id, version: 2, expectedContentHash: v2.contentHash, audience: "PUBLIC" }, row, registre as never, grantFictif, "0");
       check(`(b) ${id} v2 ne serait PLUS libérable aujourd'hui → ${d.decision === "REFUSED" ? d.refusal.cause + " @ " + d.refusal.at : d.decision}`, d.decision === "REFUSED" && d.refusal.cause === "SOURCE_PROVENANCE_NOT_VERIFIED");
     }
@@ -138,8 +138,9 @@ async function main(): Promise<number> {
 
       // ── L'état DANS la transaction.
       const dedans = await etatClaims(c);
-      const decisions = (await c.query(`SELECT id::text AS id, claim_id, claim_version, decision, decided_by FROM casefile_claim_publication_decisions WHERE casefile_ref = $1 ORDER BY id`, [REF])).rows;
-      check("dans la transaction : 6 décisions (3 GRANT 16/17/18 puis 3 REVOKE), les GRANT intacts", decisions.length === 6 && decisions.slice(0, 3).every((d, i) => d.id === String(16 + i) && d.decision === "GRANT" && d.decided_by === "David Douville") && decisions.slice(3).every((d) => d.decision === "REVOKE" && d.decided_by === AUTH.decidedBy), j(decisions.map((d) => `${d.id}:${d.claim_id}v${d.claim_version}:${d.decision}`)));
+      const decisions = (await c.query(`SELECT id::text AS id, claim_id, claim_version, decision, decided_by, cause FROM casefile_claim_publication_decisions WHERE casefile_ref = $1 ORDER BY id`, [REF])).rows;
+      check("dans la transaction : 6 décisions (3 GRANT 16/17/18 cause NULL, puis 3 REVOKE), les GRANT intacts", decisions.length === 6 && decisions.slice(0, 3).every((d, i) => d.id === String(16 + i) && d.decision === "GRANT" && d.cause === null && d.decided_by === "David Douville") && decisions.slice(3).every((d) => d.decision === "REVOKE" && d.decided_by === AUTH.decidedBy), j(decisions.map((d) => `${d.id}:${d.claim_id}v${d.claim_version}:${d.decision}:${d.cause ?? "∅"}`)));
+      check("  la cause est PERSISTÉE en colonne sur les 3 REVOKE, et RELUE par l'exécuteur = INSUFFICIENT_SOURCE_PROVENANCE", decisions.slice(3).every((d) => d.cause === "INSUFFICIENT_SOURCE_PROVENANCE") && resultats.every((r) => (r as { cause?: string }).cause === "INSUFFICIENT_SOURCE_PROVENANCE"));
       for (const id of CLAIMS) {
         const v2a = depart.find((r) => r.claimId === id && r.version === 2)!;
         const v2 = dedans.find((r) => r.claimId === id && r.version === 2)!;
@@ -160,7 +161,7 @@ async function main(): Promise<number> {
     console.log("APRÈS  ", j(apres));
     const final = await etatClaims(c);
     check("APRÈS ROLLBACK · les 3 v2 sont toujours PUBLIC, les 3 v1 ATTACHED, sceaux identiques", CLAIMS.every((id) => final.find((r) => r.claimId === id && r.version === 2)!.state === "PUBLIC" && final.find((r) => r.claimId === id && r.version === 1)!.state === "ATTACHED") && j(final) === j(depart));
-    check("APRÈS ROLLBACK · table de décisions : 3 lignes, 16:GRANT,17:GRANT,18:GRANT", apres.decisions.n === 3 && apres.decisions.ids === "16:GRANT,17:GRANT,18:GRANT", j(apres.decisions));
+    check("APRÈS ROLLBACK · table de décisions : 3 lignes, 16:GRANT,17:GRANT,18:GRANT, causes NULL", apres.decisions.n === 3 && apres.decisions.ids === "16:GRANT,17:GRANT,18:GRANT" && apres.decisions.causes === "∅,∅,∅", j(apres.decisions));
     check("APRÈS ROLLBACK · CaseFileClaim et CaseFileSource : comptes et md5 IDENTIQUES", j(avant.claims) === j(apres.claims) && j(avant.sources) === j(apres.sources));
     lignes.push(`   séquence id : ${avant.seq} → ${apres.seq} (valeurs consommées par les INSERT annulés — non transactionnel, déclaré)`);
   } finally {

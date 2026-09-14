@@ -45,9 +45,14 @@
 //
 //   isFoundationEligibleSource   identité stable, empreinte, origine,
 //                                horodatage, lien vers le snapshot, et une
-//                                qualification de provenance LISIBLE — même
-//                                incomplète : UNKNOWN et OPERATOR_DECLARED
-//                                passent. Consommée par `decideFoundation`.
+//                                qualification de provenance PRÉSENTE — même
+//                                incomplète : OPERATOR_DECLARED et EXTRACTED
+//                                passent, UNKNOWN non. Consommée par
+//                                `decideFoundation`. Ruling resserré du
+//                                2026-09-14 (décision 3) : « Foundation may
+//                                tolerate incomplete QUALIFIED provenance; it
+//                                may not tolerate absence of provenance
+//                                qualification. »
 //   isPublicationEligibleSource  tout ce qui précède, ET provenance VERIFIED,
 //                                strictement. Consommée par
 //                                `decidePublicRelease` et par la projection.
@@ -147,7 +152,7 @@ export const SOURCE_ELIGIBILITY_CAUSES = [
   "SOURCE_CAPTURE_MISSING",
   /** `evidenceLinked` faux ou absent : la pièce ne pointe vers aucun EvidenceSnapshot (l'identifiant lui-même ne traverse pas la frontière publique). */
   "SOURCE_EVIDENCE_UNLINKED",
-  /** `provenanceKind` présent mais HORS du vocabulaire fermé. L'absence vaut UNKNOWN, pas un refus. */
+  /** `provenanceKind` UNKNOWN (absence de qualification, valeur par défaut) ou HORS du vocabulaire fermé. */
   "SOURCE_PROVENANCE_UNQUALIFIED",
   /** PUBLICATION seulement : la qualification n'est pas VERIFIED. */
   "SOURCE_PROVENANCE_NOT_VERIFIED",
@@ -166,7 +171,7 @@ declare const PUBLICATION_ELIGIBLE: unique symbol;
 /** Une pièce jugée éligible au FONDEMENT. Nominale : `isFoundationEligibleSource` seule la produit. */
 export interface FoundationEligibleSource extends PublicSource {
   readonly [FONDATION_ELIGIBLE]: true;
-  readonly provenanceKind: SourceProvenanceKind;
+  readonly provenanceKind: Exclude<SourceProvenanceKind, "UNKNOWN">;
 }
 /** Une pièce jugée éligible à la PUBLICATION. Nominale : `isPublicationEligibleSource` seule la produit. */
 export interface PublicationEligibleSource extends PublicSource {
@@ -185,17 +190,23 @@ const estCleAcceptable = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && v.trim() === v;
 const estSha256 = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
 
-/** Les qualifications que le FONDEMENT tolère. Fermé. VERIFIED y est, évidemment. */
+/**
+ * Les qualifications que le FONDEMENT tolère. Fermé. UNKNOWN n'y est PAS :
+ * l'absence de qualification n'est pas une qualification incomplète, c'est
+ * une absence — et elle tombe sous SOURCE_PROVENANCE_UNQUALIFIED, comme une
+ * valeur hors vocabulaire. Décision GPT 3 du 2026-09-14.
+ */
 export const FOUNDATION_TOLERATED_PROVENANCE: readonly SourceProvenanceKind[] =
-  ["UNKNOWN", "OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const;
+  ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const;
 
 /**
  * ÉLIGIBILITÉ AU FONDEMENT. Identité stable, empreinte, origine, horodatage,
- * lien explicite vers le snapshot, et une qualification LISIBLE — même
- * incomplète. Une qualification ABSENTE vaut UNKNOWN et passe : « Foundation
- * may tolerate incomplete provenance. » Une qualification présente mais hors
- * vocabulaire ne passe pas : on ne devine pas ce que « verified » en minuscules
- * voulait dire.
+ * lien explicite vers le snapshot, et une qualification PRÉSENTE — même
+ * incomplète. Une qualification ABSENTE vaut UNKNOWN et NE passe PAS :
+ * « Foundation may tolerate incomplete QUALIFIED provenance; it may not
+ * tolerate absence of provenance qualification. » Une valeur hors vocabulaire
+ * ne passe pas non plus : on ne devine pas ce que « verified » en minuscules
+ * voulait dire. Les deux tombent sous la MÊME cause.
  */
 export function isFoundationEligibleSource(s: PublicSource): FoundationEligibility {
   const refuse = (cause: SourceEligibilityCause, field: SourceProvenanceField): FoundationEligibility =>
@@ -819,6 +830,8 @@ export interface PersistedDecisionRow {
   readonly decision: string;
   readonly decidedBy: string;
   readonly decidedAt: string;
+  /** T1-CAUSE-ET-REVOKE-REEL — NULL sur un GRANT, vocabulaire fermé sur un REVOKE (CHECK en base). */
+  readonly cause: string | null;
 }
 
 /** La même ligne, ATTESTÉE relue par l'exécuteur. Nominale. */
@@ -929,6 +942,8 @@ export function decidePublicRelease(
   if (persisted.claimVersion !== intent.version) return refuse("DECISION_TARGET_MISMATCH", "decision.claimVersion");
   if (persisted.audience !== intent.audience) return refuse("DECISION_TARGET_MISMATCH", "decision.audience");
   if (persisted.decision !== "GRANT") return refuse("DECISION_NOT_GRANT", "decision.decision");
+  // Un GRANT ne porte pas de cause : la base l'interdit (CHECK cohérence), on le relit quand même.
+  if (persisted.cause !== null) return refuse("DECISION_NOT_GRANT", "decision.cause");
 
   // Le contrat de PUBLICATION, pas celui du fondement : VERIFIED, strictement.
   const contrat = decidePublicationContract(row, registre);
@@ -961,8 +976,12 @@ export function decidePublicRelease(
 // d'une assertion à la qualité de ses pièces — c'est précisément quand elles
 // sont insuffisantes qu'on révoque. La CAUSE est portée par l'intention, dans
 // un vocabulaire fermé, et rendue dans le résultat. Elle N'EST PAS persistée :
-// la table n'a pas de colonne pour elle (manque déclaré, pas comblé — pas de
-// DDL dans cette fenêtre).
+// depuis le 2026-09-14 (décision GPT 1), la table porte une colonne `cause`,
+// vocabulaire fermé par CHECK, NULL obligatoire sur GRANT et non-NULL
+// obligatoire sur REVOKE. L'exécuteur l'ÉCRIT et la RELIT : la décision
+// exige que la cause relue soit celle demandée. Pas de `basis` libre :
+// décision GPT 2, NO-GO — « l'endroit où serait écrite la véritable décision
+// pendant que le reason code devient décoratif ».
 
 export const REVOCATION_CAUSES = [
   /** La provenance d'une pièce citée ne suffit pas à la publication (ruling du 2026-09-14). */
@@ -1050,6 +1069,9 @@ export function decideRevoke(
   if (persisted.claimVersion !== intent.version) return refuse("DECISION_TARGET_MISMATCH", "decision.claimVersion");
   if (persisted.audience !== intent.audience) return refuse("DECISION_TARGET_MISMATCH", "decision.audience");
   if (persisted.decision !== "REVOKE") return refuse("DECISION_NOT_REVOKE", "decision.decision");
+  // La cause RELUE est celle demandée : une décision REVOKE sous une autre
+  // cause n'est pas la décision qu'on vient d'inscrire.
+  if (persisted.cause !== intent.cause) return refuse("DECISION_NOT_REVOKE", "decision.cause");
 
   return {
     decision: "REVOCABLE",

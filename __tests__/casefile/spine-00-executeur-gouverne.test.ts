@@ -117,7 +117,7 @@ const ligneCible = (o: Record<string, unknown> = {}) => ({
   casefileRef: REF, ...CONTENU, version: 1, state: "ATTACHED", contentHash: H, rowNature: "PRIMARY_OBSERVATION", ...o,
 });
 const decisionRelue = (o: Record<string, unknown> = {}) => ({
-  id: "7", casefile_ref: REF, claim_id: "C1", claim_version: 1, audience: "PUBLIC", decision: "GRANT", decided_by: "david", decided_at: "2026-09-14 12:00:00+00", ...o,
+  id: "7", casefile_ref: REF, claim_id: "C1", claim_version: 1, audience: "PUBLIC", decision: "GRANT", decided_by: "david", decided_at: "2026-09-14 12:00:00+00", cause: null, ...o,
 });
 
 const INTENT: FoundationIntent = {
