@@ -1,4 +1,5 @@
 // ─── T2-PROVENANCE-JOURNAL — LE HARNAIS QUI SAIT ÉCHOUER ───────────────────
+// ─── amendé T1-JOURNAL-AMENDE-ET-MESURE (2026-09-14, décisions 4a/4b/5) ────
 //
 // ██  « Un harnais qui ne sait pas échouer ne mesure pas. »                  ██
 // ██  Ici, RIEN ne touche la production : Postgres JETABLE en WASM (PGlite). ██
@@ -10,14 +11,18 @@
 // installation locale (mesuré avec 0.3.15, PostgreSQL 17.5 en WASM ; la
 // production est en 17.11 — même majeure, mêmes catalogues).
 //
-// DEUX SÉRIES :
+// TROIS SÉRIES :
 //   (A) le VÉRIFICATEUR sait échouer. Le DDL est rejoué, puis SABOTÉ d'une
 //       seule manière par scénario, et le vérificateur doit rendre le code et
 //       NOMMER l'écart. Un vérificateur qui resterait vert sur un schéma faux
 //       ne mesurerait rien.
 //   (B) le DDL tient ses règles. Chaque CHECK, la FK, l'append-only et la
 //       lecture canonique sont exercés par des écritures réelles — refusées
-//       ou acceptées — avec le code SQLSTATE attendu.
+//       ou acceptées — avec le code SQLSTATE attendu. Depuis 4a, le cas qui
+//       compte double : 'UNKNOWN' ne peut PAS être écrit dans la table.
+//   (C) le POST-CHECK SQL (second bloc à coller dans Neon) sait rougir : tout
+//       `ok = true` sur le DDL rejoué tel quel, au moins une ligne `ok = false`
+//       par sabotage.
 //
 // Sortie : 0 si chaque scénario a fait ce qu'on attendait de lui, 1 sinon.
 
@@ -28,6 +33,7 @@ import { verifier, TABLE, type Runner } from "./verifier-provenance-journal-sche
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DDL = readFileSync(path.join(REPO, "docs/prep/MIGRATION_PROVENANCE_JOURNAL_2026-09-14.sql"), "utf8");
+const POSTCHECK = readFileSync(path.join(REPO, "docs/prep/POSTCHECK_PROVENANCE_JOURNAL_2026-09-14.sql"), "utf8");
 
 const modPath = process.env.PGLITE_PATH;
 if (!modPath) {
@@ -51,6 +57,9 @@ async function postgresJetable(avecDdl: boolean): Promise<Jetable> {
   };
 }
 
+interface LignePostCheck { point: string; ok: boolean; attendu: string; reel: string }
+const postCheck = (pg: Jetable) => pg.run.query<LignePostCheck>(POSTCHECK);
+
 const lignes: string[] = [];
 let ko = 0;
 const check = (nom: string, ok: boolean, detail = "") => { if (!ok) ko++; lignes.push(`${ok ? "OK " : "KO "} ${nom}${detail ? "\n     · " + detail : ""}`); };
@@ -60,15 +69,23 @@ interface Sabotage { nom: string; sql: string | null; avecDdl?: boolean; code: 0
 const SABOTAGES: readonly Sabotage[] = [
   { nom: "TÉMOIN · DDL rejoué tel quel", sql: null, code: 0, ecartAttendu: null },
   { nom: "table ABSENTE (DDL non rejoué)", sql: null, avecDdl: false, code: 2, ecartAttendu: null },
+  // ── Les sabotages commandés par 4a / 4b ──
+  { nom: "4a · UNKNOWN RÉINTRODUIT dans le domaine de provenance_kind", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_provenance_kind_check, ADD CONSTRAINT ${TABLE}_provenance_kind_check CHECK (provenance_kind IN ('UNKNOWN','OPERATOR_DECLARED','EXTRACTED','VERIFIED'))`, code: 3, ecartAttendu: /^contrainte evidence_provenance_journal_provenance_kind_check : forme divergente — réel .*'UNKNOWN'::text/ },
+  { nom: "4a · unknown_has_no_reference RÉINTRODUITE", sql: `ALTER TABLE ${TABLE} ADD CONSTRAINT ${TABLE}_unknown_has_no_reference_check CHECK ((provenance_kind = 'UNKNOWN') = (source_url IS NULL) AND (provenance_kind = 'UNKNOWN') = (reference_kind IS NULL))`, code: 3, ecartAttendu: /^contrainte INATTENDUE : evidence_provenance_journal_unknown_has_no_reference_check/ },
+  { nom: "4b · verified_not_query_context RETIRÉE", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_verified_not_query_context_check`, code: 3, ecartAttendu: /^contrainte ABSENTE : evidence_provenance_journal_verified_not_query_context_check$/ },
+  { nom: "4a · nullabilité relâchée · reference_kind DROP NOT NULL", sql: `ALTER TABLE ${TABLE} ALTER COLUMN reference_kind DROP NOT NULL`, code: 3, ecartAttendu: /^nullabilité divergente : reference_kind — attendu NO, réel YES$/ },
+  { nom: "4a · nullabilité relâchée · source_url DROP NOT NULL", sql: `ALTER TABLE ${TABLE} ALTER COLUMN source_url DROP NOT NULL`, code: 3, ecartAttendu: /^nullabilité divergente : source_url — attendu NO, réel YES$/ },
+  // ── Les sabotages de la première livraison, conservés ──
   { nom: "colonne MANQUANTE · sha256 supprimée", sql: `ALTER TABLE ${TABLE} DROP COLUMN sha256`, code: 3, ecartAttendu: /^colonne ABSENTE : sha256$/ },
   { nom: "colonne MANQUANTE · verification_method supprimée (CASCADE emporte 2 CHECK)", sql: `ALTER TABLE ${TABLE} DROP COLUMN verification_method CASCADE`, code: 3, ecartAttendu: /^colonne ABSENTE : verification_method$/ },
   { nom: "DEFAULT ajouté sur declared_at", sql: `ALTER TABLE ${TABLE} ALTER COLUMN declared_at SET DEFAULT now()`, code: 3, ecartAttendu: /^défaut INTERDIT \(donnée déclarée, pas une horloge\) : declared_at — réel now\(\)$/ },
   { nom: "DEFAULT ajouté sur verified_at", sql: `ALTER TABLE ${TABLE} ALTER COLUMN verified_at SET DEFAULT now()`, code: 3, ecartAttendu: /^défaut INTERDIT \(donnée déclarée, pas une horloge\) : verified_at — réel now\(\)$/ },
   { nom: "trigger ABSENT · no_rewrite", sql: `DROP TRIGGER ${TABLE}_no_rewrite ON ${TABLE}`, code: 3, ecartAttendu: /^APPEND-ONLY non exécutable : trigger ABSENT evidence_provenance_journal_no_rewrite/ },
   { nom: "trigger ABSENT · no_truncate", sql: `DROP TRIGGER ${TABLE}_no_truncate ON ${TABLE}`, code: 3, ecartAttendu: /^APPEND-ONLY non exécutable : trigger ABSENT evidence_provenance_journal_no_truncate/ },
+  { nom: "trigger DÉSACTIVÉ · no_rewrite (présent, tgenabled = D)", sql: `ALTER TABLE ${TABLE} DISABLE TRIGGER ${TABLE}_no_rewrite`, code: 3, ecartAttendu: /^APPEND-ONLY non exécutable : trigger evidence_provenance_journal_no_rewrite DÉSACTIVÉ \(tgenabled = D, attendu O\)$/ },
   { nom: "index ABSENT · lecture « dernier état connu »", sql: `DROP INDEX ${TABLE}_snapshot_idx`, code: 3, ecartAttendu: /^index ABSENT : evidence_provenance_journal_snapshot_idx$/ },
   { nom: "CHECK de cohérence ABSENT · verified_iff_verification", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_verified_iff_verification_check`, code: 3, ecartAttendu: /^contrainte ABSENTE : evidence_provenance_journal_verified_iff_verification_check$/ },
-  { nom: "domaine ÉLARGI à la main · provenance_kind admet 'INFERRED'", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_provenance_kind_check, ADD CONSTRAINT ${TABLE}_provenance_kind_check CHECK (provenance_kind IN ('UNKNOWN','OPERATOR_DECLARED','EXTRACTED','VERIFIED','INFERRED'))`, code: 3, ecartAttendu: /^contrainte evidence_provenance_journal_provenance_kind_check : forme divergente — réel .*INFERRED/ },
+  { nom: "domaine ÉLARGI à la main · provenance_kind admet 'INFERRED'", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_provenance_kind_check, ADD CONSTRAINT ${TABLE}_provenance_kind_check CHECK (provenance_kind IN ('OPERATOR_DECLARED','EXTRACTED','VERIFIED','INFERRED'))`, code: 3, ecartAttendu: /^contrainte evidence_provenance_journal_provenance_kind_check : forme divergente — réel .*INFERRED/ },
   { nom: "FK affaiblie · ON DELETE CASCADE", sql: `ALTER TABLE ${TABLE} DROP CONSTRAINT ${TABLE}_snapshot_fkey, ADD CONSTRAINT ${TABLE}_snapshot_fkey FOREIGN KEY (evidence_snapshot_id) REFERENCES "EvidenceSnapshot"(id) ON UPDATE RESTRICT ON DELETE CASCADE`, code: 3, ecartAttendu: /^contrainte evidence_provenance_journal_snapshot_fkey : forme divergente — réel .*ON DELETE CASCADE$/ },
   { nom: "colonne INATTENDUE ajoutée", sql: `ALTER TABLE ${TABLE} ADD COLUMN inferred_from text`, code: 3, ecartAttendu: /^colonne INATTENDUE : inferred_from$/ },
   { nom: "nullabilité relâchée · declared_by DROP NOT NULL", sql: `ALTER TABLE ${TABLE} ALTER COLUMN declared_by DROP NOT NULL`, code: 3, ecartAttendu: /^nullabilité divergente : declared_by — attendu NO, réel YES$/ },
@@ -76,6 +93,8 @@ const SABOTAGES: readonly Sabotage[] = [
 ];
 
 lignes.push("── (A) le vérificateur sait échouer");
+// (C) est joué dans la même boucle : même Postgres, même sabotage, le post-check SQL doit rougir aussi.
+const resultatsC: string[] = [];
 for (const s of SABOTAGES) {
   const pg = await postgresJetable(s.avecDdl ?? true);
   try {
@@ -85,6 +104,20 @@ for (const s of SABOTAGES) {
     const ecartOk = s.ecartAttendu === null ? v.ecarts.length === 0 || s.code === 2 : v.ecarts.some((e) => s.ecartAttendu!.test(e));
     check(`${s.nom} → exit ${s.code}${s.ecartAttendu ? ", écart nommé" : ""}`, codeOk && ecartOk,
       `réel : exit ${v.code} · ${v.ecarts.length} écart(s)${v.ecarts.length ? " : " + v.ecarts.join(" | ") : ""}`);
+
+    // (C) le post-check SQL sur le même schéma. Table absente : la requête échoue (42P01), c'est attendu.
+    if (s.code === 2) {
+      const err = await postCheck(pg).then(() => "OK").catch((e) => String((e as { code?: string }).code ?? (e as Error).message));
+      resultatsC.push(`${err === "42P01" ? "OK " : "KO "} POST-CHECK · ${s.nom} → 42P01 (table absente)\n     · réel : ${err}`);
+      if (err !== "42P01") ko++;
+    } else {
+      const rows = await postCheck(pg);
+      const faux = rows.filter((r) => !r.ok);
+      const attenduVert = s.code === 0;
+      const ok = attenduVert ? faux.length === 0 && rows.length > 0 : faux.length > 0;
+      if (!ok) ko++;
+      resultatsC.push(`${ok ? "OK " : "KO "} POST-CHECK · ${s.nom} → ${attenduVert ? "tout ok = true" : "au moins une ligne ok = false"}\n     · réel : ${rows.length} ligne(s), ${faux.length} false${faux.length ? " : " + faux.map((f) => f.point).join(" | ") : ""}`);
+    }
   } finally {
     await pg.close();
   }
@@ -111,25 +144,29 @@ lignes.push("── (B) le DDL tient ses règles (écritures réelles, SQLSTATE 
   check("TÉMOIN POSITIF · OPERATOR_DECLARED + PUBLICATION + URL → accepté", (await ins({ sha: SHA })) === "OK");
   check("TÉMOIN POSITIF · EXTRACTED + QUERY_CONTEXT (la table DIT que c'est un contexte de découverte) → accepté", (await ins({ kind: "EXTRACTED", ref: "QUERY_CONTEXT", url: "https://x.com/search?q=botify", by: "tool:inbox_manifest.py" })) === "OK");
   check("TÉMOIN POSITIF · VERIFIED avec (qui, quand, méthode admise) → accepté", (await ins({ kind: "VERIFIED", vby: "operator:david", vat: T0, vm: "URL_MATCHES_CAPTURED_POST" })) === "OK");
-  check("TÉMOIN POSITIF · requalification UNKNOWN (sans URL, sans reference_kind) → accepté", (await ins({ kind: "UNKNOWN", ref: null, url: null })) === "OK");
+  check("TÉMOIN POSITIF · DOCUMENT avec un localisateur gouverné (clé R2) en source_url → accepté", (await ins({ ref: "DOCUMENT", url: "r2://interligens-evidence/botify-main/leaked-deck.pdf" })) === "OK");
+
+  // ── 4a : le cas nouveau, il compte double. Deux formes, deux refus.
+  check("4a REFUSÉ 23514 · provenance_kind = 'UNKNOWN' avec une référence complète (le DOMAINE refuse)", (await ins({ kind: "UNKNOWN" })) === "23514");
+  check("4a REFUSÉ 23502 · provenance_kind = 'UNKNOWN' dans l'ancienne forme (sans URL ni reference_kind : le NOT NULL refuse AVANT le CHECK)", (await ins({ kind: "UNKNOWN", ref: null, url: null })) === "23502");
 
   check("REFUSÉ 23514 · VERIFIED sans verified_by/at/method", (await ins({ kind: "VERIFIED" })) === "23514");
   check("REFUSÉ 23514 · VERIFIED avec méthode mais sans verified_at", (await ins({ kind: "VERIFIED", vby: "operator:david", vm: "URL_MATCHES_CAPTURED_POST" })) === "23514");
   check("REFUSÉ 23514 · OPERATOR_DECLARED portant verified_by (les trois ou aucun)", (await ins({ vby: "operator:david", vat: T0, vm: "URL_MATCHES_CAPTURED_POST" })) === "23514");
   check("REFUSÉ 23514 · méthode hors domaine « URL_RESPONDS » (répondre n'est pas correspondre)", (await ins({ kind: "VERIFIED", vby: "operator:david", vat: T0, vm: "URL_RESPONDS" })) === "23514");
-  check("REFUSÉ 23514 · VERIFIED sur un QUERY_CONTEXT (discovery context is not source provenance)", (await ins({ kind: "VERIFIED", ref: "QUERY_CONTEXT", url: "https://x.com/search?q=botify", vby: "operator:david", vat: T0, vm: "URL_MATCHES_CAPTURED_POST" })) === "23514");
-  check("REFUSÉ 23514 · UNKNOWN avec une URL (une URL est une déclaration)", (await ins({ kind: "UNKNOWN", ref: null, url: "https://x.com/u/status/1" })) === "23514");
-  check("REFUSÉ 23514 · UNKNOWN avec un reference_kind", (await ins({ kind: "UNKNOWN", ref: "PUBLICATION", url: null })) === "23514");
-  check("REFUSÉ 23514 · déclaration SANS URL", (await ins({ url: null })) === "23514");
+  check("4b REFUSÉ 23514 · VERIFIED sur un QUERY_CONTEXT (discovery context is not source provenance)", (await ins({ kind: "VERIFIED", ref: "QUERY_CONTEXT", url: "https://x.com/search?q=botify", vby: "operator:david", vat: T0, vm: "URL_MATCHES_CAPTURED_POST" })) === "23514");
+  check("REFUSÉ 23502 · déclaration SANS URL (NOT NULL, plus de CHECK à contourner)", (await ins({ url: null })) === "23502");
+  check("REFUSÉ 23502 · déclaration SANS reference_kind (NOT NULL)", (await ins({ ref: null })) === "23502");
   check("REFUSÉ 23514 · provenance_kind hors domaine « INFERRED »", (await ins({ kind: "INFERRED" })) === "23514");
   check("REFUSÉ 23514 · reference_kind hors domaine « SEARCH »", (await ins({ ref: "SEARCH" })) === "23514");
   check("REFUSÉ 23514 · declared_by vide", (await ins({ by: "" })) === "23514");
   check("REFUSÉ 23514 · declared_by avec blanc de bord", (await ins({ by: " operator:david" })) === "23514");
+  check("REFUSÉ 23514 · source_url vide", (await ins({ url: "" })) === "23514");
   check("REFUSÉ 23514 · source_url avec blanc de bord", (await ins({ url: "https://x.com/u/status/1 " })) === "23514");
   check("REFUSÉ 23514 · sha256 mal formé", (await ins({ sha: "ABC" })) === "23514");
   check("REFUSÉ 23502 · declared_at NULL (pas de DEFAULT qui comblerait)", (await ins({ at: null })) === "23502");
   check("REFUSÉ 23503 · pièce inexistante (FK vers l'identité gouvernée)", (await ins({ snap: "snap-404" })) === "23503");
-  check("REFUSÉ 428C9 · id fourni par l'appelant (GENERATED ALWAYS)", (await sqlstate(`INSERT INTO ${TABLE} (id, evidence_snapshot_id, provenance_kind, declared_by, declared_at) VALUES (999, 'snap-1', 'UNKNOWN', 'x', $1)`, [T0])) === "428C9");
+  check("REFUSÉ 428C9 · id fourni par l'appelant (GENERATED ALWAYS)", (await sqlstate(`INSERT INTO ${TABLE} (id, evidence_snapshot_id, provenance_kind, reference_kind, source_url, declared_by, declared_at) VALUES (999, 'snap-1', 'OPERATOR_DECLARED', 'PUBLICATION', 'https://x.com/u/status/1', 'x', $1)`, [T0])) === "428C9");
 
   check("APPEND-ONLY 23001 · UPDATE refusé", (await sqlstate(`UPDATE ${TABLE} SET declared_by = 'autre' WHERE id = 1`)) === "23001");
   check("APPEND-ONLY 23001 · DELETE refusé", (await sqlstate(`DELETE FROM ${TABLE} WHERE id = 1`)) === "23001");
@@ -137,32 +174,42 @@ lignes.push("── (B) le DDL tient ses règles (écritures réelles, SQLSTATE 
   check("RESTRICT 23503 · supprimer une pièce qui porte un journal est refusé", (await sqlstate(`DELETE FROM "EvidenceSnapshot" WHERE id = 'snap-1'`)) === "23503");
   check("RESTRICT 23503 · renuméroter une pièce qui porte un journal est refusé", (await sqlstate(`UPDATE "EvidenceSnapshot" SET id = 'snap-1b' WHERE id = 'snap-1'`)) === "23503");
 
-  // La lecture canonique : le dernier état connu de snap-1 est la requalification UNKNOWN (4e INSERT).
-  const dernier = await pg.run.query<{ provenance_kind: string; id: number }>(
-    `SELECT id, provenance_kind FROM ${TABLE} WHERE evidence_snapshot_id = $1 ORDER BY id DESC LIMIT 1`, ["snap-1"]);
-  check("LECTURE CANONIQUE · dernier état connu de snap-1 = UNKNOWN (la requalification, id max), l'historique reste lisible",
-    dernier[0]?.provenance_kind === "UNKNOWN" && Number((await pg.run.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${TABLE} WHERE evidence_snapshot_id = 'snap-1'`))[0].n) === 4,
+  // La lecture canonique : snap-1 porte 4 lignes (OPERATOR_DECLARED, EXTRACTED, VERIFIED, OPERATOR_DECLARED/DOCUMENT).
+  // Le dernier état connu est le 4e INSERT — une requalification vers une qualification MOINS forte,
+  // qui reste une qualification apportée : on ne « redescend » jamais à UNKNOWN.
+  const dernier = await pg.run.query<{ provenance_kind: string; reference_kind: string; id: number }>(
+    `SELECT id, provenance_kind, reference_kind FROM ${TABLE} WHERE evidence_snapshot_id = $1 ORDER BY id DESC LIMIT 1`, ["snap-1"]);
+  check("LECTURE CANONIQUE · dernier état connu de snap-1 = la 4e ligne (OPERATOR_DECLARED/DOCUMENT, id max), l'historique reste lisible",
+    dernier[0]?.provenance_kind === "OPERATOR_DECLARED" && dernier[0]?.reference_kind === "DOCUMENT" && Number((await pg.run.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${TABLE} WHERE evidence_snapshot_id = 'snap-1'`))[0].n) === 4,
     JSON.stringify(dernier));
   const tous = await pg.run.query<{ evidence_snapshot_id: string; provenance_kind: string }>(
     `SELECT s.id AS evidence_snapshot_id, COALESCE(j.provenance_kind, 'UNKNOWN') AS provenance_kind
        FROM "EvidenceSnapshot" s
        LEFT JOIN LATERAL (SELECT * FROM ${TABLE} WHERE evidence_snapshot_id = s.id ORDER BY id DESC LIMIT 1) j ON true
       ORDER BY s.id`);
-  check("LECTURE CANONIQUE · une pièce SANS ligne vaut UNKNOWN sans consulter \"sourceUrl\"",
+  check("LECTURE CANONIQUE · une pièce SANS ligne vaut UNKNOWN par COALESCE — la SEULE façon dont UNKNOWN existe — sans consulter \"sourceUrl\"",
     tous.length === 2 && tous[1].evidence_snapshot_id === "snap-2" && tous[1].provenance_kind === "UNKNOWN", JSON.stringify(tous));
+  const stocke = await pg.run.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${TABLE} WHERE provenance_kind = 'UNKNOWN'`);
+  check("4a · aucune ligne STOCKÉE ne porte 'UNKNOWN' (0 après tous les essais)", Number(stocke[0].n) === 0);
 
   // Le plan de la lecture canonique passe par l'index (evidence_snapshot_id, id DESC).
-  // Sur 4 lignes le planificateur préfère un seq scan : on le lui interdit pour
-  // voir si l'index SAIT servir la requête — c'est la forme de l'index qu'on prouve.
   await pg.exec(`ANALYZE ${TABLE}; SET enable_seqscan = off`);
   const plan = (await pg.run.query<{ "QUERY PLAN": string }>(`EXPLAIN SELECT * FROM ${TABLE} WHERE evidence_snapshot_id = 'snap-1' ORDER BY id DESC LIMIT 1`)).map((r) => r["QUERY PLAN"]).join(" / ");
   check("INDEX · la lecture canonique est servie par evidence_provenance_journal_snapshot_idx, sans tri", plan.includes("evidence_provenance_journal_snapshot_idx") && !/\bSort\b/.test(plan), plan);
 
   const v = await verifier(pg.run);
   check("le vérificateur reste CONFORME après ces écritures (4 lignes = information, pas écart)", v.code === 0 && v.introspection.lignes === 4, `exit ${v.code}, ${v.introspection.lignes} ligne(s)`);
+  // Le post-check, lui, exige une table VIDE : après 4 lignes, exactement UNE ligne false, « table VIDE ».
+  const pc = await postCheck(pg);
+  const pcFaux = pc.filter((r) => !r.ok).map((r) => r.point);
+  check("POST-CHECK · après 4 lignes, exactement une ligne ok = false : « table VIDE » (le post-check est pour la POSE, pas pour la vie de la table)", pcFaux.length === 1 && pcFaux[0] === "table VIDE", pcFaux.join(" | "));
   await pg.close();
 }
 
+lignes.push("── (C) le post-check SQL (second bloc Neon) sait rougir");
+lignes.push(...resultatsC);
+
 console.log(lignes.join("\n"));
-console.log(`\n${ko === 0 ? "✅" : "❌"} scénarios KO = ${ko} / ${lignes.filter((l) => /^(OK|KO) /.test(l)).length}`);
+const total = lignes.filter((l) => /^(OK|KO) /.test(l)).length;
+console.log(`\n${ko === 0 ? "✅" : "❌"} scénarios KO = ${ko} / ${total}`);
 process.exitCode = ko === 0 ? 0 : 1;

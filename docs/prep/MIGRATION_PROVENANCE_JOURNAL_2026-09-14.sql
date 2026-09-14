@@ -1,17 +1,37 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- T2-PROVENANCE-JOURNAL — LE JOURNAL DE PROVENANCE D'UNE PIÈCE — DDL ADDITIF
 -- Fichier : docs/prep/MIGRATION_PROVENANCE_JOURNAL_2026-09-14.sql
+-- Amendé T1-JOURNAL-AMENDE-ET-MESURE (2026-09-14, décisions GPT 4a / 4b / 5)
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- ⚠️ NON APPLIQUÉ. À coller dans l'ÉDITEUR SQL NEON (ep-square-band), après
 --    snapshot de branche. JAMAIS `prisma db push`, JAMAIS `prisma migrate` —
 --    les deux schemas portent le verrou A9 et s'arrêtent sur P1012.
 --
--- Ruling GPT du 14/09 :
+-- Ruling GPT du 14/09 (première série) :
 --   « La provenance d'une pièce doit être journalisée, append-only, spécifique
 --     à la pièce, et NON inférée. »
 --   « Discovery context is not source provenance. »
 --   « A grep n'est pas une provenance. »
+--
+-- Décisions GPT du 14/09 (seconde série), qui AMENDENT ce fichier :
+--   4a  Le journal ne porte PLUS d'état UNKNOWN. « Absence de ligne = UNKNOWN
+--       dérivé. Une ligne append-only doit représenter une qualification
+--       effectivement APPORTÉE, pas enregistrer l'absence de qualification. »
+--       Domaine : OPERATOR_DECLARED | EXTRACTED | VERIFIED. Rien d'autre.
+--       → la contrainte unknown_has_no_reference DISPARAÎT : elle n'a plus d'objet.
+--   4b  verified_not_query_context est CONSERVÉE. « Un QUERY_CONTEXT peut être
+--       documenté comme contexte de découverte, mais il ne peut pas être la
+--       référence de provenance individuelle vérifiée d'un post. »
+--   5   Le journal devient l'AUTORITÉ sur la provenance :
+--         EvidenceSnapshot            → identité de l'observation
+--         evidence_provenance_journal → autorité sur la provenance et la
+--                                       nature de la référence
+--         CaseFileSource              → projection de cette Evidence dans un dossier
+--         CaseFileClaim               → assertion fondée sur cette source
+--       CaseFileSource.sourceUrl n'est plus une preuve autonome de provenance.
+--       Divergence journal ↔ CaseFileSource = FAIL CLOSED. Aucun backfill ne
+--       transforme les anciennes valeurs en autorité.
 --
 -- Le constat qui commande (mesuré le 2026-09-14 sur "EvidenceSnapshot") :
 --   1171 pièces · 753 portent une URL de RECHERCHE (/search?) · 213 une URL de
@@ -45,6 +65,13 @@
 --     append-only est ÉPROUVÉ en production. On le reproduit, on ne le partage
 --     pas (une fonction par table : le message nomme la table, et retirer l'une
 --     ne désarme pas l'autre).
+--   · (T1, 2026-09-14) "CaseFileSource"."snapshotId" text NULL, FK
+--     "CaseFileSource_snapshotId_fkey" → "EvidenceSnapshot"(id) ON DELETE SET
+--     NULL. C'est le SEUL pont projection → observation. 2 sources sur 10 le
+--     portent (SRC-0xS-09 → 34f4068a-57d8-45c5-9c8a-47b29b931e1b, SRC-0xS-18 →
+--     f24e3252-7d16-41a3-8253-eb0c1be67654, sha256 concordants) ; les 8 sources
+--     BOTIFY n'ont ni snapshotId, ni sha256, ni sourceUrl, et aucun
+--     EvidenceSnapshot ne porte leurs fichiers IMG_2239…2246.
 --
 -- ─── POURQUOI LA CIBLE EST L'IDENTITÉ, PAS LE HASH ──────────────────────────
 --   Le sha256 identifie des OCTETS, pas un contexte d'acquisition. Deux
@@ -55,9 +82,12 @@
 --
 -- ─── CE QUE LA TABLE GARANTIT PAR STRUCTURE ─────────────────────────────────
 --   1. une ligne vise une pièce qui EXISTE                → FK RESTRICT/RESTRICT
---   2. les domaines sont FERMÉS                           → CHECK énumérés
+--   2. les domaines sont FERMÉS, et UNKNOWN n'en fait
+--      pas partie                                         → CHECK énumérés
 --   3. VERIFIED ⇔ (qui, quand, comment) tous les trois    → CHECK, pas convention
---   4. UNKNOWN ⇔ aucune référence                         → CHECK
+--   4. une ligne porte TOUJOURS une référence et sa
+--      nature (une qualification apportée qualifie
+--      quelque chose)                                     → NOT NULL
 --   5. un contexte de découverte n'est JAMAIS vérifié
 --      comme source                                       → CHECK
 --   6. le dernier état connu est NON AMBIGU               → id IDENTITY, ordre total
@@ -70,6 +100,14 @@
 --   declared_at et verified_at SANS DEFAULT, par conception : ce sont des
 --   données DÉCLARÉES, pas l'horloge du serveur. recorded_at est l'horloge de
 --   la base — la seule qui ordonne (même règle que la table de décisions).
+--
+-- ─── LES QUATRE AXES RESTENT SÉPARÉS ────────────────────────────────────────
+--   qui a capturé la pièce        → "EvidenceSnapshot" (hors de cette table)
+--   comment l'URL a été obtenue   → provenance_kind
+--   ce que cette URL désigne      → reference_kind
+--   si la correspondance a été
+--   vérifiée, par qui et comment  → verified_by · verified_at · verification_method
+--   Aucune colonne n'en porte deux.
 
 BEGIN;
 
@@ -87,17 +125,19 @@ CREATE TABLE IF NOT EXISTS evidence_provenance_journal (
                         CONSTRAINT evidence_provenance_journal_sha256_check
                         CHECK (sha256 ~ '^[0-9a-f]{64}$'),
 
-  -- ── Ce qu'on SAIT. Domaine fermé.
-  --   UNKNOWN           : rien d'établi (requalification explicite ; l'absence
-  --                       de ligne vaut déjà UNKNOWN)
+  -- ── COMMENT la référence a été obtenue. Domaine fermé, SANS UNKNOWN (4a).
   --   OPERATOR_DECLARED : un opérateur affirme la référence, sans preuve jointe
   --   EXTRACTED         : la référence est lue dans la pièce elle-même ou ses
   --                       métadonnées (WhereFroms, barre d'adresse visible…)
   --   VERIFIED          : la référence a été confrontée au contenu visible de
   --                       la pièce, par une méthode admise ci-dessous
+  --   UNKNOWN n'est PAS une valeur de cette colonne : c'est l'ABSENCE de ligne,
+  --   dérivée à la lecture (COALESCE, voir la lecture canonique). Une ligne
+  --   « UNKNOWN » enregistrerait une absence de qualification, ce qu'un journal
+  --   de qualifications apportées ne fait pas.
   provenance_kind       TEXT NOT NULL
                         CONSTRAINT evidence_provenance_journal_provenance_kind_check
-                        CHECK (provenance_kind IN ('UNKNOWN', 'OPERATOR_DECLARED', 'EXTRACTED', 'VERIFIED')),
+                        CHECK (provenance_kind IN ('OPERATOR_DECLARED', 'EXTRACTED', 'VERIFIED')),
 
   -- ── Ce QU'EST la référence. Domaine fermé.
   --   QUERY_CONTEXT : une page de recherche, un fil filtré — le contexte de
@@ -106,16 +146,37 @@ CREATE TABLE IF NOT EXISTS evidence_provenance_journal (
   --   PROFILE       : la page de l'auteur
   --   DOCUMENT      : un fichier (PDF, export, pièce interne)
   --   OTHER         : nommé tel quel, pour ne pas forcer un domaine faux
-  reference_kind        TEXT
+  --
+  -- NOT NULL — tranché le 2026-09-14 (T1), avec source_url ci-dessous :
+  --   Depuis 4a, une ligne est une qualification APPORTÉE. Qualifier, c'est
+  --   dire COMMENT une référence a été obtenue (provenance_kind) et CE QU'ELLE
+  --   désigne (reference_kind). Une ligne sans référence ne qualifie rien :
+  --   elle dirait « quelqu'un a déclaré » sans dire quoi — c'est la ligne
+  --   UNKNOWN qui vient d'être bannie, sous un autre nom. Les trois valeurs du
+  --   domaine présupposent une référence (déclarée, extraite, vérifiée) ; la
+  --   seule qui n'en présupposait pas était UNKNOWN. Le NOT NULL est donc la
+  --   forme structurelle de 4a, et il remplace unknown_has_no_reference par un
+  --   invariant plus simple : toute ligne porte une référence ET sa nature.
+  --   Une référence dont la nature ne tient dans aucun domaine se déclare
+  --   OTHER — elle ne se tait pas.
+  reference_kind        TEXT NOT NULL
                         CONSTRAINT evidence_provenance_journal_reference_kind_check
                         CHECK (reference_kind IN ('QUERY_CONTEXT', 'PUBLICATION', 'PROFILE', 'DOCUMENT', 'OTHER')),
 
-  source_url            TEXT
+  -- NOT NULL — même décision, même motif. source_url est le LOCALISATEUR de
+  -- la référence : une URL pour une PUBLICATION, un PROFILE, un QUERY_CONTEXT ;
+  -- pour un DOCUMENT sans URL publique, l'emplacement gouverné où il se lit
+  -- (clé R2, chemin d'archive) — non vide, sans blanc de bord, jamais une
+  -- valeur inventée. Une qualification qui ne peut pas dire OÙ se lit sa
+  -- référence n'a pas de référence, et n'a donc pas de ligne. Nullable, la
+  -- colonne aurait laissé passer une déclaration sans objet que plus aucun
+  -- CHECK ne refusait.
+  source_url            TEXT NOT NULL
                         CONSTRAINT evidence_provenance_journal_source_url_check
                         CHECK (source_url <> '' AND btrim(source_url) = source_url),
 
-  -- ── QUI affirme, et QUAND selon lui. Toute ligne est un acte signé, y
-  -- compris une requalification en UNKNOWN. Non vide, sans blanc de bord.
+  -- ── QUI affirme, et QUAND selon lui. Toute ligne est un acte signé. Non
+  -- vide, sans blanc de bord.
   declared_by           TEXT NOT NULL
                         CONSTRAINT evidence_provenance_journal_declared_by_check
                         CHECK (declared_by <> '' AND btrim(declared_by) = declared_by),
@@ -154,19 +215,14 @@ CREATE TABLE IF NOT EXISTS evidence_provenance_journal (
       AND (provenance_kind = 'VERIFIED') = (verification_method IS NOT NULL)
     ),
 
-  -- ── COHÉRENCE 2 : UNKNOWN ⇔ aucune référence. Une URL sous UNKNOWN serait
-  -- une déclaration qui ne dit pas son nom ; une déclaration sans référence ne
-  -- déclare rien.
-  CONSTRAINT evidence_provenance_journal_unknown_has_no_reference_check
-    CHECK (
-      (provenance_kind = 'UNKNOWN') = (source_url IS NULL)
-      AND (provenance_kind = 'UNKNOWN') = (reference_kind IS NULL)
-    ),
+  -- ── (ex-COHÉRENCE 2, unknown_has_no_reference : SUPPRIMÉE par 4a. UNKNOWN
+  -- n'existe plus dans la table, et le NOT NULL de reference_kind et
+  -- source_url porte désormais l'invariant « une ligne a une référence ».)
 
-  -- ── COHÉRENCE 3 : « Discovery context is not source provenance. » Un contexte
-  -- de découverte peut être déclaré ou extrait — jamais VÉRIFIÉ comme source :
-  -- ce qu'on vérifierait, c'est que la recherche retrouve le post, pas que la
-  -- pièce vient de là. (Ajout à la forme minimale, signalé dans le rapport.)
+  -- ── COHÉRENCE 2 (4b, conservée) : « Discovery context is not source
+  -- provenance. » Un contexte de découverte peut être déclaré ou extrait —
+  -- jamais VÉRIFIÉ comme source : ce qu'on vérifierait, c'est que la
+  -- recherche retrouve le post, pas que la pièce vient de là.
   CONSTRAINT evidence_provenance_journal_verified_not_query_context_check
     CHECK (NOT (provenance_kind = 'VERIFIED' AND reference_kind = 'QUERY_CONTEXT')),
 
@@ -185,10 +241,12 @@ CREATE INDEX IF NOT EXISTS evidence_provenance_journal_snapshot_idx
   ON evidence_provenance_journal (evidence_snapshot_id, id DESC);
 
 COMMENT ON TABLE evidence_provenance_journal IS
-  'T2-PROVENANCE-JOURNAL. Journal APPEND-ONLY de la provenance d''une piece ("EvidenceSnapshot"). '
-  'Le dernier etat connu = max(id) par evidence_snapshot_id ; une requalification est une NOUVELLE '
-  'ligne, jamais un UPDATE. L''absence de ligne VAUT UNKNOWN : aucun backfill. Un QUERY_CONTEXT '
-  'n''est jamais une provenance VERIFIED. sha256 est un attribut, jamais une cle.';
+  'T2-PROVENANCE-JOURNAL (amende T1 2026-09-14, decisions 4a/4b/5). Journal APPEND-ONLY de la '
+  'provenance d''une piece ("EvidenceSnapshot") et AUTORITE sur cette provenance. Le dernier etat '
+  'connu = max(id) par evidence_snapshot_id ; une requalification est une NOUVELLE ligne, jamais un '
+  'UPDATE. UNKNOWN n''est PAS une valeur de la table : l''absence de ligne VAUT UNKNOWN, derive a la '
+  'lecture. Aucun backfill. Toute ligne porte une reference et sa nature. Un QUERY_CONTEXT n''est '
+  'jamais une provenance VERIFIED. sha256 est un attribut, jamais une cle.';
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ⚠️ DDL SUPPLÉMENTAIRE — APPEND-ONLY PAR TRIGGER. HORS DU « MINIMUM » DE GPT.
@@ -235,9 +293,11 @@ COMMIT;
 --    ORDER BY id DESC
 --    LIMIT 1;
 --   → 0 ligne = UNKNOWN. Le lecteur ne consulte JAMAIS "EvidenceSnapshot"."sourceUrl"
---     pour combler : ce serait l'inférence que le ruling refuse.
+--     ni "CaseFileSource"."sourceUrl" pour combler : ce serait l'inférence que
+--     le ruling refuse, et depuis la décision 5 ces colonnes ne sont plus une
+--     preuve autonome de provenance.
 --
--- Toutes les pièces, avec UNKNOWN explicite pour celles sans ligne :
+-- Toutes les pièces, avec UNKNOWN pour celles sans ligne :
 --
 --   SELECT s.id AS evidence_snapshot_id,
 --          COALESCE(j.provenance_kind, 'UNKNOWN') AS provenance_kind,
@@ -249,8 +309,16 @@ COMMIT;
 --        ORDER BY id DESC LIMIT 1
 --     ) j ON true;
 --
+--   Le COALESCE vers 'UNKNOWN' est désormais la SEULE façon dont UNKNOWN
+--   existe : une valeur DÉRIVÉE de l'absence de ligne, jamais une valeur
+--   stockée. Le CHECK de provenance_kind garantit qu'aucun SELECT sur la table
+--   ne rendra jamais 'UNKNOWN' autrement que par ce COALESCE.
+--
 -- Une requalification = INSERT d'une nouvelle ligne (même evidence_snapshot_id,
 -- id supérieur). L'ancienne reste lisible : ORDER BY id pour l'historique.
+-- Retirer une qualification n'existe pas : on ne « redescend » pas à UNKNOWN,
+-- on apporte une qualification moins forte (une nouvelle ligne
+-- OPERATOR_DECLARED après une VERIFIED contestée, par exemple), signée et datée.
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- VÉRIFICATION APRÈS POSE — à exécuter, et à LIRE
@@ -258,18 +326,12 @@ COMMIT;
 --   npx tsx scripts/casefile/verifier-provenance-journal-schema.ts
 --   → 0 conforme · 2 table absente · 3 écarts nommés
 --
--- À la main, si besoin :
---
---   SELECT column_name, data_type, is_nullable, column_default
---     FROM information_schema.columns
---    WHERE table_name = 'evidence_provenance_journal'
---    ORDER BY ordinal_position;
---
---   SELECT conname, pg_get_constraintdef(oid)
---     FROM pg_constraint
---    WHERE conrelid = 'evidence_provenance_journal'::regclass;
---
---   SELECT tgname FROM pg_trigger
---    WHERE tgrelid = 'evidence_provenance_journal'::regclass AND NOT tgisinternal;
---
--- Attendu : 12 colonnes · 1 PK · 10 CHECK · 1 FK · 1 index cible · 2 triggers · 0 ligne.
+-- Le POST-CHECK, en une seule requête, est le SECOND BLOC à coller après le
+-- COMMIT ci-dessus : docs/prep/POSTCHECK_PROVENANCE_JOURNAL_2026-09-14.sql.
+-- Une ligne par point vérifié, colonne ok = true partout ou la pose n'est pas
+-- conforme. Lecture seule. Le harnais PGlite le rejoue et prouve qu'il sait
+-- rougir (une ligne ok = false par sabotage).
+-- Attendu : 12 colonnes · 1 PK · 9 CHECK · 1 FK · 1 index cible · 2 triggers
+-- activés (tgenabled = 'O') · 0 ligne. Le filtre contype <> 'n' est
+-- INDISPENSABLE : PG18 expose les NOT NULL dans pg_constraint, PG 17.11 (la
+-- production) non — sans lui, le compte de contraintes dépendrait de la version.
