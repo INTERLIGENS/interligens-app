@@ -267,15 +267,15 @@ async function scenarios(c: Client): Promise<void> {
   const noAuth = await executeRelease(tx, target, { decidedBy: " ", decidedAt: "2026-09-14T12:00:00Z" });
   check("autorité vide → REFUSED avant toute écriture", noAuth.outcome === "REFUSED" && (await etat(c)).decisions === 0, j(noAuth));
 
-  // TÉMOIN POSITIF de la libération.
+  // T1-REVOKE-ELIGIBILITY · la pièce synthétique (sha « e »×64) n'est pas
+  // qualifiée : UNKNOWN → FONDABLE (prouvé ci-dessus), PAS publiable. La
+  // libération refuse par son nom, décision annulée. Le témoin positif de la
+  // libération exige une pièce VERIFIED — il vit dans le témoin vitest
+  // (spine-00-executeur-gouverne.test.ts, lecteur simulé), pas ici : ce
+  // script ne peut pas qualifier une pièce, et c'est voulu.
   const rel = await executeRelease(tx, target, auth);
   const stFinal = (await c.query(`SELECT state::text AS s FROM "CaseFileClaim" WHERE "casefileRef"=$1 AND "claimId"='C1' AND version=2`, [REF])).rows[0].s;
-  const dec = (await c.query(`SELECT id::text AS id, decision, decided_by FROM casefile_claim_publication_decisions WHERE casefile_ref=$1 ORDER BY id DESC LIMIT 1`, [REF])).rows;
-  check("TÉMOIN POSITIF · GRANT persisté, relu, promotion → RELEASED, state PUBLIC, 1 décision GRANT", rel.outcome === "RELEASED" && stFinal === "PUBLIC" && dec.length === 1 && dec[0].decision === "GRANT" && dec[0].id === rel.decisionId, `${j(rel)} · state=${stFinal} · ${j(dec)}`);
-  const v1st = (await c.query(`SELECT state::text AS s FROM "CaseFileClaim" WHERE "casefileRef"=$1 AND "claimId"='C1' AND version=1`, [REF])).rows[0].s;
-  check("  la v1 supplantée reste ATTACHED : la décision vise la version EXACTE", v1st === "ATTACHED");
-  const again = await executeRelease(tx, target, auth);
-  check("TARGET_NOT_ATTACHED · re-libérer une version déjà PUBLIC → REFUSED, décision annulée", again.outcome === "REFUSED" && again.refusal.cause === "TARGET_NOT_ATTACHED" && (await etat(c)).decisions === 1, j(again));
+  check("(b) pièce UNKNOWN · GRANT persisté et relu, contrat de PUBLICATION → REFUSED/SOURCE_PROVENANCE_NOT_VERIFIED, state ATTACHED, 0 décision", rel.outcome === "REFUSED" && rel.refusal.cause === "SOURCE_PROVENANCE_NOT_VERIFIED" && stFinal === "ATTACHED" && (await etat(c)).decisions === 0, `${j(rel)} · state=${stFinal}`);
 }
 
 // ─── PGlite : le schéma tel que mesuré en production.

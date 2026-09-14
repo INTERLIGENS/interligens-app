@@ -19,7 +19,7 @@
 // transaction annulée). Les deux se complètent : ici la structure, là le
 // contrat de la base.
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -33,6 +33,16 @@ import {
 } from "@/lib/casefile/governedExecutor";
 import { canonicalSealMaterial, claimContentHash } from "@/lib/casefile/versioning";
 import { codeSeul } from "./codeSeul";
+
+// La source UNIQUE de qualification, simulée : « a »×64 est VERIFIED ici, et
+// seulement ici. Tout le reste garde le comportement réel (UNKNOWN par défaut).
+vi.mock("@/lib/casefile/provenanceKind", async (importOriginal) => {
+  const reel = await importOriginal<typeof import("@/lib/casefile/provenanceKind")>();
+  return {
+    ...reel,
+    readProvenanceKind: (ref: { sourceId: string; sha256: string | null }) => (ref.sha256 === "a".repeat(64) ? "VERIFIED" : reel.readProvenanceKind(ref)),
+  };
+});
 
 // ═══ LA CONNEXION SCRIPTÉE ══════════════════════════════════════════════════
 
@@ -94,6 +104,11 @@ const REF = "IL-SHILL-VINE-001";
 const SHA = "a".repeat(64);
 // Les instants sont au format que `::text` rend pour un timestamptz.
 const SNAP = { id: "snap-1", canonicalMint: "VineMint1111111111111111111111111111111111111", sha256: SHA, sourceUrl: "https://x.com/e/1", observedAt: "2025-12-07 10:00:00+00" };
+// T1-REVOKE-ELIGIBILITY : la qualification de la pièce n'est PAS une colonne
+// de CaseFileSource — l'exécuteur la lit par `readProvenanceKind` (registre
+// temporaire, indexé par sha256). Le sha256 « a »×64 n'y est pas : UNKNOWN,
+// donc fondable, PAS publiable. Les témoins positifs de libération ci-dessous
+// simulent une pièce VERIFIED via `vi.mock` du lecteur — voir `qualifie()`.
 const SOURCE = { sourceId: "SRC-001", sourceType: "screenshot", caption: null, capturedAt: "2025-12-07 10:00:00+00", sourceUrl: "https://x.com/e/1", sha256: SHA, snapshotId: "snap-1" };
 
 const CONTENU = { claimId: "C1", title: "Coordinated posting", titleFr: null, description: null, descriptionFr: null, category: null, severity: null, status: null, claimDate: "2025-11-04", actors: [], threadUrl: null, evidenceRefs: ["SRC-001"] };
@@ -352,30 +367,43 @@ describe("SPINE-00 · exécuteur — la structure tient la règle", () => {
   const executeur = codeSeul(readFileSync(EXECUTEUR, "utf8"));
   const sources = fichiersSource("src").map((f) => [f, codeSeul(readFileSync(f, "utf8"))] as const);
 
-  it("UNE SEULE écriture de `state = 'PUBLIC'` dans tout src/, et elle est dans l'exécuteur", () => {
+  /** Le corps d'une fonction exportée, jusqu'à la suivante. */
+  const corps = (nom: string): string => {
+    const debut = executeur.indexOf(`export async function ${nom}(`);
+    expect(debut, nom).toBeGreaterThan(0);
+    const suite = executeur.indexOf("\nexport ", debut + 1);
+    return executeur.slice(debut, suite === -1 ? undefined : suite);
+  };
+
+  it("UNE SEULE écriture de `state = 'PUBLIC'` dans tout src/, et elle est dans executeRelease", () => {
     const porteurs = sources.filter(([, c]) => /SET\s+state\s*=\s*'PUBLIC'/.test(c)).map(([f]) => f);
     expect(porteurs).toEqual([EXECUTEUR]);
     expect(executeur.match(/SET state = 'PUBLIC'/g)?.length).toBe(1);
+    expect(corps("executeRelease")).toContain("SET state = 'PUBLIC'");
   });
 
   it("la promotion n'est atteignable qu'APRÈS l'insertion et la relecture de la décision, dans le même corps", () => {
-    const ins = executeur.indexOf("INSERT INTO casefile_claim_publication_decisions");
-    const reread = executeur.indexOf("ORDER BY id DESC LIMIT 1");
-    const attest = executeur.indexOf("attestPersistedDecision(");
-    const decide = executeur.indexOf("decidePublicRelease(");
-    const promote = executeur.indexOf("SET state = 'PUBLIC'");
+    const c = corps("executeRelease");
+    const ins = c.indexOf("INSERT INTO casefile_claim_publication_decisions");
+    const reread = c.indexOf("relireDerniereDecision(");
+    const decide = c.indexOf("decidePublicRelease(");
+    const promote = c.indexOf("SET state = 'PUBLIC'");
     expect(ins).toBeGreaterThan(0);
     expect(reread).toBeGreaterThan(ins);
-    expect(attest).toBeGreaterThan(reread);
-    expect(decide).toBeGreaterThan(attest);
+    expect(decide).toBeGreaterThan(reread);
     expect(promote).toBeGreaterThan(decide);
+    // Et la relecture ATTESTE, dans son propre corps, après le SELECT.
+    const h = executeur.slice(executeur.indexOf("async function relireDerniereDecision("), executeur.indexOf("export async function executeRelease("));
+    expect(h.indexOf("attestPersistedDecision(")).toBeGreaterThan(h.indexOf("ORDER BY id DESC LIMIT 1"));
   });
 
   it("la ligne visée est VERROUILLÉE (FOR UPDATE) avant l'insertion de la décision", () => {
-    const lock = executeur.indexOf(`AND version = $3\n          FOR UPDATE`);
-    const ins = executeur.indexOf("INSERT INTO casefile_claim_publication_decisions");
+    const c = corps("executeRelease");
+    const lock = c.indexOf("verrouillerCible<");
+    const ins = c.indexOf("INSERT INTO casefile_claim_publication_decisions");
     expect(lock, "le verrou existe").toBeGreaterThan(0);
     expect(lock).toBeLessThan(ins);
+    expect(executeur).toContain(`AND version = $3\n      FOR UPDATE`);
   });
 
   it("attestPersistedDecision n'est appelée QU'UNE fois dans src/, dans l'exécuteur, sur la ligne relue", () => {
@@ -390,7 +418,13 @@ describe("SPINE-00 · exécuteur — la structure tient la règle", () => {
       expect(c, f).not.toMatch(/DELETE\s+FROM\s+casefile_claim_publication_decisions/);
       expect(c, f).not.toMatch(/TRUNCATE\s+casefile_claim_publication_decisions/);
     }
-    expect(executeur.match(/INSERT INTO casefile_claim_publication_decisions/g)?.length).toBe(1);
+    // DEUX INSERT, un par chemin, chacun avec son LITTÉRAL : la libération ne
+    // peut écrire que GRANT, la révocation que REVOKE.
+    expect(executeur.match(/INSERT INTO casefile_claim_publication_decisions/g)?.length).toBe(2);
+    expect(corps("executeRelease").match(/'GRANT'/g)?.length).toBe(1);
+    expect(corps("executeRelease")).not.toContain("'REVOKE'");
+    expect(corps("executeRevoke").match(/'REVOKE'/g)?.length).toBe(1);
+    expect(corps("executeRevoke")).not.toContain("'GRANT'");
   });
 
   it("le fondement insère un LITTÉRAL 'ATTACHED' et ne connaît pas 'PUBLIC' — le chemin (I) ne peut pas publier", () => {
@@ -398,6 +432,8 @@ describe("SPINE-00 · exécuteur — la structure tient la règle", () => {
     expect(corpsFondation).toContain(`'ATTACHED'::"ArtifactState"`);
     expect(corpsFondation).not.toMatch(/PUBLIC/);
     expect(corpsFondation).not.toMatch(/casefile_claim_publication_decisions/);
+    // Et il n'y TRANSITE pas : aucun `SET state` dans le fondement.
+    expect(corpsFondation).not.toMatch(/SET\s+state/);
   });
 
   it("le sceau du fondement vient de la décision (canonicalSealMaterial), jamais d'une composition locale", () => {

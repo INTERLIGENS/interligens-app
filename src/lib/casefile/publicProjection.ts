@@ -86,15 +86,14 @@ import { BOTIFY_MINT, casefileLookupKey } from "@/lib/kol-memory/tokenIdentity";
 import { ungovernedScoreField } from "./governedMetrics";
 import { decidePublication } from "./publicationAuthority";
 import {
-  decidePublicClaimContract,
+  decidePublicationContract,
   SOURCE_PROVENANCE_FIELDS,
-  type PublicClaimContractCause,
+  type PublicationContractCause,
 } from "./governedWriter";
 
-// Le prédicat de provenance d'une pièce vit désormais dans `governedWriter`
-// (SPINE-00 · C). Ré-exporté ici pour ses consommateurs historiques ; ce
-// module ne l'APPELLE plus lui-même — le contrat le fait pour lui.
-export { isPubliableSource } from "./governedWriter";
+// T1-REVOKE-ELIGIBILITY — la projection consomme le contrat de PUBLICATION
+// (`decidePublicationContract`, provenance VERIFIED strictement), jamais celui
+// du fondement. `isPubliableSource` n'existe plus, ni ici ni ailleurs.
 
 // ─── Identité : quel dossier canonique, pour quelle entrée ────────────────
 //
@@ -217,7 +216,7 @@ export class CanonicalCaseFileMissingError extends Error {
  * `evidenceRefs`, `sha256`, `sourceUrl`, `capturedAt`), plus `rowNature`.
  * Aucun motif nouveau : « non fondé » reste INSUFFICIENT_PROVENANCE.
  */
-function champRetenu(cause: PublicClaimContractCause, at: string): string {
+function champRetenu(cause: PublicationContractCause, at: string): string {
   switch (cause) {
     case "CLAIM_UNCLASSIFIED":
       return "rowNature";
@@ -225,6 +224,7 @@ function champRetenu(cause: PublicClaimContractCause, at: string): string {
     case "EVIDENCE_REF_UNRESOLVED":
       return "evidenceRefs";
     case "SOURCE_PROVENANCE_INCOMPLETE":
+    case "SOURCE_PROVENANCE_NOT_VERIFIED":
       return SOURCE_PROVENANCE_FIELDS.find((f) => at.endsWith(`.${f}`)) ?? "evidenceRefs";
   }
 }
@@ -290,12 +290,13 @@ export function projectForPublication(
       continue;
     }
 
-    // ── Le critère d'émission : LE contrat canonique, consommé ──────────
+    // ── Le critère d'émission : LE contrat de PUBLICATION, consommé ─────
     //
     // `threadUrl` n'y entre pas. Un claim n'est rendu que si sa nature est
     // classifiée, s'il cite au moins une référence, et si CHAQUE référence
-    // résout vers une pièce publiable. Sinon, cas (2) : retenu, champ nommé.
-    const contrat = decidePublicClaimContract(
+    // résout vers une pièce éligible à la publication — provenance VERIFIED.
+    // Sinon, cas (2) : retenu, champ nommé.
+    const contrat = decidePublicationContract(
       { rowNature: c.rowNature, evidenceRefs: c.evidenceRefs },
       registre,
     );
