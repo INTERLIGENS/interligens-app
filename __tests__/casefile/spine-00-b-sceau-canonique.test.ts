@@ -266,7 +266,9 @@ describe("SPINE-00 · B — une seule écriture de la normalisation", () => {
   it("chaque fichier qui hache un sceau consomme la primitive — et la liste est fermée", () => {
     const hachent = sources.filter((f) => f !== PRIMITIVE && /claimContentHash\(/.test(code.get(f)!)).sort();
     expect(hachent).toEqual([
+      "scripts/casefile/executor-e2e-pglite.mts", // SPINE-00 exécuteur : le harnais vérifie le sceau persisté
       "scripts/casefile/seal-claims.ts",
+      "src/lib/casefile/governedExecutor.ts",     // SPINE-00 exécuteur : l'idempotence par identité de contenu
       "src/lib/casefile/governedWriter.ts",
       "src/lib/casefile/sealGuard.ts",
     ]);

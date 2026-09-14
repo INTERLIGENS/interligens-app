@@ -63,10 +63,14 @@
 // remettre `actors` à la main dans le sceau ne compile pas, et rougit à
 // l'audit sur le premier fondement.
 //
-// ─── EXÉCUTION — CONÇUE, NON LIVRÉE ───────────────────────────────────────
+// ─── EXÉCUTION — `governedExecutor.ts` ────────────────────────────────────
 //
-// Aucune écriture n'est autorisée pendant la construction. Ce que l'exécuteur
-// fera, quand il sera autorisé, sur un `Foundation` :
+// L'exécuteur vit dans `governedExecutor.ts`, en SQL brut sur une connexion
+// injectée (`prisma/` est gelé). Il DÉCIDE ET ÉCRIT DANS LA MÊME TRANSACTION :
+// les lignes sont lues sous verrou, `decideFoundation` juge ces lignes-là, et
+// l'INSERT suit — il n'y a pas d'intervalle entre la décision et l'écriture
+// dans lequel la base pourrait bouger. Ce qui suit reste la spécification que
+// l'exécuteur tient :
 //
 //   · UNE transaction, isolation REPEATABLE READ au minimum. Sources et claim
 //     y entrent ensemble ou pas du tout : un refus quelconque est un ROLLBACK
@@ -88,22 +92,23 @@
 //     aucun identifiant de ligne, et n'en connaîtra pas.
 //   · Le `contentHash` est celui du plan. Il n'est PAS recalculé côté SQL.
 //
-// Sur un `PublicRelease` :
+// Sur une libération (`ReleaseIntent`) :
 //
-//   · UN `UPDATE ... SET state = 'PUBLIC'` sur la ligne EXACTE
-//     `(casefileRef, claimId, version)`, gardé par `state = 'ATTACHED'` ET
-//     `contentHash = expectedContentHash`. `state` n'est pas scellé
-//     (versioning.ts) : la promotion ne touche pas au contenu. Zéro ligne
-//     touchée est un ABORT — le fondement n'est pas persisté, ou déjà PUBLIC,
-//     ou son contenu a bougé ; l'exécuteur distingue les trois par lecture.
+//   · verrouiller la ligne EXACTE `(casefileRef, claimId, version)` ;
+//   · INSÉRER la décision GRANT dans `casefile_claim_publication_decisions`
+//     (SPINE-00 · A, posée le 2026-09-14) et récupérer son id ;
+//   · RELIRE la dernière décision de la cible — égalité stricte sur les quatre
+//     colonnes de cible, `id DESC`, `LIMIT 1` — et l'ATTESTER ;
+//   · `decidePublicRelease` : trois conditions puis le contrat, sinon ABORT ;
+//   · alors seulement UN `UPDATE ... SET state = 'PUBLIC'`, gardé par
+//     `state = 'ATTACHED'` ET `contentHash = expectedContentHash`. `state` n'est
+//     pas scellé (versioning.ts) : la promotion ne touche pas au contenu. Zéro
+//     ligne touchée est un ABORT.
 //   · Le CHECK en base est la dernière ligne de défense, pas la première.
 //
-// ⚠️ DOUTE D'ARCHITECTURE, NOMMÉ ET NON TRANCHÉ ICI : `CaseFileClaim` ne porte
-// aucune colonne pour JOURNALISER l'autorité de publication (`decidedBy`,
-// `decidedAt`). Le plan de libération la porte ; la base n'a pas de siège
-// pour elle sans DDL. Où l'autorité explicite se persiste — colonne, table de
-// journal, registre existant — est une décision d'architecture qui précède
-// tout exécuteur de libération. Elle n'est pas prise dans ce module.
+// Le doute d'architecture nommé ici le 2026-09-13 — où l'autorité se
+// persiste — est TRANCHÉ par GPT : une table de décisions séparée, append-only.
+// « Le contenu et l'autorité de le publier sont deux objets différents. »
 
 import { isAdmissible } from "./publicationState";
 import { canonicalSealMaterial, claimContentHash, latestVersions } from "./versioning";
@@ -647,37 +652,107 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
 }
 
 // ═══ LA LIBÉRATION — décision 2 ═════════════════════════════════════════════
+//
+// SPINE-00 · A/exécuteur — l'autorité n'est plus ÉPHÉMÈRE. Ruling :
+//
+//   « decidePublicRelease ne recevra plus une autorité éphémère construite par
+//     l'appelant. L'exécuteur devra PERSISTER la décision positive, RELIRE
+//     cette décision depuis la base, puis seulement faire passer la version
+//     visée vers l'état public. »
+//   « Publication state is a projection of a persisted publication decision;
+//     the state itself is not the authority. »
+//
+// L'autorité est donc une LIGNE de `casefile_claim_publication_decisions`,
+// telle que RELUE après insertion. Ce module ne lit pas la base : il reçoit la
+// ligne relue et la juge. La marque nominale `PersistedPublicationDecision`
+// ne s'obtient que d'`attestPersistedDecision`, que seul l'exécuteur appelle,
+// juste après le SELECT de relecture — un témoin structurel le vérifie. Une
+// décision construite à la main ne compile pas sans cast, et la marque
+// d'exécution la refuse quand même : DECISION_NOT_ATTESTED.
 
-/** LA valeur qui autorise. Le seul littéral de ce genre dans le dépôt. */
-export const EXPLICIT_PUBLIC_DECISION = "EXPLICIT_PUBLIC_DECISION" as const;
+export const PUBLICATION_AUDIENCES = ["PUBLIC"] as const;
+export type PublicationAudience = (typeof PUBLICATION_AUDIENCES)[number];
+
+export const PUBLICATION_DECISION_KINDS = ["GRANT", "REVOKE"] as const;
+export type PublicationDecisionKind = (typeof PUBLICATION_DECISION_KINDS)[number];
+
+declare const DECISION_RELUE: unique symbol;
+
+/** Une décision de publication TELLE QUE RELUE en base. Colonnes de la table, rien d'autre. */
+export interface PersistedDecisionRow {
+  /** `id` BIGINT rendu en TEXTE : l'ordre total, jamais fourni par l'appelant. */
+  readonly id: string;
+  readonly casefileRef: string;
+  readonly claimId: string;
+  readonly claimVersion: number;
+  readonly audience: string;
+  readonly decision: string;
+  readonly decidedBy: string;
+  readonly decidedAt: string;
+}
+
+/** La même ligne, ATTESTÉE relue par l'exécuteur. Nominale. */
+export interface PersistedPublicationDecision extends PersistedDecisionRow {
+  readonly [DECISION_RELUE]: true;
+}
+
+const DECISIONS_RELUES = new WeakSet<object>();
 
 /**
- * L'autorité de publication, EXPLICITE. Elle nomme qui décide, quand, et
- * QUELLE version exacte — une autorité qui viserait « le claim » sans version
- * publierait ce qu'on écrira ensuite.
+ * Atteste qu'une ligne vient d'être RELUE en base. Réservé à l'exécuteur
+ * (`governedExecutor.ts`), immédiatement après le SELECT de relecture. Un
+ * appel ailleurs est une seconde autorité : le témoin structurel le refuse.
  */
-export interface ExplicitPublicationAuthority {
-  readonly kind: typeof EXPLICIT_PUBLIC_DECISION;
-  readonly decidedBy: string;
-  /** ISO-8601 UTC strict, `Z` obligatoire. */
-  readonly decidedAt: string;
+export function attestPersistedDecision(row: PersistedDecisionRow): PersistedPublicationDecision {
+  const attested = Object.freeze({ ...row }) as unknown as PersistedPublicationDecision;
+  DECISIONS_RELUES.add(attested);
+  return attested;
+}
+
+export function isPersistedDecision(x: unknown): x is PersistedPublicationDecision {
+  return typeof x === "object" && x !== null && DECISIONS_RELUES.has(x);
+}
+
+/** Ce que l'appelant DEMANDE : une version exacte, et le sceau qu'il croit publier. */
+export interface ReleaseIntent {
   readonly casefileRef: string;
   readonly claimId: string;
   readonly version: number;
+  readonly expectedContentHash: string;
+  readonly audience: PublicationAudience;
+}
+
+/** La ligne `CaseFileClaim` visée, TELLE QUE LUE et verrouillée par l'exécuteur. */
+export interface ReleaseTargetRow {
+  readonly casefileRef: string;
+  readonly claimId: string;
+  readonly version: number;
+  readonly state: string;
+  readonly contentHash: string | null;
+  readonly rowNature: unknown;
+  readonly evidenceRefs: unknown;
 }
 
 export const RELEASE_REFUSAL_CAUSES = [
-  /** L'objet n'est pas passé par `decideFoundation`. */
-  "NOT_A_FOUNDATION",
-  /** Aucune autorité, ou une forme qui n'en est pas une. */
-  "NO_EXPLICIT_AUTHORITY",
-  /** L'autorité vise un autre dossier, un autre claim ou une autre version. */
-  "AUTHORITY_TARGET_MISMATCH",
+  /** La ligne visée n'est pas ATTACHED : déjà publique, ou dans un autre état. */
+  "TARGET_NOT_ATTACHED",
+  /** Le sceau de la ligne n'est pas celui que l'appelant croit publier. */
+  "SEAL_MISMATCH",
+  /** La relecture n'a rendu AUCUNE décision pour la cible. */
+  "NO_PERSISTED_DECISION",
+  /** La décision fournie n'a pas été attestée relue par l'exécuteur. */
+  "DECISION_NOT_ATTESTED",
+  /** La dernière décision relue n'est pas celle qui vient d'être insérée. */
+  "DECISION_NOT_LATEST",
+  /** La décision relue vise un autre dossier, claim, version ou audience. */
+  "DECISION_TARGET_MISMATCH",
+  /** La dernière décision n'est pas un GRANT. */
+  "DECISION_NOT_GRANT",
   ...PUBLIC_CLAIM_CONTRACT_CAUSES,
 ] as const;
 export type ReleaseRefusalCause = (typeof RELEASE_REFUSAL_CAUSES)[number];
 
-/** Le plan de libération : une cible EXACTE et l'autorité qui la vise. */
+/** Le plan de promotion : une cible EXACTE et la décision PERSISTÉE qui l'autorise. */
 export interface PublicRelease {
   readonly target: {
     readonly casefileRef: string;
@@ -685,45 +760,46 @@ export interface PublicRelease {
     readonly version: number;
     readonly expectedContentHash: string;
   };
-  readonly authority: ExplicitPublicationAuthority;
+  readonly decision: PersistedPublicationDecision;
 }
 
 export type ReleaseDecision =
   | { readonly decision: "RELEASABLE"; readonly release: PublicRelease }
   | { readonly decision: "REFUSED"; readonly refusal: Refusal<ReleaseRefusalCause> };
 
-const ISO_UTC_STRICT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
-
 /**
  * DÉCISION 2 — la libération. Pure, synchrone, sans base.
  *
- * Elle ne fait PAS confiance au fondement : elle re-dérive le contrat public
- * sur la ligne à publier, contre les pièces citées. C'est la seconde
- * consommation de la primitive partagée — et c'est ce qui fait qu'un
- * fondement altéré après décision ne se publie pas.
+ * Les TROIS conditions du ruling, dans l'ordre, toutes obligatoires :
+ *   une décision relue existe · son id est celui qui vient d'être inséré ·
+ *   sa décision vaut GRANT.
+ * Puis le contrat public, re-dérivé sur la ligne À L'INSTANT de la promotion :
+ * la décision d'autorité ne dispense pas du fondement.
  */
-export function decidePublicRelease(foundation: Foundation, authority: ExplicitPublicationAuthority): ReleaseDecision {
+export function decidePublicRelease(
+  intent: ReleaseIntent,
+  row: ReleaseTargetRow,
+  registre: ReadonlyMap<string, PublicSource>,
+  persisted: PersistedPublicationDecision | null,
+  insertedDecisionId: string,
+): ReleaseDecision {
   const refuse = (cause: ReleaseRefusalCause, at: string): ReleaseDecision => ({
     decision: "REFUSED",
     refusal: { cause, at },
   });
 
-  if (!isDecidedFoundation(foundation)) return refuse("NOT_A_FOUNDATION", "foundation");
+  if (row.state !== "ATTACHED") return refuse("TARGET_NOT_ATTACHED", "state");
+  if (!row.contentHash || row.contentHash !== intent.expectedContentHash) return refuse("SEAL_MISMATCH", "contentHash");
 
-  if (!estObjet(authority)) return refuse("NO_EXPLICIT_AUTHORITY", "authority");
-  const a = authority as unknown as Record<string, unknown>;
-  if (a.kind !== EXPLICIT_PUBLIC_DECISION) return refuse("NO_EXPLICIT_AUTHORITY", "authority.kind");
-  if (!estCleAcceptable(a.decidedBy)) return refuse("NO_EXPLICIT_AUTHORITY", "authority.decidedBy");
-  if (typeof a.decidedAt !== "string" || !ISO_UTC_STRICT.test(a.decidedAt)) {
-    return refuse("NO_EXPLICIT_AUTHORITY", "authority.decidedAt");
-  }
+  if (persisted === null || persisted === undefined) return refuse("NO_PERSISTED_DECISION", "decision");
+  if (!isPersistedDecision(persisted)) return refuse("DECISION_NOT_ATTESTED", "decision");
+  if (persisted.id !== insertedDecisionId) return refuse("DECISION_NOT_LATEST", "decision.id");
+  if (persisted.casefileRef !== intent.casefileRef) return refuse("DECISION_TARGET_MISMATCH", "decision.casefileRef");
+  if (persisted.claimId !== intent.claimId) return refuse("DECISION_TARGET_MISMATCH", "decision.claimId");
+  if (persisted.claimVersion !== intent.version) return refuse("DECISION_TARGET_MISMATCH", "decision.claimVersion");
+  if (persisted.audience !== intent.audience) return refuse("DECISION_TARGET_MISMATCH", "decision.audience");
+  if (persisted.decision !== "GRANT") return refuse("DECISION_NOT_GRANT", "decision.decision");
 
-  const row = foundation.claimToInsert;
-  if (a.casefileRef !== row.casefileRef) return refuse("AUTHORITY_TARGET_MISMATCH", "authority.casefileRef");
-  if (a.claimId !== row.claimId) return refuse("AUTHORITY_TARGET_MISMATCH", "authority.claimId");
-  if (a.version !== row.version) return refuse("AUTHORITY_TARGET_MISMATCH", "authority.version");
-
-  const registre = new Map(foundation.citedSources.map((s) => [s.sourceId, s]));
   const contrat = decidePublicClaimContract(row, registre);
   if (contrat.verdict === "UNMET") return refuse(contrat.refusal.cause, contrat.refusal.at);
 
@@ -736,14 +812,7 @@ export function decidePublicRelease(foundation: Foundation, authority: ExplicitP
         version: row.version,
         expectedContentHash: row.contentHash,
       },
-      authority: {
-        kind: EXPLICIT_PUBLIC_DECISION,
-        decidedBy: a.decidedBy,
-        decidedAt: a.decidedAt,
-        casefileRef: row.casefileRef,
-        claimId: row.claimId,
-        version: row.version,
-      },
+      decision: persisted,
     },
   };
 }

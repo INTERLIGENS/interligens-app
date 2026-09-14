@@ -12,7 +12,7 @@ import {
   decideFoundation,
   decidePublicRelease,
   isDecidedFoundation,
-  EXPLICIT_PUBLIC_DECISION,
+  attestPersistedDecision,
   PUBLIC_CLAIM_CONTRACT_CAUSES,
   FOUNDATION_REFUSAL_CAUSES,
   RELEASE_REFUSAL_CAUSES,
@@ -20,7 +20,10 @@ import {
   type FoundationRefusalCause,
   type ReleaseRefusalCause,
   type Foundation,
-  type ExplicitPublicationAuthority,
+  type PersistedDecisionRow,
+  type PersistedPublicationDecision,
+  type ReleaseIntent,
+  type ReleaseTargetRow,
   type ClaimAssertionInput,
   type ExistingClaimInput,
 } from "@/lib/casefile/governedWriter";
@@ -68,15 +71,29 @@ const founded = (r: FoundationRequest = request()): Foundation => {
   return d.foundation;
 };
 
-const authority = (o: Partial<ExplicitPublicationAuthority> = {}): ExplicitPublicationAuthority => ({
-  kind: EXPLICIT_PUBLIC_DECISION,
-  decidedBy: "david",
-  decidedAt: "2026-09-13T12:00:00Z",
-  casefileRef: VINE_CASEFILE_REF,
-  claimId: "C1",
-  version: 1,
-  ...o,
+/**
+ * La libération, depuis un fondement : la ligne TELLE QUE la base la rendrait
+ * après exécution, l'intention, et une décision RELUE et attestée — comme
+ * l'exécuteur le fait. Ici, l'attestation est celle du test.
+ */
+const ID_INSERE = "42";
+const rowOf = (f: Foundation, o: Partial<ReleaseTargetRow> = {}): ReleaseTargetRow => ({
+  casefileRef: f.claimToInsert.casefileRef, claimId: f.claimToInsert.claimId, version: f.claimToInsert.version,
+  state: "ATTACHED", contentHash: f.claimToInsert.contentHash, rowNature: f.claimToInsert.rowNature,
+  evidenceRefs: f.claimToInsert.evidenceRefs, ...o,
 });
+const intentOf = (f: Foundation, o: Partial<ReleaseIntent> = {}): ReleaseIntent => ({
+  casefileRef: f.claimToInsert.casefileRef, claimId: f.claimToInsert.claimId, version: f.claimToInsert.version,
+  expectedContentHash: f.claimToInsert.contentHash, audience: "PUBLIC", ...o,
+});
+const decisionRow = (f: Foundation, o: Partial<PersistedDecisionRow> = {}): PersistedDecisionRow => ({
+  id: ID_INSERE, casefileRef: f.claimToInsert.casefileRef, claimId: f.claimToInsert.claimId,
+  claimVersion: f.claimToInsert.version, audience: "PUBLIC", decision: "GRANT",
+  decidedBy: "david", decidedAt: "2026-09-13T12:00:00Z", ...o,
+});
+const relue = (f: Foundation, o: Partial<PersistedDecisionRow> = {}): PersistedPublicationDecision =>
+  attestPersistedDecision(decisionRow(f, o));
+const registreOf = (f: Foundation) => new Map(f.citedSources.map((s) => [s.sourceId, s]));
 
 /** Une révision existante SCELLÉE, sous la normalisation de l'audit. */
 const existing = (o: Partial<ExistingClaimInput> = {}): ExistingClaimInput => {
@@ -284,15 +301,15 @@ describe("RC-SPINE-00 — fail-closed : chaque refus est nommé, à un emplaceme
 
 // ═══ PROPRIÉTÉ 1 — créer le fondement ≠ publier ═════════════════════════════
 
-describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décision, sous autorité explicite", () => {
-  it("témoin positif : fondement décidé + autorité explicite → RELEASABLE, cible exacte", () => {
+describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décision, sous décision PERSISTÉE et relue", () => {
+  it("témoin positif : ligne ATTACHED + décision relue GRANT dont l'id est celui inséré → RELEASABLE, cible exacte", () => {
     const f = founded();
-    const d = decidePublicRelease(f, authority());
+    const d = decidePublicRelease(intentOf(f), rowOf(f), registreOf(f), relue(f), ID_INSERE);
     expect(d.decision).toBe("RELEASABLE");
     if (d.decision !== "RELEASABLE") throw new Error("inatteignable");
     expect(d.release.target).toEqual({ casefileRef: VINE_CASEFILE_REF, claimId: "C1", version: 1, expectedContentHash: f.claimToInsert.contentHash });
-    expect(d.release.authority.kind).toBe(EXPLICIT_PUBLIC_DECISION);
-    expect(d.release.authority.decidedBy).toBe("david");
+    expect(d.release.decision.decision).toBe("GRANT");
+    expect(d.release.decision.decidedBy).toBe("david");
   });
 
   it("le TYPE refuse un champ de publication dans la charge de fondement", () => {
@@ -301,51 +318,56 @@ describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décisi
     expect(decideFoundation(request({ claim: c })).decision).toBe("REFUSED");
   });
 
-  it("le TYPE refuse un fondement construit à la main", () => {
+  it("le TYPE refuse une décision construite à la main — et la marque d'exécution la refuse aussi", () => {
     const f = founded();
-    // @ts-expect-error — `Foundation` est nominal : une copie structurelle n'a pas la marque.
-    const copie: Foundation = { casefileRef: f.casefileRef, sourcesToInsert: f.sourcesToInsert, claimToInsert: f.claimToInsert, citedSources: f.citedSources, preconditions: f.preconditions };
-    expect(decidePublicRelease(copie, authority()).decision).toBe("REFUSED");
+    // @ts-expect-error — `PersistedPublicationDecision` est nominal : une ligne structurelle n'a pas la marque.
+    const main: PersistedPublicationDecision = decisionRow(f);
+    const d = decidePublicRelease(intentOf(f), rowOf(f), registreOf(f), main, ID_INSERE);
+    expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "DECISION_NOT_ATTESTED", at: "decision" } });
   });
 
-  const REFUSES_LIBERATION: ReadonlyArray<readonly [string, () => Foundation, unknown, ReleaseRefusalCause, string]> = [
-    ["fondement copié structurellement", () => ({ ...founded() }) as Foundation, authority(), "NOT_A_FOUNDATION", "foundation"],
-    ["fondement null", () => null as unknown as Foundation, authority(), "NOT_A_FOUNDATION", "foundation"],
-    ["autorité absente", founded, undefined, "NO_EXPLICIT_AUTHORITY", "authority"],
-    ["autorité booléenne", founded, true, "NO_EXPLICIT_AUTHORITY", "authority"],
-    ["autorité sans kind", founded, { decidedBy: "david", decidedAt: "2026-09-13T12:00:00Z" }, "NO_EXPLICIT_AUTHORITY", "authority.kind"],
-    ["kind approchant", founded, authority({ kind: "explicit_public_decision" as never }), "NO_EXPLICIT_AUTHORITY", "authority.kind"],
-    ["decidedBy vide", founded, authority({ decidedBy: "" }), "NO_EXPLICIT_AUTHORITY", "authority.decidedBy"],
-    ["decidedAt sans Z", founded, authority({ decidedAt: "2026-09-13T12:00:00" }), "NO_EXPLICIT_AUTHORITY", "authority.decidedAt"],
-    ["decidedAt heure locale", founded, authority({ decidedAt: "2026-09-13T12:00:00+02:00" }), "NO_EXPLICIT_AUTHORITY", "authority.decidedAt"],
-    ["autorité sur un autre dossier", founded, authority({ casefileRef: "IL-SHILL-BOTIFY-001" }), "AUTHORITY_TARGET_MISMATCH", "authority.casefileRef"],
-    ["autorité sur un autre claim", founded, authority({ claimId: "C2" }), "AUTHORITY_TARGET_MISMATCH", "authority.claimId"],
-    ["autorité sans version", founded, authority({ version: undefined as unknown as number }), "AUTHORITY_TARGET_MISMATCH", "authority.version"],
-    ["autorité sur la version suivante", founded, authority({ version: 2 }), "AUTHORITY_TARGET_MISMATCH", "authority.version"],
+  type CasLib = readonly [string, (f: Foundation) => Parameters<typeof decidePublicRelease>, ReleaseRefusalCause, string];
+  const REFUSES_LIBERATION: readonly CasLib[] = [
+    // ── la cible
+    ["ligne déjà PUBLIC", (f) => [intentOf(f), rowOf(f, { state: "PUBLIC" }), registreOf(f), relue(f), ID_INSERE], "TARGET_NOT_ATTACHED", "state"],
+    ["ligne ADMISSIBLE", (f) => [intentOf(f), rowOf(f, { state: "ADMISSIBLE" }), registreOf(f), relue(f), ID_INSERE], "TARGET_NOT_ATTACHED", "state"],
+    ["sceau attendu ≠ sceau de la ligne", (f) => [intentOf(f, { expectedContentHash: "f".repeat(64) }), rowOf(f), registreOf(f), relue(f), ID_INSERE], "SEAL_MISMATCH", "contentHash"],
+    ["ligne jamais scellée", (f) => [intentOf(f), rowOf(f, { contentHash: null }), registreOf(f), relue(f), ID_INSERE], "SEAL_MISMATCH", "contentHash"],
+    // ── les TROIS conditions du ruling, falsifiées une par une
+    ["condition 1 · aucune décision relue", (f) => [intentOf(f), rowOf(f), registreOf(f), null, ID_INSERE], "NO_PERSISTED_DECISION", "decision"],
+    ["condition 2 · la dernière décision n'est pas celle insérée (id postérieur)", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { id: "43" }), ID_INSERE], "DECISION_NOT_LATEST", "decision.id"],
+    ["condition 2 · la dernière décision n'est pas celle insérée (id antérieur)", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { id: "41" }), ID_INSERE], "DECISION_NOT_LATEST", "decision.id"],
+    ["décision relue sur un autre dossier", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { casefileRef: "IL-SHILL-BOTIFY-001" }), ID_INSERE], "DECISION_TARGET_MISMATCH", "decision.casefileRef"],
+    ["décision relue sur un autre claim", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { claimId: "C2" }), ID_INSERE], "DECISION_TARGET_MISMATCH", "decision.claimId"],
+    ["décision relue sur la version suivante", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { claimVersion: 2 }), ID_INSERE], "DECISION_TARGET_MISMATCH", "decision.claimVersion"],
+    ["décision relue pour une autre audience", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { audience: "INVESTIGATORS" }), ID_INSERE], "DECISION_TARGET_MISMATCH", "decision.audience"],
+    ["condition 3 · la dernière décision est un REVOKE", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { decision: "REVOKE" }), ID_INSERE], "DECISION_NOT_GRANT", "decision.decision"],
+    ["condition 3 · decision approchante « grant »", (f) => [intentOf(f), rowOf(f), registreOf(f), relue(f, { decision: "grant" }), ID_INSERE], "DECISION_NOT_GRANT", "decision.decision"],
   ];
 
-  for (const [nom, f, a, cause, at] of REFUSES_LIBERATION) {
+  for (const [nom, args, cause, at] of REFUSES_LIBERATION) {
     it(`${nom} → REFUSED / ${cause} @ ${at}`, () => {
-      const d = decidePublicRelease(f(), a as ExplicitPublicationAuthority);
+      const d = decidePublicRelease(...args(founded()));
       expect(d.decision).toBe("REFUSED");
       if (d.decision !== "REFUSED") throw new Error("inatteignable");
       expect(d.refusal).toEqual({ cause, at });
     });
   }
 
-  // La libération ne fait pas confiance au plan : elle re-dérive le contrat.
-  // Chaque cause du contrat partagé est atteinte ICI aussi.
-  const ALTERES: ReadonlyArray<readonly [string, (f: Foundation) => void, ReleaseRefusalCause, string]> = [
-    ["rowNature altérée après décision", (f) => { (f.claimToInsert as unknown as { rowNature: unknown }).rowNature = "UNCLASSIFIED"; }, "CLAIM_UNCLASSIFIED", "rowNature"],
-    ["evidenceRefs vidées après décision", (f) => { (f.claimToInsert as unknown as { evidenceRefs: string[] }).evidenceRefs = []; }, "EVIDENCE_REFS_EMPTY", "evidenceRefs"],
-    ["pièce citée retirée après décision", (f) => { (f.citedSources as PublicSource[]).length = 0; }, "EVIDENCE_REF_UNRESOLVED", "SRC-001"],
-    ["sha256 de la pièce citée effacé après décision", (f) => { (f.citedSources[0] as { sha256: string | null }).sha256 = null; }, "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sha256"],
+  // La décision d'autorité ne dispense pas du fondement : le contrat est
+  // re-dérivé sur la ligne À L'INSTANT de la promotion. Chaque cause du
+  // contrat partagé est atteinte ICI aussi, avec un GRANT parfaitement valide.
+  const ALTERES: ReadonlyArray<readonly [string, (row: ReleaseTargetRow, registre: Map<string, PublicSource>) => [ReleaseTargetRow, Map<string, PublicSource>], ReleaseRefusalCause, string]> = [
+    ["rowNature altérée en base", (row, r) => [{ ...row, rowNature: "UNCLASSIFIED" }, r], "CLAIM_UNCLASSIFIED", "rowNature"],
+    ["evidenceRefs vidées en base", (row, r) => [{ ...row, evidenceRefs: [] }, r], "EVIDENCE_REFS_EMPTY", "evidenceRefs"],
+    ["pièce citée retirée du registre", (row, r) => { r.clear(); return [row, r]; }, "EVIDENCE_REF_UNRESOLVED", "SRC-001"],
+    ["sha256 de la pièce citée effacé", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, sha256: null }); return [row, r]; }, "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sha256"],
   ];
   for (const [nom, alterer, cause, at] of ALTERES) {
-    it(`${nom} → REFUSED / ${cause} @ ${at}`, () => {
+    it(`${nom}, GRANT valide → REFUSED / ${cause} @ ${at}`, () => {
       const f = founded();
-      alterer(f);
-      const d = decidePublicRelease(f, authority());
+      const [row, registre] = alterer(rowOf(f), new Map(registreOf(f)));
+      const d = decidePublicRelease(intentOf(f), row, registre, relue(f), ID_INSERE);
       expect(d.decision).toBe("REFUSED");
       if (d.decision !== "REFUSED") throw new Error("inatteignable");
       expect(d.refusal).toEqual({ cause, at });
@@ -353,7 +375,7 @@ describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décisi
   }
 
   it("toute cause du vocabulaire de libération est atteinte par au moins un cas", () => {
-    const atteintes = new Set<string>([...REFUSES_LIBERATION.map(([, , , c]) => c), ...ALTERES.map(([, , c]) => c)]);
+    const atteintes = new Set<string>([...REFUSES_LIBERATION.map(([, , c]) => c), ...ALTERES.map(([, , c]) => c), "DECISION_NOT_ATTESTED"]);
     for (const c of RELEASE_REFUSAL_CAUSES) expect(atteintes.has(c), c).toBe(true);
   });
 });
@@ -384,7 +406,7 @@ describe("RC-SPINE-00 — retirer les evidenceRefs empêche le fondement, la lib
 
   it("témoin positif : le claim fondé, libéré puis projeté est RENDU avec sa pièce", () => {
     const f = founded();
-    expect(decidePublicRelease(f, authority()).decision).toBe("RELEASABLE");
+    expect(decidePublicRelease(intentOf(f), rowOf(f), registreOf(f), relue(f), ID_INSERE).decision).toBe("RELEASABLE");
     const p = projectForPublication(dossierApresPlan(f, "PUBLIC", f.claimToInsert.evidenceRefs), "test");
     expect(p.claims.map((c) => c.claimId)).toEqual(["C1"]);
     expect(p.sources.map((s) => s.sourceId)).toEqual(["SRC-001"]);
@@ -396,10 +418,9 @@ describe("RC-SPINE-00 — retirer les evidenceRefs empêche le fondement, la lib
     const d = decideFoundation(request({ claim: claim({ evidenceRefs: [] }) }));
     expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "EVIDENCE_REFS_EMPTY", at: "evidenceRefs" } });
 
-    // 2 · libération, sur un fondement altéré après coup
+    // 2 · libération, sur la ligne telle que la base la rendrait, refs vidées
     const f = founded();
-    (f.claimToInsert as unknown as { evidenceRefs: string[] }).evidenceRefs = [];
-    expect(decidePublicRelease(f, authority())).toEqual({ decision: "REFUSED", refusal: { cause: "EVIDENCE_REFS_EMPTY", at: "evidenceRefs" } });
+    expect(decidePublicRelease(intentOf(f), rowOf(f, { evidenceRefs: [] }), registreOf(f), relue(f), ID_INSERE)).toEqual({ decision: "REFUSED", refusal: { cause: "EVIDENCE_REFS_EMPTY", at: "evidenceRefs" } });
 
     // 3 · projection, sur le dossier tel que le producteur le lirait
     expect(() => projectForPublication(dossierApresPlan(founded(), "PUBLIC", []), "test")).toThrow(ProvenanceLostError);
