@@ -18,7 +18,7 @@ import { extname, basename } from "path";
 import { PrismaClient } from "@prisma/client";
 import { PrismaEvidenceStore } from "../../lib/evidence-chain/store/prisma";
 import { ingestFile } from "../../lib/evidence-chain/ingest";
-import { evidenceR2ConfigFromEnv, buildEvidenceR2 } from "../../lib/evidence-chain/r2";
+import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "../../lib/evidence-chain/compartment";
 import { findWatcherCandidates, createLinksFromCandidates } from "../../lib/evidence-chain/attach";
 import { SOURCE_TYPES, type EvidenceSourceType } from "../../lib/evidence-chain/types";
 import { type Criticality } from "../../lib/evidence-chain/tsa";
@@ -58,8 +58,15 @@ async function main() {
 
   const prisma = new PrismaClient();
   const store = new PrismaEvidenceStore(prisma);
-  const r2cfg = evidenceR2ConfigFromEnv();
-  const r2 = r2cfg ? { s3: buildEvidenceR2(r2cfg), bucket: r2cfg.bucket } : null;
+  // FAIL-CLOSED — l'intake gouverné. Sans compartiment dédié, la pièce n'est
+  // pas créée du tout : mieux vaut ne pas naître que naître dans `reports/`.
+  const compartiment = ouvrirCompartimentGouverne();
+  if (!compartiment.ok) {
+    console.error(`[ingest-capture] ${rendreRefusDeCompartiment(compartiment)}`);
+    console.error("                 Aucune pièce créée. Rien n'a été écrit, ni en base ni dans R2.");
+    process.exit(1);
+  }
+  const r2 = { s3: compartiment.s3, bucket: compartiment.bucket };
 
   console.log(`Ingestion « ${basename(file)} » (@${handle}, ${criticality}, ${sourceType})…`);
   const res = await ingestFile({

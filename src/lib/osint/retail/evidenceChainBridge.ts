@@ -23,7 +23,7 @@
 import { prisma } from "@/lib/prisma";
 import { ingestBuffer, type IngestResult } from "@/lib/evidence-chain/ingest";
 import { PrismaEvidenceStore } from "@/lib/evidence-chain/store/prisma";
-import { evidenceR2ConfigFromEnv, buildEvidenceR2 } from "@/lib/evidence-chain/r2";
+import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "@/lib/evidence-chain/compartment";
 import { UNATTRIBUTED } from "@/lib/evidence-chain/types";
 
 export interface RetailChainInput {
@@ -52,8 +52,20 @@ const extByMime: Record<string, string> = {
 export async function chainRetailEvidence(input: RetailChainInput): Promise<RetailChainOutcome> {
   try {
     const store = new PrismaEvidenceStore(prisma);
-    const cfg = evidenceR2ConfigFromEnv();
-    const r2 = cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket } : null;
+    // ── FAIL-CLOSED — l'intake gouverné refuse AVANT de créer la pièce.
+    //
+    // Sans `R2_EVIDENCE_BUCKET_NAME`, on ne se rabat pas sur `R2_BUCKET_NAME` :
+    // une pièce retail ne naît pas dans le compartiment des archives. Le refus
+    // est rendu à l'appelant qui l'ABSORBE déjà — la soumission de l'internaute
+    // n'est pas bloquée, l'original reste au coffre privé avec son imageSha256,
+    // et une réconciliation pourra re-chaîner après provisionnement.
+    const compartiment = ouvrirCompartimentGouverne();
+    if (!compartiment.ok) {
+      const msg = rendreRefusDeCompartiment(compartiment);
+      console.error(`[retail-evidence-chain] ${msg} — aucune pièce créée.`);
+      return { ok: false, evidenceItemId: null, sha256: null, duplicate: false, tsaPending: true, error: msg };
+    }
+    const r2 = { s3: compartiment.s3, bucket: compartiment.bucket };
     const tsaInRoute = process.env.EVIDENCE_TSA_INROUTE === "true";
 
     const res: IngestResult = await ingestBuffer(

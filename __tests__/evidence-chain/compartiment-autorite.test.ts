@@ -33,6 +33,14 @@ import path from "node:path";
 const REPO = path.resolve(__dirname, "..", "..");
 const lire = (rel: string) => readFileSync(path.join(REPO, rel), "utf8");
 
+/**
+ * Le CODE, sans la prose. Ces modules NOMMENT `R2_BUCKET_NAME` dans leurs
+ * commentaires pour expliquer pourquoi ils ne s'en servent pas ; un témoin qui
+ * confondrait l'explication avec l'usage interdirait d'expliquer.
+ */
+const sansCommentaires = (src: string) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
 /** Deux noms volontairement DISTINCTS : c'est toute la sensibilité du témoin. */
 const COMPARTIMENT_PREUVES = "temoin-compartiment-preuves";
 const COMPARTIMENT_PARTAGE = "temoin-compartiment-partage";
@@ -57,6 +65,37 @@ function s3Espion() {
   };
   return { s3: s3 as never, adresses };
 }
+
+/**
+ * LES SITES GOUVERNÉS — MESURÉS, puis confrontés au recensement déclaré.
+ *
+ * Un site gouverné est un fichier qui obtient un compartiment par la porte
+ * unique. La liste n'est pas recopiée : elle est parcourue. Un septième site
+ * qui apparaîtrait rendrait ce test rouge, et c'est le seul mécanisme qui
+ * empêche un nouveau chemin d'échapper au fail-closed sans qu'on le voie.
+ */
+function sitesMesures(): string[] {
+  const out: string[] = [];
+  const empile = (rel: string) => {
+    for (const e of readdirSync(path.join(REPO, rel), { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name === "__tests__") continue;
+      const r = `${rel}/${e.name}`;
+      if (e.isDirectory()) empile(r);
+      else if (/\.tsx?$/.test(e.name) && lire(r).includes("evidence-chain/compartment")) out.push(r);
+    }
+  };
+  empile("src");
+  return out.sort();
+}
+
+const SITES_GOUVERNES: readonly string[] = [
+  "src/lib/osint/evidenceCommitBridge.ts",
+  "src/lib/osint/retail/evidenceChainBridge.ts",
+  "src/scripts/evidence-chain/ingest-capture.ts",
+  "src/scripts/evidence-chain/readback-verify.ts",
+  "src/scripts/evidence-chain/stamp-pending.ts",
+  "src/scripts/watcher-bridge/run-auto-evidence.ts",
+];
 
 const ENV_ORIGINE = { ...process.env };
 beforeEach(() => {
@@ -146,24 +185,25 @@ describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture E
     }
   });
 
-  it("CHAQUE site de production passe le bucket de `evidenceR2ConfigFromEnv`, jamais un littéral ni une autre variable", () => {
+  it("le recensement des sites gouvernés est EXACT — aucun site non déclaré n'est apparu", () => {
+    expect(sitesMesures()).toEqual([...SITES_GOUVERNES]);
+  });
+
+  it("CHAQUE site gouverné passe par la PORTE GOUVERNÉE, jamais un littéral ni une autre variable", () => {
     // Le témoin runtime prouve que les verbes honorent leur argument ; celui-ci
     // prouve que l'argument vient bien de l'autorité, sur tous les sites.
-    const sites = [
-      "src/scripts/evidence-chain/stamp-pending.ts",
-      "src/scripts/evidence-chain/readback-verify.ts",
-      "src/scripts/evidence-chain/ingest-capture.ts",
-      "src/lib/osint/evidenceCommitBridge.ts",
-      "src/lib/osint/retail/evidenceChainBridge.ts",
-    ];
-    for (const site of sites) {
-      const src = lire(site);
-      expect(src, site).toContain("evidenceR2ConfigFromEnv");
-      // Le bucket adressé est TOUJOURS `<cfg>.bucket`, jamais une chaîne.
-      const passages = src.match(/bucket:\s*([^,\n]+)/g) ?? [];
-      for (const p of passages) expect(p, `${site} — ${p}`).toMatch(/bucket:\s*\w*cfg\w*\.bucket/i);
-      expect(src, site).not.toMatch(/R2_BUCKET_NAME/);
-      expect(src, site).not.toMatch(/interligens-rawdocs/);
+    //
+    // CC-OFFLINE-188 : l'autorité du chemin gouverné est désormais
+    // `ouvrirCompartimentGouverne`, qui REFUSE au lieu de se rabattre.
+    for (const site of SITES_GOUVERNES) {
+      const code = sansCommentaires(lire(site));
+      expect(code, site).toContain("ouvrirCompartimentGouverne");
+      expect(code, site).not.toContain("evidenceR2ConfigFromEnv");
+      // Le bucket adressé est TOUJOURS celui de la porte, jamais une chaîne.
+      const passages = code.match(/bucket:\s*([^,\n]+)/g) ?? [];
+      for (const p of passages) expect(p, `${site} — ${p}`).toMatch(/bucket:\s*compartiment\.bucket/);
+      expect(code, site).not.toMatch(/R2_BUCKET_NAME/);
+      expect(code, site).not.toMatch(/interligens-rawdocs/);
     }
   });
 });
@@ -269,7 +309,9 @@ describe("TÉMOIN (b) · le chemin probatoire ne connaît qu'une seule porte de 
       expect(src, rel).not.toMatch(/@aws-sdk|S3Client|GetObjectCommand|process\.env/);
     }
     // Et le job CÂBLE cette capacité avec la porte unique.
-    expect(lire("src/scripts/evidence-chain/stamp-pending.ts")).toContain("getEvidenceObject(s3, r2cfg.bucket, key)");
+    expect(lire("src/scripts/evidence-chain/stamp-pending.ts")).toContain(
+      "getEvidenceObject(compartiment.s3, compartiment.bucket, key)",
+    );
   });
 });
 
