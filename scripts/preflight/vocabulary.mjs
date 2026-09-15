@@ -200,12 +200,25 @@ export function screenManifest(manifest) {
 //   tsconfig.tsbuildinfo                 → cache incrémental de tsc (754 Ko), inutile
 //                                          à un build distant qui part d'un cache vide
 //
-// `public/tiger/analyst.png` n'est NI exclu NI autorisé, et c'est délibéré :
-// il est RÉFÉRENCÉ par src/components/TigerRevealCard.tsx:109 et n'existe dans
-// AUCUN commit. L'autoriser ferait passer pour un artefact de build un contenu
-// dont la production dépend ; l'exclure casserait l'image en silence. Le
-// preflight reste donc ROUGE dessus — c'est le constat, pas un défaut du
-// contrôle. Résolution dans docs/prep/.
+// ─── `public/tiger/analyst.png` — RÉSOLU PAR COMMIT, PAS PAR AUTORISATION ────
+// Il était le seul rouge résiduel : RÉFÉRENCÉ par
+// src/components/TigerRevealCard.tsx:109 et présent dans AUCUN commit.
+// L'autoriser ici aurait fait passer pour un artefact de build un contenu dont
+// la production dépend ; l'exclure aurait cassé l'image en silence.
+//
+// Il a donc été COMMITÉ (2026-09-15), après avoir vérifié que l'octet de
+// l'arbre est bien celui que la production sert :
+//   sha256 = 8ddfcd1a86a4b1673e485703404e89cee76b889076de9eb85482823aa699db9f
+//   581 655 octets · PNG 550×549 RGBA
+//   identique à GET https://interligens-app.vercel.app/tiger/analyst.png?v=3
+//   (200, image/png, 581 655 octets — l'alias app.interligens.com rend 403 sur
+//    un client non-navigateur, Cloudflare ; l'origine Vercel répond)
+// Il entre donc dans le source-set par la porte du §3 — l'ÉGALITÉ avec HEAD —
+// et non par la soupape. GENERATED_ALLOWED reste à UN membre.
+//
+// Les trois `public/tiger/*.mp4` (30 Mo) ne sont NI commités NI autorisés : ils
+// sortent par `.vercelignore`, c'est-à-dire par l'EXCLUSION. Le preflight est
+// vert sans aucune exception pour eux.
 
 /** L'état. Chemins EXACTS. Vide serait la valeur la plus stricte. */
 export const GENERATED_ALLOWED = [
