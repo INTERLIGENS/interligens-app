@@ -130,6 +130,12 @@ const SITES_GOUVERNES: readonly string[] = [
   "src/lib/osint/evidenceCommitBridge.ts",
   "src/lib/osint/retail/evidenceChainBridge.ts",
   "src/scripts/evidence-chain/ingest-capture.ts",
+  // La SONDE DE CAPACITÉ (CC-OFFLINE-195). Elle n'écrit aucune pièce — son
+  // namespace `_capability-probes/` est explicitement NON PROBATOIRE — mais elle
+  // OUVRE le compartiment de naissance pour mesurer ce que son credential peut
+  // faire. Elle obéit donc aux mêmes règles que les autres, et le recensement
+  // l'a attrapée de lui-même : c'est exactement à quoi il sert.
+  "src/scripts/evidence-chain/sonde-capacite-r2.ts",
   // ⛔ `readback-verify.ts` N'EST PLUS UN SITE GOUVERNÉ, et c'est l'INVARIANT 1
   //    appliqué (CC-OFFLINE-195). Il n'écrit RIEN : exiger une porte de
   //    NAISSANCE pour relire des octets historiques confondait les deux
