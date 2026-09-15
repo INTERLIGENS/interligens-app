@@ -34,10 +34,46 @@
  *          SHA-256 recalculé, confrontation, et refus AVANT tout appel TSA.
  *          Le hash soumis vient des OCTETS, jamais de la colonne.
  *
- * FAIL-CLOSED D'AMORÇAGE : sans configuration R2, aucune relecture n'est
- * possible, donc AUCUN horodatage n'est tenté. Le script sort en échec plutôt
- * que d'horodater à l'aveugle — c'est précisément le mode dégradé qui a permis
- * d'écrire des pièces sans octets.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CC-OFFLINE-214 — LE GATE D'AMORÇAGE EST RETIRÉ. IL N'AUTORISAIT RIEN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « An irreversible downstream operation must be gated by authorities
+ *     causally required for that operation. Requiring unrelated configuration
+ *     is not fail-closed governance; it is false coupling. »
+ *
+ * Ce fichier a porté, jusqu'au 2026-09-15, un « FAIL-CLOSED D'AMORÇAGE » qui
+ * appelait `ouvrirCompartimentGouverne()` — la porte de NAISSANCE — et refusait
+ * TOUT le run quand elle était fermée. Le témoin T1-TÉMOIN-TSA-LEGACY a falsifié
+ * la condition sous laquelle il avait été accepté. Quatre constats, mesurés :
+ *
+ *   1. LA VALEUR RENDUE N'ÉTAIT UTILISÉE NULLE PART. `compartiment` ne servait
+ *      qu'à sa propre condition ; aucune capacité n'en était tirée. Le lecteur
+ *      effectivement employé est `lieu.readObject`, lié au compartiment que le
+ *      REGISTRE désigne (`stampGate.ts` étape 0).
+ *   2. LES VARIABLES EXIGÉES N'ÉTAIENT PAS CELLES CONSOMMÉES. Le gate exigeait
+ *      `R2_EVIDENCE_*` ; le chemin des pièces legacy consomme la fente
+ *      `reports` (`CAPACITES_PAR_COMPARTIMENT`), et elle seule.
+ *   3. AUCUNE ÉCRITURE R2 N'A LIEU ICI. L'irréversible de ce job est un jeton
+ *      chez un tiers et quatre colonnes en base. Rien n'y naît.
+ *   4. LE CONTRÔLE EXISTE DÉJÀ, MIEUX PLACÉ. `ouvrirCompartimentDesigne`
+ *      vérifie la capacité DU COMPARTIMENT DÉSIGNÉ, par pièce, et refuse en
+ *      `CAPABILITY_UNAVAILABLE`. Le gate d'amorçage en était un doublon à
+ *      l'échelle du PROCESSUS — l'échelle exacte à laquelle il devenait une
+ *      condition artificielle.
+ *
+ * LA CHAÎNE D'AUTORITÉ DE CE JOB, ET ELLE NE PASSE PAS PAR LA NAISSANCE :
+ *
+ *   EvidenceItem → autorité de localisation → capacité READ du compartiment
+ *                → octets persistés → digest recalculé → éligibilité → TSA
+ *
+ * ⚠️ CE N'EST PAS UN ASSOUPLISSEMENT. Rien n'est horodaté « à l'aveugle » : le
+ * refus qui protégeait réellement l'opération est `stampOne` lui-même, qui
+ * REFUSE avant tout appel TSA dès que la localisation ne résout pas
+ * (`storage_location_unresolved`) ou que les octets relus ne concordent pas.
+ * Ce qui disparaît est une exigence de configuration ; aucun refus ne disparaît.
+ *
+ * Témoin permanent : `__tests__/evidence-chain/gate-amorcage-retire.test.ts`.
  *
  * Usage :
  *   pnpm tsx src/scripts/evidence-chain/stamp-pending.ts               # live
@@ -55,7 +91,6 @@ import { PrismaEvidenceStore } from "../../lib/evidence-chain/store/prisma";
 import { timestampWithRouting } from "../../lib/evidence-chain/tsa";
 import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
 import { stampOne, type PendingEvidenceRow } from "../../lib/evidence-chain/stampGate";
-import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "../../lib/evidence-chain/compartment";
 import { assemblerResolutionDeStockage, runnerDepuisPrisma } from "../../lib/evidence-chain/runtimeResolution";
 
 const flagN = (name: string, def: number) => {
@@ -72,21 +107,11 @@ async function main() {
   // L'univers, d'un bloc, partagé avec le watchdog. Rien n'est assemblé ici.
   const universe = tsaPendingUniverseSql();
 
-  // ── FAIL-CLOSED D'AMORÇAGE ─────────────────────────────────────────────
+  // ── PAS DE GATE D'AMORÇAGE. Voir l'en-tête, CC-OFFLINE-214.
   //
-  // La porte est UNIQUE et elle REFUSE : sans `R2_EVIDENCE_BUCKET_NAME`, ce
-  // job ne relit rien. Il ne se rabat PAS sur `R2_BUCKET_NAME` — relire les
-  // octets dans le compartiment des archives, puis poser un jeton dessus,
-  // attesterait un objet que le chemin d'écriture gouverné n'a pas choisi.
-  const compartiment = ouvrirCompartimentGouverne();
-  if (!compartiment.ok && !dryRun) {
-    console.error(
-      `[stamp-pending] ${rendreRefusDeCompartiment(compartiment)}\n` +
-        "               Aucun horodatage tenté. Un jeton posé sans relecture attesterait une colonne, pas une preuve.",
-    );
-    process.exitCode = 1;
-    return;
-  }
+  // Le refus qui protège l'opération irréversible vit dans `stampOne`, PAR
+  // PIÈCE : localisation non résolue, octets absents, digest discordant. Une
+  // exigence de configuration à l'échelle du processus n'en ajoutait aucun.
   const prisma = new PrismaClient();
   const store = new PrismaEvidenceStore(prisma);
   try {

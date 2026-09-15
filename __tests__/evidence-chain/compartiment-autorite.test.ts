@@ -143,7 +143,20 @@ const SITES_GOUVERNES: readonly string[] = [
   //    LISIBLE sans devenir une destination. Son compartiment vient désormais,
   //    pièce par pièce, du registre de localisation via `storageResolution.ts`,
   //    qui est recensé ci-dessus.
-  "src/scripts/evidence-chain/stamp-pending.ts",
+  //
+  // ⛔ `stamp-pending.ts` N'EST PLUS UN SITE GOUVERNÉ NON PLUS (CC-OFFLINE-214),
+  //    au MÊME titre et pour la MÊME raison. Il n'écrivait aucun octet ; son
+  //    « fail-closed d'amorçage » exigeait la porte de NAISSANCE et n'en tirait
+  //    aucune capacité — la valeur rendue ne servait qu'à sa propre condition.
+  //
+  //      « An irreversible downstream operation must be gated by authorities
+  //        causally required for that operation. Requiring unrelated
+  //        configuration is not fail-closed governance; it is false coupling. »
+  //
+  //    Son compartiment vient, pièce par pièce, du registre de localisation —
+  //    par le constructeur canonique `runtimeResolution.ts`, qui consomme
+  //    `storageResolution.ts`, recensé ci-dessus. Le retrait est mesuré par
+  //    `__tests__/evidence-chain/gate-amorcage-retire.test.ts`.
   "src/scripts/watcher-bridge/run-auto-evidence.ts",
 ];
 

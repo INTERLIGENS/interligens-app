@@ -523,7 +523,12 @@ describe("B · la forme du gate est structurellement fail-closed", () => {
   });
 
   it("le job CÂBLE les capacités, il ne les construit pas dans le gate", () => {
-    const job = lire(SRC_JOB);
+    // CC-OFFLINE-214 — LE CODE, PAS LA PROSE. L'en-tête du job NOMME le gate
+    // retiré : sans ce nettoyage, documenter le correctif ferait rougir le
+    // témoin du correctif.
+    const job = lire(SRC_JOB)
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
     // CC-OFFLINE-189 — le job ne câble plus un LECTEUR, il câble la capacité de
     // RÉSOUDRE. `getEvidenceObject` n'est plus atteignable qu'à travers une
     // résolution réussie, donc il a disparu du job.
@@ -533,14 +538,18 @@ describe("B · la forme du gate est structurellement fail-closed", () => {
     expect(job).toContain("assemblerResolutionDeStockage");
     expect(job).toContain("resolveStorage");
     expect(job).not.toContain("getEvidenceObject");
-    // CC-OFFLINE-188 — l'amorçage passe désormais par la PORTE GOUVERNÉE, qui
-    // refuse au lieu de se rabattre. `evidenceR2ConfigFromEnv` (avec son repli
-    // sur R2_BUCKET_NAME) n'a plus rien à faire sur ce chemin.
-    expect(job).toContain("ouvrirCompartimentGouverne");
+    // CC-OFFLINE-214 — LE GATE D'AMORÇAGE EST RETIRÉ, ET L'ASSERTION EST
+    // INVERSÉE. Ce test EXIGEAIT `ouvrirCompartimentGouverne` dans le job :
+    // c'est-à-dire qu'il verrouillait le faux couplage au lieu de le mesurer.
+    //
+    // La porte de NAISSANCE n'a rien à faire ici — voir l'en-tête du job et le
+    // témoin causal `gate-amorcage-retire.test.ts`, qui prouve que le chemin de
+    // relecture tient SANS aucune des trois fentes `R2_EVIDENCE_*`.
+    expect(job).not.toContain("ouvrirCompartimentGouverne");
+    expect(job).not.toContain("rendreRefusDeCompartiment");
+    // …et le repli sur `R2_BUCKET_NAME` ne revient pas par la porte de service.
     expect(job).not.toContain("evidenceR2ConfigFromEnv");
-    // Fail-closed d'amorçage : sans compartiment gouverné, rien n'est horodaté.
-    expect(job).toMatch(/if \(!compartiment\.ok && !dryRun\)/);
-    expect(job).toContain("rendreRefusDeCompartiment");
+    expect(job).not.toContain("R2_BUCKET_NAME");
   });
 
   it("la relecture vise le MÊME compartiment que l'écriture", () => {
