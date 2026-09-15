@@ -69,6 +69,10 @@ const ENV_PROVISIONNE = {
   R2_ACCOUNT_ID: "compte",
   R2_ACCESS_KEY_ID: "ak",
   R2_SECRET_ACCESS_KEY: "sk",
+  // CC-OFFLINE-194 : capacité PAR COMPARTIMENT — evidence a sa propre fente,
+  // et le credential générique ne la remplace plus.
+  R2_EVIDENCE_ACCESS_KEY_ID: "ak-evidence",
+  R2_EVIDENCE_SECRET_ACCESS_KEY: "sk-evidence",
   R2_BUCKET_NAME: "interligens-reports",
   R2_EVIDENCE_BUCKET_NAME: "interligens-evidence",
 };
@@ -365,13 +369,15 @@ describe("le repli vers R2_BUCKET_NAME est INATTEIGNABLE, pas seulement interdit
   });
 
   it("ce qui manque VRAIMENT fait refuser : les credentials, pas le nom du compartiment", () => {
-    const sansCredentials = { R2_EVIDENCE_BUCKET_NAME: "interligens-evidence" };
-    const r = resoudreLocalisation(LIGNE, sansCredentials, [{ nom: "registre", localiser: () => "interligens-reports" }]);
+    const sansCapacite = { R2_ACCOUNT_ID: "compte" };
+    const r = resoudreLocalisation(LIGNE, sansCapacite, [{ nom: "registre", localiser: () => "interligens-reports" }]);
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error("inatteignable");
-    expect(r.detail).toContain("evidence_credentials_unconfigured");
-    // La cause dit la bonne réparation : l'accès, jamais la sélection.
-    expect(r.detail).toContain("Le compartiment est choisi, l'accès ne l'est pas");
+    expect(r.detail).toContain("CAPABILITY_UNAVAILABLE");
+    // La cause dit la bonne réparation : la fente de CE compartiment, et elle
+    // dit aussi ce qu'on n'a PAS fait — essayer celle de l'autre.
+    expect(r.detail).toContain("R2_ACCESS_KEY_ID");
+    expect(r.detail).toContain("n'est PAS essayé");
   });
 
   it("le résolveur de production ne refuse JAMAIS en lisant ailleurs", () => {

@@ -44,6 +44,11 @@ const SRC_PORTE = "src/lib/evidence-chain/compartment.ts";
 const AVANT = {
   R2_ACCOUNT_ID: "compte",
   R2_ACCESS_KEY_ID: "ak",
+  // CC-OFFLINE-194 : la capacité est désormais PORTÉE PAR COMPARTIMENT. Ouvrir
+  // `interligens-evidence` exige SA fente ; le credential générique ne la
+  // remplace plus (c'était précisément le repli qu'on a supprimé).
+  R2_EVIDENCE_ACCESS_KEY_ID: "ak-evidence",
+  R2_EVIDENCE_SECRET_ACCESS_KEY: "sk-evidence",
   R2_SECRET_ACCESS_KEY: "sk",
   R2_BUCKET_NAME: "interligens-reports",
 };

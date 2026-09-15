@@ -69,13 +69,25 @@ export type CauseDeRefusDeCompartiment =
    * et cela se répare en base, ou pas du tout. Les confondre ferait chercher
    * une variable là où il y a une ligne de registre.
    */
-  | "compartiment_hors_vocabulaire_gouverne";
+  | "compartiment_hors_vocabulaire_gouverne"
+  /**
+   * Le compartiment est DÉSIGNÉ et RECONNU, mais la capacité d'y accéder manque
+   * — le credential propre à CE compartiment n'est pas provisionné.
+   *
+   * ⛔ Distincte de tout le reste, et surtout de `evidence_credentials_unconfigured` :
+   * celle-là dit « le COMPTE R2 n'est pas configuré » (partagé, tous compartiments) ;
+   * celle-ci dit « la fente de CE compartiment est vide ». La réparation n'est
+   * pas la même variable, et le credential de l'autre compartiment n'est JAMAIS
+   * essayé pour combler.
+   */
+  | "CAPABILITY_UNAVAILABLE";
 
 export const CAUSES_REFUS_DE_COMPARTIMENT: readonly CauseDeRefusDeCompartiment[] =
   Object.freeze([
     "evidence_compartment_unconfigured",
     "evidence_credentials_unconfigured",
     "compartiment_hors_vocabulaire_gouverne",
+    "CAPABILITY_UNAVAILABLE",
   ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -127,6 +139,120 @@ export type CompartimentGouverne = (typeof COMPARTIMENTS_GOUVERNES)[number];
 export const estCompartimentGouverne = (v: unknown): v is CompartimentGouverne =>
   typeof v === "string" && (COMPARTIMENTS_GOUVERNES as readonly string[]).includes(v);
 
+// ═══════════════════════════════════════════════════════════════════════════
+// LA CAPACITÉ EST ELLE-MÊME PORTÉE PAR COMPARTIMENT
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//   « Storage authority selects an object's governed compartment; access
+//     capability must be scoped to that compartment and to the minimum
+//     operations required. A credential for one governed compartment must never
+//     become fallback capability for another. »
+//
+// ─── CE QUI A ÉTÉ CORRIGÉ, ET POURQUOI C'EST L'INVERSE DE CE QU'ON PROPOSAIT ──
+//
+// La mesure du 2026-09-16 a montré deux credentials DISJOINTS (principal →
+// reports, mesure → evidence), et on en avait conclu qu'il fallait UN credential
+// couvrant les deux. GPT a renversé la proposition, et il a raison :
+//
+//   « Je ne veux pas créer un credential longue durée Read & Write couvrant
+//     reports + evidence simplement parce que l'implémentation actuelle résout
+//     les credentials AU NIVEAU DU PROCESSUS. Ce serait CORRIGER UNE LIMITATION
+//     DE CODE EN AUGMENTANT LE BLAST RADIUS D'UN SECRET. »
+//
+//   « Le fait mesuré est précisément l'inverse de ce qu'on veut
+//     architecturalement : les deux compartiments ont des BESOINS DIFFÉRENTS.
+//     Rien dans le vertical slice ne justifie WRITE sur reports. »
+//
+// La limitation était dans le CODE — `R2_EVIDENCE_* || R2_*`, résolu une fois
+// pour tout le processus. C'est le code qui change, pas la portée du secret.
+//
+// ⛔ PLUS AUCUN `||` ENTRE LES DEUX FENTES. Un credential d'un compartiment ne
+//    devient JAMAIS la capacité de secours d'un autre. Si celui du compartiment
+//    désigné manque, on REFUSE — on n'essaie pas l'autre.
+//
+// ⚠️ TABLE EN DUR, comme `COMPARTIMENTS_GOUVERNES`, et pour la même raison :
+//    lue dans l'environnement, elle ne serait pas fermée — une variable
+//    suffirait à faire pointer un compartiment sur la capacité d'un autre, et
+//    le repli reviendrait par la configuration.
+
+/** Ce dont UN compartiment a besoin, et les variables qui le portent. */
+export interface CapaciteDeCompartiment {
+  /** La variable qui porte l'identifiant. Propre à ce compartiment. */
+  readonly variableCle: string;
+  /** La variable qui porte le secret. Propre à ce compartiment. */
+  readonly variableSecret: string;
+  /**
+   * Les opérations MINIMALES que ce compartiment exige.
+   *
+   * ⚠️ DÉCLARATIF, et il faut le dire : ce dépôt ne peut pas vérifier la portée
+   * réelle d'un jeton R2 — seul Cloudflare la connaît. Cette valeur énonce ce
+   * qui DOIT être provisionné, pour qu'un relecteur voie d'un coup d'œil que
+   * `reports` n'exige AUCUNE écriture. Elle ne garde rien à l'exécution, et ne
+   * prétend pas le faire.
+   */
+  readonly operationsMinimales: "READ" | "READ+WRITE";
+  /** Pourquoi ce compartiment a ce besoin-là, et pas un autre. */
+  readonly motif: string;
+}
+
+export const CAPACITES_PAR_COMPARTIMENT: Readonly<Record<CompartimentGouverne, CapaciteDeCompartiment>> =
+  Object.freeze({
+    "interligens-evidence": Object.freeze({
+      variableCle: "R2_EVIDENCE_ACCESS_KEY_ID",
+      variableSecret: "R2_EVIDENCE_SECRET_ACCESS_KEY",
+      operationsMinimales: "READ+WRITE",
+      motif:
+        "le compartiment CANONIQUE : les pièces nouvelles y naissent (écriture) et y sont " +
+        "relues pour horodatage (lecture).",
+    }),
+    "interligens-reports": Object.freeze({
+      variableCle: "R2_ACCESS_KEY_ID",
+      variableSecret: "R2_SECRET_ACCESS_KEY",
+      operationsMinimales: "READ",
+      motif:
+        "le compartiment LEGACY : on y relit les octets que le registre y situe. " +
+        "RIEN dans le chemin probatoire n'y écrit — et donc rien ne justifie WRITE.",
+    }),
+  });
+
+/** Ce qu'il faut pour parler à R2, une fois le compartiment choisi. */
+export interface CapaciteResolue {
+  readonly accessKeyId: string;
+  readonly secretAccessKey: string;
+}
+
+/**
+ * La capacité d'accès à UN compartiment, ou le refus de l'autre.
+ *
+ * ⛔ Elle ne lit QUE les deux variables de CE compartiment. Aucune autre fente
+ *    n'est consultée, ni en repli ni « au cas où » : c'est structurel, pas
+ *    conventionnel — les noms viennent de la table, et la table est fermée.
+ */
+export function capaciteDuCompartiment(
+  compartiment: CompartimentGouverne,
+  env: Record<string, string | undefined> = process.env,
+): CapaciteResolue | CompartimentRefuse {
+  const attendu = CAPACITES_PAR_COMPARTIMENT[compartiment];
+  const accessKeyId = (env[attendu.variableCle] ?? "").trim();
+  const secretAccessKey = (env[attendu.variableSecret] ?? "").trim();
+  const manquants = [
+    !accessKeyId && attendu.variableCle,
+    !secretAccessKey && attendu.variableSecret,
+  ].filter(Boolean) as string[];
+
+  if (manquants.length > 0) {
+    return refuser(
+      "CAPABILITY_UNAVAILABLE",
+      `le compartiment « ${compartiment} » est DÉSIGNÉ et reconnu, mais la capacité d'y accéder ` +
+        `manque : ${manquants.join(", ")} (requis : ${attendu.operationsMinimales}). ` +
+        "⛔ Le credential d'un AUTRE compartiment n'est PAS essayé : une capacité scopée sur un " +
+        "compartiment ne devient jamais la capacité de secours d'un autre. " +
+        `Motif de ce compartiment : ${attendu.motif}`,
+    );
+  }
+  return { accessKeyId, secretAccessKey };
+}
+
 export interface CompartimentRefuse {
   readonly ok: false;
   readonly cause: CauseDeRefusDeCompartiment;
@@ -175,23 +301,31 @@ export function resoudreCompartimentGouverne(
   }
 
   const accountId = (env.R2_ACCOUNT_ID ?? "").trim();
-  const accessKeyId = (env.R2_EVIDENCE_ACCESS_KEY_ID || env.R2_ACCESS_KEY_ID || "").trim();
-  const secretAccessKey = (env.R2_EVIDENCE_SECRET_ACCESS_KEY || env.R2_SECRET_ACCESS_KEY || "").trim();
-  const manquants = [
-    !accountId && "R2_ACCOUNT_ID",
-    !accessKeyId && "R2_EVIDENCE_ACCESS_KEY_ID|R2_ACCESS_KEY_ID",
-    !secretAccessKey && "R2_EVIDENCE_SECRET_ACCESS_KEY|R2_SECRET_ACCESS_KEY",
-  ].filter(Boolean);
-  if (manquants.length > 0) {
+  if (!accountId) {
     return refuser(
       "evidence_credentials_unconfigured",
-      `compartiment « ${bucket} » désigné, mais les credentials manquent : ${manquants.join(", ")}. ` +
-        "Le compartiment est connu, l'accès ne l'est pas — ce n'est pas la même réparation.",
+      "R2_ACCOUNT_ID n'est pas provisionnée. C'est une configuration de COMPTE, partagée par " +
+        "tous les compartiments — distincte de la capacité d'accès à l'un d'eux.",
     );
   }
 
+  // ── Le compartiment de naissance doit lui aussi appartenir au vocabulaire
+  // fermé : une variable ne peut pas faire naître une pièce n'importe où.
+  if (!estCompartimentGouverne(bucket)) {
+    return refuser(
+      "compartiment_hors_vocabulaire_gouverne",
+      `R2_EVIDENCE_BUCKET_NAME désigne « ${bucket} », qui n'appartient pas au vocabulaire fermé ` +
+        `des compartiments gouvernés (${COMPARTIMENTS_GOUVERNES.join(", ")}).`,
+    );
+  }
+
+  // ⛔ La capacité vient de la TABLE, jamais d'un repli. Aucune autre fente
+  //    n'est consultée si celle de ce compartiment est vide.
+  const capacite = capaciteDuCompartiment(bucket, env);
+  if ("ok" in capacite) return capacite;
+
   const endpoint = (env.R2_ENDPOINT ?? "").trim() || `https://${accountId}.r2.cloudflarestorage.com`;
-  return { ok: true, config: { accountId, accessKeyId, secretAccessKey, bucket, endpoint } };
+  return { ok: true, config: { accountId, ...capacite, bucket, endpoint } };
 }
 
 export interface CompartimentOuvert {
@@ -253,6 +387,16 @@ export function ouvrirCompartimentGouverne(
 export function ouvrirCompartimentDesigne(
   compartimentDesigne: string,
   env: Record<string, string | undefined> = process.env,
+  /**
+   * Le constructeur de client, INJECTABLE — et ce n'est pas une commodité de
+   * test, c'est ce qui rend la garantie MESURABLE.
+   *
+   * « le credential de l'autre compartiment n'est jamais essayé » ne se prouve
+   * pas par l'absence d'erreur : un refus peut survenir pour dix raisons. Il se
+   * prouve en OBSERVANT quel secret est effectivement remis au constructeur —
+   * et en constatant qu'il ne l'est pas du tout quand la fente est vide.
+   */
+  construire: (cfg: EvidenceR2Config) => S3Client = buildEvidenceR2,
 ): CompartimentOuvert | CompartimentRefuse {
   const designe = (compartimentDesigne ?? "").trim();
 
@@ -268,31 +412,30 @@ export function ouvrirCompartimentDesigne(
     );
   }
 
-  // ── 2 · LA CAPACITÉ, et rien d'autre. La configuration ne choisit pas le
-  // compartiment — elle dit seulement si on sait y accéder.
+  // ── 2 · LE COMPTE. Configuration partagée, distincte de la capacité d'accès
+  // à un compartiment : ce n'est pas la même variable ni la même réparation.
   const accountId = (env.R2_ACCOUNT_ID ?? "").trim();
-  const accessKeyId = (env.R2_EVIDENCE_ACCESS_KEY_ID || env.R2_ACCESS_KEY_ID || "").trim();
-  const secretAccessKey = (env.R2_EVIDENCE_SECRET_ACCESS_KEY || env.R2_SECRET_ACCESS_KEY || "").trim();
-  const manquants = [
-    !accountId && "R2_ACCOUNT_ID",
-    !accessKeyId && "R2_EVIDENCE_ACCESS_KEY_ID|R2_ACCESS_KEY_ID",
-    !secretAccessKey && "R2_EVIDENCE_SECRET_ACCESS_KEY|R2_SECRET_ACCESS_KEY",
-  ].filter(Boolean);
-  if (manquants.length > 0) {
+  if (!accountId) {
     return refuser(
       "evidence_credentials_unconfigured",
-      `compartiment « ${designe} » DÉSIGNÉ et reconnu, mais les credentials manquent : ` +
-        `${manquants.join(", ")}. Le compartiment est choisi, l'accès ne l'est pas — ce n'est pas ` +
-        "la même réparation, et l'un ne remplace pas l'autre.",
+      `compartiment « ${designe} » DÉSIGNÉ et reconnu, mais R2_ACCOUNT_ID n'est pas provisionnée. ` +
+        "C'est une configuration de COMPTE, partagée par tous les compartiments.",
     );
   }
+
+  // ── 3 · LA CAPACITÉ DE CE COMPARTIMENT, et d'AUCUN AUTRE.
+  // ⛔ Si elle manque : CAPABILITY_UNAVAILABLE. On n'essaie PAS le credential de
+  //    l'autre compartiment — « a credential for one governed compartment must
+  //    never become fallback capability for another ».
+  const capacite = capaciteDuCompartiment(designe, env);
+  if ("ok" in capacite) return capacite;
 
   const endpoint = (env.R2_ENDPOINT ?? "").trim() || `https://${accountId}.r2.cloudflarestorage.com`;
   // Le bucket rendu est EXACTEMENT le désigné. Aucune substitution possible :
   // il n'y a pas d'autre valeur dans cette portée.
   return {
     ok: true,
-    s3: buildEvidenceR2({ accountId, accessKeyId, secretAccessKey, bucket: designe, endpoint }),
+    s3: construire({ accountId, ...capacite, bucket: designe, endpoint }),
     bucket: designe,
   };
 }

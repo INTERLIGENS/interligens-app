@@ -56,6 +56,9 @@ const ENV_PROVISIONNE = {
   R2_ACCOUNT_ID: "compte",
   R2_ACCESS_KEY_ID: "cle",
   R2_SECRET_ACCESS_KEY: "secret",
+  // CC-OFFLINE-194 : capacité PAR COMPARTIMENT — evidence a sa propre fente.
+  R2_EVIDENCE_ACCESS_KEY_ID: "cle-evidence",
+  R2_EVIDENCE_SECRET_ACCESS_KEY: "secret-evidence",
 };
 
 function ligne(over: Partial<StorageLocationRow> = {}): StorageLocationRow {
