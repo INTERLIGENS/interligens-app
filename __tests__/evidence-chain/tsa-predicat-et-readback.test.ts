@@ -35,11 +35,14 @@ import {
   type ReadObjectFn,
   type ReadbackRefusalKind,
 } from "@/lib/evidence-chain/readback";
+import type { ResolveStorageFn } from "@/lib/evidence-chain/storageResolution";
 import {
   stampOne,
   type PendingEvidenceRow,
   type RoutedStamp,
   type StampGateDeps,
+  STORAGE_LOCATION_UNRESOLVED,
+  STAMP_REFUSAL_KINDS,
   type StampOutcome,
   type TimestampFn,
 } from "@/lib/evidence-chain/stampGate";
@@ -215,6 +218,23 @@ function erreurS3(status: number, name: string): Error {
 const lecteur = (b: Buffer): ReadObjectFn => async () => b;
 const lecteurQuiLeve = (err: unknown): ReadObjectFn => async () => { throw err; };
 
+/**
+ * CC-OFFLINE-189 — le gate ne reçoit plus un lecteur, il reçoit une CAPACITÉ DE
+ * RÉSOUDRE. `resolu` est la résolution qui réussit : elle nomme un compartiment
+ * témoin et rend le lecteur qui lui est lié. C'est la seule façon, ici comme en
+ * production, d'obtenir de quoi lire.
+ */
+const resolu = (r: ReadObjectFn): ResolveStorageFn => () => ({
+  ok: true, compartiment: "compartiment-temoin", autorite: "témoin", readObject: r,
+});
+
+/** Pour les mutants, qui doivent pouvoir lire comme le vrai gate le ferait. */
+async function lecteurDe(deps: StampGateDeps): Promise<ReadObjectFn> {
+  const l = await deps.resolveStorage({ id: "mutant", r2Key: "cle" });
+  if (!l.ok) throw new Error("mutant: localisation non résolue");
+  return l.readObject;
+}
+
 type GateImpl = (row: PendingEvidenceRow, deps: StampGateDeps) => Promise<StampOutcome>;
 
 interface Scenario {
@@ -290,7 +310,7 @@ async function batterieGate(impl: GateImpl): Promise<string[]> {
     const espion = vi.fn<TimestampFn>(async () => ROUTED);
     let out: StampOutcome;
     try {
-      out = await impl(s.row, { readObject: s.readObject, timestamp: espion });
+      out = await impl(s.row, { resolveStorage: resolu(s.readObject), timestamp: espion });
     } catch {
       viol.push(s.critere);
       continue;
@@ -318,7 +338,7 @@ describe("B · le gate d'horodatage relit les octets avant tout appel", () => {
     const espion = vi.fn<TimestampFn>(async () => ROUTED);
     const out = await stampOne(
       { id: "a", sha256: SHA_REEL.toUpperCase(), r2Key: CLE },
-      { readObject: lecteur(OCTETS), timestamp: espion },
+      { resolveStorage: resolu(lecteur(OCTETS)), timestamp: espion },
     );
     expect(out.status).toBe("stamped");
     expect(espion).toHaveBeenCalledTimes(1);
@@ -332,7 +352,7 @@ describe("B · le gate d'horodatage relit les octets avant tout appel", () => {
     const espion = vi.fn<TimestampFn>(async () => ROUTED);
     const out = await stampOne(
       { id: "b", sha256: SHA_REEL, r2Key: CLE },
-      { readObject: lecteur(AUTRES_OCTETS), timestamp: espion },
+      { resolveStorage: resolu(lecteur(AUTRES_OCTETS)), timestamp: espion },
     );
     expect(out).toMatchObject({ status: "refused", kind: "digest_mismatch" });
     expect(espion).not.toHaveBeenCalled();
@@ -342,7 +362,7 @@ describe("B · le gate d'horodatage relit les octets avant tout appel", () => {
     const espion = vi.fn<TimestampFn>(async () => ROUTED);
     const out = await stampOne(
       { id: "c", sha256: SHA_REEL, r2Key: CLE },
-      { readObject: lecteurQuiLeve(erreurS3(404, "NoSuchKey")), timestamp: espion },
+      { resolveStorage: resolu(lecteurQuiLeve(erreurS3(404, "NoSuchKey"))), timestamp: espion },
     );
     expect(out).toMatchObject({ status: "refused", kind: "object_absent" });
     expect(espion).not.toHaveBeenCalled();
@@ -352,7 +372,7 @@ describe("B · le gate d'horodatage relit les octets avant tout appel", () => {
     const espion = vi.fn<TimestampFn>(async () => ROUTED);
     const out = await stampOne(
       { id: "d", sha256: SHA_REEL, r2Key: CLE },
-      { readObject: lecteur(OCTETS.subarray(0, OCTETS.length - 1)), timestamp: espion },
+      { resolveStorage: resolu(lecteur(OCTETS.subarray(0, OCTETS.length - 1))), timestamp: espion },
     );
     expect(out).toMatchObject({ status: "refused", kind: "digest_mismatch" });
     expect(espion).not.toHaveBeenCalled();
@@ -361,7 +381,7 @@ describe("B · le gate d'horodatage relit les octets avant tout appel", () => {
   it("aucune TSA joignable ≠ refus probatoire — les deux sorties restent distinctes", async () => {
     const out = await stampOne(
       { id: "e", sha256: SHA_REEL, r2Key: CLE },
-      { readObject: lecteur(OCTETS), timestamp: async () => null },
+      { resolveStorage: resolu(lecteur(OCTETS)), timestamp: async () => null },
     );
     expect(out.status).toBe("no_tsa");
   });
@@ -395,7 +415,7 @@ const MUTANTS_B: Array<{ nom: string; critere: string; impl: GateImpl }> = [
     critere: "B1 hash-recalcule-soumis",
     impl: async (row, deps) => {
       const back = await readbackDigest({
-        r2Key: row.r2Key, expectedSha256: row.sha256, readObject: deps.readObject,
+        r2Key: row.r2Key, expectedSha256: row.sha256, readObject: await lecteurDe(deps),
       });
       if (!back.ok) return { status: "refused", kind: back.kind, detail: back.detail };
       // La vérification a eu lieu — et ne sert à rien, puisque ce qui part
@@ -415,7 +435,7 @@ const MUTANTS_B: Array<{ nom: string; critere: string; impl: GateImpl }> = [
     critere: "B2 divergence-refusee-sans-appel",
     impl: async (row, deps) => {
       const back = await readbackDigest({
-        r2Key: row.r2Key, expectedSha256: row.sha256, readObject: deps.readObject,
+        r2Key: row.r2Key, expectedSha256: row.sha256, readObject: await lecteurDe(deps),
       });
       const hash = back.ok ? back.sha256 : row.sha256;
       const routed = await deps.timestamp(hash);
@@ -448,7 +468,7 @@ const MUTANTS_B: Array<{ nom: string; critere: string; impl: GateImpl }> = [
     impl: async (row, deps) => {
       if (!row.r2Key) return { status: "refused", kind: "no_storage_key", detail: "" };
       try {
-        await deps.readObject(row.r2Key); // existence seule, contenu ignoré
+        await (await lecteurDe(deps))(row.r2Key); // existence seule, contenu ignoré
       } catch {
         return { status: "refused", kind: "object_absent", detail: "" };
       }
@@ -504,7 +524,12 @@ describe("B · la forme du gate est structurellement fail-closed", () => {
 
   it("le job CÂBLE les capacités, il ne les construit pas dans le gate", () => {
     const job = lire(SRC_JOB);
-    expect(job).toContain("getEvidenceObject");
+    // CC-OFFLINE-189 — le job ne câble plus un LECTEUR, il câble la capacité de
+    // RÉSOUDRE. `getEvidenceObject` n'est plus atteignable qu'à travers une
+    // résolution réussie, donc il a disparu du job.
+    expect(job).toContain("resolveurGouverne");
+    expect(job).toContain("resolveStorage");
+    expect(job).not.toContain("getEvidenceObject");
     // CC-OFFLINE-188 — l'amorçage passe désormais par la PORTE GOUVERNÉE, qui
     // refuse au lieu de se rabattre. `evidenceR2ConfigFromEnv` (avec son repli
     // sur R2_BUCKET_NAME) n'a plus rien à faire sur ce chemin.

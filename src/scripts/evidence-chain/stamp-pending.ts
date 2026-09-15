@@ -55,8 +55,8 @@ import { PrismaEvidenceStore } from "../../lib/evidence-chain/store/prisma";
 import { timestampWithRouting } from "../../lib/evidence-chain/tsa";
 import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
 import { stampOne, type PendingEvidenceRow } from "../../lib/evidence-chain/stampGate";
-import { getEvidenceObject } from "../../lib/evidence-chain/r2";
 import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "../../lib/evidence-chain/compartment";
+import { resolveurGouverne } from "../../lib/evidence-chain/storageResolution";
 
 const flagN = (name: string, def: number) => {
   const i = process.argv.indexOf("--" + name);
@@ -87,10 +87,10 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  const readObject = (key: string): Promise<Buffer> => {
-    if (!compartiment.ok) throw new Error(rendreRefusDeCompartiment(compartiment));
-    return getEvidenceObject(compartiment.s3, compartiment.bucket, key);
-  };
+  // LA RÉSOLUTION DE COMPARTIMENT, PAR PIÈCE. Le job ne câble plus un lecteur
+  // global : il câble la capacité de RÉSOUDRE, et c'est la résolution qui rend
+  // un lecteur — lié au compartiment qu'elle a nommé, pour cette pièce-là.
+  const resolveStorage = resolveurGouverne();
 
   const prisma = new PrismaClient();
   const store = new PrismaEvidenceStore(prisma);
@@ -113,7 +113,7 @@ async function main() {
       }
       try {
         const outcome = await stampOne(p, {
-          readObject,
+          resolveStorage,
           timestamp: (hash) => timestampWithRouting(hash, { criticality: "OTHER" }),
         });
         if (outcome.status === "refused") {

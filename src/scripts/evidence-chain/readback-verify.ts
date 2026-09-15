@@ -24,8 +24,9 @@ config({ path: ".env.local" });
 import { PrismaClient } from "@prisma/client";
 import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
 import { readbackDigest } from "../../lib/evidence-chain/readback";
-import { getEvidenceObject } from "../../lib/evidence-chain/r2";
 import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "../../lib/evidence-chain/compartment";
+import { resoudreLocalisation } from "../../lib/evidence-chain/storageResolution";
+import { STORAGE_LOCATION_UNRESOLVED } from "../../lib/evidence-chain/stampGate";
 
 async function main() {
   const i = process.argv.indexOf("--limit");
@@ -48,14 +49,25 @@ async function main() {
 
     let refus = 0;
     for (const p of rows) {
-      const v = await readbackDigest({
-        r2Key: p.r2Key,
-        expectedSha256: p.sha256,
-        readObject: (k) => getEvidenceObject(compartiment.s3, compartiment.bucket, k),
-      });
       console.log(`\n  pièce   : ${p.id}`);
       console.log(`  clé     : ${p.r2Key}`);
       console.log(`  colonne : ${p.sha256} (byteSize ${p.byteSize})`);
+
+      // ÉTAPE 0 — OÙ LIRE. Chercher au mauvais endroit et ne rien trouver
+      // n'est pas constater une absence : la sonde refuse AVANT de lire.
+      const lieu = resoudreLocalisation(p);
+      if (!lieu.ok) {
+        refus++;
+        console.log(`  VERDICT : REFUS [${STORAGE_LOCATION_UNRESOLVED}] — ${lieu.detail}`);
+        continue;
+      }
+      console.log(`  lieu    : ${lieu.compartiment} (autorité ${lieu.autorite})`);
+
+      const v = await readbackDigest({
+        r2Key: p.r2Key,
+        expectedSha256: p.sha256,
+        readObject: lieu.readObject,
+      });
       if (v.ok) {
         console.log(`  relu    : ${v.sha256} (${v.byteSize} o)`);
         console.log(`  VERDICT : CONCORDE`);
