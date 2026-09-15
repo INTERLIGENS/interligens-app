@@ -289,7 +289,20 @@ LEASES=(
     #
     # 45 minutes, la borne du mécanisme. Le sujet est la branche de câblage, pas
     # celle-ci : le nom SÉLECTIONNE, la lease AUTORISE.
-    "T2-HOTFIX-DEPLOYMENT-GUARD|cablage-du-chemin-de-deploiement|package.json,scripts/preflight-deploy.mjs,scripts/preflight/vocabulary.mjs,scripts/deploy-production.mjs|c451ad50a41aa9a0fa5ec5038529159376297fb3|hotfix/deployment-preflight-wiring|2026-09-15T08:30:00Z|2026-09-15T09:15:00Z|OPEN"
+    # FERMÉE le 2026-09-15T08:46Z, le câblage mergé (418b6d7). Retirer une
+    # lease NARROWS, donc n'exige aucune autorité — mais passe quand même par
+    # la voie de maintenance, parce que toute ÉCRITURE de l'état passe par le
+    # guard. C'est ce qui fait qu'il n'y a pas de prolongation silencieuse :
+    # il n'y a pas d'écriture silencieuse.
+    #
+    # Elle n'est pas laissée à expirer d'elle-même. Une lease périmée cesse
+    # bien d'autoriser, mais un enregistrement OPEN qui traîne dans `main`
+    # ressemble à une exemption, et c'est précisément la confusion que
+    # « STATIC PROJECT EXEMPTIONS = 0 » existe pour interdire.
+    #
+    #   T2-HOTFIX-DEPLOYMENT-GUARD | cablage-du-chemin-de-deploiement
+    #   4 chemins · hotfix/deployment-preflight-wiring
+    #   2026-09-15T08:30:00Z → 09:15:00Z (45 mn) · consommée à 08:34
 )
 
 lease_rouge() {
