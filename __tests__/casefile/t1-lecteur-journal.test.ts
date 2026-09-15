@@ -337,12 +337,26 @@ describe("(g) le lecteur EXISTE et n'a AUCUNE autorité — la bascule est la PH
   const lecteur = codeSeul(readFileSync(MODULE, "utf8"));
   const sources = [...fichiersSource("src"), ...fichiersSource("scripts")].map((f) => [f, codeSeul(readFileSync(f, "utf8"))] as const);
 
-  it("AUCUN fichier de src/ ni scripts/ n'appelle le nouveau lecteur — il n'a pas encore d'appelant", () => {
+  // AMENDÉ le 2026-09-15 par T1-INSCRIPTION-QUALIFICATIONS-VINE. L'assertion
+  // d'origine — « il n'a AUCUN appelant » — est devenue fausse le jour où
+  // l'écrivain a existé, et c'était le but : le lecteur relit ce que
+  // l'écrivain inscrit, et les deux bancs d'épreuve le font tourner. Ce qui ne
+  // devait PAS changer, et n'a pas changé, c'est qu'aucun CONSOMMATEUR DE
+  // DÉCISION ne l'appelle : la bascule reste la PHASE C (étape D de la
+  // séquence). L'assertion est donc une LISTE BLANCHE nominative, pas une
+  // liste vide — un appelant de plus la fait rougir, quel qu'il soit.
+  it("les SEULS appelants du lecteur sont l'écrivain et les deux bancs d'épreuve — aucun chemin de décision", () => {
     const appelants = sources
       .filter(([f, c]) => f !== MODULE && /(resolveJournalProvenance|readJournalProvenance|readLatestJournalRows|journalProvenance)/.test(c))
       .map(([f]) => f)
       .sort();
-    expect(appelants).toEqual([]);
+    expect(appelants).toEqual([
+      // n'importe l'un de ses TYPES (JournalSqlRunner, les domaines fermés) ;
+      // n'appelle aucune de ses fonctions de résolution.
+      "scripts/casefile/harnais-ecrivain-journal-pglite.mts",
+      "scripts/casefile/qualifications-vine-rehearsal-rollback.mts",
+      "src/lib/casefile/journalWriter.ts",
+    ]);
   });
 
   it("les CONSOMMATEURS DE DÉCISION ne le mentionnent nulle part : ni decideFoundation, ni decidePublicRelease, ni la projection", () => {
@@ -369,14 +383,47 @@ describe("(g) le lecteur EXISTE et n'a AUCUNE autorité — la bascule est la PH
     expect(appelants).toEqual(["src/lib/casefile/canonicalReader.ts", "src/lib/casefile/governedExecutor.ts"]);
   });
 
-  it("le lecteur n'ÉCRIT rien : aucun INSERT/UPDATE/DELETE/TRUNCATE sur le journal, ici ni ailleurs", () => {
+  // AMENDÉ le 2026-09-15, même fenêtre. Un INSERT existe désormais dans src/ —
+  // c'est l'écrivain, et c'est voulu. Ce qui reste INTACT, et qui est la vraie
+  // propriété : LE LECTEUR n'écrit rien ; l'INSERT n'existe QU'À UN SEUL
+  // ENDROIT du dépôt ; et AUCUN fichier, nulle part, ne porte d'UPDATE, de
+  // DELETE ou de TRUNCATE sur cette table. Le journal est append-only par deux
+  // triggers en base — le code ne doit même pas savoir formuler la mutation.
+  /**
+   * LE SEUL fichier autorisé à FORMULER une mutation du journal — et il ne le
+   * fait que pour PROUVER que la base la refuse (23001, les deux triggers
+   * append-only). L'exemption est NOMMÉE : un second banc qui voudrait la même
+   * licence doit être déclaré ici, ce qui est une décision, pas un trou.
+   */
+  const BANC_DE_MUTATION = "scripts/casefile/harnais-ecrivain-journal-pglite.mts";
+
+  it("le LECTEUR n'écrit rien, et dans src/ l'INSERT n'existe qu'à UN SEUL endroit", () => {
     expect(lecteur).not.toMatch(/\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE)\b/i);
+    const inserteurs = sources
+      .filter(([f, c]) => f.startsWith("src/") && /INSERT\s+INTO\s+evidence_provenance_journal/i.test(c))
+      .map(([f]) => f)
+      .sort();
+    expect(inserteurs).toEqual(["src/lib/casefile/journalWriter.ts"]);
+  });
+
+  it("AUCUN fichier ne porte d'UPDATE, de DELETE ni de TRUNCATE sur le journal — hors le banc qui prouve le refus", () => {
     for (const [f, c] of sources) {
-      expect(c, f).not.toMatch(/INSERT\s+INTO\s+evidence_provenance_journal/i);
+      if (f === BANC_DE_MUTATION) continue;
       expect(c, f).not.toMatch(/UPDATE\s+evidence_provenance_journal/i);
       expect(c, f).not.toMatch(/DELETE\s+FROM\s+evidence_provenance_journal/i);
       expect(c, f).not.toMatch(/TRUNCATE\s+evidence_provenance_journal/i);
     }
+  });
+
+  it("l'exemption n'est pas un blanc-seing : le banc EXISTE, et il attend un REFUS de chacune des trois mutations", () => {
+    const banc = sources.find(([f]) => f === BANC_DE_MUTATION);
+    expect(banc, `${BANC_DE_MUTATION} est déclaré exempté mais introuvable`).toBeDefined();
+    const c = banc![1];
+    for (const verbe of [/UPDATE\s+evidence_provenance_journal/i, /DELETE\s+FROM\s+evidence_provenance_journal/i, /TRUNCATE\s+evidence_provenance_journal/i]) {
+      expect(c, `${verbe} absent du banc`).toMatch(verbe);
+    }
+    // Chaque mutation y est attendue REFUSÉE (`!== "OK"`), jamais réussie.
+    expect((c.match(/!==\s*"OK"/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 
   it("le lecteur ne consulte AUCUNE colonne sourceUrl de projection : ni CaseFileSource, ni EvidenceSnapshot", () => {
