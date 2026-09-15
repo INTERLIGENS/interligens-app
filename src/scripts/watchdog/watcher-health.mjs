@@ -50,7 +50,22 @@
  *   WATCHDOG_SPEND_CAP_USD  (déf 100) — cap mensuel X API (réel ~$100, 2026-06-25)
  *   WATCHDOG_WARN_PCT       (déf 80)  — % du cap déclenchant un warn
  *   WATCHDOG_STATE_FILE     (déf ~/.interligens-watchdog-state.json)
+ *   WATCHDOG_HISTORY_FILE   (déf ~/.interligens-watchdog-history.jsonl)
  *   WATCHDOG_DRY_RUN        (déf off) — "1" => imprime au lieu d'envoyer Telegram
+ *
+ * INSTRUMENTATION (2026-09-15) — observabilité seule, aucune décision changée :
+ *   - Toute ligne écrite par ce script porte DEUX horloges nommées en tête :
+ *     `[UTC …Z | LOC …+02:00]`. Le journal antérieur n'est ni réécrit ni
+ *     rétro-horodaté : 0 de ses 1205 lignes ne portait d'heure, et aucune ne
+ *     peut en recevoir une après coup.
+ *   - Chaque run mesure et écrit sa DURÉE : démarrage du processus (dérivé de
+ *     `process.uptime()`, monotone) → point de décision. C'est cette durée qui
+ *     décale le delta par rapport à la frontière des 24h.
+ *   - Chaque run dépose UN enregistrement dans WATCHDOG_HISTORY_FILE
+ *     (JSON Lines, append-only, jamais réécrit) : signature, lastSignature,
+ *     changed, lastAlertAt, delta_ms, stale, décision et sa raison.
+ *   - Le DÉCIDEUR lui-même est sorti d'ici : src/lib/watchdog/alertDecision.ts,
+ *     fonction pure, prouvée frontière comprise. Comportement IDENTIQUE.
  */
 
 import fs from "fs";
@@ -121,6 +136,26 @@ function loadSourceFreshness() {
   const unregister = register();
   try {
     return require(path.join(REPO_ROOT, "src/lib/watchdog/sourceFreshness.ts"));
+  } finally {
+    unregister();
+  }
+}
+
+// Même mécanique que loadC4() : le DÉCIDEUR (envoyer ou se taire) et la mise en
+// forme du journal vivent dans des modules TS testables.
+//
+// C'était la dernière pièce de la chaîne d'alerte à vivre en ligne dans main(),
+// et la seule que rien ne prouvait : REALERT_MS, lastSignature et lastAlertAt
+// n'apparaissaient dans aucun test du dépôt. C'est pourtant elle qui a décidé
+// le silence du 2026-09-14.
+function loadDecisionAndJournal() {
+  const { register } = require("tsx/cjs/api");
+  const unregister = register();
+  try {
+    return {
+      decision: require(path.join(REPO_ROOT, "src/lib/watchdog/alertDecision.ts")),
+      journal: require(path.join(REPO_ROOT, "src/lib/watchdog/runJournal.ts")),
+    };
   } finally {
     unregister();
   }
@@ -267,7 +302,63 @@ const STATE_FILE =
   process.env.WATCHDOG_STATE_FILE ||
   path.join(process.env.HOME || REPO_ROOT, ".interligens-watchdog-state.json");
 
-const REALERT_MS = 24 * 3_600_000; // ré-alerte au plus une fois / 24h pour le même problème
+// REALERT_MS ne vit plus ici : la fenêtre de ré-alerte est REALERT_WINDOW_MS,
+// dans src/lib/watchdog/alertDecision.ts, avec les tests qui la prouvent —
+// frontière comprise. Même valeur, même comparaison stricte. Une copie locale
+// rouvrirait la porte à deux fenêtres qui divergent, et celle qui décide serait
+// justement celle qui n'est pas testée.
+
+// L'HISTORIQUE des décisions — une ligne JSON par run, append-only, à côté de
+// l'état. Il répond à ce que le journal texte ne sait pas dire : combien de
+// temps s'est écoulé entre deux décisions, et laquelle a supprimé quoi.
+const HISTORY_FILE =
+  process.env.WATCHDOG_HISTORY_FILE ||
+  path.join(process.env.HOME || REPO_ROOT, ".interligens-watchdog-history.jsonl");
+
+// ─── LES DEUX INSTANTS DU RUN ───────────────────────────────────────────────
+//
+// `process.uptime()` est un compteur MONOTONE depuis le démarrage du processus.
+// Il donne la durée sans la reconstruire par soustraction de deux lectures
+// d'horloge murale — lesquelles peuvent sauter (NTP, réveil de veille), et ce
+// laptop dort tous les jours.
+const PROCESS_STARTED_AT_MS = Date.now() - Math.round(process.uptime() * 1000);
+/** Durée écoulée depuis le démarrage du processus, en ms. */
+const runDurationMs = () => Math.round(process.uptime() * 1000);
+/** Identifiant de run : relie les lignes du journal à l'enregistrement JSON. */
+const RUN_ID = `${new Date(PROCESS_STARTED_AT_MS).toISOString().replace(/[-:.]/g, "").slice(0, 15)}-${process.pid}`;
+
+// ─── SORTIE HORODATÉE ───────────────────────────────────────────────────────
+//
+// Toute ligne écrite par ce script passe par `log`/`logErr`, qui préfixent
+// CHAQUE ligne — multi-lignes comprises — des deux horloges nommées. Voir
+// runJournal.ts : avant ça, 0 des 1205 lignes du journal portait une heure.
+//
+// JOURNAL est injecté au début de main(). Avant cet instant (ou si le module TS
+// ne se charge pas), on écrit SANS préfixe plutôt que de se taire : une ligne
+// non horodatée reste plus utile qu'une ligne perdue.
+let JOURNAL = null;
+function stampedText(args) {
+  const text = args
+    .map((x) => (x instanceof Error ? (x.stack ?? String(x)) : typeof x === "string" ? x : String(x)))
+    .join(" ");
+  if (!JOURNAL) return text;
+  return JOURNAL.stampLines(JOURNAL.formatClockPrefix(new Date()), text);
+}
+function log(...args) {
+  process.stdout.write(stampedText(args) + "\n");
+}
+function logErr(...args) {
+  process.stderr.write(stampedText(args) + "\n");
+}
+
+/** Écriture APPEND-ONLY : aucun run n'écrase un run précédent. */
+function appendHistory(record) {
+  try {
+    fs.appendFileSync(HISTORY_FILE, JOURNAL.serializeRecord(record));
+  } catch (e) {
+    logErr("[watchdog] impossible d'écrire l'historique des décisions:", e.message);
+  }
+}
 
 // --- Retry connexion DB (anti-faux-positif réseau) ---------------------------
 // Host-001 est un laptop en Indonésie (Lombok) ; le lien vers Neon (Francfort)
@@ -300,7 +391,7 @@ function saveState(s) {
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
   } catch (e) {
-    console.error("[watchdog] impossible d'écrire l'état:", e.message);
+    logErr("[watchdog] impossible d'écrire l'état:", e.message);
   }
 }
 
@@ -309,11 +400,11 @@ async function sendTelegram(text) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_OPS_CHAT_ID;
   if (DRY_RUN) {
-    console.log("\n[watchdog DRY_RUN] message Telegram qui aurait été envoyé :\n" + text + "\n");
+    log("\n[watchdog DRY_RUN] message Telegram qui aurait été envoyé :\n" + text + "\n");
     return true;
   }
   if (!token || !chatId) {
-    console.error(
+    logErr(
       `[watchdog] Telegram non configuré (TELEGRAM_BOT_TOKEN=${token ? "set" : "MANQUANT"}, ` +
         `TELEGRAM_OPS_CHAT_ID=${chatId ? "set" : "MANQUANT"}). Message non envoyé :\n` + text
     );
@@ -326,12 +417,12 @@ async function sendTelegram(text) {
       body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
     });
     if (!res.ok) {
-      console.error("[watchdog] Telegram sendMessage a échoué", res.status, (await res.text()).slice(0, 200));
+      logErr("[watchdog] Telegram sendMessage a échoué", res.status, (await res.text()).slice(0, 200));
       return false;
     }
     return true;
   } catch (e) {
-    console.error("[watchdog] Telegram sendMessage a throw:", e.message);
+    logErr("[watchdog] Telegram sendMessage a throw:", e.message);
     return false;
   }
 }
@@ -845,13 +936,13 @@ async function connectAndCheck() {
       } catch {}
       if (attempt < DB_MAX_ATTEMPTS) {
         const wait = DB_RETRY_BACKOFF_MS[attempt - 1] ?? 5000;
-        console.error(
+        logErr(
           `[watchdog] tentative connexion DB ${attempt}/${DB_MAX_ATTEMPTS} échouée: ` +
             `${e.code || ""} ${e.message} — retry dans ${(wait / 1000).toFixed(0)}s`
         );
         await sleep(wait);
       } else {
-        console.error(
+        logErr(
           `[watchdog] tentative connexion DB ${attempt}/${DB_MAX_ATTEMPTS} échouée: ` +
             `${e.code || ""} ${e.message} — abandon.`
         );
@@ -863,8 +954,42 @@ async function connectAndCheck() {
 
 // --- Main --------------------------------------------------------------------
 async function main() {
+  // Chargé EN PREMIER : tant que JOURNAL est nul, les lignes sortent sans
+  // horodatage. On veut que même « DATABASE_URL manquant » soit daté.
+  const { decision: DECIDE, journal } = loadDecisionAndJournal();
+  JOURNAL = journal;
+
+  const processStartedAt = new Date(PROCESS_STARTED_AT_MS);
+  /**
+   * Un enregistrement par run, quelle que soit l'issue. Append-only.
+   *
+   * `decidedAt` / `runDurationMs` sont passés explicitement par l'appelant qui
+   * les a relevés AU POINT DE DÉCISION : les relever ici mesurerait jusqu'à
+   * l'écriture du fichier, donc après l'aller-retour Telegram — ce n'est pas la
+   * durée qui décide si delta franchit la frontière des 24h.
+   */
+  const journalRun = (fields) => {
+    appendHistory(
+      JOURNAL.buildRunJournalRecord({
+        runId: RUN_ID,
+        decidedAt: new Date(),
+        processStartedAt,
+        runDurationMs: runDurationMs(),
+        ...fields,
+      })
+    );
+  };
+
   if (!process.env.DATABASE_URL) {
-    console.error("[watchdog] DATABASE_URL manquant — abandon.");
+    logErr("[watchdog] DATABASE_URL manquant — abandon.");
+    journalRun({
+      branch: "DB_FAILURE",
+      problemCount: 0,
+      deciderApplied: false,
+      decision: "ECHEC",
+      reasonCode: "DATABASE_URL_MANQUANT",
+      reason: "DATABASE_URL absent de l'environnement — aucun check n'a tourné",
+    });
     process.exit(1);
   }
 
@@ -873,13 +998,21 @@ async function main() {
     result = await connectAndCheck();
   } catch (e) {
     // Échec de connexion DB après toutes les tentatives = vraie anomalie.
-    console.error(
+    logErr(
       `[watchdog] échec connexion/checks DB après ${DB_MAX_ATTEMPTS} tentatives:`,
       e.message
     );
     await sendTelegram(
       `🔴 WATCHDOG — échec d'accès à la DB (après ${DB_MAX_ATTEMPTS} tentatives) : ${e.message}`
     );
+    journalRun({
+      branch: "DB_FAILURE",
+      problemCount: 0,
+      deciderApplied: false,
+      decision: "ECHEC",
+      reasonCode: "DB_INACCESSIBLE",
+      reason: `${DB_MAX_ATTEMPTS} tentatives échouées — ${e.code || ""} ${e.message}`.trim(),
+    });
     process.exit(1);
   }
 
@@ -889,10 +1022,27 @@ async function main() {
   const signature = problems.map((p) => p.key).sort().join(",");
   const summary = lines.join("\n");
 
+  // LE DÉCIDEUR, appelé une seule fois, sur l'état TEL QU'IL A ÉTÉ LU.
+  //
+  // L'appel est remonté au-dessus du `if` exprès : la branche verte réécrit
+  // `state.lastSignature` et `state.lastAlertAt` avant d'envoyer son heartbeat.
+  // Décider après cette réécriture ferait mesurer l'état d'après plutôt que
+  // celui sur lequel la décision a porté. La fonction est PURE : la remonter ne
+  // change rien à ce que la branche PROBLEMS obtient.
+  const alertDecision = DECIDE.decideAlert({ signature, state, now });
+
+  // Les deux instants du run, relevés ICI — au point de décision, pas plus tard.
+  const decidedAt = new Date(now);
+  const decisionDurationMs = runDurationMs();
+  const atDecision = { decidedAt, runDurationMs: decisionDurationMs };
+
+  log(
+    `[watchdog] run ${RUN_ID} — démarrage processus ${processStartedAt.toISOString()}, ` +
+      `point de décision ${decidedAt.toISOString()}, durée ${decisionDurationMs} ms`
+  );
+
   if (problems.length > 0) {
-    const changed = signature !== state.lastSignature;
-    const stale = now - (state.lastAlertAt || 0) > REALERT_MS;
-    if (changed || stale) {
+    if (alertDecision.send) {
       const header = problems.some((p) => p.severity === "crit")
         ? "🔴 ALERTE WATCHDOG INTERLIGENS"
         : "🟠 WATCHDOG INTERLIGENS";
@@ -906,13 +1056,48 @@ async function main() {
         state.lastSignature = signature;
         saveState(state);
       }
+      log(`[watchdog] ENVOI — ${alertDecision.reason}`);
+      journalRun({
+        branch: "PROBLEMS",
+        ...atDecision,
+        problemCount: problems.length,
+        deciderApplied: true,
+        decision: sent ? "ENVOI" : "ECHEC",
+        alertDecision,
+        reasonCode: sent ? alertDecision.reasonCode : "ENVOI_TELEGRAM_ECHOUE",
+        reason: sent
+          ? alertDecision.reason
+          : `décision d'envoi prise (${alertDecision.reason}) mais sendTelegram a échoué`,
+      });
     } else {
-      console.log("[watchdog] problème déjà alerté (<24h, même signature) — pas de renvoi.");
+      // La ligne n'est plus anonyme : elle NOMME la signature et le delta.
+      // « On sait qu'il y a eu suppression, pas de quoi » — c'est ce qu'on
+      // corrige. Le 2026-09-14, cette ligne était le seul témoin de quatre
+      // problèmes réels restés silencieux, et elle ne disait rien.
+      log(`[watchdog] SUPPRIMEE — ${alertDecision.reason}`);
+      journalRun({
+        branch: "PROBLEMS",
+        ...atDecision,
+        problemCount: problems.length,
+        deciderApplied: true,
+        decision: "SUPPRIMEE",
+        alertDecision,
+        reasonCode: alertDecision.reasonCode,
+        reason: alertDecision.reason,
+      });
     }
   } else {
     // Tout vert : recovery éventuel + heartbeat quotidien.
+    // La branche verte ne consulte PAS le décideur — elle suit le heartbeat
+    // quotidien. `alertDecision` n'est enregistré ici qu'à titre d'OBSERVATION
+    // (deciderApplied: false) : il n'a influencé aucune de ces décisions.
+    let sentCount = 0;
+    let reasonCode;
+    let reason;
+
     if (state.lastSignature) {
       await sendTelegram(`✅ WATCHDOG — résolu. Tout est de nouveau vert.\n\n${summary}`);
+      sentCount++;
       state.lastSignature = "";
       state.lastAlertAt = 0;
       saveState(state);
@@ -924,16 +1109,35 @@ async function main() {
         state.lastHeartbeatDate = today;
         saveState(state);
       }
+      if (sent) sentCount++;
+      reasonCode = sent ? "HEARTBEAT_ENVOYE" : "HEARTBEAT_ECHOUE";
+      reason = sent
+        ? `tout vert — heartbeat du ${today} envoyé`
+        : `tout vert — heartbeat du ${today} : sendTelegram a échoué`;
     } else {
-      console.log("[watchdog] tout vert, heartbeat déjà envoyé aujourd'hui.");
+      log("[watchdog] tout vert, heartbeat déjà envoyé aujourd'hui.");
+      reasonCode = "HEARTBEAT_DEJA_ENVOYE";
+      reason = `tout vert — heartbeat déjà envoyé pour ${today}`;
     }
+
+    journalRun({
+      branch: "GREEN",
+      ...atDecision,
+      problemCount: 0,
+      deciderApplied: false,
+      decision:
+        reasonCode === "HEARTBEAT_ECHOUE" ? "ECHEC" : sentCount > 0 ? "ENVOI" : "SUPPRIMEE",
+      alertDecision,
+      reasonCode,
+      reason,
+    });
   }
 
   // Toujours logguer le résumé (visible dans le log launchd).
-  console.log(`[watchdog] ${todayStr()} — ${problems.length} problème(s)\n${summary}`);
+  log(`[watchdog] ${todayStr()} — ${problems.length} problème(s)\n${summary}`);
 }
 
 main().catch((e) => {
-  console.error("[watchdog] erreur fatale:", e);
+  logErr("[watchdog] erreur fatale:", e);
   process.exit(1);
 });
