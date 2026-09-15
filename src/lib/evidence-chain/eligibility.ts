@@ -60,6 +60,48 @@ export function eligibleStatusSqlClause(column: string): string {
   return parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`;
 }
 
+/**
+ * L'UNIVERS DU JOB D'HORODATAGE — une seule expression, deux consommateurs.
+ *
+ * LE CONTRAT, écrit ici et nulle part ailleurs :
+ *
+ *     éligibilité à l'écriture TSA = pièce NON HORODATÉE **ET** NON DISQUALIFIÉE
+ *
+ * POURQUOI CETTE FONCTION EXISTE PLUTÔT QUE DEUX CLAUSES ASSEMBLÉES À LA MAIN
+ * ---------------------------------------------------------------------------
+ * Le job `stamp-pending` interrogeait `"tsaToken" IS NULL` seul ; le watchdog
+ * interrogeait `"tsaToken" IS NULL AND <éligible>`. Deux expressions du même
+ * contrat, assemblées chacune de son côté : elles ont divergé, et l'écart s'est
+ * lu 34 contre 31. Les trois lignes de l'écart sont exactement celles qu'un
+ * horodatage ne doit JAMAIS toucher — une pièce dont les octets sont perdus et
+ * deux sondes exclues. Un jeton RFC 3161 sur un contenu absent est
+ * irréversible : il atteste pour toujours un hash que plus rien ne peut
+ * confronter.
+ *
+ * Partager `eligibleStatusSqlClause` ne suffisait pas : chaque appelant
+ * recomposait le `AND`. Ici l'expression ENTIÈRE est rendue d'un bloc. Les deux
+ * appelants ne peuvent plus diverger parce qu'il n'y a plus rien à assembler.
+ *
+ * PAS DE NOUVEAU MARQUEUR. La règle est DÉRIVÉE : statut probatoire non NULL ⇒
+ * non éligible. Écrire un « never timestamped intentionally » dupliquerait la
+ * décision déjà portée par BYTES_LOST / EXCLUDED et créerait une SECONDE
+ * autorité sur la même question.
+ *
+ * FAIL-CLOSED PAR HÉRITAGE : la liste blanche gouverne. Un futur statut
+ * d'exclusion ajouté en base sort de l'univers sans qu'on touche à ce fichier.
+ */
+export function tsaPendingUniverseSql(
+  opts: { tokenColumn?: string; statusColumn?: string } = {},
+): string {
+  const tokenColumn = opts.tokenColumn ?? "tsaToken";
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tokenColumn)) {
+    throw new Error(`tsaPendingUniverseSql: nom de colonne invalide: ${tokenColumn}`);
+  }
+  // DÉRIVÉE, jamais réécrite. C'est le point de toute la fonction.
+  const eligible = eligibleStatusSqlClause(opts.statusColumn ?? "evidentiaryStatus");
+  return `"${tokenColumn}" IS NULL AND ${eligible}`;
+}
+
 export interface EvidenceEligibilityInput {
   readonly evidentiaryStatus?: string | null;
 }

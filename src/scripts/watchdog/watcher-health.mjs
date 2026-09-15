@@ -484,13 +484,17 @@ async function runChecks(client) {
   // (demande David : voir si N ne redescend pas) ; warn seulement au-delà du
   // seuil WATCHDOG_TSA_PENDING_WARN (déf 50) — filet anti-dérive, pas du bruit.
   try {
-    const { eligibleStatusSqlClause } = loadEvidenceEligibility();
-    const eligible = eligibleStatusSqlClause("evidentiaryStatus");
+    const { tsaPendingUniverseSql } = loadEvidenceEligibility();
     // Même périmètre que le compteur d'orphelines : une pièce exclue de la
     // chaîne n'a pas à être horodatée, donc elle n'est pas « en attente ».
+    //
+    // CC-OFFLINE-191 — ce watchdog et le job `stamp-pending` interrogeaient
+    // deux clauses assemblées séparément, et elles ont divergé (34 contre 31).
+    // L'expression ENTIÈRE vient maintenant d'une seule fonction : il n'y a
+    // plus de `AND` à recomposer ici, donc plus rien qui puisse diverger.
+    const universe = tsaPendingUniverseSql();
     const r = await client.query(
-      `SELECT count(*)::int AS n FROM "EvidenceItem"
-        WHERE "tsaToken" IS NULL AND ${eligible}`
+      `SELECT count(*)::int AS n FROM "EvidenceItem" WHERE ${universe}`
     );
     const n = r.rows[0]?.n ?? 0;
     const warnAt = parseInt(process.env.WATCHDOG_TSA_PENDING_WARN ?? "50", 10);

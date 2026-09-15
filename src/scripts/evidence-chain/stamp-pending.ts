@@ -12,19 +12,54 @@
  * OpenSSL 3.x). Le LibreSSL d'Apple (/usr/bin/openssl) ne l'a PAS — le plist
  * met /opt/homebrew/bin en tête de PATH.
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CC-OFFLINE-191 — CE SCRIPT NE DÉCIDE PLUS RIEN. IL CÂBLE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * DEUX RULINGS gouvernent ce qu'il fait, et tous deux sont implémentés
+ * AILLEURS, dans des modules éprouvables sans réseau :
+ *
+ *   « Timestamping eligibility must be derived from evidentiary eligibility
+ *     before any irreversible token is written. »
+ *        → `tsaPendingUniverseSql()` (evidence-chain/eligibility.ts).
+ *          L'univers n'est plus « tsaToken IS NULL » : la même expression,
+ *          entière, sert au watchdog. Mesuré en production le 2026-09-15 :
+ *          34 lignes sans jeton, dont 31 éligibles. Les 3 écartées sont
+ *          `evi_rep_bd69380a45529aebeba7bc52` (BYTES_LOST, octets supprimés
+ *          par la règle auto-delete-30d) et deux sondes EXCLUDED.
+ *
+ *   « Persisted bytes, not stored digest metadata, are the authority for the
+ *     hash submitted to a timestamp service. »
+ *        → `stampOne()` (evidence-chain/stampGate.ts) : relecture R2,
+ *          SHA-256 recalculé, confrontation, et refus AVANT tout appel TSA.
+ *          Le hash soumis vient des OCTETS, jamais de la colonne.
+ *
+ * FAIL-CLOSED D'AMORÇAGE : sans configuration R2, aucune relecture n'est
+ * possible, donc AUCUN horodatage n'est tenté. Le script sort en échec plutôt
+ * que d'horodater à l'aveugle — c'est précisément le mode dégradé qui a permis
+ * d'écrire des pièces sans octets.
+ *
  * Usage :
  *   pnpm tsx src/scripts/evidence-chain/stamp-pending.ts               # live
  *   pnpm tsx src/scripts/evidence-chain/stamp-pending.ts --dry-run
  *   pnpm tsx src/scripts/evidence-chain/stamp-pending.ts --limit 100 --throttle-ms 1000
  *
- * Idempotent et reprenable : ne touche que tsaToken IS NULL ; un échec laisse
- * la pièce pending pour le run suivant. Aucune autre colonne modifiée.
+ * Idempotent et reprenable : ne touche que l'univers ci-dessus ; un échec ou un
+ * refus laisse la pièce pending pour le run suivant. Aucune autre colonne
+ * modifiée.
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
 import { PrismaClient } from "@prisma/client";
 import { PrismaEvidenceStore } from "../../lib/evidence-chain/store/prisma";
 import { timestampWithRouting } from "../../lib/evidence-chain/tsa";
+import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
+import { stampOne, type PendingEvidenceRow } from "../../lib/evidence-chain/stampGate";
+import {
+  evidenceR2ConfigFromEnv,
+  buildEvidenceR2,
+  getEvidenceObject,
+} from "../../lib/evidence-chain/r2";
 
 const flagN = (name: string, def: number) => {
   const i = process.argv.indexOf("--" + name);
@@ -37,31 +72,65 @@ async function main() {
   const limit = flagN("limit", 500);
   const throttle = flagN("throttle-ms", 1000);
 
+  // L'univers, d'un bloc, partagé avec le watchdog. Rien n'est assemblé ici.
+  const universe = tsaPendingUniverseSql();
+
+  // ── FAIL-CLOSED D'AMORÇAGE ─────────────────────────────────────────────
+  const r2cfg = evidenceR2ConfigFromEnv();
+  if (!r2cfg && !dryRun) {
+    console.error(
+      "[stamp-pending] REFUS — evidenceR2ConfigFromEnv() rend null : les octets ne peuvent pas être relus.\n" +
+        "               Aucun horodatage tenté. Un jeton posé sans relecture attesterait une colonne, pas une preuve.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const s3 = r2cfg ? buildEvidenceR2(r2cfg) : null;
+  const readObject = (key: string): Promise<Buffer> => {
+    if (!s3 || !r2cfg) throw new Error("R2 non configuré");
+    return getEvidenceObject(s3, r2cfg.bucket, key);
+  };
+
   const prisma = new PrismaClient();
   const store = new PrismaEvidenceStore(prisma);
   try {
     const pending = (await prisma.$queryRawUnsafe(
-      `SELECT "id","sha256","provenanceType","ingestedAt" FROM "EvidenceItem"
-        WHERE "tsaToken" IS NULL ORDER BY "ingestedAt" ASC LIMIT $1`,
+      `SELECT "id","sha256","r2Key","provenanceType","ingestedAt" FROM "EvidenceItem"
+        WHERE ${universe} ORDER BY "ingestedAt" ASC LIMIT $1`,
       limit,
-    )) as Array<{ id: string; sha256: string; provenanceType: string | null; ingestedAt: Date }>;
+    )) as Array<PendingEvidenceRow & { provenanceType: string | null; ingestedAt: Date }>;
 
-    console.log(`[stamp-pending] ${pending.length} pièce(s) en attente de TSA (limit ${limit})${dryRun ? " — DRY-RUN" : ""}`);
-    let done = 0, fail = 0;
+    console.log(
+      `[stamp-pending] ${pending.length} pièce(s) éligible(s) en attente de TSA (limit ${limit})${dryRun ? " — DRY-RUN" : ""}`,
+    );
+    console.log(`[stamp-pending] univers : ${universe}`);
+    let done = 0, fail = 0, refused = 0;
     for (const p of pending) {
       if (dryRun) {
-        console.log(`  DRY ${p.id} sha=${p.sha256.slice(0, 12)}… ingested=${new Date(p.ingestedAt).toISOString()}`);
+        console.log(`  DRY ${p.id} sha=${p.sha256.slice(0, 12)}… key=${p.r2Key ?? "(aucune)"} ingested=${new Date(p.ingestedAt).toISOString()}`);
         continue;
       }
       try {
-        const routed = await timestampWithRouting(p.sha256, { criticality: "OTHER" });
-        if (!routed) { fail++; console.error(`  PENDING ${p.id} — aucune TSA joignable`); continue; }
-        const { result: ts, tsaUsed } = routed;
-        await store.setTsa(p.id, ts.token, ts.provider, ts.genTime, ts.certChainPem);
+        const outcome = await stampOne(p, {
+          readObject,
+          timestamp: (hash) => timestampWithRouting(hash, { criticality: "OTHER" }),
+        });
+        if (outcome.status === "refused") {
+          refused++;
+          console.error(`  REFUS ${p.id} [${outcome.kind}] — ${outcome.detail}`);
+          continue;
+        }
+        if (outcome.status === "no_tsa") {
+          fail++;
+          console.error(`  PENDING ${p.id} — aucune TSA joignable`);
+          continue;
+        }
+        await store.setTsa(p.id, outcome.token, outcome.provider, outcome.genTime, outcome.certChainPem);
         await store.insertAccessLog(p.id, "VERIFY", "stamp-pending",
-          `tsa rattrapée via ${tsaUsed} (${ts.provider}); cert chain archived; ingestedAt=${new Date(p.ingestedAt).toISOString()}`);
+          `tsa rattrapée via ${outcome.tsaUsed} (${outcome.provider}); hash RECALCULÉ depuis les octets relus ` +
+          `(${outcome.byteSize} o, ${outcome.submittedSha256}); cert chain archived; ingestedAt=${new Date(p.ingestedAt).toISOString()}`);
         done++;
-        console.log(`  OK  ${p.id} via ${tsaUsed} (${ts.provider})`);
+        console.log(`  OK  ${p.id} via ${outcome.tsaUsed} (${outcome.provider}) — ${outcome.byteSize} o relus`);
       } catch (e) {
         fail++;
         console.error(`  FAIL ${p.id}: ${e instanceof Error ? e.message : e}`);
@@ -70,10 +139,12 @@ async function main() {
     }
 
     const rest = (await prisma.$queryRawUnsafe(
-      `SELECT count(*)::int AS n FROM "EvidenceItem" WHERE "tsaToken" IS NULL`,
+      `SELECT count(*)::int AS n FROM "EvidenceItem" WHERE ${universe}`,
     )) as Array<{ n: number }>;
-    console.log(`[stamp-pending] horodatées=${done}, échecs=${fail} — TSA pending restant: ${rest[0]?.n ?? "?"}`);
-    if (fail > 0) process.exitCode = 1;
+    console.log(
+      `[stamp-pending] horodatées=${done}, refus=${refused}, échecs=${fail} — TSA pending éligible restant: ${rest[0]?.n ?? "?"}`,
+    );
+    if (fail > 0 || refused > 0) process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }

@@ -10,7 +10,7 @@
  * (à provisionner côté dashboard Cloudflare — les creds S3 actuels ont delete).
  * `immutableStored` reste donc false et immutableRef documente le mode.
  */
-import { S3Client, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export interface EvidenceR2Config {
   accountId: string;
@@ -60,6 +60,38 @@ export async function putEvidenceObject(
   s3: S3Client, bucket: string, key: string, body: Buffer, contentType?: string,
 ): Promise<void> {
   await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
+}
+
+/**
+ * RELIT LES OCTETS. Pas un HEAD : le contenu lui-même, pour que le hash puisse
+ * être RECALCULÉ depuis ce qui est réellement persisté.
+ *
+ * ⚠️ POURQUOI ICI, ET PAS `evidenceStorage.get` QUI EXISTE DÉJÀ.
+ * `src/lib/storage/evidenceStorage.ts` a bien un `get`, et il a été examiné
+ * avant d'écrire celui-ci. Il n'est PAS réutilisable sur le chemin de la
+ * chaîne de preuve : il lit `R2_BUCKET_NAME` (défaut codé en dur
+ * « interligens-rawdocs ») via son propre `r2Client`, et n'a AUCUNE
+ * connaissance de `R2_EVIDENCE_BUCKET_NAME`. Les octets d'une pièce sont
+ * écrits par `putEvidenceObject`, dont le bucket vient de
+ * `evidenceR2ConfigFromEnv()`. Relire ailleurs que là où l'on a écrit, c'est
+ * soit un 404 qui refuserait une pièce saine, soit — bien pire — lire à la
+ * même clé un objet d'un AUTRE compartiment et recalculer son hash.
+ *
+ * Une relecture d'intégrité doit viser le MÊME compartiment que l'écriture,
+ * résolu par la MÊME fonction. C'est la seule raison d'être de ce Get.
+ *
+ * Mesuré le 2026-09-15 : `R2_EVIDENCE_BUCKET_NAME` n'est pas provisionné, donc
+ * les deux chemins retombent AUJOURD'HUI sur le même `interligens-reports` et
+ * la confusion ne se verrait pas. Elle se verrait le jour où le compartiment
+ * de preuves dédié serait posé — c'est-à-dire trop tard.
+ */
+export async function getEvidenceObject(s3: S3Client, bucket: string, key: string): Promise<Buffer> {
+  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  const body = res.Body as AsyncIterable<Uint8Array> | undefined;
+  if (!body) throw new Error(`GetObject ${key}: corps de réponse absent`);
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of body) chunks.push(chunk);
+  return Buffer.concat(chunks);
 }
 
 export async function evidenceObjectExists(s3: S3Client, bucket: string, key: string): Promise<boolean> {
