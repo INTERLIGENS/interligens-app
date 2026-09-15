@@ -34,14 +34,31 @@
  *
  * ─── CE QUE CE MODULE N'EST PAS ─────────────────────────────────────────────
  *
- * Ce n'est PAS une autorité de localisation. C'est le REGISTRE qui en
- * accueillera une, et le refus qui tient tant qu'il est vide. Le registre est
- * vide aujourd'hui, et c'est la mesure — pas un oubli.
+ * Ce n'est PAS une autorité de localisation. C'est le REGISTRE des autorités,
+ * et le refus qui tient tant qu'aucune ne revendique.
+ *
+ * ─── T1-REGISTRE-DE-LOCALISATION (2026-09-15) : L'AUTORITÉ EST CONÇUE ───────
+ *
+ * Le ruling qui a suivi la mesure des 31 :
+ *   « An evidence object's storage key does not establish its storage
+ *     compartment. Storage location requires its own governed authority. »
+ *
+ * Cette autorité est `evidence_storage_location_journal` — append-only, deux
+ * triggers, vocabulaire clos DECLARED_AT_WRITE | VERIFIED_BY_HEAD — et son
+ * lecteur est `storageLocationJournal.ts`. Le pont est
+ * `autoriteDuRegistreDeLocalisation()`, plus bas.
+ *
+ * ⚠️ ELLE N'EST PAS ENCORE POSÉE, ET UNE FOIS POSÉE ELLE SERA VIDE. Le
+ * comportement de ce module est donc INCHANGÉ pièce par pièce : absence
+ * d'événement → STORAGE_LOCATION_UNRESOLVED. Aucun repli n'a été ajouté, et
+ * la convention de préfixe reste un NO-GO EXPLICITE — les 31 clés commencent
+ * toutes par `reports/`, et c'est précisément pourquoi on ne la lit pas.
  */
 import type { S3Client } from "@aws-sdk/client-s3";
 import { getEvidenceObject } from "./r2";
 import { ouvrirCompartimentGouverne } from "./compartment";
 import type { ReadObjectFn } from "./readback";
+import type { StorageLocation } from "./storageLocationJournal";
 
 /** Ce qu'une autorité de localisation a besoin de voir d'une pièce. */
 export interface LigneALocaliser {
@@ -55,26 +72,108 @@ export interface LigneALocaliser {
  *
  * Elle ne DEVINE pas. Une autorité qui rendrait un compartiment par défaut ne
  * serait pas une autorité : ce serait le repli, sous un autre nom.
+ *
+ * ─── ET ELLE PEUT OBJECTER, CE QUI N'EST PAS LA MÊME CHOSE QUE SE TAIRE ─────
+ *
+ * `objecter` est le second verbe, et il a été ajouté le 2026-09-15 parce que
+ * son absence était un TROU : avec `localiser` seul, une autorité confrontée à
+ * une ligne HORS DOMAINE n'avait qu'un moyen de le dire — rendre `null`. Or
+ * `null` signifie « je ne revendique pas », c'est-à-dire une ABSENCE. Une
+ * anomalie de la base se serait donc lue comme un simple trou de couverture :
+ * exactement la dégradation que le ruling refuse (« une valeur hors domaine
+ * rend une cause propre »), et elle aurait été INEXPRIMABLE, donc invérifiable.
+ *
+ *   localiser → une revendication  · objecter → un refus motivé
+ *   les deux muets                 → abstention, et rien d'autre
+ *
+ * Les objections sont examinées AVANT les revendications : une autorité qui
+ * objecte sur une pièce fait refuser, même si une autre la revendique. Une
+ * incohérence constatée ne se contourne pas en demandant à quelqu'un d'autre.
  */
 export interface AutoriteDeLocalisation {
   readonly nom: string;
   readonly localiser: (ligne: LigneALocaliser) => string | null;
+  /**
+   * Le motif pour lequel cette autorité REFUSE de laisser résoudre cette pièce,
+   * ou `null` si elle n'a rien à objecter. Optionnel : une autorité qui ne sait
+   * qu'affirmer reste une autorité valide.
+   */
+  readonly objecter?: (ligne: LigneALocaliser) => string | null;
 }
 
 /**
- * LE REGISTRE — VIDE, et c'est un CONSTAT, pas un trou.
+ * LE REGISTRE DES AUTORITÉS — VIDE PAR DÉFAUT, et c'est un CONSTAT, pas un trou.
  *
- * Aucune autorité ne peut aujourd'hui dire dans quel compartiment vit une
- * pièce donnée : rien en base ne le porte, et aucune convention de clé ne le
- * porte non plus (`contentAddressedKey` décrit un CHEMIN, pas un compartiment).
+ * ⚠️ LE MÊME PIÈGE QU'À LA BASCULE DU JOURNAL DE PROVENANCE, ET LA MÊME RÉPONSE.
  *
- * Le jour où une autorité existera — colonne par objet, table de résolution,
- * convention de préfixe — elle s'inscrit ICI, en une entrée, et tout le reste
- * du chemin la suit sans changer. Les formes envisageables et leur coût sont
- * décrits dans docs/prep/T1_RESOLUTION_DE_STOCKAGE_2026-09-15.md ; aucune
- * n'est construite dans cette fenêtre.
+ * L'autorité de localisation EXISTE désormais en conception :
+ * `evidence_storage_location_journal`, et son lecteur
+ * `storageLocationJournal.ts`. Elle n'est PAS inscrite ici pour autant, et ce
+ * n'est pas un oubli :
+ *
+ *   · la table sera POSÉE VIDE. Aucun backfill, aucun préfixe, aucune date.
+ *   · une autorité branchée sur une table vide ne revendique RIEN.
+ *   · donc, pièce par pièce, le comportement est IDENTIQUE à aujourd'hui :
+ *     absence d'événement → STORAGE_LOCATION_UNRESOLVED.
+ *
+ * L'inscrire en dur ici la rendrait dépendante d'un accès base à l'intérieur
+ * d'une fonction PURE et SYNCHRONE. C'est pourquoi le pont est
+ * `autoriteDuRegistreDeLocalisation(...)` : l'appelant LIT (asynchrone,
+ * `readStorageLocations`), puis INJECTE le résultat déjà résolu. La résolution
+ * reste pure ; la base reste au bord.
+ *
+ * « A new authority is not made operational merely because its schema exists.
+ *   It becomes authoritative only after a positive governed witness proves the
+ *   path it is meant to govern. » — et ce témoin n'existe pas encore : aucune
+ * ligne n'est posée, la fenêtre s'arrête au SQL prêt à coller.
  */
 export const AUTORITES_DE_LOCALISATION: readonly AutoriteDeLocalisation[] = Object.freeze([]);
+
+/**
+ * LE PONT — le registre gouverné devient une autorité de localisation.
+ *
+ * Reçoit ce que `readStorageLocations` a DÉJÀ résolu (une `StorageLocation` par
+ * identité de pièce) et l'expose sous la forme que `resoudreLocalisation`
+ * consomme. Aucun accès base ici : cette fonction est pure, et la résolution le
+ * reste.
+ *
+ * LA CORRESPONDANCE, ET ELLE EST LE SUJET :
+ *
+ *   localisation ÉTABLIE            → revendication du compartiment
+ *   NO_LOCATION_EVENT               → ABSTENTION (ni revendication, ni objection)
+ *   ROW_OUT_OF_DOMAIN               → OBJECTION
+ *   AMBIGUOUS_LATEST                → OBJECTION
+ *   KEY_DIVERGENCE                  → OBJECTION
+ *
+ * La première ligne de ce tableau est la seule qui produise un compartiment.
+ * Et la deuxième est celle qui garantit la bascule sans effet de bord : avec
+ * une table vide, TOUTE pièce tombe en abstention, et le refus rendu par
+ * `resoudreLocalisation` est mot pour mot celui d'aujourd'hui.
+ *
+ * ⛔ Les trois dernières ne sont PAS des abstentions. Les y ramener ferait
+ * passer une anomalie de la base pour une dette de couverture, et c'est
+ * précisément la faute que `objecter` existe pour rendre impossible.
+ */
+export function autoriteDuRegistreDeLocalisation(
+  localisations: ReadonlyMap<string, StorageLocation>,
+  nom = "registre-de-localisation",
+): AutoriteDeLocalisation {
+  return {
+    nom,
+    localiser: (ligne) => {
+      const l = localisations.get(ligne.id);
+      return l && l.established ? l.bucket : null;
+    },
+    objecter: (ligne) => {
+      const l = localisations.get(ligne.id);
+      if (!l || l.established) return null;
+      // L'ABSENCE d'événement n'est pas une objection : c'est le silence
+      // légitime d'un registre vide, et il doit rendre le refus HABITUEL.
+      if (l.cause === "NO_LOCATION_EVENT") return null;
+      return `[${l.cause}] ${l.detail}`;
+    },
+  };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LA RÉSOLUTION
@@ -147,9 +246,18 @@ function ouvrir(
  *
  * L'ordre est le contrat :
  *   1. y a-t-il une clé de stockage ?      (sinon il n'y a rien à localiser)
- *   2. une autorité revendique-t-elle ?    (sinon : NON RÉSOLU)
- *   3. plusieurs, et en désaccord ?        (une ambiguïté n'est pas une résolution)
- *   4. l'ouvreur gouverné dessert-il ce compartiment ?
+ *   2. une autorité OBJECTE-t-elle ?       (une incohérence constatée prime tout)
+ *   3. une autorité revendique-t-elle ?    (sinon : NON RÉSOLU)
+ *   4. plusieurs, et en désaccord ?        (une ambiguïté n'est pas une résolution)
+ *   5. l'ouvreur gouverné dessert-il ce compartiment ?
+ *
+ * ⚠️ L'ÉTAPE 2 PASSE AVANT L'ÉTAPE 3, ET L'ORDRE EST TOUT LE SUJET. Une
+ * autorité qui a constaté une anomalie (dernier événement hors domaine, deux
+ * événements concurrents, clé divergente) fait REFUSER — même si une autre
+ * autorité, elle, revendique tranquillement un compartiment. Examiner les
+ * revendications d'abord permettrait de CONTOURNER une incohérence en
+ * demandant à quelqu'un d'autre ; c'est exactement l'arbitrage que le ruling
+ * interdit.
  *
  * Aucune branche ne rend un compartiment par défaut. C'est vérifiable à l'œil :
  * la seule source d'un nom de compartiment est `autorite.localiser`.
@@ -169,6 +277,19 @@ export function resoudreLocalisation(
   if (!cle) {
     return nonResolue(
       `la pièce ${ligne.id} ne porte aucune clé de stockage : il n'y a pas de localisation à résoudre.`,
+    );
+  }
+
+  // ── LES OBJECTIONS D'ABORD. Une anomalie constatée par une autorité n'est
+  // JAMAIS rattrapée par la revendication d'une autre.
+  const objections = registre
+    .map((a) => ({ nom: a.nom, motif: a.objecter ? a.objecter(ligne) : null }))
+    .filter((o): o is { nom: string; motif: string } => typeof o.motif === "string" && o.motif.length > 0);
+  if (objections.length > 0) {
+    return nonResolue(
+      `la localisation de la pièce ${ligne.id} est REFUSÉE par ${objections.length} autorité(s) : ` +
+        objections.map((o) => `${o.nom} → ${o.motif}`).join(" ; ") +
+        ". Une incohérence ou une ambiguïté constatée ne se contourne pas en interrogeant une autre autorité.",
     );
   }
 

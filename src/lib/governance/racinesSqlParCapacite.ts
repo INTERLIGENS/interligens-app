@@ -476,6 +476,27 @@ export const INVENTAIRE_RACINES_SQL: Readonly<Record<string, EntreeInventaire>> 
     raison: "autorité de provenance T2 ; DDL posé le 2026-09-14, SQL brut par gel de prisma/",
   },
 
+  // ── T1-REGISTRE-DE-LOCALISATION — le registre APPEND-ONLY de la LOCALISATION
+  //    des octets d'une pièce ("EvidenceItem"), et la SEULE autorité sur cette
+  //    localisation. Ruling du 2026-09-15 : « An evidence object's storage key
+  //    does not establish its storage compartment. Storage location requires
+  //    its own governed authority. » DDL NON APPLIQUÉ à ce jour —
+  //    docs/prep/MIGRATION_STORAGE_LOCATION_JOURNAL_2026-09-15.sql, à poser
+  //    dans l'éditeur SQL Neon, `prisma/` étant gelé.
+  //    Lecteur, et le SEUL : src/lib/evidence-chain/storageLocationJournal.ts —
+  //    un SELECT, aucun INSERT, aucun UPDATE, aucun DELETE (append-only par
+  //    deux triggers en base, restrict_violation). Aucun écrivain n'existe
+  //    encore : l'inscription attend le DDL posé et l'autorisation du fondateur.
+  //    Classe `piece` : la ligne dit où vivent les octets d'un ARTEFACT — même
+  //    classe qu'evidence_provenance_journal, et que l'EvidenceItem qu'elle
+  //    référence.
+  evidence_storage_location_journal: {
+    statut: "RACINE_GOUVERNEE",
+    classe: "piece",
+    horsSchema: true,
+    raison: "autorité de localisation T1 ; DDL non appliqué au 2026-09-15, SQL brut par gel de prisma/",
+  },
+
   // ── Écartées, AVEC leur raison.
   _livre: {
     statut: "HORS_GOUVERNANCE",
