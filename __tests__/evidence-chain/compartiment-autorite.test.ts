@@ -81,7 +81,11 @@ function sitesMesures(): string[] {
       if (e.name === "node_modules" || e.name === "__tests__") continue;
       const r = `${rel}/${e.name}`;
       if (e.isDirectory()) empile(r);
-      else if (/\.tsx?$/.test(e.name) && lire(r).includes("evidence-chain/compartment")) out.push(r);
+      // ⚠️ Les DEUX formes d'import. La forme relative (`./compartment`) est
+      // celle qu'utilisent les modules VOISINS : ne chercher que la forme
+      // absolue laissait `storageResolution.ts` — qui ouvre des compartiments —
+      // échapper au recensement. Découvert en posant ce fichier, CC-OFFLINE-189.
+      else if (/\.tsx?$/.test(e.name) && /(evidence-chain|\.)\/compartment"/.test(lire(r))) out.push(r);
     }
   };
   empile("src");
@@ -89,6 +93,9 @@ function sitesMesures(): string[] {
 }
 
 const SITES_GOUVERNES: readonly string[] = [
+  // Le RÉSOLVEUR : il n'est pas un « site » au sens d'un appelant métier, mais
+  // il OUVRE des compartiments, donc il obéit aux mêmes règles que les autres.
+  "src/lib/evidence-chain/storageResolution.ts",
   "src/lib/osint/evidenceCommitBridge.ts",
   "src/lib/osint/retail/evidenceChainBridge.ts",
   "src/scripts/evidence-chain/ingest-capture.ts",
@@ -199,9 +206,14 @@ describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture E
       const code = sansCommentaires(lire(site));
       expect(code, site).toContain("ouvrirCompartimentGouverne");
       expect(code, site).not.toContain("evidenceR2ConfigFromEnv");
-      // Le bucket adressé est TOUJOURS celui de la porte, jamais une chaîne.
-      const passages = code.match(/bucket:\s*([^,\n]+)/g) ?? [];
-      for (const p of passages) expect(p, `${site} — ${p}`).toMatch(/bucket:\s*compartiment\.bucket/);
+      // Le bucket adressé vient TOUJOURS d'un `.bucket` rendu par la porte —
+      // jamais d'une chaîne littérale, jamais d'une autre variable. Le `string`
+      // admis est une ANNOTATION DE TYPE, pas une valeur.
+      const passages = code.match(/bucket:\s*([^,;\n}]+)/g) ?? [];
+      for (const p of passages) {
+        expect(p, `${site} — ${p}`).toMatch(/bucket:\s*(string|[A-Za-z_$][\w$]*\.bucket)\b/);
+        expect(p, `${site} — ${p}`).not.toMatch(/bucket:\s*["'`]/);
+      }
       expect(code, site).not.toMatch(/R2_BUCKET_NAME/);
       expect(code, site).not.toMatch(/interligens-rawdocs/);
     }
@@ -308,9 +320,11 @@ describe("TÉMOIN (b) · le chemin probatoire ne connaît qu'une seule porte de 
       const src = lire(rel);
       expect(src, rel).not.toMatch(/@aws-sdk|S3Client|GetObjectCommand|process\.env/);
     }
-    // Et le job CÂBLE cette capacité avec la porte unique.
-    expect(lire("src/scripts/evidence-chain/stamp-pending.ts")).toContain(
-      "getEvidenceObject(compartiment.s3, compartiment.bucket, key)",
+    // Et le job CÂBLE cette capacité par la RÉSOLUTION, qui est seule à savoir
+    // ouvrir un compartiment (CC-OFFLINE-189). Le lecteur n'existe pas avant elle.
+    expect(lire("src/scripts/evidence-chain/stamp-pending.ts")).toContain("resolveurGouverne()");
+    expect(lire("src/lib/evidence-chain/storageResolution.ts")).toContain(
+      "getEvidenceObject(ouvert.s3, ouvert.bucket, key)",
     );
   });
 });
