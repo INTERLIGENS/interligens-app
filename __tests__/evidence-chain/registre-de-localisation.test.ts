@@ -455,9 +455,16 @@ describe("LES CINQ INTERDITS, STRUCTURELLEMENT", () => {
     // Et l'instrument n'écrit rien, nulle part.
     const instrument = lire("src/scripts/evidence-chain/mesure-localisation.ts");
     const codeInstrument = instrument.split("\n").filter((l) => !/^\s*(\*|\/\/|\/\*)/.test(l)).join("\n");
-    expect(codeInstrument).not.toMatch(/\b(INSERT|UPDATE|DELETE)\b/);
     expect(codeInstrument).not.toMatch(/GetObjectCommand|PutObjectCommand|\$executeRaw/);
     expect(codeInstrument).toMatch(/HeadObjectCommand/);
+    // ⚠️ AFFÛTÉ LE 2026-09-15 (T1-APPEND-ONLY-ET-MESURE) : ce témoin cherchait
+    // le MOT `INSERT`. Depuis, l'instrument GÉNÈRE un texte SQL d'INSERT destiné
+    // au fondateur — c'est son livrable, et le mot y est légitime. Ce qui doit
+    // rester impossible, c'est qu'il l'EXÉCUTE : on mesure donc la SURFACE
+    // D'APPEL à la base, jamais la présence du mot. Le détail est éprouvé dans
+    // __tests__/evidence-chain/discrimination-de-localisation.test.ts.
+    expect((codeInstrument.match(/prisma\.\$\w+/g) ?? []).sort())
+      .toEqual(["prisma.$disconnect", "prisma.$queryRawUnsafe"]);
   });
 
   it("le sha256 n'est PAS une clé de localisation — il n'apparaît pas dans la table", () => {

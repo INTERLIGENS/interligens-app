@@ -1,159 +1,208 @@
 /**
- * mesure-localisation.ts — OÙ SONT RÉELLEMENT LES OCTETS DES PIÈCES ÉLIGIBLES ?
+ * mesure-localisation.ts — LA MESURE DISCRIMINANTE. LECTURE SEULE ABSOLUE.
  *
- * ██  LECTURE SEULE ABSOLUE. AUCUN OCTET TRANSFÉRÉ. AUCUNE ÉCRITURE.         ██
- * ██  `HeadObject` UNIQUEMENT — jamais `GetObject`, jamais `PutObject`.      ██
- * ██  AUCUN INSERT : ce script PRÉPARE des lignes, il n'en pose AUCUNE.      ██
+ * ██  `HeadObject` UNIQUEMENT. Aucun GET, aucun PUT, aucun DELETE, aucune      ██
+ * ██  lecture de configuration. 0 octet transféré. AUCUNE ÉCRITURE EN BASE.    ██
+ * ██  AUCUNE LIGNE INSCRITE — ce script PRÉPARE, il ne pose rien.              ██
+ *
+ *   « Finding an evidence object in one compartment establishes presence there;
+ *     it establishes authoritative location only when competing governed
+ *     compartments have also been measurably excluded. »
  *
  * ─── CE QUE CE SCRIPT EST, ET SURTOUT CE QU'IL N'EST PAS ────────────────────
  *
  * C'est un INSTRUMENT DE MESURE, à usage humain, hors du chemin gouverné.
  *
- * ⛔ CE N'EST PAS UN RÉSOLVEUR. `resoudreLocalisation` ne l'appelle pas, ne
- * l'appellera pas, et ne doit jamais l'appeler. Sonder deux compartiments pour
- * voir « lequel répond » est précisément le REPLI que le ruling interdit : la
- * résolution serait alors dérivée d'une observation réseau, pas d'une autorité.
- * Un témoin structurel vérifie qu'aucun module de `src/lib/` n'importe ce
- * fichier.
+ * ⛔ CE N'EST PAS UN RÉSOLVEUR. `resoudreLocalisation` ne l'appelle pas et ne
+ * doit jamais l'appeler. Sonder deux compartiments pour voir « lequel répond »
+ * est le REPLI que le ruling interdit : la résolution serait dérivée d'une
+ * observation réseau, pas d'une autorité. Un témoin structurel vérifie qu'aucun
+ * module de `src/lib/evidence-chain/` ne l'importe.
  *
- * ⛔ CE N'EST PAS UNE CONVENTION DE PRÉFIXE. Le script ne LIT pas `reports/`
- * dans la clé pour en déduire le compartiment — il INTERROGE les deux, et
- * rapporte ce que chacun répond. La différence est tout le sujet : une
- * convention DEVINE, une mesure CONSTATE.
+ * ⛔ CE N'EST PAS UNE CONVENTION DE PRÉFIXE. Le script ne lit pas `reports/`
+ * dans la clé pour deviner : il INTERROGE les deux compartiments et rapporte ce
+ * que chacun répond. Une convention DEVINE, une mesure CONSTATE.
  *
- * ─── LA DOCTRINE DU RÉSULTAT, ET ELLE EST STRICTE ───────────────────────────
+ * ─── LES DEUX IDENTITÉS, ET POURQUOI ELLES SONT SÉPARÉES ────────────────────
  *
- * Quatre réponses possibles par pièce, et seule la première établit un fait
- * positif de localisation :
+ * Chaque compartiment est interrogé avec SES PROPRES credentials :
  *
- *   PRESENT_A_UN_SEUL     un compartiment répond 200, l'autre 404
- *                         → fait positif. C'est la ligne VERIFIED_BY_HEAD
- *                           que le fondateur pourra faire inscrire.
- *   PRESENT_AUX_DEUX      les deux répondent 200. Ce n'est PAS une ambiguïté
- *                         à arbitrer : c'est un FAIT À RAPPORTER. Deux jeux
- *                         d'octets sous la même clé ne sont pas un objet.
- *   ABSENT_DES_DEUX       les deux répondent 404. À rapporter tel quel — ce
- *                         n'est pas « octets perdus » : on n'a interrogé que
- *                         DEUX compartiments, pas tous.
- *   NON_MESURABLE         au moins une réponse n'est ni 200 ni 404 (403, 5xx,
- *                         réseau). ⚠️ UN REFUS D'INTERMÉDIAIRE N'EST PAS UNE
- *                         ABSENCE. Un 403 sur un compartiment rend la mesure
- *                         de CETTE pièce non concluante, point final. On ne
- *                         « conclut » surtout pas à l'autre compartiment sous
- *                         prétexte qu'il a, lui, répondu.
+ *   interligens-reports   R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY
+ *   interligens-evidence  R2_EVIDENCE_RO_ACCESS_KEY_ID / R2_EVIDENCE_RO_SECRET_ACCESS_KEY
+ *                         ↑ un credential EN LECTURE SEULE, dédié à la mesure
  *
- * ─── LES DEUX COMPARTIMENTS INTERROGÉS ──────────────────────────────────────
+ * ⛔ AUCUN REPLI D'UNE IDENTITÉ SUR L'AUTRE. Si les variables `_RO_` manquent,
+ * le script REFUSE avec une cause nommée. Se rabattre sur les credentials de
+ * `reports` reproduirait exactement le 403 du 2026-09-15 — et le ferait passer
+ * pour une mesure. Mieux vaut ne pas mesurer que mesurer faux.
  *
- * Ils sont NOMMÉS par l'environnement, jamais devinés :
- *   R2_BUCKET_NAME           le compartiment historique des archives de rapports
- *   R2_EVIDENCE_BUCKET_NAME  le compartiment de preuves gouverné
- * Si l'une des deux manque, le script sort en UNABLE : mesurer un seul
- * compartiment ne permet pas de discriminer, et rendre « absent de l'autre »
- * sans avoir interrogé l'autre serait exactement la faute qu'on refuse.
+ * ⛔ AUCUNE VALEUR DE SECRET N'EST IMPRIMÉE, nulle part : ni log, ni rapport, ni
+ * JSON, ni message d'erreur. Seuls les NOMS de variables apparaissent. Les
+ * valeurs sont CONSOMMÉES, jamais montrées.
  *
- *     npx tsx src/scripts/evidence-chain/mesure-localisation.ts [--json]
+ * ─── LE VERDICT : QUATRE VALEURS, ET UNE SEULE AUTORISE UNE LIGNE ───────────
+ *
+ * La table de décision et ses trois refus vivent dans
+ * `src/lib/evidence-chain/discrimination.ts` — PUR, éprouvé sans réseau.
+ * Ici : le câblage, et rien d'autre.
+ *
+ *     npx tsx src/scripts/evidence-chain/mesure-localisation.ts [--json] [--inserts <fichier>]
  *
  * Sortie : 0 si la mesure a abouti (même avec des anomalies rapportées),
  *          1 en UNABLE — configuration insuffisante pour mesurer.
  */
 import path from "node:path";
+import { writeFileSync } from "node:fs";
 import { config } from "dotenv";
 import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { PrismaClient } from "@prisma/client";
 import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
+import {
+  classerReponse,
+  discriminer,
+  candidatesAInscription,
+  type Sonde,
+  rendreInscriptions,
+  anomaliesDeForme,
+  FORME_R2,
+  type PieceDiscriminee,
+  type Verdict,
+} from "../../lib/evidence-chain/discrimination";
 
 const REPO = path.resolve(__dirname, "..", "..", "..");
 config({ path: path.join(REPO, ".env.local"), quiet: true });
 
 const AS_JSON = process.argv.includes("--json");
+const IDX_INSERTS = process.argv.indexOf("--inserts");
+const FICHIER_INSERTS = IDX_INSERTS >= 0 ? process.argv[IDX_INSERTS + 1] : null;
 
-/** Le verdict d'UNE sonde sur UN compartiment. Trois états, jamais deux. */
-type Sonde = "PRESENT" | "ABSENT" | "NON_MESURABLE";
-
-/** Le verdict d'une pièce, croisant les deux sondes. */
-export type VerdictLocalisation =
-  | "PRESENT_A_UN_SEUL"
-  | "PRESENT_AUX_DEUX"
-  | "ABSENT_DES_DEUX"
-  | "NON_MESURABLE";
-
-export interface MesureDUnePiece {
-  readonly id: string;
-  readonly r2Key: string;
-  readonly parCompartiment: ReadonlyArray<{ bucket: string; sonde: Sonde; detail: string }>;
-  readonly verdict: VerdictLocalisation;
-  /** Le compartiment établi — UNIQUEMENT si le verdict est PRESENT_A_UN_SEUL. */
-  readonly compartimentEtabli: string | null;
+/** Un compartiment à interroger, avec l'identité qui lui est propre. */
+interface CompartimentAInterroger {
+  readonly bucket: string;
+  readonly s3: S3Client;
 }
 
 /**
- * Croise les sondes en un verdict. PUR — testable sans réseau.
+ * Construit les deux compartiments, ou REFUSE en nommant ce qui manque.
  *
- * L'ordre des règles est le contrat : NON_MESURABLE l'emporte sur tout. Une
- * pièce dont un compartiment a refusé de répondre n'est pas « présente dans
- * l'autre » : elle est non mesurée. Placer cette règle en dernier laisserait
- * un 200 + 403 conclure à PRESENT_A_UN_SEUL — une localisation établie sur une
- * non-observation.
+ * ⛔ Aucun `||` entre les deux identités. C'est le sujet : un repli des
+ * credentials de mesure sur ceux de `reports` rendrait un 403 sur
+ * `interligens-evidence`, et ce 403 serait présenté comme une mesure.
  */
-export function croiser(
-  sondes: ReadonlyArray<{ bucket: string; sonde: Sonde }>,
-): { verdict: VerdictLocalisation; compartimentEtabli: string | null } {
-  if (sondes.length < 2) return { verdict: "NON_MESURABLE", compartimentEtabli: null };
-  if (sondes.some((s) => s.sonde === "NON_MESURABLE")) {
-    return { verdict: "NON_MESURABLE", compartimentEtabli: null };
-  }
-  const presents = sondes.filter((s) => s.sonde === "PRESENT");
-  if (presents.length === 0) return { verdict: "ABSENT_DES_DEUX", compartimentEtabli: null };
-  if (presents.length > 1) return { verdict: "PRESENT_AUX_DEUX", compartimentEtabli: null };
-  return { verdict: "PRESENT_A_UN_SEUL", compartimentEtabli: presents[0].bucket };
-}
-
-/** Traduit une réponse HeadObject en sonde. 404 ⇒ ABSENT ; tout le reste qui
- * n'est pas 200 ⇒ NON_MESURABLE. Un 403 n'est PAS une absence. */
-export function sonderDepuisReponse(
-  ok: boolean,
-  statut: number | undefined,
-  nom: string | undefined,
-): { sonde: Sonde; detail: string } {
-  if (ok) return { sonde: "PRESENT", detail: "HTTP 200" };
-  if (statut === 404 || nom === "NotFound" || nom === "NoSuchKey") {
-    return { sonde: "ABSENT", detail: `HTTP 404 (${nom ?? "NotFound"})` };
-  }
-  return {
-    sonde: "NON_MESURABLE",
-    detail: `HTTP ${statut ?? "?"} (${nom ?? "erreur"}) — un refus d'intermédiaire n'est pas une absence`,
-  };
-}
-
-async function main() {
+function construireCompartiments():
+  | { ok: true; compartiments: CompartimentAInterroger[] }
+  | { ok: false; cause: string; detail: string } {
   const compte = (process.env.R2_ACCOUNT_ID ?? "").trim();
-  const cle = (process.env.R2_ACCESS_KEY_ID ?? "").trim();
-  const secret = (process.env.R2_SECRET_ACCESS_KEY ?? "").trim();
+  const endpoint = (process.env.R2_ENDPOINT ?? "").trim() || (compte ? `https://${compte}.r2.cloudflarestorage.com` : "");
+
   const bucketArchives = (process.env.R2_BUCKET_NAME ?? "").trim();
-  const bucketPreuves = (process.env.R2_EVIDENCE_BUCKET_NAME ?? "").trim();
+  const cleArchives = (process.env.R2_ACCESS_KEY_ID ?? "").trim();
+  const secretArchives = (process.env.R2_SECRET_ACCESS_KEY ?? "").trim();
+
+  // Le défaut nomme le compartiment CONCURRENT à exclure — ce n'est pas une
+  // supposition sur l'endroit où vit une pièce donnée, mais la liste des
+  // compartiments gouvernés qu'il faut avoir interrogés pour discriminer.
+  // `R2_EVIDENCE_BUCKET_NAME` le remplace dès qu'elle est provisionnée.
+  const bucketPreuves = (process.env.R2_EVIDENCE_BUCKET_NAME ?? "").trim() || "interligens-evidence";
+  // Le credential DÉDIÉ à la mesure, en lecture seule. Aucun repli.
+  const cleRo = (process.env.R2_EVIDENCE_RO_ACCESS_KEY_ID ?? "").trim();
+  const secretRo = (process.env.R2_EVIDENCE_RO_SECRET_ACCESS_KEY ?? "").trim();
 
   const manquants = [
     !compte && "R2_ACCOUNT_ID",
-    !cle && "R2_ACCESS_KEY_ID",
-    !secret && "R2_SECRET_ACCESS_KEY",
     !bucketArchives && "R2_BUCKET_NAME",
-    !bucketPreuves && "R2_EVIDENCE_BUCKET_NAME",
+    !cleArchives && "R2_ACCESS_KEY_ID",
+    !secretArchives && "R2_SECRET_ACCESS_KEY",
   ].filter(Boolean) as string[];
   if (manquants.length > 0) {
-    console.error(
-      `UNABLE — variables manquantes : ${manquants.join(", ")}.\n` +
-        "Mesurer UN SEUL compartiment ne discrimine rien : rendre « absent de l'autre » sans avoir\n" +
-        "interrogé l'autre serait une non-observation présentée comme un fait. On ne mesure pas.",
-    );
+    return {
+      ok: false,
+      cause: "archives_credentials_unconfigured",
+      detail: `variables manquantes : ${manquants.join(", ")}.`,
+    };
+  }
+
+  const manquantsRo = [
+    !cleRo && "R2_EVIDENCE_RO_ACCESS_KEY_ID",
+    !secretRo && "R2_EVIDENCE_RO_SECRET_ACCESS_KEY",
+  ].filter(Boolean) as string[];
+  if (manquantsRo.length > 0) {
+    return {
+      ok: false,
+      cause: "evidence_readonly_credential_unconfigured",
+      detail:
+        `variables manquantes : ${manquantsRo.join(", ")}.\n` +
+        `Le compartiment « ${bucketPreuves} » ne peut pas être interrogé, donc les concurrents\n` +
+        "gouvernés ne peuvent pas être MESURABLEMENT EXCLUS, donc AUCUNE localisation ne peut\n" +
+        "être discriminée. Le script ATTEND ce credential.\n\n" +
+        "⛔ Il ne se rabat PAS sur R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY : ces identifiants\n" +
+        "   sont scopés sur les archives et rendraient un 403 sur le compartiment de preuves.\n" +
+        "   Ce 403 serait alors présenté comme une mesure, alors qu'il n'en est pas une.\n" +
+        "   Mieux vaut ne pas mesurer que mesurer faux.",
+    };
+  }
+
+  // ── LA FORME, AVANT LA PREMIÈRE SONDE. Un secret mal recopié rend 31 × 403,
+  // indiscernables d'un 403 de PORTÉE — et les deux appellent des gestes
+  // opposés. Mesuré en vif le 2026-09-15 : un caractère parasite en fin de
+  // secret a produit exactement cette confusion.
+  // ⛔ On ne RÉPARE pas, on REFUSE. Rogner le caractère serait deviner un
+  //    credential, c'est-à-dire mesurer avec une valeur que personne n'a validée.
+  const anomalies = anomaliesDeForme([
+    { variable: "R2_EVIDENCE_RO_ACCESS_KEY_ID", valeur: cleRo, longueur: FORME_R2.cleLongueur },
+    { variable: "R2_EVIDENCE_RO_SECRET_ACCESS_KEY", valeur: secretRo, longueur: FORME_R2.secretLongueur },
+  ]);
+  if (anomalies.length > 0) {
+    return {
+      ok: false,
+      cause: "evidence_readonly_credential_malformed",
+      detail:
+        anomalies.map((a) => `  · ${a.variable} : attendu ${a.attendu}, observé ${a.observe}`).join("\n") +
+        "\n\nLa forme du credential est manifestement invalide : les sondes rendraient 403, et ce 403\n" +
+        "ressemblerait trait pour trait à un défaut de PORTÉE. Les deux pannes appellent des gestes\n" +
+        "opposés — refaire un token contre corriger une ligne de .env.local — et on ne les devine pas.\n\n" +
+        "⛔ Aucune correction automatique. Rogner un caractère parasite reviendrait à mesurer avec une\n" +
+        "   valeur que personne n'a validée. Corrigez .env.local, puis relancez.\n" +
+        "   (Aucune valeur n'est affichée ci-dessus : seulement des longueurs et des positions.)",
+    };
+  }
+
+  const faire = (accessKeyId: string, secretAccessKey: string) =>
+    new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
+
+  return {
+    ok: true,
+    compartiments: [
+      { bucket: bucketArchives, s3: faire(cleArchives, secretArchives) },
+      { bucket: bucketPreuves, s3: faire(cleRo, secretRo) },
+    ],
+  };
+}
+
+/** UNE sonde. `HeadObject`, et rien d'autre. */
+async function sonder(c: CompartimentAInterroger, key: string): Promise<Sonde> {
+  try {
+    await c.s3.send(new HeadObjectCommand({ Bucket: c.bucket, Key: key }));
+    return classerReponse(c.bucket, { ok: true });
+  } catch (e) {
+    const err = e as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+    return classerReponse(c.bucket, {
+      ok: false,
+      statut: err.$metadata?.httpStatusCode,
+      nom: err.name,
+      message: err.message,
+    });
+  }
+}
+
+async function main() {
+  const c = construireCompartiments();
+  if (!c.ok) {
+    console.error(`\nUNABLE [${c.cause}]\n\n${c.detail}\n`);
+    console.error("Aucune sonde n'a été émise. Aucune ligne n'a été préparée.\n");
     process.exit(1);
   }
-  const buckets = [bucketArchives, bucketPreuves];
-
-  const s3 = new S3Client({
-    region: "auto",
-    endpoint: (process.env.R2_ENDPOINT ?? "").trim() || `https://${compte}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId: cle, secretAccessKey: secret },
-  });
+  const buckets = c.compartiments.map((x) => x.bucket);
 
   const prisma = new PrismaClient();
   let appels = 0;
@@ -163,54 +212,74 @@ async function main() {
       `SELECT "id","r2Key" FROM "EvidenceItem" WHERE ${univers} ORDER BY "ingestedAt" ASC`,
     )) as Array<{ id: string; r2Key: string | null }>;
 
-    const mesures: MesureDUnePiece[] = [];
+    const pieces: PieceDiscriminee[] = [];
     for (const l of lignes) {
       const k = (l.r2Key ?? "").trim();
       if (!k) {
         // Pas de clé : il n'y a rien à sonder. Ce n'est pas une absence d'octets.
-        mesures.push({
-          id: l.id, r2Key: "", parCompartiment: [],
-          verdict: "NON_MESURABLE", compartimentEtabli: null,
+        pieces.push({
+          id: l.id, r2Key: "", sondes: [],
+          discrimination: discriminer([]),
         });
         continue;
       }
-      const par: Array<{ bucket: string; sonde: Sonde; detail: string }> = [];
-      for (const b of buckets) {
+      const sondes: Sonde[] = [];
+      for (const comp of c.compartiments) {
         appels++;
-        try {
-          await s3.send(new HeadObjectCommand({ Bucket: b, Key: k }));
-          par.push({ bucket: b, ...sonderDepuisReponse(true, 200, undefined) });
-        } catch (e) {
-          const err = e as { name?: string; $metadata?: { httpStatusCode?: number } };
-          par.push({ bucket: b, ...sonderDepuisReponse(false, err.$metadata?.httpStatusCode, err.name) });
-        }
+        sondes.push(await sonder(comp, k));
       }
-      mesures.push({ id: l.id, r2Key: k, parCompartiment: par, ...croiser(par) });
+      pieces.push({ id: l.id, r2Key: k, sondes, discrimination: discriminer(sondes) });
     }
 
-    const parVerdict = new Map<VerdictLocalisation, MesureDUnePiece[]>();
-    for (const m of mesures) parVerdict.set(m.verdict, [...(parVerdict.get(m.verdict) ?? []), m]);
+    const candidates = candidatesAInscription(pieces);
 
     if (AS_JSON) {
-      console.log(JSON.stringify({ univers, buckets, appelsHead: appels, mesures }, null, 2));
+      console.log(JSON.stringify({ univers, buckets, appelsHead: appels, pieces }, null, 2));
     } else {
       console.log(`[mesure-localisation] univers : ${univers}`);
       console.log(`[mesure-localisation] compartiments interrogés : ${buckets.join(" · ")}`);
       console.log(`[mesure-localisation] ${lignes.length} pièce(s) · ${appels} appel(s) HeadObject · 0 octet transféré\n`);
-      for (const v of ["PRESENT_A_UN_SEUL", "PRESENT_AUX_DEUX", "ABSENT_DES_DEUX", "NON_MESURABLE"] as const) {
-        const l = parVerdict.get(v) ?? [];
-        console.log(`  ${v.padEnd(20)} : ${l.length}`);
-        const ou = new Map<string, number>();
-        for (const m of l) {
-          const c = m.compartimentEtabli ?? m.parCompartiment.map((p) => `${p.bucket}=${p.sonde}`).join(" / ") ?? "—";
-          ou.set(c, (ou.get(c) ?? 0) + 1);
-        }
-        for (const [c, n] of ou) console.log(`      · ${c} : ${n}`);
+
+      const parVerdict = new Map<Verdict, PieceDiscriminee[]>();
+      for (const p of pieces) {
+        const v = p.discrimination.verdict;
+        parVerdict.set(v, [...(parVerdict.get(v) ?? []), p]);
       }
-      console.log("\n⛔ AUCUNE LIGNE INSCRITE. Cette mesure PRÉPARE des lignes VERIFIED_BY_HEAD ;");
-      console.log("   leur inscription est une écriture de production, soumise au DDL posé et à");
-      console.log("   l'autorisation du fondateur. Ce script n'écrit rien, nulle part.");
+      for (const v of ["LOCALISATION_DISCRIMINEE", "AMBIGUOUS", "ABSENT_DES_DEUX", "NON_MESURABLE"] as const) {
+        console.log(`  ${v.padEnd(24)} : ${(parVerdict.get(v) ?? []).length}`);
+      }
+
+      console.log("\n─── LE VERDICT DES PIÈCES, UNE PAR UNE ───");
+      for (const p of pieces) {
+        const sondes = p.sondes.map((s) => `${s.bucket}=${s.presence}`).join(" / ") || "aucune sonde";
+        console.log(`  ${p.id}  ${p.discrimination.verdict}`);
+        console.log(`      ${sondes}`);
+        if (p.discrimination.compartiment) console.log(`      → ${p.discrimination.compartiment}`);
+      }
+
+      console.log(`\n  CANDIDATES À VERIFIED_BY_HEAD : ${candidates.length} / ${pieces.length}`);
+      const parCause = new Map<string, number>();
+      for (const p of pieces) {
+        if (p.discrimination.verdict === "LOCALISATION_DISCRIMINEE") continue;
+        parCause.set(p.discrimination.motif, (parCause.get(p.discrimination.motif) ?? 0) + 1);
+      }
+      for (const [motif, n] of parCause) console.log(`      · ${n} × ${motif}`);
     }
+
+    if (FICHIER_INSERTS) {
+      if (candidates.length === 0) {
+        console.error("\n⛔ AUCUNE candidate : aucun fichier d'INSERT n'est écrit. Une localisation non");
+        console.error("   discriminée n'a pas de ligne, et un fichier vide inviterait à le combler à la main.");
+      } else {
+        const quand = new Date().toISOString();
+        writeFileSync(FICHIER_INSERTS, rendreInscriptions(candidates, "T1/mesure-localisation", quand));
+        console.log(`\n  SQL PRÊT À COLLER écrit : ${FICHIER_INSERTS} (${candidates.length} ligne(s))`);
+      }
+    }
+
+    console.log("\n⛔ AUCUNE LIGNE INSCRITE. Ce script PRÉPARE des lignes VERIFIED_BY_HEAD ;");
+    console.log("   leur inscription est une écriture de production, soumise à l'autorisation");
+    console.log("   du fondateur. Ce script n'écrit rien en base, nulle part.");
   } finally {
     await prisma.$disconnect();
   }
