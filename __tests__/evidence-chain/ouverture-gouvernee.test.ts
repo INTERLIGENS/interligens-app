@@ -28,6 +28,7 @@ import {
   ouvrirCompartimentGouverne,
   COMPARTIMENTS_GOUVERNES,
   CAUSES_REFUS_DE_COMPARTIMENT,
+  CAPACITES_PAR_COMPARTIMENT,
   estCompartimentGouverne,
 } from "@/lib/evidence-chain/compartment";
 import {
@@ -54,8 +55,12 @@ const REPORTS = "interligens-reports";
  * et c'est exprès : elle ne doit avoir aucune influence sur la sélection. */
 const ENV = {
   R2_ACCOUNT_ID: "compte",
-  R2_ACCESS_KEY_ID: "ak",
-  R2_SECRET_ACCESS_KEY: "sk",
+  // Les DEUX fentes, avec des marqueurs DISTINCTS : c'est ce qui permet
+  // d'affirmer LAQUELLE a servi, et pas seulement que « ça a marché ».
+  R2_ACCESS_KEY_ID: "ak-REPORTS",
+  R2_SECRET_ACCESS_KEY: "sk-REPORTS",
+  R2_EVIDENCE_ACCESS_KEY_ID: "ak-EVIDENCE",
+  R2_EVIDENCE_SECRET_ACCESS_KEY: "sk-EVIDENCE",
   R2_BUCKET_NAME: REPORTS,
   R2_EVIDENCE_BUCKET_NAME: EVIDENCE,
 };
@@ -74,7 +79,11 @@ function evenement(over: Partial<StorageLocationRow> = {}): StorageLocationRow {
 }
 
 /** Le chemin COMPLET : registre → autorité → résolution. */
-function resoudreDepuisRegistre(rows: StorageLocationRow[], r2Key: string | null = CLE, env = ENV) {
+function resoudreDepuisRegistre(
+  rows: StorageLocationRow[],
+  r2Key: string | null = CLE,
+  env: Record<string, string | undefined> = ENV,
+) {
   const loc = resolveStorageLocation({ evidenceItemId: ITEM, r2Key }, rows);
   const autorite = autoriteDuRegistreDeLocalisation(new Map([[ITEM, loc]]));
   return resoudreLocalisation({ id: ITEM, r2Key }, env, [autorite]);
@@ -206,20 +215,21 @@ describe("LES CINQ CAUSES DE REFUS, DISTINCTES — AUCUNE NE SE DÉGRADE EN UNE 
     expect(new Set(refus).size).toBe(5);
   });
 
-  it("la cause du vocabulaire est DISTINCTE des deux causes de configuration", () => {
+  it("la cause du vocabulaire est DISTINCTE des causes de configuration et de capacité", () => {
     expect([...CAUSES_REFUS_DE_COMPARTIMENT]).toEqual([
       "evidence_compartment_unconfigured",
       "evidence_credentials_unconfigured",
       "compartiment_hors_vocabulaire_gouverne",
+      "CAPABILITY_UNAVAILABLE",
     ]);
     // Une réparation en base, deux réparations dans .env.local : ne pas les
     // confondre, c'est ne pas chercher une variable là où il y a une ligne.
     const hors = ouvrirCompartimentDesigne("interligens-static", ENV);
-    const sansCred = ouvrirCompartimentDesigne(REPORTS, { R2_EVIDENCE_BUCKET_NAME: EVIDENCE });
+    const sansCred = ouvrirCompartimentDesigne(REPORTS, { R2_ACCOUNT_ID: "compte" });
     expect(hors.ok).toBe(false);
     expect(sansCred.ok).toBe(false);
     expect(!hors.ok && hors.cause).toBe("compartiment_hors_vocabulaire_gouverne");
-    expect(!sansCred.ok && sansCred.cause).toBe("evidence_credentials_unconfigured");
+    expect(!sansCred.ok && sansCred.cause).toBe("CAPABILITY_UNAVAILABLE");
   });
 });
 
@@ -290,5 +300,165 @@ describe("LA PORTE DE NAISSANCE RESTE DISTINCTE, ET C'EST VOULU", () => {
     const designe = ouvrirCompartimentDesigne(REPORTS, ENV);
     expect(naissance.ok && naissance.bucket).toBe(EVIDENCE);
     expect(designe.ok && designe.bucket).toBe(REPORTS);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe("T1-CAPACITÉ-PAR-COMPARTIMENT — LE SECRET D'UN COMPARTIMENT N'EN SERT PAS UN AUTRE", () => {
+  //   « Storage authority selects an object's governed compartment; access
+  //     capability must be scoped to that compartment and to the minimum
+  //     operations required. A credential for one governed compartment must
+  //     never become fallback capability for another. »
+  //
+  // Et le motif du renversement — c'est le CODE qui change, pas la portée du secret :
+  //   « Ce serait CORRIGER UNE LIMITATION DE CODE EN AUGMENTANT LE BLAST RADIUS
+  //     D'UN SECRET. »   « Rien dans le vertical slice ne justifie WRITE sur reports. »
+
+  /** L'ESPION. Il observe QUEL secret est remis au constructeur — et combien de fois. */
+  function espion() {
+    const vus: Array<{ bucket: string; accessKeyId: string; secretAccessKey: string }> = [];
+    const construire = (cfg: { bucket: string; accessKeyId: string; secretAccessKey: string }) => {
+      vus.push({ bucket: cfg.bucket, accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey });
+      return {} as never;
+    };
+    return { vus, construire };
+  }
+
+  it("la table compartiment → capacité est FERMÉE et GELÉE", () => {
+    expect(Object.keys(CAPACITES_PAR_COMPARTIMENT).sort()).toEqual([...COMPARTIMENTS_GOUVERNES].sort());
+    expect(Object.isFrozen(CAPACITES_PAR_COMPARTIMENT)).toBe(true);
+    for (const b of COMPARTIMENTS_GOUVERNES) expect(Object.isFrozen(CAPACITES_PAR_COMPARTIMENT[b])).toBe(true);
+    // Les deux fentes sont DISTINCTES : aucune variable n'est partagée.
+    const e = CAPACITES_PAR_COMPARTIMENT[EVIDENCE];
+    const r = CAPACITES_PAR_COMPARTIMENT[REPORTS];
+    expect(new Set([e.variableCle, e.variableSecret, r.variableCle, r.variableSecret]).size).toBe(4);
+    // Le besoin MINIMAL est déclaré, et reports n'exige AUCUNE écriture.
+    expect(e.operationsMinimales).toBe("READ+WRITE");
+    expect(r.operationsMinimales).toBe("READ");
+  });
+
+  it("la table est EN DUR — lue dans l'environnement, elle ne serait pas fermée", () => {
+    const c = code(SRC_COMPARTMENT);
+    const decl = c.slice(c.indexOf("CAPACITES_PAR_COMPARTIMENT"), c.indexOf("export interface CapaciteResolue"));
+    expect(decl).toContain('"R2_EVIDENCE_ACCESS_KEY_ID"');
+    expect(decl).toContain('"R2_ACCESS_KEY_ID"');
+    // Aucune lecture d'environnement dans la DÉCLARATION de la table.
+    expect(decl).not.toMatch(/\benv\b|process\.env/);
+  });
+
+  it("⚠️ et la RÉSOLUTION ne lit que les deux variables NOMMÉES PAR LA TABLE", () => {
+    // Le témoin précédent ne regardait que la DÉCLARATION — un mutant qui
+    // injectait un `env.R2_..._OVERRIDE` dans la fonction de résolution passait
+    // au travers (mesuré en vif le 2026-09-16, M5 resté vert). Fermer la table
+    // ne sert à rien si celui qui la lit accepte une surcharge.
+    const c = code(SRC_COMPARTMENT);
+    const corps = c.slice(
+      c.indexOf("export function capaciteDuCompartiment"),
+      c.indexOf("export interface CompartimentRefuse") > c.indexOf("export function capaciteDuCompartiment")
+        ? c.indexOf("export interface CompartimentRefuse")
+        : c.length,
+    ).split("\nexport ")[0];
+    expect(corps.length).toBeGreaterThan(200);
+    // Les SEULS accès à l'environnement sont indexés par la table.
+    const acces = corps.match(/env\s*(\.|\[)[^\n]*/g) ?? [];
+    expect(acces.length).toBe(2);
+    for (const a of acces) {
+      expect(a, `accès non gouverné par la table : ${a}`).toMatch(/env\[attendu\.(variableCle|variableSecret)\]/);
+    }
+    // Aucun accès par point : `env.QUELQUE_CHOSE` est par construction une
+    // variable qui ne vient pas de la table.
+    expect(corps).not.toMatch(/\benv\s*\.\s*[A-Za-z_]/);
+  });
+
+  it("⛔ PLUS AUCUN repli `R2_EVIDENCE_* || R2_*` dans le chemin gouverné", () => {
+    const c = code(SRC_COMPARTMENT);
+    expect(c).not.toMatch(/R2_EVIDENCE_[A-Z_]+\s*\|\|/);
+    expect(c).not.toMatch(/R2_EVIDENCE_ACCESS_KEY_ID\s*\|\|\s*env\.R2_ACCESS_KEY_ID/);
+  });
+
+  it("(a) reports désigné → le credential REPORTS est remis, JAMAIS celui d'evidence", () => {
+    const { vus, construire } = espion();
+    const o = ouvrirCompartimentDesigne(REPORTS, ENV, construire);
+    expect(o.ok).toBe(true);
+    expect(vus).toHaveLength(1);
+    expect(vus[0]).toMatchObject({ bucket: REPORTS, accessKeyId: "ak-REPORTS", secretAccessKey: "sk-REPORTS" });
+    expect(JSON.stringify(vus)).not.toContain("EVIDENCE");
+  });
+
+  it("(b) evidence désigné → le credential EVIDENCE est remis, JAMAIS celui de reports", () => {
+    const { vus, construire } = espion();
+    const o = ouvrirCompartimentDesigne(EVIDENCE, ENV, construire);
+    expect(o.ok).toBe(true);
+    expect(vus).toHaveLength(1);
+    expect(vus[0]).toMatchObject({ bucket: EVIDENCE, accessKeyId: "ak-EVIDENCE", secretAccessKey: "sk-EVIDENCE" });
+    expect(JSON.stringify(vus)).not.toContain("REPORTS");
+  });
+
+  it("(c) fente du compartiment VIDE → CAPABILITY_UNAVAILABLE, et l'ESPION n'a RIEN vu", () => {
+    // ⚠️ La garantie ne se prouve PAS par l'absence d'erreur : un refus peut
+    // venir de dix causes. Elle se prouve en constatant qu'AUCUN secret n'a été
+    // remis au constructeur — donc qu'aucune tentative n'a eu lieu, avec quelque
+    // credential que ce soit.
+    for (const [manquant, present] of [[REPORTS, EVIDENCE], [EVIDENCE, REPORTS]] as const) {
+      const fentes = { ...ENV };
+      const cap = CAPACITES_PAR_COMPARTIMENT[manquant];
+      delete (fentes as Record<string, unknown>)[cap.variableCle];
+      delete (fentes as Record<string, unknown>)[cap.variableSecret];
+      // L'AUTRE fente est pleine — c'est tout l'intérêt : le repli serait possible.
+      expect(fentes[CAPACITES_PAR_COMPARTIMENT[present].variableCle as keyof typeof fentes]).toBeTruthy();
+
+      const { vus, construire } = espion();
+      const o = ouvrirCompartimentDesigne(manquant, fentes, construire);
+      expect(o.ok, manquant).toBe(false);
+      expect(!o.ok && o.cause, manquant).toBe("CAPABILITY_UNAVAILABLE");
+      // LA PREUVE : zéro construction. Aucun client, donc aucune tentative.
+      expect(vus, `${manquant} : un client a été construit malgré la fente vide`).toHaveLength(0);
+      // Et le refus NOMME la variable à réparer, celle de CE compartiment.
+      expect(!o.ok && o.detail, manquant).toContain(cap.variableCle);
+      expect(!o.ok && o.detail, manquant).toContain("n'est PAS essayé");
+    }
+  });
+
+  it("(d) CAPABILITY_UNAVAILABLE est DISTINCTE des cinq causes existantes", () => {
+    const capacite = ouvrirCompartimentDesigne(REPORTS, { R2_ACCOUNT_ID: "compte" });
+    expect(!capacite.ok && capacite.cause).toBe("CAPABILITY_UNAVAILABLE");
+
+    const detailsDesCinq = [
+      resoudreDepuisRegistre([]),
+      resoudreDepuisRegistre([evenement({ establishmentMode: "BY_CONVENTION" })]),
+      resoudreDepuisRegistre([evenement({ id: "9", bucket: REPORTS }), evenement({ id: "9", bucket: EVIDENCE })]),
+      resoudreDepuisRegistre([evenement({ storageKey: "reports/AUTRE.pdf" })]),
+      resoudreDepuisRegistre([evenement({ bucket: "interligens-static" })]),
+    ].map((r) => (r.ok ? "RÉSOLU" : r.detail));
+
+    // La sixième, par le chemin complet : capacité manquante.
+    const sixieme = resoudreDepuisRegistre([evenement()], CLE, { R2_ACCOUNT_ID: "compte" });
+    expect(sixieme.ok).toBe(false);
+    if (sixieme.ok) throw new Error("inatteignable");
+    expect(sixieme.detail).toContain("CAPABILITY_UNAVAILABLE");
+
+    // SIX refus, SIX textes différents. Aucune dégradation d'une cause en une autre.
+    const tous = [...detailsDesCinq, sixieme.detail];
+    expect(tous.every((d) => d !== "RÉSOLU")).toBe(true);
+    expect(new Set(tous).size).toBe(6);
+    // Et CAPABILITY_UNAVAILABLE n'apparaît QUE dans le sixième.
+    expect(detailsDesCinq.filter((d) => d.includes("CAPABILITY_UNAVAILABLE"))).toHaveLength(0);
+  });
+
+  it("la porte de NAISSANCE obéit à la même table — pas de repli là non plus", () => {
+    const { vus, construire: _ } = espion();
+    void _;
+    // Naissance dans evidence : c'est la fente evidence qui sert.
+    const ok = ouvrirCompartimentGouverne(ENV);
+    expect(ok.ok).toBe(true);
+    expect(ok.ok && ok.bucket).toBe(EVIDENCE);
+    // Fente evidence vide, fente reports pleine : REFUS, pas de repli.
+    const sansEvidence = { ...ENV };
+    delete (sansEvidence as Record<string, unknown>).R2_EVIDENCE_ACCESS_KEY_ID;
+    delete (sansEvidence as Record<string, unknown>).R2_EVIDENCE_SECRET_ACCESS_KEY;
+    const ko = ouvrirCompartimentGouverne(sansEvidence);
+    expect(ko.ok).toBe(false);
+    expect(!ko.ok && ko.cause).toBe("CAPABILITY_UNAVAILABLE");
+    expect(vus).toHaveLength(0);
   });
 });

@@ -108,6 +108,9 @@ const ENV_ORIGINE = { ...process.env };
 beforeEach(() => {
   process.env.R2_ACCOUNT_ID = "compte-temoin";
   process.env.R2_ACCESS_KEY_ID = "ak-partage";
+  // CC-OFFLINE-194 : capacité par compartiment — evidence a sa propre fente.
+  process.env.R2_EVIDENCE_ACCESS_KEY_ID = "ak-evidence";
+  process.env.R2_EVIDENCE_SECRET_ACCESS_KEY = "sk-evidence";
   process.env.R2_SECRET_ACCESS_KEY = "sk-partage";
   process.env.R2_BUCKET_NAME = COMPARTIMENT_PARTAGE;
   process.env.R2_EVIDENCE_BUCKET_NAME = COMPARTIMENT_PREUVES;
