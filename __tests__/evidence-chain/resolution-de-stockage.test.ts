@@ -206,13 +206,31 @@ describe("(b) · non résolvable → STORAGE_LOCATION_UNRESOLVED, et rien n'est 
     expect(r.ok).toBe(false);
   });
 
-  it("un compartiment NOMMÉ qu'aucun ouvreur ne dessert reste NON résolu", () => {
-    // Le cas qui arrivera le jour où une autorité désignera `interligens-reports` :
-    // le nom ne suffit pas, il faut pouvoir y lire par un chemin gouverné.
-    const r = resoudreLocalisation(LIGNE, ENV_PROVISIONNE, [{ nom: "historique", localiser: () => "interligens-reports" }]);
-    expect(r.ok).toBe(false);
-    if (r.ok) throw new Error("inatteignable");
-    expect(r.detail).toContain("aucun ouvreur gouverné");
+  // ⚠️ CC-OFFLINE-193 — CE TÉMOIN A CHANGÉ DE SENS, ET C'EST VOULU.
+  // Il vérifiait qu'un compartiment NOMMÉ mais non desservi restait non résolu ;
+  // le cas était `interligens-reports`, que la porte d'alors n'ouvrait pas.
+  // Depuis le ruling du 2026-09-16, désigner `interligens-reports` est
+  // l'EXÉCUTION d'une autorité gouvernée — « reports n'est pas un secours, c'est
+  // LA VALEUR PRODUITE PAR L'AUTORITÉ ». Ce qui reste refusé, ce n'est plus un
+  // compartiment non desservi, c'est un compartiment HORS DU VOCABULAIRE FERMÉ.
+  it("un compartiment DÉSIGNÉ par l'autorité et RECONNU est ouvert — reports inclus", () => {
+    const r = resoudreLocalisation(LIGNE, ENV_PROVISIONNE, [{ nom: "registre", localiser: () => "interligens-reports" }]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("inatteignable");
+    // Ouvert EXACTEMENT là où l'autorité désigne — pas là où l'environnement pointe.
+    expect(r.compartiment).toBe("interligens-reports");
+    expect(ENV_PROVISIONNE.R2_EVIDENCE_BUCKET_NAME).toBe("interligens-evidence");
+  });
+
+  it("un compartiment HORS du vocabulaire fermé est REFUSÉ, même désigné par une autorité", () => {
+    for (const hors of ["interligens-static", "un-bucket-quelconque", "", "interligens-reports-2"]) {
+      const r = resoudreLocalisation(LIGNE, ENV_PROVISIONNE, [{ nom: "registre", localiser: () => hors }]);
+      expect(r.ok, hors).toBe(false);
+      if (r.ok) throw new Error("inatteignable");
+      // Sauf la chaîne vide, que la résolution traite plus tôt comme une
+      // non-revendication : une autorité muette n'est pas une autorité fautive.
+      if (hors !== "") expect(r.detail, hors).toContain("compartiment_hors_vocabulaire_gouverne");
+    }
   });
 });
 
@@ -300,18 +318,60 @@ describe("le repli vers R2_BUCKET_NAME est INATTEIGNABLE, pas seulement interdit
     expect(code).toContain("a.localiser(ligne)");
   });
 
-  it("l'unique ouvreur est la porte gouvernée, qui refuse déjà sans la variable dédiée", () => {
+  it("l'unique ouvreur reçoit le compartiment DÉSIGNÉ — il n'en choisit aucun", () => {
     const code = sansCommentaires(lire(SRC_RESOLUTION));
-    expect(code).toContain("ouvrirCompartimentGouverne(env)");
+    expect(code).toContain("ouvrirCompartimentDesigne(compartimentVoulu, env)");
     // Aucun autre constructeur de client.
     expect(code).not.toMatch(/buildEvidenceR2|new S3Client|evidenceR2ConfigFromEnv/);
+    // ⛔ ET LE PIÈGE NOMMÉ PAR GPT : « N'INTRODUISEZ PAS R2_BUCKET_NAME COMME
+    // MÉCANISME DE SÉLECTION DE reports. »
+    //
+    // On cherche le GESTE, pas le mot : le nom figure LÉGITIMEMENT dans le
+    // texte d'un refus de `compartment.ts` (« il ne se rabat pas sur
+    // R2_BUCKET_NAME »), et l'interdire là rendrait le refus muet sur ce qu'il
+    // refuse. Ce qui doit être introuvable, c'est une LECTURE de cette variable.
+    for (const f of [SRC_RESOLUTION, "src/lib/evidence-chain/compartment.ts"]) {
+      const code = sansCommentaires(lire(f));
+      expect(code, `${f} LIT R2_BUCKET_NAME`).not.toMatch(/\b(env|process\.env)\s*\.\s*R2_BUCKET_NAME/);
+      expect(code, `${f} LIT R2_BUCKET_NAME`).not.toMatch(/\[\s*["'`]R2_BUCKET_NAME["'`]\s*\]/);
+    }
+    // Et dans l'ouvreur sur désignation, AUCUN nom de compartiment n'est lu
+    // dans l'environnement — c'est ce qui rend la sélection par configuration
+    // structurellement impossible.
+    const ouvreur = sansCommentaires(lire("src/lib/evidence-chain/compartment.ts"))
+      .split("export function ouvrirCompartimentDesigne")[1] ?? "";
+    expect(ouvreur.length).toBeGreaterThan(200);
+    expect(ouvreur).not.toMatch(/R2_EVIDENCE_BUCKET_NAME|R2_BUCKET_NAME/);
   });
 
-  it("sans la variable dédiée, tout est non résolu — et la cause le dit", () => {
-    const r = resoudreLocalisation(LIGNE, ENV_AVANT, [{ nom: "x", localiser: () => "interligens-evidence" }]);
+  it("LA CONFIGURATION NE SÉLECTIONNE PAS — elle ne fait que PERMETTRE", () => {
+    // « Storage-location authority SELECTS the compartment; runtime
+    //   configuration only PROVIDES THE CAPABILITY to access the compartment
+    //   selected by that authority. Configuration must never become location
+    //   authority. »
+    //
+    // Conséquence directe, et c'est ce que ce témoin fixe : retirer
+    // `R2_EVIDENCE_BUCKET_NAME` ne change RIEN à la résolution d'une pièce dont
+    // l'autorité nomme le compartiment. Cette variable dit où NAISSENT les
+    // pièces neuves ; elle n'a pas voix au chapitre sur celles qui existent.
+    for (const compartiment of ["interligens-evidence", "interligens-reports"]) {
+      const avec = resoudreLocalisation(LIGNE, ENV_PROVISIONNE, [{ nom: "registre", localiser: () => compartiment }]);
+      const sans = resoudreLocalisation(LIGNE, ENV_AVANT, [{ nom: "registre", localiser: () => compartiment }]);
+      expect(avec.ok, compartiment).toBe(true);
+      expect(sans.ok, compartiment).toBe(true);
+      expect(avec.ok && avec.compartiment).toBe(compartiment);
+      expect(sans.ok && sans.compartiment).toBe(compartiment);
+    }
+  });
+
+  it("ce qui manque VRAIMENT fait refuser : les credentials, pas le nom du compartiment", () => {
+    const sansCredentials = { R2_EVIDENCE_BUCKET_NAME: "interligens-evidence" };
+    const r = resoudreLocalisation(LIGNE, sansCredentials, [{ nom: "registre", localiser: () => "interligens-reports" }]);
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error("inatteignable");
-    expect(r.detail).toContain("aucun ouvreur");
+    expect(r.detail).toContain("evidence_credentials_unconfigured");
+    // La cause dit la bonne réparation : l'accès, jamais la sélection.
+    expect(r.detail).toContain("Le compartiment est choisi, l'accès ne l'est pas");
   });
 
   it("le résolveur de production ne refuse JAMAIS en lisant ailleurs", () => {

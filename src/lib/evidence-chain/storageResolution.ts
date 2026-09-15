@@ -48,15 +48,28 @@
  * lecteur est `storageLocationJournal.ts`. Le pont est
  * `autoriteDuRegistreDeLocalisation()`, plus bas.
  *
- * ⚠️ ELLE N'EST PAS ENCORE POSÉE, ET UNE FOIS POSÉE ELLE SERA VIDE. Le
- * comportement de ce module est donc INCHANGÉ pièce par pièce : absence
- * d'événement → STORAGE_LOCATION_UNRESOLVED. Aucun repli n'a été ajouté, et
- * la convention de préfixe reste un NO-GO EXPLICITE — les 31 clés commencent
- * toutes par `reports/`, et c'est précisément pourquoi on ne la lit pas.
+ * ─── T1-OUVERTURE-GOUVERNÉE (2026-09-16) : L'AUTORITÉ S'EXÉCUTE ─────────────
+ *
+ * La table est POSÉE et porte 31 événements VERIFIED_BY_HEAD réels (ids 3 → 33),
+ * établis par 62 HeadObject : 200 dans `interligens-reports`, 404 dans
+ * `interligens-evidence`. Les concurrents gouvernés ont été MESURABLEMENT
+ * exclus — c'est ce qui distingue une localisation d'une simple présence.
+ *
+ *   « A governed compartment may be opened only when governed location
+ *     authority names it for that specific object. A compartment must never be
+ *     selected by default, fallback, key convention, object age, or failed
+ *     lookup. »
+ *
+ * ⚠️ OUVRIR `interligens-reports` N'EST DONC PAS UN REPLI. GPT, 2026-09-16 :
+ *    « Ici reports n'est pas un secours, c'est LA VALEUR PRODUITE PAR
+ *      L'AUTORITÉ. » Le registre le NOMME, pièce par pièce ; on exécute cette
+ *    désignation. La convention de préfixe reste un NO-GO EXPLICITE — les 31
+ *    clés commencent toutes par `reports/`, et c'est précisément pourquoi on
+ *    ne les lit pas : ce qui autorise l'ouverture est la LIGNE, jamais la clé.
  */
 import type { S3Client } from "@aws-sdk/client-s3";
 import { getEvidenceObject } from "./r2";
-import { ouvrirCompartimentGouverne } from "./compartment";
+import { ouvrirCompartimentDesigne } from "./compartment";
 import type { ReadObjectFn } from "./readback";
 import type { StorageLocation } from "./storageLocationJournal";
 
@@ -218,24 +231,41 @@ function nonResolue(detail: string): LocalisationNonResolue {
  * de lecture. Un compartiment nommé qu'aucun ouvreur ne sait ouvrir n'est PAS
  * résolu : le nommer ne suffit pas, il faut pouvoir y lire.
  *
- * Aujourd'hui l'unique ouvreur est la porte gouvernée. C'est délibéré : c'est
- * ce qui rend le repli vers `R2_BUCKET_NAME` non pas interdit par convention,
- * mais INATTEIGNABLE — il n'existe aucun chemin de code qui y mène.
+ * ─── L'AUTORITÉ CHOISIT, LA CONFIGURATION PERMET (2026-09-16) ──────────────
+ *
+ *   « Storage-location authority SELECTS the compartment; runtime configuration
+ *     only PROVIDES THE CAPABILITY to access the compartment selected by that
+ *     authority. Configuration must never become location authority. »
+ *
+ * L'ouvreur est `ouvrirCompartimentDesigne` : il reçoit le compartiment que
+ * l'autorité a NOMMÉ, vérifie qu'il appartient au vocabulaire FERMÉ des
+ * compartiments gouvernés, et ouvre EXACTEMENT celui-là.
+ *
+ * ⛔ Il ne lit AUCUN nom de compartiment dans l'environnement — ni
+ *    `R2_EVIDENCE_BUCKET_NAME`, ni `R2_BUCKET_NAME`. Le repli vers un
+ *    compartiment générique n'est pas seulement interdit : il est
+ *    INATTEIGNABLE, parce qu'aucun chemin de code ne lit ce nom-là.
+ *
+ * ⛔ Et il ne cherche nulle part ailleurs. Pas de « essayer evidence, puis
+ *    reports si absent » : une recherche qui échoue n'est pas une désignation.
  */
 function ouvrir(
   compartimentVoulu: string,
   env: Record<string, string | undefined>,
 ): { s3: S3Client; bucket: string } | { refus: string } {
-  const porte = ouvrirCompartimentGouverne(env);
+  const porte = ouvrirCompartimentDesigne(compartimentVoulu, env);
   if (!porte.ok) {
-    return { refus: `aucun ouvreur disponible pour « ${compartimentVoulu} » — ${porte.cause} : ${porte.detail}` };
+    return { refus: `le compartiment « ${compartimentVoulu} » ne peut pas être ouvert — ${porte.cause} : ${porte.detail}` };
   }
+  // Ceinture et bretelles : la fonction rend le désigné par construction, mais
+  // un ouvreur qui rendrait un AUTRE compartiment serait exactement la
+  // substitution silencieuse qu'on refuse. On préfère un refus bruyant.
   if (porte.bucket !== compartimentVoulu) {
     return {
       refus:
-        `le compartiment « ${compartimentVoulu} » est NOMMÉ mais aucun ouvreur gouverné ne le dessert ` +
-        `(la porte gouvernée ouvre « ${porte.bucket} »). Lire ailleurs serait chercher au mauvais endroit, ` +
-        `et ne rien y trouver ne serait pas une mesure d'absence.`,
+        `l'ouvreur a rendu « ${porte.bucket} » là où l'autorité désignait « ${compartimentVoulu} ». ` +
+        "Une substitution de compartiment n'est pas une ouverture : lire ailleurs serait chercher au " +
+        "mauvais endroit, et ne rien y trouver ne serait pas une mesure d'absence.",
     };
   }
   return { s3: porte.s3, bucket: porte.bucket };
