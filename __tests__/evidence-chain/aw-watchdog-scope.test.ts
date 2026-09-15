@@ -96,8 +96,16 @@ describe("AW/1 — le périmètre du watchdog", () => {
     const requetes = CODE.match(/FROM "EvidenceItem"[\s\S]{0,240}?`/g) ?? [];
     expect(requetes.length).toBeGreaterThanOrEqual(3);
     for (const r of requetes) {
+      // CC-OFFLINE-191 — `${universe}` est la TROISIÈME forme acceptée, et la
+      // plus stricte des trois : `tsaPendingUniverseSql()` rend l'expression
+      // ENTIÈRE (jeton + éligibilité) d'un bloc, donc l'appelant n'a plus de
+      // `AND` à recomposer. Elle est DÉRIVÉE de `eligibleStatusSqlClause`
+      // comme les deux autres — c'est prouvé dans
+      // __tests__/evidence-chain/tsa-predicat-et-readback.test.ts. Ce qui
+      // reste interdit ici est inchangé : une requête sur `EvidenceItem` sans
+      // AUCUNE interpolation dérivée.
       expect(r, `requête sans filtre d'éligibilité :\n${r}`).toMatch(
-        /\$\{eligible|\$\{eligibleR2/,
+        /\$\{eligible|\$\{eligibleR2|\$\{universe/,
       );
     }
   });
