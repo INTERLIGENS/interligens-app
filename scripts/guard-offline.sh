@@ -94,6 +94,29 @@ FORBIDDEN_PATTERNS=(
     # guard seul dans le diff), sinon elle est bloquée.
     "^scripts/guard-offline\.sh$"
 
+    # ── LE CHEMIN DE DÉPLOIEMENT EXÉCUTABLE ─────────────────────────────────
+    #
+    #   Deployment safety is a property of the executable deployment path;
+    #   a correct optional preflight is not a deployment guard.
+    #
+    # Le preflight livré le 2026-09-15 était correct et démontré. Il n'était pas
+    # GOUVERNÉ : ses trois surfaces — le moteur qui rejoue le filtre du CLI, le
+    # vocabulaire de refus, et `GENERATED_ALLOWED`, la SEULE soupape du
+    # prédicat — pouvaient être modifiées par n'importe quel commit, au milieu
+    # de n'importe quel chantier.
+    #
+    # Sans ces entrées, nous aurions protégé la porte tout en laissant n'importe
+    # qui modifier la serrure : il suffisait d'ajouter une ligne dans
+    # `GENERATED_ALLOWED` pour faire passer n'importe quel fichier hors commit,
+    # et la porte serait restée verte en le disant.
+    #
+    # Les trois fichiers sont indissociables, et le gel les prend tous les
+    # trois — geler le moteur en laissant l'orchestrateur ou le wrapper ouverts
+    # ne protégerait rien : c'est le wrapper qui décide si le garde est appelé.
+    "^scripts/preflight/"                        # moteur + vocabulaire + GENERATED_ALLOWED
+    "^scripts/preflight-deploy\.mjs$"            # les quatre portes et le marqueur
+    "^scripts/deploy-production\.mjs$"           # LE chemin : preflight → vercel épinglé → deploy
+
     # ── Fichiers de sécurité dont la compromission est INVISIBLE ────────────
     # Sélection volontairement resserrée (audit issue #46, décision David) :
     # uniquement ce qui ne laisse ni trace dans les logs ni trou dans le revenu.
@@ -237,6 +260,36 @@ LEASE_DUREE_MAX_S=2700   # 45 minutes
 # « rien à vérifier ». Une lease n'existe qu'une fois MERGÉE dans main — c'est la
 # même propriété que le guard lui-même : on ne se juge pas avec ses propres règles.
 LEASES=(
+    # ── T2-HOTFIX-DEPLOYMENT-GUARD ───────────────────────────────────────────
+    # LA PREMIÈRE LEASE OUVERTE PAR NÉCESSITÉ MESURÉE, et il faut dire laquelle.
+    #
+    # La consigne de la fenêtre supposait que `hotfix/guard-*` suffisait à
+    # toucher `package.json`. MESURÉ, c'est faux : la voie de maintenance
+    # n'ouvre QUE `GUARD_SYSTEM_FILES`, et seulement quand ils sont SEULS dans
+    # le diff. Le câblage a besoin de quatre chemins gelés que cette voie ne
+    # couvre pas. Ils ne passent donc pas par un élargissement de la voie de
+    # maintenance — qui les ouvrirait pour toujours, sur toute branche
+    # `hotfix/guard-*` — mais par une lease : bornée, nominative, expirable.
+    #
+    #   package.json                      expose `deploy:prod` (UNE ligne)
+    #   scripts/preflight-deploy.mjs      son en-tête affirmait « ce fichier
+    #                                     n'est pas un script package.json » et
+    #                                     que l'épinglage était structurellement
+    #                                     impossible : les deux deviennent faux
+    #   scripts/preflight/vocabulary.mjs  son bloc analyst.png affirmait « le
+    #                                     preflight reste ROUGE dessus »
+    #   scripts/deploy-production.mjs     le wrapper CRÉÉ par ce chantier, et
+    #                                     gelé par ce même commit — sans la
+    #                                     lease, sa création serait refusée
+    #
+    # Les deux fichiers de prose ne sont pas de la cosmétique : ils sont la
+    # DESCRIPTION d'un contrôle. Les laisser affirmer le contraire de ce que le
+    # mécanisme fait désormais, c'est exactement la prose adjacente qui finit
+    # par faire autorité à la place du code.
+    #
+    # 45 minutes, la borne du mécanisme. Le sujet est la branche de câblage, pas
+    # celle-ci : le nom SÉLECTIONNE, la lease AUTORISE.
+    "T2-HOTFIX-DEPLOYMENT-GUARD|cablage-du-chemin-de-deploiement|package.json,scripts/preflight-deploy.mjs,scripts/preflight/vocabulary.mjs,scripts/deploy-production.mjs|c451ad50a41aa9a0fa5ec5038529159376297fb3|hotfix/deployment-preflight-wiring|2026-09-15T08:30:00Z|2026-09-15T09:15:00Z|OPEN"
 )
 
 lease_rouge() {
