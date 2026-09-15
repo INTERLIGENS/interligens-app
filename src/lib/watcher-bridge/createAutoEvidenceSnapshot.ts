@@ -21,9 +21,8 @@ export interface RawDb {
   $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
 }
 
-import type { S3Client } from "@aws-sdk/client-s3";
 import type { EvidenceStore } from "../evidence-chain/types";
-import { ingestBuffer } from "../evidence-chain/ingest";
+import { ingestBuffer, type PorteDIngestion } from "../evidence-chain/ingest";
 import { stableStringify } from "../evidence-chain/manifest";
 
 // Chaîne de preuve (CC-OFFLINE-56, opt-in) : l'artefact d'un candidate est son
@@ -32,7 +31,13 @@ import { stableStringify } from "../evidence-chain/manifest";
 // postedAtUtc reste déclaratif dans l'artefact. timestampMode=at-ingestion.
 export interface ChainOpts {
   store: EvidenceStore;
-  r2?: { s3: S3Client; bucket: string } | null;
+  /**
+   * La porte GOUVERNÉE, permission comprise. Pas un couple `{ s3, bucket }` :
+   * le chemin de PUT exige `operations: "READ+WRITE"` sur le compartiment de
+   * naissance (INVARIANT 1), et une porte qui ne transporte pas sa permission
+   * ne peut pas la faire vérifier.
+   */
+  r2?: PorteDIngestion | null;
   tsaEnabled?: boolean;
 }
 

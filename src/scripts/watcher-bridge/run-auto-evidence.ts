@@ -36,7 +36,11 @@ async function main() {
     }
     const chain = dryRun ? null : {
       store: new PrismaEvidenceStore(prisma),
-      r2: compartiment.ok ? { s3: compartiment.s3, bucket: compartiment.bucket } : null,
+      // `operations` transporte la permission accordée par l'ouvreur — le
+      // chemin de PUT l'exige (INVARIANT 1).
+      r2: compartiment.ok
+        ? { s3: compartiment.s3, bucket: compartiment.bucket, operations: compartiment.operations }
+        : null,
       tsaEnabled: true,
     };
     const summary = await runAutoEvidenceBatch(prisma, { candidateIds, limit, dryRun, chain });

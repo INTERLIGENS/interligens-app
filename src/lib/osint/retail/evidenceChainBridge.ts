@@ -65,7 +65,10 @@ export async function chainRetailEvidence(input: RetailChainInput): Promise<Reta
       console.error(`[retail-evidence-chain] ${msg} — aucune pièce créée.`);
       return { ok: false, evidenceItemId: null, sha256: null, duplicate: false, tsaPending: true, error: msg };
     }
-    const r2 = { s3: compartiment.s3, bucket: compartiment.bucket };
+    const r2 = { s3: compartiment.s3, bucket: compartiment.bucket, operations: compartiment.operations };
+    // `operations` transporte la permission que l'OUVREUR a accordée — le chemin
+    // de PUT l'exige (INVARIANT 1). Le recopier ici n'est pas une commodité :
+    // sans lui, la porte ne se distinguerait plus d'un couple fabriqué à la main.
     const tsaInRoute = process.env.EVIDENCE_TSA_INROUTE === "true";
 
     const res: IngestResult = await ingestBuffer(

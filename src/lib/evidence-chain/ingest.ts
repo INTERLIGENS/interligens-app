@@ -15,9 +15,10 @@
  */
 import { statSync } from "fs";
 import { basename, extname } from "path";
-import type { S3Client } from "@aws-sdk/client-s3";
 import { sha256Buffer, sha256File } from "./hash";
-import { contentAddressedKey, putEvidenceObject } from "./r2";
+import { contentAddressedKey } from "./r2";
+import { faireNaitreLesOctets } from "./naissance";
+import type { CompartimentOuvert } from "./compartment";
 import { timestampWithRouting, type TsaRouting, type Criticality } from "./tsa";
 import type { EvidenceStore, EvidenceItemRecord, EvidenceSourceType, ProvenanceType, TimestampMode } from "./types";
 import { UNATTRIBUTED } from "./types";
@@ -51,8 +52,21 @@ export interface IngestBufferInput extends IngestCommon {
   fileName?: string | null;
 }
 
+/**
+ * LA PORTE remise à l'ingestion — exactement ce qu'un ouvreur gouverné rend,
+ * `ok` en moins.
+ *
+ * ⚠️ `operations` N'EST PAS OPTIONNEL, et c'est le correctif. Tant que la porte
+ * était `{ s3, bucket }`, n'importe quel couple pouvait être fabriqué à la main
+ * — y compris avec le credential `reports` — et `operationsMinimales` restait
+ * une chaîne documentaire que rien n'exigeait. Le type force désormais chaque
+ * appelant à transporter la permission que l'ouvreur a réellement accordée, et
+ * le chemin de PUT l'EXIGE (cf. `naissance.ts`, INVARIANT 1).
+ */
+export type PorteDIngestion = Omit<CompartimentOuvert, "ok">;
+
 export interface IngestOptions {
-  r2?: { s3: S3Client; bucket: string } | null;
+  r2?: PorteDIngestion | null;
   tsa?: { enabled?: boolean; routing?: TsaRouting; retries?: number } | null;
   actor?: string;
 }
@@ -104,6 +118,19 @@ export const R2_UNAVAILABLE_MARKER = "[R2:UNAVAILABLE]";
  */
 export const R2_PUT_FAILED_MARKER = "[R2:PUT-FAILED]";
 
+/**
+ * Marqueur posé quand la clé adressée par contenu était DÉJÀ OCCUPÉE et que
+ * l'écriture conditionnelle a donc été refusée par le stockage (412).
+ *
+ * TROISIÈME marqueur, et non un troisième usage du deuxième, parce que le fait
+ * constaté n'est pas le même : « le stockage a rejeté l'écriture » décrit une
+ * panne ou un droit manquant ; « la clé était prise » décrit un objet qui
+ * existe déjà, qu'on n'a PAS écrasé, et qu'on n'ADOPTE PAS. C'est l'INVARIANT 2
+ * rendu visible dans la base : la pièce est là, ses octets ne sont pas à elle,
+ * et la ligne le dit plutôt que de laisser croire à une archive réussie.
+ */
+export const R2_OBJECT_ALREADY_EXISTS_MARKER = "[R2:OBJECT-ALREADY-EXISTS]";
+
 function assertProvenance(input: IngestCommon): void {
   // Chaîne de possession : qui a capturé est OBLIGATOIRE. Pas de null silencieux.
   if (!input.capturedBy || !input.capturedBy.trim()) {
@@ -141,8 +168,8 @@ async function ingestCore(
   // MODE DÉGRADÉ BRUYANT — on arrive ici avec des octets EN MAIN (ingestFile et
   // ingestBuffer en fournissent toujours). Donc `opts.r2` absent ne veut pas
   // dire « pas d'octets à archiver », ça veut dire « octets présents, nulle
-  // part où les mettre » : evidenceR2ConfigFromEnv() a renvoyé null, une
-  // variable R2 est mal provisionnée. Le hash-only DÉLIBÉRÉ, lui, n'appelle
+  // part où les mettre » : l'ouvreur gouverné a REFUSÉ, une variable R2 est mal
+  // provisionnée. Le hash-only DÉLIBÉRÉ, lui, n'appelle
   // jamais cette fonction — il insère directement via store.insertItem.
   // La détection est donc structurelle, pas déclarative : aucun appelant ne
   // peut oublier de la signaler.
@@ -150,7 +177,7 @@ async function ingestCore(
   if (r2Unavailable) {
     console.error(
       `[evidence-chain] R2 INDISPONIBLE — octets NON archivés pour sha256=${sha256} ` +
-        `(${byteSize} o, ${displayName}). evidenceR2ConfigFromEnv() a renvoyé null : ` +
+        `(${byteSize} o, ${displayName}). Aucune porte gouvernée n'a été remise à l'ingestion : ` +
         `vérifier R2_ACCOUNT_ID / R2_EVIDENCE_* / R2_*. La pièce est conservée et marquée ` +
         `${R2_UNAVAILABLE_MARKER}.`,
     );
@@ -188,12 +215,28 @@ async function ingestCore(
   let r2PutError: string | null = null;
   if (opts.r2) {
     const key = contentAddressedKey(sha256, ext);
+    // Le marqueur posé dépend de CE QUI a refusé — cf. plus bas.
+    let marqueur = R2_PUT_FAILED_MARKER;
     try {
       const body = await loadBody();
-      await putEvidenceObject(opts.r2.s3, opts.r2.bucket, key, body, input.mimeType ?? undefined);
-      await store.setR2(item.id, key, false, "degraded:no-object-lock");
-      item.r2Key = key;
-      r2Key = key;
+      // ── LA NAISSANCE. Permission EXIGÉE, puis écriture conditionnelle
+      // atomique. Un refus ne lève pas : il est rendu, avec sa cause.
+      const naissance = await faireNaitreLesOctets(
+        { ok: true, ...opts.r2 }, key, body, input.mimeType ?? undefined,
+      );
+      if (naissance.ok) {
+        await store.setR2(item.id, key, false, "degraded:no-object-lock");
+        item.r2Key = key;
+        r2Key = key;
+      } else {
+        // ⚠️ `OBJECT_ALREADY_EXISTS` N'EST PAS UN SUCCÈS, ET N'EN DEVIENDRA PAS
+        // UN. La tentation serait d'écrire `setR2(item.id, key)` « puisque les
+        // octets sont là » : ce serait ADOPTER des octets dont rien n'établit
+        // l'autorité de naissance (INVARIANT 2). La pièce reste donc sans clé,
+        // marquée, et journalisée — visible, jamais silencieuse.
+        if (naissance.cause === "OBJECT_ALREADY_EXISTS") marqueur = R2_OBJECT_ALREADY_EXISTS_MARKER;
+        throw new Error(`[${naissance.cause}] ${naissance.detail}`);
+      }
     } catch (err) {
       r2PutFailed = true;
       r2PutError = err instanceof Error ? err.message : String(err);
@@ -201,15 +244,15 @@ async function ingestCore(
       console.error(
         `[evidence-chain] R2 PUT REJETÉ — octets NON archivés pour sha256=${sha256} ` +
           `(${byteSize} o, ${displayName}, clé ${key}) : ${r2PutError}. La pièce est ` +
-          `conservée et marquée ${R2_PUT_FAILED_MARKER}.`,
+          `conservée et marquée ${marqueur}.`,
       );
       // Marquage AVANT le journal : si la seconde écriture échoue à son tour,
       // la ligne dit au moins la vérité sur ses octets.
       try {
-        await store.markR2Failed(item.id, R2_PUT_FAILED_MARKER, `key=${key} error=${r2PutError}`);
+        await store.markR2Failed(item.id, marqueur, `key=${key} error=${r2PutError}`);
       } catch (markErr) {
         console.error(
-          `[evidence-chain] marquage ${R2_PUT_FAILED_MARKER} impossible pour ${item.id} :`,
+          `[evidence-chain] marquage ${marqueur} impossible pour ${item.id} :`,
           markErr instanceof Error ? markErr.message : markErr,
         );
       }
@@ -234,7 +277,7 @@ async function ingestCore(
   if (r2Unavailable) {
     await store.insertAccessLog(
       item.id, "INGEST", actor,
-      `r2 unavailable — bytes NOT archived (evidenceR2ConfigFromEnv returned null); bytes=${byteSize}`,
+      `r2 unavailable — bytes NOT archived (no governed compartment handle supplied); bytes=${byteSize}`,
     );
   }
 

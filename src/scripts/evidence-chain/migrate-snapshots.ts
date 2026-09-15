@@ -1,4 +1,22 @@
 /**
+ * ⛔ LEGACY_REPORTS_STORAGE_AUTHORITY — CE SCRIPT EST ÉPINGLÉ SUR `interligens-reports`.
+ *
+ *   « Ils ne doivent jamais changer de bucket parce qu'une variable destinée au
+ *     nouveau pipeline apparaît. »
+ *
+ * Sa source historique est `interligens-reports`, avec le credential
+ * correspondant (`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`). La cible ne vient
+ * d'AUCUNE variable : `legacyReportsR2ConfigFromEnv()` l'épingle. L'ancienne
+ * `evidenceR2ConfigFromEnv()` résolvait `R2_EVIDENCE_* || R2_*` — poser
+ * `R2_EVIDENCE_BUCKET_NAME` déplaçait donc silencieusement ce script vers le
+ * compartiment canonique, où ses objets historiques n'ont jamais été.
+ *
+ * ⚠️ READ. La porte remise à l'ingestion déclare `operations: "READ"`, et le
+ * chemin de PUT l'EXIGE (INVARIANT 1) : une naissance par ce script est REFUSÉE
+ * avant tout appel réseau. Un compartiment legacy reste LISIBLE sans devenir
+ * une destination valide pour une pièce nouvelle.
+ */
+/**
  * CC-OFFLINE-55 Phase 2/3 — Migration EvidenceSnapshot → EvidenceItem.
  * ADDITIF : ne modifie/supprime JAMAIS EvidenceSnapshot (source intacte).
  *
@@ -26,7 +44,7 @@ import { join, isAbsolute } from "path";
 import { PrismaClient } from "@prisma/client";
 import { PrismaEvidenceStore } from "../../lib/evidence-chain/store/prisma";
 import { ingestFile } from "../../lib/evidence-chain/ingest";
-import { evidenceR2ConfigFromEnv, buildEvidenceR2 } from "../../lib/evidence-chain/r2";
+import { legacyReportsR2ConfigFromEnv, buildEvidenceR2 } from "../../lib/evidence-chain/r2";
 import { sha256File } from "../../lib/evidence-chain/hash";
 import { requestTimestampWithRetry, verifyTimestampOffline } from "../../lib/evidence-chain/tsa";
 import type { EvidenceSourceType } from "../../lib/evidence-chain/types";
@@ -125,8 +143,8 @@ async function main() {
 
   // ── COMMIT ──
   const store = new PrismaEvidenceStore(prisma);
-  const cfg = evidenceR2ConfigFromEnv();
-  const r2 = cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket } : null;
+  const cfg = legacyReportsR2ConfigFromEnv();
+  const r2 = cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket, operations: "READ" } as const : null;
   let created = 0, linked = 0, dup = 0, noTsa = 0, fail = 0;
   for (const r of migr) {
     try {

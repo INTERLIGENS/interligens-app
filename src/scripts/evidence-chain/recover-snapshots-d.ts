@@ -1,4 +1,22 @@
 /**
+ * ⛔ LEGACY_REPORTS_STORAGE_AUTHORITY — CE SCRIPT EST ÉPINGLÉ SUR `interligens-reports`.
+ *
+ *   « Ils ne doivent jamais changer de bucket parce qu'une variable destinée au
+ *     nouveau pipeline apparaît. »
+ *
+ * Sa source historique est `interligens-reports`, avec le credential
+ * correspondant (`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`). La cible ne vient
+ * d'AUCUNE variable : `legacyReportsR2ConfigFromEnv()` l'épingle. L'ancienne
+ * `evidenceR2ConfigFromEnv()` résolvait `R2_EVIDENCE_* || R2_*` — poser
+ * `R2_EVIDENCE_BUCKET_NAME` déplaçait donc silencieusement ce script vers le
+ * compartiment canonique, où ses objets historiques n'ont jamais été.
+ *
+ * ⚠️ READ. La porte remise à l'ingestion déclare `operations: "READ"`, et le
+ * chemin de PUT l'EXIGE (INVARIANT 1) : une naissance par ce script est REFUSÉE
+ * avant tout appel réseau. Un compartiment legacy reste LISIBLE sans devenir
+ * une destination valide pour une pièce nouvelle.
+ */
+/**
  * CC-OFFLINE-55 — Récupération catégorie D (fichier local absent) depuis R2.
  * imageUrl (public dev URL en 401) → clé R2 = chemin de l'URL, GetObject S3 AUTH.
  * Télécharge, recalcule SHA-256, compare au sha256 stocké → A/B ; sans sha256
@@ -14,7 +32,7 @@ import { PrismaClient } from "@prisma/client";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { PrismaEvidenceStore } from "../../lib/evidence-chain/store/prisma";
 import { ingestFile } from "../../lib/evidence-chain/ingest";
-import { evidenceR2ConfigFromEnv, buildEvidenceR2 } from "../../lib/evidence-chain/r2";
+import { legacyReportsR2ConfigFromEnv, buildEvidenceR2 } from "../../lib/evidence-chain/r2";
 import { sha256File } from "../../lib/evidence-chain/hash";
 import type { EvidenceSourceType } from "../../lib/evidence-chain/types";
 
@@ -36,7 +54,7 @@ function r2KeyFromUrl(u: string): string { return decodeURIComponent(new URL(u).
   const commit = process.argv.includes("--commit");
   const throttle = flagN("throttle-ms", 1000);
   const prisma = new PrismaClient();
-  const cfg = evidenceR2ConfigFromEnv();
+  const cfg = legacyReportsR2ConfigFromEnv();
   if (!cfg) { console.error("R2 non configuré — impossible de récupérer."); process.exit(1); }
   const s3 = buildEvidenceR2(cfg);
 
@@ -48,7 +66,7 @@ function r2KeyFromUrl(u: string): string { return decodeURIComponent(new URL(u).
   console.log(`\n=== RECOVER-D ${commit ? "COMMIT" : "DRY-RUN"} — D=${D.length} (imageUrl=${recoverable.length}, sans URL=${unrecoverable}) ===`);
 
   const store = commit ? new PrismaEvidenceStore(prisma) : null;
-  const r2 = commit ? { s3, bucket: cfg.bucket } : null;
+  const r2 = commit ? ({ s3, bucket: cfg.bucket, operations: "READ" } as const) : null;
   let becameA = 0, becameB = 0, becameC = 0, dlFail = 0, ingested = 0, linked = 0, noTsa = 0;
 
   for (const r of recoverable) {

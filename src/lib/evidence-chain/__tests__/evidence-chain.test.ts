@@ -156,14 +156,18 @@ describe.runIf(TSA_LIVE)("evidence-chain — TSA réel + archivage chaîne + vé
 const R2_LIVE = process.env.EVIDENCE_R2_LIVE === "1";
 describe.runIf(R2_LIVE)("evidence-chain — R2 (live, retention dégradée)", () => {
   it("round-trips an object and DELETE SUCCEEDS (proof it is NOT WORM)", async () => {
-    const { evidenceR2ConfigFromEnv, buildEvidenceR2, putEvidenceObject, evidenceObjectExists, deleteEvidenceObject } = await import("../r2");
-    const cfg = evidenceR2ConfigFromEnv();
-    expect(cfg).not.toBeNull();
-    const s3 = buildEvidenceR2(cfg!);
+    const { putEvidenceObjectIfAbsent, evidenceObjectExists, deleteEvidenceObject } = await import("../r2");
+    const { ouvrirCompartimentGouverne } = await import("../compartment");
+    const porte = ouvrirCompartimentGouverne();
+    expect(porte.ok).toBe(true);
+    if (!porte.ok) throw new Error("inatteignable");
     const key = "_evidence_chain_test/live-" + Date.now() + ".txt";
-    await putEvidenceObject(s3, cfg!.bucket, key, Buffer.from("live r2 test"), "text/plain");
-    expect(await evidenceObjectExists(s3, cfg!.bucket, key)).toBe(true);
-    await deleteEvidenceObject(s3, cfg!.bucket, key); // succeeds → not immutable
-    expect(await evidenceObjectExists(s3, cfg!.bucket, key)).toBe(false);
+    // La clé porte un timestamp : elle est LIBRE, donc l'écriture conditionnelle
+    // doit réussir. Une clé occupée rendrait OBJECT_ALREADY_EXISTS, pas un écrasement.
+    const ecrit = await putEvidenceObjectIfAbsent(porte.s3, porte.bucket, key, Buffer.from("live r2 test"), "text/plain");
+    expect(ecrit.ok).toBe(true);
+    expect(await evidenceObjectExists(porte.s3, porte.bucket, key)).toBe(true);
+    await deleteEvidenceObject(porte.s3, porte.bucket, key); // succeeds → not immutable
+    expect(await evidenceObjectExists(porte.s3, porte.bucket, key)).toBe(false);
   }, 60000);
 });

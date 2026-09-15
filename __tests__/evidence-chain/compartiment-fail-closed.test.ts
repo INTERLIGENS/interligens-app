@@ -34,11 +34,17 @@ import {
   resoudreCompartimentGouverne,
 } from "@/lib/evidence-chain/compartment";
 import { READBACK_REFUSAL_KINDS } from "@/lib/evidence-chain/readback";
-import { evidenceR2ConfigFromEnv } from "@/lib/evidence-chain/r2";
+import { legacyReportsR2ConfigFromEnv, LEGACY_REPORTS_STORAGE_AUTHORITY } from "@/lib/evidence-chain/r2";
 
 const REPO = path.resolve(__dirname, "..", "..");
 const lire = (rel: string) => readFileSync(path.join(REPO, rel), "utf8");
 const SRC_PORTE = "src/lib/evidence-chain/compartment.ts";
+
+/** Le CODE, sans la prose — ces modules NOMMENT les variables pour dire
+ *  pourquoi ils ne les lisent pas. Confondre l'explication avec l'usage
+ *  interdirait d'expliquer. */
+const sansProse = (src: string) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 /** AVANT provisionnement — l'état du dépôt aujourd'hui. */
 const AVANT = {
@@ -76,13 +82,22 @@ describe("la porte gouvernée REFUSE plutôt que de se rabattre", () => {
     expect(r.config.bucket).not.toBe(APRES.R2_BUCKET_NAME);
   });
 
-  it("CONTRE-ÉPREUVE · l'ANCIENNE autorité, elle, se rabat encore — et c'est pourquoi elle est hors du chemin gouverné", () => {
-    // `evidenceR2ConfigFromEnv` reste en place pour les scripts LEGACY, qui
-    // lisent des objets historiques écrits dans `interligens-reports`. Le
-    // témoin fige l'écart entre les deux autorités : s'il disparaissait, ce
-    // serait que le repli est revenu quelque part.
-    expect(typeof evidenceR2ConfigFromEnv).toBe("function"); // elle EXISTE encore
-    expect(lire("src/lib/evidence-chain/r2.ts")).toContain("R2_EVIDENCE_BUCKET_NAME || process.env.R2_BUCKET_NAME");
+  it("CONTRE-ÉPREUVE · l'autorité LEGACY est désormais ÉPINGLÉE — elle ne se rabat plus, elle ne bouge plus", () => {
+    // CC-OFFLINE-195 : `evidenceR2ConfigFromEnv` N'EXISTE PLUS. Elle résolvait
+    // `R2_EVIDENCE_* || R2_*` — trois `||` — et sa cible se DÉPLAÇAIT le jour où
+    // `R2_EVIDENCE_BUCKET_NAME` serait provisionnée. Elle l'est depuis le
+    // 2026-09-16 : les trois scripts LEGACY seraient partis chercher leurs
+    // objets historiques dans le compartiment canonique.
+    //
+    // Le témoin ne fige donc plus un ÉCART entre deux autorités : il fige
+    // l'ÉPINGLAGE de la seconde. Les deux autorités restent distinctes — l'une
+    // nomme une NAISSANCE, l'autre une ARCHIVE — mais aucune des deux ne se
+    // rabat plus sur quoi que ce soit.
+    expect(typeof legacyReportsR2ConfigFromEnv).toBe("function");
+    const src = lire("src/lib/evidence-chain/r2.ts");
+    expect(src).not.toContain("R2_EVIDENCE_BUCKET_NAME || process.env.R2_BUCKET_NAME");
+    expect(sansProse(src)).not.toMatch(/process\.env\.R2_BUCKET_NAME/);
+    expect(LEGACY_REPORTS_STORAGE_AUTHORITY).toBe("interligens-reports");
     expect(lire(SRC_PORTE)).not.toMatch(/env\.R2_BUCKET_NAME/);
   });
 
@@ -223,13 +238,23 @@ describe("les chemins NON gouvernés ne sont pas touchés", () => {
     expect(INTACTS).toHaveLength(6);
   });
 
-  it("les scripts LEGACY gardent l'ancienne autorité, avec son repli assumé", () => {
+  it("les scripts LEGACY gardent une autorité PROPRE — épinglée sur `interligens-reports`", () => {
+    // Ni consigne, ni neutralisation : leur fonction historique est légitime,
+    // et c'est leur CIBLE qui est verrouillée. Le témoin de comportement
+    // (variation de `R2_EVIDENCE_BUCKET_NAME` sans effet) vit dans
+    // `src/lib/evidence-chain/__tests__/r2Config.test.ts`.
     for (const f of [
       "src/scripts/evidence-chain/backfill-evidence.ts",
       "src/scripts/evidence-chain/migrate-snapshots.ts",
       "src/scripts/evidence-chain/recover-snapshots-d.ts",
     ]) {
-      expect(lire(f), f).toContain("evidenceR2ConfigFromEnv");
+      const src = lire(f);
+      expect(src, f).toContain("legacyReportsR2ConfigFromEnv");
+      expect(sansProse(src), f).not.toContain("evidenceR2ConfigFromEnv");
+      // ⚠️ READ, et le type le porte : une naissance par ces scripts est
+      // REFUSÉE avant tout appel réseau (INVARIANT 1).
+      expect(sansProse(src), f).toMatch(/operations:\s*"READ"/);
+      expect(sansProse(src), f).not.toMatch(/R2_EVIDENCE_BUCKET_NAME/);
     }
   });
 

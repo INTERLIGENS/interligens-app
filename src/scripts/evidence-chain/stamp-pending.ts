@@ -56,7 +56,7 @@ import { timestampWithRouting } from "../../lib/evidence-chain/tsa";
 import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
 import { stampOne, type PendingEvidenceRow } from "../../lib/evidence-chain/stampGate";
 import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "../../lib/evidence-chain/compartment";
-import { resolveurGouverne } from "../../lib/evidence-chain/storageResolution";
+import { assemblerResolutionDeStockage, runnerDepuisPrisma } from "../../lib/evidence-chain/runtimeResolution";
 
 const flagN = (name: string, def: number) => {
   const i = process.argv.indexOf("--" + name);
@@ -87,11 +87,6 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  // LA RÉSOLUTION DE COMPARTIMENT, PAR PIÈCE. Le job ne câble plus un lecteur
-  // global : il câble la capacité de RÉSOUDRE, et c'est la résolution qui rend
-  // un lecteur — lié au compartiment qu'elle a nommé, pour cette pièce-là.
-  const resolveStorage = resolveurGouverne();
-
   const prisma = new PrismaClient();
   const store = new PrismaEvidenceStore(prisma);
   try {
@@ -105,6 +100,20 @@ async function main() {
       `[stamp-pending] ${pending.length} pièce(s) éligible(s) en attente de TSA (limit ${limit})${dryRun ? " — DRY-RUN" : ""}`,
     );
     console.log(`[stamp-pending] univers : ${universe}`);
+
+    // ── LA RÉSOLUTION DE COMPARTIMENT, PAR PIÈCE, PAR LE CONSTRUCTEUR CANONIQUE.
+    //
+    // Le job ne câble plus un lecteur global, et il n'assemble plus la chaîne
+    // lui-même : il APPELLE le constructeur. C'est ce qui garantit qu'il consomme
+    // la MÊME autorité de registre que celle avec laquelle les 31 ont été
+    // démontrées — jusqu'ici il prenait `AUTORITES_DE_LOCALISATION`, vide, et
+    // refusait tout ce que l'instrument de mesure résolvait.
+    const { resolveStorage, autorites } = await assemblerResolutionDeStockage(
+      runnerDepuisPrisma(prisma),
+      pending.map((p) => ({ evidenceItemId: p.id, r2Key: p.r2Key })),
+    );
+    console.log(`[stamp-pending] autorités de localisation : ${autorites.map((a) => a.nom).join(", ") || "(AUCUNE)"}`);
+
     let done = 0, fail = 0, refused = 0;
     for (const p of pending) {
       if (dryRun) {

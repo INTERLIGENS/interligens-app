@@ -1,4 +1,22 @@
 /**
+ * ⛔ LEGACY_REPORTS_STORAGE_AUTHORITY — CE SCRIPT EST ÉPINGLÉ SUR `interligens-reports`.
+ *
+ *   « Ils ne doivent jamais changer de bucket parce qu'une variable destinée au
+ *     nouveau pipeline apparaît. »
+ *
+ * Sa source historique est `interligens-reports`, avec le credential
+ * correspondant (`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`). La cible ne vient
+ * d'AUCUNE variable : `legacyReportsR2ConfigFromEnv()` l'épingle. L'ancienne
+ * `evidenceR2ConfigFromEnv()` résolvait `R2_EVIDENCE_* || R2_*` — poser
+ * `R2_EVIDENCE_BUCKET_NAME` déplaçait donc silencieusement ce script vers le
+ * compartiment canonique, où ses objets historiques n'ont jamais été.
+ *
+ * ⚠️ READ. La porte remise à l'ingestion déclare `operations: "READ"`, et le
+ * chemin de PUT l'EXIGE (INVARIANT 1) : une naissance par ce script est REFUSÉE
+ * avant tout appel réseau. Un compartiment legacy reste LISIBLE sans devenir
+ * une destination valide pour une pièce nouvelle.
+ */
+/**
  * Backfill des pièces existantes dans la chaîne de preuve.
  * Cible : ./evidence/** + artefacts forensiques racine (sxyz500_hops.json,
  * BOTIFY_KOL_SCAN_REPORT.json).
@@ -74,17 +92,17 @@ async function main() {
   // ── Store (only in --commit) ──
   let store: import("../../lib/evidence-chain/store/prisma").PrismaEvidenceStore | null = null;
   let prisma: import("@prisma/client").PrismaClient | null = null;
-  let r2: { s3: import("@aws-sdk/client-s3").S3Client; bucket: string } | null = null;
+  let r2: import("../../lib/evidence-chain/ingest").PorteDIngestion | null = null;
   let ingestFile!: typeof import("../../lib/evidence-chain/ingest").ingestFile;
   if (commit) {
     const { PrismaClient } = await import("@prisma/client");
     const { PrismaEvidenceStore } = await import("../../lib/evidence-chain/store/prisma");
     ({ ingestFile } = await import("../../lib/evidence-chain/ingest"));
-    const { evidenceR2ConfigFromEnv, buildEvidenceR2 } = await import("../../lib/evidence-chain/r2");
+    const { legacyReportsR2ConfigFromEnv, buildEvidenceR2 } = await import("../../lib/evidence-chain/r2");
     prisma = new PrismaClient();
     store = new PrismaEvidenceStore(prisma);
-    const cfg = evidenceR2ConfigFromEnv();
-    r2 = cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket } : null;
+    const cfg = legacyReportsR2ConfigFromEnv();
+    r2 = cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket, operations: "READ" } as const : null;
   }
 
   console.log(`\n=== BACKFILL ${commit ? "COMMIT" : "DRY-RUN"} ===`);
