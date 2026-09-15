@@ -385,6 +385,42 @@ LEASES=(
     #   T2-GEL-DU-FILTRE | cliquet-de-classement-de-l-oracle
     #   1 chemin · hotfix/preflight-oracle
     #   2026-09-15T09:10:00Z → 09:55:00Z (45 mn) · consommée à 09:14
+
+    # ── CC-OFFLINE-217-SEPARATION-AUTORITES ──────────────────────────────────
+    # DEUX chemins, et c'est le minimum strict : ce sont les deux SEULS sites du
+    # dépôt où ADMIN_TOKEN sert de clé de pseudonymisation.
+    #
+    #   src/lib/osint/retail/ipHash.ts      le repli `|| ADMIN_TOKEN`
+    #   src/app/api/admin/intake/route.ts   ADMIN_TOKEN en clé DIRECTE, pour
+    #                                       ipHash ET userAgentHash
+    #
+    # Invariant ratifié par l'architecte, et c'est lui qui justifie la lease :
+    # « un credential d'authentification ne doit pas servir de clé de
+    # pseudonymisation ; là où le coût mesuré de la continuité historique est
+    # nul, la rotation doit SUPPRIMER le couplage plutôt que préserver un
+    # secret dérivé compromis. »
+    #
+    # POURQUOI CE N'EST PAS REPORTABLE APRÈS LA ROTATION. ADMIN_TOKEN est
+    # compromis ET vivant. Le geste que l'inventaire prescrivait encore —
+    # recopier sa valeur dans OSINT_RETAIL_IP_SALT pour « figer le sel » —
+    # promouvrait une valeur fuitée au rang de clé de pseudonymisation
+    # permanente. La séparation doit donc précéder la rotation, pas la suivre.
+    #
+    # CE QUI N'EST PAS DANS LA LEASE, ET POURQUOI :
+    #   vitest.config.ts   gelé lui aussi, et il aurait porté un commentaire
+    #                      expliquant pourquoi les deux nouveaux sels n'y sont
+    #                      pas. Retiré du chantier : le commentaire a été
+    #                      déplacé dans le fichier de test qu'il protège. Une
+    #                      lease n'ouvre que ce dont on démontre le besoin, et
+    #                      un gain narratif n'est pas un besoin.
+    #   src/lib/security/  investigatorAuth.ts hache l'IP sous un littéral non
+    #                      salé. Dette réelle, NOMMÉE et non corrigée : elle ne
+    #                      dépend pas d'ADMIN_TOKEN, donc elle ne bloque pas la
+    #                      rotation. Hors périmètre, donc hors lease.
+    #
+    # 45 minutes, la borne du mécanisme. Le sujet est la branche du chantier :
+    # le nom SÉLECTIONNE, la lease AUTORISE.
+    "CC-OFFLINE-217-SEPARATION-AUTORITES|separation-des-autorites-de-secret|src/lib/osint/retail/ipHash.ts,src/app/api/admin/intake/route.ts|bc34102abc3566bc58bcffd220b71d7cb608088d|feat/cc-offline-217-separation-autorites-secret|2026-09-15T12:32:00Z|2026-09-15T13:17:00Z|OPEN"
 )
 
 lease_rouge() {
