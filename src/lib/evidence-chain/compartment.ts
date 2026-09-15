@@ -516,6 +516,46 @@ export function ouvrirCompartimentGouverne(
 //                                         → le REGISTRE nomme, et lui seul
 //                                         → la configuration ne fournit que la CAPACITÉ d'accès
 //
+// ─── L'INVARIANT RATIFIÉ (2026-09-15) — DEUX PORTES D'AUTORITÉ INDÉPENDANTES ─
+//
+//   « Evidence birth authority and evidence readback authority are independent
+//     gates. Readback of an existing governed object must not depend on
+//     configuration governing where new evidence may be born. »
+//
+// ⚠️ CE N'EST PAS UNE REFORMULATION DE L'INVARIANT 1. L'INVARIANT 1 parle des
+//    PERMISSIONS d'un compartiment (lisible ≠ destination). Celui-ci parle des
+//    PORTES : il interdit de conditionner une RELECTURE à la configuration de
+//    la NAISSANCE, même quand les deux portes sont correctes chacune de son côté.
+//
+// ─── LE DÉFAUT QU'IL FERME, ET POURQUOI IL N'EST PAS UN CONTRÔLE DE SÉCURITÉ ──
+//
+//   « Ce n'est pas la suppression d'un contrôle de sécurité nécessaire. C'est la
+//     suppression d'un contrôle appartenant à une AUTRE FRONTIÈRE D'AUTORITÉ. »
+//
+// Une sonde de relecture qui exigeait `R2_EVIDENCE_BUCKET_NAME` faisait dépendre
+// la vérification d'une preuve HISTORIQUE, correctement localisée par son
+// registre, de la configuration d'un pipeline d'ingestion FUTUR. Une erreur de
+// configuration de la naissance aurait rendu invérifiables des pièces
+// parfaitement intactes — c'est-à-dire qu'elle aurait fait porter à la PREUVE le
+// défaut d'une VARIABLE, une fois de plus.
+//
+//   « Le chemin vers le token doit toujours partir de la LOCALISATION DE L'OBJET
+//     CONCERNÉ. »
+//
+// LA CHAÎNE DE RELECTURE, ET ELLE NE PASSE PAS PAR LA NAISSANCE :
+//
+//   EvidenceItem → autorité de localisation → compartiment désigné → READ
+//                                  et JAMAIS
+//   R2_EVIDENCE_BUCKET_NAME → compartiment autorisé pour la naissance
+//
+// MESURÉ, pas supposé (T1-TÉMOIN-TSA-LEGACY, 2026-09-15) : avec les TROIS
+// fentes de naissance vidées (`R2_EVIDENCE_BUCKET_NAME`,
+// `R2_EVIDENCE_ACCESS_KEY_ID`, `R2_EVIDENCE_SECRET_ACCESS_KEY`), la pièce
+// `evi_rep_615f749a1d56e9abf5fc2b07` se résout toujours sur
+// `interligens-reports` et ses 130 927 octets sont relus, SHA-256 concordant.
+// La capacité de naissance n'est donc pas une condition de la relecture : elle
+// en était une CONDITION ARTIFICIELLE, et un témoin la tient désormais rouge.
+//
 // ⛔ CETTE FONCTION NE LIT AUCUN NOM DE COMPARTIMENT DANS L'ENVIRONNEMENT.
 //    Ni `R2_EVIDENCE_BUCKET_NAME`, ni — surtout — `R2_BUCKET_NAME`. C'est le
 //    piège que GPT nomme explicitement : « N'INTRODUISEZ PAS R2_BUCKET_NAME
