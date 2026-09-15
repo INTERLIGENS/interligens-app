@@ -147,22 +147,43 @@ const j = (x: unknown) => JSON.stringify(x);
 //
 // Tant que la condition n'est pas remplie, le script sort en code 4 : ni 0
 // (ce serait tolérer), ni 1 (ce serait confondre avec une régression réelle).
-// LA FORME EXACTE DU REFUS, MESURÉE le 2026-09-15 — et non déduite. Au niveau
-// de l'ÉLIGIBILITÉ, UNKNOWN tombe sous SOURCE_PROVENANCE_UNQUALIFIED ; mais
-// `causeDeContrat` (governedWriter.ts) replie toute cause d'éligibilité, sauf
-// SOURCE_PROVENANCE_NOT_VERIFIED, sur SOURCE_PROVENANCE_INCOMPLETE. C'est donc
-// CETTE cause que le contrat rend, et l'EMPLACEMENT qui la distingue : une
-// pièce sans empreinte refuserait `SRC-001.sha256`, une pièce non qualifiée
-// refuse `SRC-001.provenanceKind`. Le couple (cause, emplacement) est exigé :
-// la cause seule est déjà exercée par un AUTRE scénario de ce script, et s'en
-// contenter confondrait les deux.
+//
+// ─── REDATÉ le 2026-09-15 par T1-BASCULE-DU-CONTRAT ───────────────────────
+//
+// L'enregistrement précédent disait `cause: SOURCE_PROVENANCE_INCOMPLETE`, et
+// EXPLIQUAIT pourquoi : au niveau de l'éligibilité, UNKNOWN tombait bien sous
+// SOURCE_PROVENANCE_UNQUALIFIED, mais `causeDeContrat` repliait toute cause
+// d'éligibilité, sauf NOT_VERIFIED, sur INCOMPLETE. Ce repli est précisément
+// ce que GPT a refusé le 2026-09-15 — « la cause dérivée doit rester précise
+// jusqu'au refus » — et la bascule l'a défait.
+//
+// Le refus attendu CHANGE DONC DE CAUSE, et il fallait le dire plutôt que de
+// laisser l'enregistrement se périmer en silence : un échec attendu qui
+// n'échoue plus pour la raison inscrite ne prouve plus rien. L'EMPLACEMENT,
+// lui, est INCHANGÉ — `SRC-001.provenanceKind` — et c'est ce qui montre que
+// c'est bien le même défaut, mieux nommé : la pièce synthétique n'est couverte
+// par aucune qualification gouvernée.
+//
+// Le couple (cause, emplacement) reste exigé : la cause seule ne suffirait pas
+// à distinguer ce scénario d'une pièce sans empreinte, qui refuse sous
+// INCOMPLETE @ `SRC-001.sha256` et reste exercée ailleurs dans ce script.
+//
+// ⚠️ NON RÉEXÉCUTÉ dans la fenêtre du 2026-09-15 : `@electric-sql/pglite`
+// n'est pas installé sur cet hôte (absent de package.json et du lockfile), et
+// l'installer sortait du périmètre. La cause inscrite ici est celle que le
+// contrat rend, PROUVÉE par les témoins unitaires de la bascule
+// (__tests__/casefile/spine-00-executeur-gouverne.test.ts, cas « le journal ne
+// porte AUCUNE ligne pour ce snapshot »), pas par une exécution de CE script.
+// La prochaine fenêtre qui dispose de PGlite doit le rejouer et confirmer.
 const ECHEC_ATTENDU = {
   depuis: "2026-09-14",
   constate: "2026-09-15",
-  cause: "SOURCE_PROVENANCE_INCOMPLETE",
+  redate: "2026-09-15 — T1-BASCULE-DU-CONTRAT : le repli en INCOMPLETE est défait",
+  cause: "SOURCE_PROVENANCE_UNQUALIFIED",
   eligibilite: "SOURCE_PROVENANCE_UNQUALIFIED",
   ou: "SRC-001.provenanceKind",
-  leveePar: "vertical slice du 2026-09-19 — journal autorité (PHASE C), témoin synthétique VERIFIED dans le fixture",
+  reexecute: false,
+  leveePar: "vertical slice du 2026-09-19 — témoin synthétique VERIFIED dans le fixture (la table du journal y est désormais créée, vide)",
 } as const;
 let echecAttenduConstate: string | null = null;
 
@@ -373,6 +394,37 @@ async function schemaPglite(c: Client): Promise<void> {
   await c.query(`CREATE TABLE token_casefiles (id text PRIMARY KEY DEFAULT gen_random_uuid()::text, ref text NOT NULL UNIQUE, codename text NOT NULL, ticker text NOT NULL, title text NOT NULL, family text NOT NULL, subtype text NOT NULL, verdict text NOT NULL, status text NOT NULL, "primaryChain" text NOT NULL)`);
   await c.query(`CREATE TABLE "EvidenceSnapshot" (id text PRIMARY KEY, "relationType" text NOT NULL, "relationKey" text NOT NULL, "snapshotType" text NOT NULL, title text NOT NULL, caption text NOT NULL, "sourceUrl" text, "observedAt" timestamptz, sha256 text, "canonicalMint" text)`);
   await c.query(`CREATE UNIQUE INDEX "EvidenceSnapshot_sha256_key" ON "EvidenceSnapshot" (sha256)`);
+  // ─── T1-BASCULE-DU-CONTRAT — LE JOURNAL DOIT EXISTER DANS LE FIXTURE ────
+  //
+  // Depuis la bascule (2026-09-15), l'exécuteur INTERROGE
+  // `evidence_provenance_journal` dans sa transaction, pour le fondement comme
+  // pour la libération. Sans cette table, le script ne rendrait plus un REFUS
+  // GOUVERNÉ mais une erreur SQL brute (relation inexistante) : l'échec attendu
+  // documenté plus haut cesserait de prouver ce qu'il prétend prouver — il
+  // prouverait seulement que le fixture est incomplet.
+  //
+  // La table est donc créée VIDE, avec ses domaines fermés, et elle le RESTE :
+  // aucune ligne n'y est posée ici. C'est le point de l'échec attendu — la
+  // pièce synthétique n'est couverte par AUCUNE qualification gouvernée, donc
+  // UNKNOWN dérivé, cause NO_JOURNAL_ENTRY. Le TÉMOIN SYNTHÉTIQUE VERIFIED qui
+  // lèvera l'échec est la condition de levée du 2026-09-19 — pas cette fenêtre.
+  //
+  // `GENERATED ALWAYS AS IDENTITY` comme en production : `max(id)` est l'ordre
+  // des états, et l'appelant ne fournit jamais l'id.
+  await c.query(`CREATE TABLE evidence_provenance_journal (
+    id                   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    evidence_snapshot_id text NOT NULL,
+    sha256               text CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+    provenance_kind      text NOT NULL CHECK (provenance_kind IN ('OPERATOR_DECLARED','EXTRACTED','VERIFIED')),
+    reference_kind       text NOT NULL CHECK (reference_kind IN ('QUERY_CONTEXT','PUBLICATION','PROFILE','DOCUMENT','OTHER')),
+    source_url           text NOT NULL,
+    declared_by          text NOT NULL,
+    declared_at          timestamptz NOT NULL DEFAULT now(),
+    verified_by          text,
+    verified_at          timestamptz,
+    verification_method  text CHECK (verification_method IN ('URL_MATCHES_CAPTURED_POST','ARCHIVE_SNAPSHOT_MATCHES','PLATFORM_API_RECORD_MATCHES'))
+  )`);
+  await c.query(`CREATE INDEX evidence_provenance_journal_snapshot_idx ON evidence_provenance_journal (evidence_snapshot_id, id DESC)`);
   await c.query(`CREATE TABLE "CaseFileSource" (id text PRIMARY KEY DEFAULT gen_random_uuid()::text, "casefileRef" text NOT NULL REFERENCES token_casefiles(ref) ON DELETE RESTRICT, "sourceId" text NOT NULL, "sourceType" text NOT NULL, filename text, caption text, "capturedAt" timestamptz, "sourceUrl" text, sha256 text, "snapshotId" text REFERENCES "EvidenceSnapshot"(id) ON DELETE SET NULL, "createdAt" timestamptz NOT NULL DEFAULT now(), "updatedAt" timestamptz NOT NULL DEFAULT now(), CONSTRAINT "CaseFileSource_ref_sourceid_key" UNIQUE ("casefileRef","sourceId"))`);
   await c.query(`CREATE TABLE "CaseFileClaim" (
     id text PRIMARY KEY DEFAULT gen_random_uuid()::text,

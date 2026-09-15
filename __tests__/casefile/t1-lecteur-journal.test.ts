@@ -332,63 +332,165 @@ function fichiersSource(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe("(g) le lecteur EXISTE et n'a AUCUNE autorité — la bascule est la PHASE C", () => {
+describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", () => {
   const MODULE = "src/lib/casefile/journalProvenance.ts";
   const lecteur = codeSeul(readFileSync(MODULE, "utf8"));
   const sources = [...fichiersSource("src"), ...fichiersSource("scripts")].map((f) => [f, codeSeul(readFileSync(f, "utf8"))] as const);
 
-  // AMENDÉ le 2026-09-15 par T1-INSCRIPTION-QUALIFICATIONS-VINE. L'assertion
-  // d'origine — « il n'a AUCUN appelant » — est devenue fausse le jour où
-  // l'écrivain a existé, et c'était le but : le lecteur relit ce que
-  // l'écrivain inscrit, et les deux bancs d'épreuve le font tourner. Ce qui ne
-  // devait PAS changer, et n'a pas changé, c'est qu'aucun CONSOMMATEUR DE
-  // DÉCISION ne l'appelle : la bascule reste la PHASE C (étape D de la
-  // séquence). L'assertion est donc une LISTE BLANCHE nominative, pas une
-  // liste vide — un appelant de plus la fait rougir, quel qu'il soit.
-  it("les SEULS appelants du lecteur sont l'écrivain et les deux bancs d'épreuve — aucun chemin de décision", () => {
+  // ─── CE BLOC A CHANGÉ DE SENS LE 2026-09-15, ET C'EST LE POINT ──────────
+  //
+  // Il portait, jusqu'à ce matin, la propriété INVERSE : « aucun consommateur
+  // de décision n'appelle ce module ». C'était la PHASE B, et elle était juste
+  // — le ruling interdisait de rendre une autorité opérante avant qu'un témoin
+  // gouverné POSITIF ne prouve le chemin :
+  //
+  //   « A new authority is not made operational merely because its schema
+  //     exists. It becomes authoritative only after a positive governed
+  //     witness proves the path it is meant to govern. »
+  //
+  // Le témoin existe : deux lignes réelles, gouvernées, append-only, en
+  // production (journal #3 et #4, VINE, OPERATOR_DECLARED / QUERY_CONTEXT).
+  // La condition du ruling est remplie, la bascule est faite, et les
+  // assertions suivent — elles ne sont pas assouplies, elles sont RETOURNÉES.
+
+  it("TÉMOIN 1 · le resolver du journal est le SEUL chemin de résolution — les trois consommateurs y passent", () => {
+    // Les trois consommateurs de décision NOMMÉS par la fenêtre, et le lieu
+    // exact où chacun résout. Un consommateur qui cesserait de résoudre —
+    // parce qu'un chemin parallèle serait revenu — fait rougir ce témoin.
+    const RESOLVEURS: ReadonlyArray<readonly [string, RegExp]> = [
+      // `decideFoundation` et `decidePublicRelease` sont PURS : ils reçoivent
+      // un registre déjà décoré. C'est l'exécuteur qui résout pour eux, et il
+      // le fait DANS la transaction — pour le fondement comme pour la
+      // libération (`lireRegistre`).
+      ["src/lib/casefile/governedExecutor.ts", /readLatestJournalRows\(/],
+      // La projection publique consomme le dossier canonique ; le lecteur
+      // canonique est donc son resolver.
+      ["src/lib/casefile/canonicalReader.ts", /readJournalProvenance\(/],
+    ];
+    for (const [f, re] of RESOLVEURS) {
+      expect(codeSeul(readFileSync(f, "utf8")), f).toMatch(re);
+    }
+    // L'exécuteur résout aux DEUX endroits : le fondement et la libération.
+    const exe = codeSeul(readFileSync("src/lib/casefile/governedExecutor.ts", "utf8"));
+    expect(exe.match(/readLatestJournalRows\(/g)?.length, "fondement ET libération").toBe(2);
+
+    // Et le décideur pur ne résout PAS : il reçoit. Si `governedWriter` se
+    // mettait à lire le journal lui-même, il y aurait deux chemins.
+    const writer = codeSeul(readFileSync("src/lib/casefile/governedWriter.ts", "utf8"));
+    for (const nom of ["resolveJournalProvenance(", "readJournalProvenance(", "readLatestJournalRows("]) {
+      expect(writer, nom).not.toContain(nom);
+    }
+  });
+
+  it("TÉMOIN 1 bis · aucun CHEMIN PARALLÈLE : la décoration d'une pièce ne se pose qu'à travers `provenanceDecoration`", () => {
+    // La propriété « seul chemin » ne serait pas tenue si un fichier posait
+    // `provenanceKind:` à la main à partir d'autre chose que la résolution :
+    // ce serait une deuxième façon de qualifier une pièce, donc une deuxième
+    // autorité, sous un autre nom.
+    //
+    // Les seuls fichiers de `src/` autorisés à poser ce champ sont nommés, et
+    // chacun doit le faire PAR la décoration :
+    //   · journalProvenance.ts  — la décoration elle-même ;
+    //   · canonicalReader.ts / governedExecutor.ts — les deux resolvers ;
+    //   · governedWriter.ts     — le RELAIS pur (`decorationRecue`), qui ne
+    //                             fabrique aucune valeur : il transmet les
+    //                             deux champs ensemble ou aucun.
+    const POSEURS = new Set([
+      "src/lib/casefile/journalProvenance.ts",
+      "src/lib/casefile/canonicalReader.ts",
+      "src/lib/casefile/governedExecutor.ts",
+      "src/lib/casefile/governedWriter.ts",
+      // L'ÉCRIVAIN du journal. Il porte le champ parce qu'il l'INSCRIT sur
+      // ordre explicite d'un opérateur — c'est l'autre moitié de la même
+      // autorité, celle qui alimente le journal que le resolver lit. Il ne
+      // décide d'aucune qualification à partir d'une identité.
+      "src/lib/casefile/journalWriter.ts",
+    ]);
+    for (const [f, c] of sources) {
+      if (!f.startsWith("src/")) continue;
+      if (!/provenanceKind\s*:/.test(c)) continue;
+      expect(POSEURS.has(f), `${f} pose provenanceKind sans être un poseur déclaré`).toBe(true);
+    }
+    // Les deux resolvers passent par la décoration, et ne bricolent pas la paire.
+    for (const f of ["src/lib/casefile/canonicalReader.ts", "src/lib/casefile/governedExecutor.ts"]) {
+      expect(codeSeul(readFileSync(f, "utf8")), f).toContain("provenanceDecoration(");
+    }
+  });
+
+  it("TÉMOIN 2 · AUCUNE provenance codée en dur ne subsiste dans src/ ni scripts/", () => {
+    // Le registre supprimé associait un sha256 (64 hex) à une qualification.
+    // La faute générale dont il était un cas : un fichier du corpus gouverné
+    // qui DÉCIDE d'une qualification à partir d'une identité en dur, au lieu
+    // de la lire au journal. On la cherche sous ses deux formes.
+    const QUALIFS = /"(OPERATOR_DECLARED|EXTRACTED|VERIFIED)"/;
+    // Les SCRIPTS d'inscription : ils INSCRIVENT une qualification au journal,
+    // sur une pièce nommée, et c'est leur objet même — l'écriture gouvernée est
+    // l'autre moitié de cette autorité, pas une autorité concurrente.
+    // L'exemption est NOMINATIVE : un cinquième script devra être déclaré ici,
+    // ce qui est une décision, pas un trou.
+    const INSCRIPTEURS = new Set([
+      "scripts/casefile/qualifications-vine-inscription-reelle.mts",
+      "scripts/casefile/qualifications-vine-rehearsal-rollback.mts",
+      "scripts/casefile/qualifications-vine-gate-post-inscription.mts",
+      "scripts/casefile/harnais-ecrivain-journal-pglite.mts",
+    ]);
+    // Et les deux sites de `src/` qui posent une qualification littérale sans
+    // la DÉCIDER — vérifiés un par un juste après, pas exemptés en bloc.
+    const DERIVATIONS = new Set(["src/lib/casefile/journalProvenance.ts", "src/lib/casefile/governedWriter.ts"]);
+    for (const [f, c] of sources) {
+      // (1) une qualification littérale POSÉE dans un champ de pièce : c'est
+      //     la forme directe de « décider d'une provenance dans le code ».
+      if (!INSCRIPTEURS.has(f) && !DERIVATIONS.has(f)) {
+        expect(c, `${f} : provenanceKind codé en dur`).not.toMatch(/provenanceKind\s*:\s*"(OPERATOR_DECLARED|EXTRACTED|VERIFIED|UNKNOWN)"/);
+      }
+      // (2) une qualification littérale DANS un fichier qui porte aussi un
+      //     sha256 en dur — la forme EXACTE du registre supprimé.
+      if (/[0-9a-f]{64}/.test(c) && QUALIFS.test(c)) {
+        expect(INSCRIPTEURS.has(f), `${f} associe un sha256 en dur à une qualification`).toBe(true);
+      }
+    }
+
+    // Les deux dérivations, NOMMÉES et bornées — aucune des deux ne lit une
+    // identité pour en déduire une provenance.
+    //
+    //   · `journalProvenance` pose "UNKNOWN", et UNIQUEMENT lui : c'est la
+    //     valeur DÉRIVÉE de l'absence, celle qu'aucune ligne ne porte.
+    const der = codeSeul(readFileSync("src/lib/casefile/journalProvenance.ts", "utf8"));
+    expect([...der.matchAll(/provenanceKind\s*:\s*"(\w+)"/g)].map((m) => m[1])).toEqual(["UNKNOWN"]);
+    //   · `governedWriter` pose "VERIFIED" à DEUX endroits, et nulle part
+    //     ailleurs : la DÉCLARATION de type de `PublicationEligibleSource` (le
+    //     seuil, écrit dans le type) et la ligne qui la produit — laquelle est
+    //     précédée du refus de tout ce qui ne l'est pas. C'est une redite de
+    //     type déjà prouvée, jamais une qualification décidée.
+    const w = codeSeul(readFileSync("src/lib/casefile/governedWriter.ts", "utf8"));
+    expect([...w.matchAll(/provenanceKind\s*:\s*"(\w+)"/g)].map((m) => m[1])).toEqual(["VERIFIED", "VERIFIED"]);
+    const pub = w.slice(w.indexOf("export function isPublicationEligibleSource"));
+    expect(pub.indexOf('provenanceKind !== "VERIFIED"'), "le refus vient AVANT").toBeLessThan(pub.indexOf('provenanceKind: "VERIFIED"'));
+    // Et le module qui portait le registre n'est plus qu'un vocabulaire.
+    const vocab = codeSeul(readFileSync("src/lib/casefile/provenanceKind.ts", "utf8"));
+    expect(vocab).not.toMatch(/[0-9a-f]{64}/);
+    expect(vocab).not.toMatch(/readProvenanceKind/);
+    expect(sources.filter(([, c]) => /readProvenanceKind/.test(c)).map(([f]) => f)).toEqual([]);
+  });
+
+  it("le lecteur reste l'autorité de LECTURE : ses appelants sont nommés, et aucun n'est une seconde source", () => {
     const appelants = sources
       .filter(([f, c]) => f !== MODULE && /(resolveJournalProvenance|readJournalProvenance|readLatestJournalRows|journalProvenance)/.test(c))
       .map(([f]) => f)
       .sort();
     expect(appelants).toEqual([
-      // n'importe l'un de ses TYPES (JournalSqlRunner, les domaines fermés) ;
-      // n'appelle aucune de ses fonctions de résolution.
       "scripts/casefile/harnais-ecrivain-journal-pglite.mts",
-      // AMENDÉ le 2026-09-15 par T1-INSCRIPTION-REELLE-VINE : les deux scripts
-      // de la fenêtre d'inscription. Ce sont des SCRIPTS, pas des chemins de
-      // décision — l'un inscrit, l'autre relit pour la gate. La propriété qui
-      // compte reste intacte : la liste ne contient toujours aucun fichier de
-      // `src/` hors l'écrivain.
       "scripts/casefile/qualifications-vine-gate-post-inscription.mts",
       "scripts/casefile/qualifications-vine-inscription-reelle.mts",
       "scripts/casefile/qualifications-vine-rehearsal-rollback.mts",
+      "scripts/casefile/revoke-rehearsal-pg17-rollback.mts",
+      // AMENDÉ le 2026-09-15 par T1-BASCULE-DU-CONTRAT : les deux resolvers de
+      // `src/` entrent dans la liste. C'est exactement la bascule — et la
+      // liste reste NOMINATIVE, donc un troisième chemin la ferait rougir.
+      "src/lib/casefile/canonicalReader.ts",
+      "src/lib/casefile/governedExecutor.ts",
       "src/lib/casefile/journalWriter.ts",
     ]);
-    expect(appelants.filter((f) => f.startsWith("src/"))).toEqual(["src/lib/casefile/journalWriter.ts"]);
-  });
-
-  it("les CONSOMMATEURS DE DÉCISION ne le mentionnent nulle part : ni decideFoundation, ni decidePublicRelease, ni la projection", () => {
-    for (const f of [
-      "src/lib/casefile/governedWriter.ts",
-      "src/lib/casefile/governedExecutor.ts",
-      "src/lib/casefile/governedExecutorPrisma.ts",
-      "src/lib/casefile/publicProjection.ts",
-      "src/lib/casefile/publicationAuthority.ts",
-      "src/lib/casefile/canonicalReader.ts",
-    ]) {
-      const c = codeSeul(readFileSync(f, "utf8"));
-      expect(c, f).not.toContain("journalProvenance");
-      expect(c, f).not.toContain("resolveJournalProvenance");
-      expect(c, f).not.toContain("readJournalProvenance");
-    }
-  });
-
-  it("readProvenanceKind reste l'autorité effective : ses appelants sont INCHANGÉS (le lecteur canonique et l'exécuteur)", () => {
-    const appelants = sources
-      .filter(([f, c]) => f.startsWith("src/") && f !== "src/lib/casefile/provenanceKind.ts" && /readProvenanceKind\(/.test(c))
-      .map(([f]) => f)
-      .sort();
-    expect(appelants).toEqual(["src/lib/casefile/canonicalReader.ts", "src/lib/casefile/governedExecutor.ts"]);
   });
 
   // AMENDÉ le 2026-09-15, même fenêtre. Un INSERT existe désormais dans src/ —

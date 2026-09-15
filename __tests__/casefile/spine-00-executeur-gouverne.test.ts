@@ -19,7 +19,7 @@
 // transaction annulée). Les deux se complètent : ici la structure, là le
 // contrat de la base.
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -34,15 +34,15 @@ import {
 import { canonicalSealMaterial, claimContentHash } from "@/lib/casefile/versioning";
 import { codeSeul } from "./codeSeul";
 
-// La source UNIQUE de qualification, simulée : « a »×64 est VERIFIED ici, et
-// seulement ici. Tout le reste garde le comportement réel (UNKNOWN par défaut).
-vi.mock("@/lib/casefile/provenanceKind", async (importOriginal) => {
-  const reel = await importOriginal<typeof import("@/lib/casefile/provenanceKind")>();
-  return {
-    ...reel,
-    readProvenanceKind: (ref: { sourceId: string; sha256: string | null }) => (ref.sha256 === "a".repeat(64) ? "VERIFIED" : reel.readProvenanceKind(ref)),
-  };
-});
+// T1-BASCULE-DU-CONTRAT — plus AUCUN `vi.mock` de la qualification.
+//
+// Ce fichier simulait `readProvenanceKind` pour rendre « a »×64 VERIFIED. Le
+// registre en dur n'existe plus : la qualification vient du JOURNAL, que
+// l'exécuteur interroge DANS sa transaction. Elle se simule donc là où elle
+// vit vraiment — dans la connexion scriptée, par une LIGNE de journal (voir
+// `Q.journal` et `ligneJournal`). C'est strictement mieux : le témoin prouve
+// maintenant que l'exécuteur va CHERCHER la qualification en base, ce qu'un
+// mock de module masquait entièrement.
 
 // ═══ LA CONNEXION SCRIPTÉE ══════════════════════════════════════════════════
 
@@ -96,6 +96,7 @@ const Q = {
   insDecision: /INSERT INTO casefile_claim_publication_decisions/,
   reread: /FROM casefile_claim_publication_decisions WHERE casefile_ref = \$1 AND claim_id = \$2 AND claim_version = \$3 AND audience = \$4 ORDER BY id DESC LIMIT 1/,
   promote: /UPDATE "CaseFileClaim" SET state = 'PUBLIC'::"ArtifactState"/,
+  journal: /FROM evidence_provenance_journal WHERE evidence_snapshot_id = ANY\(\$1\)/,
 };
 
 // ═══ FIXTURES ═══════════════════════════════════════════════════════════════
@@ -104,11 +105,12 @@ const REF = "IL-SHILL-VINE-001";
 const SHA = "a".repeat(64);
 // Les instants sont au format que `::text` rend pour un timestamptz.
 const SNAP = { id: "snap-1", canonicalMint: "VineMint1111111111111111111111111111111111111", sha256: SHA, sourceUrl: "https://x.com/e/1", observedAt: "2025-12-07 10:00:00+00" };
-// T1-REVOKE-ELIGIBILITY : la qualification de la pièce n'est PAS une colonne
-// de CaseFileSource — l'exécuteur la lit par `readProvenanceKind` (registre
-// temporaire, indexé par sha256). Le sha256 « a »×64 n'y est pas : UNKNOWN,
-// donc fondable, PAS publiable. Les témoins positifs de libération ci-dessous
-// simulent une pièce VERIFIED via `vi.mock` du lecteur — voir `qualifie()`.
+// T1-BASCULE-DU-CONTRAT : la qualification de la pièce n'est PAS une colonne
+// de CaseFileSource — l'exécuteur la RÉSOUT au journal, par le pont
+// `snapshotId` → `evidence_provenance_journal`. Une connexion qui ne rend
+// aucune ligne de journal rend donc UNKNOWN/NO_JOURNAL_ENTRY : fondable non,
+// publiable non. Les témoins positifs de libération scriptent une ligne
+// VERIFIED — voir `ligneJournal`.
 const SOURCE = { sourceId: "SRC-001", sourceType: "screenshot", caption: null, capturedAt: "2025-12-07 10:00:00+00", sourceUrl: "https://x.com/e/1", sha256: SHA, snapshotId: "snap-1" };
 
 const CONTENU = { claimId: "C1", title: "Coordinated posting", titleFr: null, description: null, descriptionFr: null, category: null, severity: null, status: null, claimDate: "2025-11-04", actors: [], threadUrl: null, evidenceRefs: ["SRC-001"] };
@@ -129,11 +131,27 @@ const TARGET = { casefileRef: REF, claimId: "C1", version: 1, expectedContentHas
 const AUTH = { decidedBy: "david", decidedAt: "2026-09-14T12:00:00Z" };
 
 /** La base « honnête » de la libération : une cible ATTACHED scellée, un INSERT qui rend 7, une relecture qui rend 7/GRANT. */
+/**
+ * Une ligne du journal de provenance, telle que `readLatestJournalRows` la
+ * sélectionne (colonnes aliasées en camelCase, `id` en texte).
+ *
+ * VERIFIED exige `verifiedBy`/`verifiedAt`/`verificationMethod` — le CHECK le
+ * garantit en base, et le resolver le RECONSTRUIT : une ligne VERIFIED
+ * incomplète n'ouvrirait pas la porte, elle tomberait en ROW_OUT_OF_DOMAIN.
+ */
+const ligneJournal = (o: Record<string, unknown> = {}) => ({
+  id: "1", evidenceSnapshotId: "snap-1", provenanceKind: "VERIFIED", referenceKind: "PUBLICATION",
+  sourceUrl: "https://x.com/e/1", sha256: SHA, declaredBy: "david", declaredAt: "2026-09-15 10:00:00+00",
+  verifiedBy: "david", verifiedAt: "2026-09-15 10:00:00+00", verificationMethod: "URL_MATCHES_CAPTURED_POST", ...o,
+});
+
 const baseLiberation = (o: Partial<Record<keyof typeof Q, Handler>> = {}): ReadonlyArray<readonly [RegExp, Handler]> => [
   [Q.lock, o.lock ?? (() => [ligneCible()])],
   [Q.insDecision, o.insDecision ?? (() => [{ id: "7" }])],
   [Q.reread, o.reread ?? (() => [decisionRelue()])],
   [Q.sources, o.sources ?? (() => [SOURCE])],
+  // La qualification, là où elle vit : une ligne de journal gouvernée.
+  [Q.journal, o.journal ?? (() => [ligneJournal()])],
   [Q.promote, o.promote ?? (() => [{ version: 1 }])],
 ];
 
@@ -266,6 +284,12 @@ describe("SPINE-00 · exécuteur — la libération suit la séquence du ruling,
 const baseFondation = (o: Partial<Record<keyof typeof Q, Handler>> = {}): ReadonlyArray<readonly [RegExp, Handler]> => [
   [Q.dossier, o.dossier ?? (() => [{ ref: REF }])],
   [Q.snapshots, o.snapshots ?? (() => [SNAP])],
+  // T1-BASCULE-DU-CONTRAT — la qualification du SNAPSHOT vient du journal, et
+  // le pont est l'identité : `evidence_snapshot_id = snap-1`. Sans cette
+  // ligne, l'exécuteur résout UNKNOWN/NO_JOURNAL_ENTRY et REFUSE le fondement
+  // sous SOURCE_PROVENANCE_UNQUALIFIED — ce que le cas négatif ci-dessous
+  // prouve explicitement.
+  [Q.journal, o.journal ?? (() => [ligneJournal({ provenanceKind: "OPERATOR_DECLARED", referenceKind: "QUERY_CONTEXT", verifiedBy: null, verifiedAt: null, verificationMethod: null })])],
   [Q.sources, o.sources ?? (() => [])],
   [Q.versions, o.versions ?? (() => [])],
   [Q.insSource, o.insSource ?? (() => [{ sourceId: "SRC-001" }])],
@@ -284,6 +308,45 @@ describe("SPINE-00 · exécuteur — le fondement écrit pièce et claim dans UN
     expect(db.journal[db.index(Q.insClaim)]).not.toContain("PUBLIC");
     expect(db.committed).toBe(1);
     expect(db.journal.at(-1)).toBe("COMMIT");
+  });
+
+  // ─── T1-BASCULE-DU-CONTRAT — LA PAIRE QUI PROUVE LA BASCULE ──────────
+  //
+  // Le témoin positif ci-dessus et les trois cas ci-dessous ne diffèrent QUE
+  // par le contenu du journal. Rien d'autre ne bouge : même dossier, même
+  // snapshot, même claim, même sha256. Avant la bascule, le sha256 seul
+  // décidait (registre en dur, puis `vi.mock`), et ces quatre cas auraient
+  // rendu le MÊME résultat. C'est la démonstration que l'autorité a changé de
+  // place, et pas seulement de nom.
+  const SANS_QUALIFICATION: ReadonlyArray<readonly [string, Handler, string]> = [
+    ["le journal ne porte AUCUNE ligne pour ce snapshot", () => [], "SOURCE_PROVENANCE_UNQUALIFIED"],
+    ["le journal porte une ligne d'un AUTRE snapshot", () => [ligneJournal({ evidenceSnapshotId: "snap-autre" })], "SOURCE_PROVENANCE_UNQUALIFIED"],
+    // Un 'UNKNOWN' STOCKÉ : le domaine de la colonne ne le contient pas. Il ne
+    // ressort donc pas comme une qualification faible — il ressort comme une
+    // ANOMALIE, et sous sa propre cause.
+    ["le journal porte une ligne hors domaine ('UNKNOWN' stocké)", () => [ligneJournal({ provenanceKind: "UNKNOWN" })], "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN"],
+  ];
+  for (const [nom, journal, cause] of SANS_QUALIFICATION) {
+    it(`BASCULE · ${nom} → REFUSED/${cause}, rien d'écrit`, async () => {
+      const db = new FakeDb(baseFondation({ journal }));
+      const r = await executeFoundation(db, INTENT);
+      expect(r).toEqual({ outcome: "REFUSED", refusal: { cause, at: "SRC-001.provenanceKind" } });
+      // Un REFUS est une décision, pas une panne : il est RENDU, et la
+      // transaction se referme sur une base intacte. Ce qui compte est qu'elle
+      // n'ait RIEN écrit — la décision a refusé avant le premier INSERT.
+      expect(db.count(Q.insSource), "aucune pièce écrite").toBe(0);
+      expect(db.count(Q.insClaim), "aucun claim écrit").toBe(0);
+    });
+  }
+
+  it("BASCULE · l'exécuteur VA CHERCHER la qualification en base, dans la MÊME transaction, avant de décider", async () => {
+    const db = new FakeDb(baseFondation());
+    await executeFoundation(db, INTENT);
+    const lecture = db.index(Q.journal);
+    expect(lecture, "le journal est interrogé").toBeGreaterThan(-1);
+    expect(db.journal[0], "et c'est DANS la transaction").toBe("BEGIN");
+    expect(lecture, "avant le premier INSERT").toBeLessThan(db.index(Q.insSource));
+    expect(db.count(Q.journal), "une seule lecture pour tout le lot").toBe(1);
   });
 
   it("ATOMICITÉ · une panne entre la pièce et le claim annule la transaction : la pièce écrite ne survit pas", async () => {

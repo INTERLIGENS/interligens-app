@@ -70,7 +70,12 @@ import {
 } from "./governedWriter";
 import { canonicalSealMaterial, claimContentHash } from "./versioning";
 import { isSealIntact } from "./sealGuard";
-import { readProvenanceKind } from "./provenanceKind";
+import {
+  provenanceDecoration,
+  readLatestJournalRows,
+  resolveJournalProvenance,
+  type JournalRow,
+} from "./journalProvenance";
 import type { PublicSource } from "./canonicalReader";
 
 // ═══ LA CONNEXION, INJECTÉE ═════════════════════════════════════════════════
@@ -163,11 +168,18 @@ interface ClaimVersionRow extends Record<string, unknown> {
 const estObjet = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Les pièces déjà au registre, sous la forme que la décision et le contrat lisent. */
-const toExisting = (casefileRef: string, s: SourceRow): ExistingSourceInput => ({
+/**
+ * Les pièces déjà au registre, sous la forme que la décision et le contrat
+ * lisent, décorées par la provenance QUE LE JOURNAL REND.
+ *
+ * T1-BASCULE-DU-CONTRAT — les lignes du journal sont lues UNE fois par
+ * transaction et passées ici. La résolution est pure : elle ne va pas
+ * chercher, elle filtre sur le pont (`snapshotId`) les lignes qu'on lui donne.
+ */
+const toExisting = (casefileRef: string, s: SourceRow, journal: readonly JournalRow[]): ExistingSourceInput => ({
   kind: "EXISTING", casefileRef, sourceId: s.sourceId, sourceType: s.sourceType, caption: s.caption,
   capturedAt: s.capturedAt, sourceUrl: s.sourceUrl, sha256: s.sha256, snapshotId: s.snapshotId,
-  provenanceKind: readProvenanceKind({ sourceId: s.sourceId, sha256: s.sha256 }),
+  ...provenanceDecoration(resolveJournalProvenance({ sourceId: s.sourceId, snapshotId: s.snapshotId }, journal)),
 });
 
 const memeInstant = (a: string | null, b: string | null): boolean => {
@@ -241,16 +253,31 @@ export async function executeFoundation(tx: SqlTransactor, intent: FoundationInt
       );
       const existingClaims: ExistingClaimInput[] = versions.map((v) => ({ casefileRef: dossier.ref, ...v }));
 
+      // ── T1-BASCULE-DU-CONTRAT — LE JOURNAL, LU DANS LA MÊME TRANSACTION ─
+      //
+      // Une seule requête pour tous les ponts en jeu : les snapshots cités par
+      // les pièces à dériver, et ceux des pièces déjà au registre. Lire le
+      // journal DANS la transaction n'est pas un détail : la décision doit
+      // juger la provenance TELLE QU'ELLE EST au moment où elle écrit, pas
+      // telle qu'elle était quand le plan a été formé.
+      const journal = await readLatestJournalRows(db, [
+        ...snapshots.map((s) => s.id),
+        ...existantes.map((s) => s.snapshotId).filter((x): x is string => typeof x === "string"),
+      ]);
+
       // ── LA DÉCISION, sur ces lignes-là.
-      // La qualification des octets du snapshot, lue d'UNE source. UNKNOWN par défaut.
+      //
+      // Pour un SNAPSHOT, le pont est l'identité : `evidence_provenance_journal`
+      // est indexé par `evidence_snapshot_id`, donc la pièce EST son propre
+      // pont. Aucun repli par sha256 — nommément interdit (journalProvenance).
       const snapshotInputs: SnapshotRowInput[] = snapshots.map((s) => ({
         id: s.id, canonicalMint: s.canonicalMint, sha256: s.sha256, sourceUrl: s.sourceUrl, observedAt: s.observedAt,
-        provenanceKind: readProvenanceKind({ sourceId: s.id, sha256: s.sha256 }),
+        ...provenanceDecoration(resolveJournalProvenance({ sourceId: s.id, snapshotId: s.id }, journal)),
       }));
       const decision = decideFoundation({
         dossier,
         snapshots: snapshotInputs,
-        sources: [...existantes.map((s) => toExisting(dossier.ref, s)), ...aDeriver],
+        sources: [...existantes.map((s) => toExisting(dossier.ref, s, journal)), ...aDeriver],
         existingClaims,
         claim,
       });
@@ -629,9 +656,17 @@ async function lireRegistre(db: SqlRunner, casefileRef: string): Promise<Map<str
        FROM "CaseFileSource" WHERE "casefileRef" = $1 ORDER BY "sourceId" FOR SHARE`,
     [casefileRef],
   );
+  // T1-BASCULE-DU-CONTRAT — la provenance du registre vient du JOURNAL, lu
+  // dans la même transaction que les pièces. C'est ce registre que
+  // `decidePublicRelease` juge : la porte de publication ne s'ouvre donc que
+  // sur une qualification VERIFIED effectivement inscrite et gouvernée.
+  const journal = await readLatestJournalRows(
+    db,
+    rows.map((s) => s.snapshotId).filter((x): x is string => typeof x === "string"),
+  );
   return new Map(rows.map((s) => [s.sourceId, {
     sourceId: s.sourceId, sourceType: s.sourceType, caption: s.caption,
     capturedAt: s.capturedAt, sourceUrl: s.sourceUrl, sha256: s.sha256, evidenceLinked: typeof s.snapshotId === "string" && s.snapshotId !== "",
-    provenanceKind: readProvenanceKind({ sourceId: s.sourceId, sha256: s.sha256 }),
+    ...provenanceDecoration(resolveJournalProvenance({ sourceId: s.sourceId, snapshotId: s.snapshotId }, journal)),
   }]));
 }

@@ -1,4 +1,4 @@
-// ─── T1-READER-SANS-BASCULE — LIRE LE JOURNAL, SANS LUI DONNER L'AUTORITÉ ───
+// ─── T1-BASCULE-DU-CONTRAT — LE JOURNAL EST L'AUTORITÉ, ET IL EST SEUL ─────
 //
 // ██  Une autorité nouvelle ne devient pas opérante parce que son schéma    ██
 // ██  existe. Elle le devient quand un témoin gouverné POSITIF prouve le    ██
@@ -9,13 +9,24 @@
 //     exists. It becomes authoritative only after a positive governed witness
 //     proves the path it is meant to govern. »
 //
-// Ce module est donc la PHASE B, et rien d'autre : il SAIT lire la provenance
-// gouvernée, et personne ne le lui demande encore. `readProvenanceKind`
-// (provenanceKind.ts) reste l'autorité effective — son registre en code, deux
-// entrées OPERATOR_DECLARED — jusqu'à la PHASE C. Les deux vivent côte à côte ;
-// aucun consommateur de décision (`decideFoundation`, `decidePublicRelease`,
-// la projection publique) n'appelle celui-ci. Un témoin structurel le PROUVE :
-// __tests__/casefile/t1-lecteur-journal.test.ts.
+// PHASE B (2026-09-15, plus tôt le même jour) : ce module SAVAIT lire, et
+// personne ne le lui demandait. Le témoin exigé par le ruling existe désormais
+// — deux lignes réelles, gouvernées, en production (journal #3 et #4, VINE,
+// OPERATOR_DECLARED / QUERY_CONTEXT). La PHASE C est donc franchie ICI : les
+// trois consommateurs de décision (`decideFoundation`, `decidePublicRelease`,
+// la projection publique) résolvent la provenance PAR CE MODULE.
+//
+// ─── ET LE REGISTRE EN DUR A DISPARU ──────────────────────────────────────
+//
+// `provenanceKind.readProvenanceKind` portait deux entrées codées en dur
+// (les sha256 de SRC-0xS-09 et SRC-0xS-18). La base porte maintenant la MÊME
+// information, gouvernée et append-only. Laisser le registre en place aurait
+// créé une SECONDE AUTORITÉ sur le même fait — exactement ce contre quoi toute
+// la semaine a été écrite. Il est supprimé, pas déprécié : `provenanceKind.ts`
+// ne porte plus que le VOCABULAIRE fermé. Deux témoins le prouvent
+// (__tests__/casefile/t1-bascule-du-contrat.test.ts) : aucune provenance codée
+// en dur ne subsiste dans `src/` ni `scripts/`, et ce module est le SEUL
+// chemin de résolution.
 //
 // ─── LE CHEMIN DE RÉSOLUTION, IMPOSÉ ──────────────────────────────────────
 //
@@ -56,6 +67,8 @@
 // Ce module ne porte AUCUN INSERT, AUCUN UPDATE, AUCUN DELETE. Le journal est
 // append-only par trigger en base ; ici il est simplement LU. L'écriture
 // gouvernée du journal est une autre fenêtre.
+
+import type { SourceProvenanceKind } from "./provenanceKind";
 
 /** Le domaine FERMÉ de la colonne `provenance_kind`. UNKNOWN n'en fait pas partie. */
 export const JOURNAL_PROVENANCE_KINDS = ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const;
@@ -263,6 +276,48 @@ export function resolveJournalProvenance(
     sourceLocator: derniere.sourceUrl,
     verification,
   };
+}
+
+// ═══ LA DÉCORATION — LE SEUL PONT VERS L'ÉLIGIBILITÉ ═══════════════════════
+//
+// ██  resolve → résultat typé → eligibility → cause précise → refusal      ██
+// ██  et JAMAIS : resolve → écraser en UNKNOWN → deviner pourquoi          ██
+//
+// Une pièce que l'éligibilité juge porte DEUX champs, et ils sortent d'ICI,
+// ensemble, d'un seul appel :
+//
+//   provenanceKind   la qualification, ou UNKNOWN si elle est dérivée
+//   provenanceCause  POURQUOI elle est dérivée — `null` quand elle ne l'est pas
+//
+// Les poser séparément permettrait de les faire diverger (un `VERIFIED` à
+// côté d'un `NO_SNAPSHOT_LINK`). Un témoin structurel exige donc que TOUT site
+// de `src/` qui pose `provenanceKind:` passe par cette fonction.
+//
+// ⛔ `provenanceCause` est un DIAGNOSTIC DE CONTRAT. Il ne descend JAMAIS dans
+// `casefile_claim_publication_decisions.cause`, dont le vocabulaire reste
+// `INSUFFICIENT_SOURCE_PROVENANCE` et le restera : « Ne transformez pas la
+// table de décisions en journal diagnostique. » (GPT, 2026-09-15.)
+
+/** Ce qu'une pièce porte pour être JUGÉE. Les deux champs, toujours ensemble. */
+export interface ProvenanceDecoration {
+  readonly provenanceKind: SourceProvenanceKind;
+  /** La cause de l'UNKNOWN dérivé. `null` ⇔ `provenanceKind !== "UNKNOWN"`. */
+  readonly provenanceCause: DerivedUnknownCause | null;
+}
+
+/**
+ * Aplatit une résolution en décoration, SANS rien perdre.
+ *
+ * `UnknownProvenance` garde sa cause : c'est la seule chose qui distingue
+ * « aucun pont » (NO_SNAPSHOT_LINK), « pont sans ligne » (NO_JOURNAL_ENTRY) et
+ * « ligne inexploitable » (ROW_OUT_OF_DOMAIN) — et la troisième ne doit
+ * SURTOUT PAS se dégrader en simple absence : elle signale une ligne du
+ * journal hors domaine, c'est-à-dire une anomalie de la base, pas un trou de
+ * couverture.
+ */
+export function provenanceDecoration(p: JournalProvenance): ProvenanceDecoration {
+  if (p.derived) return { provenanceKind: "UNKNOWN", provenanceCause: p.cause };
+  return { provenanceKind: p.kind, provenanceCause: null };
 }
 
 // ═══ LA LECTURE EN BASE — SELECT, ET RIEN D'AUTRE ═══════════════════════════

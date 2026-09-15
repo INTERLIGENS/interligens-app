@@ -245,7 +245,16 @@ const REFUSES_FONDEMENT: readonly Cas[] = [
   ["source existante sans sourceUrl", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "", sha256: SHA, snapshotId: "snap-1" }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.sourceUrl"],
   ["source existante sans capturedAt", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: null, sourceUrl: "https://x", sha256: SHA, snapshotId: "snap-1" }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.capturedAt"],
   ["source existante sans snapshotId", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.evidenceLinked"],
-  ["source existante à la qualification hors vocabulaire", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA, snapshotId: "snap-1", provenanceKind: "verified" }] }), "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.provenanceKind"],
+  // T1-BASCULE-DU-CONTRAT — ces deux cas disaient SOURCE_PROVENANCE_INCOMPLETE
+  // avant la bascule : `causeDeContrat` repliait tout défaut de provenance sur
+  // cette cause-là, et « aucune qualification » devenait indiscernable de « il
+  // manque un champ » AU NIVEAU DU REFUS. GPT a refusé ce repli le 2026-09-15.
+  // Les deux causes de provenance traversent maintenant intactes, et elles ne
+  // disent pas la même chose : l'une est une absence de couverture, l'autre une
+  // anomalie de la base.
+  ["source existante à la qualification hors vocabulaire", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA, snapshotId: "snap-1", provenanceKind: "verified" }] }), "SOURCE_PROVENANCE_UNQUALIFIED", "SRC-001.provenanceKind"],
+  ["source existante dont le journal ne dit rien (absence de couverture)", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA, snapshotId: "snap-1", provenanceKind: "UNKNOWN", provenanceCause: "NO_JOURNAL_ENTRY" }] }), "SOURCE_PROVENANCE_UNQUALIFIED", "SRC-001.provenanceKind"],
+  ["source existante dont la LIGNE de journal est hors domaine (anomalie, pas absence)", request({ sources: [{ kind: "EXISTING", casefileRef: VINE_CASEFILE_REF, sourceId: "SRC-001", sourceType: "thread", caption: null, capturedAt: "2025-12-07", sourceUrl: "https://x", sha256: SHA, snapshotId: "snap-1", provenanceKind: "UNKNOWN", provenanceCause: "ROW_OUT_OF_DOMAIN" }] }), "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN", "SRC-001.provenanceKind"],
   // ── claim UNCLASSIFIED ──
   ["rowNature UNCLASSIFIED", request({ claim: claim({ rowNature: "UNCLASSIFIED" }) }), "CLAIM_UNCLASSIFIED", "rowNature"],
   ["rowNature null", request({ claim: claim({ rowNature: null }) }), "CLAIM_UNCLASSIFIED", "rowNature"],
@@ -374,7 +383,9 @@ describe("RC-SPINE-00 — propriété 1 : la libération est une SECONDE décisi
     // T1-REVOKE-ELIGIBILITY : la pièce est FONDABLE (OPERATOR_DECLARED) et pourtant la libération refuse, par son nom.
     ["qualification de la pièce citée = OPERATOR_DECLARED", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "OPERATOR_DECLARED" }); return [row, r]; }, "SOURCE_PROVENANCE_NOT_VERIFIED", "SRC-001.provenanceKind"],
     // Décision GPT 3 (2026-09-14) : UNKNOWN est une ABSENCE de qualification — refus commun, pas « non vérifié ».
-    ["qualification de la pièce citée = UNKNOWN", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "UNKNOWN" }); return [row, r]; }, "SOURCE_PROVENANCE_INCOMPLETE", "SRC-001.provenanceKind"],
+    // T1-BASCULE-DU-CONTRAT — la cause reste PRÉCISE jusqu'au refus gouverné.
+    ["qualification de la pièce citée = UNKNOWN (le journal ne la couvre pas)", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "UNKNOWN", provenanceCause: "NO_JOURNAL_ENTRY" }); return [row, r]; }, "SOURCE_PROVENANCE_UNQUALIFIED", "SRC-001.provenanceKind"],
+    ["ligne de journal hors domaine sur la pièce citée", (row, r) => { const s = r.get("SRC-001")!; r.set("SRC-001", { ...s, provenanceKind: "UNKNOWN", provenanceCause: "ROW_OUT_OF_DOMAIN" }); return [row, r]; }, "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN", "SRC-001.provenanceKind"],
   ];
   for (const [nom, alterer, cause, at] of ALTERES) {
     it(`${nom}, GRANT valide → REFUSED / ${cause} @ ${at}`, () => {
