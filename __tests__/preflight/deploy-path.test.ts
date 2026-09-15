@@ -13,7 +13,7 @@
 // injectables précisément pour ça : on COMPTE les spawns, on n'en fait aucun.
 
 import { describe, it, expect, afterAll } from "vitest";
-import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -52,6 +52,30 @@ function cliFactice(version: string, { bin = true, ecrireBinaire = true } = {}) 
   if (ecrireBinaire) writeFileSync(entry, "// binaire de fixture — jamais exécuté par les tests\n");
   return { entry, detect: () => ({ version, source: "fixture", path: pkg }) };
 }
+
+// ─── LIRE LE GEL DANS LE GUARD, PAS DANS SA PROSE ────────────────────────────
+// Chercher `"^\.vercelignore$"` comme CHAÎNE dans le fichier prouverait que la
+// ligne est écrite, pas qu'elle MORD. On extrait donc le tableau réel et on
+// applique les motifs comme le guard les applique.
+//
+// ⚠️ Bash compare en ERE (`[[ $f =~ $p ]]`), JS en RegExp. Les deux syntaxes
+// divergent sur des constructions que FORBIDDEN_PATTERNS n'utilise pas : ici il
+// n'y a que `^`, `$`, `\.` et des littéraux. Le test `le gel mord sur chaque
+// surface` est rejoué EN VIF avec le vrai bash, dans le rapport de fenêtre —
+// celui-ci est le cliquet, pas la mesure.
+function motifsGeles(): RegExp[] {
+  const src = lire("scripts/guard-offline.sh");
+  const bloc = src.slice(src.indexOf("FORBIDDEN_PATTERNS=("));
+  const corps = bloc.slice(0, bloc.indexOf("\n)"));
+  return corps
+    .split("\n")
+    .map((l) => l.replace(/#.*$/, "").trim())
+    .map((l) => /^"([^"]+)"$/.exec(l)?.[1])
+    .filter((p): p is string => Boolean(p))
+    .map((p) => new RegExp(p));
+}
+
+const estGele = (chemin: string) => motifsGeles().some((m) => m.test(chemin));
 
 /** Un faux CLI résolu : ne spawne rien, dit seulement ce qu'il aurait spawné. */
 const CLI_FACTICE = {
@@ -333,6 +357,120 @@ describe("LE GEL — le moteur, le vocabulaire et le wrapper sont gouvernés", (
     expect(motif.test("scripts/preflight/vocabulary.mjs")).toBe(true);
     // …et pas l'orchestrateur, qui a donc besoin de son propre motif.
     expect(motif.test("scripts/preflight-deploy.mjs")).toBe(false);
+  });
+
+  // ─── LE FILTRE — il définit l'univers comparé, donc il EST de l'autorité ──
+  //
+  //   A filter that defines the deployment comparison universe is part of the
+  //   deployment authority and must be governed with the guard it configures.
+  //
+  it("le FILTRE est gouverné — `.vercelignore` et son autre nom", () => {
+    expect(estGele(".vercelignore")).toBe(true);
+    expect(estGele(".nowignore")).toBe(true);
+  });
+
+  it("`^\\.vercel/` ne suffisait PAS — le motif exige un slash, mesuré", () => {
+    // La raison exacte pour laquelle le trou existait. Si quelqu'un retire le
+    // motif dédié en croyant que `^\.vercel/` couvre le filtre, ce test rougit.
+    expect(/^\.vercel\//.test(".vercelignore")).toBe(false);
+    expect(/^\.vercel\//.test(".vercel/project.json")).toBe(true);
+  });
+
+  it("le gel du filtre est ÉTROIT — il n'attrape ni la doc ni le code métier", () => {
+    expect(estGele("docs/vercelignore.md")).toBe(false);
+    expect(estGele("src/lib/vercelignore.ts")).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LE CLIQUET DE CLASSEMENT DE L'ORACLE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// « Je gèle aussi les tests NORMATIFS de __tests__/preflight/ qui portent les
+//   invariants du preflight […]. PAS NÉCESSAIREMENT TOUS LES TESTS GÉNÉRIQUES :
+//   uniquement ceux qui définissent la frontière de sécurité. Sinon le garde est
+//   gelé mais son oracle peut être affaibli librement. »
+//
+// La nuance interdit `^__tests__/preflight/` : un préfixe de répertoire gèlerait
+// aussi les tests génériques à venir. Elle a un COÛT — un futur test normatif
+// n'est pas protégé tant que son chemin n'est pas ajouté au guard — et ce bloc
+// EST le paiement de ce coût : tout fichier de test du répertoire qui n'est ni
+// gelé ni déclaré générique rougit, ce qui force la décision de classement au
+// moment où le fichier apparaît, et pas trois mois plus tard.
+//
+// L'égalité est vérifiée dans les DEUX SENS. Geler TOUT le répertoire est donc
+// aussi rouge que n'en geler aucun : la consigne dit « uniquement ceux qui
+// définissent la frontière », et « uniquement » est une borne dans les deux
+// directions.
+describe("LE CLIQUET DE CLASSEMENT — aucun test de l'oracle n'est non classé", () => {
+  /**
+   * LE CLASSEMENT, fichier par fichier, avec sa raison.
+   *
+   * NORMATIF  porte un invariant de la frontière de sécurité. Gelé.
+   * GENERIQUE ne porte aucun invariant de sécurité (fixture, durée, confort).
+   *           Libre — et le rester est le but de la nuance.
+   */
+  const CLASSEMENT: Record<string, { nature: "NORMATIF" | "GENERIQUE"; pourquoi: string }> = {
+    "upload-set.test.ts": {
+      nature: "NORMATIF",
+      pourquoi:
+        "cliquet de cardinalité de GENERATED_ALLOWED (la SEULE soupape du prédicat), " +
+        "vocabulaire clos des secrets, égalité du §3 dans les deux sens, portes projet et CLI, " +
+        "fail-closed, identité Merkle et son classement RC non adouci. Normatif de bout en bout.",
+    },
+    "deploy-path.test.ts": {
+      nature: "NORMATIF",
+      pourquoi:
+        "le garde précède tout upload (spawns comptés à ZÉRO), séquence du ruling, " +
+        "épinglage du CLI en UNE constante, aucune résolution flottante, gel des surfaces, " +
+        "et ce cliquet de classement lui-même. Normatif de bout en bout.",
+    },
+  };
+
+  const fichiersDuRepertoire = () =>
+    readdirSync(join(RACINE, "__tests__/preflight"))
+      .filter((f) => f.endsWith(".test.ts"))
+      .sort();
+
+  it("chaque fichier de test du répertoire est CLASSÉ — un nouveau venu rougit", () => {
+    const nonClasses = fichiersDuRepertoire().filter((f) => !(f in CLASSEMENT));
+    expect(nonClasses).toEqual([]);
+  });
+
+  it("le classement ne décrit aucun fichier qui n'existe plus", () => {
+    const presents = new Set(fichiersDuRepertoire());
+    expect(Object.keys(CLASSEMENT).filter((f) => !presents.has(f))).toEqual([]);
+  });
+
+  it("chaque classement porte une raison NON VIDE — « NORMATIF » tout court n'est pas un motif", () => {
+    const sansRaison = Object.entries(CLASSEMENT).filter(([, c]) => c.pourquoi.trim().length < 40);
+    expect(sansRaison).toEqual([]);
+  });
+
+  it("GELÉS == NORMATIFS, dans les DEUX SENS", () => {
+    const geles = fichiersDuRepertoire().filter((f) => estGele(`__tests__/preflight/${f}`)).sort();
+    const normatifs = fichiersDuRepertoire()
+      .filter((f) => CLASSEMENT[f]?.nature === "NORMATIF")
+      .sort();
+    // ⇒ un normatif non gelé est rouge (l'oracle serait affaiblissable) ;
+    // ⇒ un générique gelé est rouge aussi (on ne gèle pas le répertoire en bloc
+    //    sous couvert de prudence — « uniquement ceux qui définissent la
+    //    frontière » borne dans les deux directions).
+    expect(geles).toEqual(normatifs);
+  });
+
+  it("aujourd'hui : DEUX fichiers, tous deux normatifs, zéro générique", () => {
+    expect(fichiersDuRepertoire()).toEqual(["deploy-path.test.ts", "upload-set.test.ts"]);
+    expect(Object.values(CLASSEMENT).map((c) => c.nature)).toEqual(["NORMATIF", "NORMATIF"]);
+  });
+
+  it("MUTANT · un préfixe de répertoire ferait passer un test générique pour gelé", () => {
+    // La forme qu'on a REFUSÉE, et pourquoi. `^__tests__/preflight/` attrape
+    // tout ce qui naîtra dans le répertoire, y compris ce qui ne porte aucune
+    // frontière de sécurité — et transforme chaque ajout en PR de maintenance.
+    const prefixe = /^__tests__\/preflight\//;
+    expect(prefixe.test("__tests__/preflight/fixtures-loader.test.ts")).toBe(true);
+    expect(estGele("__tests__/preflight/fixtures-loader.test.ts")).toBe(false);
   });
 });
 
