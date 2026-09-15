@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════
-# T1-APPEND-ONLY-ET-MESURE — LES SIX MUTANTS DE LA DISCRIMINATION
+# T1-APPEND-ONLY-ET-MESURE — LES HUIT MUTANTS DE LA DISCRIMINATION
 # ═══════════════════════════════════════════════════════════════════════════
 #
 # ██  « Une suite verte ne prouve que la règle qu'on a écrite. »             ██
@@ -14,7 +14,7 @@
 #   bash scripts/evidence-chain/mutants-discrimination.sh
 #
 # Les fichiers sont restaurés à la fin, y compris en cas d'interruption.
-# Sortie : 0 si les SIX mutants ont rougi, 1 sinon.
+# Sortie : 0 si les HUIT mutants ont rougi, 1 sinon.
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -58,7 +58,7 @@ verdict() {
   restaurer
 }
 
-echo "═══ LES SIX MUTANTS ═══"
+echo "═══ LES HUIT MUTANTS ═══"
 
 # ── M1 · UN 403 ASSIMILÉ À UNE ABSENCE. C'est l'interdit central de la fenêtre,
 #        et c'est exactement ce que GPT a refusé le 2026-09-15.
@@ -135,7 +135,34 @@ open(p, "w").write(s)
 PY
 verdict "M6 credential mal recopié réparé en silence" "un secret deviné au lieu d'un refus"
 
+# ── M7 · L'OBSERVATEUR HUMAIN À LA PLACE DE L'INSTRUMENT. Un 404 sur un
+#        compartiment R2 est constaté par un PROGRAMME : inscrire une personne
+#        créerait une autorité qui n'a pas fait la mesure.
+appliquer "$MESURE" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+s = s.replace(
+  '  "src/scripts/evidence-chain/mesure-localisation.ts@93d08a1";',
+  '  "T1"; // « c est nous qui avons lance la mesure »', 1)
+open(p, "w").write(s)
+PY
+verdict "M7 opérateur humain comme observateur" "une autorité qui n'a pas fait la mesure"
+
+# ── M8 · LA PRÉCISION RECONSTRUITE : 31 pseudo-instants fabriqués maintenant,
+#        alors que l'instrument n'a capturé qu'un horodatage de CAMPAGNE.
+appliquer "$LIB" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+anc = "          `${litteralSql(identites.observePar)}, ${litteralSql(observeLe)})` +"
+nouv = ("          `${litteralSql(identites.observePar)}, "
+        "${litteralSql(new Date(Date.parse(observeLe) + i * 250).toISOString())})` +")
+assert anc in s
+s = s.replace(anc, nouv, 1)
+open(p, "w").write(s)
+PY
+verdict "M8 précision reconstruite" "31 pseudo-instants fabriqués après coup"
+
 echo
 echo "═══ $ROUGES / $TOTAL mutants ont rougi ═══"
 [ "$ROUGES" -eq "$TOTAL" ] || { echo "⛔ Au moins un mutant est passé : la suite ne prouve pas ce qu'elle prétend."; exit 1; }
-echo "✅ Les six fautes que la fenêtre interdit sont toutes DÉTECTÉES."
+echo "✅ Les huit fautes que la fenêtre interdit sont toutes DÉTECTÉES."
