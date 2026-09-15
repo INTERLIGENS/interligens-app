@@ -467,3 +467,94 @@ describe("T1-CAPACITÉ-PAR-COMPARTIMENT — LE SECRET D'UN COMPARTIMENT N'EN SER
     expect(vus).toHaveLength(0);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// T1-TÉMOIN-TSA-LEGACY — DEUX PORTES D'AUTORITÉ INDÉPENDANTES
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//   « Evidence birth authority and evidence readback authority are independent
+//     gates. Readback of an existing governed object must not depend on
+//     configuration governing where new evidence may be born. »
+//
+// ⚠️ CE BLOC NE DOUBLE PAS `LA PORTE DE NAISSANCE RESTE DISTINCTE`. Celui-là
+//    montre que les deux portes rendent des compartiments DIFFÉRENTS ; celui-ci
+//    montre que l'une n'est pas une CONDITION de l'autre — ce qui est une autre
+//    affirmation, et c'est celle qui était fausse dans le chemin de relecture.
+//
+// LE MOTIF, ET IL N'EST PAS THÉORIQUE : une mauvaise configuration du pipeline
+// d'ingestion FUTUR ne doit pas empêcher la vérification d'une preuve
+// HISTORIQUE que son registre localise pourtant correctement. Sinon le défaut
+// d'une VARIABLE se lit comme un défaut de la PREUVE.
+describe("T1-TÉMOIN-TSA-LEGACY — LA RELECTURE NE DÉPEND PAS DE LA NAISSANCE", () => {
+  /** L'environnement d'un poste où RIEN n'est provisionné pour faire naître. */
+  const SANS_NAISSANCE = {
+    R2_ACCOUNT_ID: "compte",
+    R2_ACCESS_KEY_ID: "ak-REPORTS",
+    R2_SECRET_ACCESS_KEY: "sk-REPORTS",
+    // ⛔ Les TROIS fentes de naissance ABSENTES. Pas vides : absentes.
+  };
+
+  it("la porte de NAISSANCE refuse — c'est la prémisse, et elle doit tenir", () => {
+    const naissance = ouvrirCompartimentGouverne(SANS_NAISSANCE);
+    expect(naissance.ok).toBe(false);
+    expect(!naissance.ok && naissance.cause).toBe("evidence_compartment_unconfigured");
+  });
+
+  it("ET POURTANT la pièce legacy se RÉSOUT et s'OUVRE — la relecture est intacte", () => {
+    // Le cas réel : `evi_rep_615f749a1d56e9abf5fc2b07`, VERIFIED_BY_HEAD(reports).
+    const r = resoudreDepuisRegistre([evenement()], CLE, SANS_NAISSANCE);
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("inatteignable");
+    expect(r.compartiment).toBe(REPORTS);
+    expect(r.autorite).toBe("registre-de-localisation");
+    expect(typeof r.readObject).toBe("function");
+  });
+
+  it("LA DÉMONSTRATION EN UNE ASSERTION : même registre, naissance KO, relecture OK", () => {
+    // Un seul environnement, deux questions. Les réponses DIVERGENT, et c'est
+    // exactement ce que « portes indépendantes » veut dire. Si un jour la
+    // relecture se remettait à exiger la configuration de naissance, cette
+    // ligne rougit — elle ne peut pas rougir pour une autre raison.
+    const naissance = ouvrirCompartimentGouverne(SANS_NAISSANCE);
+    const relecture = resoudreDepuisRegistre([evenement()], CLE, SANS_NAISSANCE);
+    expect([naissance.ok, relecture.ok]).toEqual([false, true]);
+  });
+
+  it("⛔ et la capacité `reports` reste la SEULE remise — aucune fente evidence n'est lue", () => {
+    // La garantie voisine, re-éprouvée sous CE régime : sans fente evidence, on
+    // ne va pas la chercher « au cas où ». Le credential remis est celui de
+    // reports, et c'est le seul qui existe ici.
+    //
+    // L'espion est LOCAL à dessein : l'emprunter au bloc voisin lierait deux
+    // témoins qui éprouvent des règles différentes, et l'un casserait l'autre.
+    const vus: Array<{ bucket: string; accessKeyId: string; secretAccessKey: string }> = [];
+    const construire = (cfg: { bucket: string; accessKeyId: string; secretAccessKey: string }) => {
+      vus.push({ bucket: cfg.bucket, accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey });
+      return {} as never;
+    };
+    const o = ouvrirCompartimentDesigne(REPORTS, SANS_NAISSANCE, construire);
+    expect(o.ok).toBe(true);
+    expect(vus).toHaveLength(1);
+    expect(vus[0].accessKeyId).toBe("ak-REPORTS");
+    expect(JSON.stringify(vus)).not.toContain("EVIDENCE");
+  });
+
+  it("LA SONDE DE RELECTURE NE PORTE PLUS DE PORTE DE NAISSANCE", () => {
+    // `readback-verify.ts` n'écrit RIEN : exiger d'elle la configuration de la
+    // naissance était un contrôle appartenant à une autre frontière d'autorité.
+    // Le retrait est RATIFIÉ ; ce témoin empêche qu'il revienne par mégarde.
+    const sonde = code("src/scripts/evidence-chain/readback-verify.ts");
+    expect(sonde).not.toContain("ouvrirCompartimentGouverne");
+    expect(sonde).not.toContain("R2_EVIDENCE_BUCKET_NAME");
+    // Et elle consomme bien LE constructeur canonique, pas une chaîne montée
+    // à la main : une sonde qui s'assemble elle-même ne mesure pas la production.
+    expect(sonde).toContain("assemblerResolutionDeStockage");
+  });
+
+  it("LA RÉSOLUTION DE STOCKAGE NE LIT AUCUNE VARIABLE DE NAISSANCE", () => {
+    // Structurel, et c'est ce qui rend l'invariant tenable au-delà d'un cas :
+    // le chemin de localisation ne peut pas dépendre d'une configuration qu'il
+    // ne lit nulle part.
+    expect(code(SRC_RESOLUTION)).not.toContain("R2_EVIDENCE_BUCKET_NAME");
+  });
+});
