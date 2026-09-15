@@ -354,9 +354,17 @@ describe("(g) le lecteur EXISTE et n'a AUCUNE autorité — la bascule est la PH
       // n'importe l'un de ses TYPES (JournalSqlRunner, les domaines fermés) ;
       // n'appelle aucune de ses fonctions de résolution.
       "scripts/casefile/harnais-ecrivain-journal-pglite.mts",
+      // AMENDÉ le 2026-09-15 par T1-INSCRIPTION-REELLE-VINE : les deux scripts
+      // de la fenêtre d'inscription. Ce sont des SCRIPTS, pas des chemins de
+      // décision — l'un inscrit, l'autre relit pour la gate. La propriété qui
+      // compte reste intacte : la liste ne contient toujours aucun fichier de
+      // `src/` hors l'écrivain.
+      "scripts/casefile/qualifications-vine-gate-post-inscription.mts",
+      "scripts/casefile/qualifications-vine-inscription-reelle.mts",
       "scripts/casefile/qualifications-vine-rehearsal-rollback.mts",
       "src/lib/casefile/journalWriter.ts",
     ]);
+    expect(appelants.filter((f) => f.startsWith("src/"))).toEqual(["src/lib/casefile/journalWriter.ts"]);
   });
 
   it("les CONSOMMATEURS DE DÉCISION ne le mentionnent nulle part : ni decideFoundation, ni decidePublicRelease, ni la projection", () => {
@@ -389,13 +397,36 @@ describe("(g) le lecteur EXISTE et n'a AUCUNE autorité — la bascule est la PH
   // ENDROIT du dépôt ; et AUCUN fichier, nulle part, ne porte d'UPDATE, de
   // DELETE ou de TRUNCATE sur cette table. Le journal est append-only par deux
   // triggers en base — le code ne doit même pas savoir formuler la mutation.
+  const MUTATIONS = {
+    UPDATE: /UPDATE\s+evidence_provenance_journal/i,
+    DELETE: /DELETE\s+FROM\s+evidence_provenance_journal/i,
+    TRUNCATE: /TRUNCATE\s+evidence_provenance_journal/i,
+  } as const;
+
   /**
-   * LE SEUL fichier autorisé à FORMULER une mutation du journal — et il ne le
-   * fait que pour PROUVER que la base la refuse (23001, les deux triggers
-   * append-only). L'exemption est NOMMÉE : un second banc qui voudrait la même
-   * licence doit être déclaré ici, ce qui est une décision, pas un trou.
+   * Les SEULS fichiers autorisés à FORMULER une mutation du journal — et ils ne
+   * le font que pour PROUVER que la base la refuse (23001, les deux triggers
+   * append-only). L'exemption est NOMMÉE, et depuis T1-INSCRIPTION-REELLE-VINE
+   * elle est aussi NOMINATIVE PAR VERBE : un banc n'obtient que les mutations
+   * qu'il déclare essayer, et doit porter, pour chacune, l'attente du REFUS.
+   * Un troisième banc qui voudrait la même licence doit être déclaré ici, ce
+   * qui est une décision, pas un trou.
    */
-  const BANC_DE_MUTATION = "scripts/casefile/harnais-ecrivain-journal-pglite.mts";
+  const BANCS_DE_MUTATION: ReadonlyArray<{
+    readonly fichier: string;
+    readonly verbes: ReadonlyArray<keyof typeof MUTATIONS>;
+    /** La forme sous laquelle CE banc exige le refus. */
+    readonly refus: RegExp;
+  }> = [
+    // Le harnais PGlite : les trois verbes, chacun attendu `!== "OK"`.
+    { fichier: "scripts/casefile/harnais-ecrivain-journal-pglite.mts", verbes: ["UPDATE", "DELETE", "TRUNCATE"], refus: /!==\s*"OK"/g },
+    // La gate de l'inscription réelle : le verrou essayé EN VIF sur les deux
+    // lignes de production, en transaction annulée. Pas de TRUNCATE — elle ne
+    // demande pas une licence qu'elle n'utilise pas.
+    { fichier: "scripts/casefile/qualifications-vine-gate-post-inscription.mts", verbes: ["UPDATE", "DELETE"], refus: /===\s*"23001"/g },
+  ];
+  const licencie = (fichier: string, verbe: keyof typeof MUTATIONS) =>
+    BANCS_DE_MUTATION.some((b) => b.fichier === fichier && b.verbes.includes(verbe));
 
   it("le LECTEUR n'écrit rien, et dans src/ l'INSERT n'existe qu'à UN SEUL endroit", () => {
     expect(lecteur).not.toMatch(/\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE)\b/i);
@@ -406,24 +437,34 @@ describe("(g) le lecteur EXISTE et n'a AUCUNE autorité — la bascule est la PH
     expect(inserteurs).toEqual(["src/lib/casefile/journalWriter.ts"]);
   });
 
-  it("AUCUN fichier ne porte d'UPDATE, de DELETE ni de TRUNCATE sur le journal — hors le banc qui prouve le refus", () => {
+  it("AUCUN fichier ne porte d'UPDATE, de DELETE ni de TRUNCATE sur le journal — hors les bancs qui prouvent le refus, verbe par verbe", () => {
     for (const [f, c] of sources) {
-      if (f === BANC_DE_MUTATION) continue;
-      expect(c, f).not.toMatch(/UPDATE\s+evidence_provenance_journal/i);
-      expect(c, f).not.toMatch(/DELETE\s+FROM\s+evidence_provenance_journal/i);
-      expect(c, f).not.toMatch(/TRUNCATE\s+evidence_provenance_journal/i);
+      for (const [verbe, motif] of Object.entries(MUTATIONS) as Array<[keyof typeof MUTATIONS, RegExp]>) {
+        if (licencie(f, verbe)) continue;
+        expect(c, `${f} · ${verbe}`).not.toMatch(motif);
+      }
     }
   });
 
-  it("l'exemption n'est pas un blanc-seing : le banc EXISTE, et il attend un REFUS de chacune des trois mutations", () => {
-    const banc = sources.find(([f]) => f === BANC_DE_MUTATION);
-    expect(banc, `${BANC_DE_MUTATION} est déclaré exempté mais introuvable`).toBeDefined();
-    const c = banc![1];
-    for (const verbe of [/UPDATE\s+evidence_provenance_journal/i, /DELETE\s+FROM\s+evidence_provenance_journal/i, /TRUNCATE\s+evidence_provenance_journal/i]) {
-      expect(c, `${verbe} absent du banc`).toMatch(verbe);
+  it("aucun banc ne porte TRUNCATE hors celui qui le déclare : la licence par verbe n'est pas une licence par fichier", () => {
+    const gate = sources.find(([f]) => f === "scripts/casefile/qualifications-vine-gate-post-inscription.mts");
+    expect(gate, "la gate de l'inscription réelle est déclarée exemptée mais introuvable").toBeDefined();
+    expect(gate![1]).not.toMatch(MUTATIONS.TRUNCATE);
+  });
+
+  it("l'exemption n'est pas un blanc-seing : chaque banc EXISTE, et attend un REFUS de chacune des mutations qu'il déclare", () => {
+    for (const banc of BANCS_DE_MUTATION) {
+      const trouve = sources.find(([f]) => f === banc.fichier);
+      expect(trouve, `${banc.fichier} est déclaré exempté mais introuvable`).toBeDefined();
+      const c = trouve![1];
+      for (const verbe of banc.verbes) {
+        expect(c, `${verbe} absent de ${banc.fichier}`).toMatch(MUTATIONS[verbe]);
+      }
+      // Chaque mutation déclarée y est attendue REFUSÉE, jamais réussie.
+      expect((c.match(banc.refus) ?? []).length, `${banc.fichier} : attentes de refus`).toBeGreaterThanOrEqual(
+        banc.verbes.length,
+      );
     }
-    // Chaque mutation y est attendue REFUSÉE (`!== "OK"`), jamais réussie.
-    expect((c.match(/!==\s*"OK"/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 
   it("le lecteur ne consulte AUCUNE colonne sourceUrl de projection : ni CaseFileSource, ni EvidenceSnapshot", () => {
