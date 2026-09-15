@@ -345,6 +345,19 @@ export function anomaliesDeForme(
  * on ne fabrique pas du SQL par concaténation naïve pour autant. */
 export const litteralSql = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
+/** Replie un texte en lignes d'au plus `largeur` colonnes, sans couper un mot. */
+export function replier(texte: string, largeur: number): string[] {
+  const lignes: string[] = [];
+  let courante = "";
+  for (const mot of texte.trim().split(/\s+/)) {
+    if (courante === "") courante = mot;
+    else if (courante.length + 1 + mot.length <= largeur) courante += ` ${mot}`;
+    else { lignes.push(courante); courante = mot; }
+  }
+  if (courante) lignes.push(courante);
+  return lignes;
+}
+
 /**
  * Le bloc d'INSERT des lignes `VERIFIED_BY_HEAD`, prêt à coller, suivi de son
  * post-check en lecture seule.
@@ -355,13 +368,38 @@ export const litteralSql = (s: string) => `'${s.replace(/'/g, "''")}'`;
  */
 export function rendreInscriptions(
   candidates: ReadonlyArray<PieceDiscriminee & { compartiment: string }>,
-  observePar: string,
+  identites: {
+    /** Ce qui INSCRIT l'événement gouverné → `declared_by`. */
+    readonly inscritPar: string;
+    /** Ce qui a EFFECTUÉ l'observation établissant le VERIFIED_BY_HEAD → `observed_by`. */
+    readonly observePar: string;
+  },
+  /**
+   * L'horodatage de l'observation → `declared_at` ET `observed_at`.
+   *
+   * ⚠️ CE QU'IL EST, ET IL FAUT LE DIRE : la précision réellement CAPTURÉE.
+   * Si l'instrument n'a pas enregistré l'instant de CHAQUE sonde, cette valeur
+   * est l'horodatage de la CAMPAGNE, et l'en-tête rendu le qualifie comme tel.
+   * ⛔ On ne fabrique JAMAIS un instant par ligne pour « faire plus précis ».
+   */
   observeLe: string,
+  /**
+   * La qualification EXACTE de `observeLe`, rendue dans l'en-tête du fichier.
+   * Obligatoire : un horodatage sans sa nature invite à lui prêter une précision
+   * qu'il n'a pas.
+   */
+  natureDeLHorodatage: string,
 ): string {
   if (candidates.length === 0) {
     throw new Error(
       "rendreInscriptions : aucune candidate. Une localisation non DISCRIMINÉE n'a pas de ligne, " +
         "et un bloc vide inviterait à le combler à la main.",
+    );
+  }
+  if (!natureDeLHorodatage.trim()) {
+    throw new Error(
+      "rendreInscriptions : la nature de l'horodatage est obligatoire. Un horodatage sans sa " +
+        "nature invite à lui prêter une précision qu'il n'a pas.",
     );
   }
   const n = candidates.length;
@@ -381,6 +419,37 @@ export function rendreInscriptions(
     "-- MESURABLEMENT EXCLUS — 404, jamais 403. Les pièces AMBIGUOUS, ABSENT_DES_DEUX",
     "-- et NON_MESURABLE n'ont PAS de ligne ici, et c'est tout le sujet.",
     "--",
+    "-- ─── LES DEUX IDENTITÉS, ET ELLES NE SE CONFONDENT PAS ────────────────────",
+    "--",
+    "--   « Machine-observed facts should identify the instrument that produced the",
+    "--     observation; substituting a human operator as observer creates authority",
+    "--     that did not perform the measurement. »",
+    "--",
+    `--   declared_by  ${identites.inscritPar}`,
+    "--                ce qui INSCRIT l'événement gouverné.",
+    `--   observed_by  ${identites.observePar}`,
+    "--                ce qui a EFFECTUÉ l'observation établissant le VERIFIED_BY_HEAD.",
+    "--",
+    "-- Ici les deux désignent le MÊME instrument, et c'est cohérent : l'outil qui a",
+    "-- sondé est aussi celui qui rend l'inscription. Les colonnes restent DEUX parce",
+    "-- que ce ne sera pas toujours le cas — une réinscription ultérieure, une reprise",
+    "-- par un autre chemin gouverné les feraient diverger, et il faudra alors pouvoir",
+    "-- dire qui a mesuré sans le confondre avec qui a écrit.",
+    "--",
+    "-- ⛔ AUCUN OPÉRATEUR HUMAIN ICI. Un 404 sur un compartiment R2 a été constaté",
+    "--    par un programme ; inscrire une personne comme observateur créerait une",
+    "--    autorité qui n'a pas fait la mesure.",
+    "--",
+    "-- ─── L'HORODATAGE, ET SA PRÉCISION RÉELLE ─────────────────────────────────",
+    "--",
+    "--   « Observation timestamps express captured temporal precision, never",
+    "--     reconstructed precision. »",
+    "--",
+    // Repliée à la main : une qualification illisible sur une seule ligne de
+    // 300 colonnes ne serait pas lue, et c'est elle qui empêche de prêter à
+    // l'horodatage une précision qu'il n'a pas.
+    ...replier(natureDeLHorodatage, 72).map((l) => `--   ${l}`),
+    "--",
     "-- `observed_at` est l'instant de la MESURE, pas celui de l'écriture : c'est ce",
     "-- qui fait la valeur d'un VERIFIED_BY_HEAD, et un DEFAULT l'aurait fabriqué.",
     "--",
@@ -398,7 +467,8 @@ export function rendreInscriptions(
       .map(
         (p, i) =>
           `  (${litteralSql(p.id)}, ${litteralSql(p.compartiment)}, ${litteralSql(p.r2Key)}, 'VERIFIED_BY_HEAD', ` +
-          `${litteralSql(observePar)}, ${litteralSql(observeLe)}, ${litteralSql(observePar)}, ${litteralSql(observeLe)})` +
+          `${litteralSql(identites.inscritPar)}, ${litteralSql(observeLe)}, ` +
+          `${litteralSql(identites.observePar)}, ${litteralSql(observeLe)})` +
           (i === n - 1 ? ";" : ","),
       )
       .join("\n"),

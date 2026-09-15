@@ -73,6 +73,49 @@ const REPO = path.resolve(__dirname, "..", "..", "..");
 config({ path: path.join(REPO, ".env.local"), quiet: true });
 
 const AS_JSON = process.argv.includes("--json");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// L'IDENTITÉ INSTRUMENTALE — ÉPINGLÉE, ET ELLE NE SUIVRA JAMAIS HEAD
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//   « Machine-observed facts should identify the instrument that produced the
+//     observation; substituting a human operator as observer creates authority
+//     that did not perform the measurement. »
+//
+// Un 404 sur un compartiment R2 est constaté par un PROGRAMME. Inscrire une
+// personne comme observateur créerait une autorité qui n'a pas fait la mesure —
+// c'est pourquoi `declared_by` et `observed_by` nomment un fichier à un commit,
+// et non « T1 ».
+//
+// ⛔ CE SHA NE DOIT JAMAIS ÊTRE REMPLACÉ PAR LE HEAD DU COMMIT QUI INSCRIT.
+//    L'attribution désigne l'instrument qui a PRODUIT la mesure, jamais celui
+//    qui inscrit ensuite son résultat. Le commit d'inscription vient forcément
+//    APRÈS la campagne : le faire suivre HEAD attribuerait l'observation à un
+//    code qui n'existait pas quand elle a été faite. C'est le sens même d'un
+//    horodatage d'observation, transposé à l'identité.
+//
+// ⛔ ET IL NE SUIT PAS NON PLUS LES ÉDITIONS DE CE FICHIER. Le présent fichier
+//    a changé depuis 93d08a1 (il porte cette constante, précisément). C'est
+//    normal et voulu : la constante enregistre un FAIT PASSÉ, pas l'état
+//    courant du dépôt.
+//
+// ⚠️ UNE NOUVELLE CAMPAGNE EXIGE UNE NOUVELLE CONSTANTE. Réutiliser celle-ci
+//    pour une passe ultérieure attribuerait une mesure récente à un instrument
+//    ancien. Le nom porte la date pour que l'oubli se voie.
+//
+// ─── ÉTABLI, PAS SUPPOSÉ (2026-09-16) ───────────────────────────────────────
+//   · blob de `mesure-localisation.ts` dans 93d08a1 : 2bef7ffacae25e769ec7b3e1025f0e6badcd6e9d
+//     — IDENTIQUE au fichier de travail au moment de la vérification.
+//   · même identité de blob pour la fermeture de dépendances de l'instrument :
+//     `lib/evidence-chain/discrimination.ts` (19901c8719b4…) et
+//     `lib/evidence-chain/eligibility.ts` (099cccc7dc96…).
+//   · le seul commit postérieur, 6689190, ne touche que `scripts/guard-offline.sh`.
+//   · mtime des trois fichiers : 09:20:46Z, 09:20:46Z et 07:14:35Z — tous
+//     ANTÉRIEURS à la campagne (09:32:32.725Z). Une modification suivie d'un
+//     retour en arrière aurait laissé un mtime POSTÉRIEUR.
+//   → au moment des 62 HEAD, l'instrument exécuté était exactement celui de 93d08a1.
+export const INSTRUMENT_CAMPAGNE_2026_09_15 =
+  "src/scripts/evidence-chain/mesure-localisation.ts@93d08a1";
 const IDX_INSERTS = process.argv.indexOf("--inserts");
 const FICHIER_INSERTS = IDX_INSERTS >= 0 ? process.argv[IDX_INSERTS + 1] : null;
 
@@ -271,8 +314,25 @@ async function main() {
         console.error("\n⛔ AUCUNE candidate : aucun fichier d'INSERT n'est écrit. Une localisation non");
         console.error("   discriminée n'a pas de ligne, et un fichier vide inviterait à le combler à la main.");
       } else {
+        // ⚠️ L'horloge est lue UNE FOIS, ICI, c'est-à-dire APRÈS la boucle de
+        // sondes. Cet instrument n'enregistre PAS l'instant de chaque HEAD :
+        // `Sonde` ne porte pas de champ temporel. La valeur rendue est donc
+        // l'horodatage de CLÔTURE DE LA CAMPAGNE, et l'en-tête du fichier le
+        // qualifie comme tel.
+        // ⛔ On ne fabrique PAS 31 pseudo-instants pour « faire plus précis ».
+        //    Une précision reconstruite n'est pas une précision capturée.
         const quand = new Date().toISOString();
-        writeFileSync(FICHIER_INSERTS, rendreInscriptions(candidates, "T1/mesure-localisation", quand));
+        writeFileSync(FICHIER_INSERTS, rendreInscriptions(
+          candidates,
+          // Les deux identités désignent ICI le même instrument : celui qui a
+          // sondé rend aussi l'inscription. Les paramètres restent DEUX parce
+          // que ce ne sera pas toujours vrai.
+          { inscritPar: INSTRUMENT_CAMPAGNE_2026_09_15, observePar: INSTRUMENT_CAMPAGNE_2026_09_15 },
+          quand,
+          "HORODATAGE DE CAMPAGNE — instant de CLÔTURE de la passe d'observation, lu une " +
+            "seule fois après les 62 sondes. Ce n'est PAS l'instant de chaque HEAD : " +
+            "l'instrument ne les a pas capturés, et on ne les reconstruit pas.",
+        ));
         console.log(`\n  SQL PRÊT À COLLER écrit : ${FICHIER_INSERTS} (${candidates.length} ligne(s))`);
       }
     }

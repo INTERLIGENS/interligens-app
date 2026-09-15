@@ -382,12 +382,16 @@ describe("LE SQL D'INSCRIPTION — JUSTE DU PREMIER COUP, ÉPROUVÉ AVANT L'OCCA
     piece(id, [sonde(REPORTS, "PRESENT"), sonde(EVIDENCE, "ABSENT")]);
 
   const QUAND = "2026-09-15T12:00:00.000Z";
-  const QUI = "T1/mesure-localisation";
+  // ⚠️ Une IDENTITÉ INSTRUMENTALE, jamais un opérateur humain : un 404 sur un
+  // compartiment R2 est constaté par un programme.
+  const INSTRUMENT = "src/scripts/evidence-chain/mesure-localisation.ts@93d08a1";
+  const QUI = { inscritPar: INSTRUMENT, observePar: INSTRUMENT };
+  const NATURE = "HORODATAGE DE CAMPAGNE — clôture de la passe, pas l'instant de chaque HEAD.";
   const rendu = (ids: string[]) =>
-    rendreInscriptions(candidatesAInscription(ids.map(discriminee)), QUI, QUAND);
+    rendreInscriptions(candidatesAInscription(ids.map(discriminee)), QUI, QUAND, NATURE);
 
   it("⛔ REFUSE de rendre un bloc VIDE — il inviterait à le combler à la main", () => {
-    expect(() => rendreInscriptions([], QUI, QUAND)).toThrow(/aucune candidate/);
+    expect(() => rendreInscriptions([], QUI, QUAND, NATURE)).toThrow(/aucune candidate/);
   });
 
   it("une ligne par candidate, toutes VERIFIED_BY_HEAD, toutes avec observation", () => {
@@ -400,7 +404,7 @@ describe("LE SQL D'INSCRIPTION — JUSTE DU PREMIER COUP, ÉPROUVÉ AVANT L'OCCA
       expect(v).toContain("'VERIFIED_BY_HEAD'");
       // qui a mesuré ET quand : deux fois chacun par ligne
       // (declared_by/declared_at, puis observed_by/observed_at).
-      expect((v.match(/'T1\/mesure-localisation'/g) ?? []).length).toBe(2);
+      expect((v.match(new RegExp(`'${INSTRUMENT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}'`, "g")) ?? []).length).toBe(2);
       expect((v.match(/'2026-09-15T12:00:00\.000Z'/g) ?? []).length).toBe(2);
     }
   });
@@ -427,7 +431,7 @@ describe("LE SQL D'INSCRIPTION — JUSTE DU PREMIER COUP, ÉPROUVÉ AVANT L'OCCA
     expect(litteralSql("l'objet")).toBe("'l''objet'");
     expect(litteralSql("a'; DROP TABLE x; --")).toBe("'a''; DROP TABLE x; --'");
     const p = { ...discriminee("x"), r2Key: "reports/l'été.pdf", compartiment: REPORTS };
-    expect(rendreInscriptions([p], QUI, QUAND)).toContain("'reports/l''été.pdf'");
+    expect(rendreInscriptions([p], QUI, QUAND, NATURE)).toContain("'reports/l''été.pdf'");
   });
 
   it("le bloc PRÉVIENT que `id` ne commencera pas à 1 — les répétitions à blanc ont consommé", () => {
@@ -440,7 +444,7 @@ describe("LE SQL D'INSCRIPTION — JUSTE DU PREMIER COUP, ÉPROUVÉ AVANT L'OCCA
       piece("ambigue", [sonde(REPORTS, "PRESENT"), sonde(EVIDENCE, "PRESENT")]),
       piece("muette", [sonde(REPORTS, "PRESENT"), sonde(EVIDENCE, "CANNOT_MEASURE")]),
     ];
-    const sql = rendreInscriptions(candidatesAInscription(lot), QUI, QUAND);
+    const sql = rendreInscriptions(candidatesAInscription(lot), QUI, QUAND, NATURE);
     expect(sql).toContain("'ok'");
     expect(sql).not.toContain("'ambigue'");
     expect(sql).not.toContain("'muette'");
@@ -501,5 +505,85 @@ describe("LA FORME DU CREDENTIAL — UN 403 QUI N'EN EST PAS UN", () => {
       "evidence_readonly_credential_unconfigured",
       "evidence_readonly_credential_malformed",
     ]) expect(c).toContain(cause);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe("L'IDENTITÉ INSTRUMENTALE ET LA PRÉCISION CAPTURÉE — LES DEUX RULINGS", () => {
+  //   « Machine-observed facts should identify the instrument that produced the
+  //     observation; substituting a human operator as observer creates authority
+  //     that did not perform the measurement. »
+  //   « Observation timestamps express captured temporal precision, never
+  //     reconstructed precision. »
+  const INSTRUMENT = "src/scripts/evidence-chain/mesure-localisation.ts@93d08a1";
+  const QUAND = "2026-09-15T09:32:32.725Z";
+  const NATURE = "HORODATAGE DE CAMPAGNE — clôture de la passe, pas l'instant de chaque HEAD.";
+  const piece = (id: string): PieceDiscriminee & { compartiment: string } => {
+    const sondes: Sonde[] = [sonde(REPORTS, "PRESENT"), sonde(EVIDENCE, "ABSENT")];
+    return { id, r2Key: `reports/${id}.pdf`, sondes, discrimination: discriminer(sondes), compartiment: REPORTS };
+  };
+
+  it("declared_by et observed_by sont DEUX paramètres — la distinction est structurelle", () => {
+    // Ici ils coïncident ; ailleurs non. Un paramètre unique aurait rendu la
+    // divergence inexprimable, donc la distinction invérifiable.
+    const sql = rendreInscriptions([piece("x")],
+      { inscritPar: "ECRIVAIN", observePar: "OBSERVATEUR" }, QUAND, NATURE);
+    const v = sql.split("\n").find((l) => /^ {2}\('/.test(l))!;
+    expect(v.indexOf("'ECRIVAIN'")).toBeGreaterThan(-1);
+    expect(v.indexOf("'OBSERVATEUR'")).toBeGreaterThan(-1);
+    // L'ORDRE compte : declared_by précède observed_by dans la liste de colonnes.
+    expect(v.indexOf("'ECRIVAIN'")).toBeLessThan(v.indexOf("'OBSERVATEUR'"));
+    expect(sql).toMatch(/declared_by\s+ECRIVAIN/);
+    expect(sql).toMatch(/observed_by\s+OBSERVATEUR/);
+  });
+
+  it("l'en-tête PORTE les deux rulings, et l'interdit de l'observateur humain", () => {
+    const sql = rendreInscriptions([piece("x")], { inscritPar: INSTRUMENT, observePar: INSTRUMENT }, QUAND, NATURE);
+    expect(sql).toMatch(/substituting a human operator as observer/);
+    expect(sql).toMatch(/never\n--\s+reconstructed precision/);
+    expect(sql).toMatch(/AUCUN OPÉRATEUR HUMAIN ICI/);
+  });
+
+  it("⛔ la NATURE de l'horodatage est OBLIGATOIRE — un instant nu invite à lui prêter une précision", () => {
+    for (const vide of ["", "   ", "\n"]) {
+      expect(() => rendreInscriptions([piece("x")], { inscritPar: "a", observePar: "b" }, QUAND, vide))
+        .toThrow(/nature de l'horodatage est obligatoire/);
+    }
+  });
+
+  it("UN SEUL instant pour les 31 — aucune précision n'est reconstruite", () => {
+    const sql = rendreInscriptions(["a", "b", "c"].map(piece),
+      { inscritPar: INSTRUMENT, observePar: INSTRUMENT }, QUAND, NATURE);
+    const instants = new Set([...sql.matchAll(/'(\d{4}-\d{2}-\d{2}T[\d:.]+Z)'/g)].map((m) => m[1]));
+    // Trois lignes, DEUX colonnes temporelles chacune, et UNE SEULE valeur :
+    // l'instrument n'a pas capturé d'instant par sonde, on n'en fabrique pas.
+    expect([...instants]).toEqual([QUAND]);
+  });
+
+  it("le SHA épinglé NE SUIT PAS HEAD — il désigne l'instrument, pas l'inscripteur", () => {
+    const c = code("src/scripts/evidence-chain/mesure-localisation.ts");
+    // Épinglé en dur, jamais dérivé du dépôt au moment de l'exécution.
+    expect(c).toMatch(/INSTRUMENT_CAMPAGNE_2026_09_15\s*=\s*\n?\s*"src\/scripts\/evidence-chain\/mesure-localisation\.ts@93d08a1"/);
+    expect(c).not.toMatch(/rev-parse|execSync|child_process|gitDescribe/);
+    // Et le pourquoi est écrit là où quelqu'un le lirait avant de « corriger ».
+    const src = lire("src/scripts/evidence-chain/mesure-localisation.ts");
+    expect(src).toMatch(/NE DOIT JAMAIS ÊTRE REMPLACÉ PAR LE HEAD DU COMMIT QUI INSCRIT/);
+    expect(src).toMatch(/UNE NOUVELLE CAMPAGNE EXIGE UNE NOUVELLE CONSTANTE/);
+  });
+
+  it("LE FICHIER LIVRÉ porte l'identité instrumentale sur les DEUX colonnes, et aucun humain", () => {
+    const f = lire("docs/prep/INSCRIPTION_31.sql");
+    const valeurs = f.split("\n").filter((l) => /^ {2}\('/.test(l));
+    expect(valeurs).toHaveLength(31);
+    for (const v of valeurs) {
+      expect((v.match(/'src\/scripts\/evidence-chain\/mesure-localisation\.ts@93d08a1'/g) ?? [])).toHaveLength(2);
+      expect(v).toContain("'VERIFIED_BY_HEAD'");
+      expect(v).toContain("'interligens-reports'");
+    }
+    // Aucune trace de l'ancienne attribution à un opérateur.
+    expect(f).not.toMatch(/'T1\//);
+    // Un seul instant, qualifié comme campagne.
+    expect(new Set([...f.matchAll(/'(\d{4}-\d{2}-\d{2}T[\d:.]+Z)'/g)].map((m) => m[1])).size).toBe(1);
+    expect(f).toMatch(/HORODATAGE DE CAMPAGNE/);
   });
 });
