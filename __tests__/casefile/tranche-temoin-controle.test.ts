@@ -86,9 +86,14 @@ describe("A · la tranche ne PEUT pas publier", () => {
     expect(c).not.toMatch(/["'`]draft["'`]/);
     // Ce qu'elle fait à la place : elle CONSULTE, sur la ligne créée.
     expect(c).toContain("decidePublication(dossier)");
-    // `update: {}` — un dossier témoin déjà présent n'est PAS réécrit. Un run
-    // futur ne peut donc ni le publier, ni le « remettre » en brouillon.
-    expect(c).toMatch(/update:\s*\{\s*\}/);
+    // La charge de mise à jour est VIDE — un dossier témoin déjà présent n'est
+    // réécrit en RIEN : un run futur ne peut ni le publier, ni le « remettre »
+    // en brouillon. Et elle traverse quand même la frontière RC-2, AU SITE
+    // D'APPEL : la propriété doit être lisible là où l'écriture a lieu, pas
+    // déduite du fait que la charge est vide aujourd'hui.
+    expect(c).toMatch(/update:\s*withoutRef\(\s*\{\s*\}\s*\)/);
+    // Et la création passe par le SIÈGE de l'assignation, au site d'appel.
+    expect(c).toMatch(/create:\s*assignRef\(/);
   });
 
   it("aucun dossier existant n'est nommé — ni VINE, ni BOTIFY, ni LAB, ni CBEX", () => {

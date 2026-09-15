@@ -92,7 +92,7 @@ import { prismaTransactor } from "../../lib/casefile/governedExecutorPrisma";
 import { loadCanonicalCaseFile } from "../../lib/casefile/canonicalReader";
 import { decideFoundationContract, decidePublicationContract } from "../../lib/casefile/governedWriter";
 import { decidePublication, PUBLISHED_STATUS } from "../../lib/casefile/publicationAuthority";
-import { assignRef } from "../../lib/casefile/ref";
+import { assignRef, withoutRef } from "../../lib/casefile/ref";
 
 // ═══ L'IDENTITÉ DU TÉMOIN — IMPOSSIBLE À CONFONDRE AVEC UN SUJET RÉEL ══════
 //
@@ -210,9 +210,11 @@ async function main() {
 
     // ── 2 · L'IDENTITÉ GOUVERNÉE ─────────────────────────────────────────
     console.log("\n2 · IDENTITÉ GOUVERNÉE");
-    // `assignRef` est le SIÈGE de l'assignation — il n'alloue rien, il EXIGE
-    // que la valeur soit fournie et refuse une seconde assignation.
-    const charge = assignRef({
+    // La charge, TELLE QUELLE. Elle n'est PAS passée par la frontière ici :
+    // les deux frontières sont posées AU SITE D'APPEL, plus bas, et c'est une
+    // exigence de RC-2 / RC-3 — une frontière franchie dans une variable
+    // intermédiaire n'est plus lisible là où l'écriture a lieu.
+    const payload = {
       ref: REF, codename: CODENAME, ticker: TICKER,
       title: "RC CONTROLLED WITNESS — synthetic infrastructure witness",
       family: "RC_CONTROLLED_WITNESS", subtype: "SYNTHETIC",
@@ -233,21 +235,30 @@ async function main() {
       // publication — celle-là même que `s1-autorite-unique` interdit — et
       // aurait fait de l'exclusion une décision de ce script plutôt qu'une
       // propriété du modèle.
-    });
-    ok(`ref assignée UNE fois : ${charge.ref}`);
+    };
 
     if (dryRun) {
+      console.log(`  ✓ charge prête pour ${payload.ref} — aucune écriture`);
       console.log("\n— DRY-RUN : aucune écriture. Relancer avec --go.\n");
       return;
     }
 
     const dossier = await prisma.tokenCaseFile.upsert({
-      where: { ref: charge.ref },
-      // ⛔ `withoutRef` n'est pas nécessaire ici : la charge de MISE À JOUR est
-      //    vide. Un dossier témoin déjà présent n'est pas réécrit — pas même
-      //    son statut, qui est précisément ce qu'on ne veut pas voir bouger.
-      update: {},
-      create: charge,
+      where: { ref: REF },
+      // ── RC-2 · L'IMMUABILITÉ, AU SITE D'APPEL ──────────────────────────
+      //
+      // La charge de mise à jour est VIDE : un dossier témoin déjà présent
+      // n'est réécrit en RIEN. Elle passe malgré tout par `withoutRef`, et ce
+      // n'est pas une formalité — la propriété gouvernée est « le `ref` n'est
+      // PAS dans la charge de mise à jour », et elle doit être LISIBLE ici,
+      // pas déduite du fait que la charge est vide aujourd'hui. Le jour où
+      // quelqu'un remplira cette branche, la frontière sera déjà en place.
+      update: withoutRef({}),
+      // ── RC-3 · L'ASSIGNATION, AU SITE D'APPEL ──────────────────────────
+      //
+      // `assignRef` est le SIÈGE : il n'alloue rien, EXIGE que la valeur soit
+      // fournie, et refuse une seconde assignation sur la même charge.
+      create: assignRef(payload),
       select: { ref: true, publishStatus: true },
     });
     ok(`token_casefiles : ${dossier.ref} · publishStatus=${dossier.publishStatus}`);

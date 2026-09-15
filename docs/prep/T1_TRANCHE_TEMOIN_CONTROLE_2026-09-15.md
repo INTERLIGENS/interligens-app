@@ -163,23 +163,28 @@ module n'émet pas.
 
 ## La chaîne DONE — maillon par maillon, et par quelle mesure
 
-Run final : `EvidenceItem cmu2lqtm20000s5czowqd0e79` · claim `CLM-RCWIT-11HVGD29`.
+Run final : `EvidenceItem cmu2lzvpq0000s55pxdlhxs8a` · claim `CLM-RCWIT-9XAZHM90`.
+
+*(Trois runs au total : la tranche a été rejouée après chaque correction de code,
+parce qu'une chaîne validée par une version antérieure du script ne prouve rien
+sur celle qui est livrée. Chaque run porte sa propre pièce et sa propre
+assertion — aucun ne réécrit le précédent.)*
 
 | # | Maillon | Établi par | Preuve |
 |---|---------|-----------|--------|
-| 1 | charge synthétique | PNG 1×1 valide + nonce | 176 o · `36631b35…61f1f5` |
+| 1 | charge synthétique | PNG 1×1 valide + nonce | 176 o · `b0f22a2c…79b46e6` |
 | 2 | identité gouvernée | `assignRef` (siège, n'alloue pas) | `IL-RC-CONTROLLED-WITNESS-001` · `decidePublication` → REFUSED |
 | 3 | naissance Evidence canonique | `ingestBuffer` + `ouvrirCompartimentGouverne` | `interligens-evidence` (READ+WRITE) |
 | 4 | **PUT conditionnel** | `faireNaitreLesOctets` (IfNoneMatch:*) | clé LIBRE → accepté ; **négatif ci-dessous** |
-| 5 | localisation déclarée | `declarerLocalisationALEcriture` | registre **#35** · `DECLARED_AT_WRITE` · aucune observation |
+| 5 | localisation déclarée | `declarerLocalisationALEcriture` | registre **#36** · `DECLARED_AT_WRITE` · aucune observation |
 | 6 | relecture des octets **persistés** | `stampOne` étape 0-1, compartiment DÉSIGNÉ | autorité `registre-de-localisation` |
 | 7 | SHA-256 recalculé | `readbackDigest` | 176 o relus |
-| 8 | concordance | `stampOne` étape 3 | `36631b35…61f1f5` = attendu |
-| 9 | TSA sur le hash **recalculé** | `timestampWithRouting` | freetsa.org · genTime `2026-09-15T11:42:17Z` |
-| 10 | jeton persisté | `store.setTsa` + relecture | 4 643 o · chaîne 7 939 o |
+| 8 | concordance | `stampOne` étape 3 | `b0f22a2c…79b46e6` = attendu |
+| 9 | TSA sur le hash **recalculé** | `timestampWithRouting` | freetsa.org · genTime `2026-09-15T11:49:20Z` |
+| 10 | jeton persisté | `store.setTsa` + relecture | 4 642 o · chaîne 7 939 o |
 | 11 | **vérif RFC 3161 offline** | `openssl ts -verify`, jeton + chaîne archivée | **`Verification: OK`** (revérifié hors script) |
-| 12 | journal de provenance VERIFIED | `recordQualification` | journal **#6** · VERIFIED / DOCUMENT / `ARCHIVE_SNAPSHOT_MATCHES` |
-| 13 | `CaseFileSource` | `executeFoundation` | `SRC-RCWIT-11HVGD29` |
+| 12 | journal de provenance VERIFIED | `recordQualification` | journal **#7** · VERIFIED / DOCUMENT / `ARCHIVE_SNAPSHOT_MATCHES` |
+| 13 | `CaseFileSource` | `executeFoundation` | `SRC-RCWIT-9XAZHM90` |
 | 14 | claim **explicitement classifié** | `executeFoundation` | `rowNature = PRIMARY_OBSERVATION`, jamais `UNCLASSIFIED` |
 | 15 | fondement **MET** | `decideFoundationContract` sur le dossier **relu** | MET · nature `PRIMARY_OBSERVATION` |
 | 16 | gate de publication **MET** | `decidePublicationContract` sur le dossier **relu** | MET (provenance VERIFIED) |
@@ -253,7 +258,9 @@ openssl ts -verify -digest 000…001 → error:17800067: message imprint mismatc
 
 # Le corollaire : six gardes existantes ont attrapé le nouveau code
 
-Aucune n'a été affaiblie. Chacune disait quelque chose de vrai.
+Aucune n'a été affaiblie. Chacune disait quelque chose de vrai. Deux d'entre elles
+(`rc2` / `rc3`) n'ont été vues **qu'en CI** : la suite locale avait été passée avant
+la dernière correction du script. Le correctif est dans le code, pas dans la garde.
 
 | Garde | Ce qu'elle a dit | Réponse |
 |-------|------------------|---------|
@@ -261,6 +268,7 @@ Aucune n'a été affaiblie. Chacune disait quelque chose de vrai.
 | `spine-00-b-sceau-canonique` | jour de date coupé à la main | `claimDate: null` — l'instant est déjà porté deux fois |
 | `t1-lecteur-journal` × 2 | qui a le droit de poser `provenanceKind` / d'inscrire une qualification | **déclaré nominativement**, avec la raison |
 | `s19` — écrivains de `token_casefiles` | un troisième écrivain est apparu | **déclaré**, avec la raison |
+| `rc2-ref-immuable` / `rc3-capacite-creation` | la frontière (`withoutRef` / `assignRef`) était franchie dans une **variable intermédiaire**, donc illisible au site d'écriture | **les deux frontières déplacées au site d'appel** — `update: withoutRef({})`, `create: assignRef(payload)` |
 | `compartiment-autorite` | deux fichiers non recensés | la tranche → **site gouverné** ; l'écrivain de localisation → nouvelle catégorie **site de vocabulaire**, dont la contrainte est **plus stricte** : il n'a le droit d'ouvrir **aucune** porte |
 
 ## ⚠️ Un défaut de recensement, trouvé par accident
@@ -283,13 +291,13 @@ est corrigée, et le témoin est le **sixième** ref déclaré.
 | dossiers | 4 (LAB published) | **5** — le témoin, `draft` |
 | claims BOTIFY | 8 · 0 public · **8 non classifiées** | **identique** |
 | claims VINE | 14 · 0 public · **8 non classifiées** | **identique** |
-| claims témoin | — | 2 · 0 public · **0 non classifiée** |
+| claims témoin | — | 3 · 0 public · **0 non classifiée** |
 | sources BOTIFY / VINE | 8 / 2 | **identiques** |
-| journal de provenance | 2 (#3, #4) | **4** — #5 et #6, VERIFIED |
-| registre de localisation | 31 `VERIFIED_BY_HEAD` (reports) | **33** — +2 `DECLARED_AT_WRITE` (evidence) |
+| journal de provenance | 2 (#3, #4) | **5** — #5, #6, #7, VERIFIED |
+| registre de localisation | 31 `VERIFIED_BY_HEAD` (reports) | **34** — +3 `DECLARED_AT_WRITE` (evidence) |
 | décisions de publication | 6 | **6** |
 | snapshots `isPublic` | 0 | **0** |
-| `EvidenceItem` / horodatés | 1 104 / 1 071 | 1 106 / 1 073 |
+| `EvidenceItem` / horodatés | 1 104 / 1 071 | 1 107 / 1 074 |
 | **TSA pending** | **33** | **33** — aucune des 30 legacy touchée |
 | lignes pour l'objet préexistant `evidence/5b/5b2dcac7…` | 0 | **0** |
 
