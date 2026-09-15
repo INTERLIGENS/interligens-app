@@ -1,6 +1,53 @@
 # INTERLIGENS .vercelignore
 # Anything matching these paths is excluded from the Vercel deployment
 # bundle (does NOT affect git tracking).
+#
+# ⚠️ CE FICHIER EST LE SEUL FILTRE. Mesuré dans `getVercelIgnore2`
+# (vercel@51.7.0) : `.gitignore` figure dans la liste codée en dur du CLI,
+# c'est-à-dire qu'il est EXCLU DU TÉLÉVERSEMENT, jamais lu comme règle. Le
+# suivi git n'a donc AUCUN effet sur ce qui part — un fichier non suivi part,
+# un fichier gitignoré part. Ce qui n'est pas ici est expédié.
+
+# ── SECRETS — la forme générale, jamais l'instance ──────────────────────────
+# Le 2026-09-14, un `.env` de 16 clés (DATABASE_URL, ADMIN_TOKEN, CRON_SECRET,
+# ADMIN_BASIC_PASS, RESEND_API_KEY, …) est parti dans le build de production.
+# Il était gitignoré, donc invisible à Gitleaks — qui scanne le dépôt, pas
+# l'ensemble expédié. La liste codée en dur du CLI ne couvre que `.env.local`
+# et `.env.*.local` : le `.env` nu n'était couvert par rien.
+#
+# On couvre donc la FORME, pas le fichier trouvé. `.env*` prend `.env`,
+# `.env.production`, `.env-backup`, `.env.prod.2026` et `.env.example`.
+.env*
+.envrc
+
+# Matériel cryptographique privé et identifiants d'hôte.
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.asc
+*.gpg
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+.npmrc
+.netrc
+.pgpass
+.htpasswd
+.aws/
+.ssh/
+.gnupg/
+.docker/
+.kube/
+
+# ── ÉTAT LOCAL DE POSTE — n'a jamais rien à faire dans un build ─────────────
+.claude/
+.wrangler/
+.bash_history
+.zsh_history
 
 # Investigation reports, exports, dumps — PRIVATE data, never deploy.
 exports/
@@ -14,6 +61,7 @@ docs/
 # !negation patterns the way .gitignore does, so we ship the whole dir.
 
 # Local env variants that aren't loaded via Vercel project env vars.
+# (Conservés pour mémoire — désormais couverts par `.env*` ci-dessus.)
 .env.localanthropic
 .env.prod
 .env.vercel.local
@@ -21,6 +69,34 @@ docs/
 # Local DB
 prisma/dev.db
 prisma/migrations_sqlite_backup/
+
+# ── ARTEFACTS DE BUILD ET DE POSTE — EXCLURE D'ABORD ────────────────────────
+# Doctrine : un candidat n'est AUTORISÉ dans GENERATED_ALLOWED que si l'on
+# démontre que le build distant en a besoin. Aucun de ceux-ci ne l'a démontré,
+# donc tous sont exclus plutôt qu'autorisés.
+#
+#   next-env.d.ts        réécrit par `next build` — jamais lu en entrée
+#   *.tsbuildinfo        cache incrémental de tsc (754 Ko) ; un build distant
+#                        part d'un cache vide, il ne le lit pas
+#   packages/*/dist      aucune référence dans src/, next.config.ts,
+#                        package.json ni pnpm-workspace.yaml (mesuré)
+next-env.d.ts
+*.tsbuildinfo
+packages/widget/dist/
+
+# Médias de démonstration non référencés — 30 Mo dans chaque déploiement.
+# `git grep tiger/(green|orange|red)` : aucune occurrence dans tout le dépôt.
+# ⚠️ `public/tiger/analyst.png` n'est PAS exclu : il est RÉFÉRENCÉ par
+# src/components/TigerRevealCard.tsx:109 tout en n'existant dans AUCUN commit.
+# L'exclure casserait l'image en silence. Le preflight reste rouge dessus
+# jusqu'à résolution — voir docs/prep/PREFLIGHT_UPLOAD_SET_2026-09-15.md.
+public/tiger/green.mp4
+public/tiger/orange.mp4
+public/tiger/red.mp4
+
+# Documents de travail à la racine.
+AGENTS.md
+check_demo_restore.sh
 
 # Misc local artifacts
 *.log
