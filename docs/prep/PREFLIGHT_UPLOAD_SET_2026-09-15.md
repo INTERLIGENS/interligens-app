@@ -113,16 +113,38 @@ mesure, et le test la fige.
 ## Les mutants, exécutés EN VIF — pas seulement écrits
 
 Une suite verte ne prouve pas que le mécanisme est correct, seulement que la
-règle écrite est celle testée. Les trois mutants ont donc été **appliqués au
-code source**, la suite relancée, puis le code restauré :
+règle écrite est celle testée. Les mutants ont donc été **appliqués au code
+source**, la suite relancée à chaque fois, puis le code restauré :
 
 | mutant | résultat |
 |---|---|
-| retirer la forme `dotenv` de `SECRET_FORMS` | **2 tests rouges** ✅ |
-| `executerPreflight` rend `ok:true` quand le calcul échoue | **1 test rouge** ✅ |
-| `PROJET_PRODUCTION` accepte `interligens-t2` | **2 tests rouges** ✅ |
+| M1 · retirer la forme `dotenv` de `SECRET_FORMS` | **2 rouges** ✅ |
+| M2 · `executerPreflight` rend `ok:true` quand le calcul échoue | **1 rouge** ✅ |
+| M3 · `PROJET_PRODUCTION.projectId` ← celui d'`interligens-t2` | **1 rouge** ✅ |
+| M4 · `PROJET_PRODUCTION.projectName` ← `interligens-t2` | **1 rouge** ✅ |
+| M5 · le marqueur n'est plus exclu de sa propre racine | **1 rouge** ✅ |
 
-Restauration vérifiée (`git diff --quiet scripts/`), 36/36 au retour.
+Restauration vérifiée par `diff`, 40/40 au retour.
+
+**Ce que la mutation a réellement trouvé, et qu'aucune relecture n'aurait vu.**
+La première version des tests ne pinçait la cible de production que par la porte
+elle-même. Une mutation **partielle** — remplacer le seul `projectId` — laissait
+la suite à **36/36** : `projectName` divergeait encore, la porte refusait
+toujours, mais **pour la mauvaise raison**. Le test qui épingle la constante
+*valeur par valeur* a été ajouté pour ça. M3 et M4 sont rouges depuis.
+
+Deuxième trouvaille du même ordre, venue de la CI : deux tests lisaient
+`.vercel/project.json` **du worktree courant**. Ce fichier est gitignoré, donc
+absent du runner — ils ne passaient que sur mon poste. Ils rejouent désormais
+les vraies valeurs d'`interligens-t2` dans un dépôt jetable. Un test qui ne vaut
+que sur une machine n'atteste rien.
+
+**Et une correction de conception que la CI a révélée** : `porteCli` *levait*
+quand aucun CLI n'était trouvé, au lieu de rendre une porte rouge. Le refus
+restait entier — le filet extérieur sort en 2 — mais on perdait le verdict des
+autres portes : on aurait su que le déploiement est refusé sans savoir ce qui
+d'autre cloche. Une porte REFUSE, elle ne lève pas. Un test couvre désormais le
+cas « aucun CLI installé », qui est exactement celui du runner.
 
 ## Fail-closed, et sans porte dérobée
 

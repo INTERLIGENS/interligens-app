@@ -8,7 +8,7 @@
 // peut pas rougir n'atteste rien.
 
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, readFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,7 +23,7 @@ import {
   GENERATED_ALLOWED, GENERATED_PATHS,
 } from "../../scripts/preflight/vocabulary.mjs";
 import {
-  porteProjet, porteSecrets, porteUploadSet, executerPreflight,
+  porteProjet, porteSecrets, porteUploadSet, executerPreflight, porteCli,
   construireMarqueur, PROJET_PRODUCTION, MARQUEUR,
 } from "../../scripts/preflight-deploy.mjs";
 
@@ -293,12 +293,34 @@ describe("PORTE — liaison de projet", () => {
     } finally { nettoyer(); }
   });
 
-  // ══ LE CAS NÉGATIF RÉEL — ce worktree est lié à interligens-t2 ═══════════
-  it("REFUSE le worktree réel, qui est lié à interligens-t2", () => {
+  // ══ LE CAS NÉGATIF — la liaison réelle de ce worktree ════════════════════
+  // Les VRAIES valeurs que porte `~/dev/interligens-t2/.vercel/project.json`.
+  // Elles sont rejouées dans un dépôt jetable plutôt que lues sur place :
+  // `.vercel/` est gitignoré, donc absent du runner de CI, et deux tests qui
+  // le lisaient directement ne passaient que sur mon poste. Un test qui ne
+  // vaut que sur une machine n'atteste rien.
+  const LIAISON_T2 = { projectName: "interligens-t2", projectId: "prj_pW53otiwqBpwD6kZYPPDWAOLlQyS" };
+
+  it("REFUSE un worktree lié à interligens-t2", () => {
+    const { dir, nettoyer } = depotJetable({ "a.ts": "x" });
+    try {
+      mkdirSync(join(dir, ".vercel"), { recursive: true });
+      writeFileSync(join(dir, ".vercel/project.json"), JSON.stringify(LIAISON_T2));
+      const r = porteProjet(dir, "production");
+      expect(r.ok).toBe(false);
+      expect(r.detail).toContain("interligens-t2");
+      expect(r.detail).toContain("FAIL CLOSED");
+    } finally { nettoyer(); }
+  });
+
+  it("le worktree courant, s'il est lié, est jugé par la même porte", () => {
+    // Opportuniste : ne s'exécute que là où la liaison existe réellement.
+    const lien = join(process.cwd(), ".vercel/project.json");
+    if (!existsSync(lien)) return;
+    const reel = JSON.parse(readFileSync(lien, "utf8"));
     const r = porteProjet(process.cwd(), "production");
-    expect(r.ok).toBe(false);
-    expect(r.detail).toContain("interligens-t2");
-    expect(r.detail).toContain("FAIL CLOSED");
+    expect(r.ok).toBe(reel.projectId === PROJET_PRODUCTION.projectId
+      && reel.projectName === PROJET_PRODUCTION.projectName);
   });
 
   it("REFUSE quand la liaison est absente ou illisible", () => {
@@ -312,11 +334,34 @@ describe("PORTE — liaison de projet", () => {
   });
 
   // ══ MUTANT 3 — accepter un projet non attendu doit ROUGIR ═══════════════
-  it("MUTANT · une porte qui n'exige plus l'identifiant accepte interligens-t2", () => {
-    const mutantAttendu = { projectName: "interligens-t2", projectId: "prj_pW53otiwqBpwD6kZYPPDWAOLlQyS" };
-    expect(porteProjet(process.cwd(), "production", mutantAttendu).ok).toBe(true);
-    expect(porteProjet(process.cwd(), "production").ok).toBe(false);
-    // Les deux verdicts DIVERGENT sur le même arbre : le sabotage est visible.
+  it("MUTANT · une porte dont la cible attendue est interligens-t2 accepte t2", () => {
+    const { dir, nettoyer } = depotJetable({ "a.ts": "x" });
+    try {
+      mkdirSync(join(dir, ".vercel"), { recursive: true });
+      writeFileSync(join(dir, ".vercel/project.json"), JSON.stringify(LIAISON_T2));
+      // Les deux verdicts DIVERGENT sur le MÊME arbre : le sabotage est visible.
+      expect(porteProjet(dir, "production", LIAISON_T2).ok).toBe(true);
+      expect(porteProjet(dir, "production").ok).toBe(false);
+    } finally { nettoyer(); }
+  });
+});
+
+describe("PORTE — CLI épinglé", () => {
+  it("CLI introuvable ⇒ REFUS, et surtout PAS une exception", () => {
+    // Le runner de CI n'a aucun CLI Vercel installé. C'est le cas réel, et il
+    // doit produire une PORTE ROUGE — pas une levée qui ferait perdre le
+    // verdict des autres portes.
+    const { dir, nettoyer } = depotJetable({ "a.ts": "x" });
+    const home = process.env.HOME;
+    try {
+      process.env.HOME = dir; // ni installation globale, ni cache npx
+      const r = porteCli(dir);
+      expect(r.ok).toBe(false);
+      expect(r.detail).toContain("REFUS");
+    } finally {
+      process.env.HOME = home;
+      nettoyer();
+    }
   });
 });
 

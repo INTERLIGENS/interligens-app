@@ -119,7 +119,16 @@ export function detectCliVersion(cwd) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function porteCli(cwd) {
-  const { version, source, path } = detectCliVersion(cwd);
+  // Une porte REFUSE ; elle ne lève pas. Lever ferait remonter l'échec au
+  // filet extérieur et ferait perdre le verdict des AUTRES portes — on saurait
+  // que le déploiement est refusé sans savoir ce qui d'autre cloche. Le refus
+  // reste entier, il devient seulement lisible.
+  let version, source, path;
+  try {
+    ({ version, source, path } = detectCliVersion(cwd));
+  } catch (e) {
+    return { ok: false, nom: "CLI épinglé", detail: e.message };
+  }
   if (version !== FILTRE_REJOUE_DEPUIS) {
     return {
       ok: false,
