@@ -157,7 +157,39 @@ const SITES_GOUVERNES: readonly string[] = [
   //    par le constructeur canonique `runtimeResolution.ts`, qui consomme
   //    `storageResolution.ts`, recensé ci-dessus. Le retrait est mesuré par
   //    `__tests__/evidence-chain/gate-amorcage-retire.test.ts`.
+  //
+  // CC-OFFLINE-214 : la TRANCHE VERTICALE fait NAÎTRE une pièce. Elle ouvre donc
+  // la porte de naissance, et elle obéit aux mêmes règles que les autres sites
+  // d'écriture — le recensement l'a attrapée de lui-même.
+  "src/scripts/casefile/tranche-temoin-controle.ts",
   "src/scripts/watcher-bridge/run-auto-evidence.ts",
+];
+
+/**
+ * LES SITES DE VOCABULAIRE — ils LISENT la liste fermée, ils n'ouvrent RIEN.
+ *
+ * ─── POURQUOI UNE SECONDE CATÉGORIE, ET POURQUOI ELLE NE RELÂCHE RIEN ──────
+ *
+ * Le recensement découvre tout fichier qui importe `compartment.ts` EN VALEUR.
+ * C'est volontairement large — c'est ce qui lui permet d'attraper un chemin
+ * d'écriture que personne n'a déclaré. Mais « importer une valeur » recouvre
+ * DEUX gestes qui n'ont pas la même autorité :
+ *
+ *   OUVRIR une porte          → on obtient une CAPACITÉ (un client, un bucket)
+ *   CONSULTER le vocabulaire  → on obtient un OUI/NON sur un nom
+ *
+ * `storageLocationWriter.ts` ne fait que le second : il refuse d'INSCRIRE une
+ * localisation dans un compartiment que le dépôt ne gouverne pas. Le déclarer
+ * « site de porte » aurait été faux, et l'exempter en silence aurait troué le
+ * recensement.
+ *
+ * ⛔ LA CONTREPARTIE EST PLUS STRICTE, PAS PLUS LÂCHE : un site de vocabulaire
+ *    n'a le droit d'ouvrir AUCUNE porte — ni naissance, ni désignation, ni
+ *    capacité d'écriture. Le témoin le vérifie. S'il en ouvrait une, il ne
+ *    serait plus un site de vocabulaire, et il devrait être déclaré ci-dessus.
+ */
+const SITES_DE_VOCABULAIRE: readonly string[] = [
+  "src/lib/evidence-chain/storageLocationWriter.ts",
 ];
 
 const ENV_ORIGINE = { ...process.env };
@@ -267,7 +299,24 @@ describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture E
   });
 
   it("le recensement des sites gouvernés est EXACT — aucun site non déclaré n'est apparu", () => {
-    expect(sitesMesures()).toEqual([...SITES_GOUVERNES]);
+    // CC-OFFLINE-214 — le recensement couvre les DEUX catégories, et aucune
+    // n'est un fourre-tout : un fichier découvert doit appartenir à l'une ou à
+    // l'autre, et la seconde a sa propre contrainte (témoin ci-dessous).
+    expect(sitesMesures()).toEqual([...SITES_GOUVERNES, ...SITES_DE_VOCABULAIRE].sort());
+  });
+
+  it("un site de VOCABULAIRE n'ouvre AUCUNE porte — sinon ce n'en est pas un", () => {
+    for (const site of SITES_DE_VOCABULAIRE) {
+      const code = sansCommentaires(lire(site));
+      for (const porte of ["ouvrirCompartimentGouverne", "ouvrirCompartimentDesigne", "exigerCapaciteDEcriture"]) {
+        expect(code, `${site} ouvre « ${porte} » : il doit être déclaré SITE GOUVERNÉ`).not.toContain(porte);
+      }
+      // Il consulte bien le vocabulaire — sinon il n'aurait rien à faire ici.
+      expect(code, site).toMatch(/estCompartimentGouverne|COMPARTIMENTS_GOUVERNES/);
+      // Et il n'obtient AUCUNE capacité : pas de client, pas de credential.
+      expect(code, site).not.toContain("S3Client");
+      expect(code, site).not.toMatch(/R2_[A-Z_]+/);
+    }
   });
 
   it("CHAQUE site gouverné passe par la PORTE GOUVERNÉE, jamais un littéral ni une autre variable", () => {

@@ -159,7 +159,16 @@ const porteursDe = (motif: RegExp): string[] =>
 const REFS_DECOUVERTS: Map<string, string[]> = (() => {
   const out = new Map<string, string[]>();
   for (const f of PRODUCTION) {
-    for (const m of codeSeul(SRC(f)).matchAll(/\bIL-[A-Z]+-[A-Z0-9]+-\d{3}\b/g)) {
+    // CC-OFFLINE-214 — LA DÉCOUVERTE NE PRÉSUME PLUS DU NOMBRE DE SEGMENTS.
+    //
+    // L'ancienne forme exigeait exactement trois segments (`IL-XXX-YYY-NNN`).
+    // Elle a été écrite sur les cinq refs qui existaient, et elle encodait donc
+    // leur forme — alors que `ref.ts` dit l'inverse : « les segments ne
+    // signifient RIEN », et « le dépôt porte trois conventions incompatibles ».
+    // Un ref à quatre segments serait passé INVISIBLE, ce qui est le pire
+    // défaut d'un recensement : il aurait dit qu'il avait regardé.
+    // Mesuré en posant `IL-RC-CONTROLLED-WITNESS-001`.
+    for (const m of codeSeul(SRC(f)).matchAll(/\bIL-[A-Z0-9]+(?:-[A-Z0-9]+)+-\d{3}\b/g)) {
       const l = out.get(m[0]) ?? [];
       if (!l.includes(f)) l.push(f);
       out.set(m[0], l.sort());
@@ -178,7 +187,15 @@ describe("S19/ag3a — 1 · ORIGINE : qui ÉCRIT dans la colonne d'identité", (
     const ecrivains = porteursDe(
       /tokenCaseFile\.(create|update|upsert|createMany|updateMany|delete)|INSERT INTO token_casefiles|UPDATE token_casefiles/,
     );
-    expect(ecrivains).toEqual(["prisma/seed-lab.ts", GENERATEUR_SQL]);
+    // CC-OFFLINE-214 — TROIS, et le troisième est déclaré : la tranche
+    // verticale crée SON dossier témoin, parce qu'un fondement gouverné exige
+    // un dossier existant (`DOSSIER_ABSENT`) et qu'une chaîne dont un maillon
+    // serait posé à la main dans l'éditeur SQL ne serait pas une tranche.
+    // Elle ne pose AUCUN `publishStatus` et ne réécrit AUCUN dossier existant
+    // (`update: {}`) — témoins dans `__tests__/casefile/tranche-temoin-controle.test.ts`.
+    expect(ecrivains).toEqual(
+      ["prisma/seed-lab.ts", "src/scripts/casefile/tranche-temoin-controle.ts", GENERATEUR_SQL].sort(),
+    );
   });
 
   it("la valeur n'est DÉRIVÉE de rien — elle est saisie en tête du générateur", () => {
@@ -288,6 +305,11 @@ describe("S19/ag3e — 5 · RÈGLE DE CRÉATION : aucune, et c'est mesurable", (
     // Découvert, non énuméré — et la découverte en a rendu CINQ, pas quatre.
     expect([...REFS_DECOUVERTS.keys()].sort()).toEqual([
       "IL-CONC-BLACKBULL-001", "IL-PND-LAB-001", "IL-PON-CBEX-001", BOTIFY_REF, VINE_REF,
+      // CC-OFFLINE-214 — le SIXIÈME, et il n'est pas un dossier d'affaire : un
+      // TÉMOIN d'infrastructure, synthétique, non nominatif, structurellement
+      // exclu de toute projection publique par `publishStatus` (défaut de la
+      // colonne, jamais posé par le script qui le crée).
+      "IL-RC-CONTROLLED-WITNESS-001",
     ].sort());
     // Et tous se terminent par `001` : aucun `002` n'a jamais été alloué.
     // Le suffixe n'a donc jamais été exercé — il n'a pas d'allocateur à
