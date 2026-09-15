@@ -171,7 +171,10 @@ describe("balayage — admin/intake (4e site de sel)", () => {
       "utf8",
     );
     expect(src).not.toMatch(/ADMIN_TOKEN\s*\?\?\s*["'`]secret["'`]/);
-    expect(src).toContain('requireSalt("ADMIN_TOKEN")');
+    // CC-OFFLINE-217 : le sel de cette route n'est plus ADMIN_TOKEN mais un
+    // secret dédié. Les témoins CAUSAUX de cette séparation (et non seulement
+    // sa forme en source) sont dans secret-authority-separation.test.ts.
+    expect(src).toContain('requireSalt("INTAKE_HASH_SALT")');
   });
 });
 
@@ -201,29 +204,32 @@ describe("balayage — osint/retail/ipHash (5e site de sel)", () => {
     expect(hashIp("1.2.3.4")).toMatch(/^[0-9a-f]+$/);
   });
 
-  it("retombe sur ADMIN_TOKEN — un VRAI secret — quand le sel explicite manque", async () => {
+  // CC-OFFLINE-217 — LE REPLI VERS ADMIN_TOKEN EST SUPPRIMÉ.
+  // Ces trois témoins remplacent « retombe sur ADMIN_TOKEN » et « chaîne vide
+  // ⇒ repli suivant ». Ils portent sur la FORME du résultat ; la preuve
+  // CAUSALE (quelle clé exactement, et quel nom est lu) est ailleurs :
+  // secret-authority-separation.test.ts.
+
+  it("LÈVE quand le sel dédié manque, même si ADMIN_TOKEN est disponible", async () => {
     delete process.env.OSINT_RETAIL_IP_SALT;
     process.env.ADMIN_TOKEN = "admin-token-de-test";
     const { hashIp } = await load();
-    expect(hashIp("1.2.3.4")).toMatch(/^[0-9a-f]+$/);
+    // Le nom dans le message est celui du sel dédié — pas celui du jeton.
+    expect(() => hashIp("1.2.3.4")).toThrow(/OSINT_RETAIL_IP_SALT/);
   });
 
-  it("chaîne vide sur le sel explicite = absent, on passe au repli suivant", async () => {
+  it("chaîne vide sur le sel dédié = absent : lève, ne se rabat sur rien", async () => {
     process.env.OSINT_RETAIL_IP_SALT = "";
     process.env.ADMIN_TOKEN = "admin-token-de-test";
     const { hashIp } = await load();
-    // Doit produire le MÊME hash que si la variable était absente.
-    const withEmpty = hashIp("1.2.3.4");
-    delete process.env.OSINT_RETAIL_IP_SALT;
-    const { hashIp: h2 } = await load();
-    expect(withEmpty).toBe(h2("1.2.3.4"));
+    expect(() => hashIp("1.2.3.4")).toThrow(/absente ou vide/);
   });
 
-  it("LÈVE quand les deux manquent — plus de repli littéral", async () => {
+  it("LÈVE quand les deux manquent — plus aucun repli", async () => {
     delete process.env.OSINT_RETAIL_IP_SALT;
     delete process.env.ADMIN_TOKEN;
     const { hashIp } = await load();
-    expect(() => hashIp("1.2.3.4")).toThrow(/ADMIN_TOKEN/);
+    expect(() => hashIp("1.2.3.4")).toThrow(/OSINT_RETAIL_IP_SALT/);
   });
 
   it("le littéral de repli a disparu du fichier", async () => {

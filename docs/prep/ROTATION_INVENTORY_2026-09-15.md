@@ -233,6 +233,33 @@ Conséquences opérationnelles :
 
 ### 4.2 — `ADMIN_TOKEN` a une seconde vie de **sel cryptographique**
 
+> ## ⛔ SECTION PÉRIMÉE — NE PAS EXÉCUTER LE GESTE CI-DESSOUS
+>
+> **Remplacée le 2026-09-15 par `docs/prep/SEPARATION_AUTORITES_SECRET_2026-09-15.md` (CC-OFFLINE-217).**
+>
+> Le geste prescrit plus bas — *« définir `OSINT_RETAIL_IP_SALT` à la valeur courante de `ADMIN_TOKEN` »* —
+> est **interdit**. Il recopierait un credential **compromis et vivant** au rang de clé de pseudonymisation
+> permanente, pour toutes les soumissions futures. Un HMAC dont la clé est connue n'est plus un HMAC.
+>
+> Invariant ratifié qui gouverne désormais : *un credential d'authentification ne doit pas servir de clé de
+> pseudonymisation ; là où le coût mesuré de la continuité historique est nul, la rotation doit SUPPRIMER le
+> couplage plutôt que préserver un secret dérivé compromis.*
+>
+> Deux faits mesurés ont emporté la décision :
+> - le couplage était **plus large que décrit ici** — `src/app/api/admin/intake/route.ts` hachait `ipHash`
+>   **et** `userAgentHash` avec `ADMIN_TOKEN` en direct, sans variable d'indirection à figer. Le mot
+>   `IntakeRecord` n'apparaît nulle part dans ce document ;
+> - la continuité protégée **n'avait pas de sujet** : 0 ligne sur toutes les surfaces concernées, re-mesuré
+>   le 2026-09-15 (`ZERO_HISTORICAL_ROWS_AT_ROTATION`).
+>
+> **Ce qu'il faut faire à la place** : provisionner **deux** sels NEUFS et ALÉATOIRES,
+> `OSINT_RETAIL_IP_SALT` et `INTAKE_HASH_SALT`, distincts l'un de l'autre et d'`ADMIN_TOKEN` — procédure
+> détaillée dans le document de remplacement. Les deux sites sont désormais *fail closed* : sans ces
+> variables en local **et** dans Vercel, les chemins concernés refusent de hacher.
+>
+> Le reste de cette section — le constat sur `VAULT_AUDIT_SALT`, et la règle « un sel ne se rote pas comme
+> une clé » — **reste valable**.
+
 Mesuré dans `src/lib/osint/retail/ipHash.ts:33-38` : quand `OSINT_RETAIL_IP_SALT` est absente — **et elle est
 absente de `.env.local`, cf. §3.1** — le sel de hachage des IP retail **retombe sur `ADMIN_TOKEN`**.
 
@@ -268,7 +295,10 @@ une fenêtre, en dernier ce qui doit être invalidé une fois le nouveau chemin 
 
 1. Ouvrir Vercel → projet **`interligens-app`** → Settings → Environment Variables, et **lister les noms**
    présents en Production. C'est ce qui comble l'angle mort du §3.1.
-2. **Figer le sel** : poser `OSINT_RETAIL_IP_SALT` = valeur actuelle de `ADMIN_TOKEN` (§4.2).
+2. ~~**Figer le sel** : poser `OSINT_RETAIL_IP_SALT` = valeur actuelle de `ADMIN_TOKEN` (§4.2).~~
+   ⛔ **PÉRIMÉ — ne pas exécuter.** Remplacé par : provisionner **deux sels NEUFS et aléatoires**,
+   `OSINT_RETAIL_IP_SALT` **et** `INTAKE_HASH_SALT`, distincts entre eux et d'`ADMIN_TOKEN`, en local **et**
+   dans Vercel. Voir `docs/prep/SEPARATION_AUTORITES_SECRET_2026-09-15.md` et le §4.2 ci-dessus.
 3. Décider du sort d'`INVESTIGATOR_TOKEN` et des `KV_*`/`REDIS_URL` (§3.2).
 4. Prévenir les éventuels consommateurs tiers de `PARTNER_API_KEY*`.
 

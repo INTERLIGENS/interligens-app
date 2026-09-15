@@ -6,14 +6,30 @@ import { requireSalt } from "@/lib/config/requireSalt";
 import { extractFromUrl, extractFromFile, extractFromText } from "@/lib/intake/extract";
 import { routeIntake } from "@/lib/intake/router";
 
-// Sel des ipHash / userAgentHash stockés sur IntakeRecord. Le repli littéral
-// "secret" est retiré : il clait le HMAC sur une chaîne publique, donc les IP
-// et user-agents des soumissions redevenaient ré-identifiables par table.
-// requireAdminApi() ci-dessous est fail-closed sur ADMIN_TOKEN (500 si absente),
-// donc ce repli était inatteignable EN L'ÉTAT — mais il était armé, et n'attendait
-// qu'un refactor de la garde pour redevenir vivant sans que personne le voie.
+// Sel des ipHash / userAgentHash stockés sur IntakeRecord.
+//
+// CC-OFFLINE-217 — SÉPARATION DES AUTORITÉS DE SECRET.
+// Ces deux colonnes dépendent DÉSORMAIS EXCLUSIVEMENT d'INTAKE_HASH_SALT.
+// Aucun repli vers ADMIN_TOKEN, sous aucune forme : ni `||`, ni `??`, ni
+// second appel en rattrapage. Un credential d'authentification ne doit pas
+// servir de clé de pseudonymisation — et ADMIN_TOKEN portait ici les DEUX
+// fonctions à la fois, sans même une variable d'indirection à geler.
+//
+// POURQUOI « HASH » ET NON « IP » DANS LE NOM : la route hache deux sujets,
+// l'adresse ET l'user-agent. Le nom suit la convention du dépôt
+// (VAULT_AUDIT_SALT, IP_HASH_SALT, OSINT_RETAIL_IP_SALT) sans mentir sur la
+// portée.
+//
+// FAIL CLOSED, ASSUMÉ. requireSalt lève si la variable manque : la requête
+// échoue plutôt que de hacher sous une clé d'emprunt. Nous sommes précisément
+// dans la fenêtre où les autorités sont séparées AVANT que l'ancien credential
+// soit tué ; un secret absent refuse, il n'emprunte pas.
+//
+// Le repli littéral "secret" avait déjà été retiré ici : il clait le HMAC sur
+// une chaîne publique, donc les IP et user-agents redevenaient ré-identifiables
+// par table.
 function hmac(val: string): string {
-  return createHmac("sha256", requireSalt("ADMIN_TOKEN")).update(val).digest("hex");
+  return createHmac("sha256", requireSalt("INTAKE_HASH_SALT")).update(val).digest("hex");
 }
 
 // ── POST /api/admin/intake ─────────────────────────────────────────────────

@@ -1,46 +1,92 @@
 /**
  * __tests__/security/ip-salt-continuity.test.ts
  *
- * FENÊTRE INCIDENT ROTATION — témoins du SEL D'IP RETAIL.
+ * FENÊTRE INCIDENT ROTATION — TÉMOIN DE CONTINUITÉ, REJOUABLE PAR LE FONDATEUR.
  *
- * Ce fichier ne corrige rien. Il ÉTABLIT, et il échoue si ce qu'il établit
- * cesse d'être vrai.
+ * ── CE QUI A CHANGÉ EN CC-OFFLINE-217, ET POURQUOI CE FICHIER A MAIGRI ─────
  *
- * Les témoins existants de `requireSalt.test.ts` (§ « 5e site de sel ») ne
- * prouvent que la FORME du résultat : `expect(hashIp("1.2.3.4")).toMatch(
- * /^[0-9a-f]+$/)`. Un hachage de la bonne forme passe ce test avec n'importe
- * quelle clé — y compris une clé composite `explicite + ADMIN_TOKEN`. Or la
- * question de la rotation n'est pas « est-ce hexadécimal », c'est « QUELLE clé
- * exactement ». D'où trois témoins d'ÉGALITÉ et de NON-LECTURE ci-dessous.
+ * En CC-OFFLINE-216, ce fichier portait aussi les témoins CAUSAUX du sel
+ * retail (égalité exacte, non-lecture d'ADMIN_TOKEN par piège sur process.env).
+ * Ces témoins ont DÉMÉNAGÉ, enrichis et étendus à la seconde famille, dans
+ * `secret-authority-separation.test.ts` — qui couvre désormais retail ET
+ * intake. Ce fichier-ci ne garde qu'une seule fonction : répondre à la question
+ * que le fondateur se pose, la main sur le clavier, au moment de provisionner.
+ *
+ * ── LA QUESTION, ET LE RENVERSEMENT DU VERDICT ATTENDU ────────────────────
+ *
+ * Question, inchangée et factuelle : *ce sel reproduit-il les hachages
+ * d'aujourd'hui ?*
+ *
+ * Ce qui a changé, c'est la réponse SOUHAITÉE. L'invariant ratifié dit qu'un
+ * credential d'authentification ne doit pas servir de clé de pseudonymisation,
+ * et le coût mesuré de la rupture est nul (0 ligne sur toutes les surfaces
+ * concernées — ZERO_HISTORICAL_ROWS_AT_ROTATION). Les sels à provisionner sont
+ * donc NEUFS et ALÉATOIRES, sans continuité avec ADMIN_TOKEN.
+ *
+ *   ROUGE  → les deux valeurs DIFFÈRENT. C'est le RÉSULTAT ATTENDU.
+ *            Le sel provisionné n'est pas le jeton compromis : la séparation
+ *            des autorités est effective.
+ *   VERT   → les deux valeurs sont IDENTIQUES. C'est un ÉCHEC de la séparation :
+ *            le sel recopie le credential compromis. NE PAS ROTER, regénérer.
+ *
+ * Ce renversement est volontaire et il est écrit ici pour qu'une exécution
+ * rouge ne soit pas prise pour une panne. Le témoin, lui, n'a pas changé de
+ * sens : il mesure une égalité, pas une qualité.
+ *
+ * ── LA MOITIÉ « AVANT » N'EXISTE PLUS DANS LE CODE ────────────────────────
+ *
+ * En 216, le hachage « d'aujourd'hui » était produit en retirant le sel
+ * explicite et en laissant le module retomber sur ADMIN_TOKEN. Ce repli est
+ * SUPPRIMÉ par 217 : le module lève désormais. La référence historique est donc
+ * RECONSTRUITE ici — `HMAC-SHA256(clé = ADMIN_TOKEN, entrée)` — telle que la
+ * Production la calculait jusqu'au commit bc34102 inclus. C'est une
+ * construction datée, pas un chemin vivant, et ce fichier est le seul endroit
+ * où elle subsiste.
+ *
+ * ── POURQUOI CES DEUX SELS NE SONT PAS DANS `vitest.config.ts` ────────────
+ *
+ * MESURÉ, pas supposé : le bloc `test.env` de `vitest.config.ts` ÉCRASE la
+ * valeur exportée par le shell. Vérifié en exportant
+ * `VAULT_AUDIT_SALT="valeur-venue-du-shell"` avant `vitest run` — le test a vu
+ * la valeur du fichier de configuration, pas celle du shell.
+ *
+ * Conséquence directe pour CE fichier : il est rejoué par le FONDATEUR, qui
+ * exporte ses valeurs réelles dans son terminal. Si `OSINT_RETAIL_IP_SALT` et
+ * `INTAKE_HASH_SALT` étaient posées dans `vitest.config.ts`, elles
+ * remplaceraient silencieusement les siennes par des constantes de test : le
+ * témoin comparerait deux valeurs inertes et rendrait un verdict qui ne porte
+ * sur rien. Elles n'y sont donc pas, et ne doivent pas y être ajoutées.
+ *
+ * (Second motif, indépendant : les témoins de fail-closed des deux familles,
+ * dans secret-authority-separation.test.ts, ont besoin de pouvoir observer
+ * l'absence de ces variables.)
  *
  * AUCUNE VALEUR DE SECRET N'EST ÉCRITE, AFFICHÉE NI JOURNALISÉE ICI.
- * Les témoins comparent des empreintes entre elles ; quand ils échouent, ils
- * ne rapportent qu'un verdict d'égalité, jamais un sel ni un fragment de sel.
+ * En cas d'échec, Vitest ne montre que deux HMAC d'une entrée publique sous des
+ * clés qui, elles, restent hors de portée.
  *
  * L'entrée est une IP de DOCUMENTATION (RFC 5737, TEST-NET-1). Jamais une IP
  * réelle, jamais une IP tirée de la base.
  */
 
-import { describe, it, expect, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { createHmac } from "crypto";
 import { vi } from "vitest";
 
 /** RFC 5737 TEST-NET-1 — réservée à la documentation, jamais routée. */
 const IP_DOC = "192.0.2.1";
 
-/** Valeurs de test inertes, étiquetées, qui ne coïncident avec aucun secret. */
-const FAUX_ADMIN_A = "test-admin-token-inerte-A-not-a-real-secret";
-const FAUX_ADMIN_B = "test-admin-token-inerte-B-not-a-real-secret";
-const FAUX_EXPLICITE = "test-osint-retail-ip-salt-inerte-not-a-real-secret";
-
 const SAUVE = {
-  explicit: process.env.OSINT_RETAIL_IP_SALT,
+  retail: process.env.OSINT_RETAIL_IP_SALT,
+  intake: process.env.INTAKE_HASH_SALT,
   admin: process.env.ADMIN_TOKEN,
 };
 
 function restaurer() {
-  if (SAUVE.explicit === undefined) delete process.env.OSINT_RETAIL_IP_SALT;
-  else process.env.OSINT_RETAIL_IP_SALT = SAUVE.explicit;
+  if (SAUVE.retail === undefined) delete process.env.OSINT_RETAIL_IP_SALT;
+  else process.env.OSINT_RETAIL_IP_SALT = SAUVE.retail;
+  if (SAUVE.intake === undefined) delete process.env.INTAKE_HASH_SALT;
+  else process.env.INTAKE_HASH_SALT = SAUVE.intake;
   if (SAUVE.admin === undefined) delete process.env.ADMIN_TOKEN;
   else process.env.ADMIN_TOKEN = SAUVE.admin;
 }
@@ -51,157 +97,19 @@ async function chargerHashIp() {
   return mod.hashIp;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// (1) LE SEL EFFECTIF, PROUVÉ PAR ÉGALITÉ
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("sel d'IP retail — le sel effectif est ADMIN_TOKEN, pas seulement « ça ne lève pas »", () => {
-  afterEach(() => {
-    restaurer();
-    vi.resetModules();
-  });
-
-  it("repli : hashIp(ip) == HMAC-SHA256(clé = ADMIN_TOKEN, ip) — construction exacte", async () => {
-    delete process.env.OSINT_RETAIL_IP_SALT;
-    process.env.ADMIN_TOKEN = FAUX_ADMIN_A;
-
-    const hashIp = await chargerHashIp();
-
-    // Recalculé ICI, indépendamment du module, à partir d'ADMIN_TOKEN seul.
-    // Si le module préfixait, suffixait, tronquait, changeait de digest ou
-    // mélangeait une seconde source dans la clé, cette égalité tomberait.
-    const attendu = createHmac("sha256", FAUX_ADMIN_A).update(IP_DOC).digest("hex");
-
-    expect(hashIp(IP_DOC)).toBe(attendu);
-  });
-
-  it("repli : changer ADMIN_TOKEN change le hachage — le jeton EST bien la clé", async () => {
-    delete process.env.OSINT_RETAIL_IP_SALT;
-
-    process.env.ADMIN_TOKEN = FAUX_ADMIN_A;
-    const avec_A = (await chargerHashIp())(IP_DOC);
-
-    process.env.ADMIN_TOKEN = FAUX_ADMIN_B;
-    const avec_B = (await chargerHashIp())(IP_DOC);
-
-    // C'est exactement la re-clé silencieuse que la rotation provoquerait.
-    expect(avec_A).not.toBe(avec_B);
-  });
-
-  it("explicite : hashIp(ip) == HMAC-SHA256(clé = OSINT_RETAIL_IP_SALT, ip)", async () => {
-    process.env.OSINT_RETAIL_IP_SALT = FAUX_EXPLICITE;
-    process.env.ADMIN_TOKEN = FAUX_ADMIN_A;
-
-    const hashIp = await chargerHashIp();
-    const attendu = createHmac("sha256", FAUX_EXPLICITE).update(IP_DOC).digest("hex");
-
-    expect(hashIp(IP_DOC)).toBe(attendu);
-  });
-});
+const pose = (v: string | undefined) => Boolean(v && v.trim());
 
 // ─────────────────────────────────────────────────────────────────────────────
-// (1 bis) QUAND LE SEL EXPLICITE EST POSÉ, ADMIN_TOKEN N'EST PAS CONSULTÉ
+// (1) RETAIL — OSINT_RETAIL_IP_SALT
 //
-// Mesuré comme une CAPACITÉ, pas comme une absence d'erreur : on instrumente
-// process.env pour enregistrer chaque LECTURE du nom `ADMIN_TOKEN`, et on
-// montre que le compteur reste à zéro. Le témoin vérifie d'abord que son
-// propre instrument fonctionne (canari) — sans quoi « zéro lecture »
-// signifierait seulement « le piège n'était pas posé ».
+// Le « après » passe par le MODULE DE PRODUCTION : c'est bien le chemin servi
+// qui est mesuré, pas une reconstruction.
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("sel d'IP retail — non-consultation d'ADMIN_TOKEN quand le sel explicite est posé", () => {
-  let envReel: NodeJS.ProcessEnv;
-  let lectures: string[];
-
-  beforeEach(() => {
-    envReel = process.env;
-    lectures = [];
-  });
-
-  afterEach(() => {
-    process.env = envReel;
-    restaurer();
-    vi.resetModules();
-  });
-
-  function poserLePiege() {
-    process.env = new Proxy(envReel, {
-      get(cible, prop) {
-        if (typeof prop === "string") lectures.push(prop);
-        return Reflect.get(cible, prop);
-      },
-    }) as NodeJS.ProcessEnv;
-  }
-
-  it("le piège de lecture fonctionne (canari) — sinon le témoin suivant est vide de sens", () => {
-    poserLePiege();
-    // Lecture volontaire d'un nom quelconque : elle DOIT être enregistrée.
-    void process.env.ADMIN_TOKEN;
-    expect(lectures).toContain("ADMIN_TOKEN");
-  });
-
-  it("ADMIN_TOKEN n'est JAMAIS lu lorsque OSINT_RETAIL_IP_SALT est présente", async () => {
-    process.env.OSINT_RETAIL_IP_SALT = FAUX_EXPLICITE;
-    process.env.ADMIN_TOKEN = FAUX_ADMIN_A;
-
-    // Import AVANT la pose du piège : on mesure le hachage, pas le chargement
-    // de module (lequel lit NODE_ENV & co. pour des raisons étrangères au sel).
-    const hashIp = await chargerHashIp();
-
-    poserLePiege();
-    const empreinte = hashIp(IP_DOC);
-    process.env = envReel;
-
-    // a. Le sel explicite a bien été consulté → le piège couvrait le bon code.
-    expect(lectures).toContain("OSINT_RETAIL_IP_SALT");
-    // b. Et ADMIN_TOKEN ne l'a jamais été.
-    expect(lectures).not.toContain("ADMIN_TOKEN");
-    // c. Contrôle de cohérence : la clé utilisée est bien le sel explicite.
-    expect(empreinte).toBe(
-      createHmac("sha256", FAUX_EXPLICITE).update(IP_DOC).digest("hex"),
-    );
-  });
-
-  it("non-influence : ADMIN_TOKEN peut changer sous le sel explicite, l'empreinte ne bouge pas", async () => {
-    process.env.OSINT_RETAIL_IP_SALT = FAUX_EXPLICITE;
-
-    process.env.ADMIN_TOKEN = FAUX_ADMIN_A;
-    const sous_A = (await chargerHashIp())(IP_DOC);
-
-    process.env.ADMIN_TOKEN = FAUX_ADMIN_B;
-    const sous_B = (await chargerHashIp())(IP_DOC);
-
-    delete process.env.ADMIN_TOKEN;
-    const sans = (await chargerHashIp())(IP_DOC);
-
-    // Une clé composite (`explicite + ADMIN_TOKEN`) ferait diverger ces trois-là.
-    expect(sous_B).toBe(sous_A);
-    expect(sans).toBe(sous_A);
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// (3) TÉMOIN DE CONTINUITÉ — À REJOUER PAR LE FONDATEUR
-//
-// Ne s'exécute QUE si les deux variables sont présentes dans l'environnement
-// d'exécution. Il ne provisionne rien lui-même : le provisionnement est un
-// geste humain, hors de ce dépôt.
-//
-// VERDICT :
-//   vert  → le sel provisionné produit EXACTEMENT les mêmes hachages d'IP que
-//           le jeton en vigueur aujourd'hui. La continuité est acquise, la
-//           rotation d'ADMIN_TOKEN ne re-clé plus rien côté retail.
-//   rouge → les deux valeurs diffèrent. Provisionner en l'état RE-CLÉERAIT les
-//           hachages. NE PAS ROTER.
-//
-// Le témoin ne rapporte que ce verdict. Il n'affiche ni sel, ni fragment, ni
-// longueur, ni empreinte permettant de remonter à une valeur.
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("continuité — le sel provisionné reproduit-il les hachages en vigueur ?", () => {
+describe("continuité retail — le sel provisionné reproduit-il les hachages d'hier ?", () => {
   const admin = process.env.ADMIN_TOKEN;
-  const explicit = process.env.OSINT_RETAIL_IP_SALT;
-  const armé = Boolean(admin && admin.trim() && explicit && explicit.trim());
+  const retail = process.env.OSINT_RETAIL_IP_SALT;
+  const armé = pose(admin) && pose(retail);
 
   afterEach(() => {
     restaurer();
@@ -209,32 +117,89 @@ describe("continuité — le sel provisionné reproduit-il les hachages en vigue
   });
 
   it.skipIf(!armé)(
-    "hachage sous le sel provisionné == hachage sous le repli ADMIN_TOKEN",
+    "ROUGE ATTENDU — hachage sous OSINT_RETAIL_IP_SALT ≠ hachage sous l'ancien ADMIN_TOKEN",
     async () => {
-      // a. Empreinte telle que la produira la Production APRÈS provisionnement.
-      process.env.OSINT_RETAIL_IP_SALT = explicit as string;
-      process.env.ADMIN_TOKEN = admin as string;
+      // a. Ce que la Production produit MAINTENANT, par le chemin réel.
+      process.env.OSINT_RETAIL_IP_SALT = retail as string;
       const apres = (await chargerHashIp())(IP_DOC);
 
-      // b. Empreinte telle que la produit la Production AUJOURD'HUI (repli).
-      delete process.env.OSINT_RETAIL_IP_SALT;
-      const avant = (await chargerHashIp())(IP_DOC);
+      // b. Ce qu'elle produisait jusqu'à bc34102, par reconstruction datée.
+      const avant = createHmac("sha256", admin as string).update(IP_DOC).digest("hex");
 
-      // Comparaison d'empreintes. En cas d'échec, Vitest n'affiche que ces deux
-      // hachages d'une IP de documentation — aucun sel, et rien d'inversible :
-      // ce sont des HMAC d'une entrée publique sous une clé qui, elle, reste
-      // hors de portée.
+      // Égalité = le sel recopie le credential compromis = séparation ratée.
       expect(apres).toBe(avant);
     },
   );
+});
 
-  it("le témoin de continuité s'annonce quand il n'est pas armé", () => {
-    // Ce test-ci passe toujours : il existe pour qu'une exécution NON armée ne
-    // puisse pas être confondue avec une exécution armée et verte.
-    if (!armé) {
-      expect(armé).toBe(false); // témoin non armé : provisionnement absent.
-    } else {
-      expect(armé).toBe(true); // témoin armé : le verdict est celui du test ci-dessus.
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// (2) INTAKE — INTAKE_HASH_SALT
+//
+// TROU DE PREUVE DÉCLARÉ. Ici le « après » est RECONSTRUIT, pas prélevé sur le
+// handler : exécuter `POST /api/admin/intake` exige de doubler la persistance,
+// l'extraction, le routage et la garde admin — un appareillage qui n'a pas sa
+// place dans un témoin que le fondateur rejoue à la main.
+//
+// Ce que ce témoin ne prouve donc PAS : que la route utilise bien cette clé.
+// Cela est prouvé ailleurs, et par égalité exacte sur le VRAI handler —
+// `secret-authority-separation.test.ts`, « ipHash ET userAgentHash ==
+// HMAC-SHA256(clé = INTAKE_HASH_SALT, valeur) ». Les deux témoins se composent :
+// l'un fixe la construction, l'autre compare les clés.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("continuité intake — le sel provisionné reproduit-il les hachages d'hier ?", () => {
+  const admin = process.env.ADMIN_TOKEN;
+  const intake = process.env.INTAKE_HASH_SALT;
+  const armé = pose(admin) && pose(intake);
+
+  afterEach(() => {
+    restaurer();
+    vi.resetModules();
+  });
+
+  it.skipIf(!armé)(
+    "ROUGE ATTENDU — hachage sous INTAKE_HASH_SALT ≠ hachage sous l'ancien ADMIN_TOKEN",
+    () => {
+      const apres = createHmac("sha256", intake as string).update(IP_DOC).digest("hex");
+      const avant = createHmac("sha256", admin as string).update(IP_DOC).digest("hex");
+      expect(apres).toBe(avant);
+    },
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// (3) LES DEUX SELS DOIVENT AUSSI DIFFÉRER ENTRE EUX
+//
+// Séparer les autorités, c'est deux secrets — pas un secret neuf recopié deux
+// fois. Un sel unique partagé recréerait, entre retail et intake, exactement le
+// couplage qu'on vient de retirer entre intake et l'administration.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("indépendance des deux sels dédiés", () => {
+  const retail = process.env.OSINT_RETAIL_IP_SALT;
+  const intake = process.env.INTAKE_HASH_SALT;
+  const armé = pose(retail) && pose(intake);
+
+  it.skipIf(!armé)("VERT ATTENDU — les deux sels dédiés ne sont pas la même valeur", () => {
+    const h = (k: string) => createHmac("sha256", k).update(IP_DOC).digest("hex");
+    expect(h(retail as string)).not.toBe(h(intake as string));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// (4) ANTI-CONFUSION — UNE EXÉCUTION NON ARMÉE N'EST PAS UNE EXÉCUTION VERTE
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("armement du témoin", () => {
+  it("le témoin s'annonce armé ou non armé", () => {
+    const admin = pose(process.env.ADMIN_TOKEN);
+    const retail = pose(process.env.OSINT_RETAIL_IP_SALT);
+    const intake = pose(process.env.INTAKE_HASH_SALT);
+
+    // Ce test passe toujours. Il existe pour qu'une exécution NON armée — trois
+    // variables absentes, trois témoins « skipped » — ne puisse pas être
+    // confondue avec une séparation vérifiée. Sans lui, « aucun rouge » se
+    // lirait comme « tout va bien », alors que rien n'aurait été mesuré.
+    expect(typeof (admin && retail && intake)).toBe("boolean");
   });
 });

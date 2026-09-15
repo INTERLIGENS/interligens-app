@@ -8,10 +8,37 @@
  * (compter les soumissions d'une même origine) et l'audit, sans conserver de
  * donnée personnelle directement ré-identifiante.
  *
- * Sel : OSINT_RETAIL_IP_SALT si présent, sinon ADMIN_TOKEN (toujours défini en
- * prod). Il n'y a PLUS de troisième repli.
+ * Sel : OSINT_RETAIL_IP_SALT, et RIEN D'AUTRE. Absente ⇒ panne.
  *
- * Le repli littéral "interligens_retail_ip_fallback_salt" a été retiré. Sa
+ * ── CC-OFFLINE-217 — SÉPARATION DES AUTORITÉS DE SECRET ───────────────────
+ *
+ * INVARIANT : un credential d'authentification ne doit pas servir de clé de
+ * pseudonymisation. Là où le coût mesuré de la continuité historique est nul,
+ * la rotation d'un secret doit SUPPRIMER le couplage, pas préserver un secret
+ * dérivé compromis.
+ *
+ * Le repli `OSINT_RETAIL_IP_SALT || ADMIN_TOKEN` est retiré. Il n'était pas un
+ * littéral public — ADMIN_TOKEN est un vrai secret — mais il faisait emprunter
+ * à un module de pseudonymisation le secret d'une garde d'administration. Deux
+ * conséquences, l'une théorique, l'autre actuelle :
+ *
+ *   1. Deux autorités sur une même valeur. Roter ADMIN_TOKEN re-cléait en
+ *      silence les hachages d'IP ; et qui obtient le jeton d'administration
+ *      obtient du même coup la clé de pseudonymisation.
+ *   2. ADMIN_TOKEN est, à cette date, COMPROMIS et VIVANT (inventaire de
+ *      rotation). Le geler sous un autre nom aurait promu une valeur fuitée au
+ *      rang de clé de pseudonymisation — pour toutes les soumissions FUTURES.
+ *      Un HMAC dont la clé est connue n'est plus un HMAC : l'espace IPv4 (2^32)
+ *      se tabule en minutes, et l'IP redevient ré-identifiable.
+ *
+ * La rupture de continuité est AUTORISÉE et documentée sous le nom
+ * ZERO_HISTORICAL_ROWS_AT_ROTATION : les surfaces concernées portaient 0 ligne
+ * au moment de la bascule (OsintSubmission.submitter : 0 ; EvidenceItem
+ * .submittedBy : 0 sur 1 107 pièces ; IntakeRecord : 0). Ce n'est donc pas une
+ * migration — il n'y a rien à migrer. Ce n'est pas non plus une continuité
+ * préservée : c'est une continuité qui n'avait pas de sujet.
+ *
+ * Le repli littéral "interligens_retail_ip_fallback_salt" avait été retiré. Sa
  * documentation disait « le hash reste stable mais moins résistant » — c'est
  * trop doux. Le sel vivait dans le dépôt : le HMAC n'était plus un HMAC mais un
  * hachage nu, et l'espace IPv4 (2^32) se tabule en minutes. Les IP des
@@ -28,13 +55,10 @@ import { createHmac } from "crypto";
 import { requireSalt } from "@/lib/config/requireSalt";
 
 function ipSalt(): string {
-  // Chaîne vide = variable absente : on passe au repli suivant plutôt que de
-  // partir avec une clé vide.
-  const explicit = process.env.OSINT_RETAIL_IP_SALT;
-  if (explicit && explicit.trim() !== "") return explicit;
-  // Repli sur ADMIN_TOKEN — un VRAI secret, pas un littéral. S'il manque aussi,
-  // requireSalt lève : un sel absent est une panne, pas une dégradation.
-  return requireSalt("ADMIN_TOKEN");
+  // Sel dédié, SANS repli d'aucune forme. Absente ou vide ⇒ requireSalt lève.
+  // Fail closed : un sel manquant refuse de hacher, il n'emprunte pas le secret
+  // d'un autre domaine. C'est la moitié « exécutable » de l'invariant ci-dessus.
+  return requireSalt("OSINT_RETAIL_IP_SALT");
 }
 
 /**
