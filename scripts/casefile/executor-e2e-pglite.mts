@@ -89,6 +89,83 @@ let ko = 0;
 const check = (nom: string, ok: boolean, detail = "") => { if (!ok) ko++; lignes.push(`${ok ? "OK " : "KO "} ${nom}${detail ? " · " + detail : ""}`); };
 const j = (x: unknown) => JSON.stringify(x);
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ÉCHEC ATTENDU, DOCUMENTÉ — T1-READER-SANS-BASCULE, 2026-09-15
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ██  Un rouge silencieusement toléré est interdit. Celui-ci est NOMMÉ,     ██
+// ██  DATÉ, et porte sa condition de levée.                                 ██
+//
+// CE QUI S'EST PASSÉ. Le 2026-09-14, décision GPT 3 : « Foundation may
+// tolerate incomplete QUALIFIED provenance; it may not tolerate absence of
+// provenance qualification. » UNKNOWN a changé de côté — il n'est plus
+// FONDABLE. La pièce SYNTHÉTIQUE de ce harnais porte le sha256 « e »×64, qui
+// n'est dans aucun registre de qualification : elle est UNKNOWN, donc le
+// TÉMOIN POSITIF de fondation est désormais REFUSED, et toute la colonne
+// vertébrale du script (C1 v1, C1 v2, la libération) s'effondre derrière lui.
+//
+// POURQUOI LE FIXTURE N'EST PAS « ADAPTÉ » (voie 1, écartée) — deux obstacles,
+// dont le second est dirimant :
+//
+//   1. L'autorité de provenance, AUJOURD'HUI, est le registre en code de
+//      `provenanceKind.ts`, clef sur sha256, deux entrées OPERATOR_DECLARED
+//      transcrites du ruling. Y ajouter une entrée pour une pièce FABRIQUÉE —
+//      a fortiori VERIFIED, alors que le registre n'en porte aucune par
+//      doctrine — serait INVENTER UNE FAUSSE AUTORITÉ : un sha256 fictif
+//      deviendrait publiable dans le code de production. GPT l'exclut, et le
+//      registre l'exclut lui-même.
+//
+//   2. Emprunter un sha256 RÉELLEMENT qualifié (ceux de SRC-0xS-09 /
+//      SRC-0xS-18) est IMPOSSIBLE en mode --pg17-rollback : "EvidenceSnapshot"
+//      porte l'index UNIQUE "EvidenceSnapshot_sha256_key", et l'insertion du
+//      snapshot synthétique échouerait en 23505 — le harnais documente déjà
+//      cet échec, mesuré. Un fixture vert en WASM et rouge en PG17 réel ne
+//      serait pas une adaptation, ce serait une divergence de modes.
+//
+// La voie 1 étant impossible sans inventer une fausse autorité, c'est la voie
+// 2 que GPT a prévue qui s'applique : ÉCHEC ATTENDU, documenté.
+//
+// CE QUI EST ENCORE PROUVÉ AILLEURS, et ne dépend pas de ce script :
+//   · __tests__/casefile/spine-00-revoke-eligibility.test.ts  — les deux
+//     éligibilités, UNKNOWN ni fondable ni publiable, le chemin REVOKE
+//   · __tests__/casefile/rc-spine-00-ecrivain-gouverne.test.ts — le décideur
+//     pur, témoin POSITIF de fondation avec provenance injectée
+//   · __tests__/casefile/spine-00-executeur-gouverne.test.ts  — l'exécuteur,
+//     témoin POSITIF de libération avec lecteur simulé
+//   · __tests__/casefile/t1-lecteur-journal.test.ts           — le lecteur du
+//     journal (cette fenêtre)
+// CE QUI EST DANS LE NOIR tant que cet échec dure : le contrat SQL de bout en
+// bout — atomicité, SAVEPOINT, relecture sous verrou, sceau persisté, et la
+// complétude « les 16 causes de FOUNDATION_REFUSAL_CAUSES atteintes ».
+//
+// CONDITION DE LEVÉE — le vertical slice du samedi 2026-09-19 : quand
+// `evidence_provenance_journal` devient l'autorité effective (PHASE C), le
+// fixture porte un TÉMOIN SYNTHÉTIQUE VERIFIED légitime — une ligne de journal
+// pour SON PROPRE snapshot synthétique, signée, datée, avec sa
+// verification_method — sans toucher ni la règle métier ni aucun registre
+// réel. Ce bloc disparaît alors, et le script redevient vert par lui-même.
+//
+// Tant que la condition n'est pas remplie, le script sort en code 4 : ni 0
+// (ce serait tolérer), ni 1 (ce serait confondre avec une régression réelle).
+// LA FORME EXACTE DU REFUS, MESURÉE le 2026-09-15 — et non déduite. Au niveau
+// de l'ÉLIGIBILITÉ, UNKNOWN tombe sous SOURCE_PROVENANCE_UNQUALIFIED ; mais
+// `causeDeContrat` (governedWriter.ts) replie toute cause d'éligibilité, sauf
+// SOURCE_PROVENANCE_NOT_VERIFIED, sur SOURCE_PROVENANCE_INCOMPLETE. C'est donc
+// CETTE cause que le contrat rend, et l'EMPLACEMENT qui la distingue : une
+// pièce sans empreinte refuserait `SRC-001.sha256`, une pièce non qualifiée
+// refuse `SRC-001.provenanceKind`. Le couple (cause, emplacement) est exigé :
+// la cause seule est déjà exercée par un AUTRE scénario de ce script, et s'en
+// contenter confondrait les deux.
+const ECHEC_ATTENDU = {
+  depuis: "2026-09-14",
+  constate: "2026-09-15",
+  cause: "SOURCE_PROVENANCE_INCOMPLETE",
+  eligibilite: "SOURCE_PROVENANCE_UNQUALIFIED",
+  ou: "SRC-001.provenanceKind",
+  leveePar: "vertical slice du 2026-09-19 — journal autorité (PHASE C), témoin synthétique VERIFIED dans le fixture",
+} as const;
+let echecAttenduConstate: string | null = null;
+
 // ─── Le dossier synthétique et ses snapshots.
 const REF = "IL-SPINE00-EXEC-TEST";
 const MINT = "Spine00ExecTestMint11111111111111111111111";
@@ -134,6 +211,16 @@ async function scenarios(c: Client): Promise<void> {
   // ═══ (I) FONDEMENT ═══
   lignes.push("── (I) FONDEMENT");
   const pos = await executeFoundation(tx, intent());
+
+  // L'ÉCHEC ATTENDU, reconnu par son NOM et par son LIEU — pas par « ça a
+  // raté ». Toute autre issue reste un rouge franc : une régression ne se
+  // déguise pas en échec attendu.
+  if (pos.outcome === "REFUSED" && pos.refusal.cause === ECHEC_ATTENDU.cause && pos.refusal.at === ECHEC_ATTENDU.ou) {
+    echecAttenduConstate = `${pos.refusal.cause} @ ${pos.refusal.at}`;
+    lignes.push(`ATTENDU  TÉMOIN POSITIF · fondation refusée — ${echecAttenduConstate} (éligibilité : ${ECHEC_ATTENDU.eligibilite} ; pièce synthétique UNKNOWN depuis le ${ECHEC_ATTENDU.depuis})`);
+    lignes.push("SAUTÉ    tout ce qui dépend de la colonne vertébrale positive : C1 v1/v2, versionnement, les 16 causes, (II) LIBÉRATION");
+    return;
+  }
   check("TÉMOIN POSITIF · fondation complète → EXECUTED v1", pos.outcome === "EXECUTED" && pos.claim.version === 1, j(pos));
   const l1 = (await c.query(`SELECT state::text AS state, version, "contentHash", "rowNature"::text AS rn FROM "CaseFileClaim" WHERE "casefileRef"=$1 AND "claimId"='C1'`, [REF])).rows;
   check("  la ligne est ATTACHED, v1, scellée, classifiée", l1.length === 1 && l1[0].state === "ATTACHED" && l1[0].version === 1 && !!l1[0].contentHash && l1[0].rn === "PRIMARY_OBSERVATION", j(l1));
@@ -361,8 +448,25 @@ async function main(): Promise<number> {
     await db.close();
   }
   console.log("\n" + lignes.join("\n"));
-  console.log(`\n${ko === 0 ? "✅" : "❌"} scénarios KO = ${ko}`);
-  return ko === 0 ? 0 : 1;
+  const marque = ko > 0 ? "❌" : echecAttenduConstate !== null ? "⚠️ " : "✅";
+  console.log(`\n${marque} scénarios KO = ${ko}${echecAttenduConstate !== null ? " — mais la suite POSITIVE n'a pas tourné : voir l'échec attendu ci-dessous" : ""}`);
+  if (ko > 0) return 1;
+  if (echecAttenduConstate !== null) {
+    console.log(
+      "\n⚠️  ÉCHEC ATTENDU, DOCUMENTÉ — ce script n'est PAS vert, et ce rouge n'est PAS toléré en silence.\n" +
+      `    cause      : ${echecAttenduConstate}\n` +
+      `    éligibilité: ${ECHEC_ATTENDU.eligibilite} (replié par causeDeContrat)\n` +
+      `    depuis     : ${ECHEC_ATTENDU.depuis} (décision GPT 3 — UNKNOWN n'est plus fondable)\n` +
+      `    constaté   : ${ECHEC_ATTENDU.constate} (T1-READER-SANS-BASCULE)\n` +
+      `    levée      : ${ECHEC_ATTENDU.leveePar}\n` +
+      "    voie 1 (adapter le fixture) écartée : elle exigerait d'inventer une fausse\n" +
+      "    autorité de provenance, et se heurterait à EvidenceSnapshot_sha256_key en PG17.\n" +
+      "    détail complet : l'en-tête ECHEC_ATTENDU de ce fichier.\n" +
+      "    code de sortie 4 — ni 0 (tolérer), ni 1 (confondre avec une régression).",
+    );
+    return 4;
+  }
+  return 0;
 }
 
 main().then((code) => { process.exitCode = code; }).catch((e) => { console.error(e); process.exitCode = 1; });
