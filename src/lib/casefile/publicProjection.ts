@@ -223,7 +223,17 @@ function champRetenu(cause: PublicationContractCause, at: string): string {
     case "EVIDENCE_REFS_EMPTY":
     case "EVIDENCE_REF_UNRESOLVED":
       return "evidenceRefs";
+    // T1-BASCULE-DU-CONTRAT — quatre causes de provenance là où il y en avait
+    // deux. Elles nomment TOUTES le même genre d'emplacement : un champ de la
+    // pièce citée. La distinction entre elles est un DIAGNOSTIC INTERNE — elle
+    // vit dans le refus du contrat, elle n'a pas à devenir un mot public de
+    // plus. Le vocabulaire de sortie est donc INCHANGÉ, et c'est délibéré :
+    // « non fondé » reste INSUFFICIENT_PROVENANCE, le champ retenu reste un
+    // nom de champ, et la surface publique n'apprend rien sur la structure du
+    // journal.
     case "SOURCE_PROVENANCE_INCOMPLETE":
+    case "SOURCE_PROVENANCE_UNQUALIFIED":
+    case "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN":
     case "SOURCE_PROVENANCE_NOT_VERIFIED":
       return SOURCE_PROVENANCE_FIELDS.find((f) => at.endsWith(`.${f}`)) ?? "evidenceRefs";
   }

@@ -25,7 +25,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { executeRevoke, type SqlRunner, type SqlTransactor } from "@/lib/casefile/governedExecutor";
 import { decidePublicRelease, attestPersistedDecision, type ReleaseTargetRow } from "@/lib/casefile/governedWriter";
-import { readProvenanceKind } from "@/lib/casefile/provenanceKind";
+import { provenanceDecoration, readJournalProvenance } from "@/lib/casefile/journalProvenance";
 import { isSealIntact } from "@/lib/casefile/sealGuard";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -104,9 +104,22 @@ async function main(): Promise<number> {
       check(`${id} v1 est ATTACHED, sceau ${SCEAUX_V1[id]}…`, !!v1 && v1.state === "ATTACHED" && v1.contentHash.startsWith(SCEAUX_V1[id]), v1 ? `${v1.state} ${v1.contentHash.slice(0, 8)}` : "absent");
     }
     // ── L'éligibilité de publication, telle que le code la lit AUJOURD'HUI sur ces pièces.
-    const pieces = (await c.query(`SELECT "sourceId", "sourceType", caption, "capturedAt"::text AS "capturedAt", "sourceUrl", sha256, ("snapshotId" IS NOT NULL) AS "evidenceLinked" FROM "CaseFileSource" WHERE "casefileRef" = $1`, [REF])).rows as Array<Record<string, unknown> & { sourceId: string; sha256: string | null }>;
-    const registre = new Map(pieces.map((s) => [s.sourceId, { ...s, provenanceKind: readProvenanceKind({ sourceId: s.sourceId, sha256: s.sha256 }) }] as const));
-    for (const [id, s] of registre) lignes.push(`   pièce ${id} · provenanceKind lue = ${s.provenanceKind}`);
+    // T1-BASCULE-DU-CONTRAT — la qualification est RÉSOLUE AU JOURNAL, par le
+    // pont `snapshotId`. `evidenceLinked` reste un booléen dans le registre ;
+    // le pont lui-même est lu à part, et n'y entre pas.
+    const pieces = (await c.query(`SELECT "sourceId", "sourceType", caption, "capturedAt"::text AS "capturedAt", "sourceUrl", sha256, "snapshotId", ("snapshotId" IS NOT NULL) AS "evidenceLinked" FROM "CaseFileSource" WHERE "casefileRef" = $1`, [REF])).rows as Array<Record<string, unknown> & { sourceId: string; sha256: string | null; snapshotId: string | null }>;
+    const provenances = await readJournalProvenance(
+      { query: async (sql, params = []) => (await c.query(sql, [...params])).rows as never },
+      pieces.map((s) => ({ sourceId: s.sourceId, snapshotId: s.snapshotId })),
+    );
+    // Le PONT sert à résoudre et n'entre pas au registre : ce qui y entre est
+    // le booléen `evidenceLinked`, déjà sélectionné.
+    const registre = new Map(pieces.map((p) => {
+      const s: Record<string, unknown> = { ...p };
+      delete s.snapshotId;
+      return [p.sourceId, { ...s, ...provenanceDecoration(provenances.get(p.sourceId)!) }] as const;
+    }));
+    for (const [id, s] of registre) lignes.push(`   pièce ${id} · provenance résolue au journal = ${s.provenanceKind}${s.provenanceCause ? ` (${s.provenanceCause})` : ""}`);
     for (const id of CLAIMS) {
       const v2 = depart.find((r) => r.claimId === id && r.version === 2)!;
       const row: ReleaseTargetRow = { casefileRef: REF, claimId: id, version: 2, state: "ATTACHED", contentHash: v2.contentHash, rowNature: "PRIMARY_OBSERVATION", evidenceRefs: (v2 as unknown as { evidenceRefs: unknown }).evidenceRefs };

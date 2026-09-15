@@ -31,7 +31,14 @@
 import { prisma } from "@/lib/prisma";
 import type { ArtifactState } from "./publicationState";
 import { latestVersions } from "./versioning";
-import { readProvenanceKind, type SourceProvenanceKind } from "./provenanceKind";
+import type { SourceProvenanceKind } from "./provenanceKind";
+import {
+  provenanceDecoration,
+  readJournalProvenance,
+  type DerivedUnknownCause,
+  type JournalProvenance,
+  type JournalSqlRunner,
+} from "./journalProvenance";
 
 /** Une source du registre, telle qu'elle peut être rendue publiquement. */
 export interface PublicSource {
@@ -46,13 +53,23 @@ export interface PublicSource {
   /**
    * T1-REVOKE-ELIGIBILITY — le lien explicite vers l'EvidenceSnapshot (un
    * BOOLÉEN : l'identifiant du snapshot est interne et ne traverse pas), et la
-   * qualification de provenance des octets, lue par `readProvenanceKind`
-   * (une seule fonction, une seule source). Optionnels dans le type parce que
+   * qualification de provenance des octets. Optionnels dans le type parce que
    * les fixtures construisent des pièces sans eux ; ABSENTS, ils valent
    * « non lié » et UNKNOWN — jamais un défaut optimiste.
+   *
+   * T1-BASCULE-DU-CONTRAT — `provenanceKind` ne vient plus d'un registre en
+   * code : il vient du JOURNAL, résolu par `journalProvenance`, et il arrive
+   * accompagné de `provenanceCause` — POURQUOI, quand il vaut UNKNOWN. Les
+   * deux champs sont posés ENSEMBLE par `provenanceDecoration`, jamais à la
+   * main : séparés, ils pourraient diverger.
+   *
+   * `provenanceCause` est un diagnostic de contrat. Il ne franchit AUCUNE
+   * frontière publique : la projection le consomme pour nommer un champ
+   * retenu, et ne le rend jamais tel quel.
    */
   readonly evidenceLinked?: boolean;
   readonly provenanceKind?: SourceProvenanceKind;
+  readonly provenanceCause?: DerivedUnknownCause | null;
 }
 
 /** Le fondement probatoire d'un claim, ou son absence DÉCLARÉE. */
@@ -134,7 +151,14 @@ const iso = (d: Date | null | undefined): string | null =>
 /** Les formes de ligne lues en SQL brut. Colonnes énumérées, jamais `*`. */
 interface SourceRow {
   sourceId: string; sourceType: string; caption: string | null;
-  capturedAt: Date | null; sourceUrl: string | null; sha256: string | null; evidenceLinked: boolean;
+  capturedAt: Date | null; sourceUrl: string | null; sha256: string | null;
+  /**
+   * T1-BASCULE-DU-CONTRAT — le PONT vers l'observation gouvernée, lu pour
+   * résoudre la provenance au journal. INTERNE : il est consommé ici et ne
+   * figure dans aucune `PublicSource` — `INTERNAL_ONLY_FIELDS` le nomme, et un
+   * témoin de frontière le vérifie. Ce qui traverse est le booléen.
+   */
+  snapshotId: string | null;
 }
 interface ClaimRow {
   claimId: string; title: string; titleFr: string | null;
@@ -144,7 +168,16 @@ interface ClaimRow {
   evidenceRefs: unknown; rowNature: string | null; state: string; version: number;
 }
 
-function toPublicSource(r: SourceRow): PublicSource {
+/**
+ * Une pièce, décorée par la provenance QUE LE JOURNAL REND.
+ *
+ * T1-BASCULE-DU-CONTRAT — la qualification n'est plus lue dans un registre en
+ * code : elle arrive ici sous forme de résultat TYPÉ, et les deux champs du
+ * jugement sont posés d'un seul geste par `provenanceDecoration`. Une pièce
+ * dont le journal ne dit rien porte UNKNOWN **et sa cause** — l'éligibilité
+ * saura distinguer l'absence de couverture de l'anomalie de base.
+ */
+function toPublicSource(r: SourceRow, p: JournalProvenance): PublicSource {
   return {
     sourceId: r.sourceId,
     sourceType: r.sourceType,
@@ -152,11 +185,24 @@ function toPublicSource(r: SourceRow): PublicSource {
     capturedAt: iso(r.capturedAt),
     sourceUrl: r.sourceUrl,
     sha256: r.sha256,
-    evidenceLinked: r.evidenceLinked === true,
-    // La qualification des octets, lue d'UNE source. Absente = UNKNOWN.
-    provenanceKind: readProvenanceKind({ sourceId: r.sourceId, sha256: r.sha256 }),
+    // Le PONT ne traverse pas : ce qui sort est le fait qu'il existe.
+    evidenceLinked: typeof r.snapshotId === "string" && r.snapshotId !== "",
+    ...provenanceDecoration(p),
   };
 }
+
+/**
+ * `prisma` vu comme le `JournalSqlRunner` du lecteur de journal.
+ *
+ * `$queryRawUnsafe` et non le template tagué : la requête du journal est un
+ * LITTÉRAL du module `journalProvenance`, et ses valeurs passent en `$1`
+ * paramétré. Rien d'interpolé ne vient d'ici — l'adaptateur ne fabrique aucun
+ * SQL, il transporte celui qu'on lui donne.
+ */
+const runnerPrisma: JournalSqlRunner = {
+  query: <T extends Record<string, unknown>>(sql: string, params: readonly unknown[] = []) =>
+    prisma.$queryRawUnsafe<T[]>(sql, ...params),
+};
 
 /**
  * Résout les références d'un claim contre le registre du dossier.
@@ -229,8 +275,7 @@ export async function loadCanonicalCaseFile(
   // ÉNUMÉRÉES, jamais `SELECT *` : ce qui n'est pas lu ne peut pas fuir.
   const [sourceRows, claimRows] = await Promise.all([
     prisma.$queryRaw<SourceRow[]>`
-      SELECT "sourceId", "sourceType", caption, "capturedAt", "sourceUrl", sha256,
-             ("snapshotId" IS NOT NULL) AS "evidenceLinked"
+      SELECT "sourceId", "sourceType", caption, "capturedAt", "sourceUrl", sha256, "snapshotId"
         FROM "CaseFileSource" WHERE "casefileRef" = ${ref} ORDER BY "sourceId" ASC`,
     prisma.$queryRaw<ClaimRow[]>`
       SELECT "claimId", title, "titleFr", description, "descriptionFr", category,
@@ -239,7 +284,18 @@ export async function loadCanonicalCaseFile(
         FROM "CaseFileClaim" WHERE "casefileRef" = ${ref} ORDER BY "claimId" ASC`,
   ]);
 
-  const sources = sourceRows.map(toPublicSource);
+  // ── T1-BASCULE-DU-CONTRAT — LA PROVENANCE, RÉSOLUE AU JOURNAL ──────────
+  //
+  // Une seule requête pour tout le registre (`DISTINCT ON` sur l'index du
+  // journal). Les pièces sans pont n'y entrent même pas : leur UNKNOWN est
+  // dérivé du `null`, pas d'un silence de la base — et le lecteur rend une
+  // entrée par `sourceId` reçu, donc la carte est totale.
+  const provenances = await readJournalProvenance(
+    runnerPrisma,
+    sourceRows.map((r) => ({ sourceId: r.sourceId, snapshotId: r.snapshotId })),
+  );
+  const sansProvenance: JournalProvenance = { kind: "UNKNOWN", derived: true, cause: "NO_SNAPSHOT_LINK", journalId: null };
+  const sources = sourceRows.map((r) => toPublicSource(r, provenances.get(r.sourceId) ?? sansProvenance));
   const registre = new Map(sources.map((s) => [s.sourceId, s]));
 
   // ── BUILD 9 / ÉTAPE 6 — une seule version par claim ────────────────────

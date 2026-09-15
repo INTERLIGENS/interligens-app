@@ -92,14 +92,16 @@ describe("ÉTAPE 5 — le gate refuse bruyamment", () => {
  * « TODAY_ISO ». C'est la troisième fois que je fais cette erreur dans ce
  * chantier ; l'utilitaire la ferme pour de bon.
  */
-const codeSeul = (chemin: string): string =>
-  readFileSync(chemin, "utf8")
+const codeSeulTexte = (texte: string): string =>
+  texte
     .split("\n")
     .filter((l) => {
       const t = l.trimStart();
       return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
     })
     .join("\n");
+
+const codeSeul = (chemin: string): string => codeSeulTexte(readFileSync(chemin, "utf8"));
 
 describe("ÉTAPE 5 — aucune donnée interne ne franchit la frontière", () => {
   it("les colonnes SÉLECTIONNÉES ne contiennent aucun champ interne", () => {
@@ -112,12 +114,37 @@ describe("ÉTAPE 5 — aucune donnée interne ne franchit la frontière", () => 
       for (const f of ["localFilePath", "sessionId", "notes"]) {
         expect(liste, f).not.toContain(f);
       }
-      // T1-REVOKE-ELIGIBILITY : l'identifiant du snapshot ne traverse pas, mais
-      // le FAIT qu'il existe, oui — sous la seule forme d'un booléen nommé.
-      const restant = liste.replace('("snapshotId" IS NOT NULL) AS "evidenceLinked"', "");
-      expect(restant, "snapshotId").not.toContain("snapshotId");
     }
     expect(INTERNAL_ONLY_FIELDS).toContain("localFilePath");
+  });
+
+  // ─── T1-BASCULE-DU-CONTRAT — LE PONT EST LU, ET IL NE SORT PAS ────────
+  //
+  // Le témoin disait, avant la bascule : « "snapshotId" n'apparaît dans
+  // AUCUNE liste de colonnes ». C'était une bonne approximation TANT QUE le
+  // lecteur n'en avait pas besoin — il ne lisait que le booléen
+  // `("snapshotId" IS NOT NULL)`. La bascule le lui donne vraiment : le pont
+  // `snapshotId → EvidenceSnapshot.id → evidence_provenance_journal` est LE
+  // chemin de résolution, et il n'y a pas d'autre clef.
+  //
+  // La propriété n'a pas changé pour autant — seul son LIEU a changé. Ce qui
+  // compte n'a jamais été que la colonne ne soit pas LUE : c'est qu'elle ne
+  // soit pas RENDUE. Le témoin le vérifie donc là où la frontière est
+  // réellement franchie — la valeur de retour.
+  it("le pont `snapshotId` est LU (la provenance en dépend) et n'est RENDU nulle part", () => {
+    const code = codeSeul("src/lib/casefile/canonicalReader.ts");
+    // Il est bien lu : sans lui, il n'y a aucun chemin vers le journal.
+    expect(code).toMatch(/SELECT[\s\S]*?"snapshotId"[\s\S]*?FROM "CaseFileSource"/);
+    // Et il ne ressort pas : la pièce publique porte le BOOLÉEN, jamais la clef.
+    const corps = code.slice(code.indexOf("function toPublicSource"));
+    const rendu = corps.slice(0, corps.indexOf("}\n"));
+    expect(rendu, "toPublicSource ne pose aucune clef snapshotId").not.toMatch(/(^|[^."\w])snapshotId\s*[,:]/m);
+    expect(rendu).toContain("evidenceLinked:");
+    // Le type public ne le déclare pas, et la liste des champs internes le nomme.
+    const reader = readFileSync("src/lib/casefile/canonicalReader.ts", "utf8");
+    const iface = reader.slice(reader.indexOf("export interface PublicSource"), reader.indexOf("export interface ClaimProvenance"));
+    expect(codeSeulTexte(iface)).not.toContain("snapshotId");
+    expect(INTERNAL_ONLY_FIELDS).toContain("snapshotId");
   });
 
   it("aucun SELECT * — ce qui n'est pas lu ne peut pas fuir", () => {

@@ -152,8 +152,25 @@ export const SOURCE_ELIGIBILITY_CAUSES = [
   "SOURCE_CAPTURE_MISSING",
   /** `evidenceLinked` faux ou absent : la pièce ne pointe vers aucun EvidenceSnapshot (l'identifiant lui-même ne traverse pas la frontière publique). */
   "SOURCE_EVIDENCE_UNLINKED",
-  /** `provenanceKind` UNKNOWN (absence de qualification, valeur par défaut) ou HORS du vocabulaire fermé. */
+  /**
+   * `provenanceKind` UNKNOWN parce qu'AUCUNE qualification gouvernée n'existe —
+   * la pièce n'a pas de pont vers une observation (`NO_SNAPSHOT_LINK`), ou le
+   * journal ne porte aucune ligne pour elle (`NO_JOURNAL_ENTRY`) — ou valeur
+   * HORS du vocabulaire fermé. C'est une ABSENCE de couverture.
+   */
   "SOURCE_PROVENANCE_UNQUALIFIED",
+  /**
+   * T1-BASCULE-DU-CONTRAT — `provenanceKind` UNKNOWN parce qu'une ligne du
+   * journal EXISTE et n'est pas exploitable (`ROW_OUT_OF_DOMAIN`).
+   *
+   * DISTINCTE de l'absence, et ce n'est pas un raffinement cosmétique : une
+   * absence est un trou de couverture qu'on comble en qualifiant la pièce ; une
+   * ligne hors domaine est une ANOMALIE DE LA BASE — un 'UNKNOWN' stocké, une
+   * casse approchante, un `id` non ordonnable — qu'aucune qualification
+   * supplémentaire ne réparera. Les confondre ferait chercher au mauvais
+   * endroit. Fail closed dans les deux cas, diagnostic distinct.
+   */
+  "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN",
   /** PUBLICATION seulement : la qualification n'est pas VERIFIED. */
   "SOURCE_PROVENANCE_NOT_VERIFIED",
 ] as const;
@@ -185,6 +202,27 @@ export type FoundationEligibility =
 export type PublicationEligibility =
   | { readonly eligible: true; readonly source: PublicationEligibleSource }
   | { readonly eligible: false; readonly refusal: SourceEligibilityRefusal };
+
+/**
+ * La décoration de provenance telle qu'une charge d'entrée la PORTE.
+ *
+ * T1-BASCULE-DU-CONTRAT — le décideur ne RÉSOUT pas la provenance : il est
+ * pur, sans base, et il reçoit. Ce qu'il doit garantir, c'est que les deux
+ * champs voyagent ENSEMBLE — relayer la qualification en laissant tomber sa
+ * cause reviendrait à écraser ROW_OUT_OF_DOMAIN en simple absence entre
+ * l'exécuteur et l'éligibilité, c'est-à-dire exactement le chemin que le
+ * ruling refuse. Une seule fonction les relaie, et les deux appels (pièce
+ * dérivée, pièce existante) passent par elle.
+ *
+ * Aucun défaut n'est FABRIQUÉ ici : absent reste absent, et l'éligibilité le
+ * lira comme UNKNOWN sans cause — le refus le plus général.
+ */
+const decorationRecue = (
+  v: { readonly provenanceKind?: unknown; readonly provenanceCause?: unknown },
+): Partial<Pick<PublicSource, "provenanceKind" | "provenanceCause">> => ({
+  ...(v.provenanceKind === undefined ? {} : { provenanceKind: v.provenanceKind as SourceProvenanceKind }),
+  ...(v.provenanceCause === undefined ? {} : { provenanceCause: v.provenanceCause as PublicSource["provenanceCause"] }),
+});
 
 const estCleAcceptable = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && v.trim() === v;
@@ -218,7 +256,23 @@ export function isFoundationEligibleSource(s: PublicSource): FoundationEligibili
   if (s.evidenceLinked !== true) return refuse("SOURCE_EVIDENCE_UNLINKED", "evidenceLinked");
   const kind: unknown = s.provenanceKind === undefined ? "UNKNOWN" : s.provenanceKind;
   if (!isSourceProvenanceKind(kind) || !FOUNDATION_TOLERATED_PROVENANCE.includes(kind)) {
-    return refuse("SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind");
+    // T1-BASCULE-DU-CONTRAT — la cause de l'UNKNOWN REMONTE telle quelle, elle
+    // n'est pas devinée ici. `provenanceCause` vient de `provenanceDecoration`
+    // (journalProvenance.ts), qui la tient du resolver : la table est imposée,
+    //
+    //   NO_SNAPSHOT_LINK   → UNQUALIFIED          (absence de couverture)
+    //   NO_JOURNAL_ENTRY   → UNQUALIFIED          (absence de couverture)
+    //   ROW_OUT_OF_DOMAIN  → ROW_OUT_OF_DOMAIN    (anomalie de la base)
+    //
+    // Une pièce non décorée (fixture, valeur hors vocabulaire) n'a pas de
+    // cause : elle tombe sous UNQUALIFIED, qui est le refus le plus général —
+    // jamais sous ROW_OUT_OF_DOMAIN, qui AFFIRME l'existence d'une ligne.
+    return refuse(
+      s.provenanceCause === "ROW_OUT_OF_DOMAIN"
+        ? "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN"
+        : "SOURCE_PROVENANCE_UNQUALIFIED",
+      "provenanceKind",
+    );
   }
   const source = Object.freeze({ ...s, provenanceKind: kind }) as unknown as FoundationEligibleSource;
   return { eligible: true, source };
@@ -249,8 +303,23 @@ export const CLAIM_CONTRACT_CAUSES = [
   "EVIDENCE_REFS_EMPTY",
   /** Une référence citée que le registre fourni ne connaît pas. */
   "EVIDENCE_REF_UNRESOLVED",
-  /** La pièce résolue manque d'un champ du fondement. `at` = `ref.champ`. */
+  /**
+   * La pièce résolue manque d'un CHAMP du fondement — identité, empreinte,
+   * origine, horodatage, lien vers le snapshot. `at` = `ref.champ`.
+   *
+   * T1-BASCULE-DU-CONTRAT — cette cause ne recouvre PLUS les défauts de
+   * provenance. Elle avait fini par tout absorber sauf NOT_VERIFIED ; GPT l'a
+   * refusé le 2026-09-15 : « Je ne valide pas le repli actuel en
+   * SOURCE_PROVENANCE_INCOMPLETE s'il efface cette distinction au niveau du
+   * refus gouverné. La cause dérivée doit rester précise jusqu'au refus. »
+   * INCOMPLETE dit désormais ce que son nom dit, et rien de plus : un champ
+   * manque.
+   */
   "SOURCE_PROVENANCE_INCOMPLETE",
+  /** La provenance n'est pas qualifiée : aucune ligne gouvernée ne la couvre. `at` = `ref.provenanceKind`. */
+  "SOURCE_PROVENANCE_UNQUALIFIED",
+  /** Une ligne du journal existe et est hors domaine. `at` = `ref.provenanceKind`. */
+  "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN",
 ] as const;
 /** Le contrat du FONDEMENT : les causes de forme, et rien de plus. */
 export const FOUNDATION_CONTRACT_CAUSES = CLAIM_CONTRACT_CAUSES;
@@ -291,9 +360,40 @@ type ClaimContractVerdict<C extends string, S extends PublicSource> =
 export type FoundationContractVerdict = ClaimContractVerdict<FoundationContractCause, FoundationEligibleSource>;
 export type PublicationContractVerdict = ClaimContractVerdict<PublicationContractCause, PublicationEligibleSource>;
 
-/** La cause de CONTRAT que porte un refus d'éligibilité. Une seule est propre à la publication. */
-const causeDeContrat = (r: SourceEligibilityRefusal): PublicationContractCause =>
-  r.cause === "SOURCE_PROVENANCE_NOT_VERIFIED" ? "SOURCE_PROVENANCE_NOT_VERIFIED" : "SOURCE_PROVENANCE_INCOMPLETE";
+/**
+ * La cause de CONTRAT que porte un refus d'éligibilité.
+ *
+ * T1-BASCULE-DU-CONTRAT — un SWITCH EXHAUSTIF, et non plus un ternaire à
+ * repli. L'ancienne forme repliait TOUTE cause sauf NOT_VERIFIED sur
+ * SOURCE_PROVENANCE_INCOMPLETE : au niveau du refus gouverné, « aucune
+ * qualification n'existe » devenait indiscernable de « il manque un champ ».
+ * GPT a refusé ce repli le 2026-09-15 — « la cause dérivée doit rester précise
+ * jusqu'au refus ».
+ *
+ * Les trois causes de provenance traversent donc intactes, et les cinq causes
+ * de CHAMP se regroupent sous INCOMPLETE — ce qui est leur sens littéral :
+ * `at` nomme déjà le champ manquant, la cause n'a pas à le répéter.
+ *
+ * Le switch est exhaustif SANS `default` : ajouter une cause d'éligibilité
+ * sans décider de son refus ne compilera pas. C'est la garde qui empêche le
+ * repli de revenir par distraction.
+ */
+const causeDeContrat = (r: SourceEligibilityRefusal): PublicationContractCause => {
+  switch (r.cause) {
+    case "SOURCE_PROVENANCE_NOT_VERIFIED":
+      return "SOURCE_PROVENANCE_NOT_VERIFIED";
+    case "SOURCE_PROVENANCE_UNQUALIFIED":
+      return "SOURCE_PROVENANCE_UNQUALIFIED";
+    case "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN":
+      return "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN";
+    case "SOURCE_IDENTITY_UNSTABLE":
+    case "SOURCE_DIGEST_MISSING":
+    case "SOURCE_ORIGIN_MISSING":
+    case "SOURCE_CAPTURE_MISSING":
+    case "SOURCE_EVIDENCE_UNLINKED":
+      return "SOURCE_PROVENANCE_INCOMPLETE";
+  }
+};
 
 /**
  * L'OSSATURE du contrat. Pure. Non exportée : on ne la consomme qu'à travers
@@ -392,8 +492,16 @@ export interface SnapshotRowInput {
   readonly sha256: string | null;
   readonly sourceUrl: string | null;
   readonly observedAt: Date | string | null;
-  /** La qualification de provenance des OCTETS, lue par `readProvenanceKind`. Absente = UNKNOWN. */
+  /**
+   * La décoration de provenance du SNAPSHOT, telle que l'exécuteur l'a
+   * résolue au journal (`provenanceDecoration`). Absente = UNKNOWN.
+   *
+   * `unknown` et non le type fermé : cette charge vient d'un appelant, et le
+   * décideur ne fait confiance à aucune forme qu'il n'a pas vérifiée lui-même.
+   */
   readonly provenanceKind?: unknown;
+  /** POURQUOI la qualification est UNKNOWN. Voyage AVEC `provenanceKind`, jamais seule. */
+  readonly provenanceCause?: unknown;
 }
 
 /**
@@ -421,8 +529,10 @@ export interface ExistingSourceInput {
   readonly sourceUrl: string | null;
   readonly sha256: string | null;
   readonly snapshotId?: string | null;
-  /** Lue par `readProvenanceKind` dans l'exécuteur. Absente = UNKNOWN. */
+  /** Résolue au journal par l'exécuteur (`provenanceDecoration`). Absente = UNKNOWN. */
   readonly provenanceKind?: unknown;
+  /** POURQUOI la qualification est UNKNOWN. Voyage AVEC `provenanceKind`, jamais seule. */
+  readonly provenanceCause?: unknown;
 }
 
 export type SourceInput = SourceFromSnapshotInput | ExistingSourceInput;
@@ -663,7 +773,7 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
         sourceId: ligne.sourceId, sourceType: ligne.sourceType, caption: ligne.caption,
         capturedAt: ligne.capturedAt, sourceUrl: ligne.sourceUrl, sha256: ligne.sha256,
         evidenceLinked: true,
-        ...(snap.provenanceKind === undefined ? {} : { provenanceKind: snap.provenanceKind as SourceProvenanceKind }),
+        ...decorationRecue(snap),
       });
     } else if (src.kind === "EXISTING") {
       if (src.casefileRef !== dossier.ref) return refuse("DOSSIER_MIX", `${where}.casefileRef`);
@@ -675,7 +785,7 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
         sourceId: src.sourceId, sourceType: src.sourceType, caption: src.caption ?? null,
         capturedAt: src.capturedAt ?? null, sourceUrl: src.sourceUrl ?? null, sha256: src.sha256 ?? null,
         evidenceLinked: estCleAcceptable(src.snapshotId),
-        ...(src.provenanceKind === undefined ? {} : { provenanceKind: src.provenanceKind as SourceProvenanceKind }),
+        ...decorationRecue(src),
       });
     } else {
       return refuse("MALFORMED_INPUT", `${where}.kind`);
@@ -982,6 +1092,27 @@ export function decidePublicRelease(
 // exige que la cause relue soit celle demandée. Pas de `basis` libre :
 // décision GPT 2, NO-GO — « l'endroit où serait écrite la véritable décision
 // pendant que le reason code devient décoratif ».
+
+// ─── DEUX VOCABULAIRES, ET ILS NE COMMUNIQUENT PAS ────────────────────────
+//
+// T1-BASCULE-DU-CONTRAT — la bascule rend les causes de contrat PRÉCISES
+// (UNQUALIFIED, ROW_OUT_OF_DOMAIN, NOT_VERIFIED, INCOMPLETE). Il aurait été
+// tentant de les faire descendre dans la colonne `cause` de la table de
+// décisions, pour « ne rien perdre ». GPT l'a explicitement refusé le
+// 2026-09-15 : « aucun nouveau DDL sur
+// casefile_claim_publication_decisions.cause maintenant. […] Ne transformez
+// pas la table de décisions en journal diagnostique. »
+//
+//   SOURCE_PROVENANCE_UNQUALIFIED / ROW_OUT_OF_DOMAIN / NOT_VERIFIED
+//                                    = DIAGNOSTIC DU CONTRAT. Rendu dans le
+//                                      refus, jamais persisté.
+//   INSUFFICIENT_SOURCE_PROVENANCE   = MOTIF DE LA DÉCISION HUMAINE. Persisté,
+//                                      fermé par CHECK en base, inchangé.
+//
+// Les deux répondent à des questions différentes : le contrat dit POURQUOI la
+// machine a refusé maintenant ; la décision dit AU NOM DE QUOI un opérateur a
+// révoqué. Un opérateur ne révoque pas « pour cause de NO_JOURNAL_ENTRY ».
+// Un témoin interdit qu'une cause de contrat atteigne la colonne.
 
 export const REVOCATION_CAUSES = [
   /** La provenance d'une pièce citée ne suffit pas à la publication (ruling du 2026-09-14). */

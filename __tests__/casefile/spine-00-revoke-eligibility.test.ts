@@ -21,7 +21,7 @@
 //   g) isPubliableSource n'a plus d'appelant — ni de définition
 //   h) executeRelease reste le SEUL écrivain de PUBLIC ; executeRevoke le SEUL de ATTACHED
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -51,24 +51,26 @@ import {
   type SqlRunner,
   type SqlTransactor,
 } from "@/lib/casefile/governedExecutor";
-import { readProvenanceKind, SOURCE_PROVENANCE_KINDS } from "@/lib/casefile/provenanceKind";
+import { SOURCE_PROVENANCE_KINDS } from "@/lib/casefile/provenanceKind";
+import { provenanceDecoration, resolveJournalProvenance } from "@/lib/casefile/journalProvenance";
 import { projectForPublication, VINE_CASEFILE_REF, VINE_MINT } from "@/lib/casefile/publicProjection";
 import { canonicalSealMaterial, claimContentHash } from "@/lib/casefile/versioning";
 import type { CanonicalCaseFile, PublicSource } from "@/lib/casefile/canonicalReader";
 import { codeSeul } from "./codeSeul";
 
-// Les sha256 de la répétition : « a »×64 est VERIFIED, « b »×64 OPERATOR_DECLARED ;
-// tout le reste garde la lecture RÉELLE (UNKNOWN par défaut).
+// T1-BASCULE-DU-CONTRAT — il n'y a PLUS RIEN À SIMULER ICI.
+//
+// Ce fichier mockait `provenanceKind.readProvenanceKind` pour donner à « a »×64
+// la valeur VERIFIED et à « b »×64 OPERATOR_DECLARED. Le registre en dur a
+// disparu avec la bascule : la qualification vient du journal, et ces
+// prédicats-ci sont PURS — ils reçoivent une pièce déjà décorée. Le mock
+// n'avait donc plus d'objet, et le supprimer est la moitié du travail : un
+// test qui simule une autorité supprimée continuerait de la faire vivre.
+//
+// Les deux sha256 restent, comme empreintes DISTINCTES et rien d'autre : elles
+// ne décident plus de rien. La qualification est passée EXPLICITEMENT.
 const SHA_V = "a".repeat(64);
 const SHA_OD = "b".repeat(64);
-vi.mock("@/lib/casefile/provenanceKind", async (importOriginal) => {
-  const reel = await importOriginal<typeof import("@/lib/casefile/provenanceKind")>();
-  return {
-    ...reel,
-    readProvenanceKind: (ref: { sourceId: string; sha256: string | null }) =>
-      ref?.sha256 === "a".repeat(64) ? "VERIFIED" : ref?.sha256 === "b".repeat(64) ? "OPERATOR_DECLARED" : reel.readProvenanceKind(ref),
-  };
-});
 
 // ═══ FIXTURES ═══════════════════════════════════════════════════════════════
 
@@ -100,12 +102,18 @@ const intention = (f: Foundation) => ({ casefileRef: f.casefileRef, claimId: "C1
 const grant = (f: Foundation) => attestPersistedDecision({ id: ID, casefileRef: f.casefileRef, claimId: "C1", claimVersion: 1, audience: "PUBLIC", decision: "GRANT", decidedBy: "david", decidedAt: "2026-09-14T12:00:00Z", cause: null });
 const registreDe = (f: Foundation) => new Map<string, PublicSource>(f.citedSources.map((s) => [s.sourceId, s]));
 
-/** Le dossier tel que le LECTEUR le rendrait : la pièce décorée par readProvenanceKind. */
+/**
+ * Le dossier tel que le LECTEUR le rendrait : la pièce porte la qualification
+ * que le FONDEMENT a retenue pour elle (`f.citedSources`), c'est-à-dire ce que
+ * le journal a rendu à la décision. Plus aucune relecture parallèle ici — ce
+ * serait reconstruire, du côté du test, la seconde autorité qu'on vient de
+ * supprimer du code.
+ */
 const dossierLu = (f: Foundation, state: "ATTACHED" | "PUBLIC"): CanonicalCaseFile => {
   const sources: PublicSource[] = f.sourcesToInsert.map((s) => ({
     sourceId: s.sourceId, sourceType: s.sourceType, caption: s.caption, capturedAt: s.capturedAt.slice(0, 10),
     sourceUrl: s.sourceUrl, sha256: s.sha256, evidenceLinked: true,
-    provenanceKind: readProvenanceKind({ sourceId: s.sourceId, sha256: s.sha256 }),
+    provenanceKind: f.citedSources.find((c) => c.sourceId === s.sourceId)?.provenanceKind,
   }));
   const c = f.claimToInsert;
   return {
@@ -133,6 +141,12 @@ describe("T1 · les deux prédicats — chaque cause, un cas nommé", () => {
     // (c) — décision GPT 3 : UNKNOWN est une ABSENCE de qualification, pas une qualification incomplète.
     ["provenanceKind UNKNOWN (explicite)", piece({ provenanceKind: "UNKNOWN" }), "SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind"],
     ["provenanceKind absent (= UNKNOWN)", piece({ provenanceKind: undefined }), "SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind"],
+    // T1-BASCULE-DU-CONTRAT — la QUATRIÈME cause de provenance : une ligne du
+    // journal existe et n'est pas exploitable. Fail closed comme l'absence, et
+    // nommée AUTREMENT qu'elle — on ne répare pas une anomalie de base en
+    // qualifiant une pièce de plus.
+    ["ligne de journal hors domaine (cause remontée du resolver)", piece({ provenanceKind: "UNKNOWN", provenanceCause: "ROW_OUT_OF_DOMAIN" }), "SOURCE_PROVENANCE_ROW_OUT_OF_DOMAIN", "provenanceKind"],
+    ["une cause d'absence ne se fait PAS passer pour une anomalie", piece({ provenanceKind: "UNKNOWN", provenanceCause: "NO_SNAPSHOT_LINK" }), "SOURCE_PROVENANCE_UNQUALIFIED", "provenanceKind"],
   ];
   for (const [nom, s, cause, field] of CAS) {
     it(`${nom} → refusé au FONDEMENT et à la PUBLICATION : ${cause} @ ${field}`, () => {
@@ -208,17 +222,23 @@ describe("T1 · fondement ≠ publication, sur les trois consommateurs", () => {
     expect(p.withheld).toEqual([{ excluded: true, reason: "INSUFFICIENT_PROVENANCE", field: "provenanceKind", count: 1 }]);
   });
 
-  it("(c) UNKNOWN (qualification absente, sha inconnu du registre) → NI fondable NI publiable : SOURCE_PROVENANCE_UNQUALIFIED nommée", () => {
-    // 1 · fondement : refus NOMMÉ, à l'emplacement de la pièce (cause de contrat INCOMPLETE, champ provenanceKind)
+  it("(c) UNKNOWN (qualification absente) → NI fondable NI publiable : SOURCE_PROVENANCE_UNQUALIFIED nommée JUSQU'AU REFUS", () => {
+    // T1-BASCULE-DU-CONTRAT — ces trois attentes disaient INCOMPLETE avant la
+    // bascule, parce que `causeDeContrat` repliait toute cause d'éligibilité
+    // sauf NOT_VERIFIED. GPT a refusé ce repli le 2026-09-15 : « la cause
+    // dérivée doit rester précise jusqu'au refus ». La cause d'éligibilité
+    // (UNQUALIFIED) TRAVERSE désormais le contrat sans être écrasée.
+    //
+    // 1 · fondement : refus NOMMÉ, à l'emplacement de la pièce
     const d = decideFoundation(requete(undefined, "c".repeat(64)));
-    expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_INCOMPLETE", at: "SRC-001.provenanceKind" } });
-    // 2 · le prédicat lui-même, par sa cause propre — sur ce que readProvenanceKind rend RÉELLEMENT pour un sha inconnu
-    expect(isFoundationEligibleSource(piece({ sha256: "c".repeat(64), provenanceKind: readProvenanceKind({ sourceId: "SRC-001", sha256: "c".repeat(64) }) })))
+    expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", at: "SRC-001.provenanceKind" } });
+    // 2 · le prédicat lui-même, par sa cause propre — qualification absente
+    expect(isFoundationEligibleSource(piece({ sha256: "c".repeat(64), provenanceKind: undefined })))
       .toEqual({ eligible: false, refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", field: "provenanceKind" } });
     // 3 · libération d'une ligne fondée AVANT le resserrement, pièce relue UNKNOWN : refusée par la MÊME cause, pas NOT_VERIFIED
     const f = fonder("VERIFIED");
     const registre = new Map<string, PublicSource>([["SRC-001", { ...f.citedSources[0], provenanceKind: "UNKNOWN" }]]);
-    expect(decidePublicRelease(intention(f), ligne(f), registre, grant(f), ID)).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_INCOMPLETE", at: "SRC-001.provenanceKind" } });
+    expect(decidePublicRelease(intention(f), ligne(f), registre, grant(f), ID)).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", at: "SRC-001.provenanceKind" } });
     // 4 · projection : retenue, champ provenanceKind
     const dossier = dossierLu(f, "PUBLIC");
     const p = projectForPublication({ ...dossier, sources: dossier.sources.map((s) => ({ ...s, provenanceKind: "UNKNOWN" as const })) }, "test");
@@ -228,7 +248,7 @@ describe("T1 · fondement ≠ publication, sur les trois consommateurs", () => {
 
   it("(c') une qualification HORS vocabulaire n'est pas UNKNOWN : elle refuse le fondement lui-même", () => {
     const d = decideFoundation(requete("Verified"));
-    expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_INCOMPLETE", at: "SRC-001.provenanceKind" } });
+    expect(d).toEqual({ decision: "REFUSED", refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", at: "SRC-001.provenanceKind" } });
   });
 
   it("(d) VERIFIED → fondé ET libérable ET projeté", () => {
@@ -239,11 +259,21 @@ describe("T1 · fondement ≠ publication, sur les trois consommateurs", () => {
     expect(p.withheld).toEqual([]);
   });
 
-  it("readProvenanceKind rend UNKNOWN pour tout ce qui n'est pas qualifié : sha absent, mal formé, inconnu, forme inattendue", () => {
-    expect(readProvenanceKind({ sourceId: "x", sha256: null })).toBe("UNKNOWN");
-    expect(readProvenanceKind({ sourceId: "x", sha256: "pas-un-sha" })).toBe("UNKNOWN");
-    expect(readProvenanceKind({ sourceId: "x", sha256: "f".repeat(64) })).toBe("UNKNOWN");
-    expect(readProvenanceKind(null as never)).toBe("UNKNOWN");
+  it("la DÉCORATION rend UNKNOWN + sa CAUSE pour tout ce que le journal ne couvre pas — et la cause est ce qui a remplacé le registre", () => {
+    // Le successeur littéral du test supprimé : là où `readProvenanceKind`
+    // rendait UNKNOWN nu (et laissait deviner pourquoi), la résolution rend
+    // UNKNOWN **et sa cause**, et c'est elle qui atteint le refus.
+    const dec = (snapshotId: string | null, rows: Parameters<typeof resolveJournalProvenance>[1] = []) =>
+      provenanceDecoration(resolveJournalProvenance({ sourceId: "SRC-001", snapshotId }, rows));
+    expect(dec(null)).toEqual({ provenanceKind: "UNKNOWN", provenanceCause: "NO_SNAPSHOT_LINK" });
+    expect(dec("")).toEqual({ provenanceKind: "UNKNOWN", provenanceCause: "NO_SNAPSHOT_LINK" });
+    expect(dec("snap-1")).toEqual({ provenanceKind: "UNKNOWN", provenanceCause: "NO_JOURNAL_ENTRY" });
+    // Et ces deux causes-là sont des ABSENCES : elles refusent sous UNQUALIFIED.
+    for (const d of [dec(null), dec("snap-1")]) {
+      expect(isFoundationEligibleSource(piece({ ...d }))).toEqual({
+        eligible: false, refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", field: "provenanceKind" },
+      });
+    }
   });
 });
 
@@ -511,16 +541,24 @@ describe("T1 · la structure tient la règle", () => {
     expect(corpsW("decideRevoke")).not.toMatch(/Contract\(/);
   });
 
-  it("readProvenanceKind est LA lecture : définie une fois, le registre temporaire n'est pas exporté, et ses appelants sont le lecteur et l'exécuteur", () => {
+  it("T1-BASCULE — `provenanceKind.ts` n'est plus QU'UN VOCABULAIRE : plus de registre, plus de lecture, aucun appelant nulle part", () => {
     const lecture = codeSeul(readFileSync("src/lib/casefile/provenanceKind.ts", "utf8"));
-    expect(lecture.match(/export function readProvenanceKind\(/g)?.length).toBe(1);
-    expect(lecture).not.toMatch(/export const QUALIFICATIONS_TEMPORAIRES/);
-    expect(lecture).not.toMatch(/kind:\s*"VERIFIED"/);
-    // Dans src/ : le lecteur et l'exécuteur. (scripts/ porte la répétition à blanc, qui LIT pour rapporter — pas une troisième source.)
-    const appelants = sources.filter(([f, c]) => f.startsWith("src/") && f !== "src/lib/casefile/provenanceKind.ts" && /readProvenanceKind\(/.test(c)).map(([f]) => f).sort();
-    expect(appelants).toEqual(["src/lib/casefile/canonicalReader.ts", "src/lib/casefile/governedExecutor.ts"]);
-    // Le décideur pur ne lit pas : il reçoit.
-    expect(writer).not.toContain("readProvenanceKind(");
+    // Le registre en dur et sa fonction ont disparu — pas été dépréciés.
+    expect(lecture).not.toMatch(/readProvenanceKind/);
+    expect(lecture).not.toMatch(/QUALIFICATIONS_TEMPORAIRES/);
+    expect(lecture).not.toMatch(/PAR_SHA256/);
+    // Aucune donnée : pas de Map, pas de tableau gelé, pas de sha256.
+    expect(lecture).not.toMatch(/new Map\(/);
+    expect(lecture).not.toMatch(/Object\.freeze\(/);
+    expect(lecture).not.toMatch(/[0-9a-f]{64}/);
+    // Ce qui reste : le vocabulaire fermé, et le prédicat qui le lit.
+    expect(lecture).toContain("export const SOURCE_PROVENANCE_KINDS");
+    expect(lecture).toContain("export function isSourceProvenanceKind");
+    // Et plus AUCUN appelant dans le corpus gouverné : ni src/, ni scripts/.
+    expect(sources.filter(([, c]) => /readProvenanceKind/.test(c)).map(([f]) => f)).toEqual([]);
+    // Le décideur pur ne lit toujours pas : il reçoit.
+    expect(writer).not.toContain("resolveJournalProvenance(");
+    expect(writer).not.toContain("readJournalProvenance(");
   });
 
   it("aucun UPDATE/DELETE/TRUNCATE sur la table de décisions nulle part dans src/ ni scripts/", () => {
