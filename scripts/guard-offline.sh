@@ -375,7 +375,16 @@ LEASES=(
     # `upload-set.test.ts` n'est PAS dans la lease : il est gelé par le même
     # commit et n'a aucune raison d'être touché. Une lease n'ouvre que ce dont
     # on démontre le besoin.
-    "T2-GEL-DU-FILTRE|cliquet-de-classement-de-l-oracle|__tests__/preflight/deploy-path.test.ts|fffb78c9d995f260f8ead8aa68008e2e6914638d|hotfix/preflight-oracle|2026-09-15T09:10:00Z|2026-09-15T09:55:00Z|OPEN"
+    # FERMÉE le 2026-09-15T09:20Z, le cliquet mergé (69579cb). Consommée à
+    # 09:14, dans sa fenêtre. Le sujet n'existe plus : la branche est supprimée.
+    #
+    # Deuxième lease du dépôt, même discipline que la première : fermée, pas
+    # laissée expirer. Une lease périmée cesse d'autoriser, mais un
+    # enregistrement OPEN qui traîne dans `main` RESSEMBLE à une exemption.
+    #
+    #   T2-GEL-DU-FILTRE | cliquet-de-classement-de-l-oracle
+    #   1 chemin · hotfix/preflight-oracle
+    #   2026-09-15T09:10:00Z → 09:55:00Z (45 mn) · consommée à 09:14
 )
 
 lease_rouge() {
