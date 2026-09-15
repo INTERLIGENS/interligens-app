@@ -200,11 +200,24 @@ describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture E
     // Le témoin runtime prouve que les verbes honorent leur argument ; celui-ci
     // prouve que l'argument vient bien de l'autorité, sur tous les sites.
     //
-    // CC-OFFLINE-188 : l'autorité du chemin gouverné est désormais
-    // `ouvrirCompartimentGouverne`, qui REFUSE au lieu de se rabattre.
+    // CC-OFFLINE-188 : l'autorité du chemin gouverné est `ouvrirCompartimentGouverne`,
+    // qui REFUSE au lieu de se rabattre.
+    //
+    // CC-OFFLINE-193 : il y a désormais DEUX portes, et elles ne servent pas la
+    // même question — mais il n'y en a toujours que deux, et rien d'autre.
+    //
+    //   ouvrirCompartimentGouverne()       « où NAÎT une pièce nouvelle »
+    //                                      la configuration nomme le compartiment canonique
+    //   ouvrirCompartimentDesigne(bucket)  « où VIVENT les octets de CETTE pièce »
+    //                                      le REGISTRE nomme ; la configuration ne fait que permettre
+    //
+    // Le chemin de LECTURE (storageResolution) passe par la seconde : c'est
+    // l'autorité qui choisit, pas l'environnement. Les sites d'ÉCRITURE passent
+    // par la première : à la naissance, aucune autorité n'existe encore.
+    const PORTES = ["ouvrirCompartimentGouverne", "ouvrirCompartimentDesigne"] as const;
     for (const site of SITES_GOUVERNES) {
       const code = sansCommentaires(lire(site));
-      expect(code, site).toContain("ouvrirCompartimentGouverne");
+      expect(PORTES.some((porte) => code.includes(porte)), `${site} n'ouvre par aucune porte gouvernée`).toBe(true);
       expect(code, site).not.toContain("evidenceR2ConfigFromEnv");
       // Le bucket adressé vient TOUJOURS d'un `.bucket` rendu par la porte —
       // jamais d'une chaîne littérale, jamais d'une autre variable. Le `string`
