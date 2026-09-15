@@ -242,13 +242,33 @@ async function main(): Promise<number> {
       )
     ).rows[0];
     check("10.c · 0 claim PUBLIC : chaque GRANT est suivi de son REVOKE", Number(publics.n) === 0, `GRANT non révoqués = ${publics.n}`);
-    const draft = (
-      await c.query(`SELECT ref, "publishStatus" FROM token_casefiles ORDER BY ref`)
-    ).rows as Array<{ ref: string; publishStatus: string }>;
+    // ⚠ MESURÉ, PAS PRÉSUMÉ. La consigne dit « token_casefiles.publishStatus
+    //   toujours draft ». C'est vrai des dossiers SOUS GOUVERNANCE — ceux qui
+    //   portent des claims et des sources : VINE et BOTIFY. Ça ne l'est PAS de
+    //   la table entière : `IL-PND-LAB-001` (LAB) était `published` AVANT cette
+    //   fenêtre, et ne porte NI claim NI source — il est hors du registre
+    //   gouverné. On énonce donc ce qu'on mesure : les dossiers porteurs sont
+    //   draft, et le décompte des non-draft est IDENTIQUE à l'avant (10.b).
+    const dossiers = (
+      await c.query(`SELECT t.ref, t."publishStatus",
+                            (SELECT count(*)::int FROM "CaseFileClaim"  c WHERE c."casefileRef" = t.ref) AS claims,
+                            (SELECT count(*)::int FROM "CaseFileSource" s WHERE s."casefileRef" = t.ref) AS sources
+                       FROM token_casefiles t ORDER BY t.ref`)
+    ).rows as Array<{ ref: string; publishStatus: string; claims: number; sources: number }>;
+    const porteurs = dossiers.filter((d) => Number(d.claims) > 0 || Number(d.sources) > 0);
     check(
-      "10.d · token_casefiles.publishStatus toujours draft",
-      draft.every((d) => d.publishStatus === "draft"),
-      draft.map((d) => `${d.ref}=${d.publishStatus}`).join(" · "),
+      "10.d · les dossiers PORTEURS de claims/sources (VINE, BOTIFY) sont toujours draft",
+      porteurs.length === 2 &&
+        porteurs.every((d) => d.publishStatus === "draft") &&
+        porteurs.map((d) => d.ref).sort().join(",") === "IL-SHILL-BOTIFY-001,IL-SHILL-VINE-001",
+      dossiers.map((d) => `${d.ref}=${d.publishStatus} (${d.claims} claims, ${d.sources} sources)`).join("\n        "),
+    );
+    check(
+      "10.e · le seul dossier non-draft est LAB, hors registre gouverné, et il l'était DÉJÀ avant la fenêtre",
+      dossiers.filter((d) => d.publishStatus !== "draft").every((d) => d.ref === "IL-PND-LAB-001" && Number(d.claims) === 0 && Number(d.sources) === 0) &&
+        Number(apresEtat.casefiles_non_draft) === Number(reçu.etatAvant.casefiles_non_draft),
+      `non-draft = ${dossiers.filter((d) => d.publishStatus !== "draft").map((d) => d.ref).join(", ") || "aucun"} · ` +
+        `avant ${reçu.etatAvant.casefiles_non_draft} / après ${apresEtat.casefiles_non_draft}`,
     );
   } finally {
     await client.end();
