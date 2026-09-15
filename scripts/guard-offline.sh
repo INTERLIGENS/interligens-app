@@ -117,6 +117,62 @@ FORBIDDEN_PATTERNS=(
     "^scripts/preflight-deploy\.mjs$"            # les quatre portes et le marqueur
     "^scripts/deploy-production\.mjs$"           # LE chemin : preflight → vercel épinglé → deploy
 
+    # ── LE FILTRE, ET L'ORACLE — les deux moitiés qui manquaient ────────────
+    #
+    #   A filter that defines the deployment comparison universe is part of
+    #   the deployment authority and must be governed with the guard it
+    #   configures.
+    #
+    # 1. LE FILTRE. Le prédicat du §3 est une ÉGALITÉ :
+    #
+    #        manifeste d'upload − GENERATED_ALLOWED  ==  HEAD filtré
+    #
+    #    « filtré » par QUOI ? Par `.vercelignore`, et par lui seul — mesuré
+    #    dans `getVercelIgnore2` : `.gitignore` figure dans la liste codée en
+    #    dur du CLI, donc EXCLU DU TÉLÉVERSEMENT, jamais lu comme règle.
+    #
+    #    Le même filtre s'applique aux DEUX TERMES de l'égalité. Y ajouter une
+    #    ligne retire donc le fichier du manifeste ET du HEAD filtré : les deux
+    #    côtés bougent ensemble, l'égalité tient, LE PREFLIGHT RESTE VERT — et
+    #    le fichier cesse silencieusement de partir en production. Le contrôle
+    #    ne peut pas voir ça : il compare deux ensembles que le filtre définit.
+    #
+    #    Qui contrôle le filtre contrôle ce qui « doit » être déployé. C'est une
+    #    partie de l'AUTORITÉ du preflight, pas un réglage à côté de lui.
+    #
+    #    ⚠️ `^\.vercel/` ne le couvrait PAS : ce motif exige un slash, et
+    #    `.vercelignore` n'en a pas à cet endroit. Mesuré motif par motif sur
+    #    l'ensemble de FORBIDDEN_PATTERNS : aucun ne matchait.
+    #
+    #    `.nowignore` est gelé avec lui, et ce n'est pas du zèle : le CLI lit
+    #    LES DEUX (`buildIgnore`), et `.nowignore` seul EST le filtre. La forme
+    #    est gouvernée, pas l'instance trouvée — c'est la même doctrine que
+    #    `.env*` dans le vocabulaire des secrets.
+    #
+    # 2. L'ORACLE. Geler le mécanisme en laissant ses tests libres, c'est geler
+    #    le garde et laisser affaiblir ce qui dit s'il est correct. Le cliquet
+    #    de cardinalité de `GENERATED_ALLOWED` en fait partie PAR CONSTRUCTION :
+    #    la soupape ne peut s'élargir qu'au prix de DEUX modifications, dans
+    #    DEUX fichiers — et la seconde est ce test. Non gelé, il suffisait
+    #    d'élargir le test dans une PR ordinaire, puis la soupape dans une PR
+    #    de maintenance qui n'aurait plus rien eu à justifier.
+    #
+    #    ⚠️ CHEMINS EXACTS, PAS `^__tests__/preflight/`. Un préfixe de
+    #    répertoire gèlerait aussi les tests GÉNÉRIQUES à venir — un chargeur
+    #    de fixture, une mesure de durée — qui ne portent aucune frontière de
+    #    sécurité, et transformerait chaque ajout en PR de maintenance. Seuls
+    #    les tests NORMATIFS sont ici. Les deux fichiers présents le sont
+    #    intégralement : classés bloc par bloc, aucun n'est générique.
+    #
+    #    Le coût, dit franchement : un futur test normatif ne sera pas protégé
+    #    tant que son chemin n'est pas ajouté ici. C'est pourquoi le cliquet de
+    #    CLASSEMENT vit dans deploy-path.test.ts — tout fichier de
+    #    `__tests__/preflight/` qui n'est ni gelé ni déclaré générique rougit.
+    "^\.vercelignore$"                           # LE filtre : il définit l'univers comparé
+    "^\.nowignore$"                              # l'autre nom du même filtre (buildIgnore lit les deux)
+    "^__tests__/preflight/upload-set\.test\.ts$" # l'oracle : cliquet GENERATED_ALLOWED, portes, fail-closed
+    "^__tests__/preflight/deploy-path\.test\.ts$" # l'oracle : séquence, épinglage, gel, cliquet de classement
+
     # ── Fichiers de sécurité dont la compromission est INVISIBLE ────────────
     # Sélection volontairement resserrée (audit issue #46, décision David) :
     # uniquement ce qui ne laisse ni trace dans les logs ni trou dans le revenu.
@@ -303,6 +359,23 @@ LEASES=(
     #   T2-HOTFIX-DEPLOYMENT-GUARD | cablage-du-chemin-de-deploiement
     #   4 chemins · hotfix/deployment-preflight-wiring
     #   2026-09-15T08:30:00Z → 09:15:00Z (45 mn) · consommée à 08:34
+
+    # ── T2-GEL-DU-FILTRE ─────────────────────────────────────────────────────
+    # UN SEUL chemin, et c'est le minimum strict : le commit ci-dessus gèle
+    # `deploy-path.test.ts`, et c'est ce même fichier qui doit porter le cliquet
+    # de CLASSEMENT — celui qui rougit sur tout test de `__tests__/preflight/`
+    # ni gelé ni déclaré générique.
+    #
+    # L'ordre est contraint et il n'y a pas d'autre découpe possible :
+    #   le motif doit exister dans `main` AVANT que le test puisse l'affirmer,
+    #   et le test doit être GELÉ pour que son affirmation ne puisse plus être
+    #   retirée. Les deux gestes ne tiennent donc pas dans la même PR — la CI
+    #   juge avec le guard de `main`, pas celui de la branche.
+    #
+    # `upload-set.test.ts` n'est PAS dans la lease : il est gelé par le même
+    # commit et n'a aucune raison d'être touché. Une lease n'ouvre que ce dont
+    # on démontre le besoin.
+    "T2-GEL-DU-FILTRE|cliquet-de-classement-de-l-oracle|__tests__/preflight/deploy-path.test.ts|fffb78c9d995f260f8ead8aa68008e2e6914638d|hotfix/preflight-oracle|2026-09-15T09:10:00Z|2026-09-15T09:55:00Z|OPEN"
 )
 
 lease_rouge() {
