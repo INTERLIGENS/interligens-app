@@ -12,10 +12,17 @@
 // Il n'y a pas de troisième état, et il n'y a pas de `--force` : un preflight
 // qu'on peut contourner par un drapeau est une recommandation, pas un contrôle.
 //
-// ─── POURQUOI CE FICHIER N'EST PAS UN SCRIPT package.json ───────────────────
-// `package.json` est GELÉ par scripts/guard-offline.sh. Le preflight s'invoque
-// donc par son chemin. Déclarer `predeploy` dans package.json exigerait la voie
-// de maintenance du guard ; c'est noté comme suite dans docs/prep/.
+// ─── CE FICHIER EST DÉSORMAIS SUR LE CHEMIN, PAS À CÔTÉ ─────────────────────
+// Il ne s'invoque plus seulement à la main : `scripts/deploy-production.mjs` le
+// lance en sous-processus et REFUSE de spawner le CLI tant qu'il n'a pas rendu
+// 0. `pnpm deploy:prod` est la commande exposée ; il n'y a plus de `npx vercel
+// --prod` dans le chemin gouverné.
+//
+// ⚠️ Ce fichier n'est PAS pour autant devenu un `predeploy` de package.json, et
+// c'est délibéré : pnpm n'exécute pas les scripts `pre`/`post` par défaut depuis
+// la v7 (`enable-pre-post-scripts=false`). Un garde branché sur un crochet que
+// le gestionnaire de paquets n'appelle pas serait un garde décoratif. Il est
+// donc appelé par le wrapper, dans le même processus séquentiel.
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from "node:fs";
@@ -59,14 +66,20 @@ const exec = (cmd, cwd) => {
 // Obtenu SANS RÉSEAU : on lit le `package.json` du CLI sur le disque, on ne
 // l'exécute pas et on n'interroge pas le registre.
 //
-// ⚠️ LA LIMITE, DITE FRANCHEMENT : `npx vercel --prod` — la commande de
-// CLAUDE.md — résout la DERNIÈRE version publiée au moment de l'appel. Tant que
-// la commande de déploiement reste celle-là, l'épinglage est STRUCTURELLEMENT
-// impossible : ce preflight certifierait le CLI installé pendant que npx en
-// téléchargerait un autre. La porte exige donc que le CLI trouvé sur le disque
-// soit la version rejouée, ET le document exige que le déploiement soit invoqué
-// en nommant cette version (`npx vercel@<version> --prod`). La seconde moitié
-// est une consigne, pas un verrou — et elle est écrite comme telle.
+// ⚠️ LA LIMITE QUI EXISTAIT ICI EST FERMÉE — et il faut dire comment, parce que
+// la version précédente de ce commentaire disait franchement qu'elle ne l'était
+// pas. `npx vercel --prod` résolvait la DERNIÈRE version publiée au moment de
+// l'appel : ce preflight certifiait le CLI du disque pendant que npx en
+// téléchargeait un autre. Tant que la commande de déploiement restait celle-là,
+// l'épinglage était STRUCTURELLEMENT impossible, et la seconde moitié du
+// contrôle n'était qu'une consigne écrite dans un document.
+//
+// Elle n'est plus une consigne. `scripts/deploy-production.mjs` exécute LE
+// BINAIRE que cette porte vient de résoudre — même fonction, même chemin sur le
+// disque, aucun aller-retour au registre entre la certification et l'exécution.
+// La version est UNE constante (`FILTRE_REJOUE_DEPUIS`), importée des deux
+// côtés, et `__tests__/preflight/deploy-path.test.ts` rougit sur tout retour à
+// une résolution flottante.
 export function detectCliVersion(cwd) {
   const essais = [];
   const lire = (p, source) => {

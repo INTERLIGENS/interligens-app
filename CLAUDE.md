@@ -2,7 +2,7 @@
 
 Repo: ~/dev/interligens-web
 Port: 3100
-Deploy: npx vercel --prod uniquement
+Deploy: `pnpm deploy:prod` uniquement — scripts/deploy-production.mjs. `npx vercel --prod` n'est PLUS la commande : elle ne traverse pas le preflight et résout une version flottante du CLI. Le wrapper enchaîne preflight (upload-set exact → refus des secrets → liaison de projet → source-set/Merkle) puis exécute le binaire vercel@51.7.0 que le preflight vient de certifier. Le CLI n'est pas lancé si le preflight refuse. La version est une constante du mécanisme (FILTRE_REJOUE_DEPUIS), pas de cette ligne.
 DB prod: DATABASE_URL depuis .env.local (ep-square-band, port 6543 pgbouncer)
 Schema: prisma/schema.prod.prisma — TOUJOURS additif, jamais destructif
 Prisma client: `pnpm prisma:generate` uniquement (alias `--schema prisma/schema.prod.prisma`). `npx prisma generate` sans flag lit `prisma/schema.prisma` et produit un client incomplet — **53 modèles contre 159**.

@@ -86,10 +86,11 @@ packages/widget/dist/
 
 # Médias de démonstration non référencés — 30 Mo dans chaque déploiement.
 # `git grep tiger/(green|orange|red)` : aucune occurrence dans tout le dépôt.
-# ⚠️ `public/tiger/analyst.png` n'est PAS exclu : il est RÉFÉRENCÉ par
-# src/components/TigerRevealCard.tsx:109 tout en n'existant dans AUCUN commit.
-# L'exclure casserait l'image en silence. Le preflight reste rouge dessus
-# jusqu'à résolution — voir docs/prep/PREFLIGHT_UPLOAD_SET_2026-09-15.md.
+# ⚠️ `public/tiger/analyst.png` n'est PAS exclu, et il ne doit pas l'être : il
+# est RÉFÉRENCÉ par src/components/TigerRevealCard.tsx:109. Il est désormais
+# COMMITÉ (2026-09-15), après vérification que l'octet de l'arbre est celui que
+# la production sert (sha256 8ddfcd1a…db9f, 581 655 o). Il part donc par
+# l'égalité avec HEAD, pas par une exception.
 public/tiger/green.mp4
 public/tiger/orange.mp4
 public/tiger/red.mp4
