@@ -41,7 +41,14 @@ export const MECANISMES_SQL: readonly MecanismeSql[] = [
   { nom: "$executeRawUnsafe", amorce: /\$executeRawUnsafe\s*(?:<[^>]*>)?\s*[`(]/g },
   { nom: "Prisma.sql", amorce: /Prisma\.sql\s*[`(]/g },
   { nom: "Prisma.raw", amorce: /Prisma\.raw\s*[`(]/g },
-  { nom: "client SQL direct", amorce: /\b(?:client|pool|conn|db|pg)\s*\.\s*query\s*\(/gi },
+  // `(?:<[^(]*>)?` : le paramètre de TYPE. Sans lui, un appel générique
+  // (`db.query<UneLigne>(…)`, `db.query<Record<string, unknown>>(…)`) était
+  // INVISIBLE — point aveugle mesuré le 2026-09-15 : deux modules gouvernés
+  // du dépôt écrivaient et lisaient en SQL brut sans qu'aucune garde ne les
+  // voie. Les amorces Prisma portaient déjà cette tolérance ; celle-ci ne
+  // l'avait pas. `[^(]` plutôt qu'un appariement de chevrons : un générique ne
+  // contient pas de parenthèse, et l'imbrication défait un `[^>]*`.
+  { nom: "client SQL direct", amorce: /\b(?:client|pool|conn|db|pg)\s*\.\s*query\s*(?:<[^(]*>)?\s*\(/gi },
   { nom: "gabarit sql``", amorce: /(?<![.\w$])sql\s*`/g },
 ];
 
@@ -449,6 +456,24 @@ export const INVENTAIRE_RACINES_SQL: Readonly<Record<string, EntreeInventaire>> 
     classe: "dossier",
     horsSchema: true,
     raison: "autorité de publication SPINE-00 A ; DDL non appliqué au 2026-09-14, SQL brut par gel de prisma/",
+  },
+
+  // ── T2-PROVENANCE-JOURNAL — le journal APPEND-ONLY de la provenance d'une
+  //    pièce, et l'AUTORITÉ sur cette provenance (décision GPT 5 du
+  //    2026-09-14). DDL POSÉ en production le 2026-09-14 — contrairement à
+  //    governed_objects et casefile_claim_publication_decisions, cette table
+  //    EXISTE. Atteinte uniquement en SQL brut, `prisma/` étant gelé.
+  //    Lecteur : src/lib/casefile/journalProvenance.ts. Écrivain, et le SEUL :
+  //    src/lib/casefile/journalWriter.ts — un INSERT, aucun UPDATE, aucun
+  //    DELETE (append-only par deux triggers en base, restrict_violation).
+  //    Classe `piece` : la ligne qualifie l'origine d'un ARTEFACT, pas un
+  //    dossier ni un fait nominatif — même classe que EvidenceSnapshot, qu'elle
+  //    référence.
+  evidence_provenance_journal: {
+    statut: "RACINE_GOUVERNEE",
+    classe: "piece",
+    horsSchema: true,
+    raison: "autorité de provenance T2 ; DDL posé le 2026-09-14, SQL brut par gel de prisma/",
   },
 
   // ── Écartées, AVEC leur raison.
