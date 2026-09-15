@@ -41,9 +41,18 @@ const lire = (rel: string) => readFileSync(path.join(REPO, rel), "utf8");
 const sansCommentaires = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-/** Deux noms volontairement DISTINCTS : c'est toute la sensibilité du témoin. */
-const COMPARTIMENT_PREUVES = "temoin-compartiment-preuves";
-const COMPARTIMENT_PARTAGE = "temoin-compartiment-partage";
+/**
+ * Deux noms volontairement DISTINCTS : c'est toute la sensibilité du témoin.
+ *
+ * ⚠️ CE SONT DÉSORMAIS LES DEUX VRAIS COMPARTIMENTS GOUVERNÉS, et non deux noms
+ * inventés. Depuis CC-OFFLINE-195 le vocabulaire est FERMÉ et la naissance est
+ * restreinte au seul compartiment canonique : un nom de fantaisie ne passe plus
+ * aucune porte, et un témoin qui en utiliserait un ne mesurerait plus que son
+ * propre refus. Les deux noms restent distincts, ce qui est tout ce que ces
+ * témoins exigent.
+ */
+const COMPARTIMENT_PREUVES = "interligens-evidence";
+const COMPARTIMENT_PARTAGE = "interligens-reports";
 
 /**
  * Un S3 factice qui n'envoie rien et RETIENT le compartiment adressé.
@@ -74,6 +83,18 @@ function s3Espion() {
  * qui apparaîtrait rendrait ce test rouge, et c'est le seul mécanisme qui
  * empêche un nouveau chemin d'échapper au fail-closed sans qu'on le voie.
  */
+/** Un import de VALEUR depuis `compartment.ts` — jamais un `import type`. */
+function importeCompartimentEnValeur(src: string): boolean {
+  // `[^;]*?` et NON `[\s\S]*?` : un lazy sans borne traverse les points-virgules
+  // et fait commencer le match à l'import PRÉCÉDENT — ce qui, mesuré ici, faisait
+  // disparaître `storageResolution.ts` du recensement (son premier import est un
+  // `import type`, et le match englobant emportait le vrai). Un filet qui perd
+  // des sites est pire qu'un filet absent : il dit qu'il a regardé.
+  const re = /^\s*import\s+(type\s+)?[^;]*?from\s+["'][^"']*(?:evidence-chain|\.)\/compartment["']/gm;
+  for (const m of src.matchAll(re)) if (!m[1]) return true;
+  return false;
+}
+
 function sitesMesures(): string[] {
   const out: string[] = [];
   const empile = (rel: string) => {
@@ -85,7 +106,14 @@ function sitesMesures(): string[] {
       // celle qu'utilisent les modules VOISINS : ne chercher que la forme
       // absolue laissait `storageResolution.ts` — qui ouvre des compartiments —
       // échapper au recensement. Découvert en posant ce fichier, CC-OFFLINE-189.
-      else if (/\.tsx?$/.test(e.name) && /(evidence-chain|\.)\/compartment"/.test(lire(r))) out.push(r);
+      //
+      // ⛔ ET UN `import type` NE COMPTE PAS (CC-OFFLINE-195). `ingest.ts` type
+      //    sa porte d'ingestion sur `CompartimentOuvert` : il DÉCRIT ce qu'il
+      //    reçoit, il n'obtient AUCUNE capacité — un type est effacé à la
+      //    compilation. Le compter ferait rougir le témoin de la porte pour un
+      //    fichier qui n'ouvre rien, et la seule façon de le faire verdir serait
+      //    d'y ajouter une ouverture : le témoin pousserait à la faute.
+      else if (/\.tsx?$/.test(e.name) && importeCompartimentEnValeur(lire(r))) out.push(r);
     }
   };
   empile("src");
@@ -93,13 +121,22 @@ function sitesMesures(): string[] {
 }
 
 const SITES_GOUVERNES: readonly string[] = [
+  // CC-OFFLINE-195 : `naissance.ts` est LA porte d'écriture — il EXIGE la
+  // capacité WRITE sur le compartiment canonique avant tout PUT.
+  "src/lib/evidence-chain/naissance.ts",
   // Le RÉSOLVEUR : il n'est pas un « site » au sens d'un appelant métier, mais
   // il OUVRE des compartiments, donc il obéit aux mêmes règles que les autres.
   "src/lib/evidence-chain/storageResolution.ts",
   "src/lib/osint/evidenceCommitBridge.ts",
   "src/lib/osint/retail/evidenceChainBridge.ts",
   "src/scripts/evidence-chain/ingest-capture.ts",
-  "src/scripts/evidence-chain/readback-verify.ts",
+  // ⛔ `readback-verify.ts` N'EST PLUS UN SITE GOUVERNÉ, et c'est l'INVARIANT 1
+  //    appliqué (CC-OFFLINE-195). Il n'écrit RIEN : exiger une porte de
+  //    NAISSANCE pour relire des octets historiques confondait les deux
+  //    permissions que l'invariant sépare — un compartiment legacy reste
+  //    LISIBLE sans devenir une destination. Son compartiment vient désormais,
+  //    pièce par pièce, du registre de localisation via `storageResolution.ts`,
+  //    qui est recensé ci-dessus.
   "src/scripts/evidence-chain/stamp-pending.ts",
   "src/scripts/watcher-bridge/run-auto-evidence.ts",
 ];
@@ -124,17 +161,19 @@ afterEach(() => {
 // ═════════════════════════════════════════════════════════════════════════
 describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture ET pour la relecture", () => {
   it("PUT et GET adressent le MÊME compartiment, et c'est celui des preuves — pas le partagé", async () => {
-    const { evidenceR2ConfigFromEnv, putEvidenceObject, getEvidenceObject } =
+    const { putEvidenceObjectIfAbsent, getEvidenceObject } =
       await import("../../src/lib/evidence-chain/r2");
+    const { ouvrirCompartimentGouverne } = await import("../../src/lib/evidence-chain/compartment");
 
-    // UNE résolution d'autorité. C'est ainsi que `ingest-capture.ts`,
-    // `stamp-pending.ts` et `readback-verify.ts` composent, tous les trois.
-    const cfg = evidenceR2ConfigFromEnv();
-    expect(cfg).not.toBeNull();
+    // UNE résolution d'autorité. C'est ainsi que `ingest-capture.ts` et
+    // `run-auto-evidence.ts` composent — la porte UNIQUE, jamais deux lectures.
+    const porte = ouvrirCompartimentGouverne();
+    expect(porte.ok).toBe(true);
+    if (!porte.ok) throw new Error("inatteignable");
 
     const { s3, adresses } = s3Espion();
-    await putEvidenceObject(s3, cfg!.bucket, "evidence/aa/temoin", Buffer.from("x"));
-    await getEvidenceObject(s3, cfg!.bucket, "evidence/aa/temoin");
+    await putEvidenceObjectIfAbsent(s3, porte.bucket, "evidence/aa/temoin", Buffer.from("x"));
+    await getEvidenceObject(s3, porte.bucket, "evidence/aa/temoin");
 
     expect(adresses.map((a) => a.verbe)).toEqual(["PutObjectCommand", "GetObjectCommand"]);
     const [ecrit, relu] = adresses;
@@ -151,34 +190,47 @@ describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture E
     // propre compte. Un tel lecteur suivrait la mutation et divergerait de
     // l'écriture. Le bucket est un ARGUMENT issu d'une résolution unique ; il
     // n'est pas rerésolu par verbe.
-    const { evidenceR2ConfigFromEnv, putEvidenceObject, getEvidenceObject } =
+    const { putEvidenceObjectIfAbsent, getEvidenceObject } =
       await import("../../src/lib/evidence-chain/r2");
+    const { ouvrirCompartimentGouverne } = await import("../../src/lib/evidence-chain/compartment");
 
-    const cfg = evidenceR2ConfigFromEnv()!;
+    const porte = ouvrirCompartimentGouverne();
+    if (!porte.ok) throw new Error("inatteignable");
     const { s3, adresses } = s3Espion();
-    await putEvidenceObject(s3, cfg.bucket, "evidence/aa/temoin", Buffer.from("x"));
+    await putEvidenceObjectIfAbsent(s3, porte.bucket, "evidence/aa/temoin", Buffer.from("x"));
 
     process.env.R2_EVIDENCE_BUCKET_NAME = "compartiment-detourne";
-    await getEvidenceObject(s3, cfg.bucket, "evidence/aa/temoin");
+    await getEvidenceObject(s3, porte.bucket, "evidence/aa/temoin");
 
     expect(adresses[1].bucket).toBe(adresses[0].bucket);
     expect(adresses[1].bucket).not.toBe("compartiment-detourne");
   });
 
-  it("CONTRE-ÉPREUVE · déplacer l'autorité déplace LES DEUX ensemble, jamais l'un sans l'autre", async () => {
-    const { evidenceR2ConfigFromEnv, putEvidenceObject, getEvidenceObject } =
+  it("CONTRE-ÉPREUVE · déplacer l'autorité DÉSIGNANTE déplace LES DEUX ensemble, jamais l'un sans l'autre", async () => {
+    // ⚠️ CETTE CONTRE-ÉPREUVE A CHANGÉ DE PORTE, ET C'EST LE SUJET.
+    //
+    // Elle déplaçait autrefois `R2_EVIDENCE_BUCKET_NAME` et constatait que les
+    // deux verbes suivaient. Depuis l'INVARIANT 1, cette variable ne peut plus
+    // désigner qu'UN compartiment — la naissance est restreinte au canonique —
+    // donc « déplacer l'autorité » ne veut plus rien dire sur ce chemin-là.
+    //
+    // L'autorité qui DÉSIGNE un compartiment est désormais le registre de
+    // localisation, et l'ouvreur qui l'exécute est `ouvrirCompartimentDesigne`.
+    // C'est donc LUI qu'on déplace, entre les deux compartiments gouvernés.
+    const { putEvidenceObjectIfAbsent, getEvidenceObject } =
       await import("../../src/lib/evidence-chain/r2");
+    const { ouvrirCompartimentDesigne } = await import("../../src/lib/evidence-chain/compartment");
 
-    const avant = evidenceR2ConfigFromEnv()!.bucket;
-    process.env.R2_EVIDENCE_BUCKET_NAME = "autre-compartiment-preuves";
-    const apres = evidenceR2ConfigFromEnv()!.bucket;
-    expect(apres).not.toBe(avant);
+    const avant = ouvrirCompartimentDesigne(COMPARTIMENT_PREUVES);
+    const apres = ouvrirCompartimentDesigne(COMPARTIMENT_PARTAGE);
+    if (!avant.ok || !apres.ok) throw new Error("inatteignable");
+    expect(apres.bucket).not.toBe(avant.bucket);
 
     const { s3, adresses } = s3Espion();
-    await putEvidenceObject(s3, apres, "evidence/aa/temoin", Buffer.from("x"));
-    await getEvidenceObject(s3, apres, "evidence/aa/temoin");
-    expect(adresses[0].bucket).toBe("autre-compartiment-preuves");
-    expect(adresses[1].bucket).toBe("autre-compartiment-preuves");
+    await putEvidenceObjectIfAbsent(s3, apres.bucket, "evidence/aa/temoin", Buffer.from("x"));
+    await getEvidenceObject(s3, apres.bucket, "evidence/aa/temoin");
+    expect(adresses[0].bucket).toBe(COMPARTIMENT_PARTAGE);
+    expect(adresses[1].bucket).toBe(COMPARTIMENT_PARTAGE);
   });
 
   it("aucun des deux verbes ne lit l'environnement : le compartiment ne peut pas diverger dans le module", () => {
@@ -186,7 +238,7 @@ describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture E
     // bien `process.env`, mais UNIQUEMENT dans l'autorité — jamais dans les
     // verbes. On borne donc la lecture aux deux fonctions concernées.
     const src = lire("src/lib/evidence-chain/r2.ts");
-    for (const verbe of ["putEvidenceObject", "getEvidenceObject"]) {
+    for (const verbe of ["putEvidenceObjectIfAbsent", "getEvidenceObject"]) {
       const debut = src.indexOf(`export async function ${verbe}(`);
       expect(debut).toBeGreaterThan(-1);
       const suite = src.slice(debut);
@@ -217,7 +269,15 @@ describe("TÉMOIN (a) · une seule autorité de compartiment, pour l'écriture E
     // Le chemin de LECTURE (storageResolution) passe par la seconde : c'est
     // l'autorité qui choisit, pas l'environnement. Les sites d'ÉCRITURE passent
     // par la première : à la naissance, aucune autorité n'existe encore.
-    const PORTES = ["ouvrirCompartimentGouverne", "ouvrirCompartimentDesigne"] as const;
+    // CC-OFFLINE-195 : une TROISIÈME porte, et elle ne rend pas un compartiment —
+    // elle EXIGE le droit d'y écrire. `exigerCapaciteDEcriture` est la moitié
+    // « permission » de l'INVARIANT 1 ; l'omettre laisserait `naissance.ts`,
+    // qui est le seul chemin de PUT gouverné, hors du recensement des portes.
+    const PORTES = [
+      "ouvrirCompartimentGouverne",
+      "ouvrirCompartimentDesigne",
+      "exigerCapaciteDEcriture",
+    ] as const;
     for (const site of SITES_GOUVERNES) {
       const code = sansCommentaires(lire(site));
       expect(PORTES.some((porte) => code.includes(porte)), `${site} n'ouvre par aucune porte gouvernée`).toBe(true);
@@ -291,7 +351,7 @@ describe("TÉMOIN (b) · le chemin probatoire ne connaît qu'une seule porte de 
     // (CC-OFFLINE-55, récupération catégorie D) construit son propre
     // `GetObjectCommand` au lieu de passer par la porte unique.
     //
-    // Ce qu'il fait BIEN : son bucket vient de `evidenceR2ConfigFromEnv()`,
+    // Ce qu'il fait BIEN : son bucket vient de `legacyReportsR2ConfigFromEnv()`,
     // donc le COMPARTIMENT est le bon — le premier volet du ruling tient.
     // Ce qu'il fait MAL : l'IDENTITÉ D'OBJET vient de `r2KeyFromUrl(imageUrl)`,
     // dérivée d'une URL stockée, et NON de la clé adressée par contenu que le
@@ -310,7 +370,9 @@ describe("TÉMOIN (b) · le chemin probatoire ne connaît qu'une seule porte de 
   it("l'exception NOMMÉE reste sur le bon compartiment, et son écart d'identité est explicite", () => {
     const src = lire("src/scripts/evidence-chain/recover-snapshots-d.ts");
     // Compartiment : même autorité que le PUT. Aucun littéral, aucune autre var.
-    expect(src).toContain("evidenceR2ConfigFromEnv()");
+    // CC-OFFLINE-195 : l'autorité est ÉPINGLÉE, la cible ne vient plus d'une variable.
+    expect(src).toContain("legacyReportsR2ConfigFromEnv()");
+    expect(sansCommentaires(src)).not.toContain("evidenceR2ConfigFromEnv");
     expect(src).toMatch(/Bucket:\s*cfg\.bucket/);
     expect(src).not.toMatch(/R2_BUCKET_NAME|interligens-rawdocs/);
     // Identité : dérivée d'une URL, pas de la clé adressée par contenu.
@@ -338,7 +400,13 @@ describe("TÉMOIN (b) · le chemin probatoire ne connaît qu'une seule porte de 
     }
     // Et le job CÂBLE cette capacité par la RÉSOLUTION, qui est seule à savoir
     // ouvrir un compartiment (CC-OFFLINE-189). Le lecteur n'existe pas avant elle.
-    expect(lire("src/scripts/evidence-chain/stamp-pending.ts")).toContain("resolveurGouverne()");
+    // CC-OFFLINE-195 : le job ne câble plus la capacité lui-même — il APPELLE le
+    // CONSTRUCTEUR CANONIQUE, qui assemble registre → autorité → résolveur →
+    // ouvreur. Un job qui rappellerait `resolveurGouverne()` directement
+    // reprendrait le registre statique VIDE, et c'est exactement le défaut fermé.
+    const job = lire("src/scripts/evidence-chain/stamp-pending.ts");
+    expect(job).toContain("assemblerResolutionDeStockage(");
+    expect(sansCommentaires(job)).not.toContain("resolveurGouverne");
     expect(lire("src/lib/evidence-chain/storageResolution.ts")).toContain(
       "getEvidenceObject(ouvert.s3, ouvert.bucket, key)",
     );

@@ -67,10 +67,13 @@ describe("1. watchdog — le total, et l'alerte sur l'écart", () => {
 // 2 + 4. LE PUT QUI LÈVE — les quatre effets
 // ═══════════════════════════════════════════════════════════════════════════
 
+// CC-OFFLINE-195 : le verbe d'écriture est CONDITIONNEL (`IfNoneMatch: "*"`),
+// et il n'existe plus de verbe inconditionnel à mocker. Ce qui est éprouvé ici
+// reste le même — un PUT qui LÈVE ne doit pas abandonner la ligne déjà écrite.
 const putEvidenceObject = vi.fn();
 vi.mock("@/lib/evidence-chain/r2", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/evidence-chain/r2")>()),
-  putEvidenceObject: (...a: unknown[]) => putEvidenceObject(...a),
+  putEvidenceObjectIfAbsent: (...a: unknown[]) => putEvidenceObject(...a),
 }));
 
 import { ingestBuffer, R2_PUT_FAILED_MARKER } from "@/lib/evidence-chain/ingest";
@@ -103,7 +106,14 @@ const INPUT = {
   // silencieux. Le refus est délibéré et vérifié ailleurs ; ici on le satisfait.
   capturedBy: "operateur:test",
 };
-const R2_OPTS = { r2: { s3: {} as never, bucket: "evidence" }, tsa: { enabled: false }, actor: "test" };
+// La porte est celle du compartiment de NAISSANCE, avec sa permission — sans
+// quoi le chemin de PUT refuse avant tout appel (INVARIANT 1), et ce bloc ne
+// mesurerait plus le PUT qui lève mais le refus de permission.
+const R2_OPTS = {
+  r2: { s3: {} as never, bucket: "interligens-evidence", operations: "READ+WRITE" },
+  tsa: { enabled: false },
+  actor: "test",
+};
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -151,7 +161,7 @@ describe("2. le PUT qui lève n'abandonne plus la ligne", () => {
   });
 
   it("un PUT qui réussit ne marque ni ne journalise d'échec", async () => {
-    putEvidenceObject.mockResolvedValue(undefined);
+    putEvidenceObject.mockResolvedValue({ ok: true, etag: null });
     const store = fakeStore();
     const res = await ingestBuffer(INPUT as never, store, R2_OPTS as never);
     expect(res.r2PutFailed).toBe(false);

@@ -527,7 +527,10 @@ describe("B · la forme du gate est structurellement fail-closed", () => {
     // CC-OFFLINE-189 — le job ne câble plus un LECTEUR, il câble la capacité de
     // RÉSOUDRE. `getEvidenceObject` n'est plus atteignable qu'à travers une
     // résolution réussie, donc il a disparu du job.
-    expect(job).toContain("resolveurGouverne");
+    // CC-OFFLINE-195 — et il ne l'assemble PLUS lui-même : il appelle le
+    // CONSTRUCTEUR CANONIQUE. Un job qui reprendrait `resolveurGouverne()` en
+    // direct repartirait du registre statique VIDE — le défaut fermé ce jour-là.
+    expect(job).toContain("assemblerResolutionDeStockage");
     expect(job).toContain("resolveStorage");
     expect(job).not.toContain("getEvidenceObject");
     // CC-OFFLINE-188 — l'amorçage passe désormais par la PORTE GOUVERNÉE, qui

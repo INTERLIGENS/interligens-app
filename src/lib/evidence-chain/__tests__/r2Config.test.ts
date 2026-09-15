@@ -1,17 +1,36 @@
 /**
- * Non-régression : résolution de la config R2 des preuves.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LEGACY_REPORTS_STORAGE_AUTHORITY — LA CIBLE DES TROIS SCRIPTS EST ÉPINGLÉE
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * evidenceR2ConfigFromEnv lisait `R2_EVIDENCE_X ?? R2_X`. Avec `??`, une
- * variable provisionnée à la chaîne vide est une VALEUR : elle gagnait sur le
- * repli générique, puis le `if (!bucket) return null` faisait renvoyer null.
- * Conséquence : l'archivage R2 des preuves se désactivait SILENCIEUSEMENT —
- * les EvidenceItem continuaient d'être écrits, sans octets, sans erreur.
+ *   « Ils ne doivent jamais changer de bucket parce qu'une variable destinée au
+ *     nouveau pipeline apparaît. »
  *
- * Ces tests verrouillent le `||` : chaîne vide = absente = repli générique.
- * Même angle mort que cc7d492 / 38f10f2 (Turnstile).
+ * ─── CE QUE CE FICHIER ÉPROUVAIT AVANT, ET POURQUOI CE N'EST PLUS VRAI ──────
+ *
+ * Il verrouillait le `||` de `evidenceR2ConfigFromEnv` : « chaîne vide =
+ * absente = repli générique ». Le `||` était le bon correctif pour le défaut
+ * d'alors (une variable vide qui masquait tout et désactivait silencieusement
+ * l'archivage), mais il rendait la cible des trois scripts LEGACY DÉRIVÉE :
+ *
+ *     R2_EVIDENCE_BUCKET_NAME provisionnée  →  ils changent de compartiment
+ *                                              sans qu'une ligne de leur code
+ *                                              bouge, et cherchent leurs objets
+ *                                              historiques là où ils n'ont
+ *                                              jamais été.
+ *
+ * `R2_EVIDENCE_BUCKET_NAME` EST provisionnée depuis le 2026-09-16. La fonction
+ * est donc remplacée par `legacyReportsR2ConfigFromEnv`, dont la cible ne vient
+ * d'AUCUNE variable. Les témoins ci-dessous éprouvent l'ÉPINGLAGE, c'est-à-dire
+ * exactement l'inverse de ce que les précédents éprouvaient — et c'est
+ * volontaire : le mécanisme a changé, pas seulement son enrobage.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { evidenceR2ConfigFromEnv, contentAddressedKey } from "../r2";
+import {
+  legacyReportsR2ConfigFromEnv,
+  LEGACY_REPORTS_STORAGE_AUTHORITY,
+  contentAddressedKey,
+} from "../r2";
 
 const KEYS = [
   "R2_ACCOUNT_ID",
@@ -41,99 +60,94 @@ afterEach(() => {
   }
 });
 
-/** Pose les 4 variables génériques, seule configuration valide minimale. */
-function setGeneric(): void {
+/** La capacité `reports` — la SEULE que la fonction ait le droit de lire. */
+function setReports(): void {
   process.env.R2_ACCOUNT_ID = "acct-123";
-  process.env.R2_ACCESS_KEY_ID = "generic-key";
-  process.env.R2_SECRET_ACCESS_KEY = "generic-secret";
-  process.env.R2_BUCKET_NAME = "interligens-app";
+  process.env.R2_ACCESS_KEY_ID = "reports-key";
+  process.env.R2_SECRET_ACCESS_KEY = "reports-secret";
 }
 
-describe("evidenceR2ConfigFromEnv — repli sur les variables génériques", () => {
+describe("legacyReportsR2ConfigFromEnv — la cible est ÉPINGLÉE, jamais dérivée", () => {
   it("null quand rien n'est posé", () => {
-    expect(evidenceR2ConfigFromEnv()).toBeNull();
+    expect(legacyReportsR2ConfigFromEnv({})).toBeNull();
   });
 
-  it("génériques seules → config valide sur le bucket partagé", () => {
-    setGeneric();
-    const cfg = evidenceR2ConfigFromEnv();
+  it("capacité reports posée → cible `interligens-reports`, credential reports", () => {
+    setReports();
+    const cfg = legacyReportsR2ConfigFromEnv();
     expect(cfg).not.toBeNull();
-    expect(cfg!.bucket).toBe("interligens-app");
-    expect(cfg!.accessKeyId).toBe("generic-key");
-    expect(cfg!.secretAccessKey).toBe("generic-secret");
+    expect(cfg!.bucket).toBe("interligens-reports");
+    expect(cfg!.bucket).toBe(LEGACY_REPORTS_STORAGE_AUTHORITY);
+    expect(cfg!.accessKeyId).toBe("reports-key");
+    expect(cfg!.secretAccessKey).toBe("reports-secret");
   });
 
-  it("variables evidence posées → elles gagnent sur les génériques", () => {
-    setGeneric();
+  // ══ LE CŒUR DU CORRECTIF ════════════════════════════════════════════════
+  //
+  // « Il faut un TEST prouvant que changer R2_EVIDENCE_BUCKET_NAME ne modifie
+  //   pas leur cible. » Le voici, et il fait VARIER la variable plutôt que de
+  //   constater son absence : une cible qui ne bouge pas parce que rien n'a
+  //   bougé ne prouve rien.
+
+  it("⛔ FAIRE VARIER `R2_EVIDENCE_BUCKET_NAME` NE DÉPLACE PAS LA CIBLE", () => {
+    setReports();
+    const cibles = new Set<string>();
+    for (const v of [
+      undefined,
+      "",
+      "   ",
+      "interligens-evidence",
+      "interligens-reports",
+      "un-compartiment-quelconque",
+    ]) {
+      if (v === undefined) delete process.env.R2_EVIDENCE_BUCKET_NAME;
+      else process.env.R2_EVIDENCE_BUCKET_NAME = v;
+      cibles.add(legacyReportsR2ConfigFromEnv()!.bucket);
+    }
+    expect([...cibles]).toEqual(["interligens-reports"]);
+  });
+
+  it("⛔ les fentes `R2_EVIDENCE_*` ne fournissent JAMAIS la capacité legacy", () => {
+    // Seule la capacité `reports` est lue. Poser les fentes evidence ne rend
+    // pas la config valide, et ne remplace aucune des trois manquantes.
+    process.env.R2_ACCOUNT_ID = "acct-123";
     process.env.R2_EVIDENCE_ACCESS_KEY_ID = "ev-key";
     process.env.R2_EVIDENCE_SECRET_ACCESS_KEY = "ev-secret";
     process.env.R2_EVIDENCE_BUCKET_NAME = "interligens-evidence";
-    const cfg = evidenceR2ConfigFromEnv()!;
-    expect(cfg.bucket).toBe("interligens-evidence");
-    expect(cfg.accessKeyId).toBe("ev-key");
-    expect(cfg.secretAccessKey).toBe("ev-secret");
+    expect(legacyReportsR2ConfigFromEnv()).toBeNull();
+
+    // Et quand la capacité reports EST là, la fente evidence ne la supplante pas.
+    setReports();
+    const cfg = legacyReportsR2ConfigFromEnv()!;
+    expect(cfg.accessKeyId).toBe("reports-key");
+    expect(cfg.secretAccessKey).toBe("reports-secret");
   });
 
-  // ── Le cœur du fix : une var evidence à vide ne doit RIEN masquer ────────
-  // Avec `??`, chacun de ces cas renvoyait null → archivage silencieusement off.
-
-  it("R2_EVIDENCE_BUCKET_NAME vide → repli sur R2_BUCKET_NAME", () => {
-    setGeneric();
-    process.env.R2_EVIDENCE_BUCKET_NAME = "";
-    const cfg = evidenceR2ConfigFromEnv();
-    expect(cfg).not.toBeNull();
-    expect(cfg!.bucket).toBe("interligens-app");
+  it("⛔ `R2_BUCKET_NAME` n'est plus lue du tout — même posée à autre chose", () => {
+    setReports();
+    process.env.R2_BUCKET_NAME = "interligens-app";
+    expect(legacyReportsR2ConfigFromEnv()!.bucket).toBe("interligens-reports");
   });
 
-  it("R2_EVIDENCE_ACCESS_KEY_ID vide → repli sur R2_ACCESS_KEY_ID", () => {
-    setGeneric();
-    process.env.R2_EVIDENCE_ACCESS_KEY_ID = "";
-    const cfg = evidenceR2ConfigFromEnv();
-    expect(cfg).not.toBeNull();
-    expect(cfg!.accessKeyId).toBe("generic-key");
+  it("le nom de la variable générique n'apparaît plus dans la fonction", () => {
+    // Un témoin STRUCTUREL : la lecture pourrait revenir par une ligne, sans
+    // qu'aucun test de comportement ci-dessus ne change de couleur si la
+    // variable n'est pas posée dans l'environnement de test.
+    expect(legacyReportsR2ConfigFromEnv.toString()).not.toContain("R2_BUCKET_NAME");
+    expect(legacyReportsR2ConfigFromEnv.toString()).not.toContain("R2_EVIDENCE");
   });
 
-  it("R2_EVIDENCE_SECRET_ACCESS_KEY vide → repli sur R2_SECRET_ACCESS_KEY", () => {
-    setGeneric();
-    process.env.R2_EVIDENCE_SECRET_ACCESS_KEY = "";
-    const cfg = evidenceR2ConfigFromEnv();
-    expect(cfg).not.toBeNull();
-    expect(cfg!.secretAccessKey).toBe("generic-secret");
-  });
-
-  it("les 3 vars evidence à vide → config générique complète, jamais null", () => {
-    setGeneric();
-    process.env.R2_EVIDENCE_ACCESS_KEY_ID = "";
-    process.env.R2_EVIDENCE_SECRET_ACCESS_KEY = "";
-    process.env.R2_EVIDENCE_BUCKET_NAME = "";
-    const cfg = evidenceR2ConfigFromEnv();
-    expect(cfg).not.toBeNull();
-    expect(cfg).toMatchObject({
-      accountId: "acct-123",
-      accessKeyId: "generic-key",
-      secretAccessKey: "generic-secret",
-      bucket: "interligens-app",
-    });
-  });
-
-  // Une générique manquante reste bien un cas null : le fix ne rend pas le
-  // module permissif, il corrige seulement la sémantique de la chaîne vide.
-  it("null si une générique manque et que l'evidence est vide", () => {
-    setGeneric();
-    delete process.env.R2_BUCKET_NAME;
-    process.env.R2_EVIDENCE_BUCKET_NAME = "";
-    expect(evidenceR2ConfigFromEnv()).toBeNull();
-  });
-
-  it("R2_ACCOUNT_ID vide → null (aucune variante evidence, aucun repli)", () => {
-    setGeneric();
-    process.env.R2_ACCOUNT_ID = "";
-    expect(evidenceR2ConfigFromEnv()).toBeNull();
+  it("une capacité vide ou blanche vaut ABSENTE — null, jamais un repli", () => {
+    for (const k of ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] as const) {
+      setReports();
+      process.env[k] = "   ";
+      expect(legacyReportsR2ConfigFromEnv(), k).toBeNull();
+    }
   });
 
   it("endpoint dérivé du compte quand R2_ENDPOINT est absent", () => {
-    setGeneric();
-    expect(evidenceR2ConfigFromEnv()!.endpoint).toBe("https://acct-123.r2.cloudflarestorage.com");
+    setReports();
+    expect(legacyReportsR2ConfigFromEnv()!.endpoint).toBe("https://acct-123.r2.cloudflarestorage.com");
   });
 });
 

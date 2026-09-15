@@ -221,6 +221,11 @@ describe("LES CINQ CAUSES DE REFUS, DISTINCTES — AUCUNE NE SE DÉGRADE EN UNE 
       "evidence_credentials_unconfigured",
       "compartiment_hors_vocabulaire_gouverne",
       "CAPABILITY_UNAVAILABLE",
+      // CC-OFFLINE-195 — INVARIANT 1. Les DEUX moitiés de « naître n'est pas
+      // relire », et elles sont distinctes l'une de l'autre autant que du reste :
+      // la première parle du LIEU, la seconde du DROIT.
+      "NAISSANCE_HORS_COMPARTIMENT_CANONIQUE",
+      "WRITE_CAPABILITY_REQUIRED",
     ]);
     // Une réparation en base, deux réparations dans .env.local : ne pas les
     // confondre, c'est ne pas chercher une variable là où il y a une ligne.

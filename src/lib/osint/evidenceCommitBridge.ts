@@ -118,7 +118,10 @@ export async function chainOperatorEvidence(
         // après une écriture. C'est la règle du témoin §4, et elle tient ici.
         return { sha256: e.sha256, mode: "failed", evidenceItemId: itemId, tsaPending: true, error: msg };
       }
-      const r2 = { s3: compartiment.s3, bucket: compartiment.bucket };
+      const r2 = { s3: compartiment.s3, bucket: compartiment.bucket, operations: compartiment.operations };
+      // `operations` transporte la permission que l'OUVREUR a accordée — le chemin
+      // de PUT l'exige (INVARIANT 1). Le recopier ici n'est pas une commodité :
+      // sans lui, la porte ne se distinguerait plus d'un couple fabriqué à la main.
       const tsaInRoute = process.env.EVIDENCE_TSA_INROUTE === "true";
       const res = await ingestBuffer(
         {

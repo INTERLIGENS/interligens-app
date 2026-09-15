@@ -66,7 +66,10 @@ async function main() {
     console.error("                 Aucune pièce créée. Rien n'a été écrit, ni en base ni dans R2.");
     process.exit(1);
   }
-  const r2 = { s3: compartiment.s3, bucket: compartiment.bucket };
+  const r2 = { s3: compartiment.s3, bucket: compartiment.bucket, operations: compartiment.operations };
+  // `operations` transporte la permission que l'OUVREUR a accordée — le chemin
+  // de PUT l'exige (INVARIANT 1). Le recopier ici n'est pas une commodité :
+  // sans lui, la porte ne se distinguerait plus d'un couple fabriqué à la main.
 
   console.log(`Ingestion « ${basename(file)} » (@${handle}, ${criticality}, ${sourceType})…`);
   const res = await ingestFile({

@@ -80,7 +80,25 @@ export type CauseDeRefusDeCompartiment =
    * pas la même variable, et le credential de l'autre compartiment n'est JAMAIS
    * essayé pour combler.
    */
-  | "CAPABILITY_UNAVAILABLE";
+  | "CAPABILITY_UNAVAILABLE"
+  /**
+   * INVARIANT 1, première moitié. Le compartiment est GOUVERNÉ et OUVRABLE —
+   * donc parfaitement lisible — mais il n'est pas une destination valide pour
+   * une pièce NOUVELLE.
+   *
+   * ⛔ Distincte de `compartiment_hors_vocabulaire_gouverne`, et l'écart est
+   * tout le sujet : celle-là dit « nous n'ouvrons pas ce compartiment du tout » ;
+   * celle-ci dit « nous l'ouvrons en lecture, et rien n'y naît ». Les confondre
+   * ferait croire qu'il faut élargir le vocabulaire — c'est-à-dire ouvrir la
+   * naissance — alors que la réparation est de viser le compartiment canonique.
+   */
+  | "NAISSANCE_HORS_COMPARTIMENT_CANONIQUE"
+  /**
+   * INVARIANT 1, seconde moitié. Un chemin de PUT a reçu une porte que le dépôt
+   * DÉCLARE en lecture seule. `operationsMinimales` cesse ici d'être de la prose :
+   * elle est EXIGÉE à l'exécution.
+   */
+  | "WRITE_CAPABILITY_REQUIRED";
 
 export const CAUSES_REFUS_DE_COMPARTIMENT: readonly CauseDeRefusDeCompartiment[] =
   Object.freeze([
@@ -88,6 +106,8 @@ export const CAUSES_REFUS_DE_COMPARTIMENT: readonly CauseDeRefusDeCompartiment[]
     "evidence_credentials_unconfigured",
     "compartiment_hors_vocabulaire_gouverne",
     "CAPABILITY_UNAVAILABLE",
+    "NAISSANCE_HORS_COMPARTIMENT_CANONIQUE",
+    "WRITE_CAPABILITY_REQUIRED",
   ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -253,6 +273,56 @@ export function capaciteDuCompartiment(
   return { accessKeyId, secretAccessKey };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// INVARIANT 1 — NAÎTRE ET RELIRE N'ONT PAS LES MÊMES PERMISSIONS
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//   « Governed evidence birth and governed evidence readback have different
+//     compartment permissions: legacy compartments may remain readable without
+//     becoming valid destinations for new evidence. »
+//
+// ─── LE DÉFAUT QUE CET INVARIANT FERME ──────────────────────────────────────
+//
+// `COMPARTIMENTS_GOUVERNES` est une liste de PERMISSION, et elle en portait une
+// seule pour deux questions qui n'ont pas la même réponse :
+//
+//     LECTURE gouvernée          reports | evidence   (le registre désigne)
+//     NAISSANCE d'une pièce      evidence UNIQUEMENT  (rien d'autre n'est valide)
+//
+// Mesuré le 2026-09-15 : `resoudreCompartimentGouverne` ne vérifiait QUE
+// l'appartenance au vocabulaire. Poser `R2_EVIDENCE_BUCKET_NAME=interligens-reports`
+// suffisait donc à faire NAÎTRE une pièce gouvernée dans le compartiment des
+// archives — sans repli, sans erreur, sans qu'aucun témoin ne l'interdise. Le
+// vocabulaire commun disait « ouvrable » ; on lui faisait dire « destination ».
+//
+// ⛔ ÉLARGIR CE VOCABULAIRE NE DOIT PAS ÉLARGIR LES DESTINATIONS. C'est la
+//    raison d'être de la constante ci-dessous : elle est la destination, et
+//    elle est SEULE — pas « le premier élément de la liste », qui bougerait
+//    avec la liste.
+
+/**
+ * LE compartiment de naissance. UN, nommément, et jamais dérivé d'une liste.
+ *
+ * `interligens-reports` reste ouvrable en LECTURE sur désignation du registre
+ * (c'est là que vivent les 31 pièces historiques), et n'est JAMAIS une
+ * destination pour une pièce nouvelle. Les deux propriétés sont indépendantes ;
+ * les confondre est exactement le défaut que cette constante ferme.
+ */
+export const COMPARTIMENT_DE_NAISSANCE: CompartimentGouverne = "interligens-evidence";
+
+/**
+ * Les opérations qu'une porte ouverte AUTORISE, telles que DÉCLARÉES par la
+ * table des capacités du compartiment ouvert.
+ *
+ * ⚠️ Ce dépôt ne peut pas vérifier la portée RÉELLE d'un jeton R2 — seul
+ * Cloudflare la connaît, et `operationsMinimales` le dit. Ce que cette valeur
+ * garantit est autre chose, et ce n'est pas rien : un chemin de PUT ne peut
+ * plus recevoir une porte que le dépôt déclare en LECTURE SEULE. Le credential
+ * `reports` READ cesse d'être un candidat à une naissance, même par accident
+ * d'appel — et c'est cet accident-là qui était possible.
+ */
+export type OperationsDeCompartiment = CapaciteDeCompartiment["operationsMinimales"];
+
 export interface CompartimentRefuse {
   readonly ok: false;
   readonly cause: CauseDeRefusDeCompartiment;
@@ -319,6 +389,23 @@ export function resoudreCompartimentGouverne(
     );
   }
 
+  // ── INVARIANT 1 · ET « GOUVERNÉ » NE SUFFIT PAS. Le vocabulaire dit ce qui
+  // est OUVRABLE ; il ne dit pas ce qui est une DESTINATION. Sans cette étape,
+  // `R2_EVIDENCE_BUCKET_NAME=interligens-reports` faisait naître une pièce
+  // gouvernée dans le compartiment des archives — la valeur passait le contrôle
+  // d'appartenance, et aucun témoin ne l'interdisait.
+  if (bucket !== COMPARTIMENT_DE_NAISSANCE) {
+    return refuser(
+      "NAISSANCE_HORS_COMPARTIMENT_CANONIQUE",
+      `R2_EVIDENCE_BUCKET_NAME désigne « ${bucket} » comme compartiment de NAISSANCE. Il est ` +
+        `gouverné et reste parfaitement LISIBLE sur désignation du registre de localisation — mais ` +
+        `une pièce nouvelle ne naît QUE dans « ${COMPARTIMENT_DE_NAISSANCE} ». Lisibilité et ` +
+        "destination sont deux permissions distinctes : un compartiment legacy reste lisible sans " +
+        "devenir une destination valide. La réparation est de viser le compartiment canonique, " +
+        "JAMAIS d'élargir ce que la naissance accepte.",
+    );
+  }
+
   // ⛔ La capacité vient de la TABLE, jamais d'un repli. Aucune autre fente
   //    n'est consultée si celle de ce compartiment est vide.
   const capacite = capaciteDuCompartiment(bucket, env);
@@ -331,7 +418,66 @@ export function resoudreCompartimentGouverne(
 export interface CompartimentOuvert {
   readonly ok: true;
   readonly s3: S3Client;
-  readonly bucket: string;
+  /** TOUJOURS du vocabulaire fermé : les deux ouvreurs le garantissent. */
+  readonly bucket: CompartimentGouverne;
+  /**
+   * CE QUE CETTE PORTE AUTORISE. Lu dans `CAPACITES_PAR_COMPARTIMENT`, jamais
+   * choisi par l'appelant — une porte qui déclarerait elle-même ses droits ne
+   * serait pas une permission, ce serait une politesse.
+   *
+   * Le chemin de PUT l'EXIGE (`exigerCapaciteDEcriture`). C'est ce qui empêche
+   * une porte `interligens-reports` — ouverte en lecture, légitimement — de
+   * devenir par accident d'appel la destination d'une naissance.
+   */
+  readonly operations: OperationsDeCompartiment;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// L'EXIGENCE D'ÉCRITURE — `operationsMinimales` CESSE D'ÊTRE DE LA PROSE
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Une porte dont le dépôt garantit qu'elle est DÉCLARÉE en écriture. Le type
+ * n'est pas décoratif : `naissance.ts` ne sait écrire qu'avec celui-ci en main,
+ * donc aucun chemin de PUT gouverné ne peut être atteint sans passer ici.
+ */
+export interface PorteEnEcriture {
+  readonly s3: S3Client;
+  readonly bucket: CompartimentGouverne;
+  readonly operations: "READ+WRITE";
+}
+
+/**
+ * Exige la capacité WRITE, ou refuse en la nommant. LES DEUX conditions, et
+ * elles sont indépendantes — c'est pourquoi les deux sont vérifiées :
+ *
+ *   1. le compartiment est-il LE compartiment de naissance ?   (INVARIANT 1)
+ *   2. le dépôt déclare-t-il cette porte en écriture ?         (INVARIANT 1)
+ *
+ * La première seule laisserait passer une porte canonique ouverte avec une
+ * capacité de lecture ; la seconde seule laisserait passer une porte `reports`
+ * si sa table venait un jour à déclarer WRITE. Aucune ne subsume l'autre.
+ */
+export function exigerCapaciteDEcriture(
+  porte: CompartimentOuvert,
+): PorteEnEcriture | CompartimentRefuse {
+  if (porte.bucket !== COMPARTIMENT_DE_NAISSANCE) {
+    return refuser(
+      "NAISSANCE_HORS_COMPARTIMENT_CANONIQUE",
+      `une écriture de NAISSANCE a été tentée vers « ${porte.bucket} ». Ce compartiment peut être ` +
+        `ouvert et LU sur désignation du registre ; il n'est pas une destination pour une pièce ` +
+        `nouvelle. Seul « ${COMPARTIMENT_DE_NAISSANCE} » l'est.`,
+    );
+  }
+  if (porte.operations !== "READ+WRITE") {
+    return refuser(
+      "WRITE_CAPABILITY_REQUIRED",
+      `une écriture a été tentée avec une porte que le dépôt déclare « ${porte.operations} » sur ` +
+        `« ${porte.bucket} ». Une capacité de LECTURE ne devient jamais candidate à une naissance : ` +
+        "elle n'est pas essayée « pour voir », elle est REFUSÉE avant tout appel réseau.",
+    );
+  }
+  return { s3: porte.s3, bucket: porte.bucket, operations: "READ+WRITE" };
 }
 
 /**
@@ -346,7 +492,14 @@ export function ouvrirCompartimentGouverne(
 ): CompartimentOuvert | CompartimentRefuse {
   const r = resoudreCompartimentGouverne(env);
   if (!r.ok) return r;
-  return { ok: true, s3: buildEvidenceR2(r.config), bucket: r.config.bucket };
+  // La résolution ci-dessus a REFUSÉ tout ce qui n'est pas le compartiment de
+  // naissance : le seul bucket qui puisse arriver ici est celui-là.
+  return {
+    ok: true,
+    s3: buildEvidenceR2(r.config),
+    bucket: COMPARTIMENT_DE_NAISSANCE,
+    operations: CAPACITES_PAR_COMPARTIMENT[COMPARTIMENT_DE_NAISSANCE].operationsMinimales,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -437,6 +590,11 @@ export function ouvrirCompartimentDesigne(
     ok: true,
     s3: construire({ accountId, ...capacite, bucket: designe, endpoint }),
     bucket: designe,
+    // ⚠️ INVARIANT 1 : cette porte peut être une porte `interligens-reports`, et
+    // c'est LÉGITIME — le registre l'a désignée pour relire des octets
+    // historiques. Ce qu'elle porte alors est `READ`, et le chemin de naissance
+    // le REFUSERA. Lisible, jamais destination.
+    operations: CAPACITES_PAR_COMPARTIMENT[designe].operationsMinimales,
   };
 }
 
