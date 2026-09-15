@@ -420,7 +420,20 @@ LEASES=(
     #
     # 45 minutes, la borne du mécanisme. Le sujet est la branche du chantier :
     # le nom SÉLECTIONNE, la lease AUTORISE.
-    "CC-OFFLINE-217-SEPARATION-AUTORITES|separation-des-autorites-de-secret|src/lib/osint/retail/ipHash.ts,src/app/api/admin/intake/route.ts|bc34102abc3566bc58bcffd220b71d7cb608088d|feat/cc-offline-217-separation-autorites-secret|2026-09-15T12:32:00Z|2026-09-15T13:17:00Z|OPEN"
+    # FERMÉE le 2026-09-15T12:43Z, la séparation mergée (41b97ef). Consommée à
+    # 12:37, dans sa fenêtre — 5 minutes sur les 45 ouvertes.
+    #
+    # Troisième lease du dépôt, même discipline que les deux premières : fermée,
+    # pas laissée expirer. Une lease périmée cesse bien d'autoriser, mais un
+    # enregistrement OPEN qui traîne dans `main` RESSEMBLE à une exemption — et
+    # c'est précisément la confusion que « STATIC PROJECT EXEMPTIONS = 0 »
+    # existe pour interdire.
+    #
+    # Le sujet n'existe plus : la branche a été supprimée au merge.
+    #
+    #   CC-OFFLINE-217-SEPARATION-AUTORITES | separation-des-autorites-de-secret
+    #   2 chemins · feat/cc-offline-217-separation-autorites-secret
+    #   2026-09-15T12:32:00Z → 13:17:00Z (45 mn) · consommée à 12:37
 )
 
 lease_rouge() {
