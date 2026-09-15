@@ -505,10 +505,14 @@ describe("B · la forme du gate est structurellement fail-closed", () => {
   it("le job CÂBLE les capacités, il ne les construit pas dans le gate", () => {
     const job = lire(SRC_JOB);
     expect(job).toContain("getEvidenceObject");
-    expect(job).toContain("evidenceR2ConfigFromEnv");
-    // Fail-closed d'amorçage : sans R2, rien n'est horodaté.
-    expect(job).toMatch(/if \(!r2cfg && !dryRun\)/);
-    expect(job).toMatch(/REFUS — evidenceR2ConfigFromEnv\(\) rend null/);
+    // CC-OFFLINE-188 — l'amorçage passe désormais par la PORTE GOUVERNÉE, qui
+    // refuse au lieu de se rabattre. `evidenceR2ConfigFromEnv` (avec son repli
+    // sur R2_BUCKET_NAME) n'a plus rien à faire sur ce chemin.
+    expect(job).toContain("ouvrirCompartimentGouverne");
+    expect(job).not.toContain("evidenceR2ConfigFromEnv");
+    // Fail-closed d'amorçage : sans compartiment gouverné, rien n'est horodaté.
+    expect(job).toMatch(/if \(!compartiment\.ok && !dryRun\)/);
+    expect(job).toContain("rendreRefusDeCompartiment");
   });
 
   it("la relecture vise le MÊME compartiment que l'écriture", () => {

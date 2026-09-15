@@ -17,7 +17,7 @@ import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { ingestBuffer } from "@/lib/evidence-chain/ingest";
 import { PrismaEvidenceStore } from "@/lib/evidence-chain/store/prisma";
-import { evidenceR2ConfigFromEnv, buildEvidenceR2 } from "@/lib/evidence-chain/r2";
+import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "@/lib/evidence-chain/compartment";
 import type { EvidenceSourceType } from "@/lib/evidence-chain/types";
 
 export interface CommitEvidenceRef {
@@ -100,8 +100,25 @@ export async function chainOperatorEvidence(
     let tsaPending = true;
 
     if (imageB64 !== null) {
-      const cfg = evidenceR2ConfigFromEnv();
-      const r2 = cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket } : null;
+      // ── FAIL-CLOSED — la branche AVEC OCTETS, et elle seule.
+      //
+      // Des octets à persister exigent un compartiment gouverné : sans
+      // `R2_EVIDENCE_BUCKET_NAME`, on refuse plutôt que d'écrire dans le
+      // compartiment des archives. La branche HASH-ONLY plus bas n'est PAS
+      // concernée — elle ne persiste aucun octet, donc elle n'a aucun
+      // compartiment à résoudre, et la refuser casserait un commit opérateur
+      // légitime pour une variable qui ne le regarde pas.
+      const compartiment = ouvrirCompartimentGouverne();
+      if (!compartiment.ok) {
+        const msg = rendreRefusDeCompartiment(compartiment);
+        console.error(`[osint-commit-chain] ${msg} — aucune pièce créée pour sha256=${e.sha256}.`);
+        // `itemId` et non `null` en dur : le refus précède l'insertion, donc il
+        // vaut null AUJOURD'HUI — mais rendre la VARIABLE est ce qui garantit
+        // qu'un orphelin resterait identifiable si ce garde se déplaçait un jour
+        // après une écriture. C'est la règle du témoin §4, et elle tient ici.
+        return { sha256: e.sha256, mode: "failed", evidenceItemId: itemId, tsaPending: true, error: msg };
+      }
+      const r2 = { s3: compartiment.s3, bucket: compartiment.bucket };
       const tsaInRoute = process.env.EVIDENCE_TSA_INROUTE === "true";
       const res = await ingestBuffer(
         {

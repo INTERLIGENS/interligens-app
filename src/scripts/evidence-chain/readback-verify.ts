@@ -24,23 +24,19 @@ config({ path: ".env.local" });
 import { PrismaClient } from "@prisma/client";
 import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
 import { readbackDigest } from "../../lib/evidence-chain/readback";
-import {
-  evidenceR2ConfigFromEnv,
-  buildEvidenceR2,
-  getEvidenceObject,
-} from "../../lib/evidence-chain/r2";
+import { getEvidenceObject } from "../../lib/evidence-chain/r2";
+import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "../../lib/evidence-chain/compartment";
 
 async function main() {
   const i = process.argv.indexOf("--limit");
   const limit = i > -1 && process.argv[i + 1] ? parseInt(process.argv[i + 1], 10) : 1;
 
-  const cfg = evidenceR2ConfigFromEnv();
-  if (!cfg) {
-    console.error("[readback-verify] REFUS — evidenceR2ConfigFromEnv() rend null : rien à relire.");
+  const compartiment = ouvrirCompartimentGouverne();
+  if (!compartiment.ok) {
+    console.error(`[readback-verify] ${rendreRefusDeCompartiment(compartiment)}`);
     process.exit(1);
   }
-  const s3 = buildEvidenceR2(cfg);
-  console.log(`[readback-verify] compartiment : ${cfg.bucket}`);
+  console.log(`[readback-verify] compartiment : ${compartiment.bucket}`);
 
   const prisma = new PrismaClient();
   try {
@@ -55,7 +51,7 @@ async function main() {
       const v = await readbackDigest({
         r2Key: p.r2Key,
         expectedSha256: p.sha256,
-        readObject: (k) => getEvidenceObject(s3, cfg.bucket, k),
+        readObject: (k) => getEvidenceObject(compartiment.s3, compartiment.bucket, k),
       });
       console.log(`\n  pièce   : ${p.id}`);
       console.log(`  clé     : ${p.r2Key}`);

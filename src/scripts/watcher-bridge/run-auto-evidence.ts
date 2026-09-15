@@ -8,7 +8,7 @@ config({ path: ".env.local" });
 import { PrismaClient } from "@prisma/client";
 import { runAutoEvidenceBatch } from "@/lib/watcher-bridge/createAutoEvidenceSnapshot";
 import { PrismaEvidenceStore } from "@/lib/evidence-chain/store/prisma";
-import { evidenceR2ConfigFromEnv, buildEvidenceR2 } from "@/lib/evidence-chain/r2";
+import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "@/lib/evidence-chain/compartment";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -25,10 +25,18 @@ async function main() {
   try {
     // Chaîne de preuve (CC-OFFLINE-56) : artefact JSON canonique par candidate.
     // Script lancé depuis un host avec openssl → TSA tentée au fil de l'eau.
-    const cfg = evidenceR2ConfigFromEnv();
+    // FAIL-CLOSED — intake gouverné. En dry-run rien n'est écrit, donc rien
+    // à refuser ; en LIVE, pas de compartiment dédié = pas d'ingestion.
+    const compartiment = ouvrirCompartimentGouverne();
+    if (!dryRun && !compartiment.ok) {
+      console.error(`[run-auto-evidence] ${rendreRefusDeCompartiment(compartiment)}`);
+      console.error("                    Aucune pièce créée. Relancer après provisionnement.");
+      process.exitCode = 1;
+      return;
+    }
     const chain = dryRun ? null : {
       store: new PrismaEvidenceStore(prisma),
-      r2: cfg ? { s3: buildEvidenceR2(cfg), bucket: cfg.bucket } : null,
+      r2: compartiment.ok ? { s3: compartiment.s3, bucket: compartiment.bucket } : null,
       tsaEnabled: true,
     };
     const summary = await runAutoEvidenceBatch(prisma, { candidateIds, limit, dryRun, chain });

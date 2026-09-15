@@ -55,11 +55,8 @@ import { PrismaEvidenceStore } from "../../lib/evidence-chain/store/prisma";
 import { timestampWithRouting } from "../../lib/evidence-chain/tsa";
 import { tsaPendingUniverseSql } from "../../lib/evidence-chain/eligibility";
 import { stampOne, type PendingEvidenceRow } from "../../lib/evidence-chain/stampGate";
-import {
-  evidenceR2ConfigFromEnv,
-  buildEvidenceR2,
-  getEvidenceObject,
-} from "../../lib/evidence-chain/r2";
+import { getEvidenceObject } from "../../lib/evidence-chain/r2";
+import { ouvrirCompartimentGouverne, rendreRefusDeCompartiment } from "../../lib/evidence-chain/compartment";
 
 const flagN = (name: string, def: number) => {
   const i = process.argv.indexOf("--" + name);
@@ -76,19 +73,23 @@ async function main() {
   const universe = tsaPendingUniverseSql();
 
   // ── FAIL-CLOSED D'AMORÇAGE ─────────────────────────────────────────────
-  const r2cfg = evidenceR2ConfigFromEnv();
-  if (!r2cfg && !dryRun) {
+  //
+  // La porte est UNIQUE et elle REFUSE : sans `R2_EVIDENCE_BUCKET_NAME`, ce
+  // job ne relit rien. Il ne se rabat PAS sur `R2_BUCKET_NAME` — relire les
+  // octets dans le compartiment des archives, puis poser un jeton dessus,
+  // attesterait un objet que le chemin d'écriture gouverné n'a pas choisi.
+  const compartiment = ouvrirCompartimentGouverne();
+  if (!compartiment.ok && !dryRun) {
     console.error(
-      "[stamp-pending] REFUS — evidenceR2ConfigFromEnv() rend null : les octets ne peuvent pas être relus.\n" +
+      `[stamp-pending] ${rendreRefusDeCompartiment(compartiment)}\n` +
         "               Aucun horodatage tenté. Un jeton posé sans relecture attesterait une colonne, pas une preuve.",
     );
     process.exitCode = 1;
     return;
   }
-  const s3 = r2cfg ? buildEvidenceR2(r2cfg) : null;
   const readObject = (key: string): Promise<Buffer> => {
-    if (!s3 || !r2cfg) throw new Error("R2 non configuré");
-    return getEvidenceObject(s3, r2cfg.bucket, key);
+    if (!compartiment.ok) throw new Error(rendreRefusDeCompartiment(compartiment));
+    return getEvidenceObject(compartiment.s3, compartiment.bucket, key);
   };
 
   const prisma = new PrismaClient();
