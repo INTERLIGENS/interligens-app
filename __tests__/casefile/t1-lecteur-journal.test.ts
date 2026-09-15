@@ -405,6 +405,13 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // autorité, celle qui alimente le journal que le resolver lit. Il ne
       // décide d'aucune qualification à partir d'une identité.
       "src/lib/casefile/journalWriter.ts",
+      // CC-OFFLINE-214 — LA TRANCHE VERTICALE. Elle est un APPELANT de
+      // l'écrivain, pas un second resolver : elle ne LIT aucune identité pour
+      // en DÉDUIRE une qualification. Elle inscrit, sur ordre explicite d'un
+      // opérateur, la qualification d'une pièce qu'elle vient elle-même de
+      // faire naître, d'archiver, de relire et de confronter — c'est la
+      // vérification qui EST la qualification, pas une étiquette posée dessus.
+      "src/scripts/casefile/tranche-temoin-controle.ts",
     ]);
     for (const [f, c] of sources) {
       if (!f.startsWith("src/")) continue;
@@ -433,6 +440,15 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       "scripts/casefile/qualifications-vine-rehearsal-rollback.mts",
       "scripts/casefile/qualifications-vine-gate-post-inscription.mts",
       "scripts/casefile/harnais-ecrivain-journal-pglite.mts",
+      // CC-OFFLINE-214 — le CINQUIÈME inscripteur, et c'est une DÉCISION, pas
+      // un trou : la tranche verticale inscrit la qualification de SA pièce.
+      //
+      // ⚠️ Elle porte aussi un sha256 — celui qu'elle vient de RECALCULER
+      // depuis les octets relus. Ce n'est pas la forme du registre supprimé :
+      // aucun digest n'y est CODÉ EN DUR, et aucune table ne fait correspondre
+      // un digest à une qualification. La qualification vient de la
+      // vérification effectuée, le digest vient des octets.
+      "src/scripts/casefile/tranche-temoin-controle.ts",
     ]);
     // Et les deux sites de `src/` qui posent une qualification littérale sans
     // la DÉCIDER — vérifiés un par un juste après, pas exemptés en bloc.
