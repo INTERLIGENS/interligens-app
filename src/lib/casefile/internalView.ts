@@ -25,6 +25,7 @@
 // accès. Admin ne veut pas dire « tout », il veut dire « tout le dossier ».
 
 import type { CanonicalCaseFile, PublicClaim } from "./canonicalReader";
+import { projectConclusions, type AudienceProjection, type DependencyIndex } from "./audienceProjection";
 
 /** Un claim tel que la surface admin le reçoit. */
 export interface InternalClaim {
@@ -55,7 +56,13 @@ export interface InternalCaseView {
   readonly name: string;
   /** `null` = score non établi. Jamais 0 par défaut. */
   readonly tiger_score: number | null;
-  readonly verdict: string;
+  /**
+   * ⛔ RETIRÉ — CC-OFFLINE-234. Cette surface est COUNSEL/INTERNAL : son
+   * autorité est le FONDEMENT, et sa donnée autoritative est `conclusions`.
+   * `token_casefiles.verdict` n'y entre plus : il mêlait trois registres et
+   * n'avait traversé aucun contrat.
+   */
+  readonly conclusions: AudienceProjection;
   readonly claims: readonly InternalClaim[];
   readonly sources: readonly InternalEvidence[];
 }
@@ -96,13 +103,23 @@ function toClaim(c: PublicClaim): InternalClaim {
  * ne porte aucun bloc de wallets on-chain, et en fabriquer un pour remplir la
  * forme serait exactement ce que l'étape 7 supprime.
  */
-export function toInternalCaseView(dossier: CanonicalCaseFile): InternalCaseView {
+export function toInternalCaseView(
+  dossier: CanonicalCaseFile,
+  /**
+   * Les dépendances causales du dossier. Absentes vaut « aucune » : une
+   * inférence dont on ne remonte pas les dépendances n'est PAS admise côté
+   * counsel — c'est le contrat de fondement qui le dit, pas cette surface.
+   */
+  dependances: DependencyIndex = new Map(),
+): InternalCaseView {
   return {
+    // L'AUDIENCE EST EXPLICITE. Cette surface est COUNSEL : son autorité est le
+    // FONDEMENT. Aucun drapeau, aucun booléen d'inclusion — le mot est écrit.
+    conclusions: projectConclusions(dossier, "COUNSEL", dependances),
     ref: dossier.ref,
     symbol: dossier.ticker.replace(/^\$/, ""),
     name: dossier.codename,
     tiger_score: dossier.tigerScore,
-    verdict: dossier.verdict,
     claims: dossier.claims.map(toClaim),
     sources: dossier.sources.map(toEvidence),
   };

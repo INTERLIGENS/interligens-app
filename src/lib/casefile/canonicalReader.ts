@@ -104,6 +104,14 @@ export interface PublicClaim {
   readonly rowNature?: string | null;
   readonly evidenceRefs?: readonly string[];
   /**
+   * CC-OFFLINE-234 — la VERSION, remontée jusqu'à la projection. Une conclusion
+   * gouvernée se cite par identité ET version : sans elle, une projection
+   * counsel désignerait un `claimId` dont le contenu peut avoir été supplanté.
+   * Optionnelle pour la même raison que les deux champs ci-dessus : les
+   * fixtures n'en portent pas, et une absence ne doit pas être devinée.
+   */
+  readonly version?: number;
+  /**
    * `null` signifie « ce claim ne porte aucun fondement » — et c'est une
    * information, pas une omission. Un champ absent laisserait le renderer
    * décider ; un `null` explicite l'oblige à le dire.
@@ -250,6 +258,32 @@ const asRefs = (v: unknown): string[] =>
  * trois états sont distincts, et un claim `ATTACHED` n'est pas un claim publié
  * dont on aurait oublié le drapeau.
  */
+/**
+ * LES DÉPENDANCES CAUSALES d'un dossier, indexées par `claimId@version`.
+ *
+ * Lecture SEULE, colonnes ÉNUMÉRÉES. Elle n'existe que pour que la projection
+ * counsel puisse rendre, avec chaque inférence, l'ensemble versionné qu'elle
+ * consomme — le `contentHash` ne le scelle pas.
+ */
+export async function loadClaimDependencies(
+  ref: string,
+): Promise<Map<string, Array<{ claimId: string; version: number; kind: string }>>> {
+  const rows = await prisma.$queryRaw<
+    Array<{ dependent_claim_id: string; dependent_version: number; source_claim_id: string; source_version: number; dependency_kind: string }>
+  >`
+    SELECT dependent_claim_id, dependent_version, source_claim_id, source_version, dependency_kind
+      FROM casefile_claim_dependencies WHERE casefile_ref = ${ref}
+     ORDER BY dependent_claim_id, dependent_version, source_claim_id, source_version`;
+  const index = new Map<string, Array<{ claimId: string; version: number; kind: string }>>();
+  for (const r of rows) {
+    const k = `${r.dependent_claim_id}@${r.dependent_version}`;
+    const liste = index.get(k) ?? [];
+    liste.push({ claimId: r.source_claim_id, version: Number(r.source_version), kind: r.dependency_kind });
+    index.set(k, liste);
+  }
+  return index;
+}
+
 export async function loadCanonicalCaseFile(
   ref: string,
   opts: { onlyPublishable?: boolean } = {},
@@ -313,6 +347,7 @@ export async function loadCanonicalCaseFile(
     .filter((c) => !opts.onlyPublishable || c.state === "PUBLIC")
     .map((c) => ({
       claimId: c.claimId,
+      version: c.version,
       title: c.title,
       titleFr: c.titleFr,
       description: c.description,

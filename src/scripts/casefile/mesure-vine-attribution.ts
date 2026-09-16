@@ -552,9 +552,42 @@ async function conclusionBornee(): Promise<void> {
   ok(`dépendance DERIVED_FROM → ${CLAIM_ID} v1, épinglée en version`);
 }
 
+/**
+ * LE WITNESS DE SÉPARATION D'AUTORITÉ — CC-OFFLINE-234. LECTURE SEULE.
+ *
+ * La MÊME claim, la MÊME donnée, les DEUX audiences. Elle doit être présente
+ * côté counsel et absente côté public : un dossier de travail gouverné n'est pas
+ * une publication.
+ */
+async function projectionParAudience(): Promise<void> {
+  const { loadCanonicalCaseFile, loadClaimDependencies } = await import("../../lib/casefile/canonicalReader");
+  const { projectConclusions } = await import("../../lib/casefile/audienceProjection");
+
+  console.log("\nPROJECTION PAR AUDIENCE · dossier réel");
+  const dossier = await loadCanonicalCaseFile(REF);
+  if (!dossier) ko("dossier introuvable");
+  if (!dossier) return;
+  const deps = await loadClaimDependencies(REF);
+
+  for (const audience of ["COUNSEL", "PUBLIC"] as const) {
+    const p = projectConclusions(dossier, audience, deps);
+    ok(`${audience.padEnd(8)} · ${p.state} · ${p.conclusions.length} conclusion(s)`);
+    for (const c of p.conclusions) {
+      ok(`           ${c.claimId} v${c.version} · ${c.rowNature} · ${c.state}`);
+      for (const d of c.dependencies) ok(`             └ ${d.kind} → ${d.claimId} v${d.version}`);
+    }
+  }
+  ok(`verdict hérité en base : « ${(dossier as { verdict?: string }).verdict ?? "(absent de la projection)"} » — consommé par AUCUNE des deux`);
+}
+
 const estPrincipal = process.argv[1]?.endsWith("mesure-vine-attribution.ts");
 if (estPrincipal) {
-  if (process.argv.includes("--conclusion")) {
+  if (process.argv.includes("--projection")) {
+    projectionParAudience().catch((e) => {
+      console.error(e);
+      process.exitCode = 1;
+    });
+  } else if (process.argv.includes("--conclusion")) {
     conclusionBornee().catch((e) => {
       console.error(e);
       process.exitCode = 1;
