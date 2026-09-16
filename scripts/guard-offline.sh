@@ -490,7 +490,14 @@ LEASES=(
     # la branche est AJOUTÉE, en fail-closed.
     #
     # 45 minutes, la borne du mécanisme. Le sujet SÉLECTIONNE, la lease AUTORISE.
-    "CC-OFFLINE-246-EXPOSITION-ROUTE|exposition-de-la-route-canonique|src/app/api/casefile/pdf/route.ts|588975c9d095453566fe3772961b36137e01f16c|feat/cc-offline-246-lease-route-canonique-exposition|2026-09-16T13:06:00Z|2026-09-16T13:51:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — le câblage est sur `main` (462d6ba), un seul fichier
+    # dans le diff, vérifié par `gh pr view 470 --json files`. La route expose
+    # `?template=governed` ; `public` et `internal` sont intacts.
+    #
+    #   CC-OFFLINE-246-EXPOSITION-ROUTE | exposition-de-la-route-canonique
+    #   1 chemin · feat/cc-offline-246-lease-route-canonique-exposition
+    #   2026-09-16T13:06:00Z → 13:51:00Z (45 mn) · consommée à 13:18
 )
 
 lease_rouge() {
