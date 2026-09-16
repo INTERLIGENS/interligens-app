@@ -471,6 +471,26 @@ LEASES=(
     #   CC-OFFLINE-236-VERDICT-BADGE | retrait-de-la-derniere-consommation-du-verdict-legacy
     #   1 chemin · feat/cc-offline-236-verdict-badge-removal
     #   2026-09-16T10:58:00Z → 11:43:00Z (45 mn) · consommée à 11:09
+
+    # ── CC-OFFLINE-246-EXPOSITION-ROUTE ──────────────────────────────────────
+    # UN SEUL chemin, et c'est le minimum strict.
+    #
+    #   src/app/api/casefile/pdf/route.ts
+    #
+    # CF-3 (CC-OFFLINE-244) a livré l'assemblage, la projection par audience et
+    # le renderer gouverné — tous testés, tous mergés. Il manque UNE ligne de
+    # câblage : la route canonique n'appelle pas encore ce chemin. Le patch
+    # `?template=governed` a été écrit, compilé et vérifié pendant CF-3, puis
+    # REVERTI quand le garde l'a refusé. Il n'a pas été contourné.
+    #
+    #   UNE PREUVE PRÉSENTE DANS LA SOURCE MAIS ABSENTE DE LA PAGE RENDUE
+    #   N'EST PAS UNE PREUVE FOURNIE.
+    #
+    # Les gabarits `public` et `internal` de cette route ne sont PAS touchés :
+    # la branche est AJOUTÉE, en fail-closed.
+    #
+    # 45 minutes, la borne du mécanisme. Le sujet SÉLECTIONNE, la lease AUTORISE.
+    "CC-OFFLINE-246-EXPOSITION-ROUTE|exposition-de-la-route-canonique|src/app/api/casefile/pdf/route.ts|588975c9d095453566fe3772961b36137e01f16c|feat/cc-offline-246-lease-route-canonique-exposition|2026-09-16T13:06:00Z|2026-09-16T13:51:00Z|OPEN"
 )
 
 lease_rouge() {
