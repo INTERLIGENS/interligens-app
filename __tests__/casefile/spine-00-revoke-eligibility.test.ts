@@ -155,8 +155,8 @@ describe("T1 · les deux prédicats — chaque cause, un cas nommé", () => {
     });
   }
 
-  it("(a)(d) le FONDEMENT tolère OPERATOR_DECLARED, EXTRACTED, VERIFIED — jamais UNKNOWN, et l'absence vaut UNKNOWN", () => {
-    for (const kind of ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const) {
+  it("(a)(d) le FONDEMENT tolère OPERATOR_DECLARED, EXTRACTED, VERIFIED, MACHINE_MEASURED — jamais UNKNOWN, et l'absence vaut UNKNOWN", () => {
+    for (const kind of ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED", "MACHINE_MEASURED"] as const) {
       const e = isFoundationEligibleSource(piece({ provenanceKind: kind }));
       expect(e.eligible, kind).toBe(true);
       if (e.eligible) expect(e.source.provenanceKind).toBe(kind);
@@ -164,12 +164,24 @@ describe("T1 · les deux prédicats — chaque cause, un cas nommé", () => {
     const attendu = { eligible: false, refusal: { cause: "SOURCE_PROVENANCE_UNQUALIFIED", field: "provenanceKind" } };
     expect(isFoundationEligibleSource(piece({ provenanceKind: "UNKNOWN" }))).toEqual(attendu);
     expect(isFoundationEligibleSource(piece({ provenanceKind: undefined }))).toEqual(attendu);
-    expect([...FOUNDATION_TOLERATED_PROVENANCE].sort()).toEqual(["EXTRACTED", "OPERATOR_DECLARED", "VERIFIED"]);
+    // MACHINE_MEASURED depuis CC-OFFLINE-230 : une mesure déterministe produite
+    // par un instrument identifié PEUT fonder. Le témoin (b)(c)(d) ci-dessous
+    // vérifie qu'elle ne peut PAS publier pour autant.
+    expect([...FOUNDATION_TOLERATED_PROVENANCE].sort()).toEqual([
+      "EXTRACTED",
+      "MACHINE_MEASURED",
+      "OPERATOR_DECLARED",
+      "VERIFIED",
+    ]);
     expect(SOURCE_PROVENANCE_KINDS).toContain("UNKNOWN"); // le vocabulaire garde UNKNOWN : c'est la valeur par DÉFAUT, pas une qualification
   });
 
   it("(b)(c)(d) la PUBLICATION n'accepte que VERIFIED : OPERATOR_DECLARED et EXTRACTED → NOT_VERIFIED ; UNKNOWN → UNQUALIFIED", () => {
-    for (const kind of ["OPERATOR_DECLARED", "EXTRACTED"] as const) {
+    // MACHINE_MEASURED est dans la boucle : c'est LA garantie asymétrique de
+    // CC-OFFLINE-230 — une mesure interne peut FONDER, elle ne peut jamais
+    // PUBLIER, et ce n'est pas une liste d'exclusion mais le `=== "VERIFIED"`
+    // de `isPublicationEligibleSource` qui l'assure.
+    for (const kind of ["OPERATOR_DECLARED", "EXTRACTED", "MACHINE_MEASURED"] as const) {
       expect(isPublicationEligibleSource(piece({ provenanceKind: kind })), kind).toEqual({
         eligible: false, refusal: { cause: "SOURCE_PROVENANCE_NOT_VERIFIED", field: "provenanceKind" },
       });

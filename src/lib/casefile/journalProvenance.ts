@@ -70,8 +70,20 @@
 
 import type { SourceProvenanceKind } from "./provenanceKind";
 
-/** Le domaine FERMÉ de la colonne `provenance_kind`. UNKNOWN n'en fait pas partie. */
-export const JOURNAL_PROVENANCE_KINDS = ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const;
+/**
+ * Le domaine FERMÉ de la colonne `provenance_kind`. UNKNOWN n'en fait pas partie.
+ *
+ * MACHINE_MEASURED depuis le 2026-09-16 (CC-OFFLINE-230) : le CHECK en base porte
+ * désormais quatre valeurs, et ce domaine le MIROITE. Le laisser à trois ferait
+ * rendre ROW_OUT_OF_DOMAIN à une ligne parfaitement légitime — c'est-à-dire que
+ * l'instrument déclarerait anormale sa propre mesure.
+ */
+export const JOURNAL_PROVENANCE_KINDS = [
+  "OPERATOR_DECLARED",
+  "EXTRACTED",
+  "VERIFIED",
+  "MACHINE_MEASURED",
+] as const;
 export type JournalProvenanceKind = (typeof JOURNAL_PROVENANCE_KINDS)[number];
 
 /** Le domaine FERMÉ de la colonne `reference_kind`. */

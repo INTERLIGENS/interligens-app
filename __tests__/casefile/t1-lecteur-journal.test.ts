@@ -412,6 +412,14 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // faire naître, d'archiver, de relire et de confronter — c'est la
       // vérification qui EST la qualification, pas une étiquette posée dessus.
       "src/scripts/casefile/tranche-temoin-controle.ts",
+      // CC-OFFLINE-230 — L'INSTRUMENT DE MESURE. Même statut que la tranche : il
+      // est un APPELANT de l'écrivain, jamais un second resolver. Il ne lit
+      // AUCUNE identité pour en déduire une qualification — il inscrit
+      // MACHINE_MEASURED sur une pièce qu'il vient lui-même de produire, de
+      // faire naître, de relire et de confronter. La qualification n'est pas une
+      // étiquette posée sur la mesure : elle DIT qui l'a produite, et le CHECK
+      // en base refuse que ce soit une personne.
+      "src/scripts/casefile/mesure-vine-attribution.ts",
     ]);
     for (const [f, c] of sources) {
       if (!f.startsWith("src/")) continue;
@@ -449,6 +457,14 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // un digest à une qualification. La qualification vient de la
       // vérification effectuée, le digest vient des octets.
       "src/scripts/casefile/tranche-temoin-controle.ts",
+      // CC-OFFLINE-230 — L'INSTRUMENT DE MESURE. Même statut que la tranche : il
+      // est un APPELANT de l'écrivain, jamais un second resolver. Il ne lit
+      // AUCUNE identité pour en déduire une qualification — il inscrit
+      // MACHINE_MEASURED sur une pièce qu'il vient lui-même de produire, de
+      // faire naître, de relire et de confronter. La qualification n'est pas une
+      // étiquette posée sur la mesure : elle DIT qui l'a produite, et le CHECK
+      // en base refuse que ce soit une personne.
+      "src/scripts/casefile/mesure-vine-attribution.ts",
     ]);
     // Et les deux sites de `src/` qui posent une qualification littérale sans
     // la DÉCIDER — vérifiés un par un juste après, pas exemptés en bloc.
@@ -592,6 +608,15 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
 
   it("le vocabulaire dérivé est fermé, et UNKNOWN n'est PAS dans le domaine du journal", () => {
     expect([...DERIVED_UNKNOWN_CAUSES]).toEqual(["NO_SNAPSHOT_LINK", "NO_JOURNAL_ENTRY", "ROW_OUT_OF_DOMAIN"]);
-    expect([...JOURNAL_PROVENANCE_KINDS]).toEqual(["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"]);
+    // MACHINE_MEASURED depuis CC-OFFLINE-230 : le domaine MIROITE le CHECK en
+    // base, qui porte quatre valeurs depuis le 2026-09-16. UNKNOWN n'y est
+    // toujours pas — il reste une valeur DÉRIVÉE de l'absence, jamais stockée.
+    expect([...JOURNAL_PROVENANCE_KINDS]).toEqual([
+      "OPERATOR_DECLARED",
+      "EXTRACTED",
+      "VERIFIED",
+      "MACHINE_MEASURED",
+    ]);
+    expect([...JOURNAL_PROVENANCE_KINDS]).not.toContain("UNKNOWN");
   });
 });

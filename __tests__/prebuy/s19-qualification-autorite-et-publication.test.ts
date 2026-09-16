@@ -370,6 +370,11 @@ describe("S19/ag3g — 7 · CONSOMMATEURS : découverts, et le point ne FONDE ri
       "src/app/api/casefile/generate/route.ts",
       "src/app/api/casefile/pdf/route.ts",
       PROJECTION,
+      // CC-OFFLINE-230 — l'instrument de mesure CONSOMME la constante au lieu de
+      // recopier le littéral. Un consommateur de plus ne change RIEN à
+      // l'argument : c'est justement parce que la prévalence de consommation
+      // bouge au gré des chantiers qu'elle ne peut fonder aucune identité.
+      "src/scripts/casefile/mesure-vine-attribution.ts",
     ].sort());
     // VINE n'a pas d'entrée dans la table de faits du PDF public, et pas de
     // page de preuves dédiée. La prévalence de consommation diffère donc

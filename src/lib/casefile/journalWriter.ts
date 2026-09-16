@@ -125,7 +125,39 @@ export interface QualificationVerifiee extends QualificationCommune {
   };
 }
 
-export type QualificationIntent = QualificationDeclaree | QualificationVerifiee;
+/**
+ * Une MESURE PRODUITE PAR UN INSTRUMENT. CC-OFFLINE-230, 2026-09-16.
+ *
+ * Le type porte les deux gardes que la base porte, et il les porte AU MÊME
+ * ENDROIT que la valeur — une autorité nouvelle arrive avec ce qui la définit :
+ *
+ *   · `referenceKind` est littéralement `"DOCUMENT"` : une mesure est un objet
+ *     PERSISTÉ qu'on peut relire, jamais un contexte de découverte ni un profil.
+ *     Le type l'impose ; `..._measurement_is_document_check` le rejoue en base.
+ *   · aucun champ de vérification n'est DÉCLARÉ, comme pour `QualificationDeclaree` :
+ *     une mesure n'est pas vérifiée contre une source indépendante, et prétendre
+ *     le contraire serait exactement la confusion que MACHINE_MEASURED existe
+ *     pour éviter.
+ *
+ * `declaredBy` reste le champ commun — NON RENOMMÉ avant le RC — mais pour cette
+ * variante il porte l'identité de l'INSTRUMENT, `instrument:<nom>@<semver>`, et
+ * jamais un nom de personne. La forme est vérifiée ici ET par
+ * `..._declares_instrument_che` en base.
+ */
+export interface QualificationMesuree extends QualificationCommune {
+  readonly provenanceKind: Extract<JournalProvenanceKind, "MACHINE_MEASURED">;
+  readonly referenceKind: Extract<JournalReferenceKind, "DOCUMENT">;
+}
+
+export type QualificationIntent = QualificationDeclaree | QualificationVerifiee | QualificationMesuree;
+
+/**
+ * La forme d'une identité d'instrument. MIROIR EXACT du CHECK en base
+ * `evidence_provenance_journal_measurement_declares_instrument_che` — nom
+ * TRONQUÉ à 63 caractères par PostgreSQL, et c'est le nom réel qui fait
+ * autorité (voir le dossier CC-OFFLINE-230).
+ */
+export const INSTRUMENT_DECLARANT_FORM = /^instrument:[a-z0-9][a-z0-9-]*@[0-9]+\.[0-9]+\.[0-9]+$/;
 
 // ═══ LES CAUSES — NOMMÉES, FERMÉES ══════════════════════════════════════════
 
@@ -154,6 +186,10 @@ export const QUALIFICATION_REFUSAL_CAUSES = [
   "VERIFICATION_NOT_ALLOWED",
   /** VERIFIED sur un QUERY_CONTEXT : décision 4b, refusée par le type ET ici. */
   "VERIFIED_QUERY_CONTEXT_FORBIDDEN",
+  /** MACHINE_MEASURED sur autre chose qu'un DOCUMENT : une mesure est un objet persisté. */
+  "MEASUREMENT_NOT_DOCUMENT",
+  /** MACHINE_MEASURED dont `declaredBy` ne suit pas `instrument:<nom>@<semver>`. */
+  "MEASUREMENT_DECLARANT_NOT_INSTRUMENT",
 ] as const;
 export type QualificationRefusalCause = (typeof QUALIFICATION_REFUSAL_CAUSES)[number];
 
@@ -303,6 +339,18 @@ export function validerQualification(
   //    chose. Le type l'exclut déjà ; ceci est pour l'appelant non typé.
   if (provenanceKind === "VERIFIED" && refKind === "QUERY_CONTEXT") {
     return ko("VERIFIED_QUERY_CONTEXT_FORBIDDEN", "referenceKind");
+  }
+
+  // ── MACHINE_MEASURED : les deux gardes qui DÉFINISSENT cette autorité, au même
+  //    endroit que les autres, et pour la même raison qu'en 4b — le type les
+  //    porte déjà, ceci est pour l'appelant non typé. Elles rejouent mot pour mot
+  //    `..._measurement_is_document_check` et `..._declares_instrument_che`.
+  if (provenanceKind === "MACHINE_MEASURED") {
+    if (refKind !== "DOCUMENT") return ko("MEASUREMENT_NOT_DOCUMENT", "referenceKind");
+    const qui = (intent as { declaredBy?: unknown }).declaredBy;
+    if (typeof qui !== "string" || !INSTRUMENT_DECLARANT_FORM.test(qui)) {
+      return ko("MEASUREMENT_DECLARANT_NOT_INSTRUMENT", "declaredBy");
+    }
   }
 
   if (!formeLocalisateurAdmise(refKind, (intent as { sourceLocator?: unknown }).sourceLocator as string)) {
