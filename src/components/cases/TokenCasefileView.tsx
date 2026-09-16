@@ -45,7 +45,6 @@ export interface TokenCasefileData {
   subtype: string;
   /** BUILD 9 — `null` = score non établi. Jamais rendu comme 0 ni comme « /100 ». */
   tigerScore: number | null;
-  verdict: string;
   status: string;
   statusNote: string | null;
   primaryChain: string;
@@ -166,11 +165,16 @@ const SUBTYPE_LABEL: Record<string, { en: string; fr: string }> = {
   insider_supply_control: { en: "Insider Supply Control", fr: "Contrôle insider du supply" },
   coordinated_exit: { en: "Coordinated Exit", fr: "Sortie coordonnée" },
 };
-const VERDICT_COLOR: Record<string, string> = {
-  AVOID: "#FF3B5C",
-  WARNING: "#FFB800",
-  SAFE: "#00FF94",
-};
+// ⛔ CC-OFFLINE-236 — VERDICT_COLOR est RETIRÉE. Elle connaissait trois valeurs
+// — AVOID, WARNING, SAFE — dont UNE SEULE existe réellement en base ; les trois
+// autres valeurs du produit tombaient sur le gris par défaut. L'interface
+// attendait un vocabulaire que la donnée ne produit pas.
+//
+// Aucune palette ne la remplace, et aucun badge non plus : l'ABSENCE DE VERDICT
+// GLOBAL RESTE UNE ABSENCE DE VERDICT GLOBAL. La donnée autoritative est
+// l'ensemble des conclusions gouvernées (CC-OFFLINE-234), projeté par audience.
+/** La bordure des encadrés de tête. Neutre, et elle ne dit rien du dossier. */
+const CADRE = "#27272a";
 
 function explorerLink(chain: string, address: string): string | null {
   const c = chain.toLowerCase();
@@ -372,7 +376,6 @@ export default function TokenCasefileView({
   const t = T[locale];
   const family = FAMILY_LABEL[data.family]?.[locale] ?? data.family;
   const subtype = SUBTYPE_LABEL[data.subtype]?.[locale] ?? data.subtype;
-  const verdictColor = VERDICT_COLOR[data.verdict] ?? "#6b7280";
   const summary = locale === "fr" ? (data.summaryFr ?? data.summary) : data.summary;
   const primaryContract = data.contractAddresses[data.primaryChain] ?? null;
 
@@ -392,7 +395,7 @@ export default function TokenCasefileView({
 
         {/* SCORE + STATUS */}
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", margin: "24px 0 8px" }}>
-          <div style={{ background: "#0f0f0f", border: `1px solid ${verdictColor}55`, borderRadius: 10, padding: "16px 22px", minWidth: 200 }}>
+          <div style={{ background: "#0f0f0f", border: `1px solid ${CADRE}`, borderRadius: 10, padding: "16px 22px", minWidth: 200 }}>
             <div style={{ fontSize: 9, fontWeight: 900, color: "#6b7280", letterSpacing: "0.15em", marginBottom: 6 }}>{t.tigerScore.toUpperCase()}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
               {/* BUILD 9 — un score absent n'a PAS l'apparence d'un score. Rendre
@@ -400,19 +403,19 @@ export default function TokenCasefileView({
                   encadré coloré par le verdict : pas un plantage, mais pire. Le
                   contrat de la fiche dit « — », comme pour tgeDate et decimals. */}
               {data.tigerScore != null ? (
-                <div style={{ fontSize: 30, fontWeight: 900, color: verdictColor, fontFamily: "monospace" }}>{data.tigerScore}<span style={{ fontSize: 14, color: "#4b5563" }}>/100</span></div>
+                <div style={{ fontSize: 30, fontWeight: 900, color: "#e5e7eb", fontFamily: "monospace" }}>{data.tigerScore}<span style={{ fontSize: 14, color: "#4b5563" }}>/100</span></div>
               ) : (
                 <div style={{ fontSize: 30, fontWeight: 900, color: "#4b5563", fontFamily: "monospace" }}>—</div>
               )}
-              <span style={{ background: verdictColor + "18", border: `1px solid ${verdictColor}`, color: verdictColor, fontSize: 10, fontWeight: 900, padding: "3px 10px", borderRadius: 4, letterSpacing: "0.12em" }}>
-                {data.verdict}
-              </span>
+              {/* ⛔ Le badge de verdict est RETIRÉ. Placé contre le TigerScore,
+                  il produisait une lecture de score global : deux machines
+                  différentes, une seule impression. Rien ne le remplace. */}
             </div>
           </div>
-          <div style={{ background: "#0f0f0f", border: `1px solid ${verdictColor}55`, borderRadius: 10, padding: "16px 22px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <div style={{ background: "#0f0f0f", border: `1px solid ${CADRE}`, borderRadius: 10, padding: "16px 22px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ fontSize: 9, fontWeight: 900, color: "#6b7280", letterSpacing: "0.15em", marginBottom: 8 }}>{t.status.toUpperCase()}</div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ background: `${verdictColor}18`, border: `1px solid ${verdictColor}`, color: verdictColor, fontSize: 11, fontWeight: 900, padding: "6px 12px", borderRadius: 6, letterSpacing: "0.08em" }}>
+              <span style={{ background: "#18181b", border: `1px solid ${CADRE}`, color: "#d1d5db", fontSize: 11, fontWeight: 900, padding: "6px 12px", borderRadius: 6, letterSpacing: "0.08em" }}>
                 {data.status.replace(/_/g, " ")}
               </span>
               {data.statusNote && (
