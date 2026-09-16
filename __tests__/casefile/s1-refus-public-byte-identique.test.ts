@@ -30,7 +30,6 @@ const PROJECTION_FACTICE: PublicProjection = {
   ticker: "$TEST",
   title: "t",
   tigerScore: null,
-  verdict: "UNDETERMINED",
   claims: [],
   sources: [],
   withheld: [],

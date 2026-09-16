@@ -177,7 +177,14 @@ export interface PublicProjection {
   readonly title: string;
   /** `null` = score non établi. Aucun rendu ne doit lui accoler « /100 ». */
   readonly tigerScore: number | null;
-  readonly verdict: string;
+  /**
+   * ⛔ RETIRÉ — CC-OFFLINE-234. `token_casefiles.verdict` était RECOPIÉ ici
+   * alors que chaque claim, quelques lignes plus haut, passe un contrat. Il
+   * atteignait le lecteur sans qu'aucune autorité ne l'ait vu. La donnée
+   * autoritative est désormais l'ENSEMBLE DES CONCLUSIONS GOUVERNÉES, rendu par
+   * `projectConclusions(dossier, "PUBLIC")`. La colonne reste en base, intacte
+   * et non migrée : elle cesse simplement d'être consommée comme une autorité.
+   */
   /** Les claims effectivement publiables. Peut être vide — et c'est une réponse. */
   readonly claims: readonly RenderedClaim[];
   /** Les pièces vérifiables citées par ces claims. Jamais le registre entier. */
@@ -356,7 +363,6 @@ export function projectForPublication(
     ticker: dossier.ticker,
     title: dossier.title,
     tigerScore: dossier.tigerScore,
-    verdict: dossier.verdict,
     claims: publies,
     sources: [...citees.values()].sort((a, b) => a.sourceId.localeCompare(b.sourceId)),
     withheld,

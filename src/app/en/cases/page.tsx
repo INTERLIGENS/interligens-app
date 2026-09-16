@@ -79,7 +79,12 @@ async function getCasefiles(): Promise<CasefileCard[]> {
       title: r.title,
       family: "token_casefile" as const,
       score: r.tigerScore,
-      severityTier: r.verdict,
+      // ⛔ CC-OFFLINE-234 — `severityTier` n'est plus alimenté par
+      // `token_casefiles.verdict`. C'était un CINQUIÈME registre : une colonne
+      // mêlant type de risque, recommandation et état épistémique, rendue ici
+      // comme un palier de sévérité. `null` dit « non établi », et c'est la
+      // vérité tant qu'aucune conclusion gouvernée n'est projetée.
+      severityTier: null,
       chains: [r.primaryChain, ...asStringArray(r.secondaryChains)],
       date: r.publishedDate ? r.publishedDate.toISOString().slice(0, 10) : null,
       href: `/${LOCALE}/cases/${r.codename.toLowerCase()}`,

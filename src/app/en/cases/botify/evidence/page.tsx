@@ -94,13 +94,13 @@ export default async function BotifyEvidencePage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 16, marginBottom: 40 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              {/* Le verdict vient du dossier. Aucun état de publication n'est
-                  écrit ici : il est porté par l'autorité, et aucun claim
-                  BOTIFY n'y est publié. Citer le libellé retiré le
-                  réintroduirait dans le source. */}
-              <span style={{ fontSize: 9, fontWeight: 900, color: "#f97316", letterSpacing: "0.2em", background: "#f9731618", border: "1px solid #f9731644", padding: "3px 10px", borderRadius: 4 }}>
-                {dossier.verdict}
-              </span>
+              {/* ⛔ CC-OFFLINE-234 — le badge de verdict hérité est RETIRÉ.
+                  BOTIFY porte ZÉRO conclusion gouvernée admissible (0 claim
+                  fondable sur 8) et affichait pourtant un mot issu d'une
+                  colonne qu'aucun contrat n'avait vue. Rien ne le remplace :
+                  ni badge gris, ni « UNDETERMINED » — ce serait refabriquer le
+                  verdict que D supprime. L'absence de conclusion se lit dans
+                  l'absence de conclusion. */}
               <span style={{ fontSize: 9, fontWeight: 900, color: "#6b7280", letterSpacing: "0.15em" }}>
                 {dossier.ref}
               </span>
