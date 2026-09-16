@@ -31,10 +31,28 @@ const claim = (o: Partial<PublicClaim> = {}): PublicClaim => ({
   rowNature: "INFERENCE", evidenceRefs: [], provenance: null, ...o,
 });
 
+/**
+ * LA CLAIM SOURCE, et elle doit être DANS le dossier — CC-OFFLINE-250.
+ *
+ * Les fixtures d'origine déclaraient la dépendance vers `VINE-MEASURE-01 v1`
+ * sans jamais porter cette claim. Tant que la projection ne consommait que
+ * `deps.length`, cela passait : c'était exactement le défaut du critère 14.
+ * Depuis que la dépendance est RÉSOLUE à la lecture, une source absente rend
+ * l'inférence non projetable — donc le témoin nominal doit porter la donnée
+ * réelle, où la mesure existe et est fondable.
+ */
+const SOURCE_FONDANTE = (): PublicClaim => ({
+  claimId: "VINE-MEASURE-01", version: 1, title: "Bounded measurement", titleFr: null,
+  description: null, descriptionFr: null, category: null, severity: null,
+  status: null, claimDate: null, state: "ATTACHED",
+  rowNature: "PRIMARY_OBSERVATION", evidenceRefs: ["SRC-001"], provenance: null,
+} as PublicClaim);
+
 const dossier = (claims: PublicClaim[], sources: PublicSource[] = [piece()]): CanonicalCaseFile =>
   ({
     ref: VINE_CASEFILE_REF, codename: "VINE", ticker: "$VINE", title: "t",
-    tigerScore: null, publishStatus: "draft", claims, sources, keyWallets: [],
+    tigerScore: null, publishStatus: "draft",
+    claims: [...claims, SOURCE_FONDANTE()], sources, keyWallets: [],
   }) as unknown as CanonicalCaseFile;
 
 /** La dépendance réelle : VINE-CONCLUSION-01 v1 → VINE-MEASURE-01 v1. */

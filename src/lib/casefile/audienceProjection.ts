@@ -95,6 +95,116 @@ export type DependencyIndex = ReadonlyMap<string, readonly ProjectedDependency[]
 const cle = (claimId: string, version: number | null | undefined): string =>
   `${claimId}@${version ?? ""}`;
 
+// ═══ CC-OFFLINE-250 · CRITÈRE 14 — LA CAUSALITÉ EST VÉRIFIÉE À LA LECTURE ═══
+//
+// ██  UNE DÉPENDANCE VÉRIFIÉE À L'INSERTION NE GOUVERNE PAS À ELLE SEULE    ██
+// ██  UNE PROJECTION FUTURE.                                                ██
+//
+// ─── LE DÉFAUT, TEL QUE MESURÉ ────────────────────────────────────────────
+//
+// Les deux projections ne consommaient de la dépendance que son COMPTE —
+// `deps.length` — passé à `decideFoundationContract`. `sourceClaimId` n'était
+// JAMAIS rapproché des claims admises. Une inférence restait donc projetée
+// aussi longtemps qu'une LIGNE existait dans `casefile_claim_dependencies`,
+// même si la claim qu'elle déclare consommer avait perdu son autorité — pièce
+// déqualifiée, claim supersédée, source retirée.
+//
+//   `deps.length > 0` NE PROUVE NI LE FONDEMENT, NI UNE CONSOMMATION
+//   ACTUELLEMENT ADMISSIBLE.
+//
+// L'exécuteur gouverné (CC-OFFLINE-232) vérifie bien la chaîne — mais À
+// L'ÉCRITURE. Le critère 14 porte sur le RETRAIT du finding, qui est à la
+// LECTURE. Une garantie write-time ne retire jamais rien.
+//
+// ─── CE QUE CE POINT FIXE N'EST PAS ───────────────────────────────────────
+//
+// ⛔ Ce n'est PAS un second moteur de fondement. L'autorité qui décide si une
+//    claim est fondable reste `decideFoundationContract`, la même qu'à
+//    l'écriture, appelée telle quelle. Ce qui est AJOUTÉ ici est uniquement la
+//    RÉSOLUTION de la dépendance — exactement ce que l'écrivain nomme déjà
+//    `DEPENDENCY_UNRESOLVED` et `DEPENDENCY_NOT_FOUNDABLE`.
+//
+// ─── ALL, PAS ANY ─────────────────────────────────────────────────────────
+//
+// Les dépendances déclarées d'une claim sont les assertions qu'elle DÉCLARE
+// CONSOMMER. TOUTES doivent résoudre vers une claim actuellement fondable.
+// UNE SEULE invalide ⇒ la claim n'est pas projetable. Il n'existe pas de
+// « une sur deux suffit » : une sémantique alternative serait une AUTRE
+// sémantique, explicite, et ce n'est pas celle-ci.
+//
+// ─── POURQUOI UN POINT FIXE, ET POURQUOI LE PLUS PETIT ────────────────────
+//
+// Une source peut elle-même être une inférence. Le calcul part donc de
+// l'ensemble VIDE et ne fait que CROÎTRE : une claim n'entre que lorsque tout
+// ce qu'elle consomme y est déjà. Un cycle n'entre jamais — et c'est correct,
+// un fondement circulaire n'est pas un fondement.
+//
+// ─── LES QUATRE INTERDITS, TENUS PAR CONSTRUCTION ─────────────────────────
+//
+// La clef de résolution est `claimId@version`, EXACTE. Il n'existe donc, dans
+// ce code, aucune manière d'exprimer : un repli vers une version antérieure,
+// une claim « équivalente », une résurrection par `supersedes`, ou un
+// re-raisonnement sur les preuves.
+
+/** Le minimum dont le point fixe a besoin d'une claim. */
+interface EntreeDeFondement {
+  readonly claimId: string;
+  readonly version: number | null;
+  readonly rowNature: string | null;
+  readonly evidenceRefs: readonly string[];
+}
+
+/** Une dépendance, réduite à ce qu'elle ÉPINGLE. */
+interface DependanceEpinglee {
+  readonly claimId: string;
+  readonly version: number;
+}
+
+/**
+ * LES CLAIMS ACTUELLEMENT FONDABLES d'un dossier — le plus petit point fixe.
+ *
+ * Rend l'ensemble des `claimId@version` qui satisfont, EN MÊME TEMPS :
+ *   · leur propre contrat de fondement (`decideFoundationContract`) ;
+ *   · la résolution EXACTE de chacune de leurs dépendances déclarées vers une
+ *     claim elle-même actuellement fondable.
+ *
+ * Pure. Aucune base, aucune horloge.
+ */
+function claimsActuellementFondables(
+  claims: readonly EntreeDeFondement[],
+  registre: ReadonlyMap<string, PublicSource>,
+  dependancesDe: (c: EntreeDeFondement) => readonly DependanceEpinglee[],
+): ReadonlySet<string> {
+  const fondables = new Set<string>();
+  let aBouge = true;
+  while (aBouge) {
+    aBouge = false;
+    for (const c of claims) {
+      const k = cle(c.claimId, c.version);
+      if (fondables.has(k)) continue;
+
+      // ── C + D + E — RÉSOLUTION EXACTE, PUIS AUTORITÉ ACTUELLE ──────────
+      // `every` sur un tableau vide est vrai : une claim sans dépendance
+      // déclarée n'a rien à consommer, et n'est jugée que sur ses pièces.
+      const deps = dependancesDe(c);
+      if (!deps.every((d) => fondables.has(cle(d.claimId, d.version)))) continue;
+
+      // ── A + B — SON PROPRE CONTRAT, AVEC LE COMPTE DES DÉPENDANCES
+      //            RÉELLEMENT VALIDÉES — jamais le compte des lignes.
+      const contrat = decideFoundationContract(
+        { rowNature: c.rowNature, evidenceRefs: c.evidenceRefs },
+        registre,
+        deps.length,
+      );
+      if (contrat.verdict === "UNMET") continue;
+
+      fondables.add(k);
+      aBouge = true;
+    }
+  }
+  return fondables;
+}
+
 /**
  * LA PROJECTION. Pure : elle ne lit aucune base, ne raisonne sur aucune preuve,
  * et n'invente aucun mot.
@@ -114,6 +224,19 @@ export function projectConclusions(
   const registre = new Map<string, PublicSource>(dossier.sources.map((s) => [s.sourceId, s]));
   const conclusions: ProjectedConclusion[] = [];
 
+  // CRITÈRE 14 — l'autorité ACTUELLE de la chaîne consommée, calculée sur TOUT
+  // le dossier : la source d'une inférence est presque toujours une observation,
+  // donc une claim que cette boucle-ci ne visite pas.
+  const toutes: EntreeDeFondement[] = (dossier.claims as readonly PublicClaim[]).map((c) => ({
+    claimId: c.claimId,
+    version: c.version ?? null,
+    rowNature: c.rowNature ?? null,
+    evidenceRefs: c.evidenceRefs ?? [],
+  }));
+  const fondables = claimsActuellementFondables(toutes, registre, (c) =>
+    dependances.get(cle(c.claimId, c.version)) ?? [],
+  );
+
   for (const c of dossier.claims as readonly PublicClaim[]) {
     if (c.rowNature !== "INFERENCE") continue;
 
@@ -122,16 +245,17 @@ export function projectConclusions(
 
     // ── L'AUTORITÉ, SELON L'AUDIENCE ─────────────────────────────────────
     //
-    // COUNSEL : contrat de FONDEMENT, avec le compte de dépendances — une
-    //   inférence fondée par ses seules dépendances y est admissible.
-    // PUBLIC  : contrat de PUBLICATION, INCHANGÉ. Il ne reçoit PAS le compte de
-    //   dépendances, donc une inférence sans pièce y tombe sur
-    //   EVIDENCE_REFS_EMPTY — exactement comme avant D.
-    const contrat =
-      audience === "COUNSEL_INVESTOR"
-        ? decideFoundationContract(entree, registre, deps.length)
-        : decidePublicationContract(entree, registre);
-    if (contrat.verdict === "UNMET") continue;
+    // COUNSEL : la chaîne de fondement ACTUELLE — son propre contrat, ET la
+    //   résolution de chaque dépendance déclarée vers une claim encore
+    //   fondable. `deps.length` ne suffit plus.
+    // PUBLIC  : cette même chaîne, PLUS l'autorité de publication —
+    //   `decidePublicationContract`, INCHANGÉ. Une inférence ne devient pas
+    //   PUBLIC parce que ses dépendances sont fondables ; elle sans pièce y
+    //   tombe sur EVIDENCE_REFS_EMPTY, exactement comme avant D.
+    if (!fondables.has(cle(c.claimId, c.version))) continue;
+    if (audience === "PUBLIC" && decidePublicationContract(entree, registre).verdict === "UNMET") {
+      continue;
+    }
 
     // La publication exige de surcroît que la claim soit PUBLIC. Le fondement
     // ne l'exige pas : un dossier de travail voit ce qui est rattaché.
@@ -233,18 +357,37 @@ export function projectAssembly(
     ]),
   );
 
+  // Les dépendances déclarées d'une claim, épinglées des deux côtés.
+  const depsDe = (claimId: string, version: number | null) =>
+    assemblage.dependencies.filter(
+      (d) => d.dependentClaimId === claimId && d.dependentVersion === (version ?? -1),
+    );
+
+  // CRITÈRE 14 — LA CHAÎNE DE FONDEMENT ACTUELLE, avant toute sélection.
+  // Calculée une fois, sur TOUT l'assemblage : ce que consomme une inférence
+  // n'est pas nécessairement une claim que l'audience projette.
+  const fondables = claimsActuellementFondables(
+    assemblage.claims.map((c) => ({
+      claimId: c.claimId,
+      version: c.version,
+      rowNature: c.rowNature,
+      evidenceRefs: c.evidenceRefs,
+    })),
+    registre,
+    (c) => depsDe(c.claimId, c.version).map((d) => ({ claimId: d.sourceClaimId, version: d.sourceVersion })),
+  );
+
   const claims: ProjectedClaim[] = [];
   for (const c of assemblage.claims) {
-    const deps = assemblage.dependencies.filter(
-      (d) => d.dependentClaimId === c.claimId && d.dependentVersion === (c.version ?? -1),
-    );
+    const deps = depsDe(c.claimId, c.version);
     const entree = { rowNature: c.rowNature, evidenceRefs: c.evidenceRefs };
 
-    const contrat =
-      audience === "COUNSEL_INVESTOR"
-        ? decideFoundationContract(entree, registre, deps.length)
-        : decidePublicationContract(entree, registre);
-    if (contrat.verdict === "UNMET") continue;
+    // COUNSEL : la chaîne de fondement ACTUELLE suffit.
+    // PUBLIC  : cette même chaîne, PLUS l'autorité de publication — inchangée.
+    if (!fondables.has(cle(c.claimId, c.version))) continue;
+    if (audience === "PUBLIC" && decidePublicationContract(entree, registre).verdict === "UNMET") {
+      continue;
+    }
     if (audience === "PUBLIC" && c.state !== "PUBLIC") continue;
 
     claims.push({
