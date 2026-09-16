@@ -311,3 +311,176 @@ presets et le producteur legacy continuent d'exister pour leurs usages, hors du 
 
 Aucun DDL, aucune migration, aucun `GRANT`, aucune nouvelle autorité, aucun contrat de publication
 modifié.
+
+---
+
+## §7 · LE WITNESS DE PRODUCTION — `CC-OFFLINE-248` + `CC-OFFLINE-250`
+
+**2026-09-16 · déploiement unique, après quatre verts.**
+
+Le §4bis s'arrêtait sur `spawn ENOEXEC` : l'hôte de développement est arm64, le pack Chromium est
+x86-64/linux. Ce qui manquait n'était pas du code mais **un runtime d'architecture compatible**. Il
+a été atteint par un déploiement gouverné, une seule fois.
+
+### La porte — quatre verts
+
+```
+readback mutant       ✅  4bfb964, revérifié sur main
+criterion-14 mutant   ✅  0613324
+lease active          ✅  0
+preflight             ✅  VERT
+```
+
+⚠️ **Le premier lancement du preflight a rendu ROUGE, et le refus était le mien.** Invoqué avec
+`--cwd .`, le chemin relatif fait échouer `createRequire` (`ERR_INVALID_ARG_VALUE`) et le moteur
+`ignore` devient introuvable — le preflight refuse alors, **fail-closed et correctement**. Rejoué
+avec un `cwd` **absolu**, exactement comme le fait `deploy-production.mjs`, il rend VERT. Le garde
+n'a pas été contourné ; c'est l'invocation qui a été corrigée.
+
+```
+✅ CLI épinglé         vercel@51.7.0
+✅ Liaison de projet   interligens-app (prj_HJRHuMSyoh8i7RYmeSizyJxhRCoQ)
+✅ Secret-bundle       2032 fichiers au vocabulaire clos, aucun refus
+✅ Upload-set exact    2031 fichiers ≡ HEAD filtré · 1 GENERATED
+```
+
+Déploiement par `pnpm deploy:prod`. `npx vercel --prod` n'a pas été employé.
+
+### ÉTAPE 1 — L'AUTORITÉ SERVIE, PROUVÉE AVANT TOUT APPEL
+
+> **`CONFIGURED_CURRENT` N'EST PAS `SERVED_CURRENT`.**
+
+```
+déploiement       dpl_Bm5uYsPhdsVSbmvZbxPEJBb43491   readyState=READY  target=production
+SHA canonique     0613324c0c37ffe941b4632cd7471ecb9676045c
+```
+
+Le marqueur `/.well-known/source-set.json` a été **relu sur la surface servie** et comparé au
+marqueur certifié par le preflight, champ par champ :
+
+```
+MATCH  sourceSetRoot  d3d574ad4e2d54a633e83b255e220de803d88f40912b91a529e742aa11c56627
+MATCH  commit         0613324c0c37ffe941b4632cd7471ecb9676045c
+MATCH  fileCount      2031
+MATCH  algorithm · ignoreEngine 5.3.2 · cliVersion · generatedAt
+```
+
+**Observation, non résolue et hors mandat :** `app.interligens.com` rend **403** à mes sondes, y
+compris sur la racine — un WAF de bord, en amont de Vercel. L'autorité servie n'y est donc **pas**
+prouvée ; elle l'est sur l'URL de déploiement, et c'est **là** que le witness a été tiré.
+DISCOVERED → CLASSIFY → **BACKLOG**.
+
+### ÉTAPE 2 — LE WITNESS RÉEL, PAR LA ROUTE
+
+`GET /api/casefile/pdf?preset=vine&template=governed` · en-tête `x-admin-token` · **HTTP 200 en
+13,0 s**.
+
+```
+AUTH → CaseFileRef → canonical assembly → projection COUNSEL_INVESTOR
+→ render REAL PDF → allocate governed artifact → persist
+→ GET persisted object → recompute digest → match → registry confirmation
+```
+
+Le `status: "stored"` n'est atteignable que par ce chemin : depuis `CC-OFFLINE-248`, la confirmation
+au registre est **inatteignable** sans relecture des octets persistés et concordance des empreintes.
+
+```
+registry id                7cfc5bbd61af4165b5cd6ffe1302759b
+object identity            reports/production/2026/09/7cfc5bbd61af4165b5cd6ffe1302759b.pdf
+byte length                107 576
+expected sha256            e70bff15f2797bb4f74890568dba3e4f6c101c7317fea0d06541dd263758a5ae
+persisted-readback sha256  e70bff15f2797bb4f74890568dba3e4f6c101c7317fea0d06541dd263758a5ae
+match result               MATCH
+```
+
+Les deux dernières lignes ont été **remesurées indépendamment** : l'objet a été retiré du
+compartiment et son empreinte recalculée hors du producteur — 107 576 octets, même empreinte,
+en-tête `%PDF-1.4`.
+
+**Cardinalités observées** — des OBSERVATIONS de ce witness, jamais un contrat :
+
+```
+sources assemblées      6
+claims assemblées      14
+dépendances             1
+claims COUNSEL          6   VINE-0xS-01 · -02 · -03 · VINE-MULTI-01 · VINE-MEASURE-01 · VINE-CONCLUSION-01
+claims PUBLIC           0   NO_GOVERNED_CLAIM
+```
+
+### ÉTAPE 3 — LE RENDER WITNESS, SUR LE DOCUMENT FOURNI
+
+Vérifié sur le **texte extrait du PDF de production** — 3 pages, 7 636 caractères — jamais sur la
+source HTML. Le contrôle local du §4bis est caduc.
+
+```
+✅ SUBJECT IL-SHILL-VINE-001 · $VINE · COUNSEL_INVESTOR · GOVERNED_CLAIMS
+✅ VINE-MULTI-01 v1 → SRC-0xS-09 · SRC-CKF-01 · SRC-FKK-01 · SRC-SLD-01
+✅ VINE-MEASURE-01 v1 → instrument:il-measure-vine-wallet-attribution@1.0.0
+     + identité de code · périmètre (15 claims, 5 pièces) · horodatage
+     + les trois causes rendues : NO_FOUNDED_ACTOR_WALLET_ATTRIBUTION ·
+       NO_GOVERNED_WALLET_CASE_TOKEN_BRIDGE · WALLET_SHAPED_STRINGS_PRESENT_BUT_UNFOUNDED
+✅ VINE-CONCLUSION-01 v1 · CONSUMED GOVERNED ASSERTIONS · DERIVED_FROM → VINE-MEASURE-01 v1
+✅ FOUNDATION TRACE sous chacune des 6 claims · GOVERNED EVIDENCE · AUDIT INFORMATION
+❌ absents : UNDETERMINED · AVOID · SAFE · WARNING · /100 · score · SG-1 · legacy summary ·
+   TigerScore · SmokingGun · riskClass · eIDAS · qualified · court admissible ·
+   legally guaranteed · tamper-proof · immutable · WORM
+```
+
+Rien n'est replié ni masqué à l'impression : le correctif `<details>` → bloc ordinaire tient sur le
+document réel.
+
+### LA GOLDEN TRACE — LES DEUX PROPRIÉTÉS, RAPPORTÉES SÉPARÉMENT
+
+**A · INTEGRITY** — objet gouverné → octets persistés → **relecture réelle** → empreinte
+**recalculée** → **MATCH**. Traversée, et remesurée indépendamment.
+
+**B · CAUSAL AUTHORITY AT READ-TIME** — `VINE-CONCLUSION-01` → dépendance `DERIVED_FROM`, épinglée
+sur `VINE-MEASURE-01 **v1**` → cette claim-là, à **cette** version, est **CURRENT FOUNDATION MET**.
+Ce n'est pas une trace d'insertion : c'est la résolution du point fixe de `CC-OFFLINE-250`, exécutée
+à la lecture, sur la donnée de production. Si la mesure perdait son autorité, la conclusion
+disparaîtrait du document — et les seize mutants de `cc-offline-250` le tiennent.
+
+### CE QUE LE DOSSIER PEUT AFFIRMER SUR L'INTÉGRITÉ — ET RIEN DE PLUS
+
+```
+artifact persisted to governed storage
+persisted object reread
+SHA-256 recomputed from persisted bytes
+recomputed digest matched registered digest
+```
+
+### OÙ SE TROUVE L'ARTEFACT, ET COMMENT T2 LE RÉCUPÈRE
+
+> **UN EXÉCUTANT NE CERTIFIE PAS UN ARTEFACT QU'IL N'A PAS OBSERVÉ.**
+
+T2 doit **ouvrir le document lui-même**. Aucune URL signée ne figure ici : elle porterait un
+identifiant d'accès.
+
+```
+worktree à aligner   SHA SERVI = 0613324c0c37ffe941b4632cd7471ecb9676045c
+compartiment         $R2_BUCKET_NAME (privé, aucune URL publique)
+clé                  reports/production/2026/09/7cfc5bbd61af4165b5cd6ffe1302759b.pdf
+registry id          7cfc5bbd61af4165b5cd6ffe1302759b
+attendus             107 576 octets · sha256 e70bff15f2797bb4f74890568dba3e4f6c101c7317fea0d06541dd263758a5ae
+délivrance           delivrerUrlSignee(cle) — la primitive gouvernée, qui revérifie
+                     l'état de registre avant de signer
+rejouable            le même appel de route produit un NOUVEL artefact, avec sa propre
+                     identité ; il ne remplace pas celui-ci
+```
+
+### DÉCLARATION D'ÉCART — `§11` / `§16`
+
+| Autorisé | Exercé |
+|---|---|
+| lancer le preflight gouverné | **exercé** — rouge d'abord, **par ma propre invocation relative**, dit ; vert avec un `cwd` absolu |
+| déployer **une seule fois** si vert | **exercé une fois**, par `pnpm deploy:prod`. `npx vercel --prod` non employé |
+| prouver l'autorité servie AVANT tout appel | **exercé** — marqueur relu sur la surface servie, sept champs en MATCH, **avant** le witness |
+| witness réel par la route | **exercé** — chaîne complète, HTTP 200, `status: "stored"` |
+| conserver registry id · identité · taille · empreintes · match · cardinalités | **exercé**, et les empreintes **remesurées hors du producteur** |
+| render witness sur le document fourni | **exercé** sur le texte extrait du PDF de production |
+| ne rien affirmer au-delà des quatre lignes d'intégrité | **exercé** — aucun mot interdit, vérifié **dans le document** |
+| `app.interligens.com` | **non prouvé servi** — 403 d'un WAF de bord sur mes sondes. Observé, **classé BACKLOG**, non ouvert |
+| 91 runtimes · audit storage · TSA · réconciliateur · TigerScore · BOTIFY · legacy · MINT_TO_CASE · X · seconde identité Neon · Seal v2 · second dossier · SG-1 · surface latente | **non ouverts.** Un déploiement n'est pas une occasion |
+
+Aucun DDL, aucune migration, aucune autorité nouvelle, aucun `GRANT`, aucun contrat de publication
+modifié, aucun second artefact.
