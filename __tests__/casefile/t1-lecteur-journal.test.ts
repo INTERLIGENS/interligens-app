@@ -117,6 +117,10 @@ describe("(c) snapshotId présent, une ligne → la qualification de cette ligne
       journalId: "1",
       referenceKind: "QUERY_CONTEXT",
       sourceLocator: "https://x.com/search?q=from:0xSweep%20VINE",
+      // CC-OFFLINE-240 — le déclarant est REMONTÉ. Il ne décide rien ; il
+      // transporte l'identité de qui affirme, seul endroit où vit l'identité
+      // d'un INSTRUMENT quand la qualification est MACHINE_MEASURED.
+      declaredBy: "David Douville",
       verification: null,
     });
   });
@@ -420,6 +424,14 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // étiquette posée sur la mesure : elle DIT qui l'a produite, et le CHECK
       // en base refuse que ce soit une personne.
       "src/scripts/casefile/mesure-vine-attribution.ts",
+      // CC-OFFLINE-240 — L'ASSEMBLAGE D'AUTORITÉ. Même statut que
+      // `governedWriter` : un RELAIS PUR. Il ne résout aucune qualification et
+      // n'en fabrique aucune — il recopie celle que le LECTEUR a déjà résolue au
+      // journal, et le témoin ci-dessous le vérifie : le fichier ne contient ni
+      // `resolveJournalProvenance` ni `readLatestJournalRows`. Sa seule lecture
+      // complémentaire est le LIGNAGE — localisateur et déclarant — qui ne
+      // décide de rien.
+      "src/lib/casefile/authorityAssembly.ts",
     ]);
     for (const [f, c] of sources) {
       if (!f.startsWith("src/")) continue;
@@ -465,6 +477,14 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // étiquette posée sur la mesure : elle DIT qui l'a produite, et le CHECK
       // en base refuse que ce soit une personne.
       "src/scripts/casefile/mesure-vine-attribution.ts",
+      // CC-OFFLINE-240 — L'ASSEMBLAGE D'AUTORITÉ. Même statut que
+      // `governedWriter` : un RELAIS PUR. Il ne résout aucune qualification et
+      // n'en fabrique aucune — il recopie celle que le LECTEUR a déjà résolue au
+      // journal, et le témoin ci-dessous le vérifie : le fichier ne contient ni
+      // `resolveJournalProvenance` ni `readLatestJournalRows`. Sa seule lecture
+      // complémentaire est le LIGNAGE — localisateur et déclarant — qui ne
+      // décide de rien.
+      "src/lib/casefile/authorityAssembly.ts",
     ]);
     // Et les deux sites de `src/` qui posent une qualification littérale sans
     // la DÉCIDER — vérifiés un par un juste après, pas exemptés en bloc.
