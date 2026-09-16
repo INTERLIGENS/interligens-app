@@ -162,6 +162,12 @@ const SITES_GOUVERNES: readonly string[] = [
   // la porte de naissance, et elle obéit aux mêmes règles que les autres sites
   // d'écriture — le recensement l'a attrapée de lui-même.
   "src/scripts/casefile/tranche-temoin-controle.ts",
+  // CC-OFFLINE-230 : l'INSTRUMENT DE MESURE fait naître les octets canoniques de
+  // sa propre mesure, puis les RELIT depuis le même compartiment pour recalculer
+  // leur digest. Il ouvre donc la porte de naissance ET la porte de relecture, et
+  // il obéit aux mêmes règles que les autres sites d'écriture — le recensement
+  // l'a attrapé de lui-même, ce qui est exactement son office.
+  "src/scripts/casefile/mesure-vine-attribution.ts",
   "src/scripts/watcher-bridge/run-auto-evidence.ts",
 ];
 

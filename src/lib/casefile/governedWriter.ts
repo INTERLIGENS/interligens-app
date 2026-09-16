@@ -233,9 +233,17 @@ const estSha256 = (v: unknown): v is string => typeof v === "string" && /^[0-9a-
  * l'absence de qualification n'est pas une qualification incomplète, c'est
  * une absence — et elle tombe sous SOURCE_PROVENANCE_UNQUALIFIED, comme une
  * valeur hors vocabulaire. Décision GPT 3 du 2026-09-14.
+ *
+ * MACHINE_MEASURED y entre le 2026-09-16 (CC-OFFLINE-230) : une mesure
+ * déterministe produite par un instrument identifié PEUT fonder. Elle ne peut
+ * pas PUBLIER, et aucune ligne n'a eu à être ajoutée pour l'interdire —
+ * `isPublicationEligibleSource` exige littéralement `=== "VERIFIED"`. Le
+ * fondement et la publication ne se départagent donc pas par une liste
+ * d'exclusion qu'on pourrait oublier de tenir, mais par l'asymétrie déjà
+ * écrite : l'un tolère un ensemble, l'autre nomme une seule valeur.
  */
 export const FOUNDATION_TOLERATED_PROVENANCE: readonly SourceProvenanceKind[] =
-  ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const;
+  ["OPERATOR_DECLARED", "EXTRACTED", "VERIFIED", "MACHINE_MEASURED"] as const;
 
 /**
  * ÉLIGIBILITÉ AU FONDEMENT. Identité stable, empreinte, origine, horodatage,

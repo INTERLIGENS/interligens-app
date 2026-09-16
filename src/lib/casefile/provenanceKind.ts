@@ -23,6 +23,31 @@
 //                      indépendante (le post résolu, son identifiant, son
 //                      horodatage). Seule qualification qui autorise la
 //                      PUBLICATION.
+//   MACHINE_MEASURED   la provenance de cet objet est une MESURE PRODUITE PAR UN
+//                      INSTRUMENT INTERLIGENS IDENTIFIÉ, sur son propre corpus.
+//                      Ajoutée le 2026-09-16 (CC-OFFLINE-230) pour le premier
+//                      constat négatif gouverné.
+//
+//                      Elle ne signifie NI VERIFIED, NI EXTRACTED, NI
+//                      OPERATOR_DECLARED, et elle n'a RIEN CHANGÉ à ces trois-là.
+//                      Une mesure interne n'est pas une preuve externe : elle ne
+//                      recoupe aucune source indépendante, elle n'extrait rien
+//                      d'une pièce, et surtout elle n'est déclarée par AUCUNE
+//                      personne — `declared_by` y porte l'identité de
+//                      l'instrument, jamais un nom humain.
+//
+//                      Elle est tolérée au FONDEMENT et jamais à la PUBLICATION :
+//                      `isPublicationEligibleSource` exige littéralement
+//                      `=== "VERIFIED"`, donc cette valeur ne peut pas publier,
+//                      sans qu'aucune ligne n'ait eu besoin d'être écrite pour
+//                      l'interdire.
+//
+//                      Deux gardes en base la définissent — `..._is_document_check`
+//                      (une mesure est un DOCUMENT persisté, jamais un contexte de
+//                      découverte) et `..._declares_instrument_che` (le déclarant
+//                      suit `instrument:<nom>@<semver>`). Elles ont été posées AVEC
+//                      la valeur, pas après : une autorité nouvelle porte les gardes
+//                      qui la définissent au moment où elle devient opérationnelle.
 //
 // ─── CE MODULE NE LIT PLUS RIEN. C'EST LE POINT DE LA FENÊTRE ─────────────
 //
@@ -52,7 +77,13 @@
 // quatre mots, et le prédicat qui dit si une valeur en fait partie. Aucune
 // donnée, aucune table, aucun défaut.
 
-export const SOURCE_PROVENANCE_KINDS = ["UNKNOWN", "OPERATOR_DECLARED", "EXTRACTED", "VERIFIED"] as const;
+export const SOURCE_PROVENANCE_KINDS = [
+  "UNKNOWN",
+  "OPERATOR_DECLARED",
+  "EXTRACTED",
+  "VERIFIED",
+  "MACHINE_MEASURED",
+] as const;
 export type SourceProvenanceKind = (typeof SOURCE_PROVENANCE_KINDS)[number];
 
 export function isSourceProvenanceKind(v: unknown): v is SourceProvenanceKind {
