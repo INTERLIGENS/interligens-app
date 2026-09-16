@@ -160,6 +160,19 @@ export interface QualifiedProvenance {
    * colonne n'est pas renommé avant le RC ; le lecteur, lui, le NOMME.
    */
   readonly sourceLocator: string;
+  /**
+   * QUI DÉCLARE cette qualification, tel que la ligne le porte.
+   *
+   * CC-OFFLINE-240 — remonté parce que c'est là, et seulement là, que vit
+   * L'IDENTITÉ DE L'INSTRUMENT d'une mesure : pour `MACHINE_MEASURED`, le CHECK
+   * en base impose `instrument:<nom>@<semver>`. Sans ce champ, un assemblage
+   * d'autorité pourrait dire « cette pièce est une mesure » sans jamais pouvoir
+   * dire PAR QUOI elle a été produite — c'est-à-dire l'essentiel.
+   *
+   * Il ne change AUCUNE décision : ni l'éligibilité, ni la cause d'un refus.
+   * Il transporte.
+   */
+  readonly declaredBy: string;
   /** Non nul SI ET SEULEMENT SI `kind === "VERIFIED"` — CHECK en base, reconstruit ici. */
   readonly verification: {
     readonly by: string;
@@ -286,6 +299,7 @@ export function resolveJournalProvenance(
     journalId,
     referenceKind: derniere.referenceKind,
     sourceLocator: derniere.sourceUrl,
+    declaredBy: derniere.declaredBy,
     verification,
   };
 }
