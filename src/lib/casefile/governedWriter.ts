@@ -414,6 +414,19 @@ function decideClaimContract<C extends PublicationContractCause, S extends Publi
   claim: ClaimContractInput,
   registre: ReadonlyMap<string, PublicSource>,
   juge: (s: PublicSource) => { eligible: true; source: S } | { eligible: false; refusal: SourceEligibilityRefusal },
+  /**
+   * Le nombre de dépendances gouvernées VALIDÉES que porte le fondement.
+   *
+   * ⚠️ CE N'EST PAS « si INFERENCE alors evidenceRefs optionnel ». C'est : une
+   * INFERENCE est fondée par des ASSERTIONS GOUVERNÉES au lieu de PIÈCES, et il
+   * en faut au moins une. Le zéro par défaut garde le contrat de PUBLICATION et
+   * tout appelant non averti EXACTEMENT là où ils étaient : sans dépendance, le
+   * refus `EVIDENCE_REFS_EMPTY` tombe comme avant.
+   *
+   * ⛔ Une dépendance ne transforme JAMAIS une observation sans pièce en
+   *    observation fondée : le relâchement ne vaut que pour INFERENCE.
+   */
+  dependencesValidees = 0,
 ): ClaimContractVerdict<C, S> {
   const unmet = (cause: C, at: string): ClaimContractVerdict<C, S> => ({ verdict: "UNMET", refusal: { cause, at } });
 
@@ -422,7 +435,12 @@ function decideClaimContract<C extends PublicationContractCause, S extends Publi
   if (!isDataNature(claim.rowNature)) return unmet("CLAIM_UNCLASSIFIED" as C, "rowNature");
 
   const refs = claim.evidenceRefs;
-  if (!Array.isArray(refs) || refs.length === 0) return unmet("EVIDENCE_REFS_EMPTY" as C, "evidenceRefs");
+  const fondeParDependance = claim.rowNature === "INFERENCE" && dependencesValidees > 0;
+  if (!Array.isArray(refs)) return unmet("EVIDENCE_REFS_EMPTY" as C, "evidenceRefs");
+  // Une INFERENCE dont le fondement est ENTIÈREMENT porté par ses dépendances
+  // gouvernées n'a aucune pièce à citer. Toute autre nature — et une INFERENCE
+  // sans dépendance — retombe sur le refus historique, inchangé.
+  if (refs.length === 0 && !fondeParDependance) return unmet("EVIDENCE_REFS_EMPTY" as C, "evidenceRefs");
 
   const cited: S[] = [];
   const clefs: string[] = [];
@@ -444,8 +462,11 @@ function decideClaimContract<C extends PublicationContractCause, S extends Publi
 export function decideFoundationContract(
   claim: ClaimContractInput,
   registre: ReadonlyMap<string, PublicSource>,
+  dependencesValidees = 0,
 ): FoundationContractVerdict {
-  return decideClaimContract<FoundationContractCause, FoundationEligibleSource>(claim, registre, isFoundationEligibleSource);
+  return decideClaimContract<FoundationContractCause, FoundationEligibleSource>(
+    claim, registre, isFoundationEligibleSource, dependencesValidees,
+  );
 }
 
 /** Le contrat de PUBLICATION : chaque pièce citée est éligible à la publication. */
@@ -484,6 +505,18 @@ export const FOUNDATION_REFUSAL_CAUSES = [
   "SEAL_BROKEN",
   /** La supplantation ne change rien au contenu scellé : rien à versionner. */
   "CONTENT_UNCHANGED",
+  /**
+   * Une INFERENCE sans aucune dépendance gouvernée validée. Ce n'est PAS
+   * « evidenceRefs optionnel » : c'est un fondement EXIGÉ qui manque. Une
+   * inférence qui ne consomme aucune assertion n'est pas une inférence.
+   */
+  "DEPENDENCY_REQUIRED_FOR_INFERENCE",
+  /** Une dépendance déclarée ne trouve pas sa claim source, à la version épinglée. */
+  "DEPENDENCY_UNRESOLVED",
+  /** Une dépendance vise le `claimId` de la claim elle-même. C'est `supersedes`, pas une dépendance. */
+  "DEPENDENCY_SELF",
+  /** La claim source existe et ne satisfait PAS son propre contrat de fondement. */
+  "DEPENDENCY_NOT_FOUNDABLE",
 ] as const;
 export type FoundationRefusalCause = (typeof FOUNDATION_REFUSAL_CAUSES)[number];
 
@@ -573,6 +606,51 @@ export interface ClaimAssertionInput {
    * Obligatoire si le `claimId` existe, interdite sinon.
    */
   readonly supersedesVersion?: number;
+  /**
+   * LES ASSERTIONS GOUVERNÉES QUE CETTE CLAIM CONSOMME. Distinct d'`evidenceRefs`,
+   * et jamais interchangeable avec lui :
+   *
+   *   evidenceRefs       « quelles PIÈCES fondent cette observation ? »
+   *   dependsOn          « quelles ASSERTIONS GOUVERNÉES cette inférence consomme-t-elle ? »
+   */
+  readonly dependsOn?: readonly ClaimDependencyInput[];
+}
+
+/**
+ * UNE DÉPENDANCE CAUSALE DÉCLARÉE — l'identité ET la version, jamais l'une sans
+ * l'autre. Épingler la version est ce qui rend une conclusion historique
+ * explicable contre ses entrées historiques : si la source passe en v2 demain,
+ * l'inférence v1 continue de pointer la v1.
+ */
+export interface ClaimDependencyInput {
+  readonly claimId: string;
+  readonly version: number;
+}
+
+/**
+ * UNE CLAIM SOURCE, TELLE QUE LUE par l'exécuteur sous verrou.
+ *
+ * ⛔ La clé étrangère prouve que la ligne EXISTE. Elle ne prouve pas que la
+ *    source est FONDÉE. Le décideur évalue donc le contrat de la source selon
+ *    SA PROPRE `rowNature` — c'est ce qui fait de `DEPENDENCY_NOT_FOUNDABLE` un
+ *    refus CAUSAL et non une formalité.
+ */
+export interface DependencySourceInput {
+  readonly casefileRef: string;
+  readonly claimId: string;
+  readonly version: number;
+  readonly rowNature: unknown;
+  readonly evidenceRefs: unknown;
+}
+
+/** Une ligne de `casefile_claim_dependencies`, décidée, prête à insérer. */
+export interface GovernedDependencyRow {
+  readonly casefileRef: string;
+  readonly dependentClaimId: string;
+  readonly dependentVersion: number;
+  readonly sourceClaimId: string;
+  readonly sourceVersion: number;
+  readonly dependencyKind: "DERIVED_FROM";
 }
 
 /** Une révision existante du claim, telle que lue — avec son sceau. */
@@ -599,6 +677,12 @@ export interface FoundationRequest {
   readonly snapshots: readonly SnapshotRowInput[];
   readonly sources: readonly SourceInput[];
   readonly existingClaims: readonly ExistingClaimInput[];
+  /**
+   * Les claims sources des dépendances DÉCLARÉES, telles que l'appelant les a
+   * LUES. Absent vaut liste vide : une dépendance déclarée sans sa source lue
+   * tombe alors sur `DEPENDENCY_UNRESOLVED`, jamais sur un silence.
+   */
+  readonly dependencySources?: readonly DependencySourceInput[];
   readonly claim: ClaimAssertionInput;
 }
 
@@ -664,6 +748,12 @@ export interface Foundation {
   readonly claimToInsert: GovernedClaimRow;
   /** Les pièces que le claim cite, résolues et jugées FONDABLES — pas publiables. */
   readonly citedSources: readonly FoundationEligibleSource[];
+  /**
+   * Les dépendances causales VALIDÉES, à insérer DANS LA MÊME TRANSACTION que la
+   * claim. Une ligne que le producteur n'écrit pas avec l'assertion qu'elle
+   * fonde ne serait pas une autorité.
+   */
+  readonly dependenciesToInsert: readonly GovernedDependencyRow[];
   readonly preconditions: FoundationPreconditions;
 }
 
@@ -716,6 +806,8 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
   // ── Forme générale ────────────────────────────────────────────────────
   if (!estObjet(request)) return refuse("MALFORMED_INPUT", "request");
   const { dossier, snapshots, sources, existingClaims, claim } = request;
+  const dependencySources: readonly DependencySourceInput[] =
+    (request as { dependencySources?: readonly DependencySourceInput[] }).dependencySources ?? [];
   if (!estObjet(dossier)) return refuse("MALFORMED_INPUT", "dossier");
   if (!estCleAcceptable(dossier.ref)) return refuse("MALFORMED_INPUT", "dossier.ref");
   if (!estCleAcceptable(dossier.canonicalMint)) return refuse("MALFORMED_INPUT", "dossier.canonicalMint");
@@ -828,8 +920,69 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
     return refuse("MALFORMED_INPUT", "claim.supersedesVersion");
   }
 
+  // ── LES DÉPENDANCES CAUSALES ──────────────────────────────────────────
+  //
+  // Évaluées AVANT le contrat, parce que leur verdict EST une entrée du contrat :
+  // c'est ce qui rend la consommation causale, et non décorative. Une dépendance
+  // déclarée que personne ne lit ne serait pas une autorité.
+  if (!estTableau(dependencySources)) return refuse("MALFORMED_INPUT", "dependencySources");
+  const parSourceClaim = new Map<string, DependencySourceInput>();
+  for (let i = 0; i < dependencySources.length; i++) {
+    const d = dependencySources[i] as DependencySourceInput;
+    if (!estObjet(d) || !estCleAcceptable(d.claimId) || !estEntierPositif(d.version)) {
+      return refuse("MALFORMED_INPUT", `dependencySources[${i}]`);
+    }
+    if (d.casefileRef !== dossier.ref) return refuse("DOSSIER_MIX", `dependencySources[${d.claimId}].casefileRef`);
+    parSourceClaim.set(`${d.claimId}@${d.version}`, d);
+  }
+
+  const declarees: readonly ClaimDependencyInput[] = claim.dependsOn ?? [];
+  if (!estTableau(declarees)) return refuse("MALFORMED_INPUT", "claim.dependsOn");
+  const dependenciesToInsert: GovernedDependencyRow[] = [];
+  const vues = new Set<string>();
+  for (let i = 0; i < declarees.length; i++) {
+    const dep = declarees[i];
+    if (!estObjet(dep) || !estCleAcceptable(dep.claimId) || !estEntierPositif(dep.version)) {
+      return refuse("MALFORMED_INPUT", `claim.dependsOn[${i}]`);
+    }
+    const ou = `claim.dependsOn[${dep.claimId}@${dep.version}]`;
+    // Une dépendance vers son propre `claimId` serait `supersedes` déguisé — et
+    // le CHECK en base la refuse aussi. Les deux relations restent disjointes.
+    if (dep.claimId === claim.claimId) return refuse("DEPENDENCY_SELF", ou);
+    if (vues.has(`${dep.claimId}@${dep.version}`)) return refuse("MALFORMED_INPUT", ou);
+    vues.add(`${dep.claimId}@${dep.version}`);
+
+    // ⛔ L'EXISTENCE NE SUFFIT PAS. La source est LUE, puis JUGÉE.
+    const src = parSourceClaim.get(`${dep.claimId}@${dep.version}`);
+    if (!src) return refuse("DEPENDENCY_UNRESOLVED", ou);
+
+    // Le contrat de la source, selon SA PROPRE nature : classée, et fondée par
+    // des pièces dès lors que sa nature en exige.
+    if (!isDataNature(src.rowNature)) return refuse("DEPENDENCY_NOT_FOUNDABLE", `${ou}.rowNature`);
+    const refsSource = src.evidenceRefs;
+    if (src.rowNature !== "INFERENCE" && (!Array.isArray(refsSource) || refsSource.length === 0)) {
+      return refuse("DEPENDENCY_NOT_FOUNDABLE", `${ou}.evidenceRefs`);
+    }
+
+    dependenciesToInsert.push({
+      casefileRef: dossier.ref,
+      dependentClaimId: claim.claimId,
+      dependentVersion: 0, // résolu à l'insertion : la version de la claim décidée
+      sourceClaimId: dep.claimId,
+      sourceVersion: dep.version,
+      dependencyKind: "DERIVED_FROM",
+    });
+  }
+
+  // FAIL CLOSED — une INFERENCE sans dépendance validée est REFUSÉE, qu'elle
+  // porte des pièces ou non. Ce n'est pas un assouplissement : c'est une
+  // exigence de plus, sur une nature qui n'en avait pas.
+  if (claim.rowNature === "INFERENCE" && dependenciesToInsert.length === 0) {
+    return refuse("DEPENDENCY_REQUIRED_FOR_INFERENCE", "claim.dependsOn");
+  }
+
   // ── Le contrat du FONDEMENT : chaque pièce citée est fondable ────────
-  const contrat = decideFoundationContract(claim, registre);
+  const contrat = decideFoundationContract(claim, registre, dependenciesToInsert.length);
   if (contrat.verdict === "UNMET") return refuse(contrat.refusal.cause, contrat.refusal.at);
 
   // Même règle que le CHECK estimate_auditable : une ESTIMATE reste auditable.
@@ -898,6 +1051,10 @@ export function decideFoundation(request: FoundationRequest): FoundationDecision
     sourcesToInsert,
     claimToInsert,
     citedSources: contrat.cited,
+    // La VERSION de la claim dépendante n'est connue qu'ici, après le calcul du
+    // versioning : les lignes portent donc la version DÉCIDÉE, jamais une
+    // supposition faite plus tôt.
+    dependenciesToInsert: dependenciesToInsert.map((d) => ({ ...d, dependentVersion: version })),
     preconditions: {
       snapshots: snapshotsEpingles,
       sourceIdsExpectedAbsent: sourcesToInsert.map((s) => s.sourceId),

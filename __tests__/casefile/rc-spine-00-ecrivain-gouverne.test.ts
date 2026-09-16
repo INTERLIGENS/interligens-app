@@ -168,7 +168,12 @@ describe("RC-SPINE-00 — témoin positif : le fondement complet est FONDÉ, en 
 
   it("le plan ne contient AUCUNE forme de modification d'une ligne existante", () => {
     const f = founded();
-    expect(Object.keys(f).sort()).toEqual(["casefileRef", "citedSources", "claimToInsert", "preconditions", "sourcesToInsert"]);
+    // `dependenciesToInsert` (CC-OFFLINE-232) est, comme les deux autres listes,
+    // un plan d'INSERTION : rien n'y désigne une ligne à modifier. La propriété
+    // que ce témoin défend est intacte.
+    expect(Object.keys(f).sort()).toEqual([
+      "casefileRef", "citedSources", "claimToInsert", "dependenciesToInsert", "preconditions", "sourcesToInsert",
+    ]);
   });
 });
 
@@ -202,7 +207,39 @@ describe("RC-SPINE-00 — propriété 2 : une correction produit une NOUVELLE ve
 
 type Cas = readonly [nom: string, request: unknown, cause: FoundationRefusalCause, at: string];
 
+/** Une claim source LUE, telle que l'exécuteur la remet au décideur. */
+const sourceDep = (o: Record<string, unknown> = {}) => ({
+  casefileRef: VINE_CASEFILE_REF, claimId: "C-OBS", version: 1,
+  rowNature: "PRIMARY_OBSERVATION", evidenceRefs: ["SRC-001"], ...o,
+});
+
 const REFUSES_FONDEMENT: readonly Cas[] = [
+  // ── dépendance causale (CC-OFFLINE-232) ──
+  ["INFERENCE sans aucune dépendance",
+    request({ claim: claim({ rowNature: "INFERENCE" }) }),
+    "DEPENDENCY_REQUIRED_FOR_INFERENCE", "claim.dependsOn"],
+  ["dépendance déclarée dont la source n'a pas été lue",
+    request({ claim: claim({ rowNature: "INFERENCE", dependsOn: [{ claimId: "C-OBS", version: 1 }] }) }),
+    "DEPENDENCY_UNRESOLVED", "claim.dependsOn[C-OBS@1]"],
+  ["dépendance à la mauvaise VERSION — la v1 lue ne répond pas pour la v2",
+    request({ claim: claim({ rowNature: "INFERENCE", dependsOn: [{ claimId: "C-OBS", version: 2 }] }),
+              dependencySources: [sourceDep()] }),
+    "DEPENDENCY_UNRESOLVED", "claim.dependsOn[C-OBS@2]"],
+  ["auto-dépendance — ce serait `supersedes`, pas une dépendance",
+    request({ claim: claim({ rowNature: "INFERENCE", dependsOn: [{ claimId: "C1", version: 1 }] }) }),
+    "DEPENDENCY_SELF", "claim.dependsOn[C1@1]"],
+  ["dépendance vers une source NON CLASSÉE",
+    request({ claim: claim({ rowNature: "INFERENCE", dependsOn: [{ claimId: "C-OBS", version: 1 }] }),
+              dependencySources: [sourceDep({ rowNature: null })] }),
+    "DEPENDENCY_NOT_FOUNDABLE", "claim.dependsOn[C-OBS@1].rowNature"],
+  ["dépendance vers une OBSERVATION sans pièce — l'existence ne suffit pas",
+    request({ claim: claim({ rowNature: "INFERENCE", dependsOn: [{ claimId: "C-OBS", version: 1 }] }),
+              dependencySources: [sourceDep({ evidenceRefs: [] })] }),
+    "DEPENDENCY_NOT_FOUNDABLE", "claim.dependsOn[C-OBS@1].evidenceRefs"],
+  ["dépendance vers un AUTRE dossier",
+    request({ claim: claim({ rowNature: "INFERENCE", dependsOn: [{ claimId: "C-OBS", version: 1 }] }),
+              dependencySources: [sourceDep({ casefileRef: "IL-AUTRE-001" })] }),
+    "DOSSIER_MIX", "dependencySources[C-OBS].casefileRef"],
   // ── forme ──
   ["requête null", null, "MALFORMED_INPUT", "request"],
   ["dossier absent", { ...request(), dossier: undefined }, "MALFORMED_INPUT", "dossier"],
