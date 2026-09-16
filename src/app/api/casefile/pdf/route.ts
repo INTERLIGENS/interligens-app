@@ -42,6 +42,10 @@ import {
 } from "@/lib/casefile/pdfGeneratorPublic";
 import { buildBotifyInput, buildVineInput } from "@/lib/casefile/presets";
 import { loadCanonicalCaseFile } from "@/lib/casefile/canonicalReader";
+import { assembleAuthority } from "@/lib/casefile/authorityAssembly";
+import { projectAssembly } from "@/lib/casefile/audienceProjection";
+import { renderGovernedCaseFilePdf } from "@/lib/casefile/governedCaseFileRenderer";
+import { produireArtefactGouverne } from "@/lib/storage/registre/production";
 import {
   canonicalRefForMint,
   loadPublicProjection,
@@ -55,7 +59,12 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-type Template = "public" | "internal";
+/**
+ * `governed` est le gabarit CANONIQUE RC (CC-OFFLINE-244/246) : assemblage →
+ * projection par audience → renderer → artefact gouverné. `public` et
+ * `internal` restent en place, inchangés, pour leurs usages existants.
+ */
+type Template = "public" | "internal" | "governed";
 
 // Les sections SANS structure canonique (chronologie, réquisitions, wallets,
 // shillers, smoking guns) viennent encore d'un preset. La carte est indexée
@@ -68,6 +77,7 @@ const PRESET_SECTIONS_BY_REF: Record<string, () => ReturnType<typeof buildBotify
 
 function parseTemplate(raw: string | null): Template {
   if (raw === "internal") return "internal";
+  if (raw === "governed") return "governed";
   return "public"; // default to public — it's the retail surface
 }
 
@@ -124,6 +134,65 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // ── GOVERNED — LE CHEMIN CANONIQUE RC (CC-OFFLINE-246) ───────────────
+    //
+    //   AUTH → assemblage canonique → projection COUNSEL_INVESTOR
+    //        → renderer → artefact gouverné → référence
+    //
+    // La vérité métier n'est pas reconstruite ici : la route ENCHAÎNE des
+    // autorités. Elle ne lit ni `loadCaseByMint`, ni `summary`, ni preset codé
+    // par `ref`, et ne calcule aucun score — aucun de ces chemins n'est
+    // atteignable depuis cette branche.
+    //
+    // FAIL CLOSED : pas de corpus gouverné ⇒ refus. JAMAIS un repli sur le
+    // JSON historique, qui reste en place pour ses usages legacy.
+    if (template === "governed") {
+      const assemblage = await assembleAuthority(ref);
+      if (!assemblage) {
+        return NextResponse.json(
+          { error: "no governed corpus for this case file" },
+          { status: 404 },
+        );
+      }
+      // L'AUDIENCE EST POSÉE ICI, avant tout rendu. Le renderer ne reçoit que
+      // ce que l'autorité a laissé passer : ce qu'il n'a pas, il ne peut pas
+      // le présenter par accident.
+      const projection = projectAssembly(assemblage, "COUNSEL_INVESTOR");
+      const genere = new Date().toISOString();
+      const octets = await renderGovernedCaseFilePdf(projection, genere);
+
+      // L'ARTEFACT GOUVERNÉ — chemin EXISTANT : identité allouée par le
+      // registre, persistance, confirmation. Aucun stockage neuf, aucune
+      // architecture d'horodatage nouvelle.
+      const production = await produireArtefactGouverne({
+        buffer: Buffer.from(octets),
+        subject: ref,
+        batchId: "casefile-governed",
+      });
+      if (!production.produit) {
+        // L'artefact a été RENDU ; c'est l'autorité de registre qui manque.
+        return NextResponse.json(
+          {
+            error: "governed_production_unavailable",
+            raison: production.raison,
+            detail: production.explication,
+          },
+          { status: production.statutHttp },
+        );
+      }
+      return NextResponse.json({
+        status: "stored",
+        audience: projection.audience,
+        state: projection.state,
+        claims: projection.claims.length,
+        signedUrl: production.signedUrl,
+        key: production.key,
+        sha256: production.sha256,
+        sizeBytes: production.sizeBytes,
+        registreId: production.registreId,
+      });
+    }
+
     // ── PUBLIC template — la projection publique, telle quelle ───────────
     if (template === "public") {
       const dossier = await loadPublicProjection(ref, "api/casefile/pdf");
