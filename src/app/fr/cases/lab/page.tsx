@@ -104,7 +104,6 @@ async function getLab(): Promise<TokenCasefileData | null> {
       family: r.family,
       subtype: r.subtype,
       tigerScore: r.tigerScore,
-      verdict: r.verdict,
       status: r.status,
       statusNote: r.statusNote,
       primaryChain: r.primaryChain,

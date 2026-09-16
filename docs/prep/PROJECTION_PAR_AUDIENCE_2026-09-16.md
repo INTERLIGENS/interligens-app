@@ -99,7 +99,7 @@ append-only versionné ; la projection rend donc les deux.
 | `canonicalReader` | — *(lecteur)* | remonte désormais la **version** des claims ; ajoute `loadClaimDependencies` |
 | `internalView` | **COUNSEL** | `verdict` → **`conclusions: AudienceProjection`** |
 | `publicProjection` | **PUBLIC** | `verdict` **retiré** de la projection |
-| `TokenCasefileView` | PUBLIC | ⛔ **BLOQUÉ PAR LE GARDE** — voir §4bis |
+| `TokenCasefileView` | PUBLIC | badge et `VERDICT_COLOR` **retirés** — sous lease, voir §4bis |
 | page BOTIFY evidence | PUBLIC | badge de verdict hérité **retiré** |
 | listing `cases/page` ×2 | PUBLIC | `severityTier` n'est plus alimenté par la colonne |
 | `/api/casefile` | — | **ne consommait pas la colonne** : son `verdict` est un objet dérivé du TigerScore, autre moteur, hors périmètre |
@@ -136,11 +136,28 @@ Les trois fichiers concernés sont **revenus à leur état d'origine**, ensemble
 un tout : le composant et les deux pages `cases/lab` qui l'alimentent. En livrer une moitié aurait
 cassé la compilation.
 
-**Ce qui reste donc en place, et qu'il faut savoir :** le badge de verdict et `VERDICT_COLOR`
-subsistent dans `TokenCasefileView`, alimentés par une lecture Prisma **directe** de
-`token_casefiles.verdict` — hors des deux projections autoritatives, qui, elles, ne le portent plus.
-La surface concernée est la fiche `cases/lab`. **D est clos sur les autorités ; cette surface
-d'affichage attend une lease.**
+**FERMÉ SOUS LEASE — CC-OFFLINE-236.** L'architecte a accordé la lease, pour un motif qui n'est pas
+cosmétique :
+
+> **UNE AUTORITÉ N'EST PAS RETIRÉE SI UNE SURFACE PRODUIT CONTINUE À LA PRÉSENTER COMME
+> AUTORITATIVE.**
+
+Trois fichiers étaient autorisés ; **la lease n'en a ouvert qu'UN** — les deux pages `cases/lab`
+vivent sous `src/app/` et ne demandaient aucune autorité. *Une lease n'ouvre que ce dont on démontre
+le besoin, pas ce qu'on a le droit d'ouvrir.*
+
+```
+CC-OFFLINE-236-VERDICT-BADGE · 1 chemin · 45 mn
+src/components/cases/TokenCasefileView.tsx
+```
+
+Le patch rejoué est celui qui avait été écrit, compilé et vérifié — puis reverti quand le garde
+l'avait refusé. Rien n'a été contourné, et rien ne remplace le badge : **l'absence de verdict global
+reste une absence de verdict global.** Le `TigerScore` demeure, sans couleur empruntée ; le badge de
+statut d'enquête demeure, sans couleur empruntée non plus.
+
+`token_casefiles.verdict = LEGACY / NON-AUTHORITATIVE`, **sans exception connue sur les surfaces
+mesurées par D.**
 
 ### BOTIFY — empêcher une fausse autorité, rien de plus
 
