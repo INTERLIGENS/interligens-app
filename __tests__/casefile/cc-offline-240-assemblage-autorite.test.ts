@@ -37,14 +37,18 @@ const dossier = (o: Partial<CanonicalCaseFile> = {}): CanonicalCaseFile =>
   }) as unknown as CanonicalCaseFile;
 
 const DEPS = new Map([["C-INF@1", [{ claimId: "C-OBS", version: 1, kind: "DERIVED_FROM" }]]]);
-const SCEAUX = new Map([["C-OBS@1", "b".repeat(64)], ["C-INF@1", "c".repeat(64)]]);
+const SCEAUX = new Map<string, string | null>([["C-OBS@1", "b".repeat(64)], ["C-INF@1", "c".repeat(64)]]);
 const LIGNAGES = new Map([
   ["SRC-001", { snapshotId: "snap-1", journalId: "7", sourceLocator: "https://x.com/e/1", declaredBy: "Un Opérateur" }],
   ["SRC-MES", { snapshotId: "snap-2", journalId: "8", sourceLocator: "r2://bucket/obj.json", declaredBy: "instrument:un-instrument@1.0.0" }],
 ]);
 
-const assembler = (d = dossier(), deps = DEPS, sceaux = SCEAUX, lig = LIGNAGES) =>
-  composerAssemblage(d, deps, sceaux, lig);
+const assembler = (
+  d: CanonicalCaseFile = dossier(),
+  deps: ReadonlyMap<string, ReadonlyArray<{ claimId: string; version: number; kind: string }>> = DEPS,
+  sceaux: ReadonlyMap<string, string | null> = SCEAUX,
+  lig: ReadonlyMap<string, { snapshotId: string | null; journalId: string | null; sourceLocator: string | null; declaredBy: string | null }> = LIGNAGES,
+) => composerAssemblage(d, deps, sceaux, lig);
 
 describe("CF-1 · la chaîne d'autorité est TRANSPORTÉE", () => {
   it("le sujet ne porte AUCUN champ de prose", () => {
@@ -113,7 +117,8 @@ describe("CF-1 · MUTANTS — ce que l'assemblage refuse de fabriquer", () => {
 
   it("MUTANT · sceau ABSENT → `null`, JAMAIS une valeur fabriquée", () => {
     expect(assembler(dossier(), DEPS, new Map()).claims[0].contentHash).toBeNull();
-    expect(assembler(dossier(), DEPS, new Map([["C-OBS@1", null]])).claims[0].contentHash).toBeNull();
+    const sceauNul = new Map<string, string | null>([["C-OBS@1", null]]);
+    expect(assembler(dossier(), DEPS, sceauNul).claims[0].contentHash).toBeNull();
   });
 
   it("MUTANT · lignage ABSENT → localisateur et déclarant `null`, qualification conservée", () => {
