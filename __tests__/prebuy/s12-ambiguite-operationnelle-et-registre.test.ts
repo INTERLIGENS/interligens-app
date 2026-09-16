@@ -376,7 +376,16 @@ describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE
     // donc pas le registre : il l'ATTAQUE. Prétendre l'inverse ferait de ce
     // fichier une autorité qu'il n'est pas — et c'est exactement l'erreur que
     // l'axe U nomme.
-    expect(DECLAREES_NON_DETECTEES).toEqual(["src/app/api/admin/export/botify/route.ts"]);
+    // CC-OFFLINE-244 — le renderer gouverné s'y ajoute, et pour la MÊME raison
+    // que la première entrée : il est DÉCLARÉ au registre des surfaces, et le
+    // détecteur ne le voit pas. Il ne porte aucun des marqueurs cherchés —
+    // normal, il ne lit ni base ni preset : il reçoit une projection déjà
+    // gouvernée. La propriété défendue ici est intacte, et cet ajout la
+    // documente au lieu de l'éroder.
+    expect(DECLAREES_NON_DETECTEES).toEqual([
+      "src/app/api/admin/export/botify/route.ts",
+      "src/lib/casefile/governedCaseFileRenderer.ts",
+    ]);
   });
 });
 

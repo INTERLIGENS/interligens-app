@@ -54,6 +54,17 @@ export interface CaseFileSurface {
  */
 export const CASEFILE_SURFACES: readonly CaseFileSurface[] = [
   {
+    // CC-OFFLINE-244 · CF-3 — LE RENDERER GOUVERNÉ. Il ne reçoit QUE la
+    // projection COUNSEL_INVESTOR : il ne lit aucune base, n'appelle aucun
+    // preset, ne complète depuis aucune prose et ne calcule aucun score. Son
+    // autorité est donc exactement celle de ce qu'on lui remet.
+    file: "src/lib/casefile/governedCaseFileRenderer.ts",
+    route: null,
+    authority: "CANONICAL",
+    public: false,
+    note: "Rendu du dossier counsel/investor à partir de la seule projection d'audience.",
+  },
+  {
     file: "src/app/en/cases/lab/page.tsx",
     route: "/en/cases/lab",
     authority: "CANONICAL",
