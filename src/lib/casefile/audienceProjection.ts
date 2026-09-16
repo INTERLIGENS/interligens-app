@@ -24,7 +24,7 @@
 //
 // ─── L'AUDIENCE EST EXPLICITE, JAMAIS UN BOOLÉEN ──────────────────────────
 //
-//   COUNSEL  → AUTORITÉ DE FONDEMENT      dossier de travail, avocat / investisseur
+//   COUNSEL_INVESTOR → AUTORITÉ DE FONDEMENT      dossier de travail, avocat / investisseur
 //   PUBLIC   → AUTORITÉ DE PUBLICATION    surface publiée
 //
 // Un dossier privé gouverné n'est PAS une publication. Une claim peut être
@@ -41,7 +41,7 @@ import { decideFoundationContract, decidePublicationContract } from "./governedW
 import type { CanonicalCaseFile, PublicClaim, PublicSource } from "./canonicalReader";
 
 /** Les deux audiences. Fermé, explicite, jamais dérivé d'un drapeau. */
-export const AUDIENCES = ["COUNSEL", "PUBLIC"] as const;
+export const AUDIENCES = ["COUNSEL_INVESTOR", "PUBLIC"] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
 /** Une dépendance causale telle que la table la porte. Identité ET version. */
@@ -128,7 +128,7 @@ export function projectConclusions(
     //   dépendances, donc une inférence sans pièce y tombe sur
     //   EVIDENCE_REFS_EMPTY — exactement comme avant D.
     const contrat =
-      audience === "COUNSEL"
+      audience === "COUNSEL_INVESTOR"
         ? decideFoundationContract(entree, registre, deps.length)
         : decidePublicationContract(entree, registre);
     if (contrat.verdict === "UNMET") continue;
@@ -159,5 +159,111 @@ export function projectConclusions(
     conclusions,
     // ⛔ Pas d'appréciation. Une cardinalité, et rien d'autre.
     state: conclusions.length === 0 ? "NO_GOVERNED_CONCLUSION" : "GOVERNED_CONCLUSIONS",
+  };
+}
+
+// ═══ CF-2 — LA PROJECTION PORTE SUR L'ASSEMBLAGE ════════════════════════════
+//
+// ██  L'AUDIENCE GOUVERNE LA SÉLECTION AVANT LE RENDU, PAS PLUS TARD.      ██
+//
+// Le motif, et il est mécanique : si le renderer reçoit déjà des assertions
+// qu'il n'a pas le droit de présenter, la frontière d'audience est trop tardive.
+// Ce qu'il ne reçoit pas, il ne peut pas le rendre par accident.
+//
+// `projectConclusions` ci-dessus ne retient que les INFERENCE — c'est la donnée
+// autoritative du VERDICT (CC-OFFLINE-234). `projectAssembly` retient TOUTE
+// claim admissible pour l'audience : un dossier counsel montre ses observations,
+// sa relation et sa limite mesurée, pas seulement sa conclusion.
+//
+// LE RENDERER NE DÉCIDE RIEN. Il reçoit ce que l'autorité a laissé passer.
+
+import type {
+  AssembledClaim,
+  AssembledDependency,
+  AssembledSource,
+  CanonicalAuthorityAssembly,
+} from "./authorityAssembly";
+
+/** Une claim retenue, avec de quoi retrouver son fondement. */
+export interface ProjectedClaim extends AssembledClaim {
+  /** L'autorité qui l'a admise pour CETTE audience. */
+  readonly admittedBy: Audience;
+  /** Les pièces citées, RÉSOLUES — jamais des identifiants orphelins. */
+  readonly citedSources: readonly AssembledSource[];
+  /** Les assertions consommées, épinglées en version. */
+  readonly dependencies: readonly AssembledDependency[];
+}
+
+export interface AudienceScopedCaseFile {
+  readonly subject: CanonicalAuthorityAssembly["subject"];
+  readonly audience: Audience;
+  readonly claims: readonly ProjectedClaim[];
+  readonly state: "NO_GOVERNED_CLAIM" | "GOVERNED_CLAIMS";
+}
+
+/**
+ * Projette un assemblage pour une audience. PURE.
+ *
+ * Le MÊME assemblage alimente les deux : seule l'autorité appliquée change.
+ *
+ *   COUNSEL_INVESTOR → contrat de FONDEMENT
+ *   PUBLIC           → contrat de PUBLICATION, inchangé, plus l'état PUBLIC
+ *
+ * Une claim qui ne satisfait pas l'autorité de son audience n'est pas marquée :
+ * elle est ABSENTE. Le renderer ne peut pas la présenter par erreur.
+ */
+export function projectAssembly(
+  assemblage: CanonicalAuthorityAssembly,
+  audience: Audience,
+): AudienceScopedCaseFile {
+  // Le registre de pièces, dans la forme que les contrats attendent.
+  const registre = new Map<string, PublicSource>(
+    assemblage.sources.map((s) => [
+      s.sourceId,
+      {
+        sourceId: s.sourceId,
+        sourceType: s.sourceType,
+        caption: s.caption,
+        capturedAt: s.capturedAt,
+        sourceUrl: s.sourceUrl,
+        sha256: s.sha256,
+        evidenceLinked: s.snapshotLinked,
+        provenanceKind: s.provenanceKind as PublicSource["provenanceKind"],
+      } as PublicSource,
+    ]),
+  );
+
+  const claims: ProjectedClaim[] = [];
+  for (const c of assemblage.claims) {
+    const deps = assemblage.dependencies.filter(
+      (d) => d.dependentClaimId === c.claimId && d.dependentVersion === (c.version ?? -1),
+    );
+    const entree = { rowNature: c.rowNature, evidenceRefs: c.evidenceRefs };
+
+    const contrat =
+      audience === "COUNSEL_INVESTOR"
+        ? decideFoundationContract(entree, registre, deps.length)
+        : decidePublicationContract(entree, registre);
+    if (contrat.verdict === "UNMET") continue;
+    if (audience === "PUBLIC" && c.state !== "PUBLIC") continue;
+
+    claims.push({
+      ...c,
+      admittedBy: audience,
+      citedSources: c.evidenceRefs
+        .map((r) => assemblage.sources.find((s) => s.sourceId === r))
+        .filter((s): s is AssembledSource => s !== undefined),
+      dependencies: deps,
+    });
+  }
+
+  claims.sort((a, b) => a.claimId.localeCompare(b.claimId));
+
+  return {
+    subject: assemblage.subject,
+    audience,
+    claims,
+    // Une CARDINALITÉ, jamais une appréciation. Pas d'UNDETERMINED.
+    state: claims.length === 0 ? "NO_GOVERNED_CLAIM" : "GOVERNED_CLAIMS",
   };
 }

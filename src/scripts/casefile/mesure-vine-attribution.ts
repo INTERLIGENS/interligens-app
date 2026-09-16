@@ -569,7 +569,7 @@ async function projectionParAudience(): Promise<void> {
   if (!dossier) return;
   const deps = await loadClaimDependencies(REF);
 
-  for (const audience of ["COUNSEL", "PUBLIC"] as const) {
+  for (const audience of ["COUNSEL_INVESTOR", "PUBLIC"] as const) {
     const p = projectConclusions(dossier, audience, deps);
     ok(`${audience.padEnd(8)} · ${p.state} · ${p.conclusions.length} conclusion(s)`);
     for (const c of p.conclusions) {
