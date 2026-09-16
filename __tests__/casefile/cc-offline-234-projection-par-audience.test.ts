@@ -44,11 +44,11 @@ const deps: DependencyIndex = new Map([
 
 describe("CC-OFFLINE-234 · aucun mot synthétique n'est produit", () => {
   it("l'audience est un vocabulaire EXPLICITE, pas un booléen", () => {
-    expect([...AUDIENCES]).toEqual(["COUNSEL", "PUBLIC"]);
+    expect([...AUDIENCES]).toEqual(["COUNSEL_INVESTOR", "PUBLIC"]);
   });
 
   it("0 conclusion admissible → aucune conclusion, et une CARDINALITÉ, jamais une appréciation", () => {
-    const p = projectConclusions(dossier([]), "COUNSEL", deps);
+    const p = projectConclusions(dossier([]), "COUNSEL_INVESTOR", deps);
     expect(p.conclusions).toEqual([]);
     expect(p.state).toBe("NO_GOVERNED_CONCLUSION");
     // ⛔ Surtout pas UNDETERMINED : ce serait refabriquer le verdict supprimé.
@@ -58,7 +58,7 @@ describe("CC-OFFLINE-234 · aucun mot synthétique n'est produit", () => {
   it("le cas BOTIFY — des claims non fondables ne produisent AUCUNE conclusion", () => {
     const p = projectConclusions(
       dossier([claim({ claimId: "C9", rowNature: null, evidenceRefs: [] })]),
-      "COUNSEL",
+      "COUNSEL_INVESTOR",
       deps,
     );
     expect(p.conclusions).toEqual([]);
@@ -68,7 +68,7 @@ describe("CC-OFFLINE-234 · aucun mot synthétique n'est produit", () => {
   it("les OBSERVATIONS ne sont pas des conclusions — elles ne sont jamais projetées", () => {
     const p = projectConclusions(
       dossier([claim({ claimId: "VINE-MULTI-01", rowNature: "PRIMARY_OBSERVATION", evidenceRefs: ["SRC-001"] })]),
-      "COUNSEL",
+      "COUNSEL_INVESTOR",
       deps,
     );
     expect(p.conclusions).toEqual([]);
@@ -80,7 +80,7 @@ describe("CC-OFFLINE-234 · aucun mot synthétique n'est produit", () => {
         claim({ claimId: "VINE-CONCLUSION-02" }),
         claim({ claimId: "VINE-CONCLUSION-01" }),
       ]),
-      "COUNSEL",
+      "COUNSEL_INVESTOR",
       new Map([
         ["VINE-CONCLUSION-01@1", [{ claimId: "VINE-MEASURE-01", version: 1, kind: "DERIVED_FROM" }]],
         ["VINE-CONCLUSION-02@1", [{ claimId: "VINE-MEASURE-01", version: 1, kind: "DERIVED_FROM" }]],
@@ -94,7 +94,7 @@ describe("CC-OFFLINE-234 · aucun mot synthétique n'est produit", () => {
 
 describe("CC-OFFLINE-234 · une inférence porte son ensemble de dépendances VERSIONNÉ", () => {
   it("la dépendance est récupérable, par identité ET version", () => {
-    const p = projectConclusions(dossier([claim()]), "COUNSEL", deps);
+    const p = projectConclusions(dossier([claim()]), "COUNSEL_INVESTOR", deps);
     expect(p.conclusions).toHaveLength(1);
     expect(p.conclusions[0].version).toBe(1);
     expect(p.conclusions[0].dependencies).toEqual([
@@ -105,7 +105,7 @@ describe("CC-OFFLINE-234 · une inférence porte son ensemble de dépendances VE
   it("sans dépendance remontée, une inférence SANS pièce n'est PAS admise côté counsel", () => {
     // Le contrat de fondement décide, pas la surface : zéro dépendance et zéro
     // pièce, c'est EVIDENCE_REFS_EMPTY.
-    const p = projectConclusions(dossier([claim()]), "COUNSEL", new Map());
+    const p = projectConclusions(dossier([claim()]), "COUNSEL_INVESTOR", new Map());
     expect(p.conclusions).toEqual([]);
   });
 });
@@ -133,12 +133,12 @@ describe("CC-OFFLINE-234 · TÉMOIN ESSENTIEL — fondée côté counsel, absent
   it("VINE-CONCLUSION-01 · FOUNDATION MET · PUBLICATION REFUSED — simultanément", () => {
     const d = dossier([claim()]);
 
-    const counsel = projectConclusions(d, "COUNSEL", deps);
+    const counsel = projectConclusions(d, "COUNSEL_INVESTOR", deps);
     const publique = projectConclusions(d, "PUBLIC", deps);
 
     // COUNSEL → PRÉSENTE. L'autorité est le FONDEMENT.
     expect(counsel.conclusions.map((c) => c.claimId)).toEqual(["VINE-CONCLUSION-01"]);
-    expect(counsel.conclusions[0].admittedBy).toBe("COUNSEL");
+    expect(counsel.conclusions[0].admittedBy).toBe("COUNSEL_INVESTOR");
 
     // PUBLIC → ABSENTE. L'autorité de PUBLICATION n'a pas bougé : une inférence
     // sans pièce y tombe sur EVIDENCE_REFS_EMPTY, et la claim n'est pas PUBLIC.
@@ -166,6 +166,6 @@ describe("CC-OFFLINE-234 · TÉMOIN ESSENTIEL — fondée côté counsel, absent
       [piece({ provenanceKind: "OPERATOR_DECLARED" })],
     );
     expect(projectConclusions(d, "PUBLIC", deps).conclusions).toEqual([]);
-    expect(projectConclusions(d, "COUNSEL", deps).conclusions).toHaveLength(1);
+    expect(projectConclusions(d, "COUNSEL_INVESTOR", deps).conclusions).toHaveLength(1);
   });
 });

@@ -432,6 +432,12 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // complémentaire est le LIGNAGE — localisateur et déclarant — qui ne
       // décide de rien.
       "src/lib/casefile/authorityAssembly.ts",
+      // CC-OFFLINE-242 — LA PROJECTION PAR AUDIENCE. Troisième relais pur, même
+      // statut que les deux précédents : elle RECOPIE la qualification portée
+      // par l'assemblage dans la forme que les contrats attendent. Elle ne lit
+      // aucun journal, ne résout rien, et ne fabrique aucune valeur — un témoin
+      // de CC-OFFLINE-242 le vérifie.
+      "src/lib/casefile/audienceProjection.ts",
     ]);
     for (const [f, c] of sources) {
       if (!f.startsWith("src/")) continue;
@@ -485,6 +491,12 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // complémentaire est le LIGNAGE — localisateur et déclarant — qui ne
       // décide de rien.
       "src/lib/casefile/authorityAssembly.ts",
+      // CC-OFFLINE-242 — LA PROJECTION PAR AUDIENCE. Troisième relais pur, même
+      // statut que les deux précédents : elle RECOPIE la qualification portée
+      // par l'assemblage dans la forme que les contrats attendent. Elle ne lit
+      // aucun journal, ne résout rien, et ne fabrique aucune valeur — un témoin
+      // de CC-OFFLINE-242 le vérifie.
+      "src/lib/casefile/audienceProjection.ts",
     ]);
     // Et les deux sites de `src/` qui posent une qualification littérale sans
     // la DÉCIDER — vérifiés un par un juste après, pas exemptés en bloc.

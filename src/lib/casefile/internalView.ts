@@ -115,7 +115,7 @@ export function toInternalCaseView(
   return {
     // L'AUDIENCE EST EXPLICITE. Cette surface est COUNSEL : son autorité est le
     // FONDEMENT. Aucun drapeau, aucun booléen d'inclusion — le mot est écrit.
-    conclusions: projectConclusions(dossier, "COUNSEL", dependances),
+    conclusions: projectConclusions(dossier, "COUNSEL_INVESTOR", dependances),
     ref: dossier.ref,
     symbol: dossier.ticker.replace(/^\$/, ""),
     name: dossier.codename,
