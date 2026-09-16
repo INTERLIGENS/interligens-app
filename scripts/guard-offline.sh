@@ -434,6 +434,31 @@ LEASES=(
     #   CC-OFFLINE-217-SEPARATION-AUTORITES | separation-des-autorites-de-secret
     #   2 chemins · feat/cc-offline-217-separation-autorites-secret
     #   2026-09-15T12:32:00Z → 13:17:00Z (45 mn) · consommée à 12:37
+
+    # ── CC-OFFLINE-236-VERDICT-BADGE ─────────────────────────────────────────
+    # UN SEUL chemin, et c'est le minimum strict.
+    #
+    # L'architecte a autorisé trois fichiers ; UN SEUL est gelé. Les deux pages
+    # `cases/lab` qui alimentent le composant vivent sous `src/app/` et ne
+    # demandent aucune autorité. Une lease n'ouvre que ce dont on démontre le
+    # besoin — pas ce qu'on a le droit d'ouvrir.
+    #
+    #   src/components/cases/TokenCasefileView.tsx
+    #
+    # Motif, et il n'est pas cosmétique : CC-OFFLINE-234 a déclaré
+    # `token_casefiles.verdict` LEGACY / NON-AUTHORITATIVE et l'a retiré des deux
+    # projections autoritatives. Ce composant en reste la DERNIÈRE consommation
+    # connue — une lecture Prisma directe, rendue comme un badge coloré contre le
+    # TigerScore.
+    #
+    #   UNE AUTORITÉ N'EST PAS RETIRÉE SI UNE SURFACE PRODUIT CONTINUE
+    #   À LA PRÉSENTER COMME AUTORITATIVE.
+    #
+    # Le patch existe déjà : écrit, compilé et vérifié pendant CC-OFFLINE-234,
+    # puis REVERTI quand le garde l'a refusé. Il n'a pas été contourné.
+    #
+    # 45 minutes, la borne du mécanisme. Le sujet SÉLECTIONNE, la lease AUTORISE.
+    "CC-OFFLINE-236-VERDICT-BADGE|retrait-de-la-derniere-consommation-du-verdict-legacy|src/components/cases/TokenCasefileView.tsx|3efd755b0ad11b7977a960c558e17e99e4ab3e70|feat/cc-offline-236-verdict-badge-removal|2026-09-16T10:58:00Z|2026-09-16T11:43:00Z|OPEN"
 )
 
 lease_rouge() {
