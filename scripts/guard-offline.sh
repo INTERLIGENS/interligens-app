@@ -458,7 +458,19 @@ LEASES=(
     # puis REVERTI quand le garde l'a refusé. Il n'a pas été contourné.
     #
     # 45 minutes, la borne du mécanisme. Le sujet SÉLECTIONNE, la lease AUTORISE.
-    "CC-OFFLINE-236-VERDICT-BADGE|retrait-de-la-derniere-consommation-du-verdict-legacy|src/components/cases/TokenCasefileView.tsx|3efd755b0ad11b7977a960c558e17e99e4ab3e70|feat/cc-offline-236-verdict-badge-removal|2026-09-16T10:58:00Z|2026-09-16T11:43:00Z|OPEN"
+    # FERMÉE le 2026-09-16T11:11Z, le retrait mergé (991b2f6). Consommée à 11:09,
+    # soit 11 minutes après l'ouverture — dans sa fenêtre, et de loin.
+    #
+    # Quatrième lease du dépôt, même discipline que les trois premières : fermée,
+    # pas laissée expirer. Une lease périmée cesse bien d'autoriser, mais un
+    # enregistrement OPEN qui traîne dans `main` RESSEMBLE à une exemption, et
+    # c'est exactement ce que « STATIC PROJECT EXEMPTIONS = 0 » interdit.
+    #
+    # Le sujet n'existe plus : la branche a été supprimée au merge.
+    #
+    #   CC-OFFLINE-236-VERDICT-BADGE | retrait-de-la-derniere-consommation-du-verdict-legacy
+    #   1 chemin · feat/cc-offline-236-verdict-badge-removal
+    #   2026-09-16T10:58:00Z → 11:43:00Z (45 mn) · consommée à 11:09
 )
 
 lease_rouge() {
