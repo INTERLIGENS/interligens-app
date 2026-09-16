@@ -365,6 +365,11 @@ describe("S19/ag3g — 7 · CONSOMMATEURS : découverts, et le point ne FONDE ri
       // consommateur de plus ne change RIEN à l'argument : c'est précisément
       // parce que la prévalence de consommation bouge au gré des chantiers
       // qu'elle ne peut fonder aucune identité.
+      // CC-OFFLINE-256 — le FONDEMENT consomme lui aussi la constante plutôt
+      // que de recopier le littéral. Un consommateur de plus, et l'argument ne
+      // bouge pas d'un pouce : la prévalence de consommation suit les
+      // chantiers, donc elle ne fonde aucune identité.
+      "src/scripts/casefile/fondement-botify-events.ts",
       "src/scripts/casefile/mesure-botify-proceeds.ts",
       "src/scripts/export/botifySpreadsheet.ts",
     ].sort());
