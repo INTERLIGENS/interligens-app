@@ -360,6 +360,12 @@ describe("S19/ag3g — 7 · CONSOMMATEURS : découverts, et le point ne FONDE ri
       "src/app/en/cases/botify/evidence/page.tsx",
       "src/lib/casefile/pdfGeneratorPublic.ts",
       PROJECTION,
+      // CC-OFFLINE-254 — l'INSTRUMENT DE MESURE BOTIFY consomme la constante au
+      // lieu de recopier le littéral, exactement comme son homologue VINE. Un
+      // consommateur de plus ne change RIEN à l'argument : c'est précisément
+      // parce que la prévalence de consommation bouge au gré des chantiers
+      // qu'elle ne peut fonder aucune identité.
+      "src/scripts/casefile/mesure-botify-proceeds.ts",
       "src/scripts/export/botifySpreadsheet.ts",
     ].sort());
   });

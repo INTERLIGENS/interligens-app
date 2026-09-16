@@ -168,6 +168,11 @@ const SITES_GOUVERNES: readonly string[] = [
   // il obéit aux mêmes règles que les autres sites d'écriture — le recensement
   // l'a attrapé de lui-même, ce qui est exactement son office.
   "src/scripts/casefile/mesure-vine-attribution.ts",
+  // CC-OFFLINE-254 : le SECOND INSTRUMENT DE MESURE, même office et mêmes
+  // règles. Il fait naître les octets canoniques de sa mesure BOTIFY, puis les
+  // RELIT depuis le même compartiment pour recalculer leur digest — porte de
+  // naissance ET porte de relecture. Le recensement l'a attrapé de lui-même.
+  "src/scripts/casefile/mesure-botify-proceeds.ts",
   "src/scripts/watcher-bridge/run-auto-evidence.ts",
 ];
 

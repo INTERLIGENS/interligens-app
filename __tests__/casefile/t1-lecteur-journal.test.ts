@@ -424,6 +424,13 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // étiquette posée sur la mesure : elle DIT qui l'a produite, et le CHECK
       // en base refuse que ce soit une personne.
       "src/scripts/casefile/mesure-vine-attribution.ts",
+      // CC-OFFLINE-254 — LE SECOND INSTRUMENT DE MESURE. Statut IDENTIQUE au
+      // premier : un APPELANT de l'écrivain, jamais un second resolver. Il
+      // n'interroge aucune identité pour en déduire une qualification — il
+      // inscrit MACHINE_MEASURED sur une pièce qu'il vient de produire, de faire
+      // naître, de relire et de confronter, et le CHECK en base refuse que le
+      // déclarant soit une personne.
+      "src/scripts/casefile/mesure-botify-proceeds.ts",
       // CC-OFFLINE-240 — L'ASSEMBLAGE D'AUTORITÉ. Même statut que
       // `governedWriter` : un RELAIS PUR. Il ne résout aucune qualification et
       // n'en fabrique aucune — il recopie celle que le LECTEUR a déjà résolue au
@@ -483,6 +490,13 @@ describe("(g) LE LECTEUR EST L'AUTORITÉ — la bascule est FAITE (PHASE C)", ()
       // étiquette posée sur la mesure : elle DIT qui l'a produite, et le CHECK
       // en base refuse que ce soit une personne.
       "src/scripts/casefile/mesure-vine-attribution.ts",
+      // CC-OFFLINE-254 — LE SECOND INSTRUMENT DE MESURE. Statut IDENTIQUE au
+      // premier : un APPELANT de l'écrivain, jamais un second resolver. Il
+      // n'interroge aucune identité pour en déduire une qualification — il
+      // inscrit MACHINE_MEASURED sur une pièce qu'il vient de produire, de faire
+      // naître, de relire et de confronter, et le CHECK en base refuse que le
+      // déclarant soit une personne.
+      "src/scripts/casefile/mesure-botify-proceeds.ts",
       // CC-OFFLINE-240 — L'ASSEMBLAGE D'AUTORITÉ. Même statut que
       // `governedWriter` : un RELAIS PUR. Il ne résout aucune qualification et
       // n'en fabrique aucune — il recopie celle que le LECTEUR a déjà résolue au
