@@ -497,9 +497,69 @@ async function mutantGouverne(prisma: PrismaClient): Promise<void> {
   ok(`aucune ligne écrite : ${Number(avant[0].n)} pièces avant, ${Number(apres[0].n)} après`);
 }
 
+/**
+ * LA CONCLUSION BORNÉE — CC-OFFLINE-232.
+ *
+ * Une INFERENCE qui dépend de la CLAIM `VINE-MEASURE-01`, pas de la pièce
+ * `SRC-MEASURE-01`. La distinction EST le build : citer la pièce reviendrait à
+ * fonder l'inférence sur la source de l'observation en prétendant se fonder sur
+ * l'observation.
+ *
+ * ⛔ Elle ne dit PAS que MONEY n'existe pas. Elle ne dit PAS que les wallets
+ *    n'existent pas. NOT_ESTABLISHED n'est pas ABSENT — la formulation reste
+ *    STRICTEMENT dans le scope scellé de la mesure.
+ */
+async function conclusionBornee(): Promise<void> {
+  console.log("\nCONCLUSION BORNÉE · INFERENCE dépendant de VINE-MEASURE-01");
+  const r = await executeFoundation(prismaTransactor, {
+    dossier: { ref: REF, canonicalMint: MINT },
+    sources: [],
+    claim: {
+      casefileRef: REF,
+      claimId: "VINE-CONCLUSION-01",
+      rowNature: "INFERENCE",
+      // ⛔ AUCUNE pièce citée. Le fondement est ENTIÈREMENT porté par la
+      //    dépendance gouvernée — c'est ce que le witness doit démontrer.
+      evidenceRefs: [],
+      dependsOn: [{ claimId: CLAIM_ID, version: 1 }],
+      title:
+        "In the governed corpus as measured, INTERLIGENS cannot establish a VINE monetary " +
+        "attribution to the four observed accounts",
+      titleFr:
+        "Dans le corpus gouverné tel que mesuré, INTERLIGENS ne peut pas établir d'attribution " +
+        "monétaire VINE aux quatre comptes observés",
+      description:
+        `Dans le corpus gouverné mesuré le 2026-09-16 par ${DECLARANT}, INTERLIGENS ne peut pas ` +
+        `établir d'attribution monétaire VINE aux comptes ${ACTEURS.join(", ")}. ` +
+        `Cette conclusion consomme l'observation ${CLAIM_ID} v1 et n'excède pas son périmètre : ` +
+        `elle porte sur le corpus GOUVERNÉ de ce dossier, à cet instant. ` +
+        `NOT_ESTABLISHED n'est pas ABSENT — elle n'affirme ni qu'aucun flux monétaire n'existe, ` +
+        `ni qu'aucun wallet n'existe, ni qu'aucune attribution ne serait établissable hors de ce ` +
+        `périmètre ou par une autorité qui manque aujourd'hui.`,
+      descriptionFr: null,
+      category: "METHODOLOGY",
+      severity: "NONE",
+      status: "OBSERVED",
+      claimDate: null,
+      actors: [...ACTEURS],
+    },
+  });
+  if (r.outcome === "REFUSED" || r.outcome === "ABORTED") {
+    ko(`fondement REFUSÉ [${r.refusal.cause}] à ${r.refusal.at}`);
+  }
+  if (r.outcome !== "EXECUTED" && r.outcome !== "ALREADY_EXECUTED") return;
+  ok(`FOUNDATION MET (${r.outcome}) · VINE-CONCLUSION-01 v${r.claim.version} · INFERENCE · ATTACHED`);
+  ok(`dépendance DERIVED_FROM → ${CLAIM_ID} v1, épinglée en version`);
+}
+
 const estPrincipal = process.argv[1]?.endsWith("mesure-vine-attribution.ts");
 if (estPrincipal) {
-  if (process.argv.includes("--mutant")) {
+  if (process.argv.includes("--conclusion")) {
+    conclusionBornee().catch((e) => {
+      console.error(e);
+      process.exitCode = 1;
+    });
+  } else if (process.argv.includes("--mutant")) {
     const p = new PrismaClient();
     mutantGouverne(p)
       .catch((e) => {

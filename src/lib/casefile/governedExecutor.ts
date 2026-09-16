@@ -57,6 +57,7 @@ import {
   type ExistingClaimInput,
   type ExistingSourceInput,
   type Foundation,
+  type GovernedDependencyRow,
   type FoundationRefusalCause,
   type GovernedClaimRow,
   type GovernedSourceRow,
@@ -154,6 +155,16 @@ export type FoundationOutcome =
 
 interface SnapshotRow extends Record<string, unknown> {
   id: string; canonicalMint: string | null; sha256: string | null; sourceUrl: string | null; observedAt: string | null;
+}
+/**
+ * QUI DÉCLARE la dépendance dans le journal de la table. L'autorité
+ * FONCTIONNELLE reste la consommation causale ci-dessus — ce champ dit par quel
+ * chemin gouverné la ligne est née, il ne remplace pas le jugement.
+ */
+const DECLARANT_DEPENDANCE = "executeFoundation";
+
+interface DependencySourceRow extends Record<string, unknown> {
+  casefileRef: string; claimId: string; version: number; rowNature: string | null; evidenceRefs: unknown;
 }
 interface SourceRow extends Record<string, unknown> {
   sourceId: string; sourceType: string; caption: string | null; capturedAt: string | null;
@@ -253,6 +264,33 @@ export async function executeFoundation(tx: SqlTransactor, intent: FoundationInt
       );
       const existingClaims: ExistingClaimInput[] = versions.map((v) => ({ casefileRef: dossier.ref, ...v }));
 
+      // ── LES CLAIMS SOURCES DES DÉPENDANCES, LUES SOUS VERROU ───────────
+      //
+      // ⛔ La clé étrangère de `casefile_claim_dependencies` prouvera que la
+      //    ligne EXISTE. Elle ne dira jamais si la source est FONDÉE. Le
+      //    producteur les LIT donc ici, dans SA transaction, et le décideur les
+      //    juge selon leur propre `rowNature` — sans quoi
+      //    `DEPENDENCY_NOT_FOUNDABLE` ne serait qu'un mot.
+      //
+      // La lecture est bornée aux (claimId, version) DÉCLARÉS : une dépendance
+      // non déclarée n'est pas lue, et une déclarée introuvable reste
+      // introuvable — c'est `DEPENDENCY_UNRESOLVED` qui le dira.
+      const declarees = estObjet(claim) && Array.isArray((claim as { dependsOn?: unknown }).dependsOn)
+        ? ((claim as { dependsOn: ReadonlyArray<{ claimId?: unknown; version?: unknown }> }).dependsOn)
+        : [];
+      const clesDeps = declarees
+        .filter((d) => estObjet(d) && typeof d.claimId === "string" && typeof d.version === "number")
+        .map((d) => `${String(d.claimId)}@${String(d.version)}`);
+      const dependencySources = clesDeps.length === 0 ? [] : await db.query<DependencySourceRow>(
+        `SELECT "casefileRef", "claimId", version, "rowNature"::text AS "rowNature", "evidenceRefs"
+           FROM "CaseFileClaim"
+          WHERE "casefileRef" = $1
+            AND ("claimId" || '@' || version::text) IN (SELECT jsonb_array_elements_text($2::jsonb))
+          ORDER BY "claimId", version
+          FOR SHARE`,
+        [dossier.ref, JSON.stringify(clesDeps)],
+      );
+
       // ── T1-BASCULE-DU-CONTRAT — LE JOURNAL, LU DANS LA MÊME TRANSACTION ─
       //
       // Une seule requête pour tous les ponts en jeu : les snapshots cités par
@@ -279,6 +317,7 @@ export async function executeFoundation(tx: SqlTransactor, intent: FoundationInt
         snapshots: snapshotInputs,
         sources: [...existantes.map((s) => toExisting(dossier.ref, s, journal)), ...aDeriver],
         existingClaims,
+        dependencySources,
         claim,
       });
 
@@ -315,11 +354,15 @@ export async function executeFoundation(tx: SqlTransactor, intent: FoundationInt
         return { outcome: "REFUSED", refusal: decision.refusal };
       }
 
-      // ── L'ÉCRITURE — les pièces, puis le claim. Même transaction.
+      // ── L'ÉCRITURE — les pièces, le claim, puis ses dépendances causales.
+      //    Même transaction : une inférence sans ses dépendances n'est pas un
+      //    état atteignable. Les dépendances viennent APRÈS le claim parce que
+      //    leur clé étrangère le vise.
       const f: Foundation = decision.foundation;
       for (const s of f.sourcesToInsert) await insererSource(db, s);
       const row = f.claimToInsert;
       await insererClaim(db, row);
+      for (const d of f.dependenciesToInsert) await insererDependance(db, d, DECLARANT_DEPENDANCE);
 
       return {
         outcome: "EXECUTED",
@@ -331,6 +374,27 @@ export async function executeFoundation(tx: SqlTransactor, intent: FoundationInt
     if (e instanceof GovernedAbort) return { outcome: "ABORTED", refusal: { cause: e.cause as FoundationExecutionCause, at: e.at } };
     throw e;
   }
+}
+
+/**
+ * Les dépendances causales, INSÉRÉES AVEC la claim qu'elles fondent.
+ *
+ * Même transaction, donc même destin : si l'une échoue, la claim n'existe pas.
+ * Une inférence sans ses dépendances n'est pas un état atteignable — c'est ce
+ * qui fait de la dépendance une AUTORITÉ et non une annotation.
+ *
+ * Le SQL est écrit EN CLAIR, comme les autres gabarits : la garde S24 découvre
+ * les tables atteintes en lisant ces littéraux, pas en exécutant le code.
+ */
+async function insererDependance(db: SqlRunner, d: GovernedDependencyRow, declarePar: string): Promise<void> {
+  await db.query(
+    `INSERT INTO casefile_claim_dependencies
+       (casefile_ref, dependent_claim_id, dependent_version,
+        source_claim_id, source_version, dependency_kind, declared_by, declared_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, now())`,
+    [d.casefileRef, d.dependentClaimId, d.dependentVersion,
+     d.sourceClaimId, d.sourceVersion, d.dependencyKind, declarePar],
+  );
 }
 
 async function insererSource(db: SqlRunner, s: GovernedSourceRow): Promise<void> {

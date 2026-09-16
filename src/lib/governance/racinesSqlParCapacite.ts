@@ -384,6 +384,12 @@ export const INVENTAIRE_RACINES_SQL: Readonly<Record<string, EntreeInventaire>> 
   KolProceedsSummary: { statut: "RACINE_GOUVERNEE", classe: "proceeds", horsSchema: true },
   CaseFileClaim: { statut: "RACINE_GOUVERNEE", classe: "dossier", horsSchema: true },
   CaseFileSource: { statut: "RACINE_GOUVERNEE", classe: "dossier", horsSchema: true },
+  // CC-OFFLINE-232 — la dépendance causale claim → claim. Racine de DOSSIER :
+  // elle ne porte que des identités de claims et de versions du dossier, jamais
+  // un nominatif ni une pièce. Hors schéma ORM, comme les autres tables
+  // gouvernées en SQL brut. La garde l'a découverte d'elle-même en lisant le
+  // gabarit littéral de `governedExecutor` — c'est exactement son office.
+  casefile_claim_dependencies: { statut: "RACINE_GOUVERNEE", classe: "dossier", horsSchema: true },
   OsintSubmission: { statut: "RACINE_GOUVERNEE", classe: "piece", horsSchema: true },
   KolTokenLinkStatusLog: { statut: "RACINE_GOUVERNEE", classe: "nominatif", horsSchema: true },
   Retraction: { statut: "RACINE_GOUVERNEE", classe: "nominatif", horsSchema: true },
