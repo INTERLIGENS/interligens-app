@@ -1,5 +1,7 @@
 // src/lib/storage/__tests__/pdfStorage.test.ts
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { Readable } from "node:stream";
+import crypto from "node:crypto";
 import type { LigneDeRegistre } from "../registre/contrat";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -38,6 +40,57 @@ function ligne(p: Partial<LigneDeRegistre> = {}): LigneDeRegistre {
   };
 }
 
+// ─── LE DOUBLE DE COMPARTIMENT ───────────────────────────────────────────
+//
+// Un `send` qui rendrait `{}` à tout ne pourrait pas distinguer un magasin
+// sain d'un magasin qui ment : il ne GARDE rien. Celui-ci garde les octets du
+// PUT et les rend au GET — c'est le minimum pour que les mutants B et D aient
+// un sens, parce qu'eux font DIVERGER ce qui est rendu de ce qui a été écrit.
+
+interface CommandeS3 {
+  readonly input: {
+    Bucket?: string;
+    Key?: string;
+    Body?: Buffer;
+    Metadata?: Record<string, string>;
+  };
+}
+
+interface OptionsMagasin {
+  /** Altère les octets RENDUS par le GET, sans toucher à ceux du PUT. */
+  alterer?: (octets: Buffer) => Buffer;
+  /** Le GET lève. */
+  getEchoue?: boolean;
+  /** Le GET rend une réponse sans corps. */
+  corpsAbsent?: boolean;
+  /** Le PUT rend 200 et ne garde rien — le faux positif d'écriture. */
+  perdreApresPut?: boolean;
+  trace?: string[];
+}
+
+function magasinR2(o: OptionsMagasin = {}) {
+  const objets = new Map<string, Buffer>();
+  const gets: CommandeS3["input"][] = [];
+  const send = vi.fn(async (cmd: CommandeS3) => {
+    const cle = cmd.input.Key ?? "";
+    if (cmd.input.Body !== undefined) {
+      o.trace?.push("put");
+      if (!o.perdreApresPut) objets.set(cle, Buffer.from(cmd.input.Body));
+      return {};
+    }
+    o.trace?.push("relecture");
+    gets.push(cmd.input);
+    if (o.getEchoue) throw new Error("R2 GET 500 InternalError");
+    if (o.corpsAbsent) return {};
+    const brut = objets.get(cle);
+    if (brut === undefined) throw new Error(`NoSuchKey: ${cle}`);
+    return { Body: Readable.from([o.alterer ? o.alterer(brut) : brut]) };
+  });
+  return { send, objets, gets };
+}
+
+const sha = (b: Buffer) => crypto.createHash("sha256").update(b).digest("hex");
+
 interface Doubles {
   send?: ReturnType<typeof vi.fn>;
   allouer?: ReturnType<typeof vi.fn>;
@@ -51,7 +104,7 @@ async function chargerAvec(d: Doubles) {
   process.env.VERCEL_ENV = "production";
   vi.resetModules();
 
-  const send = d.send ?? vi.fn().mockResolvedValue({});
+  const send = d.send ?? magasinR2().send;
   const allouer = d.allouer ?? vi.fn(async (e: { cle: string; identifiant: string }) =>
     ligne({ cle: e.cle, id: e.identifiant, etatDAutorite: "INTENDED", enregistreLe: null }));
   const confirmer = d.confirmer ?? vi.fn().mockResolvedValue(undefined);
@@ -83,19 +136,22 @@ afterEach(() => {
 // ─── L'ORDRE EST LE CONTRAT ──────────────────────────────────────────────
 
 describe("uploadPdf — INTENDED → PUT → REGISTERED", () => {
-  it("alloue AVANT d'écrire le moindre octet", async () => {
+  it("alloue AVANT d'écrire, relit APRÈS avoir écrit, confirme EN DERNIER", async () => {
     const ordre: string[] = [];
     const allouer = vi.fn(async (e: { cle: string; identifiant: string }) => {
       ordre.push("allocation");
       return ligne({ cle: e.cle, id: e.identifiant, etatDAutorite: "INTENDED" });
     });
-    const send = vi.fn(async () => { ordre.push("put"); return {}; });
+    const { send } = magasinR2({ trace: ordre });
     const confirmer = vi.fn(async () => { ordre.push("confirmation"); });
 
     const { mod } = await chargerAvec({ allouer, send, confirmer });
     const r = await mod.uploadPdf({ buffer: Buffer.from("pdf"), subject: "abc" });
 
-    expect(ordre).toEqual(["allocation", "put", "confirmation"]);
+    // L'ORDRE NOMINAL. `relecture` est AVANT `confirmation` : c'est toute la
+    // question — REGISTERED n'est plus atteignable sans avoir touché les
+    // octets persistés.
+    expect(ordre).toEqual(["allocation", "put", "relecture", "confirmation"]);
     expect(r.registreId).toHaveLength(32);
     expect(r.key).toMatch(/^reports\/production\/\d{4}\/\d{2}\/[0-9a-f]{32}\.pdf$/);
   });
@@ -164,10 +220,177 @@ describe("ce qui a disparu : `return null` sur échec de PUT", () => {
     await expect(mod.uploadPdf({ buffer: Buffer.from("pdf"), subject: "abc" }))
       .rejects.toThrow(/REGISTRE_INDISPONIBLE/);
 
-    expect(send).toHaveBeenCalledOnce();
+    // PUT puis relecture : la confirmation échoue APRÈS que l'intégrité a été
+    // établie. C'est bien l'écriture DB #2 qui manque, rien d'autre.
+    expect(send.mock.calls.map((c) => c[0].constructor.name))
+      .toEqual(["PutObjectCommand", "GetObjectCommand"]);
     const clePut = send.mock.calls[0][0].input.Key;
     const cleAllouee = allouer.mock.calls[0][0].cle;
     expect(clePut).toBe(cleAllouee);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CC-OFFLINE-248 — LA RELECTURE DES OCTETS PERSISTÉS
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ██  UNE EMPREINTE CALCULÉE PAR L'ÉCRIVAIN N'EST PAS UNE VÉRIFICATION     ██
+// ██  DE L'ÉCRIT.                                                          ██
+//
+// Avant ce lot, `REGISTERED` affirmait « on a voulu écrire ceci ». Les cinq
+// mutants ci-dessous tiennent qu'il affirme désormais « ceci EST écrit ».
+
+const OCTETS = Buffer.from("%PDF-1.4 des octets gouvernés");
+
+describe("A · MUTANT — corps persisté CONFORME ⇒ confirmation AUTORISÉE", () => {
+  it("relit l'objet, recalcule, concorde, et SEULEMENT ALORS confirme", async () => {
+    const { send, gets, objets } = magasinR2();
+    const { mod, confirmer, allouer } = await chargerAvec({ send });
+
+    const r = await mod.uploadPdf({ buffer: OCTETS, subject: "abc" });
+
+    expect(confirmer).toHaveBeenCalledOnce();
+    expect(r.sha256).toBe(sha(OCTETS));
+    expect(r.sizeBytes).toBe(OCTETS.byteLength);
+    // Le GET a visé EXACTEMENT l'objet alloué — même compartiment, même clé.
+    const cleAllouee = allouer.mock.calls[0][0].cle;
+    expect(gets).toHaveLength(1);
+    expect(gets[0]).toEqual({ Bucket: "test-bucket", Key: cleAllouee });
+    // Et l'objet relu est bien celui que le PUT a écrit.
+    expect(objets.get(cleAllouee)).toEqual(OCTETS);
+  });
+});
+
+describe("B · MUTANT — corps persisté ALTÉRÉ ⇒ REFUSÉ", () => {
+  it("empreinte divergente : pas de confirmation, et l'objet n'est PAS supprimé", async () => {
+    const { send, objets } = magasinR2({
+      alterer: (b) => Buffer.concat([b.subarray(0, b.length - 1), Buffer.from("X")]),
+    });
+    const { mod, confirmer } = await chargerAvec({ send });
+
+    await expect(mod.uploadPdf({ buffer: OCTETS, subject: "abc" }))
+      .rejects.toThrow(/empreinte des octets persistés divergente/);
+
+    // FAIL CLOSED : REGISTERED n'est jamais atteint.
+    expect(confirmer).not.toHaveBeenCalled();
+    // ⛔ L'objet RESTE. Le supprimer masquerait l'écart : un état incomplet
+    //    doit rester détectable par le lifecycle existant.
+    expect(objets.size).toBe(1);
+    const commandes = send.mock.calls.map((c) => c[0].constructor.name);
+    expect(commandes).not.toContain("DeleteObjectCommand");
+  });
+
+  it("l'étape nommée est EMPREINTE_PERSISTEE, et la clé reste CONNUE", async () => {
+    const { send } = magasinR2({ alterer: (b) => Buffer.concat([b, Buffer.from("!")]) });
+    const { mod, allouer } = await chargerAvec({ send });
+    const { ErreurStockageGouverne } = mod;
+
+    const err = await mod.uploadPdf({ buffer: OCTETS, subject: "abc" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ErreurStockageGouverne);
+    if (!(err instanceof ErreurStockageGouverne)) return;
+    expect(err.etape).toBe("EMPREINTE_PERSISTEE");
+    // L'objet EXISTE et sa clé est celle qui a été allouée : réconciliable.
+    expect(err.code).toBe("CONFIRMATION_ECHOUEE");
+    expect(err.cle).toBe(allouer.mock.calls[0][0].cle);
+  });
+
+  it("une taille divergente est refusée AUSSI, et la divergence est chiffrée", async () => {
+    const { send } = magasinR2({ alterer: (b) => b.subarray(0, 3) });
+    const { mod } = await chargerAvec({ send });
+    await expect(mod.uploadPdf({ buffer: OCTETS, subject: "abc" }))
+      .rejects.toThrow(new RegExp(`${OCTETS.byteLength} o attendus, 3 o relus`));
+  });
+});
+
+describe("C · MUTANT — le GET échoue ⇒ REFUSÉ", () => {
+  it("relecture impossible : l'intégrité n'est pas établie, donc rien n'est confirmé", async () => {
+    const { send } = magasinR2({ getEchoue: true });
+    const { mod, confirmer } = await chargerAvec({ send });
+
+    await expect(mod.uploadPdf({ buffer: OCTETS, subject: "abc" }))
+      .rejects.toThrow(/relecture de l'objet persisté impossible/);
+    expect(confirmer).not.toHaveBeenCalled();
+  });
+
+  it("un corps ABSENT n'est pas un corps vide : c'est un refus, pas un hash de rien", async () => {
+    // Le piège : `Buffer.concat([])` vaut un buffer vide, dont le sha256 est
+    // parfaitement calculable. Le comparer produirait une divergence — donc
+    // le bon verdict, par le mauvais chemin. L'absence de corps est nommée.
+    const { send } = magasinR2({ corpsAbsent: true });
+    const { mod, confirmer } = await chargerAvec({ send });
+    const { ErreurStockageGouverne } = mod;
+
+    const err = await mod.uploadPdf({ buffer: OCTETS, subject: "abc" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ErreurStockageGouverne);
+    if (!(err instanceof ErreurStockageGouverne)) return;
+    expect(err.etape).toBe("RELECTURE_PERSISTEE");
+    expect(err.message).toMatch(/corps de réponse absent/);
+    expect(confirmer).not.toHaveBeenCalled();
+  });
+});
+
+// ═══ LE MUTANT ESSENTIEL ═══════════════════════════════════════════════════
+
+describe("D · MUTANT ESSENTIEL — Metadata.sha256 CORRECTE mais corps ALTÉRÉ ⇒ REFUSÉ", () => {
+  it("la métadonnée corrobore, elle ne fait PAS autorité sur le corps", async () => {
+    // Le cas que l'ancienne chaîne ne pouvait pas voir : la métadonnée et la
+    // ligne de registre portent la MÊME empreinte, juste — elles viennent du
+    // même buffer — pendant que les octets persistés, eux, ont bougé.
+    // Comparer ces deux déclarations du même écrivain aurait rendu CONFORME.
+    const { send, objets } = magasinR2({
+      alterer: () => Buffer.from("des octets qui ne sont PAS ceux qu'on a écrits"),
+    });
+    const { mod, confirmer } = await chargerAvec({ send });
+
+    const erreur = await mod.uploadPdf({ buffer: OCTETS, subject: "abc" }).catch((e: unknown) => e);
+
+    // 1. La métadonnée EST correcte — c'est la prémisse du mutant.
+    const metadata = send.mock.calls[0][0].input.Metadata as Record<string, string>;
+    expect(metadata.sha256).toBe(sha(OCTETS));
+    // 2. Les octets réellement persistés le sont aussi — le magasin n'a pas
+    //    menti au PUT, il ment à la RELECTURE : c'est le corps qui diverge.
+    expect(erreur).toBeInstanceOf(Error);
+    expect((erreur as Error).message).toMatch(/empreinte des octets persistés divergente/);
+    // 3. Et rien n'est enregistré.
+    expect(confirmer).not.toHaveBeenCalled();
+    expect(objets.size).toBe(1);
+  });
+});
+
+describe("E · MUTANT CAUSAL — retirer le GET réel rend ces témoins ROUGES", () => {
+  it("le GET est envoyé au client R2, pas remplacé par un HeadObject", async () => {
+    const { send } = magasinR2();
+    const { mod } = await chargerAvec({ send });
+    await mod.uploadPdf({ buffer: OCTETS, subject: "abc" });
+
+    const commandes = send.mock.calls.map((c) => c[0].constructor.name);
+    expect(commandes).toEqual(["PutObjectCommand", "GetObjectCommand"]);
+    // Un HeadObject ne fait pas sortir un octet — donc il ne peut rien hasher.
+    expect(commandes).not.toContain("HeadObjectCommand");
+  });
+
+  it("aucun repli d'identité : ni autre compartiment, ni clé reconstruite", async () => {
+    const { send, gets } = magasinR2();
+    const { mod, allouer } = await chargerAvec({ send });
+    await mod.uploadPdf({ buffer: OCTETS, subject: "MINT-SECRET", batchId: "casefile" });
+
+    const put = send.mock.calls[0][0].input;
+    expect(gets[0]?.Bucket).toBe(put.Bucket);
+    expect(gets[0]?.Key).toBe(put.Key);
+    expect(gets[0]?.Key).toBe(allouer.mock.calls[0][0].cle);
+  });
+
+  it("un PUT à faux positif — R2 rend 200 sans rien garder — n'est PLUS confirmable", async () => {
+    // LE CONTRE-FACTUEL DIRECT. Avant ce lot, ce cas produisait un artefact
+    // « REGISTERED » et une URL signée vers un objet qui n'existe pas : le PUT
+    // avait rendu 200, et rien n'allait vérifier. La relecture le voit.
+    const { send, objets } = magasinR2({ perdreApresPut: true });
+    const { mod, confirmer } = await chargerAvec({ send });
+
+    await expect(mod.uploadPdf({ buffer: OCTETS, subject: "abc" }))
+      .rejects.toThrow(/relecture de l'objet persisté impossible.*NoSuchKey/s);
+    expect(confirmer).not.toHaveBeenCalled();
+    expect(objets.size).toBe(0);
   });
 });
 

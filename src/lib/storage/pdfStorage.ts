@@ -80,6 +80,22 @@ export function pointerLatestKey(handle: string): string {
 // ne connaisse sa clé, pendant que l'appelant recevait son PDF. Avaler
 // l'erreur DEVAIT disparaître du chemin gouverné.
 
+/**
+ * L'ÉTAPE PRÉCISE qui a refusé, quand le code ne suffit pas à la nommer.
+ *
+ * `CONFIRMATION_ECHOUEE` dit une CONSÉQUENCE — l'opération n'a pas atteint
+ * `REGISTERED` — et trois causes distinctes y mènent désormais. Un refus
+ * anonyme est indiscernable d'une panne : le code porte l'état laissé
+ * derrière, cette étape porte la raison.
+ */
+export type EtapeDeRefus =
+  /** `GetObject` a échoué, ou le corps était illisible. */
+  | "RELECTURE_PERSISTEE"
+  /** Les octets relus n'ont pas l'empreinte attendue. */
+  | "EMPREINTE_PERSISTEE"
+  /** L'écriture DB #2 elle-même a échoué. */
+  | "ECRITURE_REGISTRE";
+
 /** L'échec d'une écriture d'objet, distinct de l'échec du registre. */
 export class ErreurStockageGouverne extends Error {
   constructor(
@@ -88,11 +104,19 @@ export class ErreurStockageGouverne extends Error {
      * un échec APRÈS en laisse un, dont la clé est connue. Les confondre
      * ferait chercher un orphelin qui n'existe pas, ou n'en chercher aucun
      * alors qu'il y en a un.
+     *
+     * `CONFIRMATION_ECHOUEE` = L'OPÉRATION N'A PAS ATTEINT `REGISTERED`.
+     * L'objet existe, sa clé est connue, la ligne reste `INTENDED` donc
+     * réconciliable — c'est vrai des trois causes de `EtapeDeRefus`, et
+     * c'est exactement ce que l'appelant doit savoir pour décider. La cause,
+     * elle, est dans `etape` et dans le message.
      */
     readonly code: "PUT_ECHOUE" | "STOCKAGE_DESACTIVE" | "CONFIRMATION_ECHOUEE",
     message: string,
     readonly cle: string | null,
     readonly cause?: unknown,
+    /** `null` = non déclarée. Jamais devinée. */
+    readonly etape: EtapeDeRefus | null = null,
   ) {
     super(`[pdfStorage] ${code}: ${message}`);
     this.name = "ErreurStockageGouverne";
@@ -105,7 +129,9 @@ export class ErreurStockageGouverne extends Error {
  * L'ORDRE EST LE CONTRAT :
  *   1. allocation  — écriture DB #1, état INTENDED, la clé est réservée ;
  *   2. PutObject   — les octets entrent, sous une identité déjà enregistrée ;
- *   3. confirmation— écriture DB #2, état REGISTERED.
+ *   3. RELECTURE   — GetObject sur CE MÊME objet, empreinte RECALCULÉE sur
+ *                    les octets rendus, comparée à l'attendue ;
+ *   4. confirmation— écriture DB #2, état REGISTERED.
  *
  * Ce que chaque interruption laisse :
  *   · échec en 1  → AUCUN objet. D5 : « No registry authority → no governed
@@ -113,6 +139,11 @@ export class ErreurStockageGouverne extends Error {
  *                   contre l'autorité ;
  *   · échec en 2  → une ligne INTENDED, réconciliée en ABANDONED après T ;
  *   · échec en 3  → une ligne INTENDED PERSISTANTE et un objet dont la clé
+ *                   est CONNUE, dont l'intégrité N'EST PAS ÉTABLIE. L'objet
+ *                   n'est PAS supprimé : effacer l'écart le rendrait
+ *                   indétectable, et un état incomplet doit rester lisible
+ *                   par le lifecycle existant ;
+ *   · échec en 4  → une ligne INTENDED PERSISTANTE et un objet dont la clé
  *                   est CONNUE. On ne retombe jamais dans « objet inconnu ».
  *                   La réconciliation clôt l'opération (PROMOTION_POSSIBLE).
  *
@@ -144,7 +175,7 @@ export async function uploadPdf(input: PdfUploadInput): Promise<PdfUploadResult>
   const env = getStorageEnv();
   const ttl = getSignedUrlTtl();
 
-  // ── 1/3 — L'ALLOCATION, AVANT LE MOINDRE OCTET ──────────────────────
+  // ── 1/4 — L'ALLOCATION, AVANT LE MOINDRE OCTET ──────────────────────
   // L'empreinte est calculable ici parce que le buffer est INTÉGRALEMENT en
   // main : l'allocation préalable ne coûte donc aucun aller-retour de plus.
   const identite = allouerIdentite(env, new Date());
@@ -163,7 +194,7 @@ export async function uploadPdf(input: PdfUploadInput): Promise<PdfUploadResult>
     producteur: "pdfStorage.uploadPdf",
   });
 
-  // ── 2/3 — LES OCTETS ────────────────────────────────────────────────
+  // ── 2/4 — LES OCTETS ────────────────────────────────────────────────
   try {
     await r2Client.send(
       new PutObjectCommand({
@@ -179,9 +210,15 @@ export async function uploadPdf(input: PdfUploadInput): Promise<PdfUploadResult>
         // rien déplacé du tout.
         //
         // Les deux qui restent servent la RÉCONCILIATION, et elle seule :
-        // `sha256` permet de vérifier l'intégrité par HeadObject, sans jamais
-        // faire sortir un octet ; `registryid` recolle l'objet à sa ligne
-        // quand la clé, elle, aurait été altérée.
+        // `sha256` corrobore par HeadObject, sans faire sortir un octet ;
+        // `registryid` recolle l'objet à sa ligne quand la clé, elle, aurait
+        // été altérée.
+        //
+        // ⚠️ `sha256` EN MÉTADONNÉE NE FAIT PAS AUTORITÉ SUR LE CORPS. Elle
+        // vient du même buffer, écrite par la même opération : la comparer au
+        // registre compare deux déclarations du MÊME écrivain, et un corps
+        // altéré passerait. C'est de la corroboration, pas de la preuve —
+        // l'étape 3/4 ci-dessous est la seule qui touche les octets persistés.
         //
         // Clés en minuscules à dessein : S3/R2 rend les noms de métadonnées
         // lowercasés à la lecture. `uploadedAt` se relisait `uploadedat` —
@@ -202,7 +239,89 @@ export async function uploadPdf(input: PdfUploadInput): Promise<PdfUploadResult>
     throw new ErreurStockageGouverne("PUT_ECHOUE", reason, ligne.cle, err);
   }
 
-  // ── 3/3 — LA CONFIRMATION ───────────────────────────────────────────
+  // ── 3/4 — LA RELECTURE DES OCTETS PERSISTÉS ─────────────────────────
+  //
+  // ██  UNE EMPREINTE CALCULÉE PAR L'ÉCRIVAIN N'EST PAS UNE VÉRIFICATION  ██
+  // ██  DE L'ÉCRIT.                                                       ██
+  //
+  // `sha256`, plus haut, est calculée sur le buffer EN MÉMOIRE, avant que le
+  // moindre octet n'ait traversé le réseau. Elle dit ce que l'écrivain
+  // VOULAIT persister. Elle ne dit rien de ce qui EST persisté — et c'est
+  // exactement l'écart qu'une chaîne d'intégrité doit fermer :
+  //
+  //   LA CHAÎNE DOIT PROUVER CE QUI EST PERSISTÉ, PAS SEULEMENT CE QU'ELLE
+  //   AVAIT L'INTENTION DE PERSISTER.
+  //
+  // L'OBJET EST SÉLECTIONNÉ PAR L'AUTORITÉ DE LOCALISATION, jamais par une
+  // convention : `bucket` est celui du PUT, `ligne.cle` est la clé que le
+  // REGISTRE a allouée et sous laquelle le PUT a écrit. Aucun repli, aucun
+  // autre compartiment, aucune reconstruction de clé, aucune URL publique.
+  // Relire ailleurs qu'où l'on a écrit, c'est soit un 404 qui refuserait un
+  // objet sain, soit — bien pire — hasher l'objet d'un AUTRE compartiment.
+  //
+  //   STORAGE LOCATION AUTHORITY SELECTS THE OBJECT.
+  //   CONFIG ONLY ENABLES ACCESS.
+  let octetsPersistes: Buffer;
+  try {
+    const relu = await r2Client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: ligne.cle })
+    );
+    const corps = relu.Body as AsyncIterable<Uint8Array> | undefined;
+    if (!corps) throw new Error("corps de réponse absent");
+    const morceaux: Uint8Array[] = [];
+    for await (const morceau of corps) morceaux.push(morceau);
+    octetsPersistes = Buffer.concat(morceaux);
+  } catch (err) {
+    // FAIL CLOSED. L'objet n'est PAS supprimé : effacer l'écart le rendrait
+    // indétectable. La ligne reste INTENDED, donc réconciliable.
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error("[pdfStorage] relecture impossible — intégrité NON établie, ligne INTENDED conservée", {
+      cle: ligne.cle,
+      registreId: ligne.id,
+      reason,
+    });
+    throw new ErreurStockageGouverne(
+      "CONFIRMATION_ECHOUEE",
+      `relecture de l'objet persisté impossible (${reason}) — l'intégrité des ` +
+        "octets écrits n'est PAS établie, l'enregistrement est refusé",
+      ligne.cle,
+      err,
+      "RELECTURE_PERSISTEE",
+    );
+  }
+
+  // L'EMPREINTE RECALCULÉE SUR LES OCTETS RENDUS PAR `GetObject`. C'est le
+  // seul témoin de cette fonction qui ait touché ce qui est réellement écrit.
+  const sha256Persiste = sha256hex(octetsPersistes);
+  if (
+    sha256Persiste !== sha256 ||
+    octetsPersistes.byteLength !== input.buffer.byteLength
+  ) {
+    console.error("[pdfStorage] empreinte persistée DIVERGENTE — enregistrement refusé", {
+      cle: ligne.cle,
+      registreId: ligne.id,
+      sha256Attendu: sha256,
+      sha256Persiste,
+      tailleAttendue: input.buffer.byteLength,
+      taillePersistee: octetsPersistes.byteLength,
+    });
+    throw new ErreurStockageGouverne(
+      "CONFIRMATION_ECHOUEE",
+      `empreinte des octets persistés divergente — attendue ${sha256}, relue ` +
+        `${sha256Persiste} (${input.buffer.byteLength} o attendus, ` +
+        `${octetsPersistes.byteLength} o relus) ; l'enregistrement est refusé ` +
+        "et l'objet est CONSERVÉ, pour que l'écart reste détectable",
+      ligne.cle,
+      null,
+      "EMPREINTE_PERSISTEE",
+    );
+  }
+
+  // ── 4/4 — LA CONFIRMATION ───────────────────────────────────────────
+  //
+  // Elle n'est atteinte QUE par le chemin ci-dessus : l'objet a été relu, et
+  // son empreinte recalculée concorde. `REGISTERED` cesse donc d'affirmer
+  // « on a voulu écrire ceci » pour affirmer « ceci est écrit ».
   //
   // L'échec ici est NOMMÉ à part : l'objet EXISTE, et sa clé est celle qui a
   // été allouée. La ligne reste INTENDED, donc réconciliable — le
@@ -218,8 +337,25 @@ export async function uploadPdf(input: PdfUploadInput): Promise<PdfUploadResult>
       registreId: ligne.id,
       reason,
     });
-    throw new ErreurStockageGouverne("CONFIRMATION_ECHOUEE", reason, ligne.cle, err);
+    throw new ErreurStockageGouverne(
+      "CONFIRMATION_ECHOUEE",
+      reason,
+      ligne.cle,
+      err,
+      "ECRITURE_REGISTRE",
+    );
   }
+
+  // La trace de ce qui a été PROUVÉ, et rien de plus. Aucun secret : une clé
+  // gouvernée ne porte pas le sujet, et une empreinte n'est pas un jeton.
+  console.log("[pdfStorage] artefact gouverné enregistré — intégrité relue", {
+    cle: ligne.cle,
+    registreId: ligne.id,
+    tailleOctets: octetsPersistes.byteLength,
+    sha256Attendu: sha256,
+    sha256Persiste,
+    concordance: true,
+  });
 
   const signedUrl = await getSignedUrl(
     r2Client,
@@ -236,6 +372,26 @@ export async function uploadPdf(input: PdfUploadInput): Promise<PdfUploadResult>
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CE QUE CE FICHIER NE RÉPARE PAS — ET IL FAUT LE DIRE ICI
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ██  LEGACY RECONCILIATION DOES NOT ESTABLISH BODY INTEGRITY.             ██
+//
+// `src/lib/storage/registre/reconciliation.ts` compare `Metadata.sha256` à
+// `registre.sha256` — par `HeadObject`, « jamais GetObject », pour ne pas
+// faire sortir les octets du compartiment. C'est un arbitrage explicite, pas
+// un oubli ; mais les deux valeurs comparées viennent du MÊME buffer, écrites
+// par la MÊME opération. Un corps altéré passe. Le réconciliateur établit la
+// CORRESPONDANCE d'un objet et de sa ligne, PAS l'intégrité de son corps.
+//
+// Il vit dans un AUTRE fichier : le rendre probant sort du périmètre d'un
+// fichier unique, et l'exception étroite ne s'applique pas. ⇒ BACKLOG, dit.
+//
+// Cela ne retient rien : l'artefact gouverné neuf ne dépend pas de cette
+// réparation. Son intégrité est établie EN LIGNE, à l'écriture, par l'étape
+// 3/4 ci-dessus — pas plus tard, et pas par un balayage.
+//
 // ═══════════════════════════════════════════════════════════════════════════
 // E-RC — LE GATE DE DÉLIVRANCE
 // ═══════════════════════════════════════════════════════════════════════════
