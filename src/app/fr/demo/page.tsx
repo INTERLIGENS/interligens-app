@@ -472,7 +472,20 @@ export default function TigerScanPageFR() {
       setRecidivismDetected(false); setRecidivismConfidence("LOW");
     });
 
-    if (!chain || chain === "HYPER_TOKEN_ID" || loading) return;
+    // ── CC-OFFLINE-272 — LA CIBLE DE SCAN EST L'AUTORITÉ, PAS L'ÉTAT REACT ──
+    //
+    // `chain` est mémoïsé sur la variable d'état `address`. Un appelant
+    // synchrone — `setAddress(x)` puis `runScan(x)` dans le MÊME tick — voyait
+    // donc l'ANCIENNE adresse : la garde retombait sur un `chain` obsolète et
+    // `runScan` rendait la main EN SILENCE. Les deux entrées ticker du produit
+    // étaient mortes par là ; les chemins `setTimeout` survivaient par accident
+    // de calendrier, pas par correction.
+    //
+    // ⛔ Pas de `setTimeout`, pas de `sleep` : une temporisation ne répare pas
+    //    une dépendance, elle la cache derrière une course qu'on gagne souvent.
+    //    `runScan` RAISONNE DÉSORMAIS À PARTIR DE LA CIBLE QU'ON LUI PASSE.
+    const scanChain = detectChain(scanAddr);
+    if (!scanChain || scanChain === "HYPER_TOKEN_ID" || loading) return;
     setLoading(true);
     setAnalysisStatus("running");
     setScanContextLoading(true);
@@ -512,7 +525,7 @@ export default function TigerScanPageFR() {
       .catch(() => {})
 
     // Fire cluster risk fetch in parallel (non-blocking, 4s timeout)
-    if (chain === "SOL") {
+    if (scanChain === "SOL") {
       fetch(`/api/scan/cluster?address=${encodeURIComponent(scanAddr)}&chain=sol`, {
         signal: AbortSignal.timeout(4000),
       })
@@ -532,11 +545,11 @@ export default function TigerScanPageFR() {
     // MM Pattern Engine risk — flag-gated server-side, fail-silent.
     {
       const chainKey =
-        chain === "SOL" ? "sol" :
-        chain === "ETH" ? "eth" :
-        chain === "BASE" ? "base" :
-        chain === "ARBITRUM" ? "arbitrum" :
-        chain === "BSC" ? "bsc" : null;
+        scanChain === "SOL" ? "sol" :
+        scanChain === "ETH" ? "eth" :
+        scanChain === "BASE" ? "base" :
+        scanChain === "ARBITRUM" ? "arbitrum" :
+        scanChain === "BSC" ? "bsc" : null;
       if (chainKey) {
         fetch(`/api/scan/mm-risk?address=${encodeURIComponent(scanAddr)}&chain=${chainKey}`, {
           signal: AbortSignal.timeout(11000),
@@ -550,10 +563,10 @@ export default function TigerScanPageFR() {
     // Freshness + narrative — parallèle, non-bloquant
     {
       const freshnessChain =
-        chain === "SOL" ? "solana" :
-        chain === "ETH" ? "ethereum" :
-        chain === "BASE" ? "base" :
-        chain === "ARBITRUM" ? "arbitrum" : null;
+        scanChain === "SOL" ? "solana" :
+        scanChain === "ETH" ? "ethereum" :
+        scanChain === "BASE" ? "base" :
+        scanChain === "ARBITRUM" ? "arbitrum" : null;
       if (freshnessChain) {
         fetch("/api/v1/freshness", {
           method: "POST",
@@ -582,10 +595,10 @@ export default function TigerScanPageFR() {
     }
 
     try {
-      const url = buildScanUrl(scanAddr, chain, isDeep);
+      const url = buildScanUrl(scanAddr, scanChain, isDeep);
 
       // Scan + graph en PARALLÈLE — temps total = max(scan, graph)
-      const graphUrl = chain === "SOL"
+      const graphUrl = scanChain === "SOL"
         ? `/api/scan/solana/graph?mint=${encodeURIComponent(scanAddr)}&hops=1&days=14`
         : null;
 
@@ -600,7 +613,7 @@ export default function TigerScanPageFR() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || data?.error || `Error ${res.status}`);
 
-      const normalizedResult = normalizeScanData({ ...data, deep: isDeep }, chain);
+      const normalizedResult = normalizeScanData({ ...data, deep: isDeep }, scanChain);
 
       // Recidivism injecté DANS le result — un seul state, zéro async race
       if (gData?.clusters) {
@@ -653,7 +666,7 @@ export default function TigerScanPageFR() {
         const heatRes = await fetch("/api/social/heat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: scanAddr, chain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
+          body: JSON.stringify({ address: scanAddr, chain: scanChain, deep: isDeep, rawSummary: data?.rawSummary ?? data?.summary ?? data ?? null }),
         });
         setWeather(heatRes.ok ? await heatRes.json() : null);
       } catch { setWeather(null); }
