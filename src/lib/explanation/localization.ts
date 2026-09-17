@@ -44,6 +44,14 @@ export const VERDICT_SUMMARY_INTRO: Record<Verdict, Record<Locale, string>> = {
   MODERATE: { en: "Score {score}/100. Some signals worth checking.", fr: "Score {score}/100. Quelques signaux à vérifier." },
   HIGH:     { en: "Score {score}/100. This looks rough.", fr: "Score {score}/100. Ça craint." },
   CRITICAL: { en: "Score {score}/100. This is bad.", fr: "Score {score}/100. C’est grave." },
+  // CC-OFFLINE-296 · B — l'état sans couverture ne porte AUCUN nombre.
+  // ⚠️ Cette table n'est importée nulle part (constatée morte au 2026-09-17).
+  //    L'entrée existe pour que le type reste exhaustif : si quelqu'un la
+  //    recâble un jour, il ne recâblera pas le défaut avec.
+  UNVERIFIED: {
+    en: "Coverage was not established. This is not a safety assessment.",
+    fr: "La couverture n’a pas été établie. Ce n’est pas une évaluation de sécurité.",
+  },
 }
 
 export const ASK_MORE_LABEL: Record<Locale, string> = {
