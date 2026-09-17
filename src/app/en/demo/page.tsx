@@ -1036,6 +1036,12 @@ export default function TigerScanPage() {
                 actions={[...finalActions]}
                 disclaimer={finalDisclaimer}
                 hasCasefile={!!corrobData?.found}
+                // CC-OFFLINE-284 · B — LA COUVERTURE VIENT DE L'AUTORITÉ.
+                // `risk.coverage.sufficient` est produit par la route de scan :
+                // il dit si une assertion gouvernée a RÉELLEMENT été consommée.
+                // La bannière ne le devine pas, elle le reçoit — et sans lui
+                // (`undefined`), elle garde son comportement historique.
+                coverageSufficient={(result as { risk?: { coverage?: { sufficient?: boolean } } }).risk?.coverage?.sufficient}
               />
 
               {/* ── KNOWN ADDRESS BADGE ── */}

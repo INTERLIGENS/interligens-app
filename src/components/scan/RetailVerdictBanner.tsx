@@ -20,6 +20,14 @@ interface Props {
   actions?: string[]
   disclaimer?: string
   hasCasefile?: boolean
+  /**
+   * La couverture requise par la décision a-t-elle abouti ?
+   *
+   * ⛔ DÉCLARÉE PAR L'APPELANT, jamais devinée ici. `undefined` laisse le
+   *    comportement historique intact pour les appelants qui ne se prononcent
+   *    pas encore ; `false` interdit d'affirmer « CLEAN ».
+   */
+  coverageSufficient?: boolean
 }
 
 const VERDICTS = {
@@ -27,11 +35,16 @@ const VERDICTS = {
     RED:    { icon: '✕', title: "DON'T BUY THIS", sub: 'Critical risk signals detected by INTERLIGENS', color: '#ef4444', border: '#ef4444' },
     ORANGE: { icon: '!', title: 'HIGH RISK', sub: 'Multiple warning signals identified', color: '#f59e0b', border: '#f59e0b' },
     GREEN:  { icon: '✓', title: 'CLEAN', sub: 'No major risk detected', color: '#10b981', border: '#10b981' },
+    // `UNKNOWN` — le GRIS ratifié de BUILD 10 · P0. Ni vert, ni rouge : une
+    // absence de connaissance, dite comme telle. Le sous-titre ne porte aucune
+    // accusation — une couverture insuffisante n'est pas une allégation.
+    UNKNOWN: { icon: '?', title: 'UNVERIFIED', sub: 'Required checks did not complete — not a safety assessment', color: '#6b7280', border: '#6b7280' },
   },
   fr: {
     RED:    { icon: '✕', title: "N'ACHÈTE PAS", sub: 'Signaux critiques détectés par INTERLIGENS', color: '#ef4444', border: '#ef4444' },
     ORANGE: { icon: '!', title: 'RISQUE ÉLEVÉ', sub: "Plusieurs signaux d'alerte identifiés", color: '#f59e0b', border: '#f59e0b' },
     GREEN:  { icon: '✓', title: 'FIABLE', sub: 'Aucun risque majeur détecté', color: '#10b981', border: '#10b981' },
+    UNKNOWN: { icon: '?', title: 'NON VÉRIFIÉ', sub: "Les vérifications attendues n'ont pas toutes abouti — ce n'est pas une évaluation de sécurité", color: '#6b7280', border: '#6b7280' },
   }
 }
 
@@ -39,6 +52,8 @@ const BG = {
   RED:    'linear-gradient(135deg, #1a0505 0%, #0f0202 100%)',
   ORANGE: 'linear-gradient(135deg, #1a1005 0%, #0f0a02 100%)',
   GREEN:  'linear-gradient(135deg, #051a10 0%, #020f08 100%)',
+  // Le fond gris de l'état non vérifié — ni vert, ni rouge.
+  UNKNOWN: 'linear-gradient(135deg, #0d0f12 0%, #060708 100%)',
 }
 
 function toPlainLanguage(proof: Proof, lang: 'en' | 'fr'): string | null {
@@ -75,8 +90,30 @@ function toPlainLanguage(proof: Proof, lang: 'en' | 'fr'): string | null {
   return null
 }
 
-export default function RetailVerdictBanner({ tier, score, proofs, address, chain, lang = 'en', actions, disclaimer, hasCasefile }: Props) {
-  const v = VERDICTS[lang][tier]
+export default function RetailVerdictBanner({ tier, score, proofs, address, chain, lang = 'en', actions, disclaimer, hasCasefile, coverageSufficient }: Props) {
+  // ── CC-OFFLINE-284 · B — « CLEAN » EXIGE UNE COUVERTURE ─────────────────
+  //
+  // ██  UNKNOWN ≠ SAFE.                                                    ██
+  //
+  // GREEN affiche « CLEAN » / « No major risk detected ». Servi sur une
+  // couverture requise INSUFFISANTE, cet énoncé dérive une confiance d'une
+  // ignorance — c'est le défaut machine, à l'identique, sur la surface humaine.
+  //
+  // ⛔ AUCUNE CLASSIFICATION NOUVELLE. `UNKNOWN` existe déjà, ratifié dans
+  //    `src/lib/risk/tier.ts` (« BUILD 10 · P0 — UNKNOWN est GRIS. Ni vert, ce
+  //    serait la coercition qu'on ferme, ni rouge, ce serait inventer un
+  //    risque »). La bannière PROJETTE cet état existant au lieu d'affirmer.
+  //
+  // ⛔ LA COUVERTURE EST DÉCLARÉE PAR L'APPELANT, JAMAIS DEVINÉE ICI. La
+  //    bannière ne sonde rien et n'invente aucune raison : la phrase affichée
+  //    est le `disclaimer` que l'autorité a produit.
+  //
+  // Une gravité, elle, n'est jamais relâchée : RED et ORANGE traversent
+  // intacts. La couverture restreint une permission ; elle ne réduit pas une
+  // gravité — la même règle qu'en CC-OFFLINE-282, sur l'autre surface.
+  const couvertureInsuffisante = coverageSufficient === false
+  const nonVerifie = couvertureInsuffisante && tier === 'GREEN'
+  const v = nonVerifie ? VERDICTS[lang].UNKNOWN : VERDICTS[lang][tier]
   const isSolana = chain === 'SOL' || chain === 'solana'
   const showCasefileCta = tier === 'RED' || !!hasCasefile
 
@@ -86,15 +123,18 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
     .filter(Boolean)
     .slice(0, 3) as string[]
 
-  const generic = {
-    en: { RED: ['Risk score critically high', 'Multiple red flags detected'], ORANGE: ['Risk score above safe threshold'], GREEN: ['No critical signals detected'] },
-    fr: { RED: ["Score de risque critique", "Plusieurs red flags détectés"], ORANGE: ["Score au-dessus du seuil"], GREEN: ["Aucun signal critique"] }
-  }
-  while (reasons.length < 2) {
-    const next = generic[lang][tier][reasons.length]
-    if (next) reasons.push(next)
-    else break
-  }
+  // ── CC-OFFLINE-284 · B — AUCUN MOTIF DE REMPLISSAGE ─────────────────────
+  //
+  // ██  UN REMPLISSAGE DE PRÉSENTATION N'EST PAS UNE PREUVE.              ██
+  //
+  // Une boucle `while (reasons.length < 2)` injectait des motifs génériques
+  // jusqu'à un quota VISUEL. Sur GREEN, elle écrivait « No critical signals
+  // detected » — une ASSERTION SÉMANTIQUE fabriquée par du code de
+  // présentation, servie exactement quand il n'y avait rien à dire.
+  //
+  // ⛔ DES MOTIFS VIDES RESTENT VIDES. Le rendu est déjà gardé par
+  //    `reasons.length > 0` : une liste vide ne produit aucun bloc, et aucune
+  //    phrase n'est inventée pour remplir la place.
 
   const ctaLabel = lang === 'fr' ? "Voir comment le scam s'est déroulé →" : 'See how this scam unfolded →'
   const poweredBy = lang === 'fr' ? 'Analysé par' : 'Analyzed by'
@@ -103,7 +143,7 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
   const timelineBase = lang === 'fr' ? '/fr/scan/' : '/en/scan/'
 
   return (
-    <div style={{ background: BG[tier], border: `1px solid ${v.border}`, borderRadius: 16, padding: '20px 24px', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ background: nonVerifie ? BG.UNKNOWN : BG[tier], border: `1px solid ${v.border}`, borderRadius: 16, padding: '20px 24px', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${v.color}, transparent)` }} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
