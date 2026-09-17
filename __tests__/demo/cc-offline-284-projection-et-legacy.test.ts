@@ -146,6 +146,24 @@ describe("C · M4 — les claims legacy ne font plus autorité COURANTE", () => 
     expect(code).not.toContain("REFERENCED\" as");
   });
 
+  it("⛔ M4 · « CONFIRMED » n'est plus AFFICHÉ non plus — retirer le score ne suffisait pas", () => {
+    // Le témoin réel avait montré le premier passage INCOMPLET : BOTIFY rendait
+    // encore `off_chain.status = "Confirmed"` et ses 8 claims marquées
+    // CONFIRMED. Une claim affichée « Confirmed » FAIT AUTORITÉ À L'ÉCRAN.
+    expect(code).toContain("if (caseFile && !autoriteLegacyRetiree) {");
+    expect(code).toContain("off_chain.status = caseFile.case_meta.status;");
+    expect(code).toContain("off_chain.claims = caseFile.claims.map");
+    // La frontière est RESSERRÉE, pas élargie : l'IDENTIFIANT et sa PROVENANCE
+    // traversent — ce ne sont pas des assertions, et d'autres témoins les
+    // observent. Ce qui ne traverse plus est le STATUT, les CLAIMS, la PROSE.
+    const bloc = code.slice(code.indexOf("if (caseFile) {"), code.indexOf("if (caseFile && !autoriteLegacyRetiree)"));
+    expect(bloc).toContain("off_chain.case_id = caseFile.case_meta.case_id;");
+    expect(bloc).toContain('off_chain.source = "case_db";');
+    expect(bloc).not.toContain("off_chain.status");
+    expect(bloc).not.toContain("off_chain.claims");
+    expect(bloc).not.toContain("off_chain.summary");
+  });
+
   it("l'ÉTAT DE COUVERTURE voyage à côté du résultat, sans le maquiller", () => {
     expect(code).toContain("const offChainClaimsMesuree = rawClaims.length > 0");
     expect(code).toContain("offChainClaimsMeasured: offChainClaimsMesuree");
