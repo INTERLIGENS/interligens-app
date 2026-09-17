@@ -677,6 +677,57 @@ LEASES=(
     #   CC-OFFLINE-294-SCORE-SOUS-UNVERIFIED | score-sous-unverified
     #   1 chemin · feat/cc-offline-294-score-sous-unverified
     #   2026-09-17T12:35:00Z → 13:05:00Z (30 mn) · consommée à 12:40:19
+
+    # ── CC-OFFLINE-296-SURFACES-HUMAINES ─────────────────────────────────────
+    # TROIS chemins, et l'architecte les a accordés un par un, après que §0 a
+    # remonté la liste complète en une seule fois.
+    #
+    #   src/components/TigerRevealCard.tsx
+    #   src/components/scan/AdvancedSignals.tsx
+    #   src/app/api/scan/ask/route.ts
+    #
+    # POURQUOI. Le témoin humain du fondateur a mesuré, sur le servi et sous un
+    # bandeau UNVERIFIED : « Score 20/100. Relatively clean — no major flags
+    # from this scan. » SIX surfaces vivantes partageaient une frontière —
+    # `AnalysisSummary` — dont `tierToVerdict` traduisait un GREEN NON COUVERT
+    # en `LOW`. Quatre se ferment sur des chemins LIBRES. Trois ne le peuvent
+    # pas, et voici pourquoi, chemin par chemin.
+    #
+    #   UNKNOWN ≠ LOW ≠ CLEAN ≠ SAFE ≠ ALLOW.
+    #
+    # ① TigerRevealCard — la chaîne « Verdict: {tier} » est À L'INTÉRIEUR du
+    #   composant, dont la seule entrée est `tier: "GREEN"|"ORANGE"|"RED"`.
+    #   Aucune valeur transmissible ne l'évite ; le seul levier externe serait
+    #   de ne pas monter la carte, ce qui détruirait AUSSI la liste de proofs
+    #   qu'elle rend. On conditionne une affirmation, on n'ampute pas une
+    #   surface. Prop optionnelle, `undefined` = historique.
+    #
+    # ② AdvancedSignals — `"low"` était la branche PAR DÉFAUT de la cascade
+    #   `kolLvl`. `null`, `""`, `"UNKNOWN"`, `"GREEN"` y tombaient toutes :
+    #   « Influence: Low » était CRÉÉ par le seul repli vert. Les deux
+    #   autorités RÉELLES — `manipulationLevel` red/orange, et une gravité de
+    #   palier — passent d'abord et INTACTES.
+    #
+    # ③ api/scan/ask — la prémisse `VERDICT: LOW (relatively clean…)` se
+    #   corrige à la SOURCE (normalizer, libre) : la route la projette, elle ne
+    #   la fabrique pas. Ce qui EXIGE la lease, ce sont les EXEMPLAIRES DE TON
+    #   « GOOD », qui enseignaient inductivement la réassurance avant même que
+    #   le modèle lise le verdict.
+    #
+    #   LE LLM NE PEUT PAS RECEVOIR UNE AFFIRMATION PLUS FORTE QUE L'AUTORITÉ
+    #   QUI LUI FOURNIT SON CONTEXTE.
+    #
+    # ⛔ AUCUN QUATRIÈME CHEMIN GELÉ. `ExplanationLayer.tsx` et
+    #    `AskInterligensChat.tsx` ne contiennent AUCUNE occurrence de
+    #    `verdict` ; `TokenPicker.tsx` est `type="button"` et jamais désactivé ;
+    #    `api/mobile/v1/ask` indexe ses tables par `string`. Aucun n'a été
+    #    demandé « par précaution ».
+    #
+    # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : 60 témoins de lot, dont un
+    # témoin DOM qui rend la page entière et clique les contrôles réellement
+    # rendus. M13–M18 injectés et mesurés ROUGES, un par un. 40 minutes — la
+    # borne pratique d'un cycle CI sur trois fichiers, sous les 45 du mécanisme.
+    "CC-OFFLINE-296-SURFACES-HUMAINES|surfaces-humaines|src/components/TigerRevealCard.tsx,src/components/scan/AdvancedSignals.tsx,src/app/api/scan/ask/route.ts|8c2d8dbdd99149bc3e0dbb5ca98648aa36baa69b|feat/cc-offline-296-surfaces-humaines|2026-09-17T13:42:00Z|2026-09-17T14:22:00Z|OPEN"
 )
 
 lease_rouge() {
