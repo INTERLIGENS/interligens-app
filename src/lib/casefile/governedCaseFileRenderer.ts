@@ -201,6 +201,13 @@ export function renderGovernedCaseFileHtml(
   h2{font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:#FF6B00;
      border-bottom:1px solid #27272a;padding-bottom:6px;margin:26px 0 8px}
   h3{font-size:12px;margin:14px 0 4px;color:#fff}
+  /* CC-OFFLINE-266 — UN TITRE NE RESTE PAS SEUL AU BAS D'UNE PAGE.
+     Un moteur d'impression peut couper juste apres un titre : le lecteur voit
+     alors une rubrique sans contenu, et son contenu sans rubrique. La regle est
+     GENERIQUE — elle vaut pour TOUT titre, sans nommer aucune section, aucune
+     page, aucun sujet. page-break-after est l'alias historique, conserve pour
+     les moteurs qui ne lisent pas encore break-after. */
+  h1,h2,h3{break-after:avoid;page-break-after:avoid}
   p{margin:4px 0 8px;color:#d4d4d8}
   .sub{color:#71717a;font-size:10px;margin:0 0 10px}
   .m{color:#71717a;font-size:9.5px;font-family:ui-monospace,Menlo,monospace}
