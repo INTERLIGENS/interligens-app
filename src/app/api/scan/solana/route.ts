@@ -201,6 +201,11 @@ export async function GET(request: NextRequest) {
     fetchMintFreeze(mint_clean),
   ]);
 
+  // La ref gouvernée est résolue AVANT toute construction : elle gouverne à la
+  // fois ce qui SCORE et ce qui S'AFFICHE.
+  const refGouvernee = canonicalRefForMint(mint_clean);
+  const autoriteLegacyRetiree = refGouvernee !== null;
+
   const off_chain: ScanResult["off_chain"] = {
     status: "Unknown",
     source: "none",
@@ -210,10 +215,37 @@ export async function GET(request: NextRequest) {
     sources: [],
   };
 
+  // ── CC-OFFLINE-288 · C (suite) — « CONFIRMED » CESSE D'ÊTRE AFFICHÉ ─────
+  //
+  // ██  RETIRER L'AUTORITÉ DE SCORE NE SUFFIT PAS :                        ██
+  // ██  UNE CLAIM AFFICHÉE « CONFIRMED » FAIT AUTORITÉ À L'ÉCRAN.          ██
+  //
+  // Le premier passage de C avait retiré aux claims legacy leur capacité de
+  // SCORER. Le témoin réel l'a montré incomplet : BOTIFY rendait toujours
+  // `off_chain.status = "Confirmed"`, `source = "case_db"` et ses 8 claims,
+  // chacune marquée CONFIRMED. Un lecteur y lisait exactement l'autorité que
+  // l'autorité gouvernée refuse.
+  //
+  // La même frontière s'applique donc à la PRÉSENTATION : un dossier qui a une
+  // ref gouvernée ne parle plus par son fichier plat, ni pour scorer, ni pour
+  // s'afficher. `off_chain` reste alors à son état initial — `Unknown` /
+  // `none` / aucune claim — qui est LITTÉRALEMENT vrai : aucune assertion
+  // gouvernée n'a été consommée. C'est exactement ce que VINE rend déjà.
+  //
+  // ⛔ Le fichier historique n'est toujours ni migré, ni publié, ni supprimé.
   if (caseFile) {
-    off_chain.status = caseFile.case_meta.status;
+    // L'IDENTIFIANT et sa PROVENANCE restent : ce ne sont pas des assertions.
+    // Dire « ce mint a un dossier historique, il vient du case_db » n'affirme
+    // rien sur le jeton — et d'autres témoins observent cette identité.
     off_chain.source = "case_db";
     off_chain.case_id = caseFile.case_meta.case_id;
+  }
+
+  if (caseFile && !autoriteLegacyRetiree) {
+    // ⛔ CE QUI SUIT FAIT AUTORITÉ, et ne traverse plus quand l'autorité
+    //    gouvernée existe : le STATUT du dossier, ses CLAIMS — chacune marquée
+    //    CONFIRMED — sa PROSE et ses PIÈCES.
+    off_chain.status = caseFile.case_meta.status;
     off_chain.summary = caseFile.case_meta.summary;
     off_chain.claims = caseFile.claims.map((c) => ({
       id: c.claim_id,
@@ -276,8 +308,6 @@ export async function GET(request: NextRequest) {
   // « Confirmed » n'est pas adouci en « Referenced » : ce serait continuer à
   // consommer les mêmes assertions en changeant le mot. C'est la CONSOMMATION
   // qui cesse.
-  const refGouvernee = canonicalRefForMint(mint_clean);
-  const autoriteLegacyRetiree = refGouvernee !== null;
   const rawClaims = autoriteLegacyRetiree ? [] : (caseFile?.claims ?? []);
   const scoring = computeScore(rawClaims);
 
