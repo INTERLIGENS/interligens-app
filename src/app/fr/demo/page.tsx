@@ -1,9 +1,9 @@
 "use client";
-import { getTier, getTierOrUnknown, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
+import { getTier, getTierOrUnknown, getTierColor as getTierColorUtil, getTierOrUnknownColor, computeFinalVerdict } from "@/lib/risk/tier";
 import CaseFileCTA from "@/components/CaseFileCTA";
 import { BOTIFY_MINT } from "@/lib/kol-memory/tokenIdentity";
 import type { TierOrUnknown } from "@/lib/risk/tier";
-import { getVerdictCopy } from "@/lib/copy/verdictCopy";
+import { selectVerdictCopy } from "@/lib/copy/verdictCopy";
 import { getActionCopy } from "@/lib/copy/actions";
 
 import React, { useState, useRef, useMemo } from "react";
@@ -87,6 +87,30 @@ interface NormalizedScan {
   mintAuthority?: boolean;
   recidivismDetected: boolean;
   recidivismConfidence: "HIGH" | "MED" | "LOW";
+  /**
+   * CC-OFFLINE-292 — L'AUTORITÉ DE COUVERTURE, TRANSPORTÉE.
+   *
+   * ██  UNE FORME AFFIRMÉE N'EST PAS UNE DONNÉE PRÉSENTE.                  ██
+   *
+   * CC-OFFLINE-284 montait déjà `coverageSufficient` sur la bannière, mais
+   * le lisait à travers un `as { risk?… }` sur un objet qui n'avait PAS ce
+   * champ. Le cast affirmait une forme absente : TypeScript se taisait, la
+   * prop valait `undefined`, et la projection restait INERTE.
+   *
+   * Le champ EXISTE désormais. Il est RECOPIÉ depuis la réponse de la route
+   * de scan — jamais dérivé, jamais complété, jamais reconstruit ici.
+   */
+  risk?: { coverage?: ScanCoverage };
+}
+
+/**
+ * La couverture TELLE QUE LA ROUTE LA DÉCLARE. Miroir de lecture, pas une
+ * seconde autorité : aucun champ n'est ajouté, aucun défaut n'est posé.
+ */
+interface ScanCoverage {
+  offChainClaimsMeasured?: boolean;
+  sufficient?: boolean;
+  legacyAuthorityWithdrawn?: boolean;
 }
 
 // ─── CHAIN DETECTION (single source of truth) ─────────────────────────────────
@@ -254,6 +278,10 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     mintAuthority: data?.mintAuthority ?? false,
     recidivismDetected: false,
     recidivismConfidence: "LOW" as "HIGH"|"MED"|"LOW",
+    // CC-OFFLINE-292 — LE TRANSPORT. Rien d'autre.
+    // Absente de la réponse ⇒ absente ici. On ne fabrique pas un `sufficient`
+    // par défaut : un défaut serait une autorité inventée par le renderer.
+    risk: data?.risk?.coverage ? { coverage: data.risk.coverage as ScanCoverage } : undefined,
   };
 }
 
@@ -874,12 +902,31 @@ export default function TigerScanPageFR() {
                 : computeFinalVerdict(result.score, result.tier as Exclude<TierOrUnknown, "UNKNOWN">, _recDetected, _recConf);
               const finalTier = _fv.tier;
               const finalScore = _fv.score;
-              const _vc = getVerdictCopy(_fv.tier, "fr");
+              // ── CC-OFFLINE-292 · LA COPIE SUIT L'AUTORITÉ ────────────────
+              //
+              // ██  LE RENDERER PROJETTE UNE AUTORITÉ, IL NE LA FABRIQUE PAS. ██
+              //
+              // Le palier n'est pas réécrit : `finalTier` reste ce que la
+              // décision canonique a produit, et c'est lui qui part vers la
+              // bannière, qui fait sa propre projection. Ce qui change ici est
+              // la copie SÉLECTIONNÉE et la couleur PROJETÉE.
+              //
+              // La bascule est mesurée sur le palier FINAL, après l'escalade
+              // de récidive : sinon une gravité escaladée serait relâchée par
+              // une couverture manquante, ce qui est exactement l'inversion
+              // interdite.
+              const _sel = selectVerdictCopy(_fv.tier, "fr", result.risk?.coverage?.sufficient);
+              const _nonVerifie = _sel.presentation === "UNVERIFIED";
+              const _tierProjete: TierOrUnknown = _nonVerifie ? "UNKNOWN" : finalTier;
+              const _vc = _sel.copy;
               const finalVerdict = _vc.label;
               const finalSub = _vc.subtitle;
               const finalActions = _vc.actions;
               const finalDisclaimer = _vc.disclaimer;
-              const getTierColorFinal = getTierColorUtil;
+              // CC-OFFLINE-292 — la couleur suit l'ÉTAT PROJETÉ, pas le palier.
+              // `getTierOrUnknownColor` existe et rend GRIS sur UNKNOWN depuis
+              // BUILD 10 : aucune classification neuve n'est introduite ici.
+              const getTierColorFinal = getTierOrUnknownColor;
               return (
               <div className="grid lg:grid-cols-12 gap-8">
 
@@ -888,14 +935,14 @@ export default function TigerScanPageFR() {
               <div className="absolute top-6 right-6">
                 <span
                   className="px-3 py-1 rounded-sm border text-[10px] font-black uppercase tracking-widest"
-                  style={{ borderColor: getTierColorFinal(finalTier), color: getTierColorFinal(finalTier) }}
+                  style={{ borderColor: getTierColorFinal(_tierProjete), color: getTierColorFinal(_tierProjete) }}
                 >
-                  {finalTier}
+                  {_nonVerifie ? "NON VÉRIFIÉ" : finalTier}
                 </span>
               </div>
 
               {/* 1. TigerScore ring */}
-              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(finalTier)} duration={900} />
+              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(_tierProjete)} duration={900} />
 
               {/* TOKEN IDENTITY STRIP */}
               <div className="flex justify-center w-full mt-5 mb-4">
@@ -907,7 +954,7 @@ export default function TigerScanPageFR() {
               {/* 2. ÉVITER — verdict collé au score */}
               <h2
                 className="text-5xl font-black uppercase italic tracking-tighter mt-0 mb-1"
-                style={{ color: getTierColorFinal(finalTier), textShadow: `0 0 30px ${getTierColorFinal(finalTier)}44` }}
+                style={{ color: getTierColorFinal(_tierProjete), textShadow: `0 0 30px ${getTierColorFinal(_tierProjete)}44` }}
               >
                 {finalVerdict}
               </h2>
@@ -963,7 +1010,11 @@ export default function TigerScanPageFR() {
                 // il dit si une assertion gouvernée a RÉELLEMENT été consommée.
                 // La bannière ne le devine pas, elle le reçoit — et sans lui
                 // (`undefined`), elle garde son comportement historique.
-                coverageSufficient={(result as { risk?: { coverage?: { sufficient?: boolean } } }).risk?.coverage?.sufficient}
+                //
+                // CC-OFFLINE-292 — LE CAST A DISPARU. Il affirmait une forme
+                // que `NormalizedScan` n'avait pas ; le champ est maintenant
+                // DÉCLARÉ et TRANSPORTÉ, donc lu sans rien affirmer.
+                coverageSufficient={result.risk?.coverage?.sufficient}
               />
 
               {/* ── KNOWN ADDRESS BADGE ── */}
