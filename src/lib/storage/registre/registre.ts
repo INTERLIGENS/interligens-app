@@ -27,6 +27,7 @@
 // brut dans `casefiles`. Les valeurs passent toutes par des paramètres liés
 // (`$queryRaw` en gabarit balisé) ; aucune n'est concaténée.
 import { prisma } from "@/lib/prisma";
+import { deriverEligibilite } from "./eligibilite";
 import type {
   ClasseDeRetention,
   EtatDAutorite,
@@ -249,6 +250,197 @@ export async function lireParCle(bucket: string, cle: string): Promise<LigneDeRe
   } catch (err) {
     throw classerErreur(err);
   }
+}
+
+/** La même lecture, par IDENTIFIANT. La supersession raisonne sur des identités. */
+export async function lireParIdentifiant(identifiant: string): Promise<LigneDeRegistre | null> {
+  try {
+    const lignes = await prisma.$queryRaw<LigneBrute[]>`
+      SELECT * FROM governed_objects WHERE id = ${identifiant} LIMIT 1`;
+    return lignes[0] ? hydrater(lignes[0]) : null;
+  } catch (err) {
+    throw classerErreur(err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CC-OFFLINE-268 · F1 — LA SUPERSESSION
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ██  UNE SUPERSESSION EST UN JUGEMENT HUMAIN,                              ██
+// ██  PAS UNE PROPRIÉTÉ DÉCOUVERTE PAR LE PIPELINE.                         ██
+//
+// ██  SUPERSEDED NOMME SON REMPLAÇANT, PRÉSERVE L'HISTOIRE,                 ██
+// ██  ET RETIRE L'AUTORITÉ DE DÉLIVRANCE COURANTE.                          ██
+//
+// ─── CE QUE CETTE PRIMITIVE N'EST PAS ─────────────────────────────────────
+//
+// ⛔ Ce n'est PAS un `invalidate(id, state)` générique. `WITHDRAWN_BY_DECISION`
+//    et `INVALID_AUTHORITY` n'ont pas d'écrivain, et n'en gagnent pas un ici :
+//    une primitive qui accepterait l'état en paramètre laisserait un appelant
+//    prononcer un retrait en croyant prononcer un remplacement.
+//
+// ⛔ Ce n'est PAS un cycle de vie d'artefacts. Il n'y a ni `unsuperseder`, ni
+//    retour à `NONE`, ni effacement. SUPERSEDED EST TERMINAL, et le mutant 10
+//    le tient : une seconde tentative est refusée par la garde elle-même.
+//
+// ─── POURQUOI LE REMPLAÇANT EST UN PARAMÈTRE, ET PAS UNE LECTURE DU MOTIF ──
+//
+// Le schéma ne porte pas de colonne `replacement_registry_id`, et aucun DDL
+// n'est posé pour en créer une : l'identité du remplaçant est donc ÉCRITE dans
+// `invalidation_reason`, sous une forme non ambiguë.
+//
+// Mais `invalidation_reason` est une TRACE LISIBLE, jamais une autorité. Le
+// remplaçant entre par un PARAMÈTRE TYPÉ DISTINCT, il est LU en base et VALIDÉ
+// avant la moindre écriture. Déduire le remplaçant du texte du motif ferait de
+// la prose la source de vérité — exactement ce que ce module refuse partout
+// ailleurs.
+//
+// ─── CE QUE LA PRIMITIVE NE TOUCHE JAMAIS ─────────────────────────────────
+//
+// Les octets, le digest, la taille, la clé d'objet, l'identité de registre et
+// les horodatages d'origine. Une supersession retire une AUTORITÉ ; elle
+// n'efface pas une HISTOIRE. Le refus de délivrance qui en découle existait
+// déjà — `deriverEligibilite` rejette tout état d'invalidation ≠ `NONE`, et il
+// le fait AVANT de regarder l'état d'autorité.
+
+/** Ce qui fait REFUSER une supersession, nommément. Domaine FERMÉ. */
+export type CauseDeRefusSupersession =
+  | "ANCIEN_INTROUVABLE"
+  | "REMPLACANT_INTROUVABLE"
+  | "IDENTITES_IDENTIQUES"
+  | "ANCIEN_NON_ENREGISTRE"
+  | "ANCIEN_DEJA_INVALIDE"
+  | "REMPLACANT_NON_ENREGISTRE"
+  | "REMPLACANT_INVALIDE"
+  | "REMPLACANT_NON_DELIVRABLE"
+  | "MOTIF_VIDE";
+
+export type ResultatSupersession =
+  | { readonly prononcee: true; readonly ligne: LigneDeRegistre }
+  | { readonly prononcee: false; readonly cause: CauseDeRefusSupersession; readonly explication: string };
+
+const REFUS_SUPERSESSION = (
+  cause: CauseDeRefusSupersession,
+  explication: string,
+): ResultatSupersession => ({ prononcee: false, cause, explication });
+
+/**
+ * Prononcer qu'un artefact gouverné est DÉPASSÉ PAR UN AUTRE.
+ *
+ * ⚠️ L'AUTORITÉ DE DÉCISION N'EST PAS ICI. Cette fonction EXÉCUTE un jugement
+ * déjà rendu par une autorité humaine ; elle ne le rend pas. Aucun flux, aucun
+ * réconciliateur, aucune route ne doit l'appeler : elle est faite pour une
+ * procédure nommée, sous ordre explicite, et le `motif` est ce qui porte la
+ * trace lisible de cet ordre.
+ *
+ * Les préconditions sont vérifiées AVANT toute écriture, et l'`UPDATE` les
+ * REVÉRIFIE dans sa propre clause `WHERE` : entre la lecture et l'écriture, la
+ * base peut bouger. Une seule ligne doit être touchée — 0 ou plusieurs est un
+ * FAIL CLOSED, et rien n'est écrit ailleurs.
+ */
+export async function superseder(
+  ancienIdentifiant: string,
+  remplacementIdentifiant: string,
+  motif: string,
+): Promise<ResultatSupersession> {
+  if (motif.trim().length === 0) {
+    return REFUS_SUPERSESSION(
+      "MOTIF_VIDE",
+      "une supersession sans motif est indiscernable d'une erreur de manipulation",
+    );
+  }
+  if (ancienIdentifiant === remplacementIdentifiant) {
+    return REFUS_SUPERSESSION(
+      "IDENTITES_IDENTIQUES",
+      "un artefact ne se remplace pas lui-même",
+    );
+  }
+
+  const ancien = await lireParIdentifiant(ancienIdentifiant);
+  if (!ancien) {
+    return REFUS_SUPERSESSION("ANCIEN_INTROUVABLE", `aucune ligne de registre pour ${ancienIdentifiant}`);
+  }
+  const remplacant = await lireParIdentifiant(remplacementIdentifiant);
+  if (!remplacant) {
+    return REFUS_SUPERSESSION("REMPLACANT_INTROUVABLE", `aucune ligne de registre pour ${remplacementIdentifiant}`);
+  }
+
+  if (ancien.etatDInvalidation !== "NONE") {
+    // TERMINALITÉ : c'est ici que la SECONDE tentative tombe.
+    return REFUS_SUPERSESSION(
+      "ANCIEN_DEJA_INVALIDE",
+      `${ancienIdentifiant} porte déjà l'invalidation ${ancien.etatDInvalidation} — une invalidation ne se rejoue pas`,
+    );
+  }
+  if (ancien.etatDAutorite !== "REGISTERED") {
+    return REFUS_SUPERSESSION(
+      "ANCIEN_NON_ENREGISTRE",
+      `${ancienIdentifiant} est ${ancien.etatDAutorite} — on ne dépasse que ce qui a été enregistré`,
+    );
+  }
+  if (remplacant.etatDInvalidation !== "NONE") {
+    return REFUS_SUPERSESSION(
+      "REMPLACANT_INVALIDE",
+      `${remplacementIdentifiant} porte l'invalidation ${remplacant.etatDInvalidation}`,
+    );
+  }
+  if (remplacant.etatDAutorite !== "REGISTERED") {
+    return REFUS_SUPERSESSION(
+      "REMPLACANT_NON_ENREGISTRE",
+      `${remplacementIdentifiant} est ${remplacant.etatDAutorite}`,
+    );
+  }
+
+  // ── LE CONTRÔLE QUI DISTINGUE « IL EXISTE » DE « IL PEUT PRENDRE SA PLACE »
+  //
+  // Retirer l'autorité de délivrance d'un artefact au profit d'un remplaçant
+  // qui n'est pas lui-même délivrable laisserait le sujet SANS artefact
+  // courant. L'éligibilité est jugée par l'autorité EXISTANTE, pas par une
+  // seconde règle écrite ici.
+  const eligibilite = deriverEligibilite(remplacant);
+  if (!eligibilite.publiable) {
+    return REFUS_SUPERSESSION(
+      "REMPLACANT_NON_DELIVRABLE",
+      `${remplacementIdentifiant} n'est pas délivrable (${eligibilite.raison}) — ` +
+        "un remplaçant qu'on ne peut pas délivrer ne remplace rien",
+    );
+  }
+
+  // ── L'ÉCRITURE. Atomique, gardée, et elle REVÉRIFIE les préconditions de
+  //    l'ancien : entre la lecture et l'écriture, la base peut bouger.
+  //    ⛔ `sha256`, `size_bytes`, `storage_key`, `bucket` et `id` ne sont pas
+  //       dans le SET, et ne doivent jamais y entrer.
+  let touchees: number;
+  try {
+    touchees = await prisma.$executeRaw`
+      UPDATE governed_objects
+         SET invalidation_state  = 'SUPERSEDED',
+             invalidation_reason = ${motif},
+             invalidated_at      = now(),
+             updated_at          = now()
+       WHERE id = ${ancienIdentifiant}
+         AND authority_state = 'REGISTERED'
+         AND invalidation_state = 'NONE'`;
+  } catch (err) {
+    throw classerErreur(err);
+  }
+  if (touchees !== 1) {
+    throw new ErreurRegistre(
+      "TRANSITION_REFUSEE",
+      `supersession refusée pour ${ancienIdentifiant} (${touchees} ligne(s) touchée(s)) — ` +
+        "l'état a changé entre la vérification et l'écriture",
+    );
+  }
+
+  const relue = await lireParIdentifiant(ancienIdentifiant);
+  if (!relue || relue.etatDInvalidation !== "SUPERSEDED") {
+    throw new ErreurRegistre(
+      "TRANSITION_REFUSEE",
+      `la relecture de ${ancienIdentifiant} ne confirme pas la supersession`,
+    );
+  }
+  return { prononcee: true, ligne: relue };
 }
 
 /** Toutes les lignes du compartiment — la direction DB→R2 de la réconciliation. */
