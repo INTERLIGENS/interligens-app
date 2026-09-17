@@ -909,17 +909,10 @@ exports[`/api/v1/score snapshot — 'casefile — BOTIFY (real)' > matches the l
   "mint": "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
   "mintAuthority": null,
   "pairAgeDays": 1,
-  "phantom_disclaimer": "This token has critical risk signals. Swapping is strongly discouraged.",
-  "phantom_warning_level": "BLOCK",
-  "score": 70,
-  "signals": [
-    {
-      "id": "confirmed_critical_claims",
-      "label": "Confirmed critical claims on file",
-      "severity": "CRITICAL",
-      "value": 70,
-    },
-  ],
+  "phantom_disclaimer": "No critical signal was returned, but part of the expected checks did not complete. Treat this as unverified, not as safe.",
+  "phantom_warning_level": "WARN",
+  "score": 0,
+  "signals": [],
   "sources": [
     "DexScreener",
     "INTERLIGENS CaseDB",
@@ -928,7 +921,7 @@ exports[`/api/v1/score snapshot — 'casefile — BOTIFY (real)' > matches the l
   "topHolderPct": null,
   "topHolderSource": null,
   "topHolderUnavailableReason": "solana_public_rpc:HTTP 404",
-  "verdict": "RED",
+  "verdict": "ORANGE",
   "website": null,
 }
 `;

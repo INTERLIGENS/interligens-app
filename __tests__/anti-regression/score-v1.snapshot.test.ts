@@ -81,6 +81,21 @@ const SOL_FIXTURES: SolFixture[] = [
     market: { liquidity_usd: 8_000_000, pair_age_days: 600, fdv_usd: 2_000_000_000, volume_24h_usd: 30_000_000, url: "https://dex.example/bonk" } },
   // 5 casefile (only BOTIFY has real data; rest are synthetic — loadCaseByMint
   // returns null for them, exercising the no_casefile branch).
+  //
+  // ── CC-OFFLINE-290 — CE VERROU A BOUGÉ, ET IL DEVAIT BOUGER ────────────
+  //
+  // ██  LES TESTS SERVENT LE CONTRAT. LE CONTRAT NE SERT PAS LES TESTS.   ██
+  //
+  // BOTIFY était verrouillé sur `BLOCK / RED / 70`. Ce verrou encodait un
+  // DÉFAUT : le score venait ENTIÈREMENT des claims du fichier plat
+  // `data/cases/botify.json`, que l'autorité gouvernée REFUSE — elles existent
+  // dans `CaseFileClaim` avec `rowNature = NULL` et ne sont admises nulle part.
+  //
+  // Le retrait de cette consommation rend `WARN / ORANGE / 0`, et ce zéro est
+  // le fait le plus instructif du lot : mesuré, BOTIFY ne porte AUCUN signal
+  // de risque on-chain. Tout son rouge était emprunté.
+  //
+  // ⛔ AUCUN SCORE N'A ÉTÉ PRÉSERVÉ POUR L'OPTIQUE. Le verrou suit le contrat.
   { label: "casefile — BOTIFY (real)", mint: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb",
     market: { liquidity_usd: 2_000, pair_age_days: 1, fdv_usd: 80_000, volume_24h_usd: 800_000, url: "https://pump.fun/coin/botify" },
     hasCasefile: true },

@@ -23,6 +23,9 @@ import { projectPreBuy, toSwapTier } from "@/lib/prebuy/projection";
 import { computeTigerScoreFromScan } from "@/lib/tigerscore/adapter";
 import { computeTigerScoreWithIntel } from "@/lib/tigerscore/engine";
 import { loadCaseByMint } from "@/lib/caseDb";
+// L'AUTORITÉ qui dit quels mints ont un dossier gouverné. Consommée, jamais
+// recopiée : le littéral appartient à ce module, et à lui seul.
+import { canonicalRefForMint } from "@/lib/casefile/publicProjection";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { isKnownBadEvm } from "@/lib/entities/knownBad";
 import { prisma } from "@/lib/prisma";
@@ -302,7 +305,21 @@ export async function GET(request: NextRequest) {
     // nomme la source. Sans ce drapeau, un token dont le top 10 detient 95 % du
     // supply serait note comme un token distribue.
     const topHolderPct = holders.available ? holders.top10Pct : null;
-    const rawClaims = caseFile?.claims ?? [];
+    // ── CC-OFFLINE-290 · C (suite) — LA MÊME FRONTIÈRE, SUR LA SURFACE MACHINE
+    //
+    // ██  LE LEGACY NE PRIME PAS SUR L'AUTORITÉ GOUVERNÉE —                ██
+    // ██  ET LA DÉCISION DE SWAP EST LA SURFACE QUI COMPTE LE PLUS.        ██
+    //
+    // Le témoin réel a montré l'asymétrie : `/api/scan/solana` avait cessé de
+    // consommer les claims du fichier plat, mais CETTE route continuait. BOTIFY
+    // y rendait donc `BLOCK` sur un score de 70 DÉRIVÉ DES MÊMES assertions que
+    // l'autorité gouvernée refuse — `rowNature = NULL`, jamais admises.
+    //
+    // La frontière est identique et elle est étroite : ce sont les CLAIMS —
+    // les assertions — qui cessent d'être consommées. L'existence du dossier
+    // (`no_casefile`), son ticker et son nom ne sont pas des assertions sur le
+    // jeton : ils traversent, comme `case_id` traverse côté scan.
+    const rawClaims = canonicalRefForMint(mint) !== null ? [] : (caseFile?.claims ?? []);
     /**
      * La connaissance gouvernée hors chaîne est MESURÉE lorsqu'au moins une
      * assertion a réellement été consommée pour ce mint. Un dossier absent —
