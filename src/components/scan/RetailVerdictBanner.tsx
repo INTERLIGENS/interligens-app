@@ -153,10 +153,26 @@ export default function RetailVerdictBanner({ tier, score, proofs, address, chai
           </div>
           <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, letterSpacing: '0.02em' }}>{v.sub}</div>
         </div>
-        <div style={{ background: '#0f172a', border: `1px solid ${v.color}44`, borderRadius: 10, padding: '8px 14px', textAlign: 'center', minWidth: 72, flexShrink: 0 }}>
-          <div style={{ fontSize: 24, fontWeight: 900, color: v.color, fontFamily: 'monospace' }}>{score}</div>
-          <div style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.08em' }}>{scoreLabel}</div>
-        </div>
+        {/* ── CC-OFFLINE-294 · « RISK SCORE » EXIGE UNE MESURE ──────────────
+            ██  UN REPLI INTERNE N'EST PAS UNE MESURE HUMAINE.             ██
+
+            Le nombre servi ici sous le libellé « RISK SCORE » peut être le
+            repli legacy de `computeScore([])`. Ce repli ne peut plus rendre
+            ALLOW, SAFE ni CLEAN — mais l'AFFICHER à un humain sous ce libellé
+            lui rend l'autorité VISUELLE que la mesure ne lui donne pas.
+
+            ⛔ AUCUNE SUBSTITUTION. Ni zéro, ni tiret, ni autre score : la
+               présentation est RETENUE, pas remplacée. Inventer un nombre
+               serait le défaut symétrique.
+            ⛔ UN SCORE RÉELLEMENT MESURÉ N'EST PAS MASQUÉ. `nonVerifie` est
+               faux dès que la couverture est suffisante — et il l'est aussi
+               sur RED et ORANGE, où une gravité établie garde son nombre. */}
+        {!nonVerifie && (
+          <div style={{ background: '#0f172a', border: `1px solid ${v.color}44`, borderRadius: 10, padding: '8px 14px', textAlign: 'center', minWidth: 72, flexShrink: 0 }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: v.color, fontFamily: 'monospace' }}>{score}</div>
+            <div style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.08em' }}>{scoreLabel}</div>
+          </div>
+        )}
       </div>
 
       {reasons.length > 0 && (
