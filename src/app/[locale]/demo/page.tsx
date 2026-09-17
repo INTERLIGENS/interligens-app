@@ -583,7 +583,34 @@ function TigerScanPageInner() {
 
         {/* SEARCH BAR */}
         <div className="relative max-w-2xl mx-auto mb-24">
-          <div className="absolute -inset-1 bg-gradient-to-r from-[#F85B05] to-orange-900 rounded-2xl blur-lg opacity-20 animate-pulse" />
+          {/* ── CC-OFFLINE-302 · LA LUEUR NE CAPTE PLUS LES CLICS ──────────────
+              ██  UN INSTRUMENT QUI NE PEUT PAS VOIR LE DÉFAUT NE PROUVE RIEN. ██
+
+              MESURÉ PAR CHROMIUM, à travers la vraie porte bêta, sur un
+              serveur local construit depuis `main` :
+
+                document.elementFromPoint(centre de la ligne « Scan this »)
+                  → div.absolute.-inset-1.bg-gradient-to-r
+                Playwright : « <div class="absolute -inset-1 …"> intercepts
+                pointer events »
+
+              Ce `div` décoratif est `absolute -inset-1` dans le conteneur
+              `relative` de la barre de recherche. Ce conteneur GRANDIT pour
+              contenir le TokenPicker, donc la lueur s'étire par-dessus TOUTE
+              la liste. Le `<form>` est `relative`, donc POSITIONNÉ : il peint
+              au-dessus d'elle, et la saisie comme ANALYZE fonctionnent. Le
+              TokenPicker, lui, est en FLUX NORMAL : il peint SOUS elle.
+
+              D'où exactement ce que le fondateur a mesuré : les CINQ lignes
+              inertes — y compris la dernière —, console VIDE, réseau VIDE.
+              `-mt-20` (CC-OFFLINE-298) recouvrait 80 px en bas : réel, mais
+              il ne pouvait pas expliquer les lignes 1 à 4. Voici le reste.
+
+              ⛔ AUCUN CHANGEMENT VISUEL : `pointer-events-none` sur un
+                 ornement ne modifie ni sa géométrie, ni sa couleur, ni son
+                 animation. Il cesse seulement d'intercepter ce qu'il n'a
+                 jamais eu à recevoir. */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-[#F85B05] to-orange-900 rounded-2xl blur-lg opacity-20 animate-pulse pointer-events-none" />
 
           <form
             onSubmit={(e) => { e.preventDefault(); runScan(); }}
