@@ -10,6 +10,13 @@ function useReducedMotion() {
 interface TigerRevealProps {
   tier: "GREEN" | "ORANGE" | "RED";
   proofs: { label: string; value: string; level: string; riskDescription: string }[];
+  /**
+   * CC-OFFLINE-296 · B4 — LA COUVERTURE, DÉCLARÉE PAR L'APPELANT.
+   *
+   * ⛔ Jamais devinée ici. `undefined` laisse le comportement historique
+   *    intact ; `false` interdit de conclure « Verdict: GREEN ».
+   */
+  coverageSufficient?: boolean;
 }
 
 function StaggeredProof({ proof, index }: {
@@ -54,7 +61,22 @@ function StaggeredProof({ proof, index }: {
   );
 }
 
-export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
+export default function TigerRevealCard({ tier, proofs, coverageSufficient }: TigerRevealProps) {
+  // ── CC-OFFLINE-296 · B4 — UN VERDICT EXIGE UNE COUVERTURE ───────────────
+  //
+  // ██  LES RENDERERS PROJETTENT UNE AUTORITÉ. ILS NE LA CRÉENT PAS.      ██
+  //
+  // La carte concluait « Verdict: GREEN » depuis le seul palier. Sous une
+  // couverture insuffisante, ce palier vient du repli — et l'écrire comme un
+  // VERDICT retail lui rend l'autorité que la mesure ne lui donne pas.
+  //
+  // La condition est celle, EXISTANTE, de la bannière (CC-OFFLINE-284) : une
+  // gravité n'est jamais relâchée, seul `GREEN` bascule. Le mot projeté est
+  // `UNVERIFIED`, déjà ratifié — aucune classification neuve.
+  //
+  // ⛔ LES PROOFS SONT PRÉSERVÉS : ce sont des observations, pas un verdict.
+  // ⛔ `risk.tier` n'est ni lu ni réécrit ici.
+  const nonVerifie = coverageSufficient === false && tier === "GREEN";
   const [isFlipped, setIsFlipped] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -169,7 +191,7 @@ export default function TigerRevealCard({ tier, proofs }: TigerRevealProps) {
               Tiger Intelligence
             </p>
             <h4 className="text-3xl font-black italic uppercase text-white tracking-tighter">
-              Verdict: {tier}
+              Verdict: {nonVerifie ? "UNVERIFIED" : tier}
             </h4>
           </div>
         </div>

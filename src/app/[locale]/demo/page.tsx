@@ -43,6 +43,18 @@ interface NormalizedScan {
   tier: TierOrUnknown;
   /** `null` = aucun score mesuré. Jamais 0 par défaut. */
   scoreMeasured: number | null;
+  /**
+   * CC-OFFLINE-296 · PARITÉ — L'AUTORITÉ DE COUVERTURE, TRANSPORTÉE.
+   *
+   * ██  LES TROIS IMPLÉMENTATIONS DE DÉMO NE DOIVENT PAS CONSERVER DE      ██
+   * ██  COMPORTEMENT D'AUTORITÉ CONTRADICTOIRE.                           ██
+   *
+   * Cette page est une implémentation DUPLIQUÉE de la même surface : elle
+   * montait `RetailVerdictBanner` SANS couverture, rendait le nombre de repli
+   * et concluait « Verdict: GREEN ». Mêmes défauts, même frontière, même
+   * correction — RECOPIE, jamais dérivation.
+   */
+  risk?: { coverage?: ScanCoverage };
   confidence: "Low" | "Medium" | "High";
   verdict: string;
   recommendations: string[];
@@ -155,7 +167,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     } else {
       proofs.push({ label: "Network",  value: "BNB Smart Chain", level: "low",    riskDescription: "Official BSC mainnet" });
       proofs.push({ label: "Contract", value: "Not checked",     level: "medium", riskDescription: "Add BSCSCAN_API_KEY for live data" });
-      proofs.push({ label: "Score",    value: `${score}/100`,    level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,    value: `${score}/100`,    level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
     }
   } else if (chain === "BASE") {
     const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
@@ -170,7 +182,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       );
     } else {
       proofs.push({ label: "Network",  value: "Base (Coinbase L2)", level: "low",    riskDescription: "Official Base mainnet" });
-      proofs.push({ label: "Score",    value: `${score}/100`,       level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,    value: `${score}/100`,       level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
       proofs.push({ label: "Source",   value: "Etherscan v2",       level: "low",    riskDescription: "Basescan via Etherscan v2 API" });
     }
   } else if (chain === "ARBITRUM") {
@@ -186,7 +198,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       );
     } else {
       proofs.push({ label: "Network",  value: "Arbitrum One",  level: "low",    riskDescription: "Official Arbitrum L2 mainnet" });
-      proofs.push({ label: "Score",    value: `${score}/100`,  level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,    value: `${score}/100`,  level: score > 60 ? "high" : "low", riskDescription: "Risk assessment" });
       proofs.push({ label: "Source",   value: "Etherscan v2",  level: "low",    riskDescription: "Arbiscan via Etherscan v2 API" });
     }
   } else {
@@ -198,7 +210,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       );
     } else {
       proofs.push({ label: "Network", value: "TRON chain",   level: "low",                        riskDescription: "Official TRON network" });
-      proofs.push({ label: "Score",   value: `${score}/100`, level: score > 60 ? "high" : "low",  riskDescription: "Risk assessment" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,   value: `${score}/100`, level: score > 60 ? "high" : "low",  riskDescription: "Risk assessment" });
       proofs.push({ label: "Mode",    value: "Demo stable",  level: "low",                        riskDescription: "Live data available on upgrade" });
     }
   }
@@ -214,7 +226,20 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     proofs: proofs.slice(0, 3),
     rawSummary: data?.rawSummary ?? data?.programsSummary ?? data?.approvalsSummary ?? data,
     chain,
+    // CC-OFFLINE-296 · PARITÉ — LE TRANSPORT. Rien d'autre. Absente de la
+    // réponse ⇒ absente ici : aucun défaut permissif n'est fabriqué.
+    risk: data?.risk?.coverage ? { coverage: data.risk.coverage as ScanCoverage } : undefined,
   };
+}
+
+/** CC-OFFLINE-296 · PARITÉ — le libellé de la preuve de score, une seule fois. */
+const LABEL_PREUVE_SCORE = "Score";
+
+/** La couverture TELLE QUE LA ROUTE LA DÉCLARE. Miroir de lecture. */
+interface ScanCoverage {
+  offChainClaimsMeasured?: boolean;
+  sufficient?: boolean;
+  legacyAuthorityWithdrawn?: boolean;
 }
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
@@ -480,6 +505,20 @@ function TigerScanPageInner() {
     t === "UNKNOWN" ? "#6b7280" :
     t === "RED" ? "#F85B05" : t === "ORANGE" ? "#facc15" : "#10b981";
 
+  // ── CC-OFFLINE-296 · PARITÉ — LA PROJECTION SUIT L'AUTORITÉ ─────────────
+  //
+  // Mêmes règles que sur `/en/demo` et `/fr/demo`, sans exception :
+  //   · la couverture est LUE, jamais dérivée ;
+  //   · seul GREEN bascule — une gravité n'est jamais relâchée ;
+  //   · `undefined` ≠ `false` : sans autorité, comportement historique.
+  const _nonVerifie = !!result && result.risk?.coverage?.sufficient === false && result.tier === "GREEN";
+  const _tierProjete: TierOrUnknown = _nonVerifie ? "UNKNOWN" : (result?.tier ?? "UNKNOWN");
+  // Le repli numérique ne fait pas autorité : la preuve « Score N/100 » est
+  // RETENUE, jamais remplacée. Égalité sur le libellé, pas un motif.
+  const _proofsProjetees = result
+    ? (_nonVerifie ? result.proofs.filter((pr) => pr.label !== LABEL_PREUVE_SCORE) : result.proofs)
+    : [];
+
   return (
     <div className="min-h-screen bg-black text-[#E4E4E7] font-sans selection:bg-[#F85B05] selection:text-black antialiased" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
 
@@ -638,12 +677,13 @@ function TigerScanPageInner() {
               <div className="absolute top-6 right-6">
                 <span
                   className="px-3 py-1 rounded-sm border text-[10px] font-black uppercase tracking-widest"
-                  style={{ borderColor: getTierColor(result.tier), color: getTierColor(result.tier) }}
+                  style={{ borderColor: getTierColor(_tierProjete), color: getTierColor(_tierProjete) }}
                 >
-                  {result.tier}
+                  {_nonVerifie ? "UNVERIFIED" : result.tier}
                 </span>
               </div>
 
+              {!_nonVerifie && (
               <div className="relative w-56 h-56 mb-10 mt-4 group-hover:scale-105 transition-transform duration-500">
                 <svg className="w-full h-full -rotate-90">
                   <circle cx="112" cy="112" r="100" stroke="#111" strokeWidth="12" fill="transparent" />
@@ -657,10 +697,14 @@ function TigerScanPageInner() {
                   <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em] mt-2">TigerScore</span>
                 </div>
               </div>
+              )}
 
-              <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter">{result.verdict}</h2>
+              <h2 className="text-4xl font-black uppercase italic mb-3 tracking-tighter" style={_nonVerifie ? { color: "#6b7280" } : undefined}>
+                {_nonVerifie ? "UNVERIFIED" : result.verdict}
+              </h2>
               <p className="text-zinc-500 text-sm font-medium mb-10 px-4 leading-relaxed italic">
-                {result.verdict === "Proceed" ? "Wallet health looks clean. Still verify URLs."
+                {_nonVerifie ? "Coverage was not established for this address. This is not a safety assessment."
+                : result.verdict === "Proceed" ? "Wallet health looks clean. Still verify URLs."
                 : result.verdict === "Caution" ? "Suspicious signals detected. Proceed with caution."
                 : "High-risk patterns detected. Avoid interaction."}
               </p>
@@ -789,11 +833,15 @@ function TigerScanPageInner() {
               <RetailVerdictBanner
                 tier={result.tier}
                 score={result.score}
-                proofs={result.proofs}
+                proofs={_proofsProjetees}
                 address={address.trim()}
                 chain={result.chain}
                 lang={locale === 'fr' ? 'fr' : 'en'}
                 hasCasefile={!!corrobData?.found}
+                // CC-OFFLINE-296 · PARITÉ — cette page montait la bannière SANS
+                // couverture : elle affichait donc « CLEAN / No major risk
+                // detected » là où les deux autres projettent UNVERIFIED.
+                coverageSufficient={result.risk?.coverage?.sufficient}
               />
 
               {/* ── 3 signal cards in a flat grid row (no nesting) ── */}
@@ -804,7 +852,7 @@ function TigerScanPageInner() {
                 show={true}
               />
 
-              <WhatToDoNow lang="en" tier={result.tier} show={true} />
+              <WhatToDoNow lang="en" tier={result.tier} show={!_nonVerifie} />
                 </>
               )}
 
@@ -819,7 +867,7 @@ function TigerScanPageInner() {
               />
 
               {result.tier !== "UNKNOWN" && (
-                <TigerRevealCard tier={result.tier} proofs={result.proofs} />
+                <TigerRevealCard tier={result.tier} proofs={_proofsProjetees} coverageSufficient={result.risk?.coverage?.sufficient} />
               )}
 
               {/* Technical evidence (collapsible) */}

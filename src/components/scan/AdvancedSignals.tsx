@@ -21,6 +21,13 @@ export interface AdvancedSignalsProps {
   signals?: Signal[];
   lang?: "en" | "fr";
   tier?: string | null;
+  /**
+   * CC-OFFLINE-296 · B5 — LA COUVERTURE, DÉCLARÉE PAR L'APPELANT.
+   *
+   * ⛔ Jamais devinée ici : le composant ne sonde rien et ne dérive aucune
+   *    autorité. `undefined` laisse le comportement historique intact.
+   */
+  coverageSufficient?: boolean;
   manipulationLevel?: string | null;
   rawSummary?: any;
 }
@@ -71,6 +78,12 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 function chipStyle(level: string): React.CSSProperties {
+  // CC-OFFLINE-296 · B5 — le gris de l'état non établi. C'est la couleur que
+  // `src/lib/risk/tier.ts` donne déjà à `UNKNOWN` depuis BUILD 10 : ni verte
+  // (ce serait la coercition qu'on ferme), ni rouge (ce serait inventer un
+  // risque). Aucune classification neuve.
+  if (level === "unknown")
+    return { border: "1px solid #6b728044", background: "#6b728018", color: "#6b7280" };
   if (level === "low" || level === "open")
     return { border: "1px solid #22c55e44", background: "#22c55e18", color: "#22c55e" };
   if (level === "med" || level === "tight")
@@ -166,7 +179,7 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
   const {
     website, websiteAgeDays, pairAgeDays, liquidityUsd,
     mintAuthority, freezeAuthority, topHolderPct, signals,
-    lang = "en", tier, manipulationLevel, rawSummary,
+    lang = "en", tier, manipulationLevel, rawSummary, coverageSufficient,
   } = props;
 
   // Fallback: use tiger_drivers when signals prop is empty (e.g. rugged tokens with burned metadata)
@@ -186,15 +199,43 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
   const hasSectionB = rawSummary != null;
   const tierNorm = (tier ?? "").toLowerCase();
 
-  // Section B — Influence (Calls)
-  const kolLvl: "low" | "med" | "high" =
+  // ── Section B — Influence (Calls) ────────────────────────────────────────
+  //
+  // ██  UNE COUVERTURE MANQUANTE NE DOIT PAS MASQUER UNE PREUVE NÉGATIVE.  ██
+  // ██  ELLE NE DOIT PAS NON PLUS EN FABRIQUER UNE POSITIVE.               ██
+  //
+  // CC-OFFLINE-296 · B5. Mesuré : `"low"` était la branche PAR DÉFAUT de la
+  // cascade. `null`, `""`, `"UNKNOWN"`, `"GREEN"` y tombaient toutes — aucune
+  // valeur de `tier` transmissible depuis la page ne pouvait l'éviter. Sous
+  // une couverture insuffisante, « Influence: Low » était donc CRÉÉ par le
+  // seul repli vert, et présenté comme établi.
+  //
+  // ⛔ LES DEUX AUTORITÉS RÉELLES PASSENT D'ABORD, ET INTACTES :
+  //    · `manipulationLevel` red/orange — mesuré indépendamment (météo de
+  //      marché), il n'a jamais dépendu du palier ;
+  //    · `tier` red/orange — une gravité établie, qu'aucune ignorance ne
+  //      relâche.
+  //    Seule la lecture PERMISSIVE, celle qui n'a rien d'autre qu'un défaut,
+  //    devient « non établie ».
+  //
+  // ⛔ AUCUNE MÉTHODOLOGIE MODIFIÉE : pas un seuil, pas une source, pas une
+  //    pondération. C'est la PRÉSENTATION d'une non-mesure qui cesse.
+  const influenceNonEtablie =
+    coverageSufficient === false &&
+    manipulationLevel !== "red" && manipulationLevel !== "orange" &&
+    tierNorm !== "red" && tierNorm !== "orange";
+  const kolLvl: "low" | "med" | "high" | "unknown" =
+    influenceNonEtablie ? "unknown" :
     manipulationLevel === "red" ? "high" : manipulationLevel === "orange" ? "med" :
     tierNorm === "red" ? "high" : tierNorm === "orange" ? "med" : "low";
-  const kolBadge = kolLvl === "high" ? (lang === "fr" ? "ÉLEVÉ" : "HIGH")
+  const kolBadge = kolLvl === "unknown" ? (lang === "fr" ? "NON ÉTABLI" : "NOT ESTABLISHED")
+    : kolLvl === "high" ? (lang === "fr" ? "ÉLEVÉ" : "HIGH")
     : kolLvl === "med" ? (lang === "fr" ? "MOYEN" : "MED") : (lang === "fr" ? "FAIBLE" : "LOW");
-  const kolVal = lang === "fr"
-    ? `Influence : ${kolLvl === "high" ? "Élevée" : kolLvl === "med" ? "Moyenne" : "Faible"}`
-    : `Influence: ${kolLvl === "high" ? "High" : kolLvl === "med" ? "Med" : "Low"}`;
+  const kolVal = kolLvl === "unknown"
+    ? (lang === "fr" ? "Influence : non mesurée" : "Influence: not measured")
+    : lang === "fr"
+      ? `Influence : ${kolLvl === "high" ? "Élevée" : kolLvl === "med" ? "Moyenne" : "Faible"}`
+      : `Influence: ${kolLvl === "high" ? "High" : kolLvl === "med" ? "Med" : "Low"}`;
 
   // Section B — Coordination Risk + Can I Sell?
   const market: MarketInput = rawSummary?.markets ?? rawSummary?.market ?? { data_unavailable: true };

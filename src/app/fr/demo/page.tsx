@@ -144,6 +144,30 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
   }
 }
 
+// ─── CC-OFFLINE-296 · A — LE CONTRAT D'ENTRÉE, AU NIVEAU MODULE ─────────────
+//
+// ██  L'ÉLIGIBILITÉ DÉRIVE DU CONTRAT D'ENTRÉE VOULU, PAS DE              ██
+// ██  « ÇA RESSEMBLE DÉJÀ À UNE ADRESSE ».                                ██
+//
+// Mesuré par le témoin humain : le bouton portait `disabled={!chain || …}`
+// avec `chain = detectChain(address)`. Pour TOUT ticker, `detectChain` rend
+// `null` — le bouton était donc DÉSACTIVÉ, et un `type="submit"` désactivé ne
+// déclenche jamais `onSubmit`. Le clic était inerte AVANT tout code
+// applicatif. La touche Entrée appelait `handleScanSubmit` directement et
+// marchait : les deux chemins divergeaient.
+//
+// La fonction est HISSÉE ici, INCHANGÉE : elle est le contrat d'entrée.
+// ⛔ Aucune détection de ticker nouvelle, aucun motif modifié.
+
+const looksLikeTicker = (raw: string): string | null => {
+  const v = raw.trim()
+  if (!v) return null
+  if (detectChain(v)) return null
+  const m = v.match(/^\$?([A-Za-z0-9]{2,12})$/)
+  if (!m) return null
+  return m[1].toUpperCase()
+}
+
 // ─── CC-OFFLINE-294 · LE LIBELLÉ DE LA PREUVE DE SCORE, À UN SEUL ENDROIT ───
 //
 // Il était recopié à six endroits. La projection sous couverture insuffisante
@@ -341,6 +365,18 @@ export default function TigerScanPageFR() {
   const [resolvedEvm, setResolvedEvm]   = useState<string | null>(null);
 
   const chain = useMemo(() => detectChain(address), [address]);
+
+  // CC-OFFLINE-296 · A — LA PORTE ACCEPTE CE QUE `handleScanSubmit` ACCEPTE
+  // DÉJÀ : une adresse résolue OU un ticker reconnu. Rien de plus.
+  // ⛔ `loading` reste une porte séparée : on ne l'affaiblit pas.
+  const entreeRecevable = useMemo(
+    () => {
+      const c = detectChain(address);
+      if (c && c !== "HYPER_TOKEN_ID") return true;
+      return looksLikeTicker(address) !== null;
+    },
+    [address],
+  );
   const analysisSummary = useMemo(() => result ? normalizeToAnalysisSummary({ ...result, address: address.trim() }) : null, [result, address]);
   const explanationLocale = "fr" as Locale;
   const [debug] = React.useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1");
@@ -442,14 +478,6 @@ export default function TigerScanPageFR() {
 
 
 
-  const looksLikeTicker = (raw: string): string | null => {
-    const v = raw.trim()
-    if (!v) return null
-    if (detectChain(v)) return null
-    const m = v.match(/^\$?([A-Za-z0-9]{2,12})$/)
-    if (!m) return null
-    return m[1].toUpperCase()
-  }
 
   const formatAddressForChain = (addr: string, c: TokenCandidate['chain']): string => {
     if (c === 'BSC') return 'bsc:' + addr
@@ -521,8 +549,28 @@ export default function TigerScanPageFR() {
     //    une dépendance, elle la cache derrière une course qu'on gagne souvent.
     //    `runScan` RAISONNE DÉSORMAIS À PARTIR DE LA CIBLE QU'ON LUI PASSE.
     const scanChain = detectChain(scanAddr);
-    if (!scanChain || scanChain === "HYPER_TOKEN_ID" || loading) return;
-    setLoading(true);
+    if (!scanChain || scanChain === "HYPER_TOKEN_ID") return;
+
+    // ── CC-OFFLINE-296 · A2 — L'ÉTAT D'EXÉCUTION COURANT, PAS UN INSTANTANÉ ──
+    //
+    // ██  UNE CLOSURE DE RENDU N'EST PAS L'ÉTAT COURANT.                    ██
+    //
+    // `handleScanSubmit` AWAITE la résolution du ticker puis appelle
+    // `runScan(formatted)` : le `loading` lu dans la garde était celui capturé
+    // AVANT l'await. La réclamation ci-dessous utilise l'autorité de
+    // concurrence EXISTANTE et la seule — le `loading` du composant — dans sa
+    // forme fonctionnelle, qui reçoit la valeur COURANTE.
+    //
+    // ⛔ Aucun état dupliqué, aucune ref miroir, aucun timeout, aucune machine
+    //    à états. La protection double-soumission est renforcée, pas affaiblie.
+    let dejaEnCours = false;
+    flushSync(() => {
+      setLoading((prev) => {
+        dejaEnCours = prev;
+        return prev ? prev : true;
+      });
+    });
+    if (dejaEnCours) return;
     setAnalysisStatus("running");
     setScanContextLoading(true);
 
@@ -843,7 +891,7 @@ export default function TigerScanPageFR() {
 
               <button
                 type="submit"
-                disabled={!chain || loading}
+                disabled={!entreeRecevable || loading}
                 className="bg-white text-black font-black uppercase text-xs px-8 py-4 rounded-lg hover:bg-[#F85B05] hover:text-white transition-all disabled:opacity-20 active:scale-95"
               >
                 {loading ? "Scan en cours..." : "Analyser"}
@@ -1168,6 +1216,7 @@ export default function TigerScanPageFR() {
                 signals={(result.rawSummary?.signals ?? []).map((s: any) => ({ id: s.id, label: s.label, severity: s.severity }))}
                 lang="fr"
                 tier={finalTier}
+                coverageSufficient={result.risk?.coverage?.sufficient}
                 manipulationLevel={weather?.manipulation?.level ?? null}
                 rawSummary={result.rawSummary}
               />
@@ -1238,7 +1287,7 @@ export default function TigerScanPageFR() {
               )}
 
               {/* 5. TOP ON-CHAIN PROOFS + ASK TIGER ANALYST — flip card */}
-              <TigerRevealCard tier={finalTier} proofs={_proofsProjetees} />
+              <TigerRevealCard tier={finalTier} proofs={_proofsProjetees} coverageSufficient={result.risk?.coverage?.sufficient} />
 
               {/* 5b. RISQUE DE STRUCTURE DE MARCHÉ — MM Pattern Engine (flag-gated) */}
               <MarketStructureRisk result={mmRisk} locale="fr" />

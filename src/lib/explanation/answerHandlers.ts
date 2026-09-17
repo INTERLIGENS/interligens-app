@@ -189,6 +189,28 @@ const handlers: Record<ChipIntent, Handler> = {
   why_score(summary, locale) {
     const bullets = buildWhyBullets(summary, locale)
 
+    // ── CC-OFFLINE-296 · B2 — LA SÉLECTION SUIT L'AUTORITÉ ────────────────
+    //
+    // ██  LE REPLI N'EST PAS UNE MESURE. ON NE L'EXPLIQUE PAS.             ██
+    //
+    // Ce chip s'ouvre sur « Score N/100 ». Sous une couverture insuffisante,
+    // ce nombre n'est adossé à rien de gouverné : l'afficher lui rend
+    // l'autorité visuelle que CC-OFFLINE-294 vient de lui retirer ailleurs.
+    //
+    // ⛔ Les bullets RÉELS, eux, ne sont pas masqués : ce sont des preuves
+    //    NÉGATIVES mesurées, et une couverture manquante ne les efface pas.
+    if (summary.verdict === 'UNVERIFIED') {
+      const entete = locale === 'fr'
+        ? "Aucun score n’est présenté ici : la couverture attendue n’a pas été établie pour ce scan."
+        : "No score is presented here: the expected coverage was not established for this scan."
+      if (bullets.length === 0) return { title: title('why_score', locale), body: entete }
+      const listeSeule = bullets.map((b, i) => (i + 1) + '. ' + b).join('\n')
+      const suite = locale === 'fr'
+        ? "Ce qui A été observé :"
+        : "What WAS observed:"
+      return { title: title('why_score', locale), body: `${entete}\n${suite}\n${listeSeule}` }
+    }
+
     if (bullets.length === 0) {
       // Absolute fallback — never empty, never crash
       const fallback = locale === 'fr'
@@ -218,13 +240,23 @@ const handlers: Record<ChipIntent, Handler> = {
   },
 
   what_to_do(summary, locale) {
-    if (summary.whatToDoNow) {
+    // ⛔ CC-OFFLINE-296 · B2 — `whatToDoNow` vient de `getActionCopy`, choisi
+    //    SUR LE PALIER. Sous couverture insuffisante le normaliseur ne le
+    //    transporte plus ; cette garde dit pourquoi, et interdit qu'un
+    //    appelant futur le réintroduise par la bande.
+    if (summary.whatToDoNow && summary.verdict !== 'UNVERIFIED') {
       return { title: title("what_to_do", locale), body: summary.whatToDoNow }
     }
     const map: Record<string, Record<Locale, string>> = {
       LOW: {
         en: "No major flags right now. Still worth checking back if anything changes.",
         fr: "Pas de gros signal pour l’instant. Revérifiez si la situation évolue.",
+      },
+      // L'état sans couverture. Ni accusation, ni permission — la même
+      // sémantique que la bannière retail projette déjà.
+      UNVERIFIED: {
+        en: "Nothing was verified here. Treat this as unknown, not as cleared, and look for an independent source before acting.",
+        fr: "Rien n’a été vérifié ici. Considère l’état comme inconnu, pas comme validé, et cherche une source indépendante avant d’agir.",
       },
       MODERATE: {
         en: "Some signals here. Look at the red flags before doing anything.",

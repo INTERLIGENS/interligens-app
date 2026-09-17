@@ -77,8 +77,20 @@ describe("P0-D · `runScan` ne lit plus l'état React", () => {
     const corps = corpsDeRunScan(lire(p));
 
     it(`${p} — la chaîne est DÉRIVÉE de la cible passée`, () => {
+      // ⚠️ CC-OFFLINE-296 · A2 — la garde a été SCINDÉE en deux, et ce témoin
+      //    assertait la LIGNE au lieu du CONTRAT.
+      //
+      //    LE CONTRAT, inchangé : la chaîne vient de `scanAddr` — la cible
+      //    PASSÉE — et une chaîne non résolue rend la main immédiatement. Ce
+      //    qui a changé est que `loading` n'est plus lu dans la même
+      //    expression : un instantané de closure n'est pas l'état courant, et
+      //    A2 a remplacé cette lecture par une réclamation atomique.
+      //
+      //    LES TESTS SERVENT LE CONTRAT. LE CONTRAT NE SERT PAS LES TESTS.
       expect(corps).toContain("const scanChain = detectChain(scanAddr);");
-      expect(corps).toContain('if (!scanChain || scanChain === "HYPER_TOKEN_ID" || loading) return;');
+      expect(corps).toContain('if (!scanChain || scanChain === "HYPER_TOKEN_ID") return;');
+      // Et la protection de concurrence est TOUJOURS là, juste après.
+      expect(corps).toContain("if (dejaEnCours) return;");
     });
 
     it(`${p} — AUCUNE lecture du \`chain\` mémoïsé ne subsiste dans runScan`, () => {
@@ -93,10 +105,8 @@ describe("P0-D · `runScan` ne lit plus l'état React", () => {
     it(`${p} — ⛔ la décision de chaîne est SYNCHRONE, sans aucune temporisation`, () => {
       const code = sansCommentaires(corps);
       // La garde : de la dérivation au `return`, aucune attente d'aucune sorte.
-      const garde = code.slice(
-        code.indexOf("const scanChain"),
-        code.indexOf("loading) return;") + "loading) return;".length,
-      );
+      const fin = 'HYPER_TOKEN_ID") return;';
+      const garde = code.slice(code.indexOf("const scanChain"), code.indexOf(fin) + fin.length);
       expect(garde.length).toBeGreaterThan(0);
       expect(garde).not.toContain("setTimeout");
       expect(garde).not.toContain("sleep");
