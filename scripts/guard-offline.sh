@@ -622,7 +622,13 @@ LEASES=(
     # surface. Le délta mesuré est rapporté sans être maquillé.
     #
     # ⛔ Aucun fichier gelé adjacent. Code écrit, testé, vert. 15 minutes.
-    "CC-OFFLINE-290-LEGACY-SURFACE-MACHINE|legacy-surface-machine|src/app/api/v1/score/route.ts|5f5618671d4555df3030df47e67ec836db7c23c2|feat/cc-offline-290-legacy-surface-machine|2026-09-17T11:35:00Z|2026-09-17T11:50:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — 1 seconde de lease vivante, sur une borne de 15 mn.
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : un chemin.
+    #
+    #   CC-OFFLINE-290-LEGACY-SURFACE-MACHINE | legacy-surface-machine
+    #   1 chemin · feat/cc-offline-290-legacy-surface-machine
+    #   2026-09-17T11:35:00Z → 11:50:00Z (15 mn) · consommée à 11:42:14
 )
 
 lease_rouge() {
