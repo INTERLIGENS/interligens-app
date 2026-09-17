@@ -820,7 +820,18 @@ LEASES=(
     #
     # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : 10 témoins, M22–M24
     # injectés et mesurés ROUGES. 25 minutes.
-    "CC-OFFLINE-300-CADRAGE-ADVANCED-SIGNALS|cadrage-advanced-signals|src/components/scan/AdvancedSignals.tsx|2c83568a15c8d02a1c7b290564d2e875a0d7e130|feat/cc-offline-300-identite-et-cadrage|2026-09-17T14:57:00Z|2026-09-17T15:22:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — ouverte 14:57, exercée au commit 15:02:50, PR #511
+    # fusionnée 15:08. Une lease périmée cesse d'autoriser, mais un
+    # enregistrement OPEN qui traîne est un mensonge sur l'état.
+    #
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : un chemin, vérifié par
+    # `gh pr view 511 --json files` — 3 fichiers au diff, dont 2 LIBRES
+    # (`src/lib/marketProviders.ts` et un fichier de témoins).
+    #
+    #   CC-OFFLINE-300-CADRAGE-ADVANCED-SIGNALS | cadrage-advanced-signals
+    #   1 chemin · feat/cc-offline-300-identite-et-cadrage
+    #   2026-09-17T14:57:00Z → 15:22:00Z (25 mn) · consommée à 15:02:50
 )
 
 lease_rouge() {
