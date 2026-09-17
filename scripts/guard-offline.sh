@@ -520,7 +520,15 @@ LEASES=(
     #    DÉRIVÉE d'une autorité existante — le renderer n'en invente aucune.
     #
     # 30 minutes : durée pratique MINIMALE, la consigne le demande.
-    "CC-OFFLINE-280-CASEFILE-CTA-VERIDIQUE|casefile-cta-veridique|src/components/CaseFileCTA.tsx|7352b5e8ff35256f8972324a3039a8ea821f057e|feat/cc-offline-280-casefile-cta-veridique|2026-09-17T10:30:00Z|2026-09-17T11:00:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — le correctif est sur `main` (d6e5e08). Un seul
+    # fichier gelé dans le diff, vérifié par `gh pr view 489 --json files` ; les
+    # deux pages de démo qui remontent le contrôle ne sont pas gelées.
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ. Aucun fichier gelé adjacent.
+    #
+    #   CC-OFFLINE-280-CASEFILE-CTA-VERIDIQUE | casefile-cta-veridique
+    #   1 chemin · feat/cc-offline-280-casefile-cta-veridique
+    #   2026-09-17T10:30:00Z → 11:00:00Z (30 mn) · consommée à 10:41
 )
 
 lease_rouge() {
