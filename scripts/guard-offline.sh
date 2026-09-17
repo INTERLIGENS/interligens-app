@@ -574,6 +574,27 @@ LEASES=(
     #   CC-OFFLINE-282-COUVERTURE-GRAVITE-LEGACY | couverture-gravite-legacy
     #   3 chemins · feat/cc-offline-282-couverture-positive
     #   2026-09-17T11:05:00Z → 11:35:00Z (30 mn) · consommée à 11:14:50
+
+    # ── CC-OFFLINE-288-AFFICHAGE-LEGACY ──────────────────────────────────────
+    # UN SEUL chemin, DÉJÀ autorisé pour l'étape C, et le MÊME objectif.
+    #
+    #   src/app/api/scan/solana/route.ts
+    #
+    # POURQUOI UNE SECONDE LEASE. Le témoin réel exigé par le ruling a montré le
+    # premier passage de C INCOMPLET : les claims legacy ne SCORAIENT plus, mais
+    # BOTIFY rendait toujours `off_chain.status = "Confirmed"` et ses huit
+    # claims, chacune marquée CONFIRMED.
+    #
+    #   RETIRER L'AUTORITÉ DE SCORE NE SUFFIT PAS :
+    #   UNE CLAIM AFFICHÉE « CONFIRMED » FAIT AUTORITÉ À L'ÉCRAN.
+    #
+    # C'est la preuve qui a trouvé le manque — c'est exactement pourquoi elle
+    # est exigée. Aucun périmètre nouveau : même fichier, même étape C, même
+    # frontière, appliquée à la présentation comme elle l'était au score.
+    #
+    # ⛔ Aucun fichier gelé adjacent. Le code est écrit, testé et vert avant
+    #    l'ouverture. 15 minutes.
+    "CC-OFFLINE-288-AFFICHAGE-LEGACY|affichage-legacy-retire|src/app/api/scan/solana/route.ts|d535258b125a801251f565176cdcbbdb10fb3f3e|feat/cc-offline-288-affichage-legacy|2026-09-17T11:20:00Z|2026-09-17T11:35:00Z|OPEN"
 )
 
 lease_rouge() {
