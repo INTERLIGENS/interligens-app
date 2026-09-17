@@ -1,5 +1,6 @@
 "use client";
 import BetaNav from "@/components/beta/BetaNav";
+import { BOTIFY_MINT } from "@/lib/kol-memory/tokenIdentity";
 import { pushScanHistory } from "@/app/history/page";
 import { getActionCopy } from "@/lib/copy/actions";
 
@@ -350,8 +351,18 @@ export default function TigerScanPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── CC-OFFLINE-276 · P1 — LA DÉCOUVERTE NORMALE NE SÉLECTIONNE PLUS UNE
+  //    ADRESSE QUI N'EXISTE PAS.
+  //
+  // Les puces de preset portaient la CLÉ DE ROUTE SYNTHÉTIQUE de BOTIFY — 43
+  // caractères, ZÉRO ligne en base, aucune existence on-chain. Un visiteur qui
+  // cliquait « BOTIFY » ou « Scam » scannait donc une adresse dont aucun
+  // marché, aucun holder, aucune lignée ne peut être mesuré : le RED 100 qui
+  // s'affichait venait ENTIÈREMENT du fichier legacy, avec un `rawSummary`
+  // vide. Le mint canonique — 44 caractères, présent en base et on-chain — est
+  // consommé depuis son autorité (`BOTIFY_MINT`), jamais recopié en littéral.
   const LIVE_PRESETS = [
-    { id: "botify",  label: "BOTIFY",   tag: "SCAM", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+    { id: "botify",  label: "BOTIFY",   tag: "SCAM", addr: BOTIFY_MINT },
     { id: "pump",    label: "PUMP.FUN", tag: "SOL",  addr: "a3W4qutoEJA4232T2gwZUfgYJTetr96pU4SJMwppump" },
     { id: "bonk",    label: "BONK",     tag: "SOL",  addr: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
     { id: "vitalik", label: "VITALIK",  tag: "ETH",  addr: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
@@ -373,7 +384,7 @@ export default function TigerScanPage() {
   const DEMO_CHIPS = [
     { label: "✅ Safe",    addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
     { label: "⚠️ Warning", addr: "7WRX5QGuRLhGCJszpQjYmw6ihb6z8KRdAEHQUhGJpump" },
-    { label: "🚨 Scam",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+    { label: "🚨 Scam",   addr: BOTIFY_MINT },
   ];
 
   // Auto-trigger on mount if ?mock= param present

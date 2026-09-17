@@ -1,5 +1,6 @@
 "use client";
 import { getTier, getTierOrUnknown, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
+import { BOTIFY_MINT } from "@/lib/kol-memory/tokenIdentity";
 import type { TierOrUnknown } from "@/lib/risk/tier";
 import { getVerdictCopy } from "@/lib/copy/verdictCopy";
 import { getActionCopy } from "@/lib/copy/actions";
@@ -351,7 +352,7 @@ export default function TigerScanPageFR() {
   }, []);
 
   const LIVE_PRESETS_FR = [
-    { id: "botify",  label: "BOTIFY",   tag: "ARNAQUE", addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+    { id: "botify",  label: "BOTIFY",   tag: "ARNAQUE", addr: BOTIFY_MINT },
     { id: "pump",    label: "PUMP.FUN", tag: "SOL",     addr: "a3W4qutoEJA4232T2gwZUfgYJTetr96pU4SJMwppump" },
     { id: "bonk",    label: "BONK",     tag: "SOL",     addr: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
     { id: "vitalik", label: "VITALIK",  tag: "ETH",     addr: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
@@ -366,7 +367,7 @@ export default function TigerScanPageFR() {
   const DEMO_CHIPS = [
     { label: "✅ Sûr",       addr: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
     { label: "⚠️ Attention", addr: "7WRX5QGuRLhGCJszpQjYmw6ihb6z8KRdAEHQUhGJpump" },
-    { label: "🚨 Arnaque",   addr: "BYZ9CcZGKAXmN2uDsKcQMM9UnZacja4vWcns9Th69xb" },
+    { label: "🚨 Arnaque",   addr: BOTIFY_MINT },
   ];
 
   React.useEffect(() => {
