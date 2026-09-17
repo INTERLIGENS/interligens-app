@@ -310,18 +310,50 @@ export function decideResolution(sorted: ResolvedTokenCandidate[]): ResolveStatu
   const isInternal = top.source === "curated" || top.source === "mentions";
 
   if (exacts.length >= 2) {
-    const chains = new Set(exacts.map((c) => c.chain));
-    if (chains.size > 1) {
+    // ── CC-OFFLINE-300 · LA RÈGLE MÊME-CHAÎNE EST INDÉPENDANTE ─────────────
+    //
+    // ██  LA LIQUIDITÉ EST DE L'INFO MARCHÉ, PAS DE L'INFO D'IDENTITÉ.     ██
+    // ██  MIEUX VAUT AMBIGUOUS QUE SCANNER LE MAUVAIS TOKEN.               ██
+    //
+    // La règle « plusieurs exactes sur une même chaîne = des tokens réellement
+    // distincts » était DÉJÀ écrite ici, et déjà ratifiée. Elle était
+    // simplement INATTEIGNABLE : les deux bras formaient un `if/else`, et dès
+    // qu'un candidat d'une AUTRE chaîne s'ajoutait, `chains.size > 1` envoyait
+    // tout le monde dans le bras cross-chain — qui ne regarde qu'un ratio de
+    // liquidité. La collision même-chaîne n'était alors jamais examinée.
+    //
+    // MESURÉ SUR LE SERVI le 2026-09-17 pour « VINE » : quatre exactes SOL
+    // distinctes (dont le mint du dossier gouverné) plus une exacte sur une
+    // autre chaîne. Ratio 47,8 M / 1,5 M = 31,9 ⇒ le bras cross-chain
+    // « résolvait », et le produit sélectionnait SILENCIEUSEMENT le token le
+    // plus liquide. Deux heures plus tôt, les mêmes entrées rendaient
+    // `ambiguous` : L'IDENTITÉ SERVIE DÉPENDAIT D'UN COURS.
+    //
+    // ⛔ AUCUN SEUIL NOUVEAU, aucun champ nouveau, aucune pondération, aucun
+    //    ticker en dur, aucune préférence pour nos dossiers. La vérité de
+    //    DexScreener n'est pas modifiée : elle est PRÉSENTÉE au lieu d'être
+    //    ARBITRÉE PAR UN COURS.
+    const exactesParChaine = new Map<string, number>();
+    for (const c of exacts) exactesParChaine.set(c.chain, (exactesParChaine.get(c.chain) ?? 0) + 1);
+
+    // Multiple exact matches on the same chain = genuinely distinct tokens.
+    // Évaluée EN PREMIER et sans condition : ce que portent les autres chaînes
+    // ne peut plus la rendre muette.
+    for (const n of exactesParChaine.values()) {
+      if (n >= 2) return "ambiguous";
+    }
+
+    if (exactesParChaine.size > 1) {
       // Cross-chain exact collision: only resolve if the leader clearly
       // dominates (≥2x liquidity). A chain mistake is critical on an anti-scam.
+      //
+      // INCHANGÉE — même comparaison, même seuil. Elle ne voit désormais que
+      // le cas pour lequel elle a été écrite : AU PLUS UNE exacte par chaîne.
       const a = top.liquidityUsd ?? 0;
       const b = second?.liquidityUsd ?? 0;
       const ratio = b > 0 ? a / b : a > 0 ? Infinity : 0;
       if (!(ratio >= 2)) return "ambiguous";
       // dominant leader → fall through to eligibility checks
-    } else {
-      // Multiple exact matches on the same chain = genuinely distinct tokens.
-      return "ambiguous";
     }
   } else if (sorted.length >= 2) {
     // Several candidates, at most one exact. A prefix top is never auto-picked.

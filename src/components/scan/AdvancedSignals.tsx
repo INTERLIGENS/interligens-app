@@ -102,6 +102,9 @@ function Chip({ text, level }: { text: string; level: string }) {
       padding: "2px 8px",
       borderRadius: 999,
       whiteSpace: "nowrap",
+      // CC-OFFLINE-300 · 2 — le badge ne se comprime pas et ne se coupe pas.
+      // C'est `bVal` qui cède (il porte déjà `overflow:hidden` + ellipsis).
+      flexShrink: 0,
     }}>
       {text}
     </span>
@@ -146,6 +149,11 @@ const bCard: React.CSSProperties = {
   border: "1px solid #1a1a24",
   borderRadius: 8,
   padding: "12px 14px",
+  // CC-OFFLINE-300 · 2 — un item de grille a `min-width: auto` : sans ceci il
+  // ne peut PAS descendre sous la largeur de son contenu, l'ellipsis de `bVal`
+  // ne s'active jamais, et la ligne DÉBORDE — c'est ainsi que le badge
+  // « NOT ESTABLISHED » se retrouvait coupé à droite. Présentation seule.
+  minWidth: 0,
 };
 
 const bTitle: React.CSSProperties = {
@@ -343,7 +351,7 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
             </div>
           )}
 
-          <div style={{ display: hasOnChainData ? "grid" : "none", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          <div style={{ display: hasOnChainData ? "grid" : "none", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8 }}>
 
             <Card title="Website">
               {website
@@ -470,11 +478,11 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
 
         {/* Section B — Market & Promotion Signals */}
         {hasSectionB && (
-          <div style={{ padding: "12px 14px 14px", borderTop: "1px solid #1a1a24" }}>
+          <div style={{ padding: "12px 14px 16px", borderTop: "1px solid #1a1a24", overflow: "hidden" }}>
             <div style={sectionLabel}>
               {lang === "fr" ? "Signaux marché & promotion" : "Market & Promotion Signals"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8 }}>
 
               <div style={bCard}>
                 <div style={bTitle}>{lang === "fr" ? "INFLUENCE (CALLS)" : "INFLUENCE (CALLS)"}</div>
