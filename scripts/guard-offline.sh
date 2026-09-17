@@ -556,7 +556,24 @@ LEASES=(
     #
     # Le code est ÉCRIT, TESTÉ et VERT avant l'ouverture : la lease ne couvre
     # que les commits. 30 minutes, durée pratique minimale.
-    "CC-OFFLINE-282-COUVERTURE-GRAVITE-LEGACY|couverture-gravite-legacy|src/app/api/v1/score/route.ts,src/components/scan/RetailVerdictBanner.tsx,src/app/api/scan/solana/route.ts|8e39540e9611b4176223040b008119afe452dba1|feat/cc-offline-282-couverture-positive|2026-09-17T11:05:00Z|2026-09-17T11:35:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — les trois étapes A, B et C sont commitées, en
+    # 47 SECONDES de lease vivante (11:14:03Z → 11:14:50Z), sur une borne de
+    # 30 minutes. Le code était écrit, testé et vert AVANT l'ouverture : la
+    # lease n'a couvert que les commits, et c'est tout ce qu'elle doit couvrir.
+    #
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : trois chemins gelés, exactement
+    # ceux listés. Aucun fichier gelé adjacent. `canonicalDecision.ts` et les
+    # pages de démo, non gelés, n'ont jamais eu besoin d'elle.
+    #
+    # ÉCART DÉCLARÉ : une seule PR pour trois étapes, au lieu de trois. Le
+    # champ `sujet` d'une lease lie UNE branche ; livrer A, B et C sur trois
+    # branches aurait exigé trois leases, donc trois fois la surface ouverte.
+    # Les trois étapes restent trois COMMITS distincts, avec leurs messages.
+    #
+    #   CC-OFFLINE-282-COUVERTURE-GRAVITE-LEGACY | couverture-gravite-legacy
+    #   3 chemins · feat/cc-offline-282-couverture-positive
+    #   2026-09-17T11:05:00Z → 11:35:00Z (30 mn) · consommée à 11:14:50
 )
 
 lease_rouge() {
