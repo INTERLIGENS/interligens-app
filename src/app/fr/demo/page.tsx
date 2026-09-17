@@ -1064,7 +1064,7 @@ export default function TigerScanPageFR() {
                       ⛔ Aucun repli legacy, aucun contournement vers l'artefact
                       counsel, aucune autorité de publication touchée. */}
                   <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest text-center">
-                    Aucun dossier public n'est disponible pour cette adresse.
+                    {"Aucun dossier public n'est disponible pour cette adresse."}
                   </p>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
