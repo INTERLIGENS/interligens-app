@@ -727,7 +727,20 @@ LEASES=(
     # témoin DOM qui rend la page entière et clique les contrôles réellement
     # rendus. M13–M18 injectés et mesurés ROUGES, un par un. 40 minutes — la
     # borne pratique d'un cycle CI sur trois fichiers, sous les 45 du mécanisme.
-    "CC-OFFLINE-296-SURFACES-HUMAINES|surfaces-humaines|src/components/TigerRevealCard.tsx,src/components/scan/AdvancedSignals.tsx,src/app/api/scan/ask/route.ts|8c2d8dbdd99149bc3e0dbb5ca98648aa36baa69b|feat/cc-offline-296-surfaces-humaines|2026-09-17T13:42:00Z|2026-09-17T14:22:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — ouverte 13:42, exercée au commit 13:47:11, PR #505
+    # fusionnée 13:52. Elle n'est pas laissée expirer : une lease périmée cesse
+    # d'autoriser, mais un enregistrement OPEN qui traîne est un mensonge sur
+    # l'état.
+    #
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : les TROIS chemins accordés, et
+    # eux seuls, vérifié par `gh pr view 505 --json files` — 14 fichiers au
+    # diff, dont 11 LIBRES (deux pages de démo, la troisième implémentation
+    # dupliquée, la couche d'explication, trois fichiers de témoins).
+    #
+    #   CC-OFFLINE-296-SURFACES-HUMAINES | surfaces-humaines
+    #   3 chemins · feat/cc-offline-296-surfaces-humaines
+    #   2026-09-17T13:42:00Z → 14:22:00Z (40 mn) · consommée à 13:47:11
 )
 
 lease_rouge() {
