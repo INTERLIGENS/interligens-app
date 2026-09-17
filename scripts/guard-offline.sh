@@ -789,6 +789,38 @@ LEASES=(
     #   CC-OFFLINE-298-RESIDUS-SERVIS | residus-servis
     #   2 chemins · feat/cc-offline-298-residus-servis
     #   2026-09-17T14:20:00Z → 14:50:00Z (30 mn) · consommée à 14:25:46
+
+    # ── CC-OFFLINE-300-CADRAGE-ADVANCED-SIGNALS ──────────────────────────────
+    # UN SEUL chemin, accordé après une passe de LECTURE SEULE.
+    #
+    #   src/components/scan/AdvancedSignals.tsx
+    #
+    # POURQUOI. Le badge « NOT ESTABLISHED » de COORDINATION RISK était COUPÉ à
+    # droite. La cause est entièrement INTERNE au composant :
+    #
+    #   · `Chip` (:81) porte `whiteSpace: "nowrap"` mais AUCUN `flexShrink` ;
+    #   · `bCard` (:144) n'a pas `minWidth: 0` — or un item de grille a
+    #     `min-width: auto`, donc il ne peut PAS descendre sous la largeur de
+    #     son contenu : l'ellipsis que `bVal` porte déjà ne s'active JAMAIS, et
+    #     c'est la ligne entière qui déborde ;
+    #   · la grille est figée à `repeat(2, 1fr)`, sans repli à une colonne.
+    #
+    # La page ne passe AUCUNE de ces valeurs : aucune prop transmissible ne
+    # peut corriger le cadrage depuis l'extérieur.
+    #
+    # ⛔ PRÉSENTATION SEULE. Aucune donnée, aucun score, aucune autorité,
+    #    aucune méthodologie. Les gardes d'influence (CC-OFFLINE-296) et de
+    #    coordination (CC-OFFLINE-298) sont laissées intactes, et des témoins
+    #    les tiennent.
+    #
+    # ⛔ AUCUN CHEMIN ADJACENT. Le second point du lot — la règle
+    #    d'identité « plusieurs exactes sur une même chaîne ⇒ ambiguous » —
+    #    vit dans `src/lib/marketProviders.ts`, LIBRE. Aucun chemin demandé
+    #    par précaution.
+    #
+    # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : 10 témoins, M22–M24
+    # injectés et mesurés ROUGES. 25 minutes.
+    "CC-OFFLINE-300-CADRAGE-ADVANCED-SIGNALS|cadrage-advanced-signals|src/components/scan/AdvancedSignals.tsx|2c83568a15c8d02a1c7b290564d2e875a0d7e130|feat/cc-offline-300-identite-et-cadrage|2026-09-17T14:57:00Z|2026-09-17T15:22:00Z|OPEN"
 )
 
 lease_rouge() {
