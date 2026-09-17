@@ -58,20 +58,21 @@ describe("CF-3 · le renderer PRÉSENTE, il ne fabrique pas", () => {
     expect(renderGovernedCaseFileHtml(p, T)).not.toBe(renderGovernedCaseFileHtml(p, "2026-09-17T00:00:00.000Z"));
   });
 
-  it("les sections sont adossées à une AUTORITÉ, pas à un jugement", () => {
+  it("les sections sont adossées à `rowNature`, jamais à la provenance d'une pièce", () => {
+    // CC-OFFLINE-260 — la troisième section, « What could not be established »,
+    // a été SUPPRIMÉE : elle dérivait une catégorie ÉPISTÉMIQUE de
+    // `MACHINE_MEASURED`, qui ne répond qu'à la question de l'ORIGINE.
     const html = renderGovernedCaseFileHtml(projection([claim(), MESURE, CONCLUSION]), T);
-    expect(html).toContain("What we established");
-    // MEASURED LIMIT vient de la provenance MACHINE_MEASURED de la pièce citée.
-    expect(html).toContain("What could not be established");
-    // GOVERNED CONCLUSION vient de `rowNature === "INFERENCE"`.
-    expect(html).toContain("Governed conclusion");
+    expect(html).toContain("Governed observations");
+    expect(html).toContain("Governed conclusions");
+    expect(html).not.toContain("What could not be established");
+    expect(html).not.toContain("What we established");
   });
 
   it("une section SANS autorité n'apparaît pas — ni vide, ni « non établie »", () => {
     const html = renderGovernedCaseFileHtml(projection([claim()]), T);
-    expect(html).toContain("What we established");
-    expect(html).not.toContain("What could not be established");
-    expect(html).not.toContain("Governed conclusion");
+    expect(html).toContain("Governed observations");
+    expect(html).not.toContain("Governed conclusions");
   });
 
   it("chaque assertion porte son LEVEL 2 — identité, version, sceau, pièces", () => {

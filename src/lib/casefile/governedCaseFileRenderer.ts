@@ -16,9 +16,44 @@
 // La nuance tient dans « classer » : les sections ci-dessous ne sont PAS un
 // jugement du renderer. Chacune est adossée à une AUTORITÉ PORTÉE PAR LA DONNÉE :
 //
-//   GOVERNED CONCLUSION   `rowNature === "INFERENCE"`
-//   MEASURED LIMIT        une pièce citée dont la provenance est MACHINE_MEASURED
-//   WHAT WE ESTABLISHED   le reste des claims admises
+//   GOVERNED CONCLUSIONS    `rowNature === "INFERENCE"`
+//   GOVERNED OBSERVATIONS   toute autre `rowNature` admise
+//
+// ─── CC-OFFLINE-260 · UNE FAUSSE CATÉGORIE A ÉTÉ SUPPRIMÉE ────────────────
+//
+// ██  PROVENANCE KIND ≠ CLAIM SEMANTICS.                                    ██
+// ██  A MACHINE-MEASURED PIECE IS NOT A NEGATIVE FINDING.                    ██
+//
+// Il exista ici une troisième section, « What could not be established »,
+// alimentée par un prédicat qui testait `provenanceKind === "MACHINE_MEASURED"`
+// sur les pièces citées. Elle était FAUSSE, et BC-0 l'a prouvé au premier sujet
+// qui la mettait à l'épreuve : l'unique observation BOTIFY — qui ÉTABLIT 262
+// lignes d'événements — s'est rendue sous un titre affirmant qu'on n'avait rien
+// pu établir. Le titre niait le paragraphe.
+//
+// La cause n'était pas un mauvais libellé mais une CONFUSION D'AUTORITÉS :
+//
+//   SOURCE / EVIDENCE   quelle pièce soutient l'assertion ?
+//   CLAIM               qu'est-ce qui est AFFIRMÉ ?
+//   PROVENANCE          comment, par qui, la pièce a-t-elle été produite ?
+//
+// `MACHINE_MEASURED` répond à la TROISIÈME question. La section prétendait en
+// tirer une réponse à la DEUXIÈME. Sur VINE les deux coïncidaient — la mesure
+// y était un constat négatif — et la coïncidence avait été prise pour une règle.
+//
+// ⛔ ELLE N'EST PAS REMPLACÉE PAR UNE AUTRE HEURISTIQUE. Pas de lecture du
+//    titre, pas de `causes.length`, pas de `result` analysé, pas de compte de
+//    pièces, pas de type de source, pas de branche par sujet. La catégorie est
+//    NEUTRE : elle ne présuppose ni positif, ni négatif, ni établi, ni non
+//    établi.
+//
+//        LE TEXTE GOUVERNÉ DE LA CLAIM PORTE CE QU'ELLE AFFIRME.
+//        LA PROVENANCE PORTE L'ORIGINE DE LA PIÈCE.
+//
+// Le sens négatif de `VINE-MEASURE-01` ne disparaît pas : il n'a jamais été
+// porté par `MACHINE_MEASURED`. Il est écrit dans le contenu gouverné de la
+// claim, qui dit ce qui a été cherché, dans quel périmètre, et ce qui n'a pas
+// été trouvé — et ce contenu est rendu intégralement.
 //
 // ⛔ Il n'y a PAS de section RELATION, et c'est délibéré : « relation » n'est
 //    porté par aucune autorité du modèle. Une claim qui cite quatre pièces le
@@ -59,10 +94,6 @@ const esc = (v: string | null | undefined): string =>
 
 const court = (v: string | null | undefined, n = 16): string =>
   v ? `${esc(v.slice(0, n))}…` : "—";
-
-/** Une claim est-elle fondée sur une MESURE ? L'autorité est la provenance. */
-const estMesure = (c: ProjectedClaim): boolean =>
-  c.citedSources.some((s) => s.provenanceKind === "MACHINE_MEASURED");
 
 /** LEVEL 2 — le fondement d'une assertion, attaché à elle. */
 function traceDe(c: ProjectedClaim): string {
@@ -130,9 +161,11 @@ export function renderGovernedCaseFileHtml(
   projection: AudienceScopedCaseFile,
   generatedAt: string,
 ): string {
+  // DEUX CATÉGORIES, ET UNE SEULE AUTORITÉ POUR LES DISTINGUER : `rowNature`,
+  // qui est une classification GOUVERNÉE. Rien d'autre n'est consulté — ni la
+  // provenance des pièces, ni leur nombre, ni le texte de la claim.
   const conclusions = projection.claims.filter((c) => c.rowNature === "INFERENCE");
-  const mesures = projection.claims.filter((c) => c.rowNature !== "INFERENCE" && estMesure(c));
-  const etablies = projection.claims.filter((c) => c.rowNature !== "INFERENCE" && !estMesure(c));
+  const observations = projection.claims.filter((c) => c.rowNature !== "INFERENCE");
 
   const toutesPieces = new Map<string, AssembledSource>();
   for (const c of projection.claims) for (const s of c.citedSources) toutesPieces.set(s.sourceId, s);
@@ -190,15 +223,17 @@ export function renderGovernedCaseFileHtml(
   </div>
 
   ${vide}
-  ${section("What we established", "Governed observations, each with its evidence.", etablies)}
   ${section(
-    "What could not be established",
-    "Bounded measurements produced by an identified INTERLIGENS instrument. " +
-      "A measurement states what was searched, within which perimeter, and what was not found — " +
-      "not that the thing does not exist.",
-    mesures,
+    "Governed observations",
+    "Governed assertions classified as observations. Each is stated by its own governed text " +
+      "and carries its foundation trace and cited evidence below it.",
+    observations,
   )}
-  ${section("Governed conclusion", "Inferences, each consuming the governed assertions listed in its trace.", conclusions)}
+  ${section(
+    "Governed conclusions",
+    "Governed assertions classified as inferences, each consuming the governed assertions listed in its trace.",
+    conclusions,
+  )}
 
   ${
     pieces
