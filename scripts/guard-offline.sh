@@ -629,6 +629,42 @@ LEASES=(
     #   CC-OFFLINE-290-LEGACY-SURFACE-MACHINE | legacy-surface-machine
     #   1 chemin · feat/cc-offline-290-legacy-surface-machine
     #   2026-09-17T11:35:00Z → 11:50:00Z (15 mn) · consommée à 11:42:14
+
+    # ── CC-OFFLINE-294-SCORE-SOUS-UNVERIFIED ─────────────────────────────────
+    # UN SEUL chemin, et l'architecte l'a nommé lui-même dans le ruling.
+    #
+    #   src/components/scan/RetailVerdictBanner.tsx
+    #
+    # POURQUOI. CC-OFFLINE-292 a fermé la PERMISSION : `computeScore([])` ne
+    # peut plus rendre ALLOW machine, SAFE partenaire, ni SAFE/CLEAN/Proceed
+    # retail. Il restait la DERNIÈRE MOITIÉ, et elle est PUREMENT VISUELLE : la
+    # bannière servait encore le nombre de repli à un humain sous le libellé
+    # « RISK SCORE ».
+    #
+    #   UN REPLI INTERNE N'EST PAS UNE MESURE HUMAINE.
+    #   PRÉSENTER SON NOMBRE LUI REDONNE UNE AUTORITÉ QUE LA MESURE
+    #   NE LUI DONNE PAS.
+    #
+    # OBJET STRICTEMENT BORNÉ : l'encadré numérique n'est plus MONTÉ quand
+    # `nonVerifie` — la variable EXISTANTE, celle de CC-OFFLINE-284. Aucune
+    # seconde règle, aucun seuil, aucun nombre en dur.
+    #
+    # ⛔ AUCUNE SUBSTITUTION. Ni zéro, ni tiret, ni « N/A » : la présentation
+    #    est RETENUE, jamais remplacée — inventer un nombre serait le défaut
+    #    symétrique.
+    # ⛔ UN SCORE RÉELLEMENT MESURÉ N'EST PAS MASQUÉ : couverture suffisante,
+    #    `undefined`, RED et ORANGE gardent tous leur nombre.
+    # ⛔ AUCUN FICHIER GELÉ ADJACENT. Les deux autres présentations numériques
+    #    (anneau, preuve « Score ») vivent sur les pages de démo, LIBRES.
+    #    `ClusterRiskBadge.tsx` reste FERMÉ : la trace causale a établi le
+    #    CAS A, donc aucun changement de code — ouvrir une lease sur un
+    #    fichier qu'on ne touche pas serait une fiction.
+    #
+    # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : M12 injecté et mesuré ROUGE
+    # (4 témoins rendus en jsdom), contrôle « score légitime encore affichable »
+    # vert. La lease ne couvre que la minute de la PR. 30 minutes — la borne
+    # pratique d'un cycle CI complet sur ce dépôt, sous les 45 mn du mécanisme.
+    "CC-OFFLINE-294-SCORE-SOUS-UNVERIFIED|score-sous-unverified|src/components/scan/RetailVerdictBanner.tsx|78aea3624edd4eed6a13955d35169f7460ae04d5|feat/cc-offline-294-score-sous-unverified|2026-09-17T12:35:00Z|2026-09-17T13:05:00Z|OPEN"
 )
 
 lease_rouge() {
