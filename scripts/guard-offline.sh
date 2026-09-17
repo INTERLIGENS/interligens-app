@@ -664,7 +664,19 @@ LEASES=(
     # (4 témoins rendus en jsdom), contrôle « score légitime encore affichable »
     # vert. La lease ne couvre que la minute de la PR. 30 minutes — la borne
     # pratique d'un cycle CI complet sur ce dépôt, sous les 45 mn du mécanisme.
-    "CC-OFFLINE-294-SCORE-SOUS-UNVERIFIED|score-sous-unverified|src/components/scan/RetailVerdictBanner.tsx|78aea3624edd4eed6a13955d35169f7460ae04d5|feat/cc-offline-294-score-sous-unverified|2026-09-17T12:35:00Z|2026-09-17T13:05:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — ouverte 12:35, exercée au commit 12:40:19, PR #502
+    # fusionnée 12:45. Elle n'est pas laissée expirer : une lease périmée cesse
+    # d'autoriser, mais un enregistrement OPEN qui traîne est un mensonge sur
+    # l'état.
+    #
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : un chemin, vérifié par
+    # `gh pr view 502 --json files` — les trois autres fichiers du diff sont
+    # LIBRES (deux pages de démo, un fichier de témoins).
+    #
+    #   CC-OFFLINE-294-SCORE-SOUS-UNVERIFIED | score-sous-unverified
+    #   1 chemin · feat/cc-offline-294-score-sous-unverified
+    #   2026-09-17T12:35:00Z → 13:05:00Z (30 mn) · consommée à 12:40:19
 )
 
 lease_rouge() {
