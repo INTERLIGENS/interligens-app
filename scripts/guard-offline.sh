@@ -594,7 +594,16 @@ LEASES=(
     #
     # ⛔ Aucun fichier gelé adjacent. Le code est écrit, testé et vert avant
     #    l'ouverture. 15 minutes.
-    "CC-OFFLINE-288-AFFICHAGE-LEGACY|affichage-legacy-retire|src/app/api/scan/solana/route.ts|d535258b125a801251f565176cdcbbdb10fb3f3e|feat/cc-offline-288-affichage-legacy|2026-09-17T11:20:00Z|2026-09-17T11:35:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — en 2 secondes de lease vivante (11:29:06Z →
+    # 11:29:08Z), sur une borne de 15 minutes. Le code était écrit, testé et
+    # vert avant l'ouverture.
+    #
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : un chemin, celui de l'étape C.
+    #
+    #   CC-OFFLINE-288-AFFICHAGE-LEGACY | affichage-legacy-retire
+    #   1 chemin · feat/cc-offline-288-affichage-legacy
+    #   2026-09-17T11:20:00Z → 11:35:00Z (15 mn) · consommée à 11:29:08
 )
 
 lease_rouge() {
