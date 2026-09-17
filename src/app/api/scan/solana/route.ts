@@ -7,6 +7,9 @@ import { loadCaseByMint } from "@/lib/caseDb";
 import { safeEvidenceUrl } from "@/lib/kol-memory/publicIdentityProjection";
 import { getMarketSnapshot } from "@/lib/marketProviders";
 import { computeScore } from "@/lib/scoring";
+// L'AUTORITE qui dit quels mints ont un dossier gouverne. Consommee, jamais
+// recopiee : le litteral du dossier appartient a ce module, et a lui seul.
+import { canonicalRefForMint } from "@/lib/casefile/publicProjection";
 import { emitScanCompleted } from "@/lib/events/producer";
 
 // ── Helius DAS: getAsset ─────────────────────────────────────────────────────
@@ -116,6 +119,35 @@ export type ScanResult = {
       severity_multiplier: number;
     };
     flags: string[];
+    /**
+     * L'ÉTAT DE COUVERTURE, porté À CÔTÉ du résultat — jamais fondu dedans.
+     *
+     * `flags` portait déjà `NO_CLAIMS_FALLBACK`, mais comme une chaîne parmi
+     * d'autres : rien n'obligeait un lecteur à la voir, et le palier GREEN la
+     * contredisait à l'écran. La couverture est désormais une donnée à part
+     * entière, lisible sans interprétation.
+     */
+    /**
+     * ⚠️ OPTIONNEL, ET C'EST UNE BORNE DE PÉRIMÈTRE, PAS UNE COMMODITÉ.
+     *
+     * Deux autres routes construisent ce même objet — `api/pdf/casefile` et
+     * `api/report/v2` — et toutes deux sont sur des chemins GELÉS que la lease
+     * de ce lot ne couvre pas. Rendre le champ obligatoire les forcerait, donc
+     * élargirait le périmètre autorisé. `undefined` y signifie exactement ce
+     * qu'il dit : CE producteur ne se prononce pas sur la couverture.
+     *
+     * ⛔ Ce n'est pas un défaut permissif : aucun consommateur ne peut lire
+     *    `undefined` comme « couverture suffisante ». La bannière n'efface
+     *    « CLEAN » que sur un `false` EXPLICITE.
+     */
+    coverage?: {
+      /** Une assertion gouvernée a-t-elle RÉELLEMENT été consommée ? */
+      offChainClaimsMeasured: boolean;
+      /** La couverture requise par ce chemin est-elle satisfaite ? */
+      sufficient: boolean;
+      /** Le dossier a une autorité gouvernée : son fichier plat ne fait plus foi. */
+      legacyAuthorityWithdrawn: boolean;
+    };
   };
   rpc_fallback_used?: boolean;
   rpc_down?: boolean;
@@ -225,8 +257,38 @@ export async function GET(request: NextRequest) {
     },
   };
 
-  const rawClaims = caseFile?.claims ?? [];
+  // ── CC-OFFLINE-286 · C — LE LEGACY NE PRIME PAS SUR L'AUTORITÉ GOUVERNÉE
+  //
+  // CE N'EST PAS UNE DOCTRINE DE PRÉSÉANCE NOUVELLE.
+  //
+  // `data/cases/*.json` est un FICHIER PLAT DU DÉPÔT. Ses claims C1-C8
+  // s'affichaient « Confirmed » et portaient, à elles seules, le RED 100 de
+  // BOTIFY. Or ces MÊMES assertions existent dans `CaseFileClaim` avec
+  // `rowNature = NULL` : l'autorité gouvernée les a DÉJÀ évaluées et ne les
+  // admet pas. `decideFoundationContract` les refuse sur CLAIM_UNCLASSIFIED,
+  // et la projection COUNSEL_INVESTOR n'en retient aucune.
+  //
+  // Les consommer depuis un fichier plat, c'est CONTOURNER UN REFUS EXISTANT.
+  // Ce n'est pas arbitrer entre deux autorités : il n'y en a qu'une, et elle a
+  // déjà parlé.
+  //
+  // Le fichier historique est PRÉSERVÉ. Rien n'est migré, publié ni supprimé.
+  // « Confirmed » n'est pas adouci en « Referenced » : ce serait continuer à
+  // consommer les mêmes assertions en changeant le mot. C'est la CONSOMMATION
+  // qui cesse.
+  const refGouvernee = canonicalRefForMint(mint_clean);
+  const autoriteLegacyRetiree = refGouvernee !== null;
+  const rawClaims = autoriteLegacyRetiree ? [] : (caseFile?.claims ?? []);
   const scoring = computeScore(rawClaims);
+
+  // ── CC-OFFLINE-284 · B — LA COUVERTURE, DITE À LA SURFACE HUMAINE ───────
+  //
+  // `computeScore([])` rend sa base de repli — 20, palier GREEN — sous le
+  // drapeau NO_CLAIMS_FALLBACK. Une ignorance devenait donc un « CLEAN » à
+  // l'écran, exactement comme elle devenait ALLOW côté machine. La surface
+  // humaine reçoit désormais l'ÉTAT DE COUVERTURE, et l'UI projette l'état
+  // UNKNOWN déjà ratifié plutôt que d'affirmer.
+  const offChainClaimsMesuree = rawClaims.length > 0;
 
   // ── Fetch lineage graph ──────────────────────────────────────────────────
   let scamLineage: "CONFIRMED" | "REFERENCED" | "NONE" = "NONE";
@@ -279,6 +341,12 @@ export async function GET(request: NextRequest) {
       tier: scoring.tier,
       breakdown: scoring.breakdown,
       flags: scoring.flags,
+      // La couverture voyage A COTE du resultat, jamais fondue dedans.
+      coverage: {
+        offChainClaimsMeasured: offChainClaimsMesuree,
+        sufficient: offChainClaimsMesuree,
+        legacyAuthorityWithdrawn: autoriteLegacyRetiree,
+      },
     },
     // @ts-ignore
     tiger_score: tigerScan.score,
