@@ -604,6 +604,25 @@ LEASES=(
     #   CC-OFFLINE-288-AFFICHAGE-LEGACY | affichage-legacy-retire
     #   1 chemin · feat/cc-offline-288-affichage-legacy
     #   2026-09-17T11:20:00Z → 11:35:00Z (15 mn) · consommée à 11:29:08
+
+    # ── CC-OFFLINE-290-LEGACY-SURFACE-MACHINE ────────────────────────────────
+    # UN SEUL chemin, DÉJÀ autorisé pour l'étape A, et le MÊME objectif que C.
+    #
+    #   src/app/api/v1/score/route.ts
+    #
+    # POURQUOI. Le témoin réel a montré une ASYMÉTRIE : `/api/scan/solana` avait
+    # cessé de consommer les claims du fichier plat, mais la route de DÉCISION
+    # MACHINE continuait. BOTIFY y rendait `BLOCK` sur un score de 70 DÉRIVÉ DES
+    # MÊMES assertions que l'autorité gouvernée refuse.
+    #
+    #   LE LEGACY NE PRIME PAS SUR L'AUTORITÉ GOUVERNÉE —
+    #   ET LA DÉCISION DE SWAP EST LA SURFACE QUI COMPTE LE PLUS.
+    #
+    # Aucun périmètre nouveau : même frontière, même étape C, sur l'autre
+    # surface. Le délta mesuré est rapporté sans être maquillé.
+    #
+    # ⛔ Aucun fichier gelé adjacent. Code écrit, testé, vert. 15 minutes.
+    "CC-OFFLINE-290-LEGACY-SURFACE-MACHINE|legacy-surface-machine|src/app/api/v1/score/route.ts|5f5618671d4555df3030df47e67ec836db7c23c2|feat/cc-offline-290-legacy-surface-machine|2026-09-17T11:35:00Z|2026-09-17T11:50:00Z|OPEN"
 )
 
 lease_rouge() {
