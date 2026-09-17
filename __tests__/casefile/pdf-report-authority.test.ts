@@ -127,7 +127,11 @@ describe("P3 — `/api/scan/solana` n'est pas touché", () => {
   const scan = codeSeul(SCAN);
 
   it("les deux scoreurs lisent toujours `rawClaims`, jamais `off_chain.claims`", () => {
-    expect(scan).toContain("const rawClaims = caseFile?.claims ?? [];");
+    // CC-OFFLINE-286 — la PROPRIÉTÉ ne bouge pas : les scoreurs lisent
+    // `rawClaims`. Ce qui change est sa DÉRIVATION — un dossier à autorité
+    // gouvernée ne consomme plus son fichier plat, et `rawClaims` est alors
+    // vide. Le champ substitué reste lu par aucun calcul.
+    expect(scan).toContain("const rawClaims = autoriteLegacyRetiree ? [] : (caseFile?.claims ?? []);");
     expect(scan).toContain("const scoring = computeScore(rawClaims);");
     expect(scan).toContain("no_casefile: !caseFile,");
     expect(scan).toContain("confirmedCriticalClaims: rawClaims.filter(");
