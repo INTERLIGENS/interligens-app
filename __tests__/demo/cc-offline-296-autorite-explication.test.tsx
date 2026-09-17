@@ -272,7 +272,11 @@ describe("CC-OFFLINE-296 · B5 — ⛔ M18 · AdvancedSignals", () => {
     render(<AdvancedSignals {...base} tier="GREEN" manipulationLevel={null} coverageSufficient={false} />);
     expect(screen.queryByText("Influence: Low")).toBeNull();
     expect(screen.getByText("Influence: not measured")).toBeTruthy();
-    expect(screen.getByText("NOT ESTABLISHED")).toBeTruthy();
+    // ⚠️ CC-OFFLINE-298 — « NOT ESTABLISHED » n'est plus unique dans la carte :
+    //    la coordination a adopté le MÊME vocabulaire ratifié. Le contrat de ce
+    //    témoin est inchangé — c'est l'hypothèse d'unicité qui ne tenait plus.
+    //    Les deux assertions décisives ci-dessus, elles, sont sans ambiguïté.
+    expect(screen.getAllByText("NOT ESTABLISHED").length).toBeGreaterThan(0);
   });
 
   it("⛔ L'AUTORITÉ INDÉPENDANTE EST PRÉSERVÉE — `manipulationLevel` prime", () => {
