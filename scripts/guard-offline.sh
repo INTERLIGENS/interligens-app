@@ -529,6 +529,34 @@ LEASES=(
     #   CC-OFFLINE-280-CASEFILE-CTA-VERIDIQUE | casefile-cta-veridique
     #   1 chemin · feat/cc-offline-280-casefile-cta-veridique
     #   2026-09-17T10:30:00Z → 11:00:00Z (30 mn) · consommée à 10:41
+
+    # ── CC-OFFLINE-282-COUVERTURE-GRAVITE-LEGACY ─────────────────────────────
+    # TROIS chemins gelés, et l'architecte en avait nommé quatre. La différence
+    # est MESURÉE, pas négociée :
+    #
+    #   src/app/api/v1/score/route.ts          A · contrat de couverture
+    #   src/components/scan/RetailVerdictBanner.tsx   B · projection UI
+    #   src/app/api/scan/solana/route.ts       C · retrait du legacy
+    #
+    # ⚠️ DEUX RÉSOLUTIONS DE CHEMIN, CONSIGNÉES AVANT OUVERTURE :
+    #
+    #   `canonicalDecision.ts` — UNE SEULE implémentation dans tout le dépôt,
+    #   `src/lib/prebuy/canonicalDecision.ts`, et c'est bien celle que
+    #   `projectPreBuy` importe. Elle N'EST PAS GELÉE : aucune lease n'est
+    #   ouverte pour elle. Ouvrir une lease sur un chemin libre serait une
+    #   fiction, et c'est une doctrine ratifiée de ce dépôt.
+    #
+    #   `RetailVerdictBanner` — le ruling nommait
+    #   `src/components/RetailVerdictBanner.tsx`. CE FICHIER N'EXISTE PAS. Le
+    #   composant réellement monté par les trois pages de démo est
+    #   `src/components/scan/RetailVerdictBanner.tsx`, et c'est LUI qui porte la
+    #   boucle de remplissage. C'est donc lui qui est ouvert, et lui seul.
+    #
+    # ⛔ Aucun fichier gelé adjacent. ⛔ Aucune expansion par joker.
+    #
+    # Le code est ÉCRIT, TESTÉ et VERT avant l'ouverture : la lease ne couvre
+    # que les commits. 30 minutes, durée pratique minimale.
+    "CC-OFFLINE-282-COUVERTURE-GRAVITE-LEGACY|couverture-gravite-legacy|src/app/api/v1/score/route.ts,src/components/scan/RetailVerdictBanner.tsx,src/app/api/scan/solana/route.ts|8e39540e9611b4176223040b008119afe452dba1|feat/cc-offline-282-couverture-positive|2026-09-17T11:05:00Z|2026-09-17T11:35:00Z|OPEN"
 )
 
 lease_rouge() {
