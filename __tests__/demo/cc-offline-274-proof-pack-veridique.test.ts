@@ -29,35 +29,54 @@ const PAGES = ["src/app/en/demo/page.tsx", "src/app/fr/demo/page.tsx"] as const;
 
 // ═══ LE CONTRÔLE CASEFILE ═══════════════════════════════════════════════════
 //
-// ⛔ `src/components/CaseFileCTA.tsx` est un chemin GELÉ, et aucune lease n'est
-//    pré-autorisée ici. Le composant N'A PAS ÉTÉ TOUCHÉ. C'est la SURFACE
-//    PUBLIQUE qui cesse de monter un contrôle qu'elle ne peut pas honorer —
-//    « absent » est l'un des trois mécanismes sanctionnés, et le seul
-//    disponible sans lease.
+// CC-OFFLINE-274 avait RETIRÉ le contrôle, faute de lease sur le composant.
+// CC-OFFLINE-280, sous lease accordée, livre le comportement PRÉFÉRÉ : il est
+// VISIBLE, DÉSACTIVÉ, et il porte sa raison.
 
-describe("P0-E · OPEN CASEFILE / DOWNLOAD — le contrôle indélivrable est ABSENT", () => {
+describe("P0-E · OPEN CASEFILE / DOWNLOAD — visible, désactivé, et vrai", () => {
+  const CTA = lire("src/components/CaseFileCTA.tsx");
+
+  it("le composant EXIGE `available` — aucun défaut permissif", () => {
+    expect(CTA).toContain("available: boolean;");
+    expect(CTA).not.toMatch(/available\s*=\s*true/);
+    expect(CTA).not.toMatch(/available\s*\?\?\s*true/);
+  });
+
+  it("les DEUX actions refusent d'agir quand l'artefact n'est pas délivrable", () => {
+    expect(CTA).toContain("const handleOpen = () => {\n    if (!id || !available) return;");
+    expect(CTA).toContain("const handleDownload = async () => {\n    if (!id || !available) return;");
+    expect(CTA).toContain("const disabled = !id || loading || !available;");
+  });
+
+  it("⛔ M6 — aucun FAUX SUCCÈS, et aucun faux diagnostic de panne", () => {
+    // « PDF generation failed » reste pour un ÉCHEC RÉEL de génération. Il ne
+    // décrit plus un refus d'autorité : le visiteur n'a jamais été autorisé,
+    // rien n'a échoué à se générer.
+    expect(CTA).toContain("No public case file is available for this address.");
+    expect(CTA).toContain("Aucun dossier public n'est disponible pour cette adresse.");
+    expect(CTA).toContain("{!available && (");
+  });
+
+  it("le libellé statique inconditionnel « Detective Referenced » a DISPARU", () => {
+    // Il s'affichait sous TOUS les dossiers, quelle que soit l'autorité.
+    expect(CTA).not.toContain("Detective Referenced");
+    expect(CTA).not.toContain("Référencé détective");
+    expect(CTA).not.toContain("detective:");
+  });
+
+  it("⛔ le renderer n'INVENTE aucune raison — il n'en connaît qu'une, et elle lui est DONNÉE", () => {
+    const code = sansCommentaires(CTA);
+    // Aucune sonde, aucune heuristique, aucune dérivation locale d'autorité.
+    for (const m of ["publishStatus", "COUNSEL", "template=governed"]) {
+      expect(code, m).not.toContain(m);
+    }
+  });
+
   for (const p of PAGES) {
-    const s = lire(p);
-    const code = sansCommentaires(s);
-
-    it(`${p} — la surface publique ne monte plus \`CaseFileCTA\``, () => {
-      expect(code).not.toContain("<CaseFileCTA");
-      expect(code).not.toContain('from "@/components/CaseFileCTA"');
-    });
-
-    it(`${p} — et elle DIT pourquoi, au lieu de se taire`, () => {
-      const i = s.indexOf("Proof Pack");
-      const bloc = s.slice(i, i + 5000);
-      expect(bloc).toMatch(/No public case file is available|Aucun dossier public n'est disponible/);
-    });
-
-    it(`${p} — ⛔ le composant GELÉ n'a pas été modifié`, () => {
-      const cta = lire("src/components/CaseFileCTA.tsx");
-      // Il vit toujours, intact, pour ses appelants autorisés. Le libellé
-      // statique « Detective Referenced » y demeure : le corriger EN PLACE
-      // exige une lease, et elle est remontée à l'architecte.
-      expect(cta).toContain("Detective Referenced");
-      expect(cta).not.toContain("available: boolean");
+    it(`${p} — le contrôle est MONTÉ et déclaré indisponible`, () => {
+      const code = sansCommentaires(lire(p));
+      expect(code).toMatch(/<CaseFileCTA[^>]*available=\{false\}/);
+      expect(code).toContain('import CaseFileCTA from "@/components/CaseFileCTA";');
     });
   }
 });
