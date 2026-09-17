@@ -498,6 +498,29 @@ LEASES=(
     #   CC-OFFLINE-246-EXPOSITION-ROUTE | exposition-de-la-route-canonique
     #   1 chemin · feat/cc-offline-246-lease-route-canonique-exposition
     #   2026-09-16T13:06:00Z → 13:51:00Z (45 mn) · consommée à 13:18
+
+    # ── CC-OFFLINE-280-CASEFILE-CTA-VERIDIQUE ────────────────────────────────
+    # UN SEUL chemin, et l'architecte l'a nommé lui-même.
+    #
+    #   src/components/CaseFileCTA.tsx
+    #
+    # OBJET STRICTEMENT BORNÉ, repris mot pour mot du ruling : retirer
+    # l'assertion inconditionnelle et statique « DETECTIVE REFERENCED », et
+    # rendre le contrôle CaseFile VRAI sous l'autorité courante.
+    #
+    # Mesuré en anonyme sur le runtime servi : `/api/casefile/public` rend 401
+    # NOMINATIVE_ACCESS_REQUIRED. `handleOpen` ouvrait un onglet sur une erreur
+    # JSON ; `handleDownload` affichait « PDF generation failed » — un
+    # DIAGNOSTIC FAUX : rien n'avait échoué à se générer, le visiteur n'avait
+    # jamais été autorisé.
+    #
+    #   UN CONTRÔLE ACTIF EST UNE PROMESSE DE LIVRAISON.
+    #
+    # ⛔ AUCUN FICHIER GELÉ ADJACENT. La raison affichée doit être CAUSALEMENT
+    #    DÉRIVÉE d'une autorité existante — le renderer n'en invente aucune.
+    #
+    # 30 minutes : durée pratique MINIMALE, la consigne le demande.
+    "CC-OFFLINE-280-CASEFILE-CTA-VERIDIQUE|casefile-cta-veridique|src/components/CaseFileCTA.tsx|7352b5e8ff35256f8972324a3039a8ea821f057e|feat/cc-offline-280-casefile-cta-veridique|2026-09-17T10:30:00Z|2026-09-17T11:00:00Z|OPEN"
 )
 
 lease_rouge() {
