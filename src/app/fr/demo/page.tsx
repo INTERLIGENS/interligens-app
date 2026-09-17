@@ -144,6 +144,13 @@ function buildScanUrl(address: string, chain: Chain, deep: boolean): string {
   }
 }
 
+// ─── CC-OFFLINE-294 · LE LIBELLÉ DE LA PREUVE DE SCORE, À UN SEUL ENDROIT ───
+//
+// Il était recopié à six endroits. La projection sous couverture insuffisante
+// doit pouvoir le RECONNAÎTRE pour le retenir — et reconnaître une chaîne
+// recopiée six fois serait une heuristique. Ici, c'est une ÉGALITÉ.
+const LABEL_PREUVE_SCORE = "Score";
+
 // ─── NORMALIZER ───────────────────────────────────────────────────────────────
 
 function normalizeScanData(data: any, chain: Chain): NormalizedScan {
@@ -182,7 +189,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       proofs.push({ label: "Scanné le", value: scanDate, level: "low", riskDescription: "Horodatage du scan" });
     } else {
       proofs.push({ label: "Réseau", value: "Solana Mainnet", level: "low", riskDescription: "Chaîne officielle" });
-      proofs.push({ label: "Score", value: `${score}/100`, level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
+      proofs.push({ label: LABEL_PREUVE_SCORE, value: `${score}/100`, level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
       proofs.push({ label: "Source", value: offchainSource, level: "low", riskDescription: "Source des données" });
     }
   } else if (chain === "ETH") {
@@ -200,7 +207,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
     } else {
       proofs.push({ label: "Réseau",   value: "BNB Smart Chain", level: "low",    riskDescription: "BSC mainnet officiel" });
       proofs.push({ label: "Contrat",  value: "Non vérifié",     level: "medium", riskDescription: "Ajoute BSCSCAN_API_KEY pour les données live" });
-      proofs.push({ label: "Score",    value: `${score}/100`,    level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,    value: `${score}/100`,    level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
     }
   } else if (chain === "BASE") {
     const apiProofs: any[] = Array.isArray(data?.proofs) ? data.proofs : [];
@@ -215,7 +222,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       );
     } else {
       proofs.push({ label: "Réseau",  value: "Base (Coinbase L2)", level: "low",    riskDescription: "Base mainnet officiel" });
-      proofs.push({ label: "Score",   value: `${score}/100`,       level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,   value: `${score}/100`,       level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
       proofs.push({ label: "Source",  value: "Etherscan v2",       level: "low",    riskDescription: "Basescan via Etherscan v2 API" });
     }
   } else if (chain === "ARBITRUM") {
@@ -231,7 +238,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       );
     } else {
       proofs.push({ label: "Réseau",  value: "Arbitrum One",  level: "low",    riskDescription: "Arbitrum L2 mainnet officiel" });
-      proofs.push({ label: "Score",   value: `${score}/100`,  level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,   value: `${score}/100`,  level: score > 60 ? "high" : "low", riskDescription: "Évaluation du risque" });
       proofs.push({ label: "Source",  value: "Etherscan v2",  level: "low",    riskDescription: "Arbiscan via Etherscan v2 API" });
     }
   } else {
@@ -248,7 +255,7 @@ function normalizeScanData(data: any, chain: Chain): NormalizedScan {
       );
     } else {
       proofs.push({ label: "Réseau", value: "TRON chain",   level: "low",                        riskDescription: "Réseau TRON officiel" });
-      proofs.push({ label: "Score",   value: `${score}/100`, level: score > 60 ? "high" : "low",  riskDescription: "Évaluation du risque" });
+      proofs.push({ label: LABEL_PREUVE_SCORE,   value: `${score}/100`, level: score > 60 ? "high" : "low",  riskDescription: "Évaluation du risque" });
       proofs.push({ label: "Mode",    value: "Demo stable",  level: "low",                        riskDescription: "Données live disponibles sur upgrade" });
     }
   }
@@ -919,6 +926,27 @@ export default function TigerScanPageFR() {
               const _nonVerifie = _sel.presentation === "UNVERIFIED";
               const _tierProjete: TierOrUnknown = _nonVerifie ? "UNKNOWN" : finalTier;
               const _vc = _sel.copy;
+              // ── CC-OFFLINE-294 · LE NOMBRE DE REPLI NE FAIT PAS AUTORITÉ ──
+              //
+              // ██  UN REPLI INTERNE N'EST PAS UNE MESURE HUMAINE.           ██
+              //
+              // `computeScore([])` reste un repli legacy interne : il ne peut
+              // plus rendre ALLOW, SAFE ni CLEAN. Mais PRÉSENTER son nombre à
+              // un humain sous le libellé « RISK SCORE » lui REDONNE une
+              // autorité visuelle que la mesure ne lui donne pas.
+              //
+              // ⛔ RIEN N'EST SUBSTITUÉ, RIEN N'EST INVENTÉ. Aucune sémantique
+              //    null/zéro, aucun autre score. La présentation numérique est
+              //    simplement RETENUE — et UNIQUEMENT sous `_nonVerifie`, donc
+              //    uniquement quand la couverture requise est insuffisante ET
+              //    que le palier final est le seul palier permissif.
+              //
+              // ⛔ UN SCORE RÉELLEMENT MESURÉ N'EST PAS MASQUÉ : couverture
+              //    suffisante ⇒ `_nonVerifie` est faux ⇒ anneau, encadré et
+              //    preuve de score restent servis, à l'identique.
+              const _proofsProjetees = _nonVerifie
+                ? result.proofs.filter((p) => p.label !== LABEL_PREUVE_SCORE)
+                : result.proofs;
               const finalVerdict = _vc.label;
               const finalSub = _vc.subtitle;
               const finalActions = _vc.actions;
@@ -942,7 +970,9 @@ export default function TigerScanPageFR() {
               </div>
 
               {/* 1. TigerScore ring */}
-              <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(_tierProjete)} duration={900} />
+              {!_nonVerifie && (
+                <AnimatedScoreRing key={`${result?.score}-${result?.tier}-${address}`} score={finalScore} tier={finalTier} color={getTierColorFinal(_tierProjete)} duration={900} />
+              )}
 
               {/* TOKEN IDENTITY STRIP */}
               <div className="flex justify-center w-full mt-5 mb-4">
@@ -998,7 +1028,7 @@ export default function TigerScanPageFR() {
               <RetailVerdictBanner
                 tier={finalTier}
                 score={result.score}
-                proofs={result.proofs}
+                proofs={_proofsProjetees}
                 address={address.trim()}
                 chain={result.chain}
                 lang="fr"
@@ -1208,7 +1238,7 @@ export default function TigerScanPageFR() {
               )}
 
               {/* 5. TOP ON-CHAIN PROOFS + ASK TIGER ANALYST — flip card */}
-              <TigerRevealCard tier={finalTier} proofs={result.proofs} />
+              <TigerRevealCard tier={finalTier} proofs={_proofsProjetees} />
 
               {/* 5b. RISQUE DE STRUCTURE DE MARCHÉ — MM Pattern Engine (flag-gated) */}
               <MarketStructureRisk result={mmRisk} locale="fr" />
