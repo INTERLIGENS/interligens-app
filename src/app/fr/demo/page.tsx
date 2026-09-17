@@ -10,7 +10,6 @@ import RetailVerdictBanner from "@/components/scan/RetailVerdictBanner";
 import MarketWeather from "@/components/MarketWeather";
 import TigerRevealCard from "@/components/TigerRevealCard";
 import AnimatedScoreRing from "@/components/AnimatedScoreRing";
-import CaseFileCTA from "@/components/CaseFileCTA";
 import LegalFooter from "@/components/legal/LegalFooter";
 import BetaNav from "@/components/beta/BetaNav";
 import QuickDemoBar from "@/components/demo/QuickDemoBar";
@@ -1014,20 +1013,18 @@ export default function TigerScanPageFR() {
                   <span className="text-[9px] text-zinc-700 font-mono">{result.proofs?.length ?? 0} signaux · {result.chain}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {/* ── CC-OFFLINE-274 — LE NO-OP MUET EST FERMÉ ──────────────────
+                      `/api/report/v2` passe par `checkAuth` et n'a jamais lu de
+                      cookie : mesuré en anonyme sur le runtime servi, il rend 401.
+                      Le gestionnaire faisait `if (!res.ok) return;` — un clic sans
+                      effet, sans message, indiscernable d'une panne du navigateur.
+                      Le contrôle DIT désormais ce qu'il est. ⛔ Aucun repli legacy,
+                      aucun contournement vers l'artefact counsel. */}
                   <button
-                    onClick={async () => {
-                      if (!result) return;
-                      const res = await fetch(`/api/report/v2?mint=${encodeURIComponent(address.trim())}&lang=fr&mock=1`);
-                      if (!res.ok) return;
-                      const blob = await res.blob();
-                      const url  = URL.createObjectURL(blob);
-                      const a    = document.createElement("a");
-                      a.href     = url;
-                      a.download = `interligens-${result.chain.toLowerCase()}-${result.rawSummary?.address ?? address.slice(0,8)}.pdf`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    }}
-                    className="flex-1 py-2.5 rounded-lg border border-[#F85B05]/30 text-[10px] font-black uppercase tracking-[0.15em] text-[#F85B05] hover:bg-[#F85B05]/10 transition-all"
+                    type="button"
+                    disabled
+                    title="Rapport PDF indisponible — autorisation requise"
+                    className="flex-1 py-2.5 rounded-lg border border-zinc-800 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 cursor-not-allowed opacity-50"
                   >
                     Rapport PDF
                   </button>
@@ -1035,7 +1032,7 @@ export default function TigerScanPageFR() {
                     onClick={() => { setShowEvidence(true); setTimeout(() => document.getElementById('evidence-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}
                     className="flex-1 py-2.5 rounded-lg border border-zinc-800 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 hover:text-[#F85B05] hover:border-zinc-600 transition-all"
                   >
-                    Preuves
+                    Télémétrie du scan
                   </button>
                   {corrobData?.found && (
                     <a
@@ -1048,7 +1045,27 @@ export default function TigerScanPageFR() {
                 </div>
                 {/* Open Casefile — prominent inside Proof Pack */}
                 <div className="mt-3">
-                  <CaseFileCTA id={address.trim() || null} lang="fr" />
+                  {/* ── CC-OFFLINE-274 — LE CONTRÔLE QUI NE PEUT PAS LIVRER EST ABSENT ──
+                      Mesuré en anonyme sur le runtime servi : `/api/casefile/public`
+                      rend 401 NOMINATIVE_ACCESS_REQUIRED. Les dossiers courants sont
+                      counsel/fondement, aucun n'est publié — le refus est ATTENDU,
+                      pas une panne. `CaseFileCTA` promettait pourtant une ouverture
+                      et un téléchargement : le premier ouvrait un onglet sur une
+                      erreur JSON, le second affichait « PDF generation failed », un
+                      DIAGNOSTIC FAUX — rien n'avait échoué à se générer, le visiteur
+                      n'avait jamais été autorisé.
+
+                      ⛔ LE COMPOSANT LUI-MÊME N'A PAS ÉTÉ TOUCHÉ : `src/components/`
+                      est un chemin GELÉ et aucune lease n'est pré-autorisée ici. La
+                      variante préférable — bouton désactivé portant la raison — est
+                      remontée à l'architecte. Ici, la surface publique retire un
+                      contrôle qu'elle ne peut pas honorer : « absent » est l'un des
+                      mécanismes sanctionnés, et le seul disponible sans lease.
+                      ⛔ Aucun repli legacy, aucun contournement vers l'artefact
+                      counsel, aucune autorité de publication touchée. */}
+                  <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest text-center">
+                    Aucun dossier public n'est disponible pour cette adresse.
+                  </p>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <WatchButton mint={address.trim()} chain={chain ?? "SOL"} symbol={result.rawSummary?.symbol} lang="fr" />
