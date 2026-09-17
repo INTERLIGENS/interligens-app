@@ -777,7 +777,18 @@ LEASES=(
     #
     # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : 11 témoins de lot, M19–M21
     # injectés et mesurés ROUGES. 30 minutes.
-    "CC-OFFLINE-298-RESIDUS-SERVIS|residus-servis|src/components/scan/AdvancedSignals.tsx,src/components/TigerRevealCard.tsx|cd010150adc3d0c43db9356f177261f0c307e7ce|feat/cc-offline-298-residus-servis|2026-09-17T14:20:00Z|2026-09-17T14:50:00Z|OPEN"
+    #
+    # CONSOMMÉE ET FERMÉE — ouverte 14:20, exercée au commit 14:25:46, PR #508
+    # fusionnée 14:31. Une lease périmée cesse d'autoriser, mais un
+    # enregistrement OPEN qui traîne est un mensonge sur l'état.
+    #
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : les DEUX chemins accordés, et eux
+    # seuls, vérifié par `gh pr view 508 --json files` — 5 fichiers au diff,
+    # dont 3 LIBRES (la page de démo EN, deux fichiers de témoins).
+    #
+    #   CC-OFFLINE-298-RESIDUS-SERVIS | residus-servis
+    #   2 chemins · feat/cc-offline-298-residus-servis
+    #   2026-09-17T14:20:00Z → 14:50:00Z (30 mn) · consommée à 14:25:46
 )
 
 lease_rouge() {
