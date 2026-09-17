@@ -303,6 +303,13 @@ export async function GET(request: NextRequest) {
     // supply serait note comme un token distribue.
     const topHolderPct = holders.available ? holders.top10Pct : null;
     const rawClaims = caseFile?.claims ?? [];
+    /**
+     * La connaissance gouvernée hors chaîne est MESURÉE lorsqu'au moins une
+     * assertion a réellement été consommée pour ce mint. Un dossier absent —
+     * ou présent et sans assertion consommable — laisse cette capacité NON
+     * MESURÉE, et c'est exactement ce que la décision doit savoir.
+     */
+    const offChainClaimsMesuree = rawClaims.length > 0;
     const tigerScan = computeTigerScoreFromScan({
       chain: "SOL",
       scan_type: "token",
@@ -340,8 +347,35 @@ export async function GET(request: NextRequest) {
     const finalScore = Math.max(tigerScan.score, intel.finalScore);
 
     // ── BUILD 12 · S2 — la décision vient de l'autorité canonique ────────
-    // Quatre capacités sont ATTENDUES sur ce chemin. Celles qui échouent sont
-    // nommées ; le verdict n'est plus dérivé d'un seuil écrit ici.
+    // QUATRE capacités sont INVENTORIÉES sur ce chemin — marché, holders,
+    // lignée d'arnaque, connaissance gouvernée hors chaîne. TROIS sont
+    // ATTENDUES : `holders` est inventorié et tagué HORS CONTRAT, pour la
+    // raison dite plus bas. Celles qui manquent sont nommées, avec leur cause ;
+    // le verdict n'est dérivé d'aucun seuil écrit ici.
+    //
+    // ⚠️ DETTE FERMÉE (CC-OFFLINE-278) : l'ancienne phrase annonçait « quatre
+    // attendues » puis en excluait une, et la quatrième n'était même pas
+    // nommée. Elle l'est — c'est `off_chain_claims` — et l'inventaire et le
+    // dénominateur ne se contredisent plus.
+    // ── CC-OFFLINE-278 · A — ALLOW EXIGE UNE COUVERTURE POSITIVE ────────
+    //
+    // ██  ALLOW N'EST PAS L'ABSENCE D'UN BLOCAGE.                        ██
+    // ██  ALLOW EST UNE AUTORISATION MACHINE POSITIVE.                   ██
+    //
+    // La connaissance gouvernée HORS CHAÎNE n'entrait dans AUCUN
+    // dénominateur. Mesuré sur le VINE canonique : zéro assertion consommée,
+    // et la décision lisait pourtant un contrat de mesure « satisfait » — la
+    // sortie machine devenait `ALLOW`, une AUTORISATION D'ACHAT dérivée d'une
+    // IGNORANCE.
+    //
+    // La table de projection disait déjà le droit : `NO_CRITICAL_SIGNAL` +
+    // incomplet ou dégradé ⇒ `WARN`. Ce qui manquait, c'est que cette
+    // ignorance-là n'était JAMAIS DÉCLARÉE ATTENDUE. On la déclare ; la règle
+    // ratifiée fait le reste. Aucun état nouveau, aucun vocabulaire nouveau.
+    //
+    // ⛔ ET PAS UN LITTÉRAL MAGIQUE. `expected` est la CARDINALITÉ d'une liste
+    //    de capacités NOMMÉES — on ne peut pas augmenter le dénominateur sans
+    //    dire de quelle connaissance il s'agit.
     const solManquants: ManqueMesure[] = [
       ...(market.data_unavailable
         ? [{ engine: "market", reason: "FAILURE" as const }]
@@ -367,7 +401,42 @@ export async function GET(request: NextRequest) {
       ...(scamLineageMeasured
         ? []
         : [{ engine: "scam_lineage", reason: "FAILURE" as const }]),
+      // `NOT_MEASURED`, et pas `UNKNOWN` : la propriété est parfaitement
+      // mesurable — ce chemin ne l'a simplement pas mesurée. `UNKNOWN` est le
+      // dernier recours, pas le premier. Et pas `NOT_REQUESTED_BY_CONTRACT` :
+      // le contrat la demande, c'est tout l'objet de cette ligne.
+      //
+      // ⛔ AUCUNE COUVERTURE N'EST FABRIQUÉE : la capacité est comptée mesurée
+      //    UNIQUEMENT si une assertion a réellement été consommée.
+      ...(offChainClaimsMesuree
+        ? []
+        : [
+            {
+              engine: "off_chain_claims",
+              reason: "NOT_MEASURED" as const,
+              detail:
+                "aucune assertion gouvernée hors chaîne n'a été consommée pour ce mint — " +
+                "l'absence de connaissance n'est pas une connaissance d'absence",
+            },
+          ]),
     ];
+
+    /**
+     * LES CAPACITÉS ATTENDUES DE CE CHEMIN, NOMMÉES.
+     *
+     * `holders` n'y est PAS, et la raison n'a pas changé : mesuré indisponible
+     * des deux côtés, il est déjà consommé par le moteur via
+     * `holders_unavailable` et reste tagué hors contrat. Le compter ici le
+     * pénaliserait deux fois et allumerait une alerte permanente — c'est la
+     * sur-correction que BUILD 11.1 a fermée, et elle ne se rouvre pas.
+     *
+     * `off_chain_claims` y EST, parce que sans elle une autorisation positive
+     * reposerait sur une dimension de connaissance jamais regardée.
+     */
+    const SOL_CAPACITES_ATTENDUES = ["market", "scam_lineage", "off_chain_claims"] as const;
+    const solAttenduesManquantes = solManquants.filter((m) =>
+      (SOL_CAPACITES_ATTENDUES as readonly string[]).includes(m.engine),
+    );
     const solIdentity: IdentityAttestation[] = [
       { source: "casefile", attests: caseFile != null },
       { source: "market_pair", attests: !market.data_unavailable && Boolean(market.url) },
@@ -376,9 +445,8 @@ export async function GET(request: NextRequest) {
     const solDecision = canonicalPreBuyDecision({
       score: finalScore,
       measurement: {
-        expected: 3,
-        expectedMeasured:
-          3 - solManquants.filter((m) => m.reason === "FAILURE").length,
+        expected: SOL_CAPACITES_ATTENDUES.length,
+        expectedMeasured: SOL_CAPACITES_ATTENDUES.length - solAttenduesManquantes.length,
         missing: solManquants,
       },
       identity: resolveTokenIdentity({

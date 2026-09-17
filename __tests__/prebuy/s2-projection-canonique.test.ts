@@ -520,6 +520,41 @@ vi.mock("@/lib/publicScore/rateLimit", () => ({
   getClientIp: () => "127.0.0.1",
   corsHeaders: () => ({ "Access-Control-Allow-Origin": "*" }),
 }));
+// ── CC-OFFLINE-278 · LA FIXTURE GÉNUINEMENT COUVERTE ────────────────────────
+//
+// ██  ALLOW EST UNE AUTORISATION POSITIVE : IL EXIGE UNE COUVERTURE.        ██
+//
+// Depuis que la connaissance gouvernée hors chaîne est une capacité ATTENDUE,
+// `loadCaseByMint → null` signifie « non mesurée » et retombe en WARN — ce qui
+// est le comportement voulu. Ce double sert donc DEUX régimes distincts :
+//
+//   couvert   un dossier RÉELLEMENT consommé, sans rien de critique
+//             → ALLOW reste atteignable, et c'est le contrôle qui prouve que
+//               WARN n'est pas devenu le fond permanent
+//   découvert `null` → WARN, fail-closed
+//
+// ⛔ La fixture couverte n'invente aucune couverture : elle représente un mint
+//    pour lequel une assertion gouvernée A ÉTÉ consommée. Sa claim est de
+//    sévérité basse et non confirmée — elle n'ajoute aucun risque mesuré,
+//    exactement le cas « couvert ET à risque faible » exigé.
+const DOSSIER_COUVERT = {
+  case_meta: {
+    case_id: "IL-FIXTURE-COUVERTE-001",
+    token_name: "Covered Fixture", ticker: "COV",
+    mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    chain: "SOL", status: "open", severity: "LOW",
+    opened_at: "2026-01-01", updated_at: "2026-01-01",
+    investigator: "fixture", summary: "",
+  },
+  sources: [],
+  claims: [
+    {
+      claim_id: "COV-01", title: "Observation sans gravité",
+      severity: "LOW" as const, status: "UNCONFIRMED" as const,
+      description: "", evidence_refs: [], thread_url: null, category: "OTHER",
+    },
+  ],
+};
 vi.mock("@/lib/caseDb", () => ({ loadCaseByMint: vi.fn(() => null) }));
 vi.mock("@/lib/marketProviders", () => ({ getMarketSnapshot: vi.fn() }));
 vi.mock("@/lib/entities/knownBad", () => ({ isKnownBadEvm: vi.fn(() => null) }));
@@ -558,11 +593,13 @@ vi.mock("@/lib/prebuy/canonicalTokenIdentity", async (orig) => {
 });
 
 import { getMarketSnapshot } from "@/lib/marketProviders";
+import { loadCaseByMint } from "@/lib/caseDb";
 import { probeCanonicalTokenIdentity } from "@/lib/prebuy/canonicalTokenIdentity";
 import { GET as scoreGET } from "@/app/api/v1/score/route";
 import { NextRequest } from "next/server";
 
 const mockMarket = vi.mocked(getMarketSnapshot);
+const mockCaseDb = vi.mocked(loadCaseByMint);
 const mockProbe = vi.mocked(probeCanonicalTokenIdentity);
 const originalFetch = globalThis.fetch;
 
@@ -582,9 +619,16 @@ describe("S2/8 — CONTRÔLE POSITIF : ALLOW reste atteignable de bout en bout",
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    // Le défaut reste DÉCOUVERT : aucun témoin n'hérite d'une couverture.
+    mockCaseDb.mockReturnValue(null);
   });
 
-  it("un mint résolu, marché et lignée mesurés → ALLOW + la phrase rassurante", async () => {
+  it("un mint résolu, marché, lignée ET connaissance hors chaîne mesurés → ALLOW", async () => {
+    // ── LE CONTRÔLE QUI PROUVE QUE WARN N'EST PAS LE NOUVEAU FOND ────────
+    // Les TROIS capacités attendues aboutissent. Retirer la couverture hors
+    // chaîne — et elle seule — fait basculer en WARN : c'est le discriminant
+    // apparié du témoin suivant.
+    mockCaseDb.mockReturnValue(DOSSIER_COUVERT as never);
     // Le graphe répond, donc `scam_lineage` est MESURÉ. C'est le régime réel
     // de production, mesuré le 2026-09-09 : /api/scan/solana/graph rend 200.
     globalThis.fetch = vi.fn(async (u: RequestInfo | URL) =>
@@ -601,6 +645,35 @@ describe("S2/8 — CONTRÔLE POSITIF : ALLOW reste atteignable de bout en bout",
     expect(body.phantom_warning_level).toBe("ALLOW");
     expect(body.phantom_disclaimer).toBe("No major risk signals detected.");
     expect(body.verdict).toBe("GREEN");
+  });
+
+  it("M1 · LE DISCRIMINANT APPARIÉ — la MÊME entrée sans couverture hors chaîne → WARN", async () => {
+    // Une seule variable change : la connaissance gouvernée hors chaîne.
+    // Marché mesuré, lignée mesurée, identité résolue, aucun signal critique —
+    // et pourtant PAS d'autorisation, parce qu'une autorisation positive exige
+    // une couverture positive.
+    mockCaseDb.mockReturnValue(null);
+    globalThis.fetch = vi.fn(async (u: RequestInfo | URL) =>
+      String(u).includes("/graph")
+        ? new Response(JSON.stringify({ overall_status: "NONE" }), { status: 200 })
+        : new Response(JSON.stringify({}), { status: 404 }),
+    ) as unknown as typeof fetch;
+
+    const res = await scoreGET(
+      new NextRequest("https://x.test/api/v1/score?mint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
+    );
+    const body = await res.json();
+    expect(body.phantom_warning_level).toBe("WARN");
+
+    // M2 · et la phrase ne rassure pas : elle dit ce qui n'a pas abouti.
+    expect(body.phantom_disclaimer).not.toContain("No major risk signals detected");
+    expect(body.phantom_disclaimer).toContain("not as safe");
+
+    // ⛔ ET AUCUNE ACCUSATION N'EST FABRIQUÉE. WARN pour couverture
+    //    insuffisante n'est pas une allégation contre le jeton.
+    for (const mot of ["SCAM", "fraud", "unsafe", "AVOID", "BLOCK", "critical risk"]) {
+      expect(JSON.stringify(body), mot).not.toContain(mot);
+    }
   });
 
   it("AL — un contrat EVM dont l'identité canonique est ATTESTÉE sort ALLOW", async () => {
