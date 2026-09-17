@@ -248,11 +248,36 @@ export default function AdvancedSignals(props: AdvancedSignalsProps) {
     spenders: rawSummary?.spenders,
     unlimitedCount: rawSummary?.unlimitedCount,
   });
-  const cabalLvl: "low" | "med" | "high" = cabal.tier === "HIGH" ? "high" : cabal.tier === "MED" ? "med" : "low";
-  const cabalVal = lang === "fr"
-    ? `${cabal.tier === "HIGH" ? "Élevé" : cabal.tier === "MED" ? "Moyen" : "Faible"} ${cabal.score}`
-    : `${cabal.tier === "HIGH" ? "High" : cabal.tier === "MED" ? "Med" : "Low"} ${cabal.score}`;
-  const cabalBadge = lang === "fr" ? cabal.label_fr : cabal.label_en;
+  // ── CC-OFFLINE-298 · 2 — « Low 20 » N'EST PAS UNE MESURE ─────────────────
+  //
+  // ██  UN PLANCHER ÉMIS EN L'ABSENCE DE MESURE N'EST PAS UNE MESURE.      ██
+  //
+  // TRACÉ : `computeCabalScore` ouvre sur `let score = 20` — une BASE
+  // CONSTANTE, pas une observation (`src/lib/risk/cabal.ts:27`). Quand AUCUN
+  // driver ne fiche, le score reste 20, `tier` retombe sur `LOW` par simple
+  // arithmétique, et la carte rendait « Low 20 » sous un bandeau UNVERIFIED.
+  //
+  // ⚠️ Ce 20 n'est PAS celui de `computeScore([])` : deux planchers distincts
+  //    qui valent le même nombre. La coïncidence ne change pas la conclusion.
+  //
+  // ⛔ `cabal.ts` N'EST PAS TOUCHÉ : ni base, ni seuil, ni driver, ni
+  //    pondération. C'est la PRÉSENTATION d'une non-mesure qui cesse.
+  // ▎ TOUTE VRAIE MESURE EST CONSERVÉE : dès qu'un driver existe, le score
+  //   repose sur une observation et il est servi tel quel — y compris sous
+  //   une couverture insuffisante, car une preuve négative réelle ne se
+  //   masque pas.
+  const coordinationNonEtablie = coverageSufficient === false && cabal.drivers.length === 0;
+  const cabalLvl: "low" | "med" | "high" | "unknown" =
+    coordinationNonEtablie ? "unknown" :
+    cabal.tier === "HIGH" ? "high" : cabal.tier === "MED" ? "med" : "low";
+  const cabalVal = coordinationNonEtablie
+    ? (lang === "fr" ? "Coordination : non mesurée" : "Coordination: not measured")
+    : lang === "fr"
+      ? `${cabal.tier === "HIGH" ? "Élevé" : cabal.tier === "MED" ? "Moyen" : "Faible"} ${cabal.score}`
+      : `${cabal.tier === "HIGH" ? "High" : cabal.tier === "MED" ? "Med" : "Low"} ${cabal.score}`;
+  const cabalBadge = coordinationNonEtablie
+    ? (lang === "fr" ? "NON ÉTABLI" : "NOT ESTABLISHED")
+    : lang === "fr" ? cabal.label_fr : cabal.label_en;
 
   const exit = computeExitDoor(market);
   const exitLvl: "open" | "tight" | "blocked" = exit.level === "OPEN" ? "open" : exit.level === "TIGHT" ? "tight" : "blocked";

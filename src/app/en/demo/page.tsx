@@ -962,8 +962,26 @@ export default function TigerScanPage() {
           )}
         </div>
 
-        {/* Copy link — discret, sous la barre */}
-        <div className="flex justify-end max-w-2xl mx-auto -mt-20 mb-4 pr-1">
+        {/* ── Copy link — discret, sous la barre ────────────────────────────
+            ██  UN TÉMOIN QUI N'EST PAS LA PAGE SERVIE NE PROUVE PAS         ██
+            ██  LA PAGE SERVIE.                                              ██
+
+            CC-OFFLINE-298 · 1. `-mt-20` tire ce bloc de 80 px vers le HAUT.
+            Frère POSTÉRIEUR du conteneur de la barre de recherche, et de
+            LARGEUR IDENTIQUE (`max-w-2xl mx-auto`), il recouvre donc le bas
+            du `TokenPicker` quand celui-ci est monté — et, plus loin dans
+            l'ordre du document sans `z-index` d'aucun côté, il PEINT AU-DESSUS
+            et CAPTE LES ÉVÉNEMENTS DE POINTEUR sur toute cette bande.
+
+            Mesuré par le fondateur sur le servi : « $VINE » → ANALYZE → la
+            liste s'ouvre → le clic sur « Scan this » est INERTE. Coller
+            l'adresse complète marche : il n'y a alors aucun picker. `/fr/demo`
+            n'a pas cette marge et n'a pas le défaut.
+
+            ⛔ AUCUNE TEMPORISATION. La mise en page historique est
+               STRICTEMENT INCHANGÉE hors picker : la marge n'est neutralisée
+               que pendant que le picker existe. */}
+        <div className={`flex justify-end max-w-2xl mx-auto mb-4 pr-1 ${tickerState ? "mt-2" : "-mt-20"}`}>
           <button
             onClick={() => {
               const base = window.location.pathname;

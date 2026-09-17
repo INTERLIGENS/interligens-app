@@ -118,9 +118,22 @@ export default function TigerRevealCard({ tier, proofs, coverageSufficient }: Ti
             <h3 className="text-[11px] font-black uppercase text-zinc-500 tracking-[0.3em]">
               Top On-Chain Proofs
             </h3>
-            <div className="px-2 py-1 bg-[#F85B05]/10 border border-[#F85B05]/30 text-[#F85B05] text-[9px] font-black rounded uppercase">
-              Audit Verified
-            </div>
+            {/* ── CC-OFFLINE-298 · 3 — « AUDIT VERIFIED » A ÉTÉ RETIRÉ ───────
+                ██  LES RENDERERS PROJETTENT UNE AUTORITÉ.                  ██
+                ██  ILS NE LA CRÉENT PAS.                                   ██
+
+                C'était un LITTÉRAL STATIQUE : aucune prop, aucun état,
+                aucune condition. Il s'affichait sur CHAQUE scan, de chaque
+                palier, couvert ou non — y compris sur une page qui affirme
+                par ailleurs que rien n'a été vérifié. La chaîne n'existait
+                nulle part ailleurs dans le dépôt : aucun moteur d'audit ne
+                la fondait.
+
+                ⛔ NI RENOMMÉ, NI REMPLACÉ : renommer serait inventer une
+                   AUTRE affirmation, et conditionner supposerait qu'il soit
+                   vrai quelque part. Il ne l'était jamais.
+                Le titre ci-dessus décrit déjà le bloc véridiquement, et les
+                proofs sont intacts. */}
           </div>
 
           <button
