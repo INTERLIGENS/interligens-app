@@ -1,5 +1,6 @@
 "use client";
 import { getTier, getTierOrUnknown, getTierColor as getTierColorUtil, computeFinalVerdict } from "@/lib/risk/tier";
+import CaseFileCTA from "@/components/CaseFileCTA";
 import { BOTIFY_MINT } from "@/lib/kol-memory/tokenIdentity";
 import type { TierOrUnknown } from "@/lib/risk/tier";
 import { getVerdictCopy } from "@/lib/copy/verdictCopy";
@@ -1046,27 +1047,21 @@ export default function TigerScanPageFR() {
                 </div>
                 {/* Open Casefile — prominent inside Proof Pack */}
                 <div className="mt-3">
-                  {/* ── CC-OFFLINE-274 — LE CONTRÔLE QUI NE PEUT PAS LIVRER EST ABSENT ──
-                      Mesuré en anonyme sur le runtime servi : `/api/casefile/public`
-                      rend 401 NOMINATIVE_ACCESS_REQUIRED. Les dossiers courants sont
-                      counsel/fondement, aucun n'est publié — le refus est ATTENDU,
-                      pas une panne. `CaseFileCTA` promettait pourtant une ouverture
-                      et un téléchargement : le premier ouvrait un onglet sur une
-                      erreur JSON, le second affichait « PDF generation failed », un
-                      DIAGNOSTIC FAUX — rien n'avait échoué à se générer, le visiteur
-                      n'avait jamais été autorisé.
+                  {/* ── CC-OFFLINE-280 — LE CONTRÔLE REDEVIENT VISIBLE, ET VRAI ──────
+                      CC-OFFLINE-274 l'avait RETIRÉ faute de lease sur le composant.
+                      La lease accordée permet le comportement PRÉFÉRÉ : le contrôle
+                      reste visible, DÉSACTIVÉ, et porte sa raison.
 
-                      ⛔ LE COMPOSANT LUI-MÊME N'A PAS ÉTÉ TOUCHÉ : `src/components/`
-                      est un chemin GELÉ et aucune lease n'est pré-autorisée ici. La
-                      variante préférable — bouton désactivé portant la raison — est
-                      remontée à l'architecte. Ici, la surface publique retire un
-                      contrôle qu'elle ne peut pas honorer : « absent » est l'un des
-                      mécanismes sanctionnés, et le seul disponible sans lease.
+                      `available={false}` est une CONSTANTE, et elle est justifiée
+                      par une mesure, pas par une supposition : en anonyme sur le
+                      runtime servi, `/api/casefile/public` rend 401
+                      NOMINATIVE_ACCESS_REQUIRED, et l'autorité courante ne publie
+                      aucun dossier. Ce n'est PAS une sonde à l'exécution — la
+                      réponse de scan n'expose aucun état de délivrance publique,
+                      et en inventer un serait fabriquer une raison.
                       ⛔ Aucun repli legacy, aucun contournement vers l'artefact
                       counsel, aucune autorité de publication touchée. */}
-                  <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest text-center">
-                    {"Aucun dossier public n'est disponible pour cette adresse."}
-                  </p>
+                  <CaseFileCTA id={address.trim() || null} lang="fr" available={false} />
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <WatchButton mint={address.trim()} chain={chain ?? "SOL"} symbol={result.rawSummary?.symbol} lang="fr" />
