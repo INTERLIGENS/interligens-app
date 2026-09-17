@@ -542,10 +542,18 @@ const SITES: Array<{ site: string; fichier: string; ancre: string; plancher: num
   {
     site: "api/v1/score · SOL",
     fichier: "src/app/api/v1/score/route.ts",
-    // 3 − |{market, scam_lineage}| = 1. `tigerscore`, le troisième membre, est
-    // pur et synchrone (route.ts:297) : il ne peut pas porter FAILURE.
-    ancre: 'expected: 3, expectedMeasured: 3 - solManquants.filter((m) => m.reason === "FAILURE").length,',
-    plancher: 1,
+    // CC-OFFLINE-278 — LE TROISIÈME MEMBRE N'EST PLUS UNE FICTION.
+    //
+    // L'ancien plancher de 1 tenait parce que le troisième membre du
+    // dénominateur était `tigerscore` — pur, synchrone, INFAILLIBLE. Il ne
+    // pouvait pas manquer, donc il garantissait le plancher sans rien mesurer.
+    //
+    // Le contrat nomme désormais ses trois capacités, et la troisième —
+    // `off_chain_claims` — peut RÉELLEMENT manquer. Le plancher tombe donc à 0.
+    // C'est la conséquence exacte du retrait d'une fiction porteuse, et elle
+    // est ÉPINGLÉE ci-dessous plutôt que subie.
+    ancre: 'expected: SOL_CAPACITES_ATTENDUES.length, expectedMeasured: SOL_CAPACITES_ATTENDUES.length - solAttenduesManquantes.length,',
+    plancher: 0,
   },
   {
     site: "partner/transaction-check · SOL",
@@ -613,7 +621,7 @@ describe("S7/s2 — ÉPINGLE : l'inatteignabilité, et elle rougit dans les DEUX
     // revit) comme un plancher qui monte (un site change de contrat) casse ici.
     expect(Object.fromEntries(SITES.map((s) => [s.site, s.plancher]))).toEqual({
       "api/v1/score · EVM": 1,
-      "api/v1/score · SOL": 1,
+      "api/v1/score · SOL": 0,
       "partner/transaction-check · SOL": 1,
       "partner/transaction-check · EVM": 1,
       "partner/score-lite": 1,
@@ -623,13 +631,51 @@ describe("S7/s2 — ÉPINGLE : l'inatteignabilité, et elle rougit dans les DEUX
     });
   });
 
-  it("aucun plancher n'atteint 0 : le portail `expectedMeasured === 0` est mort partout", () => {
+  it("UN SEUL site atteint 0 — et il est NOMMÉ, pas découvert", () => {
     // `filter(...).toEqual([])` et `every(...)` sont TOUS DEUX satisfaits par
-    // un tableau vide. Balayage du 2026-09-10 : la non-vacuité est assertée
-    // ici, et non laissée au seul test frère qui compare la carte complète.
+    // un tableau vide : la non-vacuité reste assertée ici.
     expect(SITES.length).toBe(8);
-    expect(SITES.filter((s) => s.plancher === 0)).toEqual([]);
-    expect(SITES.every((s) => s.plancher >= 1)).toBe(true);
+    expect(SITES.filter((s) => s.plancher === 0).map((s) => s.site)).toEqual([
+      "api/v1/score · SOL",
+    ]);
+    expect(SITES.filter((s) => s.site !== "api/v1/score · SOL").every((s) => s.plancher >= 1)).toBe(true);
+  });
+
+  it("CE QUE LE PLANCHER 0 OUVRAIT — et qui est FERMÉ (CC-OFFLINE-282)", async () => {
+    /**
+     * ██  LA COUVERTURE EST UN PORTAIL DE PERMISSION,                       ██
+     * ██  PAS UN RÉDUCTEUR DE GRAVITÉ.                                      ██
+     *
+     * Le plancher SOL est tombé à 0 en CC-OFFLINE-278, en retirant une fiction
+     * porteuse — `tigerscore`, infaillible, garantissait le plancher sans rien
+     * mesurer. Le portail `expectedMeasured === 0` est donc devenu atteignable,
+     * et il était testé AVANT les bornes de score : une gravité de 95 y perdait
+     * son STOP, et `BLOCK` devenait `WARN`.
+     *
+     * CC-OFFLINE-282 a inversé cet ordre — pas par une méthodologie nouvelle,
+     * mais en composant deux contrats déjà ratifiés qui se contredisaient dans
+     * cet ordre-là. Ce témoin tient la propriété DANS LES DEUX SENS ; la
+     * matrice complète vit dans `cc-offline-282-couverture-et-gravite`.
+     */
+    const { canonicalPreBuyDecision } = await import("@/lib/prebuy/canonicalDecision");
+    const { projectPreBuy } = await import("@/lib/prebuy/projection");
+    const identite = { resolved: true as const, authorities: ["market_pair"] };
+    const niveau = (score: number, mesurees: number) =>
+      projectPreBuy(
+        canonicalPreBuyDecision({
+          score,
+          measurement: { expected: 3, expectedMeasured: mesurees, missing: [] },
+          identity: identite as never,
+        }),
+      ).level;
+
+    // LA GRAVITÉ N'EST PLUS DILUÉE — c'était le défaut.
+    expect(niveau(95, 1)).toBe("BLOCK");
+    expect(niveau(95, 0)).toBe("BLOCK");
+
+    // ET L'IGNORANCE N'AUTORISE TOUJOURS PAS — l'autre direction tient.
+    expect(niveau(10, 0)).toBe("WARN");
+    expect(niveau(10, 3)).toBe("ALLOW");
   });
 
   it("le second portail est mort aussi : aucun site ne passe `score: null`", () => {

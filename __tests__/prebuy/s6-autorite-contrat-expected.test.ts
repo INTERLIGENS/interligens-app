@@ -351,13 +351,20 @@ describe("E · le site et l'autorité, ancrés", () => {
     expect(AUTORITE).not.toContain("holders");
   });
 
-  it("le site SOL déclare 3 et tague holders HORS CONTRAT", () => {
-    expect(aplat(ROUTE)).toContain(aplat(`expected: 3,
-        expectedMeasured:
-          3 - solManquants.filter((m) => m.reason === "FAILURE").length,`));
+  it("le site SOL DÉRIVE son dénominateur d'une liste NOMMÉE, et tague holders HORS CONTRAT", () => {
+    // CC-OFFLINE-278 — `expected` n'est plus un littéral : c'est la cardinalité
+    // de capacités nommées. On ne peut pas augmenter le dénominateur sans dire
+    // DE QUELLE CONNAISSANCE il s'agit.
+    expect(aplat(ROUTE)).toContain(
+      aplat(`const SOL_CAPACITES_ATTENDUES = ["market", "scam_lineage", "off_chain_claims"] as const;`),
+    );
+    expect(aplat(ROUTE)).toContain(aplat(`expected: SOL_CAPACITES_ATTENDUES.length,
+        expectedMeasured: SOL_CAPACITES_ATTENDUES.length - solAttenduesManquantes.length,`));
+    // `holders` reste INVENTORIÉ et HORS CONTRAT : BUILD 11.1 n'est pas rouvert.
     expect(aplat(ROUTE)).toContain(
       aplat(`{ engine: "holders", reason: "NOT_REQUESTED_BY_CONTRACT" as const }`),
     );
+    expect(aplat(ROUTE)).not.toContain(aplat(`"holders", "off_chain_claims"`));
   });
 
   it("le site EVM déclare 1 avec trois manquants — le contre-exemple est bien là", () => {
@@ -370,23 +377,17 @@ describe("E · le site et l'autorité, ancrés", () => {
           ],`));
   });
 
-  it("DETTE OUVERTE — l'en-tête du site annonce QUATRE attendues et se contredit", () => {
+  it("DETTE FERMÉE (CC-OFFLINE-278) — l'inventaire et le dénominateur ne se contredisent plus", () => {
     /**
-     * Ce test ne défend pas le commentaire : il le CONSTATE. Tant que la
-     * phrase est là, le fichier porte une fausse énumération née avec lui
-     * (6585b63) ; le jour où elle est corrigée, ce test rougit et sera retiré
-     * dans le même geste. C'est un marqueur de dette, pas un invariant.
-     *
-     * Aucune correction n'est appliquée ici : consigne « n'implémente rien »
-     * tant que l'autorité n'est pas mesurée. Elle l'est maintenant — la
-     * correction est proposée, pas prise.
+     * L'ancien marqueur de dette CONSTATAIT une fausse énumération née avec le
+     * fichier (6585b63) : l'en-tête annonçait « quatre attendues » puis en
+     * excluait une, et la quatrième n'était jamais nommée. Son auteur avait
+     * écrit qu'il rougirait le jour de la correction et serait retiré dans le
+     * même geste. C'est ce jour : la quatrième capacité est nommée —
+     * `off_chain_claims` — et l'en-tête distingue INVENTORIÉES et ATTENDUES.
      */
-    expect(ROUTE).toContain("Quatre capacités sont ATTENDUES sur ce chemin");
-    expect(ROUTE).toContain("il n'entre PAS au dénominateur");
-    // Les deux phrases sont dans le même bloc, à quelques lignes d'écart.
-    const iQuatre = ROUTE.indexOf("Quatre capacités sont ATTENDUES");
-    const iHors = ROUTE.indexOf("il n'entre PAS au dénominateur");
-    expect(iHors - iQuatre).toBeGreaterThan(0);
-    expect(iHors - iQuatre).toBeLessThan(600);
+    expect(ROUTE).toContain("QUATRE capacités sont INVENTORIÉES");
+    expect(ROUTE).toContain("TROIS sont");
+    expect(ROUTE).not.toContain("Quatre capacités sont ATTENDUES sur ce chemin");
   });
 });

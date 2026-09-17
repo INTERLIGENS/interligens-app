@@ -116,8 +116,12 @@ export function estDegrade(m: FaitsDeMesure): boolean {
  * Ordre d'autorité :
  *   1. REFLEX, quand il a tourné ;
  *   2. le score legacy, quand il y en a un — bornes DÉPLACÉES, pas choisies ;
- *   3. rien de mesuré → INSUFFICIENT_COVERAGE. L'absence de mesure n'est pas
+ *   3. une GRAVITÉ ÉTABLIE de niveau BLOCK, qu'aucune couverture manquante ne
+ *      relâche (CC-OFFLINE-282) ;
+ *   4. rien de mesuré → INSUFFICIENT_COVERAGE. L'absence de mesure n'est pas
  *      une mesure d'absence.
+ *
+ * LA COUVERTURE EST UN PORTAIL DE PERMISSION, PAS UN RÉDUCTEUR DE GRAVITÉ.
  */
 export function canonicalPreBuyDecision(e: EntreeDecision): DecisionCanonique {
   const coverage = e.measurement;
@@ -136,14 +140,41 @@ export function canonicalPreBuyDecision(e: EntreeDecision): DecisionCanonique {
     return { ...base, verdict: "INSUFFICIENT_COVERAGE", verdictSource: "NO_MEASUREMENT" };
   }
 
+  // ── CC-OFFLINE-282 — LA GRAVITÉ PRÉCÈDE LE REFUS DE COUVERTURE ──────────
+  //
+  // ██  LA COUVERTURE PEUT RESTREINDRE UNE PERMISSION.                    ██
+  // ██  LA COUVERTURE NE DOIT JAMAIS RÉDUIRE UNE GRAVITÉ ÉTABLIE.         ██
+  //
+  // Le portail `expectedMeasured === 0` était testé AVANT les bornes de score.
+  // Mesuré : un score de 95 y perdait son `STOP` au profit de
+  // `INSUFFICIENT_COVERAGE`, et la projection rendait `WARN` là où elle rendait
+  // `BLOCK` — une gravité établie DILUÉE par une ignorance.
+  //
+  // Ce n'est pas une méthodologie de risque nouvelle : c'est la composition de
+  // DEUX contrats déjà ratifiés, qui se contredisaient dans cet ordre-ci.
+  //
+  //   1 · « un STOP reste un BLOCK » — écrit dans `projectPreBuy`, pour le cas
+  //       jumeau de l'identité non résolue. On ne relâche pas une gravité
+  //       mesurée parce qu'il manque autre chose.
+  //   2 · « une couverture requise insuffisante ne peut pas produire ALLOW ».
+  //
+  // La composition ferme les DEUX directions de défaillance : l'ignorance ne
+  // peut pas autoriser, ET l'ignorance ne peut pas diluer.
+  //
+  // ⛔ SEUL cet ordre change. Aucune autre préséance n'est déplacée : REFLEX
+  //    reste l'autorité première, `score === null` reste une absence de mesure,
+  //    et les bornes elles-mêmes sont intactes.
+  const graviteEtablie = e.score >= SEUIL_CRITIQUE;
+
   // Rien n'a été mesuré du tout : un score existe, mais aucune capacité
-  // attendue n'a abouti. Le score ne repose alors sur rien de gouverné.
-  if (coverage.expected > 0 && coverage.expectedMeasured === 0) {
+  // attendue n'a abouti. Le score ne repose alors sur rien de gouverné — SAUF
+  // s'il établit une gravité de niveau BLOCK, qu'aucune ignorance ne dilue.
+  if (!graviteEtablie && coverage.expected > 0 && coverage.expectedMeasured === 0) {
     return { ...base, verdict: "INSUFFICIENT_COVERAGE", verdictSource: "NO_MEASUREMENT" };
   }
 
   const verdict: ReflexVerdict =
-    e.score >= SEUIL_CRITIQUE
+    graviteEtablie
       ? "STOP"
       : e.score >= SEUIL_ELEVE
         ? // La bande élevée demande une VÉRIFICATION, pas une attente : le

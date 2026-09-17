@@ -46,7 +46,34 @@ vi.mock("@/lib/prebuy/projection", async (orig) => {
     },
   };
 });
-vi.mock("@/lib/caseDb", () => ({ loadCaseByMint: () => null }));
+// ── CC-OFFLINE-278 — CE FICHIER ISOLE L'AXE `scam_lineage` ──────────────────
+//
+// Depuis que la connaissance gouvernée hors chaîne est une capacité ATTENDUE,
+// un dossier absent retire une capacité et masquerait l'axe que S8 mesure.
+// La fixture est donc COUVERTE sur cette dimension-là : ce qui varie d'un
+// témoin à l'autre reste le GRAPHE, et lui seul.
+//
+// ⛔ Ce n'est pas une couverture fabriquée : c'est un mint dont une assertion
+//    gouvernée A ÉTÉ consommée, de sévérité basse et non confirmée — elle
+//    n'ajoute aucun risque mesuré et ne déplace aucun verdict.
+const DOSSIER_COUVERT = {
+  case_meta: {
+    case_id: "IL-FIXTURE-S8-001", token_name: "S8", ticker: "S8",
+    mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", chain: "SOL",
+    status: "open", severity: "LOW", opened_at: "2026-01-01",
+    updated_at: "2026-01-01", investigator: "fixture", summary: "",
+  },
+  sources: [],
+  claims: [{
+    claim_id: "S8-01", title: "Observation sans gravité",
+    severity: "LOW", status: "UNCONFIRMED", description: "",
+    evidence_refs: [], thread_url: null, category: "OTHER",
+  }],
+};
+let dossierCouvert = true;
+vi.mock("@/lib/caseDb", () => ({
+  loadCaseByMint: () => (dossierCouvert ? DOSSIER_COUVERT : null),
+}));
 vi.mock("@/lib/marketProviders", () => ({
   getMarketSnapshot: async () => ({
     data_unavailable: false,
@@ -125,7 +152,10 @@ async function servir(graphe: { status: number; corps: unknown }) {
 const manque = (d: DecisionCanonique, moteur: string) =>
   d.coverage.missing.find((m) => m.engine === moteur);
 
-beforeEach(() => vi.resetModules());
+beforeEach(() => {
+  vi.resetModules();
+  dossierCouvert = true;
+});
 
 describe("S8/v1 — une panne d'accès aux données n'est pas une absence mesurée", () => {
   it("S1 · le corps porteur d'un champ `error` ne compte plus comme une mesure", async () => {
@@ -190,6 +220,27 @@ describe("S8/v2 — GATE DE SUR-CORRECTION : une mesure réelle reste une mesure
       corps: { clusters: [], related_projects: [], overall_status: "NONE", source: "no_data" },
     });
     expect(corps.phantom_warning_level).toBe("ALLOW");
+  });
+
+  it("S3c · CC-OFFLINE-278 — retirer la SEULE couverture hors chaîne suffit à fermer ALLOW", async () => {
+    // Discriminant apparié de S3b : même graphe, même marché, même identité.
+    // Une seule variable change, et l'autorisation positive disparaît.
+    dossierCouvert = false;
+    const { decision, corps } = await servir({
+      status: 200,
+      corps: { clusters: [], related_projects: [], overall_status: "NONE", source: "no_data" },
+    });
+    expect(decision.coverage.expectedMeasured).toBe(2);
+    expect(decision.expectedContractSatisfied).toBe(false);
+    expect(corps.phantom_warning_level).toBe("WARN");
+
+    // La capacité manquante est NOMMÉE, et sa cause est honnête.
+    const off = manque(decision, "off_chain_claims");
+    expect(off, "la dimension attendue doit être nommée").toBeDefined();
+    // `NOT_MEASURED` : mesurable, pas mesuré. Ni `UNKNOWN` — dernier recours —
+    // ni `NOT_REQUESTED_BY_CONTRACT` : le contrat la demande.
+    expect(off?.reason).toBe("NOT_MEASURED");
+    expect(off?.detail).toContain("absence de connaissance");
   });
 
   it("S4 · une lignée RÉELLE reste servie, et elle reste mesurée", async () => {
