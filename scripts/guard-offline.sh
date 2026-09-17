@@ -741,6 +741,43 @@ LEASES=(
     #   CC-OFFLINE-296-SURFACES-HUMAINES | surfaces-humaines
     #   3 chemins · feat/cc-offline-296-surfaces-humaines
     #   2026-09-17T13:42:00Z → 14:22:00Z (40 mn) · consommée à 13:47:11
+
+    # ── CC-OFFLINE-298-RESIDUS-SERVIS ────────────────────────────────────────
+    # DEUX chemins, accordés après une passe de LECTURE SEULE qui a tracé les
+    # trois résidus et n'a demandé que ce que la trace imposait.
+    #
+    #   src/components/scan/AdvancedSignals.tsx
+    #   src/components/TigerRevealCard.tsx
+    #
+    # ① COORDINATION RISK « Low 20 ». `computeCabalScore` ouvre sur
+    #   `let score = 20` — une BASE CONSTANTE (`src/lib/risk/cabal.ts:27`).
+    #   Sans aucun driver, le score EST ce plancher et `LOW` n'en est que
+    #   l'arithmétique : sous UNVERIFIED, la carte présentait une NON-MESURE
+    #   comme un niveau établi.
+    #
+    #     UN PLANCHER ÉMIS EN L'ABSENCE DE MESURE N'EST PAS UNE MESURE.
+    #
+    #   `cabalVal`, `cabalLvl` et `cabalBadge` sont composés À L'INTÉRIEUR du
+    #   composant, à partir d'un `computeCabalScore` appelé DANS le composant.
+    #   La page ne passe ni score ni tier : AUCUNE valeur de prop ne peut
+    #   empêcher « Low 20 » d'être rendu. ⛔ `cabal.ts` n'est pas touché, et
+    #   toute VRAIE mesure — dès qu'un driver existe — est servie telle quelle.
+    #
+    # ② « AUDIT VERIFIED ». Littéral STATIQUE dans le JSX : aucune prop, aucun
+    #   état, aucune condition, rendu sur CHAQUE scan — sur une page qui
+    #   affirme par ailleurs que rien n'a été vérifié. La chaîne n'existait
+    #   nulle part ailleurs dans le dépôt : aucun moteur d'audit ne la fondait.
+    #   La page ne peut pas retirer un nœud qu'elle ne passe pas.
+    #   ⛔ Ni renommé ni remplacé : retiré. Le titre et les proofs restent.
+    #
+    # ⛔ AUCUN TROISIÈME CHEMIN GELÉ. Le résidu « Scan this » — un frère
+    #    postérieur en `-mt-20` qui recouvrait le TokenPicker de 80 px et
+    #    captait ses clics — vit entièrement dans `src/app/en/demo/page.tsx`,
+    #    LIBRE. Aucun chemin demandé par précaution.
+    #
+    # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : 11 témoins de lot, M19–M21
+    # injectés et mesurés ROUGES. 30 minutes.
+    "CC-OFFLINE-298-RESIDUS-SERVIS|residus-servis|src/components/scan/AdvancedSignals.tsx,src/components/TigerRevealCard.tsx|cd010150adc3d0c43db9356f177261f0c307e7ce|feat/cc-offline-298-residus-servis|2026-09-17T14:20:00Z|2026-09-17T14:50:00Z|OPEN"
 )
 
 lease_rouge() {
