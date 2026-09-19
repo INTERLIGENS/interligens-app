@@ -44,6 +44,20 @@ function fichiersSource(racine: string): string[] {
 const MARQUEURS: Array<{ motif: RegExp; quoi: string }> = [
   { motif: /IL-(?:PND|PON|SHILL|CONC)-[A-Z0-9]+-\d+/, quoi: "ref de dossier canonique" },
   { motif: /loadPublicProjection|loadCanonicalCaseFile|toInternalCaseView|resolvePublicCasefile/, quoi: "lecteur canonique" },
+  // ── CC-OFFLINE-304 — LA GARDE ÉTAIT AVEUGLE À LA CHAÎNE RC ──────────────
+  //
+  // Les trois marqueurs d'origine détectent par REF LITTÉRALE ou par NOM DE
+  // LECTEUR HISTORIQUE. La chaîne gouvernée RC n'emploie ni l'un ni l'autre :
+  // `assembleAuthority(ref)` prend son `ref` de `params`, donc AUCUN littéral
+  // n'apparaît dans le fichier, et ni `assembleAuthority` ni `projectAssembly`
+  // ne figuraient dans cette liste. Une surface entière pouvait servir le
+  // dossier canonique sans que cette garde la voie — exactement la faute
+  // qu'elle interdit, reproduite un cran plus loin.
+  //
+  // Le seul autre fichier de `src/app` portant ces symboles est
+  // `api/casefile/pdf/route.ts`, DÉJÀ déclaré : l'extension ne rougit pas
+  // rétroactivement, elle ouvre les yeux de la garde.
+  { motif: /assembleAuthority|projectAssembly/, quoi: "assemblage d'autorité gouvernée" },
   { motif: /data\/cases\/botify\.json|buildBotifyInput|buildVineInput/, quoi: "autorité legacy" },
   { motif: /tokenCaseFile\.|platformCaseFile\./, quoi: "table de dossier" },
 ];
