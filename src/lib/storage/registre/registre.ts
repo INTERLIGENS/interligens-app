@@ -443,6 +443,41 @@ export async function superseder(
   return { prononcee: true, ligne: relue };
 }
 
+/**
+ * CC-OFFLINE-310 · LES LIGNES D'UN SUJET. LECTURE BORNÉE, RIEN D'AUTRE.
+ *
+ * ██  CE N'EST PAS UNE NOUVELLE AUTORITÉ. C'EST UNE LECTURE DU REGISTRE.   ██
+ *
+ * `listerLignes` filtre sur le COMPARTIMENT : obtenir les lignes d'un sujet par
+ * elle imposerait de charger toute la table et de filtrer en mémoire. D'où
+ * cette primitive — et elle ne fait QUE `WHERE subject = …`.
+ *
+ * ⛔ CE QU'ELLE NE FAIT PAS, ET C'EST DÉLIBÉRÉ :
+ *
+ *    · aucun `ORDER BY` sémantique — pas de `registered_at DESC`, pas de
+ *      « latest », pas de « current », pas de « canonical » ;
+ *    · aucune sélection — elle ne désigne pas, elle ÉNUMÈRE ;
+ *    · aucun filtrage d'éligibilité — le jugement appartient à
+ *      `deriverEligibilite`, et le recopier ici ferait une SECONDE AUTORITÉ ;
+ *    · aucun masquage d'un invalidé — un artefact conservé sans autorité de
+ *      remise fait partie de l'histoire du sujet, et l'histoire se lit.
+ *
+ *        LISTER ≠ DÉSIGNER.  HISTORIQUE ≠ AUTORITÉ COURANTE.
+ *
+ * L'ordre est celui de l'IDENTITÉ DE REGISTRE : neutre, stable, et porteur
+ * d'aucune préférence. Il est posé ici pour que l'appelant n'ait pas à choisir
+ * un ordre — et donc pas à en inventer un qui signifierait quelque chose.
+ */
+export async function listerParSujet(sujet: string): Promise<LigneDeRegistre[]> {
+  try {
+    const lignes = await prisma.$queryRaw<LigneBrute[]>`
+      SELECT * FROM governed_objects WHERE subject = ${sujet} ORDER BY id`;
+    return lignes.map(hydrater);
+  } catch (err) {
+    throw classerErreur(err);
+  }
+}
+
 /** Toutes les lignes du compartiment — la direction DB→R2 de la réconciliation. */
 export async function listerLignes(bucket: string): Promise<LigneDeRegistre[]> {
   try {

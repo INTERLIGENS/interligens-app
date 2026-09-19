@@ -77,6 +77,17 @@ vi.mock("@/lib/casefile/authorityAssembly", () => ({
   assembleAuthority: (ref: string) => assembleAuthorityMock(ref),
 }));
 
+// CC-OFFLINE-310 — la surface lit AUSSI le registre, pour son annexe
+// `SEALED ARTIFACTS`. C'est une SECONDE frontière de base, et elle est simulée
+// ici pour la même raison que la première. Le registre vide est le bon défaut :
+// ces témoins-ci portent sur le DOCUMENT GOUVERNÉ, pas sur l'annexe — celle-ci
+// a ses propres critères (`cc-offline-310-…`), qui l'éprouvent sur les lignes
+// réelles.
+vi.mock("@/lib/storage/registre/registre", async (original) => {
+  const reel = await original<typeof import("@/lib/storage/registre/registre")>();
+  return { ...reel, listerParSujet: async () => [] };
+});
+
 async function GET(ref: string) {
   const mod = await import("@/app/admin/cases/[ref]/governed/route");
   return mod.GET(new Request(`http://localhost/admin/cases/${ref}/governed`), {
@@ -548,9 +559,18 @@ describe("304 · la forme servie, telle que le corpus la détermine", () => {
     expect(html).toContain("instrument:il-measure-botify-proceeds-events@1.0.0");
   });
 
-  it("les octets servis sont EXACTEMENT ceux du renderer — aucune réécriture", async () => {
-    // La surface n'est pas un second rendu : elle sert ce que la fonction pure
-    // produit. `generatedAt` est la seule variation, et elle vient de l'horloge.
+  it("les octets du renderer sont servis INTÉGRALEMENT — aucune réécriture", async () => {
+    // ─── CC-OFFLINE-310 · LA PROPRIÉTÉ EST PRÉCISÉE, PAS AFFAIBLIE ───────
+    //
+    // La surface porte désormais une ANNEXE — `SEALED ARTIFACTS` — qui ne
+    // vient PAS du renderer : elle vient du registre, et elle appartient à la
+    // surface, pas au document gouverné (l'y mettre la ferait entrer dans le
+    // PDF scellé). Le document n'est donc plus octet pour octet celui du
+    // renderer : il est celui du renderer PLUS une annexe.
+    //
+    // ██  CE QUI COMPTE RESTE TENU, ET PLUS PRÉCISÉMENT QU'AVANT : RETIRER   ██
+    // ██  L'ANNEXE REND EXACTEMENT LES OCTETS DU RENDERER. LA SURFACE        ██
+    // ██  AJOUTE — ELLE NE RÉÉCRIT, NE REFORMATE NI N'AMPUTE RIEN.           ██
     assembleAuthorityMock.mockResolvedValue(BOTIFY);
     const res = await GET("IL-SHILL-BOTIFY-001");
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
@@ -563,6 +583,11 @@ describe("304 · la forme servie, telle que le corpus la détermine", () => {
       projectAssembly(BOTIFY, "COUNSEL_INVESTOR"),
       marque![1],
     );
-    expect(html).toBe(attendu);
+
+    const i = html.indexOf("<style>\n  .sealed");
+    const j = html.indexOf("</section>", html.indexOf('<section class="sealed">'))
+      + "</section>".length;
+    expect(i, "l'annexe attendue est absente").toBeGreaterThan(-1);
+    expect(html.slice(0, i) + html.slice(j)).toBe(attendu);
   });
 });
