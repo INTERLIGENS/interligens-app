@@ -95,8 +95,33 @@ const esc = (v: string | null | undefined): string =>
 const court = (v: string | null | undefined, n = 16): string =>
   v ? `${esc(v.slice(0, n))}…` : "—";
 
+/**
+ * LE TITRE D'UNE ASSERTION. **UNE SEULE RÈGLE**, ici, utilisée partout.
+ *
+ * Le bloc de claim et la présentation d'une dépendance désignent la MÊME
+ * assertion : si chacun choisissait son champ, le même objet porterait deux
+ * noms dans le même document, et le lecteur ne pourrait plus faire la jointure.
+ */
+const titreDe = (c: ProjectedClaim): string => c.titleFr ?? c.title;
+
+/**
+ * CC-OFFLINE-306 · L'INDEX DE LA PROJECTION — `claimId@version` → l'assertion.
+ *
+ * ██  IL N'INDEXE QUE `projection.claims`. RIEN D'AUTRE N'EST ATTEIGNABLE.  ██
+ *
+ * C'est toute l'autorité de l'enrichissement : ce qu'une dépendance nomme, le
+ * renderer le RETROUVE dans ce qu'il a déjà reçu — il ne va pas le chercher.
+ * Pas de base, pas de table relationnelle, pas d'`actors[]`, pas de lecture
+ * hors projection. Une cible que l'audience n'a pas admise n'est pas dans
+ * l'index, et le rendu retombe alors sur la forme d'origine.
+ */
+type IndexProjection = ReadonlyMap<string, ProjectedClaim>;
+
+const indexerProjection = (claims: readonly ProjectedClaim[]): IndexProjection =>
+  new Map(claims.map((c) => [`${c.claimId}@${c.version ?? ""}`, c]));
+
 /** LEVEL 2 — le fondement d'une assertion, attaché à elle. */
-function traceDe(c: ProjectedClaim): string {
+function traceDe(c: ProjectedClaim, index: IndexProjection): string {
   const pieces = c.citedSources
     .map(
       (s: AssembledSource) => `
@@ -109,11 +134,39 @@ function traceDe(c: ProjectedClaim): string {
     )
     .join("");
 
+  // ─── CC-OFFLINE-306 · LA RELATION DEVIENT LISIBLE ───────────────────────
+  //
+  // Avant, une dépendance se rendait `DERIVED_FROM → VINE-MEASURE-01 v1` : un
+  // code et un identifiant. Pour comprendre le lien, le lecteur devait remonter
+  // à une autre section et faire la jointure de tête.
+  //
+  // Ce qui est AJOUTÉ est le TITRE et la NATURE de la cible, tous deux lus
+  // dans `projection.claims`. Ce sont des DONNÉES, pas une interprétation.
+  //
+  // ⛔ AUCUN MOT N'EST AJOUTÉ. Pas de « because », pas de « therefore », pas
+  //    de « caused by », pas de « attributed to ». Le renderer ne tire aucune
+  //    conclusion de plus qu'avant : il montre, à l'endroit où le lien est
+  //    déclaré, CE QUE LE LIEN DÉSIGNE. La relation reste exactement celle que
+  //    `dependency_kind` porte en base.
+  //
+  // FAIL-CLOSED : si `claimId@version` n'est pas dans la projection — cible
+  // non admise pour cette audience, version dépinglée, dépendance orpheline —
+  // on rend l'identifiant et la version SEULS, exactement comme avant. On
+  // n'invente pas un titre, on ne cherche pas une version voisine, on ne va
+  // rien lire ailleurs.
   const deps = c.dependencies
-    .map(
-      (d) => `
-      <li><code>${esc(d.kind)}</code> → <code>${esc(d.sourceClaimId)}</code> v${d.sourceVersion}</li>`,
-    )
+    .map((d) => {
+      const cible = index.get(`${d.sourceClaimId}@${d.sourceVersion}`);
+      if (!cible) {
+        return `
+      <li><code>${esc(d.kind)}</code> → <code>${esc(d.sourceClaimId)}</code> v${d.sourceVersion}</li>`;
+      }
+      return `
+      <li><code>${esc(d.kind)}</code>
+        <br>→ ${esc(titreDe(cible))}
+        <br>→ <code>${esc(d.sourceClaimId)}</code> v${d.sourceVersion}
+        <br>→ ${esc(cible.rowNature)}</li>`;
+    })
     .join("");
 
   return `
@@ -128,16 +181,21 @@ function traceDe(c: ProjectedClaim): string {
     </div>`;
 }
 
-function claimBloc(c: ProjectedClaim): string {
+function claimBloc(c: ProjectedClaim, index: IndexProjection): string {
   return `
   <article class="claim">
-    <h3>${esc(c.titleFr ?? c.title)}</h3>
+    <h3>${esc(titreDe(c))}</h3>
     ${c.description ? `<p>${esc(c.descriptionFr ?? c.description)}</p>` : ""}
-    ${traceDe(c)}
+    ${traceDe(c, index)}
   </article>`;
 }
 
-function section(titre: string, sous: string, claims: readonly ProjectedClaim[]): string {
+function section(
+  titre: string,
+  sous: string,
+  claims: readonly ProjectedClaim[],
+  index: IndexProjection,
+): string {
   // ⛔ Une section sans autorité N'APPARAÎT PAS. Elle n'est pas rendue vide,
   //    elle n'est pas rendue « non établie » : elle est absente.
   if (claims.length === 0) return "";
@@ -145,7 +203,7 @@ function section(titre: string, sous: string, claims: readonly ProjectedClaim[])
   <section>
     <h2>${esc(titre)}</h2>
     <p class="sub">${esc(sous)}</p>
-    ${claims.map(claimBloc).join("")}
+    ${claims.map((c) => claimBloc(c, index)).join("")}
   </section>`;
 }
 
@@ -166,6 +224,9 @@ export function renderGovernedCaseFileHtml(
   // provenance des pièces, ni leur nombre, ni le texte de la claim.
   const conclusions = projection.claims.filter((c) => c.rowNature === "INFERENCE");
   const observations = projection.claims.filter((c) => c.rowNature !== "INFERENCE");
+
+  // CC-OFFLINE-306 — construit UNE fois, sur la seule projection reçue.
+  const index = indexerProjection(projection.claims);
 
   const toutesPieces = new Map<string, AssembledSource>();
   for (const c of projection.claims) for (const s of c.citedSources) toutesPieces.set(s.sourceId, s);
@@ -235,11 +296,13 @@ export function renderGovernedCaseFileHtml(
     "Governed assertions classified as observations. Each is stated by its own governed text " +
       "and carries its foundation trace and cited evidence below it.",
     observations,
+    index,
   )}
   ${section(
     "Governed conclusions",
     "Governed assertions classified as inferences, each consuming the governed assertions listed in its trace.",
     conclusions,
+    index,
   )}
 
   ${

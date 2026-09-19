@@ -441,14 +441,34 @@ describe("H/I/J — aucune écriture, aucune capacité qui sorte", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("L — le renderer et le producteur sont intouchés", () => {
-  it("governedCaseFileRenderer.ts est OCTET POUR OCTET celui de main", () => {
-    // L'empreinte mesurée sur `origin/main` AVANT ce lot. Elle est le témoin
-    // qui rend la déclaration vérifiable sans croire personne sur parole.
+  it("governedCaseFileRenderer.ts porte l'empreinte RATIFIÉE du lot courant", () => {
+    // ─── CC-OFFLINE-306 · CE TÉMOIN EST MIS À JOUR DÉLIBÉRÉMENT ───────────
+    //
+    // ⛔ IL N'A PAS ÉTÉ SUPPRIMÉ PARCE QU'IL GÊNAIT. Il a rougi, c'était
+    //    CORRECT, et la nouvelle valeur est inscrite en connaissance de cause.
+    //
+    //   AVANT  8a3af79e6f1d5d21cb4050b9b239eaf2beb5f32ae188a3757c3e5d2fd74cc85f  (14 161 o)
+    //   APRÈS  d84fa35377c88c23c4e1aed302be0a0cbf313c27481f988d1473fc4d0e313faf  (17 142 o)
+    //
+    // Ce que la modification change, et ce qu'elle ne change PAS :
+    //
+    //   · les artefacts historiques scellés restent IMMUABLES dans R2 ;
+    //   · leurs empreintes enregistrées ne bougent pas d'un bit ;
+    //   · ils restent remettables par identité (c'est tout l'objet du lot 305) ;
+    //   · UN FUTUR ARTEFACT PRODUIT AVEC CE RENDERER AURA D'AUTRES OCTETS.
+    //
+    // ██  ON NE DEMANDE PAS AU RENDERER COURANT DE REPRODUIRE BIT POUR BIT  ██
+    // ██  UN ANCIEN ARTEFACT SCELLÉ. L'AUTORITÉ HISTORIQUE EST PORTÉE PAR   ██
+    // ██  L'OBJET PERSISTÉ, LE REGISTRE ET LE SCEAU — PAS PAR LA CAPACITÉ   ██
+    // ██  DU RENDERER FUTUR À REPRODUIRE SES OCTETS.                        ██
+    //
+    // Le témoin garde donc exactement sa fonction : rendre toute modification
+    // du renderer VISIBLE et DÉLIBÉRÉE. Il ne la rend pas impossible.
     const source = readFileSync("src/lib/casefile/governedCaseFileRenderer.ts");
     expect(createHash("sha256").update(source).digest("hex")).toBe(
-      "8a3af79e6f1d5d21cb4050b9b239eaf2beb5f32ae188a3757c3e5d2fd74cc85f",
+      "d84fa35377c88c23c4e1aed302be0a0cbf313c27481f988d1473fc4d0e313faf",
     );
-    expect(source.byteLength).toBe(14161);
+    expect(source.byteLength).toBe(17142);
   });
 
   it("la primitive de remise ne REDÉRIVE aucune règle d'éligibilité", () => {
