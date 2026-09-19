@@ -9,6 +9,7 @@ import { envInt } from "@/lib/config/envNumber";
 import { allouerIdentite, estDansPerimetreGouverne } from "./registre/identite";
 import { allouer, confirmerEnregistrement, lireParCle, ErreurRegistre } from "./registre/registre";
 import { deriverEligibilite, expliquerRefus, type RaisonDeRefus } from "./registre/eligibilite";
+import type { LigneDeRegistre } from "./registre/contrat";
 
 function getStorageEnv(): StorageEnv {
   const v = process.env.VERCEL_ENV;
@@ -532,4 +533,157 @@ export async function getSignedDownloadUrl(cle: string): Promise<string | null> 
     });
     return null;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CC-OFFLINE-305 — LA REMISE DES OCTETS, PAR IDENTITÉ
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ██  UNE URL SIGNÉE EST UNE CAPACITÉ ÉPHÉMÈRE, PAS UN IDENTIFIANT PRODUIT. ██
+//
+// `delivrerUrlSignee` rend une CAPACITÉ : quiconque la détient lit l'objet,
+// sans repasser par le gate, jusqu'à expiration. La remettre à un navigateur
+// la dépose dans la barre d'adresse, dans l'historique, dans un `Referer`, et
+// dans tout ce qui journalise côté client. Cette primitive-ci rend les OCTETS,
+// et la capacité ne quitte jamais le processus — elle n'est même pas créée.
+//
+// ─── CE QU'ELLE NE FAIT PAS, ET C'EST LE POINT ────────────────────────────
+//
+// ⛔ Elle ne REDÉRIVE aucune règle d'éligibilité. Elle APPELLE `deriverEligibilite`,
+//    la même autorité que `delivrerUrlSignee` appelle trois fonctions plus haut.
+//    Recopier ne serait-ce qu'une condition ferait une SECONDE autorité, et deux
+//    autorités divergent — c'est l'Invariant Propagation Failure que
+//    `eligibilite.ts` documente en tête de fichier.
+//
+// ⛔ Elle ne SÉLECTIONNE rien. Elle reçoit une LIGNE DE REGISTRE déjà lue, par
+//    identité explicite. Aucun sujet, aucun « dernier », aucun tri, aucune
+//    heuristique : l'appelant NOMME l'artefact, ou il n'obtient rien.
+//
+// ─── POURQUOI UNE LIGNE ET PAS UNE CLÉ ────────────────────────────────────
+//
+// Prendre une clé obligerait à la reconvertir en ligne — un second aller-retour
+// qui pourrait rendre une AUTRE ligne que celle demandée, et l'identité remise
+// ne serait plus reliable sans ambiguïté à l'objet lu. La ligne EST l'autorité :
+// elle porte le compartiment, la clé, le sceau et la taille. Un seul objet peut
+// en découler.
+//
+//   STORAGE LOCATION AUTHORITY SELECTS THE OBJECT.
+//   CONFIG ONLY ENABLES ACCESS.
+//
+// ─── L'INTÉGRITÉ EST ÉTABLIE À LA REMISE, PAS SUPPOSÉE ────────────────────
+//
+// `uploadPdf` prouve l'intégrité à l'ÉCRITURE (étape 3/4). Cela ne dit rien de
+// ce que le compartiment rend AUJOURD'HUI, des mois plus tard. Les octets sont
+// donc recomparés au sceau enregistré AVANT d'être remis, et une divergence
+// REFUSE — servir des octets qui ne sont pas ceux qu'on a scellés serait remettre
+// un artefact tout en niant ce qui le rend gouverné.
+
+/**
+ * Ce qui fait refuser une REMISE, nommément. Domaine FERMÉ, et DISTINCT de
+ * `RaisonDeRefus` : celui-ci appartient à l'éligibilité, et l'étendre pour y
+ * loger une panne de lecture ferait entrer une cause technique dans un domaine
+ * de JUGEMENT. Même séparation que `CauseDeRefusSupersession`.
+ */
+export type CauseDeRefusRemise =
+  /** Le stockage est désactivé — aucune autorité n'est même consultable. */
+  | "STOCKAGE_INDISPONIBLE"
+  /** L'autorité existante a refusé. `raison` porte SON verdict, mot pour mot. */
+  | "NON_DELIVRABLE"
+  /** La ligne ne porte pas de sceau : née de l'observation, pas de l'allocation. */
+  | "SANS_SCEAU_ENREGISTRE"
+  /** Le compartiment n'a pas rendu l'objet. */
+  | "OBJET_ILLISIBLE"
+  /** Les octets rendus ne sont pas ceux qui ont été scellés. */
+  | "OCTETS_DIVERGENTS";
+
+export type Remise =
+  | {
+      readonly autorisee: true;
+      readonly octets: Buffer;
+      readonly sha256: string;
+      readonly tailleOctets: number;
+    }
+  | {
+      readonly autorisee: false;
+      readonly cause: CauseDeRefusRemise;
+      /** Présente UNIQUEMENT sous `NON_DELIVRABLE` — c'est le verdict de l'autorité. */
+      readonly raison?: RaisonDeRefus;
+      readonly explication: string;
+    };
+
+const REFUS_REMISE = (
+  cause: CauseDeRefusRemise,
+  explication: string,
+  raison?: RaisonDeRefus,
+): Remise => ({ autorisee: false, cause, explication, raison });
+
+/**
+ * Remettre les OCTETS d'un artefact gouverné NOMMÉ par sa ligne de registre.
+ *
+ * L'appelant a déjà résolu l'identité — `lireParIdentifiant` — et c'est la
+ * seule façon d'entrer ici. Cette fonction juge, lit, vérifie, et rend des
+ * octets ou un refus nommé. Elle n'écrit rien : ni ligne, ni objet, ni trace.
+ */
+export async function remettreOctetsGouvernes(ligne: LigneDeRegistre): Promise<Remise> {
+  if (!isStorageEnabled() || !r2Client) {
+    return REFUS_REMISE("STOCKAGE_INDISPONIBLE", "stockage désactivé");
+  }
+
+  // ── LE JUGEMENT, PAR L'AUTORITÉ EXISTANTE. Une seule ligne, et c'est voulu.
+  const eligibilite = deriverEligibilite(ligne);
+  if (!eligibilite.publiable) {
+    return REFUS_REMISE("NON_DELIVRABLE", expliquerRefus(eligibilite.raison), eligibilite.raison);
+  }
+
+  // Sans sceau, aucune vérification n'est possible, et on n'affirme pas une
+  // intégrité qu'on n'a pas établie. Voir `LigneDeRegistre.sha256`.
+  if (!ligne.sha256) {
+    return REFUS_REMISE(
+      "SANS_SCEAU_ENREGISTRE",
+      "la ligne ne porte pas d'empreinte : l'intégrité des octets remis ne peut pas être établie",
+    );
+  }
+
+  let octets: Buffer;
+  try {
+    const relu = await r2Client.send(
+      new GetObjectCommand({ Bucket: ligne.bucket, Key: ligne.cle })
+    );
+    const corps = relu.Body as AsyncIterable<Uint8Array> | undefined;
+    if (!corps) throw new Error("corps de réponse absent");
+    const morceaux: Uint8Array[] = [];
+    for await (const morceau of corps) morceaux.push(morceau);
+    octets = Buffer.concat(morceaux);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error("[registre] remise impossible — objet illisible", {
+      registreId: ligne.id,
+      cle: ligne.cle,
+      reason,
+    });
+    return REFUS_REMISE("OBJET_ILLISIBLE", `le compartiment n'a pas rendu l'objet (${reason})`);
+  }
+
+  // ── L'INTÉGRITÉ, SUR CE QUI EST RÉELLEMENT RENDU.
+  const sha256Relu = sha256hex(octets);
+  if (sha256Relu !== ligne.sha256 || octets.byteLength !== ligne.tailleOctets) {
+    console.error("[registre] remise refusée — octets divergents du sceau enregistré", {
+      registreId: ligne.id,
+      sha256Attendu: ligne.sha256,
+      sha256Relu,
+      tailleAttendue: ligne.tailleOctets,
+      tailleRelue: octets.byteLength,
+    });
+    return REFUS_REMISE(
+      "OCTETS_DIVERGENTS",
+      "les octets rendus par le compartiment ne correspondent pas au sceau enregistré",
+    );
+  }
+
+  return {
+    autorisee: true,
+    octets,
+    sha256: sha256Relu,
+    tailleOctets: octets.byteLength,
+  };
 }
