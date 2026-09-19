@@ -390,6 +390,13 @@ describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE
     // nomme aucune ref littérale (son `ref` vient de `params`) et n'émet aucune
     // pièce portable. Elle enchaîne trois autorités, et c'est tout.
     //
+    // CC-OFFLINE-305 — la remise par identité s'y ajoute, QUATRIÈME occurrence,
+    // et elle échappe au détecteur pour une raison ENCORE différente : elle ne
+    // touche pas le corpus du tout. Elle lit le registre d'ARTEFACTS, relaie des
+    // octets déjà scellés, et son seul identifiant vient de `params`. Aucun des
+    // marqueurs cherchés ici n'a de sens pour elle — et pourtant elle met un
+    // dossier sous les yeux d'un lecteur, donc elle est au registre.
+    //
     // ⛔ ON NE CORRIGE PAS CETTE LISTE EN AJOUTANT `assembleAuthority` AUX
     //    MARQUEURS CI-DESSUS. La porte ratifiée en S22 vaut ici : refaire la
     //    liste tenue à la main un cran plus haut reproduit la faute. La
@@ -397,6 +404,7 @@ describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE
     //    voit cette surface, elle, et c'est elle qui l'a exigée au registre.
     //    Ce fichier reste ce qu'il dit être : une BORNE INFÉRIEURE.
     expect(DECLAREES_NON_DETECTEES).toEqual([
+      "src/app/admin/artefacts/[registreId]/route.ts",
       "src/app/admin/cases/[ref]/governed/route.ts",
       "src/app/api/admin/export/botify/route.ts",
       "src/lib/casefile/governedCaseFileRenderer.ts",

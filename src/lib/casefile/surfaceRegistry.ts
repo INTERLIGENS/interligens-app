@@ -149,6 +149,23 @@ export const CASEFILE_SURFACES: readonly CaseFileSurface[] = [
       "(proxy au bord + isAdminSessionFromCookies dans le handler) ; refus " +
       "UNIQUE et indiscernable entre absence de dossier et absence de corpus.",
   },
+  {
+    // CC-OFFLINE-305 — LA REMISE PAR IDENTITÉ. Elle ne rend AUCUN dossier :
+    // elle relaie les octets d'un artefact DÉJÀ scellé, nommé par son
+    // identifiant de registre, après le jugement de `deriverEligibilite`. Son
+    // autorité est celle du registre d'artefacts, pas celle du corpus — elle
+    // n'assemble rien, ne projette rien, ne rend rien. Elle est déclarée ici
+    // parce qu'elle MET UN DOSSIER SOUS LES YEUX D'UN LECTEUR, et que c'est
+    // ce fait-là, pas la technique employée, qui décide de l'inscription.
+    file: "src/app/admin/artefacts/[registreId]/route.ts",
+    route: "/admin/artefacts/[registreId]",
+    authority: "CANONICAL",
+    public: false,
+    note:
+      "Remise des octets d'un artefact gouverné nommé par son registreId. " +
+      "Aucune sélection par sujet, aucun « dernier », aucune production ; " +
+      "double gate admin, refus UNIQUE, et aucune URL signée ne quitte le serveur.",
+  },
   // ── BUILD 13 · S3 — deux surfaces qui TOUCHENT désormais un dossier ──────
   //
   // Elles produisaient déjà un artefact portable, mais n'en lisaient aucun :
