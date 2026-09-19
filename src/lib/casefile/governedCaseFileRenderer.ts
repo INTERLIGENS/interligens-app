@@ -207,6 +207,68 @@ function section(
   </section>`;
 }
 
+// ─── CC-OFFLINE-308 · L'INVENTAIRE DU CONTENU GOUVERNÉ ─────────────────────
+//
+// ██  CE N'EST PAS UN « EXECUTIVE SUMMARY ». C'EST UN INVENTAIRE DE CE QUE   ██
+// ██  CE DOCUMENT CONTIENT.                                                  ██
+//
+// Le bloc ne résume NI le jeton, NI le projet, NI le risque, NI l'enquête, NI
+// ce qui existerait ailleurs. Il compte ce que la projection admise contient,
+// et il ne peut rien compter d'autre : `projection.claims` est sa seule entrée.
+//
+//     UNE SYNTHÈSE EST UNE PRÉSENTATION DE L'AUTORITÉ, JAMAIS UNE AUTORITÉ.
+//
+// ─── POURQUOI « 0 », ET JAMAIS « NO » ─────────────────────────────────────
+//
+//   « 0 governed conclusions »  est une CARDINALITÉ DU DOCUMENT.
+//   « No conclusion »           peut se lire comme UNE CONCLUSION SUR LE SUJET.
+//
+// Le préambule « This document contains: » FIXE L'UNIVERS DE QUANTIFICATION.
+// Sans lui, un lecteur pourrait comprendre « INTERLIGENS a cherché partout et
+// n'a rien trouvé ». Avec lui, la phrase ne peut dire qu'une chose : la
+// projection gouvernée de CE document contient N éléments de cette catégorie.
+//
+// ⛔ INTERDITS DE LIBELLÉ, un par un : « No governed conclusion », « No
+//    conclusion », « Nothing was established », « No evidence », « No
+//    relationship », « Not established », « No finding », « No risk »,
+//    « No issue ». Aucune de ces formes ne compte : elles QUALIFIENT.
+//
+// ⛔ Aucune pondération, aucun classement, aucun résumé de `severity` ou de
+//    `category`, aucun verdict, aucun score. Compter des dépendances
+//    n'autorise AUCUNE interprétation de leur signification.
+
+/** Le pluriel de l'anglais : singulier si, et seulement si, n vaut 1. */
+const ligneInventaire = (n: number, singulier: string, pluriel: string): string =>
+  `<li>${n} ${n === 1 ? singulier : pluriel}</li>`;
+
+/**
+ * LES QUATRE COMPTES, ET RIEN D'AUTRE.
+ *
+ *   observations   `rowNature !== "INFERENCE"`
+ *   conclusions    `rowNature === "INFERENCE"`
+ *   pièces citées  identités de `citedSources` DÉDUPLIQUÉES
+ *   assertions     dépendances effectivement portées par les claims projetées
+ *   consommées
+ */
+function inventaireGouverne(
+  observations: readonly ProjectedClaim[],
+  conclusions: readonly ProjectedClaim[],
+  piecesDistinctes: number,
+  assertionsConsommees: number,
+): string {
+  return `
+  <section class="inv">
+    <h2>GOVERNED CONTENT</h2>
+    <p class="sub">This document contains:</p>
+    <ul>
+      ${ligneInventaire(observations.length, "governed observation", "governed observations")}
+      ${ligneInventaire(conclusions.length, "governed conclusion", "governed conclusions")}
+      ${ligneInventaire(piecesDistinctes, "cited evidence piece", "cited evidence pieces")}
+      ${ligneInventaire(assertionsConsommees, "consumed governed assertion", "consumed governed assertions")}
+    </ul>
+  </section>`;
+}
+
 /**
  * LE RENDU. PUR — aucune base, aucun réseau, aucune horloge autre que celle
  * qu'on lui passe.
@@ -228,8 +290,15 @@ export function renderGovernedCaseFileHtml(
   // CC-OFFLINE-306 — construit UNE fois, sur la seule projection reçue.
   const index = indexerProjection(projection.claims);
 
+  // La DÉDUPLICATION PAR IDENTITÉ est la clef de la `Map` : une pièce citée
+  // par quatre claims est UNE pièce. Le compte de l'inventaire est la taille de
+  // cette même carte — pas un second calcul qui pourrait diverger d'elle.
   const toutesPieces = new Map<string, AssembledSource>();
   for (const c of projection.claims) for (const s of c.citedSources) toutesPieces.set(s.sourceId, s);
+
+  // CC-OFFLINE-308 — les dépendances EFFECTIVEMENT portées par les claims
+  // projetées. Une dépendance d'une claim écartée n'existe pas pour ce document.
+  const assertionsConsommees = projection.claims.reduce((n, c) => n + c.dependencies.length, 0);
 
   const pieces = [...toutesPieces.values()]
     .sort((a, b) => a.sourceId.localeCompare(b.sourceId))
@@ -281,6 +350,14 @@ export function renderGovernedCaseFileHtml(
   .trace{margin:6px 0;border-left:2px solid #27272a;padding:4px 0 4px 10px}
   .trace-t{color:#a1a1aa;font-size:9px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:3px}
   .hdr{border-bottom:1px solid #27272a;padding-bottom:12px;margin-bottom:6px}
+  /* CC-OFFLINE-308 — L'INVENTAIRE SE LIT COMME UN ENCADRÉ DU DOCUMENT.
+     Le cadre n'est pas de l'ornement : il rend VISUELLEMENT évident que les
+     nombres décrivent CE DOCUMENT et rien d'autre. Le préambule le dit, la
+     boîte le montre. Aucun mot n'est ajouté pour l'obtenir. */
+  .inv{border:1px solid #27272a;padding:2px 14px 10px;margin:14px 0 4px}
+  .inv h2{margin-top:12px}
+  .inv ul{list-style:none;padding-left:0;margin:0}
+  .inv li{color:#d4d4d8}
   </style></head><body>
 
   <div class="hdr">
@@ -289,6 +366,8 @@ export function renderGovernedCaseFileHtml(
       audience ${esc(projection.audience)} · ${esc(projection.state)} ·
       generated ${esc(generatedAt)}</div>
   </div>
+
+  ${inventaireGouverne(observations, conclusions, toutesPieces.size, assertionsConsommees)}
 
   ${vide}
   ${section(

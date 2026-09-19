@@ -98,7 +98,18 @@ describe("F2 · RIEN D'AUTRE n'a bougé — le corps est intact", () => {
     // Sur les TITRES de section, pas sur des chaînes libres : « Governed
     // evidence » apparaît aussi comme étiquette dans chaque trace de fondement.
     const titres = [...corps.matchAll(/<h2>([^<]+)<\/h2>/g)].map((m) => m[1]);
+    // ─── CC-OFFLINE-308 · UNE ENTRÉE AJOUTÉE, DÉLIBÉRÉMENT ────────────────
+    //
+    // `GOVERNED CONTENT` entre EN TÊTE : c'est l'inventaire de ce que le
+    // document contient, et il se lit avant ce qu'il contient. Les quatre
+    // titres existants gardent leur ORDRE et leur ORTHOGRAPHE exacts — c'est
+    // ce que la comparaison ci-dessous continue de prouver, et elle mordra
+    // toujours sur un renommage ou une permutation.
+    //
+    // ⛔ Ce témoin n'est PAS assoupli pour laisser passer le lot : il reste
+    //    une liste EXACTE et ORDONNÉE. Il est mis à jour, pas relâché.
     expect(titres).toEqual([
+      "GOVERNED CONTENT",
       "Governed observations",
       "Governed conclusions",
       "Governed evidence",

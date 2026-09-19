@@ -447,8 +447,14 @@ describe("L — le renderer et le producteur sont intouchés", () => {
     // ⛔ IL N'A PAS ÉTÉ SUPPRIMÉ PARCE QU'IL GÊNAIT. Il a rougi, c'était
     //    CORRECT, et la nouvelle valeur est inscrite en connaissance de cause.
     //
-    //   AVANT  8a3af79e6f1d5d21cb4050b9b239eaf2beb5f32ae188a3757c3e5d2fd74cc85f  (14 161 o)
-    //   APRÈS  d84fa35377c88c23c4e1aed302be0a0cbf313c27481f988d1473fc4d0e313faf  (17 142 o)
+    //   CC-OFFLINE-244  8a3af79e6f1d5d21cb4050b9b239eaf2beb5f32ae188a3757c3e5d2fd74cc85f  (14 161 o)
+    //   CC-OFFLINE-306  d84fa35377c88c23c4e1aed302be0a0cbf313c27481f988d1473fc4d0e313faf  (17 142 o)
+    //                   RAISON : présentation lisible de la relation DERIVED_FROM.
+    //   CC-OFFLINE-308  2cbb3111b9e2d61c6356eea8acdf6caedc0ca43d8f28520989fdb32566c3cbe5  (21 271 o)
+    //                   RAISON : ajout PUREMENT PRÉSENTATIONNEL du bloc
+    //                   GOVERNED CONTENT — un inventaire des quatre cardinalités
+    //                   de la projection admise. Aucune autorité nouvelle,
+    //                   aucun champ hérité consommé, aucune donnée live lue.
     //
     // Ce que la modification change, et ce qu'elle ne change PAS :
     //
@@ -466,9 +472,9 @@ describe("L — le renderer et le producteur sont intouchés", () => {
     // du renderer VISIBLE et DÉLIBÉRÉE. Il ne la rend pas impossible.
     const source = readFileSync("src/lib/casefile/governedCaseFileRenderer.ts");
     expect(createHash("sha256").update(source).digest("hex")).toBe(
-      "d84fa35377c88c23c4e1aed302be0a0cbf313c27481f988d1473fc4d0e313faf",
+      "2cbb3111b9e2d61c6356eea8acdf6caedc0ca43d8f28520989fdb32566c3cbe5",
     );
-    expect(source.byteLength).toBe(17142);
+    expect(source.byteLength).toBe(21271);
   });
 
   it("la primitive de remise ne REDÉRIVE aucune règle d'éligibilité", () => {
