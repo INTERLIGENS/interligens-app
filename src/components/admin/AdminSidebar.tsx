@@ -35,7 +35,38 @@ type Section = {
   links: SectionLink[];
 };
 
+// ─── CC-OFFLINE-312 · LE POINT D'ENTRÉE DES DEUX SHOWCASE GOUVERNÉS ───────
+//
+// ██  DEUX IDENTITÉS DE DOSSIER NOMMÉES. PAS UNE ÉNUMÉRATION.              ██
+//
+// Le moteur RC est démontrable de bout en bout ; il manquait les quelques
+// mètres de couloir qui y mènent. Ces deux entrées sont ce couloir, et rien
+// d'autre : depuis une surface admin normale, un investisseur ou un avocat
+// atteint le dossier gouverné sans connaître l'architecture interne.
+//
+// ⛔ CE N'EST PAS UN NAVIGATEUR DE DOSSIERS. La section ne s'appelle ni
+//    « Dossiers publiés », ni « All Cases », ni « Canonical Cases » — elle
+//    NOMME deux dossiers effectivement gouvernés, et une liste de deux noms
+//    ne peut pas se lire comme l'ensemble des dossiers INTERLIGENS. Le
+//    navigateur générique, s'il doit exister, est une décision séparée.
+//
+// ⛔ Les liens pointent DIRECTEMENT vers la surface gouvernée. Ils ne passent
+//    pas par `/admin/cases`, qui est l'admin hérité et reste hors de ce lot.
+//
+// ⛔ AUCUN `registreId` EN DUR. Ce qui est écrit ici, ce sont deux CaseFileRef
+//    — des identités de dossier déjà gouvernées. L'identité des ARTEFACTS est
+//    découverte par la surface elle-même (CC-OFFLINE-310), qui la lit du
+//    registre : l'écrire ici figerait un choix que personne n'a fait.
+const GOVERNED_SHOWCASE: Section = {
+  title: "GOVERNED CASEFILES",
+  links: [
+    { label: "VINE", href: "/admin/cases/IL-SHILL-VINE-001/governed" },
+    { label: "BOTIFY", href: "/admin/cases/IL-SHILL-BOTIFY-001/governed" },
+  ],
+};
+
 const SECTIONS: Section[] = [
+  GOVERNED_SHOWCASE,
   {
     title: "Opérations",
     links: [
