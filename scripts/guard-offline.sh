@@ -832,6 +832,40 @@ LEASES=(
     #   CC-OFFLINE-300-CADRAGE-ADVANCED-SIGNALS | cadrage-advanced-signals
     #   1 chemin · feat/cc-offline-300-identite-et-cadrage
     #   2026-09-17T14:57:00Z → 15:22:00Z (25 mn) · consommée à 15:02:50
+
+    # ── CC-OFFLINE-312-POINT-ENTREE-SHOWCASE ─────────────────────────────────
+    # UN SEUL chemin, accordé après une passe de LECTURE SEULE.
+    #
+    #   src/components/admin/AdminSidebar.tsx
+    #
+    # POURQUOI. B1 est fermé : le parcours gouverné ne dépend plus d'un terminal
+    # ni de SQL. Il manque les quelques mètres de couloir qui y mènent — deux
+    # entrées de navigation vers les deux dossiers effectivement gouvernés.
+    #
+    # ÉTAPE 0, MESURÉE AVANT DE DEMANDER LA LEASE. `SECTIONS` est un tableau
+    # `Section[]` rendu génériquement par `SECTIONS.map(...)` : ajouter une
+    # section est une ADDITION DE DONNÉES PURE — un objet dans un tableau. Aucune
+    # restructuration n'est nécessaire, et aucune n'est faite. Le brief exigeait
+    # un STOP si le composant ne le permettait pas proprement ; il le permet.
+    #
+    # ⛔ AJOUT SEUL. Aucun libellé existant renommé, aucune section réordonnée,
+    #    aucun lien retiré, aucun « nettoyage » profitant de la fenêtre. Un
+    #    témoin fige les 24 liens préexistants ET leur ordre, et le mutant
+    #    « renommer Dossiers publiés » a été injecté et mesuré ROUGE.
+    #
+    # ⛔ AUCUN CHEMIN ADJACENT. Les deux `href` visent
+    #    `/admin/cases/<ref>/governed`, une route QUI EXISTE DÉJÀ (CC-OFFLINE-304)
+    #    et qui porte son double gate. Rien n'est créé, aucune base n'est lue,
+    #    aucun `registreId` n'est écrit en dur. Le fichier de témoins vit dans
+    #    `__tests__/`, LIBRE. Aucun chemin demandé par précaution.
+    #
+    # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : 14 témoins, 2 mutants
+    # injectés et mesurés ROUGES. 30 minutes.
+    #
+    #   CC-OFFLINE-312-POINT-ENTREE-SHOWCASE | point-entree-showcase
+    #   1 chemin · feat/cc-offline-312-point-entree-showcase-gouvernes
+    #   2026-09-19T14:21:00Z → 14:51:00Z (30 mn)
+    "CC-OFFLINE-312-POINT-ENTREE-SHOWCASE|point-entree-showcase|src/components/admin/AdminSidebar.tsx|be600e30aa5c9897678998f56746954910713e96|feat/cc-offline-312-point-entree-showcase-gouvernes|2026-09-19T14:21:00Z|2026-09-19T14:51:00Z|OPEN"
 )
 
 lease_rouge() {
