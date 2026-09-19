@@ -131,6 +131,9 @@ const PDF_INTERNE = "src/lib/casefile/pdfGenerator.ts";
 const PDF_SCAN = "src/components/pdf/pdfRenderer.ts";
 const ROUTE_GENERATE = "src/app/api/casefile/generate/route.ts";
 const PRESETS = "src/lib/casefile/presets.ts";
+// CC-OFFLINE-312 — le porteur de NAVIGATION : il met le ref dans une URL, il ne
+// l'écrit pas et ne le lit pas. Le témoin ci-dessous tient cette distinction.
+const BARRE_ADMIN = "src/components/admin/AdminSidebar.tsx";
 
 const BOTIFY_REF = "IL-SHILL-BOTIFY-001";
 const VINE_REF = "IL-SHILL-VINE-001";
@@ -208,14 +211,58 @@ describe("S19/ag3a — 1 · ORIGINE : qui ÉCRIT dans la colonne d'identité", (
   });
 
   it("LE POINT DUR — la clé de LECTURE et la valeur ÉCRITE sont deux littéraux distincts", () => {
-    // Deux fichiers, et ce sont les deux bouts de la chaîne. Rien ne les relie.
+    // Deux bouts de chaîne — l'ÉCRITURE et la LECTURE — et rien ne les relie.
+    //
+    // ─── CC-OFFLINE-312 · UN TROISIÈME PORTEUR, ET IL N'EST NI L'UN NI L'AUTRE ──
+    //
+    // La barre admin porte désormais les deux refs, dans deux `href` vers
+    // `/admin/cases/<ref>/governed`. C'est un porteur de NAVIGATION : il
+    // n'écrit pas la valeur, il ne la lit pas en base, il ne la résout pas —
+    // il la met dans une URL.
+    //
+    // ⚠️ IMPORTER LA CONSTANTE Y A ÉTÉ MESURÉ IMPOSSIBLE, pas jugé gênant :
+    //    `AdminSidebar` est `"use client"`, et `publicProjection` atteint
+    //    Prisma par `canonicalReader`. L'import ferait entrer le client de base
+    //    dans le bundle navigateur. Le littéral est donc STRUCTUREL ici.
+    //
+    // ⛔ CE N'EST PAS UN ASSOUPLISSEMENT. L'ensemble reste EXACT et clos, et le
+    //    témoin suivant tient ce qui compte vraiment : le troisième porteur
+    //    n'écrit ni ne lit. Un quatrième porteur, ou un porteur qui se mettrait
+    //    à écrire, rougirait toujours.
     for (const ref of [BOTIFY_REF, VINE_REF]) {
-      expect(porteursDe(new RegExp(ref))).toEqual([GENERATEUR_SQL, PROJECTION].sort());
+      expect(porteursDe(new RegExp(ref))).toEqual([GENERATEUR_SQL, PROJECTION, BARRE_ADMIN].sort());
     }
     // Le générateur ne peut pas importer la constante : ce n'est pas du TS,
     // et il n'importe rien du module qui la porte.
     expect(GENERATEUR_SQL.endsWith(".mjs")).toBe(true);
     expect(codeSeul(SRC(GENERATEUR_SQL))).not.toContain("publicProjection");
+  });
+
+  it("⚑ LE TROISIÈME PORTEUR NAVIGUE — il n'ÉCRIT pas, et il ne LIT pas", () => {
+    // C'est CE témoin qui remplace la cardinalité perdue. Porter un ref dans
+    // une URL n'est pas le même acte que l'écrire en base ou le résoudre : si
+    // la barre se mettait à faire l'un des deux, elle deviendrait une autorité,
+    // et c'est cela qui doit rougir — pas le fait qu'elle soit une troisième
+    // occurrence du texte.
+    const barre = codeSeul(SRC(BARRE_ADMIN));
+
+    // ÉCRITURE — aucune.
+    expect(barre).not.toMatch(
+      /tokenCaseFile\.(create|update|upsert|createMany|updateMany|delete)|INSERT INTO token_casefiles|UPDATE token_casefiles/,
+    );
+    // LECTURE — aucune : ni base, ni lecteur canonique, ni résolution.
+    for (const s of [
+      "prisma", "loadCanonicalCaseFile", "loadPublicProjection", "assembleAuthority",
+      "canonicalRefForMint", "resolveCaseFileRef", "casefileLookupKey", "$queryRaw",
+    ]) {
+      expect(barre, `la barre atteint « ${s} »`).not.toContain(s);
+    }
+    // NAVIGATION — les deux refs n'apparaissent QUE dans un `href`.
+    for (const ref of [BOTIFY_REF, VINE_REF]) {
+      const occurrences = [...barre.matchAll(new RegExp(ref, "g"))];
+      expect(occurrences, `${ref} absent de la barre`).toHaveLength(1);
+      expect(barre).toContain(`href: "/admin/cases/${ref}/governed"`);
+    }
   });
 });
 
@@ -887,8 +934,11 @@ describe("S19/ag3k — 8 · LE VERDICT, et il ne peut pas CLORE", () => {
 
 describe("S19/ag3l — VINE : la constante existe, et elle ne fonde pas davantage", () => {
   it("les sept points descriptifs donnent le MÊME résultat que BOTIFY", () => {
-    // Origine : même littéral saisi, même générateur, mêmes deux exemplaires.
-    expect(porteursDe(new RegExp(VINE_REF))).toEqual([GENERATEUR_SQL, PROJECTION].sort());
+    // Origine : même littéral saisi, même générateur, mêmes exemplaires — et
+    // depuis CC-OFFLINE-312, le même porteur de navigation. VINE et BOTIFY
+    // restent SYMÉTRIQUES sur ce point, ce qui est exactement ce que ce témoin
+    // mesure : la barre porte les deux, ou elle n'en porte aucun.
+    expect(porteursDe(new RegExp(VINE_REF))).toEqual([GENERATEUR_SQL, PROJECTION, BARRE_ADMIN].sort());
     // Segments, création, mutation, validation : mesurés globalement plus haut,
     // et aucun n'est spécifique à BOTIFY.
     expect(codeSeul(SRC(GENERATEUR_SQL))).toContain(`const VINE_REF = "${VINE_REF}"`);
