@@ -133,6 +133,22 @@ export const CASEFILE_SURFACES: readonly CaseFileSurface[] = [
     public: false,
     note: "PDF admin, deux gabarits ; claims canoniques pour les deux.",
   },
+  {
+    // CC-OFFLINE-304 · RC PRODUCT SPINE ① — LA SURFACE HUMAINE GOUVERNÉE.
+    // Même chaîne que le gabarit `governed` du PDF, même renderer, mêmes
+    // octets : assembleAuthority → projectAssembly(COUNSEL_INVESTOR) →
+    // renderGovernedCaseFileHtml, servis verbatim par un Route Handler.
+    // Elle ne porte aucun claim, aucune prose, aucun score : son autorité est
+    // exactement celle de la projection qu'elle reçoit.
+    file: "src/app/admin/cases/[ref]/governed/route.ts",
+    route: "/admin/cases/[ref]/governed",
+    authority: "CANONICAL",
+    public: false,
+    note:
+      "Dossier gouverné en HTML, audience COUNSEL_INVESTOR. Double gate admin " +
+      "(proxy au bord + isAdminSessionFromCookies dans le handler) ; refus " +
+      "UNIQUE et indiscernable entre absence de dossier et absence de corpus.",
+  },
   // ── BUILD 13 · S3 — deux surfaces qui TOUCHENT désormais un dossier ──────
   //
   // Elles produisaient déjà un artefact portable, mais n'en lisaient aucun :

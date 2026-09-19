@@ -382,7 +382,22 @@ describe("S12/y1 — l'univers gouverné est COUVERT, et il est un SOUS-ENSEMBLE
     // normal, il ne lit ni base ni preset : il reçoit une projection déjà
     // gouvernée. La propriété défendue ici est intacte, et cet ajout la
     // documente au lieu de l'éroder.
+    //
+    // CC-OFFLINE-304 — la surface humaine gouvernée s'y ajoute, TROISIÈME
+    // occurrence de la MÊME limite, et la plus parlante : elle SERT le dossier
+    // canonique, et le détecteur ne la voit pas. Elle ne porte aucun marqueur
+    // parce qu'elle n'en a aucun à porter — elle ne lit ni base ni preset, ne
+    // nomme aucune ref littérale (son `ref` vient de `params`) et n'émet aucune
+    // pièce portable. Elle enchaîne trois autorités, et c'est tout.
+    //
+    // ⛔ ON NE CORRIGE PAS CETTE LISTE EN AJOUTANT `assembleAuthority` AUX
+    //    MARQUEURS CI-DESSUS. La porte ratifiée en S22 vaut ici : refaire la
+    //    liste tenue à la main un cran plus haut reproduit la faute. La
+    //    découverte par ATTEIGNABILITÉ (`s22-decouverte-des-surfaces.test.ts`)
+    //    voit cette surface, elle, et c'est elle qui l'a exigée au registre.
+    //    Ce fichier reste ce qu'il dit être : une BORNE INFÉRIEURE.
     expect(DECLAREES_NON_DETECTEES).toEqual([
+      "src/app/admin/cases/[ref]/governed/route.ts",
       "src/app/api/admin/export/botify/route.ts",
       "src/lib/casefile/governedCaseFileRenderer.ts",
     ]);
