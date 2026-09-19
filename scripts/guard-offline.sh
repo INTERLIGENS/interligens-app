@@ -862,10 +862,18 @@ LEASES=(
     # Code ÉCRIT, TESTÉ et VERT avant l'ouverture : 14 témoins, 2 mutants
     # injectés et mesurés ROUGES. 30 minutes.
     #
+    # CONSOMMÉE ET FERMÉE — ouverte 14:21, exercée au commit 14:26:15, PR #520
+    # fusionnée 14:33. Une lease périmée cesse d'autoriser, mais un
+    # enregistrement OPEN qui traîne est un mensonge sur l'état.
+    #
+    # PÉRIMÈTRE EXERCÉ = PÉRIMÈTRE AUTORISÉ : un chemin, vérifié par
+    # `gh pr view 520 --json files` — 3 fichiers au diff, dont 2 LIBRES (le
+    # fichier de témoins du lot, et `__tests__/prebuy/s19-…` dont la cardinalité
+    # des porteurs de ref devait accueillir le porteur de NAVIGATION).
+    #
     #   CC-OFFLINE-312-POINT-ENTREE-SHOWCASE | point-entree-showcase
     #   1 chemin · feat/cc-offline-312-point-entree-showcase-gouvernes
-    #   2026-09-19T14:21:00Z → 14:51:00Z (30 mn)
-    "CC-OFFLINE-312-POINT-ENTREE-SHOWCASE|point-entree-showcase|src/components/admin/AdminSidebar.tsx|be600e30aa5c9897678998f56746954910713e96|feat/cc-offline-312-point-entree-showcase-gouvernes|2026-09-19T14:21:00Z|2026-09-19T14:51:00Z|OPEN"
+    #   2026-09-19T14:21:00Z → 14:51:00Z (30 mn) · consommée à 14:26:15
 )
 
 lease_rouge() {
